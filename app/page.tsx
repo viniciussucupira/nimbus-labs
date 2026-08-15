@@ -1,3 +1,5 @@
+import { SiteFooter } from "@/components/site-footer";
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-white">
@@ -40,12 +42,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-200 mt-12">
-        <div className="max-w-4xl mx-auto px-6 py-8 text-sm text-gray-600">
-          <p>© 2026 Nimbus Labs. Built with AI.</p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
