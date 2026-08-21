@@ -12,6 +12,13 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy">
       <p>
+        Merchant of Record: Nimbus Labs uses Paddle as our Merchant of Record.
+        Paddle is the legal seller of our services and is responsible for
+        processing your payment, providing customer support, and handling
+        refunds. All transactions are governed by Paddle&apos;s terms as well
+        as our own.
+      </p>
+      <p>
         Nimbus Labs (“Nimbus Labs,” “we,” “us,” or “our”) is an independent
         software studio based in Brazil. This Privacy Policy explains how we
         collect, use, share, and protect personal information when you use our

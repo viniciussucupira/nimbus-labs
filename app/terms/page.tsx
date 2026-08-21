@@ -132,6 +132,14 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
+      <p>
+        Merchant of Record: Nimbus Labs uses Paddle as our Merchant of Record.
+        Paddle is the legal seller of our services and is responsible for
+        processing your payment, providing customer support, and handling
+        refunds. All transactions are governed by Paddle&apos;s terms as well
+        as our own.
+      </p>
+
       <LegalSection title="6. Refunds">
         <p>
           Refunds are governed by our{" "}
