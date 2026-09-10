@@ -39,6 +39,17 @@ export default function Home() {
               Visit Retone →
             </a>
           </div>
+          <div className="pb-12 border-b border-gray-200">
+          
+            <h3 className="text-2xl font-bold mb-3">NativeApply</h3>
+            <p className="text-gray-600 mb-4 max-w-2xl">Sound like a native English speaker in your job application. AI rewriting for cover letters and outreach messages.</p>
+            <a href="https://nativeapply.net" target="_blank" rel="noopener noreferrer" className="text-black font-medium hover:underline">Visit NativeApply →</a>
+            </div>
+            <div>
+            <h3 className="text-2xl font-bold mb-3">NativeReply</h3>
+              <p className="text-gray-600 mb-4 max-w-2xl">Native-sounding customer support and sales replies, written and checked with AI.</p>
+              <a href="https://nativereply.net" target="_blank" rel="noopener noreferrer" className="text-black font-medium hover:underline">Visit NativeReply →</a>
+          </div>
         </div>
       </section>
 
