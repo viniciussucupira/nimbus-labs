@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy">
+    <LegalPage title="Privacy Policy" lastUpdated="September 16, 2026">
       <p>
         Merchant of Record: Nimbus Labs uses Paddle as our Merchant of Record.
         Paddle is the legal seller of our services and is responsible for
@@ -82,6 +82,21 @@ export default function PrivacyPage() {
           us, we keep the content of that correspondence and your contact
           details so we can respond.
         </p>
+        <p>
+          <strong className="text-black">Creator research answers.</strong> If
+          you fill in the form at{" "}
+          <Link
+            href="/creators"
+            className="text-black underline underline-offset-2 hover:no-underline"
+          >
+            nimbuslabsai.com/creators
+          </Link>
+          , we collect your name, email address, country, the platform where
+          you sell, the store or profile link you choose to share, your
+          answers, the date you sent them, and the consent choices you ticked.
+          To limit abuse, we also keep a one-way hash of your IP address for
+          one hour; we do not store the IP address itself with your answers.
+        </p>
       </LegalSection>
 
       <LegalSection title="2. How we use information">
@@ -101,15 +116,24 @@ export default function PrivacyPage() {
             detect, prevent, and investigate fraud, abuse, and security
             incidents;
           </li>
-          <li>comply with legal obligations; and</li>
-          <li>improve the reliability and quality of the Services.</li>
+          <li>comply with legal obligations;</li>
+          <li>improve the reliability and quality of the Services; and</li>
+          <li>
+            if you answered our creator research, read your answers to decide
+            what to build next, email you follow-up questions about that
+            research, and, only if you ticked the separate box, tell you when
+            we launch a tool for creators.
+          </li>
         </ul>
         <p>
           Where the GDPR or similar laws apply, we process personal data on the
           following legal bases: performance of a contract (providing the
           subscription), legitimate interests (security, service improvement,
           and necessary communications), consent (where we ask for it, such as
-          optional cookies), and legal obligation.
+          optional cookies and the creator research form), and legal
+          obligation. You can withdraw consent at any time by emailing us;
+          this does not affect processing that happened before you withdrew
+          it.
         </p>
       </LegalSection>
 
@@ -168,6 +192,12 @@ export default function PrivacyPage() {
           is not stored by Nimbus Labs. Support emails are retained as long as
           needed to resolve your request and maintain a reasonable business
           record.
+        </p>
+        <p>
+          Creator research answers are kept for up to 24 months from the date
+          you sent them, or until you ask us to delete them, whichever comes
+          first. They are stored with our database provider (Upstash) on
+          infrastructure used by our hosting provider (Vercel).
         </p>
       </LegalSection>
 
@@ -237,8 +267,8 @@ export default function PrivacyPage() {
 
       <LegalSection title="10. Changes">
         <p>
-          We may update this Privacy Policy from time to time. The effective
-          date at the top of this page will change when we do. We encourage you
+          We may update this Privacy Policy from time to time. The “Last
+          updated” date at the top of this page will change when we do. We encourage you
           to review this page periodically.
         </p>
       </LegalSection>
