@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import {
+  CONSENT_FOLLOWUP_TEXT,
   CONSENT_RESEARCH_TEXT,
   CONSENT_UPDATES_TEXT,
   LIMITS,
@@ -34,11 +35,14 @@ const hintClass = "text-gray-500 font-normal";
 export function CreatorResearchForm() {
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
+  const [emailNote, setEmailNote] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
+    const consentFollowUp = data.get("consentFollowUp") === "on";
+    const consentUpdates = data.get("consentUpdates") === "on";
 
     setStatus("sending");
     setMessage("");
@@ -57,13 +61,21 @@ export function CreatorResearchForm() {
           tools: data.get("tools"),
           cost: data.get("cost"),
           consentResearch: data.get("consentResearch") === "on",
-          consentUpdates: data.get("consentUpdates") === "on",
+          consentFollowUp,
+          consentUpdates,
           website: data.get("website"),
         }),
       });
 
       if (response.ok) {
         form.reset();
+        setEmailNote(
+          consentFollowUp
+            ? "If a follow-up question would help, I'll email you."
+            : consentUpdates
+              ? "I'll email you only if Nimbus Labs launches a product for creators."
+              : "You won't get any email from us about it.",
+        );
         setStatus("sent");
         return;
       }
@@ -103,8 +115,7 @@ export function CreatorResearchForm() {
           Thank you. Your answers were saved.
         </p>
         <p className="text-gray-700">
-          I read every answer myself. If a follow-up question would help,
-          I&apos;ll email you.
+          I read every answer myself. {emailNote}
         </p>
       </div>
     );
@@ -262,6 +273,17 @@ export function CreatorResearchForm() {
             className="mt-1 h-4 w-4 shrink-0 accent-black"
           />
           <span>{CONSENT_RESEARCH_TEXT}</span>
+        </label>
+        <label className="flex gap-3 text-[15px] leading-6 text-gray-700">
+          <input
+            name="consentFollowUp"
+            type="checkbox"
+            className="mt-1 h-4 w-4 shrink-0 accent-black"
+          />
+          <span>
+            {CONSENT_FOLLOWUP_TEXT}{" "}
+            <span className={hintClass}>(optional)</span>
+          </span>
         </label>
         <label className="flex gap-3 text-[15px] leading-6 text-gray-700">
           <input
