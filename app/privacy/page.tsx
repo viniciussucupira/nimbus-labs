@@ -97,6 +97,19 @@ export default function PrivacyPage() {
           To limit abuse, we also keep a one-way hash of your IP address for
           one hour; we do not store the IP address itself with your answers.
         </p>
+        <p>
+          <strong className="text-black">Research outreach.</strong> If we
+          contacted you first to ask about your experience as a creator, we
+          used business contact details you had made public: your name, your
+          business email address or social media profile, your store or
+          profile link and, for UK companies, the public Companies House
+          register. We use them only to send that research message and to
+          continue the conversation if you reply. Our legal basis is our
+          legitimate interest in understanding what creators need before we
+          build a product. You can object at any time by replying
+          &quot;stop&quot; or by emailing us, and we will not contact you
+          again.
+        </p>
       </LegalSection>
 
       <LegalSection title="2. How we use information">
@@ -199,6 +212,12 @@ export default function PrivacyPage() {
           you sent them, or until you ask us to delete them, whichever comes
           first. They are stored with our database provider (Upstash) on
           infrastructure used by our hosting provider (Vercel).
+        </p>
+        <p>
+          Research outreach records (who we contacted, when, and any reply) are
+          kept for up to 24 months from the last contact. If you ask us to
+          stop, we keep only your name and contact detail on a do-not-contact
+          list, so that we can respect your request.
         </p>
       </LegalSection>
 
