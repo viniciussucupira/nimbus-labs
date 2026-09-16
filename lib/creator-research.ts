@@ -28,13 +28,16 @@ export const PROBLEM_MIN_LENGTH = 10;
 export const SUPPORT_EMAIL = "viniciussucupira091@gmail.com";
 
 // Stored with every answer as proof of what the person agreed to.
-export const CONSENT_VERSION = "2026-09-16";
+export const CONSENT_VERSION = "2026-09-16-2";
 
 export const CONSENT_RESEARCH_TEXT =
-  "Nimbus Labs may store my answers and email me with follow-up questions about this research. I can ask for my answers to be deleted at any time.";
+  "Nimbus Labs may store my answers and use them for this research. I can ask for them to be deleted at any time.";
+
+export const CONSENT_FOLLOWUP_TEXT =
+  "Nimbus Labs may email me follow-up questions about my answers.";
 
 export const CONSENT_UPDATES_TEXT =
-  "Also email me if Nimbus Labs launches a tool for creators.";
+  "Nimbus Labs may email me if it launches a product for creators.";
 
 export type CreatorAnswer = {
   name: string;
@@ -46,5 +49,7 @@ export type CreatorAnswer = {
   tools: string;
   cost: string;
   consentResearch: true;
+  // Missing on answers saved with consent version "2026-09-16".
+  consentFollowUp?: boolean;
   consentUpdates: boolean;
 };
