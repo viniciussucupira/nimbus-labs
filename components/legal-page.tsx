@@ -3,9 +3,11 @@ import { SiteFooter } from "./site-footer";
 
 export function LegalPage({
   title,
+  lastUpdated,
   children,
 }: {
   title: string;
+  lastUpdated?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -27,6 +29,7 @@ export function LegalPage({
         <h1 className="text-4xl font-bold mb-3">{title}</h1>
         <p className="text-sm text-gray-500 mb-12">
           Effective date: August 15, 2026
+          {lastUpdated ? ` · Last updated: ${lastUpdated}` : ""}
         </p>
         <div className="space-y-10 text-[17px] leading-8 text-gray-700">
           {children}
