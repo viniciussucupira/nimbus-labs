@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
   if (body.consentResearch !== true) {
     return fail(400, "consent_required", "consentResearch");
   }
+  const consentFollowUp = body.consentFollowUp === true;
   const consentUpdates = body.consentUpdates === true;
 
   if (!isRedisConfigured()) return fail(503, "unavailable");
@@ -133,6 +134,7 @@ export async function POST(request: NextRequest) {
     tools,
     cost,
     consentResearch: true,
+    consentFollowUp,
     consentUpdates,
     consentVersion: CONSENT_VERSION,
   };
