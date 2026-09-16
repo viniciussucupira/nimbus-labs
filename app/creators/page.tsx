@@ -56,6 +56,10 @@ export default function CreatorsPage() {
             <li>They are used only to decide what Nimbus Labs builds next.</li>
             <li>They are never sold or shared for anyone else&apos;s marketing.</li>
             <li>
+              We email you only if you ticked one of the optional boxes, and
+              only about what that box says.
+            </li>
+            <li>
               To have them deleted, email{" "}
               <a
                 href={`mailto:${SUPPORT_EMAIL}`}
