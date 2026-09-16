@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 
 export default function Home() {
@@ -8,8 +9,8 @@ export default function Home() {
         <div className="max-w-4xl mx-auto px-6 py-6 flex items-center justify-between">
           <div className="text-2xl font-bold">Nimbus</div>
           <nav className="flex gap-8 text-sm">
-            <a href="#retone" className="text-gray-600 hover:text-black">Retone</a>
-            <a href="#" className="text-gray-600 hover:text-black">Docs</a>
+            <a href="#products" className="text-gray-600 hover:text-black">Products</a>
+            <Link href="/creators" className="text-gray-600 hover:text-black">For creators</Link>
           </nav>
         </div>
       </header>
@@ -20,13 +21,13 @@ export default function Home() {
         <p className="text-xl text-gray-600 mb-8 max-w-2xl">
           Simple, focused tools built with AI. No bloat, just results.
         </p>
-        <a href="#retone" className="inline-block px-6 py-3 bg-black text-white rounded hover:bg-gray-900">
+        <a href="#products" className="inline-block px-6 py-3 bg-black text-white rounded hover:bg-gray-900">
           Explore Products
         </a>
       </section>
 
       {/* Products */}
-      <section id="retone" className="max-w-4xl mx-auto px-6 py-24 border-t border-gray-200">
+      <section id="products" className="max-w-4xl mx-auto px-6 py-24 border-t border-gray-200">
         <h2 className="text-3xl font-bold mb-12">Products</h2>
         
         <div className="space-y-12">
