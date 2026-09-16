@@ -120,9 +120,10 @@ export default function PrivacyPage() {
           <li>improve the reliability and quality of the Services; and</li>
           <li>
             if you answered our creator research, read your answers to decide
-            what to build next, email you follow-up questions about that
-            research, and, only if you ticked the separate box, tell you when
-            we launch a tool for creators.
+            what to build next and, only if you ticked the matching optional
+            box, email you follow-up questions about your answers or tell you
+            when we launch a product for creators. Each of these is a separate
+            choice, and we contact you only by email.
           </li>
         </ul>
         <p>
@@ -207,7 +208,10 @@ export default function PrivacyPage() {
           Your information may be processed in Brazil and in other countries
           where our service providers operate, which may include the United
           States or the European Union. Where required, we use appropriate
-          safeguards for cross-border transfers.
+          safeguards for cross-border transfers. Our database provider,
+          Upstash, stores creator research answers under its Data Processing
+          Agreement, which includes the EU Standard Contractual Clauses, the UK
+          Addendum and the EU-U.S. Data Privacy Framework.
         </p>
       </LegalSection>
 
