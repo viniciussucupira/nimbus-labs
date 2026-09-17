@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
+import { PhoneScreens } from "@/components/phone-screens";
 import { SiteNav } from "@/components/site-nav";
 import {
   DemoWindow,
@@ -274,6 +275,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <PhoneScreens />
 
       {/* ---------------- how it works ---------------- */}
       <section className="mx-auto max-w-6xl px-4 py-20">
