@@ -123,6 +123,13 @@ export const MENUS: Menu[] = [
         tint: "bg-mint-brand/15 text-mint-deep",
       },
       {
+        label: "Feature by feature",
+        description: "Everything Stan has, and where we stand on each.",
+        href: "/proof/everything",
+        emoji: "🧾",
+        tint: "bg-violet-brand/10 text-violet-deep",
+      },
+      {
         label: "Questions",
         description: "Straight answers, including the awkward ones.",
         href: "/proof/questions",
