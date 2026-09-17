@@ -200,8 +200,8 @@ export const PAGES: TopicPage[] = [
         title: "What a coaching store looks like",
         creator: "Maya Ruiz",
         tagline: "Career coaching for first-time managers",
-        photo: "photo-1611880147493-7542bdb0f024",
-        alt: "A woman in a white long-sleeved top, smiling",
+        photo: "photo-1595085610896-fb31cfd5d4b7",
+        alt: "A woman smiling in a red shirt",
         items: [
           { label: "Interview workbook", detail: "PDF, 18 pages", price: "$19" },
           { label: "Six-week programme", detail: "PDF plus weekly checklists", price: "$89" },
@@ -240,8 +240,8 @@ export const PAGES: TopicPage[] = [
         title: "The live demo store",
         creator: "Harbor Kitchen",
         tagline: "Simple family meals by Jenny",
-        photo: "photo-1762160520549-a4fb49511b89",
-        alt: "A woman smiling at her laptop, surrounded by plants",
+        photo: "photo-1662850886700-4ec19bd30d11",
+        alt: "A woman with curly hair, smiling",
         items: [
           { label: "Weekly meal planner, 1 week", detail: "PDF, 1 page", price: "$27" },
           { label: "Weekly meal planner, 5 weeks", detail: "PDF, 5 pages", price: "$39" },
@@ -275,8 +275,8 @@ export const PAGES: TopicPage[] = [
         title: "What a fitness store looks like",
         creator: "Dani Cole",
         tagline: "Strength for people with desk jobs",
-        photo: "photo-1746559845070-10aa66800280",
-        alt: "A woman smiling in a gym",
+        photo: "photo-1623717217554-72ca676de535",
+        alt: "A woman laughing",
         items: [
           { label: "4-week starter block", detail: "PDF plus video links", price: "$29" },
           { label: "12-week programme", detail: "PDF plus weekly tracker", price: "$79" },
@@ -310,8 +310,8 @@ export const PAGES: TopicPage[] = [
         title: "What a design store looks like",
         creator: "Theo Lang",
         tagline: "Film-look presets and Lightroom recipes",
-        photo: "photo-1719087358997-12957d0859e2",
-        alt: "A woman sitting on a chair holding a camera",
+        photo: "photo-1553640662-9ab20b8fa2ea",
+        alt: "A man in a leather jacket, smiling",
         items: [
           { label: "Starter pack", detail: "6 presets, ZIP", price: "$15" },
           { label: "Full collection", detail: "28 presets plus a guide", price: "$49" },

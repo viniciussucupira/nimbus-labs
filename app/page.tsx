@@ -21,26 +21,26 @@ const PHOTO = (id: string, w = 400, h = 400) =>
 
 const HERO_FACES = [
   {
-    id: "photo-1762160520549-a4fb49511b89",
-    alt: "A woman smiling at her laptop, surrounded by plants",
+    id: "photo-1662850886700-4ec19bd30d11",
+    alt: "A woman with curly hair, smiling",
     className: "left-0 top-6 h-20 w-20 nb-float",
     ring: "ring-amber-brand",
   },
   {
-    id: "photo-1595986630530-969786b19b4d",
-    alt: "A woman in a white shirt laughing at her phone",
+    id: "photo-1630939687530-241d630735df",
+    alt: "A woman with long dark hair, smiling",
     className: "right-2 top-0 h-16 w-16 nb-float-slow",
     ring: "ring-pink-brand",
   },
   {
-    id: "photo-1758874573562-5bf0c1a7fc72",
-    alt: "A man smiling while working at a laptop",
+    id: "photo-1757744705465-ea08b0ddc38a",
+    alt: "A young man in a navy jumper, smiling",
     className: "bottom-24 left-2 h-16 w-16 nb-float-slow",
     ring: "ring-mint-brand",
   },
   {
-    id: "photo-1746559845070-10aa66800280",
-    alt: "A woman smiling in a gym",
+    id: "photo-1758598497192-15ffa411c3de",
+    alt: "A man with a beard, smiling",
     className: "bottom-8 right-0 h-20 w-20 nb-float",
     ring: "ring-sky-brand",
   },
@@ -154,26 +154,26 @@ const COMPARE = [
 
 const GALLERY = [
   {
-    id: "photo-1719087358997-12957d0859e2",
-    alt: "A woman sitting on a chair holding a camera",
+    id: "photo-1553640662-9ab20b8fa2ea",
+    alt: "A man in a leather jacket, smiling",
     label: "Photographers",
     tint: "from-violet-brand/80",
   },
   {
-    id: "photo-1611880147493-7542bdb0f024",
-    alt: "A woman in a white long-sleeved top, smiling",
+    id: "photo-1595085610896-fb31cfd5d4b7",
+    alt: "A woman smiling in a red shirt",
     label: "Coaches",
     tint: "from-pink-brand/80",
   },
   {
-    id: "photo-1623605931891-d5b95ee98459",
-    alt: "A woman in a black t-shirt, smiling",
+    id: "photo-1746781420003-d15e604b9a10",
+    alt: "A woman laughing in the sunlight",
     label: "Nutritionists",
     tint: "from-mint-brand/80",
   },
   {
-    id: "photo-1759701547421-2972dd046ba4",
-    alt: "A man in a red and black jersey, smiling",
+    id: "photo-1507003211169-0a1dd7228f2d",
+    alt: "A man in a white t-shirt, smiling",
     label: "Gamers",
     tint: "from-sky-brand/80",
   },
