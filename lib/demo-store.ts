@@ -1,20 +1,53 @@
 // Demo creator store: proves that a buyer can pay a creator directly and get
 // the file right after Stripe confirms the payment. Test mode only.
+import type { DemoFileName } from "@/lib/demo-file";
 
+export type DemoOption = {
+  id: string;
+  label: string;
+  detail: string;
+  priceCents: number;
+  file: DemoFileName;
+};
+
+// One product, several price options: something Stan creators ask for
+// (Stan Help Center, "Common Feature Requests", 24 Mar 2026).
 export const DEMO_PRODUCT = {
   id: "weekly-meal-planner",
   name: "Weekly Meal Planner",
   description:
-    "A one-page plan for 7 days of breakfasts, lunches and dinners, plus the grocery list.",
-  priceCents: 2700,
+    "Simple family meal plans with breakfasts, lunches, dinners and a grocery list for each week.",
   currency: "usd",
-  format: "PDF, 1 page",
   bullets: [
-    "7 days of simple family meals",
+    "Simple family meals for every day",
     "Grocery list you can print",
     "Download right after payment",
   ],
+  options: [
+    {
+      id: "one-week",
+      label: "1 week",
+      detail: "PDF, 1 page",
+      priceCents: 2700,
+      file: "weekly-meal-planner.pdf",
+    },
+    {
+      id: "five-weeks",
+      label: "5 weeks",
+      detail: "PDF, 5 pages",
+      priceCents: 3900,
+      file: "meal-planner-5-weeks.pdf",
+    },
+  ] satisfies DemoOption[],
 } as const;
+
+export function findDemoOption(id: unknown): DemoOption | undefined {
+  return DEMO_PRODUCT.options.find((option) => option.id === id);
+}
+
+export const LOWEST_PRICE_CENTS = Math.min(
+  ...DEMO_PRODUCT.options.map((option) => option.priceCents),
+);
 
 // Stripe sandbox connected account of the fictional creator. Charges are made
 // directly on this account (direct charges), so the money lands with the
@@ -87,17 +120,22 @@ async function stripeRequest(
   return data;
 }
 
-export async function createDemoCheckout(origin: string): Promise<string> {
+export async function createDemoCheckout(
+  origin: string,
+  option: DemoOption,
+): Promise<string> {
   const p = DEMO_PRODUCT;
   const body = new URLSearchParams({
     mode: "payment",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": p.currency,
-    "line_items[0][price_data][unit_amount]": String(p.priceCents),
-    "line_items[0][price_data][product_data][name]": p.name,
-    "line_items[0][price_data][product_data][description]": p.description,
+    "line_items[0][price_data][unit_amount]": String(option.priceCents),
+    "line_items[0][price_data][product_data][name]": `${p.name} (${option.label})`,
+    "line_items[0][price_data][product_data][description]": `${p.description} ${option.detail}.`,
     "metadata[product]": p.id,
+    "metadata[option]": option.id,
     "payment_intent_data[metadata][product]": p.id,
+    "payment_intent_data[metadata][option]": option.id,
     success_url: `${origin}/demo/thanks?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/demo`,
   });
@@ -110,7 +148,7 @@ export async function createDemoCheckout(origin: string): Promise<string> {
 }
 
 export type DemoOrder =
-  | { state: "paid"; amount: number }
+  | { state: "paid"; amount: number; option: DemoOption }
   | { state: "unpaid" | "expired" | "invalid" | "unavailable" | "error" };
 
 // Looks up a Checkout Session and decides whether the buyer may download.
@@ -138,7 +176,12 @@ export async function getDemoOrder(
   }
 
   const metadata = session.metadata as Record<string, string> | null;
-  if (session.livemode !== false || metadata?.product !== DEMO_PRODUCT.id) {
+  const option = findDemoOption(metadata?.option);
+  if (
+    session.livemode !== false ||
+    metadata?.product !== DEMO_PRODUCT.id ||
+    !option
+  ) {
     return { state: "invalid" };
   }
   if (session.status !== "complete" || session.payment_status !== "paid") {
@@ -152,6 +195,7 @@ export async function getDemoOrder(
 
   return {
     state: "paid",
+    option,
     amount:
       typeof session.amount_total === "number" ? session.amount_total : 0,
   };

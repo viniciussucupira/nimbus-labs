@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { DEMO_PRODUCT, formatPrice } from "@/lib/demo-store";
+import {
+  DEMO_PRODUCT,
+  LOWEST_PRICE_CENTS,
+  formatPrice,
+} from "@/lib/demo-store";
 
 export const metadata: Metadata = {
   title: "Harbor Kitchen — demo creator store by Nimbus Labs",
@@ -78,7 +82,12 @@ export default function DemoStorePage() {
               <h2 id="product-title" className="text-xl font-bold">
                 {p.name}
               </h2>
-              <p className="text-xl font-bold">{formatPrice(p.priceCents)}</p>
+              <p className="text-right text-xl font-bold">
+                <span className="block text-sm font-medium text-stone-600">
+                  from
+                </span>
+                {formatPrice(LOWEST_PRICE_CENTS)}
+              </p>
             </div>
             <p className="mt-2 text-stone-700">{p.description}</p>
 
@@ -98,16 +107,43 @@ export default function DemoStorePage() {
             </ul>
 
             <form action="/api/demo/checkout" method="post" className="mt-6">
+              <fieldset>
+                <legend className="font-semibold">Choose your plan</legend>
+                <div className="mt-3 space-y-3">
+                  {p.options.map((option, index) => (
+                    <label
+                      key={option.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-2xl border border-stone-300 px-4 py-3 transition hover:border-stone-500 has-[:checked]:border-teal-800 has-[:checked]:bg-teal-50 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-teal-800"
+                    >
+                      <input
+                        type="radio"
+                        name="option"
+                        value={option.id}
+                        defaultChecked={index === 0}
+                        className="h-5 w-5 flex-none accent-teal-800"
+                      />
+                      <span className="flex-1">
+                        <span className="block font-medium">{option.label}</span>
+                        <span className="block text-sm text-stone-600">
+                          {option.detail}
+                        </span>
+                      </span>
+                      <span className="font-bold">
+                        {formatPrice(option.priceCents)}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <button
                 type="submit"
-                className="w-full rounded-full bg-teal-800 px-6 py-4 text-lg font-semibold text-white transition hover:bg-teal-900 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-teal-800"
+                className="mt-5 w-full rounded-full bg-teal-800 px-6 py-4 text-lg font-semibold text-white transition hover:bg-teal-900 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-teal-800"
               >
-                Buy for {formatPrice(p.priceCents)}
+                Continue to checkout
               </button>
             </form>
             <p className="mt-3 text-center text-sm text-stone-600">
-              {p.format}. Secure checkout by Stripe. Money goes straight to the
-              creator.
+              Secure checkout by Stripe. Money goes straight to the creator.
             </p>
           </div>
         </section>
