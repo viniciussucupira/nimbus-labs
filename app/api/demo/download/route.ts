@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { DEMO_FILE_NAME, getDemoFile } from "@/lib/demo-file";
+import { getDemoFile } from "@/lib/demo-file";
 import { getDemoOrder } from "@/lib/demo-store";
 
 const MESSAGES = {
@@ -27,12 +27,13 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const file = getDemoFile();
+  const fileName = order.option.file;
+  const file = getDemoFile(fileName);
   return new Response(file.buffer as ArrayBuffer, {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Length": String(file.byteLength),
-      "Content-Disposition": `attachment; filename="${DEMO_FILE_NAME}"`,
+      "Content-Disposition": `attachment; filename="${fileName}"`,
       "Cache-Control": "private, no-store",
       "X-Robots-Tag": "noindex",
     },
