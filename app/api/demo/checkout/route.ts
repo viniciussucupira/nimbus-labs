@@ -1,5 +1,9 @@
 import type { NextRequest } from "next/server";
-import { createDemoCheckout, isDemoCheckoutConfigured } from "@/lib/demo-store";
+import {
+  createDemoCheckout,
+  findDemoOption,
+  isDemoCheckoutConfigured,
+} from "@/lib/demo-store";
 
 const HOST_PATTERN = /^[a-z0-9.-]+(:\d+)?$/i;
 
@@ -33,12 +37,21 @@ export async function POST(request: NextRequest) {
     return new Response("Forbidden", { status: 403 });
   }
 
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return new Response("Bad request", { status: 400 });
+  }
+  const option = findDemoOption(form.get("option"));
+  if (!option) return new Response("Choose an option", { status: 400 });
+
   if (!isDemoCheckoutConfigured()) {
     return redirect(`${site}/demo/thanks?status=unavailable`);
   }
 
   try {
-    return redirect(await createDemoCheckout(site));
+    return redirect(await createDemoCheckout(site, option));
   } catch (error) {
     console.error("Demo checkout failed", error);
     return redirect(`${site}/demo/thanks?status=error`);
