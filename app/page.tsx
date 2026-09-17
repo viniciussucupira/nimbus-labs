@@ -47,13 +47,13 @@ const HERO_FACES = [
 ];
 
 const CHIPS = [
-  { label: "Meal plans", color: "bg-mint-brand/15 text-mint-brand" },
+  { label: "Meal plans", color: "bg-mint-brand/15 text-mint-deep" },
   { label: "Lightroom presets", color: "bg-violet-brand/10 text-violet-deep" },
   { label: "Workout programs", color: "bg-pink-brand/10 text-pink-brand" },
   { label: "Notion templates", color: "bg-sky-brand/15 text-sky-brand" },
   { label: "Coaching calls", color: "bg-amber-brand/15 text-amber-brand" },
   { label: "Study guides", color: "bg-violet-brand/10 text-violet-deep" },
-  { label: "Sheet music", color: "bg-mint-brand/15 text-mint-brand" },
+  { label: "Sheet music", color: "bg-mint-brand/15 text-mint-deep" },
   { label: "Recipe packs", color: "bg-pink-brand/10 text-pink-brand" },
 ];
 
@@ -348,7 +348,7 @@ export default function Home() {
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-bold ${
                       f.state === "Live in the demo"
-                        ? "bg-mint-brand/15 text-mint-brand"
+                        ? "bg-mint-brand/15 text-mint-deep"
                         : "bg-ink/5 text-ink-soft"
                     }`}
                   >
@@ -369,7 +369,7 @@ export default function Home() {
       <section id="money" className="mx-auto max-w-6xl scroll-mt-28 px-4 py-20">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div className="reveal">
-            <p className="font-semibold uppercase tracking-[0.2em] text-mint-brand">
+            <p className="font-semibold uppercase tracking-[0.2em] text-mint-deep">
               The money
             </p>
             <h2 className="font-display mt-3 text-3xl font-black sm:text-4xl">
@@ -407,7 +407,7 @@ export default function Home() {
                 </p>
                 <p className="flex justify-between">
                   <span className="text-ink-soft">Nimbus Labs</span>
-                  <span className="font-bold text-mint-brand">$0.00</span>
+                  <span className="font-bold text-mint-deep">$0.00</span>
                 </p>
               </div>
             </div>
@@ -590,7 +590,7 @@ export default function Home() {
       <section id="faq" className="bg-cream py-20">
         <div className="mx-auto max-w-3xl scroll-mt-28 px-4">
           <div className="reveal text-center">
-            <p className="font-semibold uppercase tracking-[0.2em] text-mint-brand">
+            <p className="font-semibold uppercase tracking-[0.2em] text-mint-deep">
               Questions
             </p>
             <h2 className="font-display mt-3 text-3xl font-black sm:text-4xl">

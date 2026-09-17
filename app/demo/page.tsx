@@ -12,6 +12,15 @@ export const metadata: Metadata = {
     "A demo link-in-bio store. Buy a sample PDF in Stripe test mode and download it right after payment.",
 };
 
+const UNSPLASH = "https://images.unsplash.com/";
+
+const PREVIEWS = [
+  { src: "/demo/week1-1.webp", alt: "Page one: the weekly table and the grocery list" },
+  { src: "/demo/five-1.webp", alt: "Week one of the five-week planner" },
+  { src: "/demo/five-2.webp", alt: "Week two of the five-week planner" },
+  { src: "/demo/five-3.webp", alt: "Week three of the five-week planner" },
+];
+
 const LINKS = [
   {
     label: "Free recipe of the week",
@@ -40,28 +49,46 @@ export default function DemoStorePage() {
         , any future date, any CVC.
       </p>
 
+      <div className="relative mx-auto w-full max-w-md">
+        <img
+          src={`${UNSPLASH}photo-1543352632-5a4b24e4d2a6?auto=format&fit=crop&w=700&h=360&q=65`}
+          alt="Glass containers filled with rice, corn, olives and tomato, prepared for the week"
+          width={700}
+          height={360}
+          className="h-40 w-full object-cover sm:rounded-b-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-cream via-cream/20 to-transparent sm:rounded-b-3xl"
+        />
+      </div>
+
       <main className="relative mx-auto w-full max-w-md px-4 pb-12">
-        <header className="relative -mx-4 overflow-hidden px-4 pb-10 pt-10 text-center">
+        <header className="relative -mt-14 overflow-hidden pb-8 pt-1 text-center">
           <div
             aria-hidden="true"
-            className="nb-blob absolute -left-10 top-0 h-40 w-40 bg-mint-brand/30 blur-2xl"
+            className="nb-blob absolute -left-10 top-0 h-40 w-40 bg-mint-brand/25 blur-2xl"
           />
           <div
             aria-hidden="true"
-            className="nb-blob absolute -right-8 top-10 h-40 w-40 bg-violet-brand/25 blur-2xl"
+            className="nb-blob absolute -right-8 top-10 h-40 w-40 bg-violet-brand/20 blur-2xl"
           />
           <div className="relative flex flex-col items-center">
-            <div
-              aria-hidden="true"
-              className="nb-float grid h-24 w-24 place-items-center rounded-full bg-gradient-to-br from-mint-brand via-sky-brand to-violet-brand text-3xl font-bold text-white shadow-xl shadow-violet-brand/20"
-            >
-              HK
-            </div>
+            <img
+              src={`${UNSPLASH}photo-1762160520549-a4fb49511b89?auto=format&fit=crop&crop=faces&w=224&h=224&q=70`}
+              alt="Jenny, the fictional cook behind this demo store, smiling"
+              width={224}
+              height={224}
+              className="nb-float h-28 w-28 rounded-full object-cover shadow-xl shadow-violet-brand/20 ring-4 ring-white"
+            />
             <h1 className="font-display mt-4 text-3xl font-black">
               Harbor Kitchen
             </h1>
             <p className="mt-1 text-ink-soft">
               Simple family meals by Jenny. Plans, grocery lists and recipes.
+            </p>
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-mint-brand/15 px-4 py-1.5 text-sm font-bold text-mint-deep">
+              <span aria-hidden="true">⚡</span> Files delivered the second you pay
             </p>
           </div>
         </header>
@@ -91,11 +118,18 @@ export default function DemoStorePage() {
           aria-labelledby="product-title"
           className="mt-8 overflow-hidden rounded-3xl border-2 border-ink/10 bg-white shadow-xl shadow-ink/5"
         >
-          <div
-            aria-hidden="true"
-            className="relative flex aspect-[16/9] flex-col justify-end overflow-hidden bg-gradient-to-br from-violet-brand via-pink-brand to-amber-brand p-6 text-white"
-          >
-            <div className="nb-blob absolute -right-6 -top-8 h-32 w-32 bg-white/25 blur-xl" />
+          <div className="relative flex aspect-[16/9] flex-col justify-end overflow-hidden p-6 text-white">
+            <img
+              src={`${UNSPLASH}photo-1535473895227-bdecb20fb157?auto=format&fit=crop&w=700&h=394&q=65`}
+              alt="A table seen from above, covered with prepared dishes and vegetables"
+              width={700}
+              height={394}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 bg-gradient-to-t from-violet-deep/95 via-violet-deep/50 to-pink-brand/25"
+            />
             <span className="relative text-sm font-semibold uppercase tracking-wider text-white/85">
               Printable PDF
             </span>
@@ -177,6 +211,36 @@ export default function DemoStorePage() {
               Secure checkout by Stripe. Money goes straight to the creator.
             </p>
           </div>
+        </section>
+
+        <section
+          aria-labelledby="inside-title"
+          className="mt-8 rounded-3xl border-2 border-ink/10 bg-white p-6 shadow-lg shadow-ink/5"
+        >
+          <h2
+            id="inside-title"
+            className="font-display flex items-center gap-2 text-lg font-extrabold"
+          >
+            <span aria-hidden="true">👀</span> What is inside
+          </h2>
+          <p className="mt-2 text-sm text-ink-soft">
+            Real pages from the file you receive, not a mock-up.
+          </p>
+          <ul className="nb-no-scrollbar -mx-2 mt-4 flex snap-x gap-3 overflow-x-auto px-2 pb-1">
+            {PREVIEWS.map((preview) => (
+              <li key={preview.src} className="shrink-0 snap-start">
+                <img
+                  src={preview.src}
+                  alt={preview.alt}
+                  width={420}
+                  height={544}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-44 w-auto rounded-xl border border-ink/10 shadow-sm"
+                />
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section

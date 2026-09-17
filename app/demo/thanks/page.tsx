@@ -70,7 +70,7 @@ export default async function DemoThanksPage({
               <p aria-hidden="true" className="nb-float text-4xl">
                 🎉
               </p>
-              <p className="mt-2 text-sm font-bold uppercase tracking-wider text-mint-brand">
+              <p className="mt-2 text-sm font-bold uppercase tracking-wider text-mint-deep">
                 Payment confirmed
               </p>
               <h1 className="font-display mt-2 text-2xl font-black">

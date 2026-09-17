@@ -34,7 +34,7 @@ const PROMISES = [
     emoji: "🗑️",
     title: "Deleted whenever you ask",
     body: `Write to ${SUPPORT_EMAIL} and they are gone.`,
-    tint: "bg-mint-brand/15 text-mint-brand",
+    tint: "bg-mint-brand/15 text-mint-deep",
   },
 ];
 

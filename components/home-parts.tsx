@@ -59,7 +59,7 @@ export function StoreMock() {
         <div className="relative overflow-hidden rounded-[2rem] bg-cream">
           <div className="flex items-center justify-between bg-white px-4 py-2 text-[10px] font-semibold text-ink-soft">
             <span>9:41</span>
-            <span className="rounded-full bg-mint-brand/20 px-2 py-0.5 text-mint-brand">
+            <span className="rounded-full bg-mint-brand/20 px-2 py-0.5 text-mint-deep">
               harborkitchen.store
             </span>
           </div>
@@ -123,7 +123,7 @@ export function StoreMock() {
 
             {step === 2 && (
               <div className="nb-pop mt-3 rounded-2xl border-2 border-mint-brand/40 bg-white p-3">
-                <p className="text-[11px] font-bold text-mint-brand">
+                <p className="text-[11px] font-bold text-mint-deep">
                   Payment confirmed
                 </p>
                 <p className="text-[12px] font-semibold text-ink">
@@ -246,7 +246,7 @@ export function Pricing() {
             <ul className="mt-6 space-y-2 text-sm text-ink">
               {plan.perks.map((perk) => (
                 <li key={perk} className="flex gap-2">
-                  <span aria-hidden="true" className="text-mint-brand">
+                  <span aria-hidden="true" className="text-mint-deep">
                     ✔
                   </span>
                   <span>{perk}</span>
