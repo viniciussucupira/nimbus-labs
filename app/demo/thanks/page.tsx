@@ -66,7 +66,8 @@ export default async function DemoThanksPage({
                 Thank you! Your file is ready.
               </h1>
               <p className="mt-3 text-stone-700">
-                You paid {formatPrice(order.amount)} for {DEMO_PRODUCT.name}.
+                You paid {formatPrice(order.amount)} for {DEMO_PRODUCT.name},{" "}
+                {order.option.label}.
               </p>
               <a
                 href={`/api/demo/download?session_id=${encodeURIComponent(sessionId ?? "")}`}
@@ -75,7 +76,7 @@ export default async function DemoThanksPage({
                 Download the PDF
               </a>
               <p className="mt-3 text-center text-sm text-stone-600">
-                This link works for 3 days.
+                {order.option.detail}. This link works for 3 days.
               </p>
             </>
           ) : (
@@ -102,4 +103,3 @@ export default async function DemoThanksPage({
     </div>
   );
 }
- 
