@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import {
   DemoWindow,
@@ -634,108 +635,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---------------- footer ---------------- */}
-      <footer className="bg-ink px-4 py-16 text-white/80">
-        <div className="mx-auto grid max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <p className="font-display flex items-center gap-2 text-xl font-extrabold text-white">
-              <span aria-hidden="true">☁️</span> Nimbus Labs
-            </p>
-            <p className="mt-3 text-sm">
-              A store page for creators, built in public by Vinicius Sucupira.
-            </p>
-          </div>
-          <div>
-            <p className="font-semibold text-white">Platform</p>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li>
-                <Link href="/demo" className="hover:text-white">
-                  Live demo store
-                </Link>
-              </li>
-              <li>
-                <a href="#money" className="hover:text-white">
-                  How the money works
-                </a>
-              </li>
-              <li>
-                <a href="#pricing" className="hover:text-white">
-                  Pricing
-                </a>
-              </li>
-              <li>
-                <a href="#compare" className="hover:text-white">
-                  Compared with Stan
-                </a>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <p className="font-semibold text-white">Other products</p>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li>
-                <a
-                  href="https://retoneai.net"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white"
-                >
-                  Retone
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://nativeapply.net"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white"
-                >
-                  NativeApply
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://nativereply.net"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white"
-                >
-                  NativeReply
-                </a>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <p className="font-semibold text-white">Legal</p>
-            <ul className="mt-3 space-y-2 text-sm">
-              <li>
-                <Link href="/terms" className="hover:text-white">
-                  Terms
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacy" className="hover:text-white">
-                  Privacy
-                </Link>
-              </li>
-              <li>
-                <Link href="/refunds" className="hover:text-white">
-                  Refunds
-                </Link>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="mx-auto mt-12 max-w-6xl border-t border-white/10 pt-6 text-xs text-white/50">
-          <p>© 2026 Nimbus Labs. Early access, not a finished product.</p>
-          <p className="mt-2">
-            Photographs from Unsplash, used for illustration. The people in them
-            are not Nimbus Labs customers, and nothing on this page is a
-            testimonial.
-          </p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
