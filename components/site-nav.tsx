@@ -102,11 +102,18 @@ export const MENUS: Menu[] = [
         tint: "bg-amber-brand/15 text-amber-brand",
       },
       {
-        label: "How we compare",
-        description: "Side by side with Stan, with the date we checked.",
+        label: "Compared with Stan",
+        description: "Side by side, with the date we checked.",
         href: "/proof/compare",
         emoji: "📊",
         tint: "bg-violet-brand/10 text-violet-deep",
+      },
+      {
+        label: "Compared with Gumroad",
+        description: "What 10% of every sale costs you over a year.",
+        href: "/proof/gumroad",
+        emoji: "🧮",
+        tint: "bg-mint-brand/15 text-mint-deep",
       },
       {
         label: "Speed test",
