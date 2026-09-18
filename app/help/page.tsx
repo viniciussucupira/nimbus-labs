@@ -182,12 +182,14 @@ const SECTIONS: Section[] = [
         q: "Does the download link expire?",
         a: [
           "Yes. The link works for a limited window and is tied to that order, so a link that leaks does not turn into a free copy for everyone.",
+          "A buyer who loses it does not lose what they paid for: they type the address they paid with and the link is sent there again. No account, no password. It is working on the demo store today, at nimbuslabsai.com/demo/recover.",
         ],
       },
       {
         q: "A buyer says the file never arrived. What now?",
         a: [
-          "Check the payment in your own Stripe dashboard first: a payment that did not complete is the most common cause. If Stripe shows the payment succeeded and the file still did not appear, email us with the order details and we will look at it with you.",
+          "Send them to the page that sends the link again — they type the address they paid with and it arrives in their inbox. That answers most of these without you doing anything.",
+          "If it still does not appear, check the payment in your own Stripe dashboard: a payment that did not complete is the most common cause. If Stripe shows the payment succeeded and the file still did not arrive, email us with the order details and we will look at it with you.",
         ],
       },
     ],
