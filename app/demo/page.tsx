@@ -289,6 +289,14 @@ export default function DemoStorePage() {
               Nimbus Labs
             </Link>
           </p>
+          <p className="mt-1">
+            <Link
+              href="/demo/recover"
+              className="inline-block py-2 font-bold text-violet-deep underline underline-offset-2"
+            >
+              Bought this already and lost the file?
+            </Link>
+          </p>
           <p className="mt-1 flex justify-center gap-5">
             <Link
               href="/terms"
