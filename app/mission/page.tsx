@@ -54,6 +54,7 @@ const BUILT = [
   "Price options on one product — one week, five weeks, the season",
   "A real Stripe checkout that charges your own account",
   "The file delivered the second the payment clears, with a link that expires",
+  "A buyer who loses that link gets it sent again — no account, no password",
   "A store that installs to the home screen on iPhone and Android",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
