@@ -14,6 +14,10 @@
  *
  * What is stored: a one-way hash of the address and the Checkout Session id,
  * for as long as the download window lasts, and nothing else.
+ *
+ * Sending needs RESEND_API_KEY. Without it this file still loads and the
+ * endpoint answers honestly that sending is off, rather than pretending an
+ * email is on its way.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 
