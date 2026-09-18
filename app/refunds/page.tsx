@@ -9,11 +9,10 @@ export const metadata: Metadata = {
 
 export default function RefundsPage() {
   return (
-    <LegalPage title="Refund Policy">
+    <LegalPage title="Refund Policy" lastUpdated="September 18, 2026">
       <p>
-        This Refund Policy applies to paid subscriptions offered by Nimbus
-        Labs, an independent software studio based in Brazil. It covers Retone
-        (
+        This Refund Policy applies to what you pay Nimbus Labs, an independent
+        software studio. It covers Retone (
         <a
           href="https://retoneai.net"
           className="text-black underline underline-offset-2 hover:no-underline"
@@ -22,8 +21,16 @@ export default function RefundsPage() {
         >
           retoneai.net
         </a>
-        ), which is billed at US$8 per month unless a different price is shown
-        at checkout, and any other Nimbus Labs subscription we may offer.
+        ), billed at US$14 per month or US$49 as a one-time purchase unless a
+        different price is shown at checkout, and any other Nimbus Labs
+        subscription we may offer, including a creator store subscription once
+        stores open.
+      </p>
+      <p>
+        It does not cover something you bought from a creator&apos;s store.
+        That money went straight into that creator&apos;s own Stripe account
+        and never passed through us, so the refund is theirs to give. Section 6
+        says what to do.
       </p>
 
       <LegalSection title="1. Cancel anytime">
@@ -40,8 +47,9 @@ export default function RefundsPage() {
         <p>
           If you request a refund within fourteen (14) days of a charge, we
           will refund that charge in full. This applies to the initial
-          subscription payment and to later monthly renewal charges, provided
-          the request is made within 14 days of the specific charge.
+          subscription payment, to later monthly renewal charges, and to a
+          one-time purchase, provided the request is made within 14 days of the
+          specific charge.
         </p>
       </LegalSection>
 
@@ -85,7 +93,27 @@ export default function RefundsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="6. Changes">
+      <LegalSection title="6. If you bought from a creator’s store">
+        <p>
+          Write to the creator you bought from. Their email is on the store
+          page you paid on and on your receipt, and their store is theirs: they
+          set the terms of the sale, they received the money in their own
+          Stripe account, and they are the only one who can return it.
+        </p>
+        <p>
+          If you cannot reach them, write to us at{" "}
+          <a
+            href="mailto:viniciussucupira091@gmail.com"
+            className="text-black underline underline-offset-2 hover:no-underline"
+          >
+            viniciussucupira091@gmail.com
+          </a>{" "}
+          with your receipt. We cannot move money we never held, but we can
+          pass your message to the creator and tell you what we did.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="7. Changes">
         <p>
           We may update this Refund Policy. The effective date at the top of
           this page will be revised when we do. The policy in effect at the
@@ -93,7 +121,7 @@ export default function RefundsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Contact">
+      <LegalSection title="8. Contact">
         <p>
           Nimbus Labs
           <br />
