@@ -636,7 +636,7 @@ export const PAGES: TopicPage[] = [
           { title: "Can I sign up and sell today?", body: "No. What exists today is the demo store you can buy from with a Stripe test card. Early access opens with the first creators we talk to." },
           { title: "Who holds the money from my sales?", body: "You do, in your own Stripe account. We take 0% of your sales and charge only a monthly subscription." },
           { title: "What happens if Nimbus Labs closes?", body: "Your Stripe account, your customers and your files were never ours. Anything we host is exportable, and a shutdown comes with notice in writing." },
-          { title: "Who is behind this?", body: "Vinicius Sucupira, an independent builder in Brazil, building in public. Support is in English, in writing." },
+          { title: "Who is behind this?", body: "Vinicius Sucupira, an independent builder working in public. Support is in English, in writing." },
           { title: "Why is the demo store so plain?", body: "It is a working proof, not a portfolio piece. Your own store is designed with you." },
           { title: "What do I do if something breaks?", body: "You write to support and get a human answer within the published time. If a sale is affected, you have the Stripe dashboard as the source of truth, independently of us." },
         ],
