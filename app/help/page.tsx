@@ -111,6 +111,14 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can my buyers pay with PayPal?",
+        a: [
+          "No. Nimbus runs on Stripe and only Stripe. Stan and Beacons both let you take PayPal as well, and on this one we are behind them.",
+          "The reason is not laziness. Stripe's own documentation says PayPal through Stripe is not available to platforms that onboard other businesses to accept payments directly, which is exactly what we are. The other road is a second, separate integration with PayPal, and a second integration means a second checkout, a second refund path and a second dispute queue to keep working. We would rather have one that never breaks than two that sometimes do.",
+          "Two things follow from that, and you should know them before you sign up. You need a Stripe account, in a country Stripe operates in — which covers the United States, Canada, the United Kingdom and the European Union, but not everywhere. And a buyer who has only a PayPal balance and no card cannot buy from you here.",
+        ],
+      },
+      {
         q: "Who handles refunds and disputes?",
         a: [
           "You do, in your own Stripe dashboard, with the same tools any business has. Because the charge was made on your account, a refund is a refund you issue, not a request you file with us.",
