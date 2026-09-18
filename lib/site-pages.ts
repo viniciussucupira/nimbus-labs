@@ -372,6 +372,76 @@ export const PAGES: TopicPage[] = [
     ],
   },
   {
+    slug: "gumroad",
+    section: "proof",
+    eyebrow: "Proof",
+    title: "Side by side",
+    highlight: "with Gumroad",
+    intro:
+      "Every number here was read on Gumroad's own pricing page and help centre in September 2026, and the page says where each one came from. When they change it, this page changes.",
+    badge: PROOF,
+    accent: "from-mint-brand to-violet-brand",
+    blocks: [
+      {
+        kind: "lead",
+        text: "Gumroad is the oldest, simplest way to sell a file on the internet, and for a first sale it is hard to beat: nothing to pay until you sell something. The difference between the two of us is not the store page. It is what happens to the money.",
+      },
+      {
+        kind: "facts",
+        title: "Gumroad's own numbers",
+        items: [
+          { value: "10% + $0.50", label: "Gumroad's fee on a direct sale", tone: "bg-pink-brand/10 text-pink-brand" },
+          { value: "30%", label: "On a sale that comes through Discover", tone: "bg-amber-brand/15 text-amber-brand" },
+          { value: "$100", label: "Minimum balance before they pay you", tone: "bg-violet-brand/10 text-violet-deep" },
+          { value: "7 days", label: "A sale waits in their balance before it can be paid", tone: "bg-sky-brand/15 text-sky-brand" },
+        ],
+      },
+      {
+        kind: "table",
+        title: "The part that decides",
+        note: "Sources: Gumroad's pricing page, and their help centre articles 'Getting paid by Gumroad' and 'Connect your Stripe account to Gumroad', read on 18 September 2026.",
+        head: ["", "Gumroad", "Nimbus Labs"],
+        rows: [
+          ["Cut of each sale", "10% + $0.50 direct, 30% via Discover", "0%"],
+          ["Monthly price", "None", "$29 and $99, planned"],
+          ["Whose payment account", "Theirs. New sellers can no longer connect their own Stripe", "Your own Stripe, from the first sale"],
+          ["When the money reaches you", "Into their balance, 7-day hold, then a weekly payout", "At the moment of sale"],
+          ["Minimum to be paid", "$100, higher in some countries", "Whatever your own Stripe is set to"],
+          ["Instant payout", "United States only, 3% fee, after 60 days", "Not needed — the account is already yours"],
+          ["Disputes", "They handle them for you", "Yours, in your own dashboard"],
+          ["EU and UK VAT", "Collected and paid by them", "Not handled — it stays yours"],
+          ["A marketplace that sends buyers", "Discover, at 30% of the sale", "None"],
+          ["Several prices for one product", "Versions and pay-what-you-want", "Price options, working today"],
+        ],
+      },
+      {
+        kind: "quote",
+        text: "We no longer support new user-connected Stripe accounts except for users from Brazil.",
+        source: "Gumroad help centre, 'Connect your Stripe account to Gumroad', read 18 September 2026",
+      },
+      {
+        kind: "steps",
+        title: "The same $27 file, on both",
+        items: [
+          { title: "On Gumroad", body: "10% of $27 is $2.70, plus $0.50, so $3.20 leaves the sale. You keep $23.80, and they pay the card fee out of their cut." },
+          { title: "On Nimbus", body: "We take nothing. Stripe charges you its own published rate on your own account — about $1.08 on $27 — so you keep $25.92, and you pay us a fixed monthly price." },
+          { title: "The honest break-even", body: "The difference is $2.12 a sale. At $29 a month, the two cost you the same at about 14 sales of $27. Below that, Gumroad is cheaper for you. Above it, the gap grows every month and never stops." },
+          { title: "At a hundred sales", body: "Gumroad's cut is $320 that month. Ours is $29, whether you sell a hundred files or a thousand." },
+        ],
+      },
+      {
+        kind: "note",
+        title: "If you sell less than that, use Gumroad",
+        body: "We are not going to pretend otherwise. If you are selling a handful of files a month, a percentage of almost nothing is cheaper than a monthly price, and Gumroad also takes on the EU and UK VAT, which is real work. Come back when the cut starts to hurt.",
+      },
+      {
+        kind: "note",
+        title: "Where Gumroad is ahead of us today",
+        body: "A marketplace that can send you buyers; memberships and subscriptions; affiliates; automated email workflows and a newsletter; licence keys; PDF stamping; discount codes; upsells; installment plans; ratings and reviews; your own domain; Zapier and a public API; purchasing power parity pricing; and a mobile app. We have none of those. They have been doing this since 2011 and it shows.",
+      },
+    ],
+  },
+  {
     slug: "speed",
     section: "proof",
     eyebrow: "Proof",
