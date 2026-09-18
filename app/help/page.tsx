@@ -1,0 +1,347 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { RevealOnScroll } from "@/components/home-parts";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteNav } from "@/components/site-nav";
+
+export const metadata: Metadata = {
+  title: "Help centre — Nimbus Labs",
+  description:
+    "Straight answers about the demo store, the money, the files and early access. If an answer is 'not yet', it says not yet.",
+};
+
+type Section = {
+  id: string;
+  emoji: string;
+  title: string;
+  blurb: string;
+  tone: string;
+  items: { q: string; a: string[] }[];
+};
+
+const SECTIONS: Section[] = [
+  {
+    id: "getting-started",
+    emoji: "🚀",
+    title: "Getting started",
+    blurb: "What Nimbus is right now, and what early access means.",
+    tone: "bg-lilac",
+    items: [
+      {
+        q: "What is Nimbus today?",
+        a: [
+          "A store page for selling digital files, with price options on a product and delivery the second the payment clears. There is a live demo store you can buy from with a test card, and an early access list. The full platform is not open to new stores yet.",
+          "The mission page lists everything that is built and everything that is not, in two columns, so nobody signs up expecting the wrong thing.",
+        ],
+      },
+      {
+        q: "What does early access mean?",
+        a: [
+          "You tell us what you sell and what breaks for you today. That is all. There is nothing to pay, no card to enter, and no account created.",
+          "We only email you if you tick the box that says so, and every email has a link that stops them for good.",
+        ],
+      },
+      {
+        q: "What will it cost?",
+        a: [
+          "One monthly subscription, and 0% of your sales. The card fee your payment processor charges is paid to them, on your own account, and we never take a cut on top of it.",
+          "The price is published on the home page. If it ever changes, existing subscribers are told before it applies to them.",
+        ],
+      },
+      {
+        q: "When does it open?",
+        a: [
+          "We are not going to invent a date. Everyone on the early access list hears first, and the mission page is updated the day something new is actually working.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "demo-store",
+    emoji: "🧪",
+    title: "The demo store",
+    blurb: "How to test a real checkout without spending anything.",
+    tone: "bg-cream",
+    items: [
+      {
+        q: "How do I try it?",
+        a: [
+          "Open the demo store, pick a price option and pay with the Stripe test card 4242 4242 4242 4242, any future expiry date, any three digits for the security code and any postcode.",
+          "The checkout is a real Stripe checkout running in test mode. No real money moves, and no real card is ever charged.",
+        ],
+      },
+      {
+        q: "Is the file real?",
+        a: [
+          "Yes. The sample planner is a real PDF, and the page delivers the file that matches the option you paid for — the one-week file for the one-week price, the five-week file for the five-week price.",
+        ],
+      },
+      {
+        q: "Can I put my own file in it?",
+        a: [
+          "Not in the public demo. That is what early access is for: when your store is set up, the file is yours and the page is yours.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "money",
+    emoji: "💳",
+    title: "Money, fees and payouts",
+    blurb: "Who charges the buyer, who holds the money, and when you get it.",
+    tone: "bg-mint-brand/12",
+    items: [
+      {
+        q: "Whose account is the buyer charged on?",
+        a: [
+          "Yours. You connect your own Stripe account and the charge is made on it directly. The receipt and the line on your buyer's card statement carry your business name, not ours.",
+        ],
+      },
+      {
+        q: "What does Nimbus take from a sale?",
+        a: [
+          "Nothing. 0% of your sales, with no asterisk. Our only income is the monthly subscription.",
+          "Stripe charges its own processing fee on each payment, published on Stripe's own pricing page, and that is taken on your account by Stripe.",
+        ],
+      },
+      {
+        q: "When am I paid?",
+        a: [
+          "On your own Stripe payout schedule, which you set in your own Stripe dashboard. We never hold a balance for you, so there is nothing for us to release.",
+        ],
+      },
+      {
+        q: "Who handles refunds and disputes?",
+        a: [
+          "You do, in your own Stripe dashboard, with the same tools any business has. Because the charge was made on your account, a refund is a refund you issue, not a request you file with us.",
+        ],
+      },
+      {
+        q: "What about refunds on the Nimbus subscription itself?",
+        a: [
+          "Ask within 14 days of a charge and we refund that charge in full, including renewals. You can cancel at any time and keep access until the end of the period you already paid for. The refund policy page has the exact wording.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "your-store",
+    emoji: "🏪",
+    title: "Your store",
+    blurb: "What it can hold today, and what it cannot.",
+    tone: "bg-sky-brand/12",
+    items: [
+      {
+        q: "What can I sell?",
+        a: [
+          "Digital files, with up to three price options on the same product — different amounts, formats or licences. Your store page also holds free links, so a lead magnet or a free sample can sit next to the paid product.",
+        ],
+      },
+      {
+        q: "Can I sell courses, memberships or a community?",
+        a: [
+          "Not yet. Lessons with progress, recurring memberships, communities, scheduled calls, email automations and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
+        ],
+      },
+      {
+        q: "Does it work on a phone?",
+        a: [
+          "That is the case it is designed for. The store installs to the home screen with its own icon on both iPhone and Android, straight from the browser, with no app to download — for you or for your buyers.",
+        ],
+      },
+      {
+        q: "Can I use my own domain?",
+        a: [
+          "Not yet. It is on the list, and this page will say so on the day it works.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "delivery",
+    emoji: "📦",
+    title: "Files and delivery",
+    blurb: "What happens in the seconds after someone pays.",
+    tone: "bg-pink-brand/10",
+    items: [
+      {
+        q: "How does the buyer get the file?",
+        a: [
+          "On the screen, immediately after Stripe confirms the payment. There is no waiting for an email to arrive before they can open what they bought.",
+        ],
+      },
+      {
+        q: "Does the download link expire?",
+        a: [
+          "Yes. The link works for a limited window and is tied to that order, so a link that leaks does not turn into a free copy for everyone.",
+        ],
+      },
+      {
+        q: "A buyer says the file never arrived. What now?",
+        a: [
+          "Check the payment in your own Stripe dashboard first: a payment that did not complete is the most common cause. If Stripe shows the payment succeeded and the file still did not appear, email us with the order details and we will look at it with you.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "privacy",
+    emoji: "🔒",
+    title: "Your data",
+    blurb: "What we keep, and how to have it removed.",
+    tone: "bg-amber-brand/12",
+    items: [
+      {
+        q: "What do you store about me?",
+        a: [
+          "For early access: what you typed in the form and, if you ticked the box, your email address. The privacy page lists it in full.",
+        ],
+      },
+      {
+        q: "Can I have it deleted?",
+        a: [
+          "Yes. Email us from the address you used and we remove it. You do not have to give a reason.",
+        ],
+      },
+      {
+        q: "Do you sell or share it?",
+        a: ["No. Not with anyone, for any price."],
+      },
+    ],
+  },
+];
+
+export default function HelpPage() {
+  return (
+    <div className="flex min-h-screen flex-col bg-white text-ink">
+      <RevealOnScroll />
+      <SiteNav />
+
+      <main id="content" className="flex-1">
+        {/* ---------------- hero ---------------- */}
+        <section className="nb-mesh nb-grain relative overflow-hidden text-white">
+          <div
+            aria-hidden="true"
+            className="nb-blob absolute -left-20 top-0 h-72 w-72 bg-mint-brand/30 blur-3xl"
+          />
+          <div
+            aria-hidden="true"
+            className="nb-blob absolute -right-20 bottom-0 h-72 w-72 bg-violet-brand/35 blur-3xl"
+          />
+          <div className="relative mx-auto max-w-4xl px-4 py-16 text-center sm:py-20">
+            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold backdrop-blur">
+              <span aria-hidden="true">💬</span> Help centre
+            </p>
+            <h1 className="font-display mt-5 text-4xl font-black leading-[1.05] sm:text-6xl">
+              How can we <span className="nb-gradient-text">help you?</span>
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-lg text-white/85">
+              Every answer here is about the product as it is today. Where the
+              answer is &ldquo;not yet&rdquo;, it says not yet.
+            </p>
+
+            <nav
+              aria-label="Help sections"
+              className="mt-9 flex flex-wrap justify-center gap-2"
+            >
+              {SECTIONS.map((section) => (
+                <a
+                  key={section.id}
+                  href={`#${section.id}`}
+                  className="rounded-full bg-white/15 px-4 py-2 text-sm font-bold backdrop-blur transition hover:bg-white hover:text-violet-deep"
+                >
+                  <span aria-hidden="true">{section.emoji}</span>{" "}
+                  {section.title}
+                </a>
+              ))}
+            </nav>
+          </div>
+        </section>
+
+        {/* ---------------- sections ---------------- */}
+        <div className="mx-auto max-w-4xl space-y-14 px-4 py-16">
+          {SECTIONS.map((section) => (
+            <section
+              key={section.id}
+              id={section.id}
+              className="reveal scroll-mt-28"
+            >
+              <div
+                className={`rounded-3xl ${section.tone} px-7 py-6 shadow-[0_14px_36px_rgba(20,15,61,0.06)]`}
+              >
+                <h2 className="font-display flex items-center gap-3 text-2xl font-black text-ink sm:text-3xl">
+                  <span aria-hidden="true">{section.emoji}</span>
+                  {section.title}
+                </h2>
+                <p className="mt-2 text-ink-soft">{section.blurb}</p>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {section.items.map((item) => (
+                  <details
+                    key={item.q}
+                    className="group rounded-2xl border-2 border-ink/8 bg-white px-6 py-5 shadow-sm transition open:border-violet-brand/40 open:shadow-md"
+                  >
+                    <summary className="font-display flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-black text-ink marker:content-none">
+                      {item.q}
+                      <span
+                        aria-hidden="true"
+                        className="shrink-0 text-2xl font-black text-violet-brand transition group-open:rotate-45"
+                      >
+                        +
+                      </span>
+                    </summary>
+                    {item.a.map((paragraph) => (
+                      <p
+                        key={paragraph}
+                        className="mt-4 leading-relaxed text-ink-soft"
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                  </details>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        {/* ---------------- contact ---------------- */}
+        <section className="px-4 pb-20">
+          <div className="reveal mx-auto max-w-4xl rounded-[2rem] bg-ink p-10 text-center text-white">
+            <h2 className="font-display text-3xl font-black sm:text-4xl">
+              Still stuck?
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-white/80">
+              Write to us. A person reads it, and you will get an answer even if
+              the answer is that we have not built that part yet.
+            </p>
+            <a
+              href="mailto:viniciussucupira091@gmail.com"
+              className="mt-7 inline-block rounded-full bg-white px-7 py-3.5 font-bold text-violet-deep shadow-lg transition hover:-translate-y-0.5"
+            >
+              viniciussucupira091@gmail.com
+            </a>
+            <p className="mt-6 text-sm text-white/60">
+              Looking for the rules instead?{" "}
+              <Link href="/terms" className="underline underline-offset-4">
+                Terms
+              </Link>
+              ,{" "}
+              <Link href="/privacy" className="underline underline-offset-4">
+                Privacy
+              </Link>{" "}
+              and{" "}
+              <Link href="/refunds" className="underline underline-offset-4">
+                Refunds
+              </Link>
+              .
+            </p>
+          </div>
+        </section>
+      </main>
+
+      <SiteFooter />
+    </div>
+  );
+}

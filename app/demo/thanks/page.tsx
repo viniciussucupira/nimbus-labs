@@ -54,37 +54,48 @@ export default async function DemoThanksPage({
       : await getDemoOrder(sessionId);
 
   return (
-    <div className="min-h-screen bg-stone-100 text-stone-900">
-      <main className="mx-auto w-full max-w-md px-4 py-16">
-        <div className="rounded-3xl bg-white p-8 shadow-sm ring-1 ring-stone-200">
+    <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
+      <div
+        aria-hidden="true"
+        className="nb-blob absolute -left-16 top-0 h-56 w-56 bg-violet-brand/25 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="nb-blob absolute -right-16 top-32 h-56 w-56 bg-pink-brand/20 blur-3xl"
+      />
+      <main id="content" className="relative mx-auto w-full max-w-md px-4 py-16">
+        <div className="rounded-3xl border-2 border-ink/10 bg-white p-8 shadow-xl shadow-ink/5">
           {order.state === "paid" ? (
             <>
-              <p className="text-sm font-medium uppercase tracking-wider text-teal-800">
+              <p aria-hidden="true" className="nb-float text-4xl">
+                🎉
+              </p>
+              <p className="mt-2 text-sm font-bold uppercase tracking-wider text-mint-deep">
                 Payment confirmed
               </p>
-              <h1 className="mt-2 text-2xl font-bold">
+              <h1 className="font-display mt-2 text-2xl font-black">
                 Thank you! Your file is ready.
               </h1>
-              <p className="mt-3 text-stone-700">
+              <p className="mt-3 text-ink-soft">
                 You paid {formatPrice(order.amount)} for {DEMO_PRODUCT.name},{" "}
                 {order.option.label}.
               </p>
               <a
                 href={`/api/demo/download?session_id=${encodeURIComponent(sessionId ?? "")}`}
-                className="mt-6 block rounded-full bg-teal-800 px-6 py-4 text-center text-lg font-semibold text-white transition hover:bg-teal-900 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-teal-800"
+                className="mt-6 block rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-6 py-4 text-center text-lg font-bold text-white shadow-lg shadow-violet-brand/30 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
               >
                 Download the PDF
               </a>
-              <p className="mt-3 text-center text-sm text-stone-600">
+              <p className="mt-3 text-center text-sm text-ink-soft">
                 {order.option.detail}. This link works for 3 days.
               </p>
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-bold">
+              <h1 className="font-display text-2xl font-black">
                 {NOT_PAID[order.state].title}
               </h1>
-              <p className="mt-3 text-stone-700">
+              <p className="mt-3 text-ink-soft">
                 {NOT_PAID[order.state].body}
               </p>
             </>
@@ -94,7 +105,7 @@ export default async function DemoThanksPage({
         <p className="mt-8 text-center">
           <Link
             href="/demo"
-            className="inline-block py-2 font-medium underline underline-offset-2"
+            className="inline-block py-2 font-bold text-violet-deep underline underline-offset-2"
           >
             Back to the store
           </Link>

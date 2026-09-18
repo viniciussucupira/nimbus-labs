@@ -1,0 +1,390 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+
+/* Reveals every element with .reveal as it scrolls into view. */
+export function RevealOnScroll() {
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>(".reveal"));
+    if (
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      !("IntersectionObserver" in window)
+    ) {
+      nodes.forEach((n) => n.classList.add("is-in"));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-in");
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.12 },
+    );
+    nodes.forEach((n) => io.observe(n));
+    return () => io.disconnect();
+  }, []);
+  return null;
+}
+
+/* The phone in the hero: shows the real flow of the demo store. */
+const STEPS = [
+  { key: "pick", label: "Pick a plan" },
+  { key: "pay", label: "Pay with card" },
+  { key: "get", label: "File delivered" },
+] as const;
+
+export function StoreMock() {
+  const [step, setStep] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  useEffect(() => {
+    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      return;
+    const t = setTimeout(() => setStep((s) => (s + 1) % 3), 2600);
+    return () => clearTimeout(t);
+  }, [step, paused]);
+
+  return (
+    <div
+      className="relative mx-auto w-full max-w-[320px]"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      <div className="rounded-[2.6rem] border-[10px] border-ink bg-ink p-1 shadow-2xl shadow-violet-deep/40">
+        <div className="relative overflow-hidden rounded-[2rem] bg-cream">
+          <div className="flex items-center justify-between bg-white px-4 py-2 text-[10px] font-semibold text-ink-soft">
+            <span>9:41</span>
+            <span className="rounded-full bg-mint-brand/20 px-2 py-0.5 text-mint-deep">
+              harborkitchen.store
+            </span>
+          </div>
+
+          <div className="px-4 pb-5 pt-4">
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden="true"
+                className="grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-mint-brand to-sky-brand text-lg font-bold text-white"
+              >
+                HK
+              </span>
+              <div>
+                <p className="font-display text-sm font-extrabold text-ink">
+                  Harbor Kitchen
+                </p>
+                <p className="text-[11px] text-ink-soft">
+                  Simple family meals by Jenny
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl bg-white p-3 shadow-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-pink-brand">
+                Weekly meal planner
+              </p>
+
+              <div className="mt-2 grid gap-2">
+                <div
+                  className={`flex items-center justify-between rounded-xl border-2 px-3 py-2 text-[12px] transition ${
+                    step === 0
+                      ? "border-violet-brand bg-lilac"
+                      : "border-ink/10 bg-white"
+                  }`}
+                >
+                  <span className="font-semibold text-ink">1 week</span>
+                  <span className="font-bold text-ink">$27</span>
+                </div>
+                <div
+                  className={`flex items-center justify-between rounded-xl border-2 px-3 py-2 text-[12px] transition ${
+                    step > 0
+                      ? "border-violet-brand bg-lilac"
+                      : "border-ink/10 bg-white"
+                  }`}
+                >
+                  <span className="font-semibold text-ink">5 weeks</span>
+                  <span className="font-bold text-ink">$39</span>
+                </div>
+              </div>
+
+              <div
+                className={`mt-3 rounded-xl px-3 py-2 text-center text-[12px] font-bold text-white transition ${
+                  step === 1
+                    ? "bg-ink"
+                    : "bg-gradient-to-r from-violet-brand to-pink-brand"
+                }`}
+              >
+                {step === 1 ? "Paying…" : "Continue to checkout"}
+              </div>
+            </div>
+
+            {step === 2 && (
+              <div className="nb-pop mt-3 rounded-2xl border-2 border-mint-brand/40 bg-white p-3">
+                <p className="text-[11px] font-bold text-mint-deep">
+                  Payment confirmed
+                </p>
+                <p className="text-[12px] font-semibold text-ink">
+                  meal-planner-5-weeks.pdf
+                </p>
+                <p className="text-[11px] text-ink-soft">
+                  Download link works for 3 days.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <ol className="mt-4 flex items-center justify-center gap-2">
+        {STEPS.map((s, i) => (
+          <li key={s.key}>
+            <button
+              type="button"
+              onClick={() => setStep(i)}
+              className={`rounded-full px-3 py-1 text-[11px] font-semibold transition ${
+                step === i
+                  ? "bg-white text-violet-deep shadow"
+                  : "bg-white/15 text-white/80 hover:bg-white/25"
+              }`}
+            >
+              {s.label}
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/* Pricing with a monthly / yearly switch. */
+const PLANS = [
+  {
+    name: "Starter",
+    monthly: 29,
+    yearly: 300,
+    accent: "from-violet-brand to-sky-brand",
+    tagline: "One store, everything you need to sell a file.",
+    perks: [
+      "Store page with your links and products",
+      "Several price options per product",
+      "Instant file delivery after payment",
+      "0% cut of your sales",
+    ],
+  },
+  {
+    name: "Creator Pro",
+    monthly: 99,
+    yearly: 948,
+    accent: "from-pink-brand to-amber-brand",
+    tagline: "For the creator selling more than one thing.",
+    perks: [
+      "Everything in Starter",
+      "Buy now, pay later at checkout",
+      "Subscriptions and memberships",
+      "Priority support with a written answer time",
+    ],
+  },
+];
+
+export function Pricing() {
+  const [yearly, setYearly] = useState(false);
+
+  return (
+    <div>
+      <div className="flex justify-center">
+        <div
+          role="group"
+          aria-label="Billing period"
+          className="inline-flex rounded-full border-2 border-ink/10 bg-white p-1"
+        >
+          {[
+            { label: "Monthly", value: false },
+            { label: "Yearly", value: true },
+          ].map((opt) => (
+            <button
+              key={opt.label}
+              type="button"
+              aria-pressed={yearly === opt.value}
+              onClick={() => setYearly(opt.value)}
+              className={`rounded-full px-5 py-2 text-sm font-bold transition ${
+                yearly === opt.value
+                  ? "bg-ink text-white"
+                  : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-8 grid gap-6 md:grid-cols-2">
+        {PLANS.map((plan) => (
+          <div
+            key={plan.name}
+            className="nb-lift reveal relative overflow-hidden rounded-3xl border-2 border-ink/10 bg-white p-7 shadow-xl shadow-ink/5"
+          >
+            <div
+              aria-hidden="true"
+              className={`absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${plan.accent} opacity-20 blur-2xl`}
+            />
+            <p className="font-display text-xl font-extrabold text-ink">
+              {plan.name}
+            </p>
+            <p className="mt-1 text-sm text-ink-soft">{plan.tagline}</p>
+            <p className="mt-5 flex items-end gap-1">
+              <span className="font-display text-5xl font-black text-ink">
+                ${yearly ? plan.yearly : plan.monthly}
+              </span>
+              <span className="pb-2 text-sm font-semibold text-ink-soft">
+                {yearly ? "per year" : "per month"}
+              </span>
+            </p>
+            <ul className="mt-6 space-y-2 text-sm text-ink">
+              {plan.perks.map((perk) => (
+                <li key={perk} className="flex gap-2">
+                  <span aria-hidden="true" className="text-mint-deep">
+                    ✔
+                  </span>
+                  <span>{perk}</span>
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/creators"
+              className={`mt-7 block rounded-full bg-gradient-to-r ${plan.accent} px-5 py-3 text-center font-bold text-white shadow-lg transition hover:brightness-110 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand`}
+            >
+              Get early access
+            </Link>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* Straight answers. */
+const QUESTIONS = [
+  {
+    q: "Can I sign up and start selling today?",
+    a: "No, and we are not going to pretend otherwise. What exists today is the demo store you can buy from with a Stripe test card. Early access opens with the first creators we talk to, and the price above is the planned price, not a charge.",
+  },
+  {
+    q: "Who holds the money from my sales?",
+    a: "You do. Payments go to your own Stripe account through direct charges, so payouts follow your Stripe settings and we never sit between you and your buyer's money. We charge a monthly subscription and take 0% of your sales.",
+  },
+  {
+    q: "What happens if Nimbus Labs disappears?",
+    a: "Your Stripe account, your customers and your files stay yours, because they were never held by us. Anything we host for you can be exported, and a shutdown would come with notice in writing.",
+  },
+  {
+    q: "Who is behind this?",
+    a: "Vinicius Sucupira, an independent builder in Brazil, building in public. Support is in English, in writing, with a response time we publish rather than promise loosely.",
+  },
+  {
+    q: "Why is the demo store so bare?",
+    a: "It is a working proof, not a portfolio piece: a fictional cook, two price options, a real Stripe checkout and a real file delivered. Your own store is designed with you.",
+  },
+];
+
+export function Faq() {
+  const [open, setOpen] = useState<number | null>(0);
+  return (
+    <ul className="space-y-3">
+      {QUESTIONS.map((item, i) => (
+        <li
+          key={item.q}
+          className="reveal overflow-hidden rounded-3xl border-2 border-ink/10 bg-white"
+        >
+          <button
+            type="button"
+            aria-expanded={open === i}
+            onClick={() => setOpen((cur) => (cur === i ? null : i))}
+            className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left font-display text-lg font-bold text-ink focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+          >
+            {item.q}
+            <span
+              aria-hidden="true"
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lilac text-violet-deep transition-transform ${
+                open === i ? "rotate-45" : ""
+              }`}
+            >
+              +
+            </span>
+          </button>
+          {open === i && (
+            <p className="px-6 pb-6 text-ink-soft">{item.a}</p>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/* A window that opens the live demo store without leaving the page. */
+export function DemoWindow() {
+  const [open, setOpen] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-full border-2 border-white/70 px-6 py-3 font-bold text-white transition hover:bg-white hover:text-violet-deep focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
+      >
+        Open the store in a window
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Live demo store"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-ink/70 p-4 backdrop-blur"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setOpen(false);
+          }}
+        >
+          <div className="nb-pop flex h-[86vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border-4 border-white bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-3 bg-ink px-4 py-3 text-white">
+              <p className="font-display text-sm font-bold">
+                Live demo store — test mode
+              </p>
+              <button
+                ref={closeRef}
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-full bg-white/15 px-3 py-1 text-sm font-bold hover:bg-white/25 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                Close ✕
+              </button>
+            </div>
+            <iframe
+              src="/demo"
+              title="Live demo store"
+              className="h-full w-full flex-1 border-0"
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

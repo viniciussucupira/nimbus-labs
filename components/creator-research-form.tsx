@@ -27,10 +27,10 @@ const FIELD_MESSAGES: Record<string, string> = {
 };
 
 const inputClass =
-  "w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 text-[16px] text-black placeholder:text-gray-400 focus:border-black focus:outline-none focus:ring-1 focus:ring-black";
-const fieldClass = `${inputClass} h-11`;
-const labelClass = "block text-sm font-medium text-black mb-1.5";
-const hintClass = "text-gray-500 font-normal";
+  "w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-[16px] text-ink transition placeholder:text-ink-soft/50 focus:border-violet-brand focus:outline-none focus:ring-4 focus:ring-violet-brand/15";
+const fieldClass = `${inputClass} h-12`;
+const labelClass = "mb-2 block text-sm font-bold text-ink";
+const hintClass = "font-normal text-ink-soft";
 
 export function CreatorResearchForm() {
   const [status, setStatus] = useState<Status>("idle");
@@ -109,12 +109,19 @@ export function CreatorResearchForm() {
     return (
       <div
         role="status"
-        className="rounded-lg border border-gray-200 bg-gray-50 px-6 py-8"
+        className="nb-pop relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-brand via-pink-brand to-amber-brand px-7 py-10 text-white shadow-2xl"
       >
-        <p className="text-xl font-bold text-black mb-2">
+        <div
+          aria-hidden="true"
+          className="nb-blob absolute -right-10 -top-10 h-40 w-40 bg-white/25 blur-2xl"
+        />
+        <p aria-hidden="true" className="nb-float text-4xl">
+          🎉
+        </p>
+        <p className="font-display mt-3 text-2xl font-black">
           Thank you. Your answers were saved.
         </p>
-        <p className="text-gray-700">
+        <p className="mt-2 text-white/90">
           I read every answer myself. {emailNote}
         </p>
       </div>
@@ -264,32 +271,32 @@ export function CreatorResearchForm() {
         />
       </div>
 
-      <div className="space-y-3 border-t border-gray-200 pt-6">
-        <label className="flex gap-3 text-[15px] leading-6 text-gray-700">
+      <div className="space-y-3 rounded-3xl bg-lilac p-5">
+        <label className="flex cursor-pointer gap-3 rounded-2xl p-2 text-[15px] leading-6 text-ink transition hover:bg-white">
           <input
             name="consentResearch"
             type="checkbox"
             required
-            className="mt-1 h-4 w-4 shrink-0 accent-black"
+            className="mt-1 h-5 w-5 shrink-0 accent-[color:var(--violet)]"
           />
           <span>{CONSENT_RESEARCH_TEXT}</span>
         </label>
-        <label className="flex gap-3 text-[15px] leading-6 text-gray-700">
+        <label className="flex cursor-pointer gap-3 rounded-2xl p-2 text-[15px] leading-6 text-ink transition hover:bg-white">
           <input
             name="consentFollowUp"
             type="checkbox"
-            className="mt-1 h-4 w-4 shrink-0 accent-black"
+            className="mt-1 h-5 w-5 shrink-0 accent-[color:var(--violet)]"
           />
           <span>
             {CONSENT_FOLLOWUP_TEXT}{" "}
             <span className={hintClass}>(optional)</span>
           </span>
         </label>
-        <label className="flex gap-3 text-[15px] leading-6 text-gray-700">
+        <label className="flex cursor-pointer gap-3 rounded-2xl p-2 text-[15px] leading-6 text-ink transition hover:bg-white">
           <input
             name="consentUpdates"
             type="checkbox"
-            className="mt-1 h-4 w-4 shrink-0 accent-black"
+            className="mt-1 h-5 w-5 shrink-0 accent-[color:var(--violet)]"
           />
           <span>
             {CONSENT_UPDATES_TEXT}{" "}
@@ -301,7 +308,7 @@ export function CreatorResearchForm() {
       {status === "error" && (
         <p
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          className="rounded-2xl border-2 border-pink-brand/40 bg-pink-brand/10 px-5 py-4 text-sm font-semibold text-pink-brand"
         >
           {message}
         </p>
@@ -311,15 +318,15 @@ export function CreatorResearchForm() {
         <button
           type="submit"
           disabled={status === "sending"}
-          className="inline-block rounded bg-black px-6 py-3 font-medium text-white hover:bg-gray-900 disabled:cursor-wait disabled:opacity-60"
+          className="inline-block rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-8 py-4 text-lg font-bold text-white shadow-lg shadow-violet-brand/30 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-wait disabled:opacity-60 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
         >
           {status === "sending" ? "Sending…" : "Send my answers"}
         </button>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-soft">
           We never sell your answers.{" "}
           <Link
             href="/privacy"
-            className="text-black underline underline-offset-2 hover:no-underline"
+            className="font-semibold text-violet-deep underline underline-offset-2 hover:no-underline"
           >
             Privacy Policy
           </Link>
