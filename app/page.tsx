@@ -178,6 +178,29 @@ const GALLERY = [
     label: "Gamers",
     tint: "from-sky-brand/80",
   },
+  {
+    id: "photo-1713370572362-35983645f6a7",
+    alt: "A woman laughing with her hands on her cheeks, against a bright green background",
+    label: "Teachers",
+    tint: "from-amber-brand/80",
+  },
+  {
+    id: "photo-1539694265588-f101b5569bd2",
+    alt: "A man smiling in bright pink and blue light",
+    label: "Musicians",
+    tint: "from-violet-deep/80",
+  },
+];
+
+/* The faces that greet a phone. The floating portraits beside the store mock
+   only fit from the small breakpoint up, so on a phone — where most creators
+   open this page — there was nobody on the screen at all. This row fixes that. */
+const HELLO_FACES = [
+  { id: "photo-1544507888-56d73eb6046e", alt: "A woman laughing outdoors", ring: "ring-amber-brand" },
+  { id: "photo-1654817758777-c8a6101783ea", alt: "A man laughing, covered in colour", ring: "ring-mint-brand" },
+  { id: "photo-1594756154841-ac5d160dbf46", alt: "A woman laughing against a warm pink wall", ring: "ring-pink-brand" },
+  { id: "photo-1606337332936-b797a7d4f4c9", alt: "A man smiling outdoors", ring: "ring-sky-brand" },
+  { id: "photo-1713370572362-35983645f6a7", alt: "A woman laughing against a bright green background", ring: "ring-violet-brand" },
 ];
 
 export default function Home() {
@@ -230,6 +253,29 @@ export default function Home() {
                 Get early access
               </Link>
               <DemoWindow />
+            </div>
+
+            {/* On a phone the floating portraits do not fit, so the faces
+                come here instead, right under the buttons. */}
+            <div className="mt-9 flex items-center gap-4 sm:hidden">
+              <div className="flex -space-x-3">
+                {HELLO_FACES.map((face) => (
+                  <img
+                    key={face.id}
+                    src={PHOTO(face.id, 112, 112)}
+                    alt={face.alt}
+                    width={56}
+                    height={56}
+                    loading="lazy"
+                    className={`h-14 w-14 rounded-full object-cover ring-4 ${face.ring} ring-offset-2 ring-offset-transparent`}
+                  />
+                ))}
+              </div>
+              <p className="text-sm font-semibold leading-tight text-white/85">
+                For people who sell
+                <br />
+                what they know
+              </p>
             </div>
 
             <ul className="mt-10 flex flex-wrap gap-2 text-sm font-semibold">
@@ -537,7 +583,7 @@ export default function Home() {
       </section>
 
       {/* ---------------- gallery ---------------- */}
-      <section className="bg-lilac py-20">
+      <section className="nb-joy py-20">
         <div className="mx-auto max-w-6xl px-4">
           <div className="reveal mx-auto max-w-2xl text-center">
             <p className="font-semibold uppercase tracking-[0.2em] text-pink-brand">
@@ -548,17 +594,17 @@ export default function Home() {
             </h2>
           </div>
 
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {GALLERY.map((item) => (
               <figure
                 key={item.id}
-                className="nb-lift reveal relative overflow-hidden rounded-3xl shadow-xl"
+                className="nb-lift reveal relative overflow-hidden rounded-[2rem] shadow-xl ring-4 ring-white"
               >
                 <img
                   src={PHOTO(item.id, 500, 620)}
                   alt={item.alt}
                   loading="lazy"
-                  className="h-72 w-full object-cover"
+                  className="h-80 w-full object-cover"
                 />
                 <figcaption
                   className={`absolute inset-x-0 bottom-0 bg-gradient-to-t ${item.tint} to-transparent p-4 font-display text-lg font-extrabold text-white`}
