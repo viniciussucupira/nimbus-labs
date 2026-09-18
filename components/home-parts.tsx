@@ -282,7 +282,7 @@ const QUESTIONS = [
   },
   {
     q: "Who is behind this?",
-    a: "Vinicius Sucupira, an independent builder in Brazil, building in public. Support is in English, in writing, with a response time we publish rather than promise loosely.",
+    a: "Vinicius Sucupira, an independent builder working in public. Support is in English, in writing, with a response time we publish rather than promise loosely.",
   },
   {
     q: "Why is the demo store so bare?",
