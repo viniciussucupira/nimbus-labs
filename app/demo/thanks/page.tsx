@@ -63,7 +63,7 @@ export default async function DemoThanksPage({
         aria-hidden="true"
         className="nb-blob absolute -right-16 top-32 h-56 w-56 bg-pink-brand/20 blur-3xl"
       />
-      <main className="relative mx-auto w-full max-w-md px-4 py-16">
+      <main id="content" className="relative mx-auto w-full max-w-md px-4 py-16">
         <div className="rounded-3xl border-2 border-ink/10 bg-white p-8 shadow-xl shadow-ink/5">
           {order.state === "paid" ? (
             <>
