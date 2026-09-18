@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { rememberOrder } from "@/lib/demo-recover";
 import {
   DEMO_PRODUCT,
   formatPrice,
@@ -53,6 +54,13 @@ export default async function DemoThanksPage({
       ? { state: status }
       : await getDemoOrder(sessionId);
 
+  // Remember which order this address bought, so the buyer can ask for the
+  // link again later instead of losing what they paid for. It lives exactly as
+  // long as the download does.
+  if (order.state === "paid" && sessionId) {
+    await rememberOrder(order.email, sessionId, order.secondsLeft);
+  }
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
       <div
@@ -98,16 +106,33 @@ export default async function DemoThanksPage({
               <p className="mt-3 text-ink-soft">
                 {NOT_PAID[order.state].body}
               </p>
+              {order.state === "expired" || order.state === "invalid" ? (
+                <Link
+                  href="/demo/recover"
+                  className="mt-6 block rounded-full bg-ink px-6 py-3.5 text-center font-bold text-white transition hover:-translate-y-0.5"
+                >
+                  Send me the link again
+                </Link>
+              ) : null}
             </>
           )}
         </div>
 
-        <p className="mt-8 text-center">
+        <p className="mt-8 text-center text-sm">
           <Link
             href="/demo"
             className="inline-block py-2 font-bold text-violet-deep underline underline-offset-2"
           >
             Back to the store
+          </Link>
+          <span aria-hidden="true" className="px-2 text-ink-soft">
+            ·
+          </span>
+          <Link
+            href="/demo/recover"
+            className="inline-block py-2 font-bold text-violet-deep underline underline-offset-2"
+          >
+            Lost your download?
           </Link>
         </p>
       </main>
