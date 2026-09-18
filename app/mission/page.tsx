@@ -59,6 +59,7 @@ const BUILT = [
 ];
 
 const NOT_BUILT = [
+  "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
   "Memberships that charge every month",
   "Communities and group chat",
