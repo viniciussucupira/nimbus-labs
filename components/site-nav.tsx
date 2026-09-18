@@ -116,6 +116,13 @@ export const MENUS: Menu[] = [
         tint: "bg-mint-brand/15 text-mint-deep",
       },
       {
+        label: "Compared with Beacons",
+        description: "What their 9% costs, and when they win.",
+        href: "/proof/beacons",
+        emoji: "⚖️",
+        tint: "bg-sky-brand/15 text-sky-brand",
+      },
+      {
         label: "Speed test",
         description: "Why a slow store costs you sales.",
         href: "/proof/speed",
