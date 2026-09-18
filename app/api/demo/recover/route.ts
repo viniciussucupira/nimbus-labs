@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { originFrom } from "@/lib/request-origin";
 import {
   EMAIL_PATTERN,
   MAX_EMAIL_LENGTH,
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
       // expired order must not be handed back.
       const order = await getDemoOrder(sessionId);
       if (order.state === "paid") {
-        const base = `${new URL(request.url).origin}`;
+        const base = originFrom(request);
         const link = `${base}/api/demo/download?session_id=${encodeURIComponent(sessionId)}`;
         await sendRecoveryEmail(email, link);
       }
