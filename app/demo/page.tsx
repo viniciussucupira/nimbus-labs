@@ -63,7 +63,7 @@ export default function DemoStorePage() {
         />
       </div>
 
-      <main className="relative mx-auto w-full max-w-md px-4 pb-12">
+      <main id="content" className="relative mx-auto w-full max-w-md px-4 pb-12">
         <header className="relative -mt-14 overflow-hidden pb-8 pt-1 text-center">
           <div
             aria-hidden="true"
