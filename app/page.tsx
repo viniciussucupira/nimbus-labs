@@ -253,7 +253,7 @@ export default function Home() {
             {HERO_FACES.map((face) => (
               <img
                 key={face.id}
-                src={PHOTO(face.id, 200, 200)}
+                src={PHOTO(face.id, 160, 160)}
                 alt={face.alt}
                 loading="lazy"
                 className={`absolute z-10 hidden rounded-full object-cover ring-4 ring-offset-2 ring-offset-transparent sm:block ${face.className} ${face.ring}`}

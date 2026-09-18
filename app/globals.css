@@ -85,19 +85,19 @@ body {
   }
 }
 
+/* Only transform and opacity here: the browser can run those on the compositor,
+   so these big blurred shapes never repaint while they drift. The organic
+   outline is set once, on the class below, instead of on every frame. */
 @keyframes nb-blob {
   0%,
   100% {
-    border-radius: 42% 58% 63% 37% / 46% 38% 62% 54%;
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
   }
   33% {
-    border-radius: 63% 37% 41% 59% / 58% 62% 38% 42%;
-    transform: translate3d(12px, -18px, 0) scale(1.06);
+    transform: translate3d(12px, -18px, 0) scale(1.06) rotate(6deg);
   }
   66% {
-    border-radius: 38% 62% 56% 44% / 63% 45% 55% 37%;
-    transform: translate3d(-14px, 10px, 0) scale(0.96);
+    transform: translate3d(-14px, 10px, 0) scale(0.96) rotate(-5deg);
   }
 }
 
@@ -147,7 +147,9 @@ body {
   animation: nb-float-slow 11s ease-in-out infinite;
 }
 .nb-blob {
+  border-radius: 42% 58% 63% 37% / 46% 38% 62% 54%;
   animation: nb-blob 18s ease-in-out infinite;
+  will-change: transform;
 }
 .nb-spin-slow {
   animation: nb-spin-slow 26s linear infinite;
