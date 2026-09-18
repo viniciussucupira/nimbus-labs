@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
 
 :root {
   --background: #ffffff;
@@ -22,8 +21,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
@@ -42,7 +41,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family:
-    "Plus Jakarta Sans",
+    var(--font-body),
     ui-sans-serif,
     system-ui,
     -apple-system,
@@ -54,7 +53,7 @@ body {
 /* The display face is only used where a class asks for it. */
 .font-display {
   font-family:
-    "Outfit",
+    var(--font-display),
     ui-sans-serif,
     system-ui,
     -apple-system,
