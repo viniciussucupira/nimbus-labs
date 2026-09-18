@@ -355,6 +355,7 @@ export const PAGES: TopicPage[] = [
         rows: [
           ["Monthly price", "$29 and $99", "$29 and $99, planned"],
           ["Cut of each sale", "0% platform fee", "0% platform fee"],
+          ["Ways to be paid", "Stripe or PayPal", "Stripe only — we are behind them here"],
           ["Whose Stripe account", "One they manage. Their own help centre: you cannot connect an existing Stripe account", "Your own, from the first sale"],
           ["Getting paid", "Cash out inside Stan, $10 minimum, whole balance only", "Your own Stripe payout schedule"],
           ["Where you see your money", "Their Income tab. A Stripe Custom account has no Stripe login", "stripe.com, like any other business of yours"],
@@ -487,6 +488,7 @@ export const PAGES: TopicPage[] = [
           ["Cut of each sale", "9% on the free and $10 plans. 0% from the $30 plan up", "0%, on every plan"],
           ["Monthly price", "$0, $10, $30 and $100", "$29 and $99, planned"],
           ["Whose payment account", "Your own Stripe or PayPal", "Your own Stripe"],
+          ["Ways to be paid", "Stripe or PayPal", "Stripe only — we are behind them here"],
           ["When the money reaches you", "At the moment of sale, into your own account", "At the moment of sale, into your own account"],
           ["Card fee", "Stripe's 2.9% + $0.30, on top of their 9%", "Stripe's 2.9% + $0.30, and nothing else"],
           ["What you are buying", "A whole suite: link in bio, websites, media kit, email, an affiliate network, AI tools", "One store page, built to sell a file"],
