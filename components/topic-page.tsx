@@ -5,7 +5,7 @@ import { SiteNav } from "@/components/site-nav";
 import type { Block, TopicPage } from "@/lib/site-pages";
 
 const PHOTO = (id: string) =>
-  `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=320&h=320&q=70`;
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=128&h=128&q=70`;
 
 const BADGE_TONE = {
   live: "bg-mint-brand text-ink",

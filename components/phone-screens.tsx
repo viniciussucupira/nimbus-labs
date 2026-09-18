@@ -80,20 +80,20 @@ export function PhoneScreens() {
           >
             <div className="relative">
               <img
-                src={PHOTO(FOOD, 500, 220, false)}
+                src={PHOTO(FOOD, 400, 144, false)}
                 alt=""
                 aria-hidden="true"
-                width={500}
-                height={220}
+                width={400}
+                height={144}
                 loading="lazy"
                 className="h-20 w-full object-cover"
               />
               <div className="px-4 pb-4 text-center">
                 <img
-                  src={PHOTO(JENNY, 160, 160)}
+                  src={PHOTO(JENNY, 112, 112)}
                   alt="Jenny, the fictional cook of the demo store"
-                  width={160}
-                  height={160}
+                  width={112}
+                  height={112}
                   loading="lazy"
                   className="-mt-7 inline-block h-14 w-14 rounded-full object-cover ring-4 ring-white"
                 />
@@ -115,11 +115,11 @@ export function PhoneScreens() {
                   <div className="overflow-hidden rounded-xl bg-white shadow-sm">
                     <div className="relative h-16">
                       <img
-                        src={PHOTO(FOOD, 400, 200, false)}
+                        src={PHOTO(FOOD, 340, 116, false)}
                         alt=""
                         aria-hidden="true"
-                        width={400}
-                        height={200}
+                        width={340}
+                        height={116}
                         loading="lazy"
                         className="h-16 w-full object-cover"
                       />
