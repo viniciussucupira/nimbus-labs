@@ -148,7 +148,15 @@ export async function createDemoCheckout(
 }
 
 export type DemoOrder =
-  | { state: "paid"; amount: number; option: DemoOption }
+  | {
+      state: "paid";
+      amount: number;
+      option: DemoOption;
+      /** The address the buyer paid with, so we can send the file again. */
+      email: string | null;
+      /** How long this download still has, in seconds. */
+      secondsLeft: number;
+    }
   | { state: "unpaid" | "expired" | "invalid" | "unavailable" | "error" };
 
 // Looks up a Checkout Session and decides whether the buyer may download.
@@ -189,14 +197,21 @@ export async function getDemoOrder(
   }
 
   const created = typeof session.created === "number" ? session.created : 0;
-  if (Date.now() / 1000 - created > DOWNLOAD_WINDOW_SECONDS) {
+  const age = Date.now() / 1000 - created;
+  if (age > DOWNLOAD_WINDOW_SECONDS) {
     return { state: "expired" };
   }
+
+  const details = session.customer_details as { email?: unknown } | null;
+  const email =
+    typeof details?.email === "string" && details.email ? details.email : null;
 
   return {
     state: "paid",
     option,
     amount:
       typeof session.amount_total === "number" ? session.amount_total : 0,
+    email,
+    secondsLeft: Math.max(0, Math.floor(DOWNLOAD_WINDOW_SECONDS - age)),
   };
 }
