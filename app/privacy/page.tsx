@@ -5,24 +5,26 @@ import { LegalPage, LegalSection } from "@/components/legal-page";
 export const metadata: Metadata = {
   title: "Privacy Policy — Nimbus Labs",
   description:
-    "How Nimbus Labs collects, uses, and protects personal information, including GDPR rights.",
+    "How Nimbus Labs collects, uses, and protects personal information — including the data of buyers in a creator's store, and your GDPR rights.",
 };
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="September 16, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="September 18, 2026">
       <p>
-        Merchant of Record: Nimbus Labs uses Paddle as our Merchant of Record.
-        Paddle is the legal seller of our services and is responsible for
-        processing your payment, providing customer support, and handling
-        refunds. All transactions are governed by Paddle&apos;s terms as well
-        as our own.
+        Merchant of Record: Retone is sold through Paddle, which acts as our
+        Merchant of Record for that product. Paddle is the legal seller of
+        Retone and is responsible for processing your payment and handling
+        refunds for it, and those transactions are governed by Paddle&apos;s
+        terms as well as our own. Paddle is not involved in a Nimbus creator
+        store: those payments run through the creator&apos;s own Stripe
+        account.
       </p>
       <p>
         Nimbus Labs (“Nimbus Labs,” “we,” “us,” or “our”) is an independent
-        software studio based in Brazil. This Privacy Policy explains how we
-        collect, use, share, and protect personal information when you use our
-        websites and subscription products, including Retone (
+        software studio. This Privacy Policy explains how we collect, use,
+        share, and protect personal information when you use our websites and
+        products — the Nimbus creator store at nimbuslabsai.com and Retone (
         <a
           href="https://retoneai.net"
           className="text-black underline underline-offset-2 hover:no-underline"
@@ -69,6 +71,22 @@ export default function PrivacyPage() {
           solely to generate a rewritten result and return it to you. We do not
           store the text you submit for rewriting, and we do not use it to
           train our own models.
+        </p>
+        <p>
+          <strong className="text-black">What a creator puts in a store.</strong>{" "}
+          If you run a Nimbus store, we host what you put in it: your store
+          name and description, your photo if you add one, your product titles,
+          prices and descriptions, and the files you upload for delivery to
+          your buyers.
+        </p>
+        <p>
+          <strong className="text-black">Buyer information.</strong> When
+          someone buys from a creator&apos;s store, we handle the buyer&apos;s
+          email address and the details of that order — what was bought, when,
+          for how much, and whether the file was delivered — so the sale can be
+          completed and the creator can see it. The card details are handled by
+          Stripe and never reach us. That buyer information belongs to the
+          creator, not to us, and section 4 explains what that means.
         </p>
         <p>
           <strong className="text-black">Usage and technical data.</strong> We
@@ -160,6 +178,17 @@ export default function PrivacyPage() {
             charge your subscription and handle refunds;
           </li>
           <li>
+            <strong className="text-black">Stripe</strong>, when you buy from a
+            creator&apos;s store, because the payment is made into that
+            creator&apos;s own Stripe account and Stripe processes the card
+            details directly;
+          </li>
+          <li>
+            <strong className="text-black">The creator you bought from</strong>
+            , who receives your email address and the details of your order,
+            because they are the seller;
+          </li>
+          <li>
             <strong className="text-black">AI API providers</strong>, to
             process text you submit for rewriting (this content is not stored
             by us);
@@ -183,7 +212,30 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="4. Cookies">
+      <LegalSection title="4. If you buy from a creator’s store">
+        <p>
+          The store belongs to the creator, not to us. For the personal data of
+          that store&apos;s buyers, the creator is the controller and Nimbus
+          Labs is their processor: we handle that data to run the store on
+          their behalf and on their instructions, and we do not use it for our
+          own purposes, do not sell it, and do not email a creator&apos;s
+          buyers to market anything of ours.
+        </p>
+        <p>
+          In practice this means a request about your data as a buyer — a copy
+          of it, a correction, a deletion — is answered by the creator you
+          bought from. Write to them first. If you write to us instead, we will
+          pass it on and tell you we did.
+        </p>
+        <p>
+          Two things stay ours in that situation: the security of the systems
+          the data sits in, and the legal obligations we have to keep records
+          of our own, such as fraud prevention and anything the law requires us
+          to retain.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="5. Cookies">
         <p>We may use cookies and similar technologies to:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>keep you signed in;</li>
@@ -198,7 +250,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="5. Data retention">
+      <LegalSection title="6. Data retention">
         <p>
           Account and billing records are kept for as long as your account is
           active and as needed for tax, accounting, and legal purposes. Text
@@ -221,7 +273,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="6. International transfers">
+      <LegalSection title="7. International transfers">
         <p>
           Nimbus Labs is based in Brazil and serves customers internationally.
           Your information may be processed in Brazil and in other countries
@@ -234,7 +286,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Your rights, including under the GDPR">
+      <LegalSection title="8. Your rights, including under the GDPR">
         <p>
           Depending on your location, you may have the right to access the
           personal data we hold about you; correct inaccurate data; delete your
@@ -270,7 +322,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="8. Children’s privacy">
+      <LegalSection title="9. Children’s privacy">
         <p>
           The Services are not directed to children under 18. We do not
           knowingly collect personal information from children. If you believe
@@ -279,7 +331,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="9. Security">
+      <LegalSection title="10. Security">
         <p>
           We use reasonable technical and organizational measures to protect
           personal information. No method of transmission or storage is
@@ -288,7 +340,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="10. Changes">
+      <LegalSection title="11. Changes">
         <p>
           We may update this Privacy Policy from time to time. The “Last
           updated” date at the top of this page will change when we do. We encourage you
@@ -296,7 +348,7 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="11. Contact">
+      <LegalSection title="12. Contact">
         <p>
           Nimbus Labs
           <br />
