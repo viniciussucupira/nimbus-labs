@@ -186,6 +186,8 @@ export default function Home() {
       <RevealOnScroll />
       <SiteNav />
 
+      <main id="content">
+
       {/* ---------------- hero ---------------- */}
       <section className="nb-mesh nb-grain relative overflow-hidden text-white">
         <div
@@ -637,6 +639,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      </main>
 
       <SiteFooter />
     </div>
