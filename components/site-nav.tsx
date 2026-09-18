@@ -208,6 +208,13 @@ export function SiteNav() {
 
   return (
     <div className="sticky top-0 z-50">
+      {/* A keyboard user can jump the whole menu in one key press. */}
+      <a
+        href="#content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-[60] focus:rounded-full focus:bg-white focus:px-5 focus:py-2.5 focus:font-bold focus:text-violet-deep focus:shadow-lg focus:outline-3 focus:outline-offset-2 focus:outline-violet-brand"
+      >
+        Skip to the page content
+      </a>
       <div className="nb-mesh relative overflow-hidden text-white">
         <p className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-2 text-center text-[13px] font-medium">
           <span aria-hidden="true">✨</span>

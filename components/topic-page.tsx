@@ -208,7 +208,7 @@ export function TopicPageView({ page }: { page: TopicPage }) {
       <RevealOnScroll />
       <SiteNav />
 
-      <main className="flex-1">
+      <main id="content" className="flex-1">
         <section className="nb-mesh nb-grain relative overflow-hidden text-white">
           <div
             aria-hidden="true"
