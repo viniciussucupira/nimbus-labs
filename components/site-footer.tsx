@@ -11,6 +11,14 @@ const COLUMNS = [
     ],
   },
   {
+    title: "Company",
+    links: [
+      { label: "Our mission", href: "/mission" },
+      { label: "Blog", href: "/blog" },
+      { label: "Help centre", href: "/help" },
+    ],
+  },
+  {
     title: "Other products",
     links: [
       { label: "Retone", href: "https://retoneai.net", external: true },
@@ -40,7 +48,7 @@ export function SiteFooter() {
         className="nb-blob absolute -right-20 bottom-0 h-64 w-64 bg-pink-brand/25 blur-3xl"
       />
 
-      <div className="relative mx-auto grid max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="relative mx-auto grid max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-5">
         <div>
           <Link
             href="/"
@@ -63,6 +71,31 @@ export function SiteFooter() {
           >
             Get early access
           </Link>
+
+          <div className="mt-6">
+            <p className="text-sm font-semibold text-white">
+              Follow the build
+            </p>
+            <a
+              href="https://x.com/vinicius26108"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/60 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="currentColor"
+              >
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              @vinicius26108
+            </a>
+            <p className="mt-2 text-xs text-white/50">
+              The founder&apos;s account. Nimbus has no others yet.
+            </p>
+          </div>
         </div>
 
         {COLUMNS.map((column) => (

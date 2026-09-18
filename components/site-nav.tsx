@@ -295,6 +295,18 @@ export function SiteNav() {
             >
               Pricing
             </a>
+            <Link
+              href="/blog"
+              className="rounded-full px-4 py-2 text-sm font-semibold text-ink-soft transition hover:bg-lilac hover:text-violet-deep focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+            >
+              Blog
+            </Link>
+            <Link
+              href="/mission"
+              className="rounded-full px-4 py-2 text-sm font-semibold text-ink-soft transition hover:bg-lilac hover:text-violet-deep focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+            >
+              Mission
+            </Link>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -442,6 +454,21 @@ export function SiteNav() {
               Pricing
             </a>
           </li>
+          {[
+            { href: "/blog", label: "Blog" },
+            { href: "/mission", label: "Our mission" },
+            { href: "/help", label: "Help centre" },
+          ].map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                onClick={closeAll}
+                className="block rounded-3xl border-2 border-ink/10 px-5 py-4 font-display text-lg font-extrabold text-ink"
+              >
+                {item.label}
+              </Link>
+            </li>
+          ))}
           <li>
             <Link
               href="/creators"
