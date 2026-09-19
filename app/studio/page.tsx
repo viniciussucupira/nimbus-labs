@@ -7,6 +7,8 @@ import { storeForEmail } from "@/lib/store";
 import { HandleForm } from "@/components/handle-form";
 import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
+import { DetailsForm } from "@/components/details-form";
+import { ProductEditor } from "@/components/product-editor";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
@@ -14,7 +16,6 @@ export const metadata: Metadata = {
 };
 
 const NEXT = [
-  "The editor for your store and your products",
   "Uploading the file you sell",
   "Connecting your own Stripe account",
   "The list of your orders",
@@ -48,34 +49,37 @@ export default async function StudioPage() {
         </p>
 
         {store ? (
-          <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-            <p className="font-display text-xl font-black text-ink">
-              {store.name}
-            </p>
-            {store.bio ? (
-              <p className="mt-2 text-ink-soft">{store.bio}</p>
-            ) : null}
-            <p className="mt-5 text-sm font-bold text-ink">Your address</p>
-            <p className="mt-1 break-all font-mono text-lg text-violet-deep">
-              nimbuslabsai.com/@{store.handle}
-            </p>
-            <div className="mt-5 flex flex-wrap items-center gap-4">
-              <Link
-                href={`/@${store.handle}`}
-                className="inline-block rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
-              >
-                Open my store
-              </Link>
-              <RenameForm current={store.handle} />
+          <>
+            <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+              <p className="font-display text-xl font-black text-ink">
+                {store.name}
+              </p>
+              {store.bio ? (
+                <p className="mt-2 text-ink-soft">{store.bio}</p>
+              ) : null}
+              <div className="mt-3">
+                <DetailsForm name={store.name} bio={store.bio} />
+              </div>
+
+              <p className="mt-5 text-sm font-bold text-ink">Your address</p>
+              <p className="mt-1 break-all font-mono text-lg text-violet-deep">
+                nimbuslabsai.com/@{store.handle}
+              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-4">
+                <Link
+                  href={`/@${store.handle}`}
+                  className="inline-block rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                >
+                  Open my store
+                </Link>
+                <RenameForm current={store.handle} />
+              </div>
+
+              <OldAddresses handles={store.previousHandles} />
             </div>
 
-            <OldAddresses handles={store.previousHandles} />
-
-            <p className="mt-5 text-sm text-ink-soft">
-              The page is live and it is empty, because there is nothing to sell
-              on it yet. The editor is the next piece being built.
-            </p>
-          </div>
+            <ProductEditor products={store.products} />
+          </>
         ) : (
           <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
             <p className="font-display text-xl font-black text-ink">

@@ -1,0 +1,431 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  MAX_PRODUCTS,
+  MAX_SUMMARY_LENGTH,
+  MAX_TITLE_LENGTH,
+  centsToPrice,
+  type Product,
+} from "@/lib/store";
+
+const MESSAGES: Record<string, string> = {
+  title: "Give it a name before saving.",
+  price: "Type an amount between 1 and 5000, like 27 or 27.50.",
+  unknown: "That is no longer on your store.",
+  none: "This account has no store yet.",
+  signed_out: "Your session ended. Sign in again.",
+  unavailable: "Stores are not switched on yet, so nothing was saved.",
+  server_error: "Something went wrong on our side. Try again in a moment.",
+};
+
+type Draft = { title: string; summary: string; price: string };
+
+const EMPTY: Draft = { title: "", summary: "", price: "" };
+
+async function send(payload: Record<string, unknown>): Promise<string | null> {
+  try {
+    const response = await fetch("/api/store/product", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = (await response.json()) as {
+      ok?: boolean;
+      error?: string;
+      limit?: number;
+    };
+    if (data.ok) return null;
+    if (data.error === "too_many") {
+      return `A store lists up to ${data.limit ?? MAX_PRODUCTS} things, and yours is full. Remove one to add another.`;
+    }
+    return MESSAGES[data.error ?? ""] ?? MESSAGES.server_error;
+  } catch {
+    return MESSAGES.server_error;
+  }
+}
+
+/** The form used both for adding something and for changing it. */
+function ProductForm({
+  draft,
+  setDraft,
+  busy,
+  error,
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: {
+  draft: Draft;
+  setDraft: (draft: Draft) => void;
+  busy: boolean;
+  error: string | null;
+  submitLabel: string;
+  onSubmit: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <form
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!busy) onSubmit();
+      }}
+      className="space-y-4 rounded-2xl border-2 border-violet-brand/30 bg-white p-4"
+    >
+      <div>
+        <label
+          htmlFor="product-title"
+          className="block text-sm font-bold text-ink"
+        >
+          What are you selling
+        </label>
+        <input
+          id="product-title"
+          name="title"
+          type="text"
+          required
+          maxLength={MAX_TITLE_LENGTH}
+          value={draft.title}
+          onChange={(event) =>
+            setDraft({ ...draft, title: event.target.value })
+          }
+          placeholder="The Weeknight Recipe Pack"
+          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand placeholder:text-ink-soft/50"
+        />
+      </div>
+
+      <div>
+        <label
+          htmlFor="product-summary"
+          className="block text-sm font-bold text-ink"
+        >
+          What the buyer gets
+        </label>
+        <textarea
+          id="product-summary"
+          name="summary"
+          rows={3}
+          maxLength={MAX_SUMMARY_LENGTH}
+          value={draft.summary}
+          onChange={(event) =>
+            setDraft({ ...draft, summary: event.target.value })
+          }
+          placeholder="Forty recipes, each one on a single page, as a PDF."
+          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand placeholder:text-ink-soft/50"
+        />
+        <p className="mt-1 text-sm text-ink-soft">
+          {MAX_SUMMARY_LENGTH - draft.summary.length} characters left.
+        </p>
+      </div>
+
+      <div>
+        <label
+          htmlFor="product-price"
+          className="block text-sm font-bold text-ink"
+        >
+          Price
+        </label>
+        <div className="mt-2 flex items-center rounded-2xl border-2 border-ink/10 bg-white pl-4 transition focus-within:border-violet-brand">
+          <span className="text-ink-soft">USD $</span>
+          <input
+            id="product-price"
+            name="price"
+            type="text"
+            inputMode="decimal"
+            required
+            value={draft.price}
+            onChange={(event) =>
+              setDraft({ ...draft, price: event.target.value })
+            }
+            placeholder="27"
+            className="w-full rounded-r-2xl bg-transparent px-2 py-3 text-ink outline-none placeholder:text-ink-soft/50"
+          />
+        </div>
+        <p className="mt-1 text-sm text-ink-soft">
+          Every store here charges in US dollars. No other currency is handled
+          yet.
+        </p>
+      </div>
+
+      {error ? (
+        <p
+          className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+        >
+          {busy ? "Saving…" : submitLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-full px-5 py-3 text-sm font-bold text-ink-soft transition hover:text-violet-deep"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/** The list of what the store offers, and every way to change it. */
+export function ProductEditor({ products }: { products: Product[] }) {
+  const router = useRouter();
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const full = products.length >= MAX_PRODUCTS;
+
+  async function run(payload: Record<string, unknown>, done: () => void) {
+    setBusy(true);
+    setError(null);
+    const problem = await send(payload);
+    setBusy(false);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    done();
+    router.refresh();
+  }
+
+  function startAdding() {
+    setDraft(EMPTY);
+    setError(null);
+    setEditingId(null);
+    setAdding(true);
+  }
+
+  function startEditing(product: Product) {
+    setDraft({
+      title: product.title,
+      summary: product.summary,
+      price: centsToPrice(product.priceCents),
+    });
+    setError(null);
+    setAdding(false);
+    setEditingId(product.id);
+  }
+
+  return (
+    <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <p className="font-display text-xl font-black text-ink">
+          What you are selling
+        </p>
+        <p className="text-sm text-ink-soft">
+          {products.length} of {MAX_PRODUCTS}
+        </p>
+      </div>
+
+      {products.length === 0 ? (
+        <p className="mt-2 text-ink-soft">
+          Your page is live and it is empty. Add the first thing and it shows up
+          on it straight away.
+        </p>
+      ) : null}
+
+      <ul className="mt-5 space-y-3">
+        {products.map((product, index) => (
+          <li
+            key={product.id}
+            className="rounded-2xl border-2 border-ink/5 bg-cream p-4"
+          >
+            {editingId === product.id ? (
+              <ProductForm
+                draft={draft}
+                setDraft={setDraft}
+                busy={busy}
+                error={error}
+                submitLabel="Save"
+                onSubmit={() =>
+                  run(
+                    {
+                      action: "edit",
+                      id: product.id,
+                      title: draft.title,
+                      summary: draft.summary,
+                      price: draft.price,
+                    },
+                    () => setEditingId(null),
+                  )
+                }
+                onCancel={() => {
+                  setEditingId(null);
+                  setError(null);
+                }}
+              />
+            ) : (
+              <>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="font-bold text-ink">{product.title}</p>
+                  <p className="font-mono font-bold text-violet-deep">
+                    {`$${centsToPrice(product.priceCents)}`}
+                  </p>
+                </div>
+                {product.summary ? (
+                  <p className="mt-1 text-sm text-ink-soft">
+                    {product.summary}
+                  </p>
+                ) : null}
+
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
+                  <button
+                    type="button"
+                    onClick={() => startEditing(product)}
+                    className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || index === 0}
+                    onClick={() =>
+                      run(
+                        { action: "move", id: product.id, direction: "up" },
+                        () => {},
+                      )
+                    }
+                    className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40"
+                  >
+                    Move up
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || index === products.length - 1}
+                    onClick={() =>
+                      run(
+                        { action: "move", id: product.id, direction: "down" },
+                        () => {},
+                      )
+                    }
+                    className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40"
+                  >
+                    Move down
+                  </button>
+                  {removingId === product.id ? null : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRemovingId(product.id);
+                        setError(null);
+                      }}
+                      className="text-ink-soft underline underline-offset-4 transition hover:text-pink-brand"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                {removingId === product.id ? (
+                  <div className="mt-3 rounded-2xl border-2 border-pink-brand/30 bg-white p-4">
+                    <p className="text-sm text-ink-soft">
+                      Remove{" "}
+                      <strong className="text-ink">{product.title}</strong> from
+                      your page. Nothing else changes, and you can add it again
+                      later.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          run({ action: "remove", id: product.id }, () =>
+                            setRemovingId(null),
+                          )
+                        }
+                        className="rounded-full bg-pink-brand px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+                      >
+                        {busy ? "Removing…" : "Yes, remove it"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRemovingId(null)}
+                        className="rounded-full px-4 py-2.5 text-sm font-bold text-ink-soft transition hover:text-violet-deep"
+                      >
+                        Keep it
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {adding ? (
+        <div className="mt-5">
+          <ProductForm
+            draft={draft}
+            setDraft={setDraft}
+            busy={busy}
+            error={error}
+            submitLabel="Add it"
+            onSubmit={() =>
+              run(
+                {
+                  action: "add",
+                  title: draft.title,
+                  summary: draft.summary,
+                  price: draft.price,
+                },
+                () => {
+                  setAdding(false);
+                  setDraft(EMPTY);
+                },
+              )
+            }
+            onCancel={() => {
+              setAdding(false);
+              setError(null);
+            }}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={full}
+          onClick={startAdding}
+          className="mt-5 rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50"
+        >
+          Add something to sell
+        </button>
+      )}
+
+      {full && !adding ? (
+        <p className="mt-3 text-sm text-ink-soft">
+          Your store is holding the most it can. Remove one to add another.
+        </p>
+      ) : null}
+
+      {error && !adding && editingId === null && removingId === null ? (
+        <p
+          className="mt-3 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      <p className="mt-5 rounded-2xl bg-cream px-4 py-3 text-sm text-ink-soft">
+        <strong className="text-ink">Nobody can pay you yet.</strong> What you
+        write here is on your page the moment you save it, with the price, and
+        the page says plainly that it cannot take a payment.
+      </p>
+    </div>
+  );
+}

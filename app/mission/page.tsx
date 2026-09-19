@@ -52,18 +52,20 @@ const VALUES = [
 const BUILT = [
   "A store page with your links, your products and your own look",
   "Price options on one product — one week, five weeks, the season",
-  "A real Stripe checkout that charges your own account",
+  "A Stripe checkout that charges the creator account directly, with nothing taken on top — running in test mode on the demo store",
   "The file delivered the second the payment clears, with a link that expires",
   "A buyer who loses that link gets it sent again — no account, no password",
   "A creator account you sign in to with an emailed link, and no password at all",
   "Your own store address, live the moment you take it",
   "A change of address that never breaks the link already in your bio",
+  "An editor for your own store: the name, the description, and what you sell with its price",
   "A store that installs to the home screen on iPhone and Android",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
 
 const NOT_BUILT = [
-  "The editor that puts your own products on your store — it is empty until then",
+  "Uploading the file you sell — what you write on your store today has a price and no file behind it",
+  "Connecting your own Stripe account, so your store can take a payment at all",
   "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
   "Memberships that charge every month",

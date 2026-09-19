@@ -30,8 +30,16 @@ const SECTIONS: Section[] = [
       {
         q: "What is Nimbus today?",
         a: [
-          "A store page for selling digital files, with price options on a product and delivery the second the payment clears. There is a live demo store you can buy from with a test card, and an early access list. The full platform is not open to new stores yet.",
+          "You can sign up today, take your own store address and build the page: its name, its description, and what you sell with its price. What you cannot do yet is be paid — no store here can charge a card, and every store page says so plainly to anyone who opens it.",
+          "What proves the selling itself works is the demo store: price options on a product, a Stripe checkout made on the creator account, and the file delivered the second the payment clears. You can buy from it with a test card.",
           "The mission page lists everything that is built and everything that is not, in two columns, so nobody signs up expecting the wrong thing.",
+        ],
+      },
+      {
+        q: "Can I put my own products on my store?",
+        a: [
+          "Yes. On your account page you write the name of the store, the line under it, and each thing you sell with what the buyer gets and the price. It is on your page the moment you save it, and you can reorder or remove any of it.",
+          "A store holds up to twenty things, each with one price in US dollars. Uploading the file itself is not built yet, and neither is taking the payment, so what is on your page today is the offer, not the sale.",
         ],
       },
       {
