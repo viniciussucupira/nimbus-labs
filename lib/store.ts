@@ -86,6 +86,31 @@ export const RELEASE_QUARANTINE_DAYS = 30;
 /** Marks a name that was let go and is not owned by anyone yet. */
 const RELEASED_PREFIX = "released:";
 
+/** How many things one store may list. */
+export const MAX_PRODUCTS = 20;
+export const MAX_TITLE_LENGTH = 80;
+export const MAX_SUMMARY_LENGTH = 300;
+
+/**
+ * The price, in cents, and the two ends of what may be typed.
+ *
+ * Prices are held as whole cents so no amount is ever a rounded float, and
+ * every store here charges in US dollars. A store that needs another currency
+ * cannot be served honestly yet, and the studio says so rather than pretending
+ * the field is neutral.
+ */
+export const MIN_PRICE_CENTS = 100;
+export const MAX_PRICE_CENTS = 500_000;
+
+/** One thing a store offers. */
+export type Product = {
+  id: string;
+  title: string;
+  summary: string;
+  priceCents: number;
+  createdAt: string;
+};
+
 export type Store = {
   handle: string;
   name: string;
@@ -95,6 +120,8 @@ export type Store = {
   /** Addresses this store used before. They lead here until it lets them go. */
   previousHandles: string[];
   renamedAt: string;
+  /** What the store lists, in the order the creator put them in. */
+  products: Product[];
 };
 
 export function normaliseHandle(raw: string): string {
@@ -122,6 +149,31 @@ const ownerKey = async (email: string) =>
 
 const handleKey = (handle: string) => `nl:store:handle:${handle}`;
 
+function parseProducts(raw: unknown): Product[] {
+  if (!Array.isArray(raw)) return [];
+  const products: Product[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const value = entry as Partial<Product>;
+    if (typeof value.id !== "string" || !value.id) continue;
+    if (typeof value.title !== "string" || !value.title) continue;
+    if (typeof value.priceCents !== "number") continue;
+    if (!Number.isInteger(value.priceCents) || value.priceCents < 0) continue;
+    products.push({
+      id: value.id,
+      title: value.title.slice(0, MAX_TITLE_LENGTH),
+      summary:
+        typeof value.summary === "string"
+          ? value.summary.slice(0, MAX_SUMMARY_LENGTH)
+          : "",
+      priceCents: value.priceCents,
+      createdAt: typeof value.createdAt === "string" ? value.createdAt : "",
+    });
+    if (products.length >= MAX_PRODUCTS) break;
+  }
+  return products;
+}
+
 function parseStore(raw: unknown): Store | null {
   if (typeof raw !== "string" || !raw) return null;
   try {
@@ -137,10 +189,38 @@ function parseStore(raw: unknown): Store | null {
         ? value.previousHandles.filter((h) => typeof h === "string")
         : [],
       renamedAt: value.renamedAt ?? "",
+      products: parseProducts(value.products),
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * Reads a typed price into whole cents.
+ *
+ * Only a plain amount is accepted — 27, 27.5, 27.50 — with no currency sign,
+ * no thousands separator and no more than two decimals, because every one of
+ * those is a way for what the creator meant and what the page charges to drift
+ * apart. Returns null when the text is not one unambiguous amount.
+ */
+export function priceToCents(raw: string): number | null {
+  const text = raw.trim();
+  if (!/^\d{1,7}(\.\d{1,2})?$/.test(text)) return null;
+  const [whole, fraction = ""] = text.split(".");
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  return Number.isSafeInteger(cents) ? cents : null;
+}
+
+/**
+ * The price as a person reads it: 2700 becomes "27" and 2750 becomes "27.50".
+ *
+ * The round amount loses its two zeros because that is how a price is written
+ * on a page, and feeding this back into priceToCents gives the same cents, so
+ * the editor can show it in the field the creator typed it into.
+ */
+export function centsToPrice(cents: number): string {
+  return (cents / 100).toFixed(2).replace(/\.00$/, "");
 }
 
 /** The store belonging to a signed-in creator, or null if they have none. */
@@ -200,6 +280,7 @@ export async function claimHandle(
     createdAt: new Date().toISOString(),
     previousHandles: [],
     renamedAt: "",
+    products: [],
   };
 
   try {
@@ -321,5 +402,188 @@ export async function releaseHandle(
   };
   await redisPipeline([["SET", await ownerKey(email), JSON.stringify(next)]]);
 
+  return { ok: true, store: next };
+}
+
+/**
+ * Writes a store back under its owner.
+ *
+ * Everything below reads the store, changes one thing and writes the whole
+ * record back. Two edits fired at the very same instant from two open tabs
+ * would leave only the second one, which is the honest cost of keeping the
+ * store in a single small record. One person editing their own store does not
+ * meet that case; if stores ever gain collaborators, this is the line that has
+ * to change first.
+ */
+async function saveStore(store: Store): Promise<void> {
+  await redisPipeline([
+    ["SET", await ownerKey(store.email), JSON.stringify(store)],
+  ]);
+}
+
+export type DetailsResult =
+  | { ok: true; store: Store }
+  | { ok: false; reason: "none" | "name" };
+
+/**
+ * Changes the name and the description the public page shows.
+ *
+ * The address is deliberately not touched here: it is the part other people
+ * have written down, so it has a door of its own with its own warnings.
+ */
+export async function updateDetails(
+  email: string,
+  rawName: string,
+  rawBio: string,
+): Promise<DetailsResult> {
+  const name = rawName.trim().slice(0, MAX_NAME_LENGTH);
+  if (!name) return { ok: false, reason: "name" };
+
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+
+  const next: Store = {
+    ...store,
+    name,
+    bio: rawBio.trim().slice(0, MAX_BIO_LENGTH),
+  };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+export type ProductResult =
+  | { ok: true; store: Store }
+  | {
+      ok: false;
+      reason: "none" | "title" | "price" | "too_many" | "unknown";
+      limit?: number;
+    };
+
+/** An id no other product in this store is using. */
+function freshId(store: Store): string {
+  const taken = new Set(store.products.map((product) => product.id));
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const id = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+    if (!taken.has(id)) return id;
+  }
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/** Checks a title and a typed price, and returns the price in cents. */
+function readFields(
+  rawTitle: string,
+  rawPrice: string,
+): { title: string; priceCents: number } | "title" | "price" {
+  const title = rawTitle.trim().slice(0, MAX_TITLE_LENGTH);
+  if (!title) return "title";
+  const priceCents = priceToCents(rawPrice);
+  if (priceCents === null) return "price";
+  if (priceCents < MIN_PRICE_CENTS || priceCents > MAX_PRICE_CENTS) {
+    return "price";
+  }
+  return { title, priceCents };
+}
+
+/** Adds something to the store, at the end of the list. */
+export async function addProduct(
+  email: string,
+  rawTitle: string,
+  rawSummary: string,
+  rawPrice: string,
+): Promise<ProductResult> {
+  const fields = readFields(rawTitle, rawPrice);
+  if (typeof fields === "string") return { ok: false, reason: fields };
+
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  if (store.products.length >= MAX_PRODUCTS) {
+    return { ok: false, reason: "too_many", limit: MAX_PRODUCTS };
+  }
+
+  const product: Product = {
+    id: freshId(store),
+    title: fields.title,
+    summary: rawSummary.trim().slice(0, MAX_SUMMARY_LENGTH),
+    priceCents: fields.priceCents,
+    createdAt: new Date().toISOString(),
+  };
+
+  const next: Store = { ...store, products: [...store.products, product] };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+/** Changes something already on the store, keeping its place in the list. */
+export async function editProduct(
+  email: string,
+  id: string,
+  rawTitle: string,
+  rawSummary: string,
+  rawPrice: string,
+): Promise<ProductResult> {
+  const fields = readFields(rawTitle, rawPrice);
+  if (typeof fields === "string") return { ok: false, reason: fields };
+
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.products.findIndex((product) => product.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+
+  const products = [...store.products];
+  products[at] = {
+    ...products[at],
+    title: fields.title,
+    summary: rawSummary.trim().slice(0, MAX_SUMMARY_LENGTH),
+    priceCents: fields.priceCents,
+  };
+
+  const next: Store = { ...store, products };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+/** Takes something off the store. */
+export async function removeProduct(
+  email: string,
+  id: string,
+): Promise<ProductResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  if (!store.products.some((product) => product.id === id)) {
+    return { ok: false, reason: "unknown" };
+  }
+
+  const next: Store = {
+    ...store,
+    products: store.products.filter((product) => product.id !== id),
+  };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+/**
+ * Moves something one place up or down.
+ *
+ * The order is the creator's, not ours: the first thing on the page is the
+ * thing they want read first, so nothing here sorts by price or by date.
+ */
+export async function moveProduct(
+  email: string,
+  id: string,
+  direction: "up" | "down",
+): Promise<ProductResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.products.findIndex((product) => product.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+
+  const to = direction === "up" ? at - 1 : at + 1;
+  if (to < 0 || to >= store.products.length) return { ok: true, store };
+
+  const products = [...store.products];
+  [products[at], products[to]] = [products[to], products[at]];
+
+  const next: Store = { ...store, products };
+  await saveStore(next);
   return { ok: true, store: next };
 }
