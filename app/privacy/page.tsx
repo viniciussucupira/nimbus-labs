@@ -12,28 +12,11 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" lastUpdated="September 18, 2026">
       <p>
-        Merchant of Record: Retone is sold through Paddle, which acts as our
-        Merchant of Record for that product. Paddle is the legal seller of
-        Retone and is responsible for processing your payment and handling
-        refunds for it, and those transactions are governed by Paddle&apos;s
-        terms as well as our own. Paddle is not involved in a Nimbus creator
-        store: those payments run through the creator&apos;s own Stripe
-        account.
-      </p>
-      <p>
         Nimbus Labs (“Nimbus Labs,” “we,” “us,” or “our”) is an independent
         software studio. This Privacy Policy explains how we collect, use,
         share, and protect personal information when you use our websites and
-        products — the Nimbus creator store at nimbuslabsai.com and Retone (
-        <a
-          href="https://retoneai.net"
-          className="text-black underline underline-offset-2 hover:no-underline"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          retoneai.net
-        </a>
-        ) (the “Services”).
+        products — the Nimbus creator store at nimbuslabsai.com (the
+        “Services”).
       </p>
       <p>
         If you have questions about this policy or about your personal data,
@@ -63,14 +46,6 @@ export default function PrivacyPage() {
           payment method details as needed to complete the transaction. We may
           receive limited payment metadata, such as the last four digits of a
           card, payment status, and subscription period.
-        </p>
-        <p>
-          <strong className="text-black">Text submitted for rewriting.</strong>{" "}
-          If you use Retone, you may submit text to be rewritten. That text is
-          sent to third-party AI application programming interfaces (APIs)
-          solely to generate a rewritten result and return it to you. We do not
-          store the text you submit for rewriting, and we do not use it to
-          train our own models.
         </p>
         <p>
           <strong className="text-black">What a creator puts in a store.</strong>{" "}
@@ -253,9 +228,8 @@ export default function PrivacyPage() {
       <LegalSection title="6. Data retention">
         <p>
           Account and billing records are kept for as long as your account is
-          active and as needed for tax, accounting, and legal purposes. Text
-          submitted to Retone for rewriting is processed in transit via API and
-          is not stored by Nimbus Labs. Support emails are retained as long as
+          active and as needed for tax, accounting, and legal purposes. Support
+          emails are retained as long as
           needed to resolve your request and maintain a reasonable business
           record.
         </p>
