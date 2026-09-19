@@ -388,6 +388,52 @@ export async function renameHandle(
   return { ok: true, store: next };
 }
 
+export type MoveResult =
+  | { ok: true; store: Store }
+  | { ok: false; reason: "none" | "same" | "taken" };
+
+/**
+ * Moves a store from one sign-in address to another.
+ *
+ * The address is the key to everything here, which is kind right up until the
+ * day a creator loses that inbox. This is the door out, and it only opens from
+ * the inside: they move the store while they can still sign in.
+ *
+ * The new record is written before the old one is deleted, so an interrupted
+ * move leaves the store findable rather than gone.
+ *
+ * Files already attached keep working. Their paths were written down when they
+ * were uploaded and are read back as written, so they stay reachable in the
+ * folder of the old address; only new uploads land in the new one.
+ */
+export async function moveAccount(
+  fromEmail: string,
+  toEmail: string,
+): Promise<MoveResult> {
+  const from = fromEmail.toLowerCase();
+  const to = toEmail.toLowerCase();
+  if (from === to) return { ok: false, reason: "same" };
+  if (!isRedisConfigured()) return { ok: false, reason: "none" };
+
+  const store = await storeForEmail(from);
+  if (!store) return { ok: false, reason: "none" };
+
+  // The address it is moving to must not already own a store of its own.
+  const [existing] = await redisPipeline([["GET", await ownerKey(to)]]);
+  if (typeof existing === "string" && existing) {
+    return { ok: false, reason: "taken" };
+  }
+
+  const next: Store = { ...store, email: to };
+  const handles = [store.handle, ...store.previousHandles];
+  await redisPipeline([
+    ["SET", await ownerKey(to), JSON.stringify(next)],
+    ...handles.map((handle) => ["SET", handleKey(handle), to]),
+    ["DEL", await ownerKey(from)],
+  ]);
+  return { ok: true, store: next };
+}
+
 export type ReleaseResult =
   | { ok: true; store: Store }
   | { ok: false; reason: "none" | "current" | "unknown" };

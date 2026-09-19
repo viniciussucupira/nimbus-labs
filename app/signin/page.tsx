@@ -18,6 +18,22 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     title: "You are signed out",
     body: "Your session is closed on this device.",
   },
+  "move-none": {
+    title: "That move no longer makes sense",
+    body: "The store it was carrying is not there any more. Nothing was changed.",
+  },
+  "move-same": {
+    title: "That is already the address in charge",
+    body: "Nothing was changed.",
+  },
+  "move-taken": {
+    title: "That address already has a store",
+    body: "An account cannot be moved on top of another one. Nothing was changed.",
+  },
+  "move-error": {
+    title: "The move did not finish",
+    body: "Nothing was changed. Sign in and try again.",
+  },
   "out-everywhere": {
     title: "You are signed out everywhere",
     body: "Every session you had open is closed, on every device. A fresh link signs you back in.",
