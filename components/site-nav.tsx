@@ -331,6 +331,12 @@ export function SiteNav() {
               Live demo
             </Link>
             <Link
+              href="/signin"
+              className="hidden rounded-full px-3 py-2 text-sm font-semibold text-ink-soft transition hover:text-violet-deep lg:inline-block focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+            >
+              Sign in
+            </Link>
+            <Link
               href="/creators"
               className="rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-4 py-2.5 text-[13px] font-bold text-white shadow-lg shadow-violet-brand/30 transition hover:shadow-xl hover:shadow-pink-brand/30 sm:px-5 sm:text-sm focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
             >
@@ -483,6 +489,15 @@ export function SiteNav() {
               </Link>
             </li>
           ))}
+          <li>
+            <Link
+              href="/signin"
+              onClick={closeAll}
+              className="block rounded-3xl border-2 border-ink/10 px-5 py-4 font-display text-lg font-extrabold text-ink"
+            >
+              Sign in
+            </Link>
+          </li>
           <li>
             <Link
               href="/creators"

@@ -3,21 +3,18 @@ import { originFrom } from "@/lib/request-origin";
 import {
   EMAIL_PATTERN,
   MAX_EMAIL_LENGTH,
-  findOrder,
-  isRecoveryConfigured,
-  sendRecoveryEmail,
+  isAuthConfigured,
+  sendSignInLink,
   withinRateLimit,
-} from "@/lib/demo-recover";
-import { getDemoOrder } from "@/lib/demo-store";
+} from "@/lib/auth";
 
 const MAX_BODY_BYTES = 2_000;
 
 /**
- * Sends a buyer their download link again.
+ * Asks for a sign-in link.
  *
- * The answer is deliberately the same whether or not that address ever bought
- * anything: a stranger must not be able to use this form to find out who
- * bought from the store. Only the inbox learns the truth.
+ * The answer never says whether that address has an account, because that
+ * would turn this form into a way of finding out who is a Nimbus creator.
  */
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
@@ -47,22 +44,17 @@ export async function POST(request: NextRequest) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
   }
 
-  // Honeypot: a real buyer never sees this field.
+  // Honeypot: a real creator never sees this field.
   if (typeof body.website === "string" && body.website.trim() !== "") {
     return Response.json({ ok: true }, { status: 200 });
   }
 
   const email = typeof body.email === "string" ? body.email.trim() : "";
-  if (
-    !email ||
-    email.length > MAX_EMAIL_LENGTH ||
-    !EMAIL_PATTERN.test(email)
-  ) {
+  if (!email || email.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(email)) {
     return Response.json({ ok: false, error: "invalid_email" }, { status: 400 });
   }
 
-  // Say so plainly rather than pretending an email is on its way.
-  if (!isRecoveryConfigured()) {
+  if (!isAuthConfigured()) {
     return Response.json({ ok: false, error: "unavailable" }, { status: 503 });
   }
 
@@ -73,25 +65,11 @@ export async function POST(request: NextRequest) {
 
   try {
     if (!(await withinRateLimit(ip))) {
-      return Response.json(
-        { ok: false, error: "rate_limited" },
-        { status: 429 },
-      );
+      return Response.json({ ok: false, error: "rate_limited" }, { status: 429 });
     }
-
-    const sessionId = await findOrder(email);
-    if (sessionId) {
-      // Ask Stripe again rather than trusting our own index: a refunded or
-      // expired order must not be handed back.
-      const order = await getDemoOrder(sessionId);
-      if (order.state === "paid") {
-        const base = originFrom(request);
-        const link = `${base}/api/demo/download?session_id=${encodeURIComponent(sessionId)}`;
-        await sendRecoveryEmail(email, link);
-      }
-    }
+    await sendSignInLink(email, originFrom(request));
   } catch (error) {
-    console.error("demo recovery failed", error);
+    console.error("sign-in request failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });
   }
 

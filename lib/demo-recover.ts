@@ -19,6 +19,7 @@
  * endpoint answers honestly that sending is off, rather than pretending an
  * email is on its way.
  */
+import { STORE_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,23 +27,6 @@ export const MAX_EMAIL_LENGTH = 254;
 
 const RATE_LIMIT = 5;
 const RATE_WINDOW_SECONDS = 60 * 60;
-
-// Local tests may point this at a mock server on 127.0.0.1; nothing else is
-// accepted, so a test can never reach the real sender.
-const RESEND_API = /^http:\/\/127\.0\.0\.1:\d+$/.test(
-  process.env.RESEND_API_BASE ?? "",
-)
-  ? `${process.env.RESEND_API_BASE}/emails`
-  : "https://api.resend.com/emails";
-
-function getSenderKey(): string | null {
-  const key = process.env.RESEND_API_KEY?.trim();
-  return key ? key : null;
-}
-
-export function isSenderConfigured(): boolean {
-  return getSenderKey() !== null;
-}
 
 export function isRecoveryConfigured(): boolean {
   return isRedisConfigured() && isSenderConfigured();
@@ -109,48 +93,21 @@ export async function withinRateLimit(ip: string): Promise<boolean> {
   return Number(count) <= RATE_LIMIT;
 }
 
-const FROM =
-  process.env.RECOVERY_FROM_EMAIL?.trim() ||
-  "Harbor Kitchen <onboarding@resend.dev>";
-
 export async function sendRecoveryEmail(
   to: string,
   link: string,
 ): Promise<boolean> {
-  const key = getSenderKey();
-  if (!key) return false;
-
-  const text = [
-    "Here is your download again.",
-    "",
-    link,
-    "",
-    "The link works while the download window is open and is tied to your order.",
-    "You are getting this because someone asked for the file to be sent to this address on the Harbor Kitchen demo store. If that was not you, ignore this email — nothing else happens.",
-  ].join("\n");
-
-  try {
-    const response = await fetch(RESEND_API, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: FROM,
-        to: [to],
-        subject: "Your download, again",
-        text,
-      }),
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      console.error("recovery email rejected", response.status);
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error("recovery email failed", error);
-    return false;
-  }
+  return sendEmail({
+    from: STORE_FROM,
+    to,
+    subject: "Your download, again",
+    text: [
+      "Here is your download again.",
+      "",
+      link,
+      "",
+      "The link works while the download window is open and is tied to your order.",
+      "You are getting this because someone asked for the file to be sent to this address on the Harbor Kitchen demo store. If that was not you, ignore this email — nothing else happens.",
+    ].join("\n"),
+  });
 }
