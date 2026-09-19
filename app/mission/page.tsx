@@ -3,6 +3,7 @@ import Link from "next/link";
 import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
+import { isConnectConfigured } from "@/lib/stripe-connect";
 
 export const metadata: Metadata = {
   title: "Our mission — Nimbus Labs",
@@ -64,8 +65,18 @@ const BUILT = [
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
 
+/**
+ * One line that moves between the two lists depending on this deployment.
+ *
+ * The code is written either way; what changes is whether this site can
+ * actually reach Stripe. The page says which of those is true here rather
+ * than claiming a button that would do nothing.
+ */
+const STRIPE_LINE =
+  "Connecting your own Stripe account from the studio, so charges are made on it and not on ours";
+
 const NOT_BUILT = [
-  "Connecting your own Stripe account, so your store can take a payment at all",
+  "The checkout itself, which charges your buyer on your connected account",
   "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
   "Memberships that charge every month",
@@ -76,6 +87,12 @@ const NOT_BUILT = [
 ];
 
 export default function MissionPage() {
+  // Whether this deployment can actually reach Stripe decides which list the
+  // line belongs in. A feature nobody here can press is not a built feature.
+  const built = isConnectConfigured() ? [...BUILT, STRIPE_LINE] : BUILT;
+  const notBuilt = isConnectConfigured()
+    ? NOT_BUILT
+    : [STRIPE_LINE, ...NOT_BUILT];
   return (
     <div className="flex min-h-screen flex-col bg-white text-ink">
       <RevealOnScroll />
@@ -199,7 +216,7 @@ export default function MissionPage() {
                 Built and working
               </p>
               <ul className="mt-6 space-y-3">
-                {BUILT.map((item) => (
+                {built.map((item) => (
                   <li key={item} className="flex gap-3 text-ink-soft">
                     <span
                       aria-hidden="true"
@@ -224,7 +241,7 @@ export default function MissionPage() {
                 Not built yet
               </p>
               <ul className="mt-6 space-y-3">
-                {NOT_BUILT.map((item) => (
+                {notBuilt.map((item) => (
                   <li key={item} className="flex gap-3 text-ink-soft">
                     <span aria-hidden="true" className="font-black text-ink/30">
                       —

@@ -123,9 +123,27 @@ export type Store = {
   /** Addresses this store used before. They lead here until it lets them go. */
   previousHandles: string[];
   renamedAt: string;
+  /**
+   * The creator's own Stripe account, once they have connected it.
+   *
+   * We keep the identifier and nothing else. The account belongs to them, the
+   * money lands in it, and disconnecting is theirs to do at any time.
+   */
+  stripeAccountId: string | null;
+  /**
+   * Whether Stripe last told us that account can take a payment, and when we
+   * asked. Kept as a snapshot so the studio does not have to call Stripe on
+   * every page load, and shown with its date so it is never read as a promise
+   * about this exact moment.
+   */
+  stripeChargesEnabled: boolean;
+  stripeCheckedAt: string;
   /** What the store lists, in the order the creator put them in. */
   products: Product[];
 };
+
+/** The shape Stripe gives a connected account: acct_ and then base62. */
+export const STRIPE_ACCOUNT_PATTERN = /^acct_[A-Za-z0-9]{8,64}$/;
 
 export function normaliseHandle(raw: string): string {
   return raw.trim().replace(/^@+/, "").toLowerCase();
@@ -222,6 +240,13 @@ function parseStore(raw: unknown): Store | null {
         ? value.previousHandles.filter((h) => typeof h === "string")
         : [],
       renamedAt: value.renamedAt ?? "",
+      stripeAccountId:
+        typeof value.stripeAccountId === "string" &&
+        STRIPE_ACCOUNT_PATTERN.test(value.stripeAccountId)
+          ? value.stripeAccountId
+          : null,
+      stripeChargesEnabled: value.stripeChargesEnabled === true,
+      stripeCheckedAt: value.stripeCheckedAt ?? "",
       products: parseProducts(value.products),
     };
   } catch {
@@ -313,6 +338,9 @@ export async function claimHandle(
     createdAt: new Date().toISOString(),
     previousHandles: [],
     renamedAt: "",
+    stripeAccountId: null,
+    stripeChargesEnabled: false,
+    stripeCheckedAt: "",
     products: [],
   };
 
@@ -386,6 +414,53 @@ export async function renameHandle(
 
   await redisPipeline([["SET", await ownerKey(email), JSON.stringify(next)]]);
   return { ok: true, store: next };
+}
+
+export type StripeAccountResult =
+  | { ok: true; store: Store }
+  | { ok: false; reason: "none" | "shape" };
+
+/**
+ * Writes down which Stripe account a creator connected.
+ *
+ * Only the identifier is kept. Nimbus never holds a key to that account and
+ * never holds the money that lands in it.
+ */
+export async function setStripeAccount(
+  email: string,
+  accountId: string,
+  chargesEnabled = false,
+): Promise<StripeAccountResult> {
+  if (!STRIPE_ACCOUNT_PATTERN.test(accountId)) {
+    return { ok: false, reason: "shape" };
+  }
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const next: Store = {
+    ...store,
+    stripeAccountId: accountId,
+    stripeChargesEnabled: chargesEnabled,
+    stripeCheckedAt: new Date().toISOString(),
+  };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+/** Forgets the connection here. Returns the account that was let go. */
+export async function clearStripeAccount(
+  email: string,
+): Promise<{ store: Store; was: string | null } | null> {
+  const store = await storeForEmail(email);
+  if (!store) return null;
+  const was = store.stripeAccountId;
+  const next: Store = {
+    ...store,
+    stripeAccountId: null,
+    stripeChargesEnabled: false,
+    stripeCheckedAt: "",
+  };
+  await saveStore(next);
+  return { store: next, was };
 }
 
 export type MoveResult =
