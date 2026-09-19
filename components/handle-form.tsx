@@ -78,7 +78,7 @@ export function HandleForm() {
         <p className="mt-2 text-sm text-ink-soft">
           {preview
             ? `Your store will live at nimbuslabsai.com/@${preview}`
-            : "This is the address you give people. It cannot be changed later."}
+            : "This is the address you give people. You can change it later, and the old one keeps working."}
         </p>
       </div>
 
