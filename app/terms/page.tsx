@@ -136,8 +136,7 @@ export default function TermsPage() {
             measures; or
           </li>
           <li>
-            use the Services to generate content that is illegal or that you do
-            not have the right to process.
+            upload or sell anything you do not have the right to distribute.
           </li>
         </ul>
         <p>
@@ -203,31 +202,20 @@ export default function TermsPage() {
         </p>
         <p>
           You retain ownership of what you submit to the Services (“User
-          Content”) — the text you send to be rewritten, and the files, images,
-          and descriptions you upload to your store. You grant Nimbus Labs a
-          limited license to host, process, and deliver User Content solely to
-          provide the Services: to send text to an AI API and return the
-          result to you, and to store your store&apos;s files and hand them to
-          the buyer you sold them to.
+          Content”) — the files, images, text and descriptions you upload to
+          your store. You grant Nimbus Labs a limited license to host, store
+          and deliver User Content solely to provide the Services: to show your
+          store page to the people you send there, and to hand a file to the
+          buyer who paid you for it. We do not use your files or your store&apos;s
+          text to train anything, and we do not sell or licence them to anyone.
         </p>
         <p>
-          You may use output generated for you for your lawful purposes. You
-          are responsible for reviewing that output before you rely on it or
-          publish it.
+          That licence lasts as long as you keep the content on Nimbus. Remove a
+          product, or close your store, and it ends for the content you removed.
         </p>
       </LegalSection>
 
-      <LegalSection title="9. AI-generated output">
-        <p>
-          Some of the Services use third-party artificial intelligence models.
-          Output may be inaccurate, incomplete, or unsuitable for your purpose.
-          We do not guarantee that output is unique, error-free, or free of
-          third-party rights. You are solely responsible for how you use the
-          output.
-        </p>
-      </LegalSection>
-
-      <LegalSection title="10. Disclaimer of warranties">
+      <LegalSection title="9. Disclaimer of warranties">
         <p>
           THE SERVICES ARE PROVIDED “AS IS” AND “AS AVAILABLE.” TO THE MAXIMUM
           EXTENT PERMITTED BY LAW, WE DISCLAIM ALL WARRANTIES, EXPRESS OR
@@ -237,7 +225,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="11. Limitation of liability">
+      <LegalSection title="10. Limitation of liability">
         <p>
           TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, NIMBUS LABS AND
           ITS OWNERS, OFFICERS, AND CONTRACTORS WILL NOT BE LIABLE FOR ANY
@@ -261,7 +249,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="12. Indemnification">
+      <LegalSection title="11. Indemnification">
         <p>
           You agree to indemnify and hold Nimbus Labs harmless from claims
           arising out of your User Content, the products you sell through a
@@ -270,7 +258,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="13. Termination">
+      <LegalSection title="12. Termination">
         <p>
           We may suspend or terminate your access if you breach these Terms, if
           required by law, or if we discontinue the Services. Upon termination,
@@ -280,7 +268,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="14. Changes to these Terms">
+      <LegalSection title="13. Changes to these Terms">
         <p>
           We may update these Terms from time to time. The effective date at
           the top of this page will be revised when we do. Material changes
@@ -289,7 +277,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="15. Governing law">
+      <LegalSection title="14. Governing law">
         <p>
           These Terms are governed by the laws of the Federative Republic of
           Brazil, without regard to conflict-of-law rules. Courts located in
@@ -298,7 +286,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="16. Contact">
+      <LegalSection title="15. Contact">
         <p>
           Nimbus Labs
           <br />
