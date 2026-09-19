@@ -1,10 +1,12 @@
 import type { NextRequest } from "next/server";
+import { del } from "@vercel/blob";
 import {
   MAX_SUMMARY_LENGTH,
   MAX_TITLE_LENGTH,
   addProduct,
   editProduct,
   moveProduct,
+  productFile,
   removeProduct,
   type ProductResult,
 } from "@/lib/store";
@@ -45,7 +47,15 @@ export async function POST(request: NextRequest) {
     } else if (action === "edit") {
       result = await editProduct(email, id, title, summary, price);
     } else if (action === "remove") {
+      // Read the file before the product is gone, so the storage it used can
+      // be released once the removal is safely written.
+      const had = await productFile(email, id);
       result = await removeProduct(email, id);
+      if (result.ok && had) {
+        await del(had.file.pathname).catch((error: unknown) => {
+          console.error("could not delete the file of a removed product", error);
+        });
+      }
     } else {
       const direction = body.direction === "up" ? "up" : "down";
       result = await moveProduct(email, id, direction);
