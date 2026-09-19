@@ -10,7 +10,7 @@ type State =
 
 const MESSAGES: Record<string, string> = {
   shape:
-    "Use 3 to 24 letters, numbers or hyphens, starting and ending with a letter or number.",
+    "Use 3 to 24 letters, numbers, dots, hyphens or underscores, starting and ending with a letter or number.",
   reserved: "That name belongs to the site itself. Pick another one.",
   taken: "Someone already has that address. Pick another one.",
   already: "This account already has a store.",
