@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 
 type Params = { params: Promise<{ handle: string }> };
@@ -10,17 +10,23 @@ type Params = { params: Promise<{ handle: string }> };
  *
  * Only addresses that start with "@" reach this page, so a store can never
  * collide with a page of the site itself.
+ *
+ * An address the store used before still lands here, and the visitor is sent
+ * on to the address it uses now. Links already printed in a bio keep working.
  */
 async function load(raw: string) {
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) return null;
-  return storeForHandle(normaliseHandle(decoded));
+  const asked = normaliseHandle(decoded);
+  const store = await storeForHandle(asked);
+  return store ? { store, asked } : null;
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { handle } = await params;
-  const store = await load(handle);
-  if (!store) return { title: "Not found — Nimbus Labs" };
+  const found = await load(handle);
+  if (!found) return { title: "Not found — Nimbus Labs" };
+  const { store } = found;
 
   return {
     title: `${store.name} — Nimbus Labs`,
@@ -32,8 +38,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function StorePage({ params }: Params) {
   const { handle } = await params;
-  const store = await load(handle);
-  if (!store) notFound();
+  const found = await load(handle);
+  if (!found) notFound();
+  const { store, asked } = found;
+
+  // An old address of this same store: send the visitor to the current one.
+  if (asked !== store.handle) permanentRedirect(`/@${store.handle}`);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
