@@ -19,14 +19,6 @@ const COLUMNS = [
     ],
   },
   {
-    title: "Other products",
-    links: [
-      { label: "Retone", href: "https://retoneai.net", external: true },
-      { label: "NativeApply", href: "https://nativeapply.net", external: true },
-      { label: "NativeReply", href: "https://nativereply.net", external: true },
-    ],
-  },
-  {
     title: "Legal",
     links: [
       { label: "Terms", href: "/terms" },

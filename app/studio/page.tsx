@@ -19,7 +19,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const NEXT = ["The checkout that pays into your account", "The list of your orders"];
+const NEXT_WHEN_SELLING = ["The list of your orders"];
+const NEXT_WHEN_NOT = [
+  "The checkout that pays into your account",
+  "The list of your orders",
+];
 
 const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
   ready: {
@@ -108,6 +112,7 @@ export default async function StudioPage({
     STRIPE_NOTICES[typeof params.stripe === "string" ? params.stripe : ""];
   const connectReady = isConnectConfigured();
   const connectTestMode = isConnectInTestMode();
+  const NEXT = connectReady ? NEXT_WHEN_SELLING : NEXT_WHEN_NOT;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-ink">

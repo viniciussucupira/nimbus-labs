@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
+import { canSell, canSellProduct } from "@/lib/store-checkout";
 
 type Params = { params: Promise<{ handle: string }> };
 
@@ -45,6 +46,8 @@ export default async function StorePage({ params }: Params) {
 
   // An old address of this same store: send the visitor to the current one.
   if (asked !== store.handle) permanentRedirect(`/@${store.handle}`);
+
+  const selling = canSell(store);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
@@ -104,6 +107,32 @@ export default async function StorePage({ params }: Params) {
                     {product.summary ? (
                       <p className="mt-2 text-ink-soft">{product.summary}</p>
                     ) : null}
+
+                    {canSellProduct(store, product) ? (
+                      <form
+                        action="/api/store/checkout"
+                        method="post"
+                        className="mt-4"
+                      >
+                        <input type="hidden" name="handle" value={store.handle} />
+                        <input type="hidden" name="product" value={product.id} />
+                        <button
+                          type="submit"
+                          className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                        >
+                          {`Buy for $${centsToPrice(product.priceCents)}`}
+                        </button>
+                      </form>
+                    ) : selling ? (
+                      /*
+                        Sellable store, but this one has nothing attached to
+                        hand over. Better to say so than to take the money and
+                        work out the delivery afterwards.
+                      */
+                      <p className="mt-4 text-sm text-ink-soft">
+                        Not ready to buy yet.
+                      </p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -114,13 +143,20 @@ export default async function StorePage({ params }: Params) {
                 creator's real prices; what is missing is the till, and this
                 says so without promising a date for it.
               */}
-              <p className="mt-6 rounded-3xl border-2 border-dashed border-ink/15 p-5 text-sm text-ink-soft">
-                <strong className="text-ink">
-                  This store cannot take payments yet.
-                </strong>{" "}
-                The prices above are real, and nothing here can charge a card.
-                To buy, write to {store.name} directly.
-              </p>
+              {selling ? (
+                <p className="mt-6 text-sm text-ink-soft">
+                  Payment is taken by Stripe on {store.name}&apos;s own account.
+                  Nimbus never holds the money and takes none of it.
+                </p>
+              ) : (
+                <p className="mt-6 rounded-3xl border-2 border-dashed border-ink/15 p-5 text-sm text-ink-soft">
+                  <strong className="text-ink">
+                    This store cannot take payments yet.
+                  </strong>{" "}
+                  The prices above are real, and nothing here can charge a card.
+                  To buy, write to {store.name} directly.
+                </p>
+              )}
             </>
           )}
         </div>

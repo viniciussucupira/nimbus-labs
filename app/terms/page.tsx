@@ -5,7 +5,7 @@ import { LegalPage, LegalSection } from "@/components/legal-page";
 export const metadata: Metadata = {
   title: "Terms of Service — Nimbus Labs",
   description:
-    "Terms of Service for Nimbus Labs: the creator store at nimbuslabsai.com, what a creator is responsible for when they sell through it, and the Retone subscription.",
+    "Terms of Service for Nimbus Labs: the creator store at nimbuslabsai.com, what a creator is responsible for when they sell through it, and how payment works.",
 };
 
 export default function TermsPage() {
@@ -15,16 +15,7 @@ export default function TermsPage() {
         These Terms of Service (“Terms”) govern your access to and use of the
         websites, products, and subscription services operated by Nimbus Labs
         (“Nimbus Labs,” “we,” “us,” or “our”). They cover this website and the
-        Nimbus creator store, and they also cover Retone (available at{" "}
-        <a
-          href="https://retoneai.net"
-          className="text-black underline underline-offset-2 hover:no-underline"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          retoneai.net
-        </a>
-        ) and any other software we may offer (collectively, the “Services”).
+        Nimbus creator store (collectively, the “Services”).
       </p>
       <p>
         Nimbus Labs is an independent software studio. We sell software to
@@ -73,13 +64,6 @@ export default function TermsPage() {
           stores open, the subscription price and the payment provider will be
           shown before you are asked to pay, and these Terms will apply to that
           subscription.
-        </p>
-        <p>
-          <strong className="text-black">Retone.</strong> A separate product
-          that rewrites text using artificial intelligence, including changes
-          to tone, style, and length. It is sold at retoneai.net as a
-          subscription of US$14 per month or as a one-time purchase of US$49,
-          unless a different price is shown at checkout.
         </p>
         <p>
           We may update, improve, or discontinue features. When practical, we
@@ -164,19 +148,10 @@ export default function TermsPage() {
 
       <LegalSection title="5. Subscriptions and payment">
         <p>
-          Retone is offered as a monthly subscription of US$14 per month, which
-          renews automatically until you cancel, and as a one-time purchase of
-          US$49, which does not renew. Unless otherwise stated at checkout,
-          those are the prices that apply.
-        </p>
-        <p>
-          Retone is sold through Paddle, which acts as our Merchant of Record
-          for that product. Paddle is the legal seller of Retone and is
-          responsible for processing your payment and handling refunds for it,
-          and those transactions are governed by Paddle&apos;s terms as well as
-          our own. Paddle is not involved in a Nimbus creator store: the sales
-          a creator makes run through that creator&apos;s own Stripe account,
-          as described in section 3.
+          A creator store subscription will be offered at whatever price is
+          shown at checkout, and these Terms will apply to it. The sales a
+          creator makes are not ours: they run through that creator&apos;s own
+          Stripe account, as described in section 3.
         </p>
         <p>
           Payment is processed by third-party payment providers. We do not
