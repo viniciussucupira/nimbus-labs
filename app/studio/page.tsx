@@ -3,6 +3,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
+import { storeForEmail } from "@/lib/store";
+import { HandleForm } from "@/components/handle-form";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
@@ -10,7 +12,6 @@ export const metadata: Metadata = {
 };
 
 const NEXT = [
-  "Your store at its own address",
   "The editor for your store and your products",
   "Uploading the file you sell",
   "Connecting your own Stripe account",
@@ -18,9 +19,11 @@ const NEXT = [
 ];
 
 export default async function StudioPage() {
-  const store = await cookies();
-  const email = await emailForSession(store.get(SESSION_COOKIE)?.value);
+  const cookieStore = await cookies();
+  const email = await emailForSession(cookieStore.get(SESSION_COOKIE)?.value);
   if (!email) redirect("/signin");
+
+  const store = await storeForEmail(email);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
@@ -35,20 +38,56 @@ export default async function StudioPage() {
         </p>
 
         <h1 className="font-display mt-5 text-4xl font-black leading-tight sm:text-5xl">
-          You are signed in
+          {store ? "Your store" : "You are signed in"}
         </h1>
         <p className="mt-4 text-lg text-ink-soft">
           As <strong className="text-ink">{email}</strong>. No password was
           created, and none is stored.
         </p>
 
+        {store ? (
+          <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+            <p className="font-display text-xl font-black text-ink">
+              {store.name}
+            </p>
+            {store.bio ? (
+              <p className="mt-2 text-ink-soft">{store.bio}</p>
+            ) : null}
+            <p className="mt-5 text-sm font-bold text-ink">Your address</p>
+            <p className="mt-1 break-all font-mono text-lg text-violet-deep">
+              nimbuslabsai.com/@{store.handle}
+            </p>
+            <Link
+              href={`/@${store.handle}`}
+              className="mt-5 inline-block rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+            >
+              Open my store
+            </Link>
+            <p className="mt-5 text-sm text-ink-soft">
+              The page is live and it is empty, because there is nothing to sell
+              on it yet. The editor is the next piece being built.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+            <p className="font-display text-xl font-black text-ink">
+              Take your address
+            </p>
+            <p className="mt-2 mb-6 text-ink-soft">
+              This is the link you put in your bio. Pick it once — it is how
+              people find you, so it does not change afterwards.
+            </p>
+            <HandleForm />
+          </div>
+        )}
+
         <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
           <p className="font-display text-xl font-black text-ink">
             What is not here yet
           </p>
           <p className="mt-2 text-ink-soft">
-            Your account exists and that is all it does today. These are the
-            pieces being built, in this order:
+            Being honest about it, these are the pieces still being built, in
+            this order:
           </p>
           <ol className="mt-5 space-y-3">
             {NEXT.map((item, index) => (
@@ -64,8 +103,8 @@ export default async function StudioPage() {
             ))}
           </ol>
           <p className="mt-5 text-sm text-ink-soft">
-            Until the store exists, the working proof is the demo store, and it
-            is open to anyone.
+            Until selling works, the working proof is the demo store, and it is
+            open to anyone.
           </p>
         </div>
 
