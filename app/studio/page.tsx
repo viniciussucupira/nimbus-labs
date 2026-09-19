@@ -9,16 +9,48 @@ import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
 import { DetailsForm } from "@/components/details-form";
 import { ProductEditor } from "@/components/product-editor";
+import {
+  isConnectConfigured,
+  isConnectInTestMode,
+} from "@/lib/stripe-connect";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
   robots: { index: false, follow: false },
 };
 
-const NEXT = [
-  "Connecting your own Stripe account",
-  "The list of your orders",
-];
+const NEXT = ["The checkout that pays into your account", "The list of your orders"];
+
+const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
+  ready: {
+    title: "Stripe says your account can take payments",
+    body: "That is Stripe's answer, not ours. The checkout that uses it is the next piece being built.",
+  },
+  pending: {
+    title: "Stripe still wants something from you",
+    body: "Coming back here does not mean Stripe is satisfied. Open the connection again and finish what it asks for.",
+  },
+  forgotten: {
+    title: "Forgotten on this side",
+    body: "Your Stripe account is untouched and still yours. To remove Nimbus from it as well, do that in your own Stripe dashboard.",
+  },
+  notstarted: {
+    title: "There is no connection yet",
+    body: "Start it below.",
+  },
+  nostore: {
+    title: "Take your address first",
+    body: "A Stripe account is connected to a store, and there is no store yet.",
+  },
+  unavailable: {
+    title: "Connecting is not switched on yet",
+    body: "The platform side of Stripe is not configured, so nothing would happen. Nothing was changed.",
+  },
+  error: {
+    title: "Stripe did not answer as expected",
+    body: "Nothing was changed. Try again in a moment.",
+  },
+};
 
 const ADDRESS_NOTICES: Record<string, { title: string; body: string }> = {
   sent: {
@@ -72,7 +104,10 @@ export default async function StudioPage({
   const folder = store ? await storeFolder(email) : "";
   const params = await searchParams;
   const notice =
-    ADDRESS_NOTICES[typeof params.address === "string" ? params.address : ""];
+    ADDRESS_NOTICES[typeof params.address === "string" ? params.address : ""] ??
+    STRIPE_NOTICES[typeof params.stripe === "string" ? params.stripe : ""];
+  const connectReady = isConnectConfigured();
+  const connectTestMode = isConnectInTestMode();
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
@@ -132,6 +167,106 @@ export default async function StudioPage({
             </div>
 
             <ProductEditor products={store.products} folder={folder} />
+
+            <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+              <p className="font-display text-xl font-black text-ink">
+                Where the money goes
+              </p>
+              <p className="mt-2 text-ink-soft">
+                Buyers pay into a Stripe account that is yours, not ours. You
+                sign Stripe&apos;s agreement, you log into their dashboard, and
+                the payouts go to your bank. We keep the account&apos;s
+                identifier and nothing else — no key to it, and never the money
+                in it.
+              </p>
+
+              {!connectReady ? (
+                <p className="mt-5 rounded-3xl bg-cream p-5 text-sm text-ink-soft">
+                  Connecting is not switched on yet on our side, so there is
+                  nothing here to press. This says so instead of showing you a
+                  button that would do nothing.
+                </p>
+              ) : !store.stripeAccountId ? (
+                <>
+                  <form action="/api/stripe/connect" method="post" className="mt-5">
+                    <button
+                      type="submit"
+                      className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                    >
+                      Connect your Stripe account
+                    </button>
+                  </form>
+                  <p className="mt-4 text-sm text-ink-soft">
+                    Stripe will ask for the details it needs to pay you. If you
+                    already have a Stripe account, you can sign into it there
+                    instead of opening a new one.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div
+                    className={`mt-5 rounded-3xl p-5 ${
+                      store.stripeChargesEnabled
+                        ? "bg-mint-brand/15"
+                        : "bg-amber-brand/10"
+                    }`}
+                  >
+                    <p className="font-bold text-ink">
+                      {store.stripeChargesEnabled
+                        ? "Stripe says this account can take payments"
+                        : "Stripe is not finished with this account"}
+                    </p>
+                    <p className="mt-1 break-all font-mono text-xs text-ink-soft">
+                      {store.stripeAccountId}
+                    </p>
+                    {store.stripeCheckedAt ? (
+                      <p className="mt-2 text-sm text-ink-soft">
+                        Last asked on{" "}
+                        {new Date(store.stripeCheckedAt).toISOString().slice(0, 10)}.
+                        Stripe can change its mind, so this is what it said
+                        then, not a promise about this moment.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    {!store.stripeChargesEnabled ? (
+                      <form action="/api/stripe/connect" method="post">
+                        <button
+                          type="submit"
+                          className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                        >
+                          Finish it in Stripe
+                        </button>
+                      </form>
+                    ) : null}
+                    <form action="/api/stripe/check" method="post">
+                      <button
+                        type="submit"
+                        className="rounded-full border-2 border-ink/15 px-6 py-3 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+                      >
+                        Ask Stripe again
+                      </button>
+                    </form>
+                    <form action="/api/stripe/disconnect" method="post">
+                      <button
+                        type="submit"
+                        className="rounded-full px-5 py-3 text-sm font-bold text-ink-soft underline underline-offset-2 transition hover:text-violet-deep"
+                      >
+                        Forget it here
+                      </button>
+                    </form>
+                  </div>
+                </>
+              )}
+
+              {connectReady && connectTestMode ? (
+                <p className="mt-4 text-sm text-ink-soft">
+                  This is running against Stripe in test mode, so no real money
+                  can move through it yet.
+                </p>
+              ) : null}
+            </div>
 
             <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
               <p className="font-display text-xl font-black text-ink">
