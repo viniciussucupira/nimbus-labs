@@ -111,8 +111,9 @@ export default function PrivacyPage() {
           <li>create and manage your account;</li>
           <li>process subscriptions, renewals, cancellations, and refunds;</li>
           <li>
-            provide the Services, including sending your text to AI APIs to
-            generate output;
+            provide the Services: host your store page, keep the files you sell
+            where only you can reach them, and hand a file to a buyer who paid
+            you for it;
           </li>
           <li>
             communicate with you about your account, billing, and service
@@ -162,11 +163,6 @@ export default function PrivacyPage() {
             <strong className="text-black">The creator you bought from</strong>
             , who receives your email address and the details of your order,
             because they are the seller;
-          </li>
-          <li>
-            <strong className="text-black">AI API providers</strong>, to
-            process text you submit for rewriting (this content is not stored
-            by us);
           </li>
           <li>
             <strong className="text-black">
