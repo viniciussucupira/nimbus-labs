@@ -11,6 +11,12 @@
  *
  *   nl:auth:link:<hash>     -> email, 15 minutes, deleted the moment it is used
  *   nl:auth:session:<hash>  -> email, 30 days, deleted on sign-out
+ *   nl:auth:sessions:<hash> -> the set of a creator's live sessions, so that
+ *                              they can close every one of them at once
+ *
+ * Two counters keep the sending honest: one for the machine that asks, one for
+ * the address that would receive. The second one matters because the first one
+ * cannot see a flood that arrives from many machines at once.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
@@ -22,6 +28,9 @@ export const SESSION_COOKIE = "nl_session";
 const LINK_TTL_SECONDS = 15 * 60;
 const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 const RATE_LIMIT = 5;
+// Deliberately higher than RATE_LIMIT, so one machine that has spent its own
+// five cannot, by itself, lock a creator out of their address for an hour.
+const ADDRESS_LIMIT = 8;
 const RATE_WINDOW_SECONDS = 60 * 60;
 
 export function isAuthConfigured(): boolean {
@@ -54,8 +63,14 @@ const linkKey = async (token: string) =>
 const sessionKey = async (id: string) =>
   `nl:auth:session:${(await sha256Hex(`nimbus-auth-session:${id}`)).slice(0, 40)}`;
 
+const sessionsKey = async (email: string) =>
+  `nl:auth:sessions:${(await sha256Hex(`nimbus-auth-sessions:${email}`)).slice(0, 40)}`;
+
 const rateKey = async (ip: string) =>
   `nl:rl:signin:${(await sha256Hex(`nimbus-signin:${ip}`)).slice(0, 32)}`;
+
+const addressKey = async (email: string) =>
+  `nl:rl:address:${(await sha256Hex(`nimbus-signin-address:${email}`)).slice(0, 32)}`;
 
 /** Five sign-in emails an hour from one address on the internet. */
 export async function withinRateLimit(ip: string): Promise<boolean> {
@@ -66,6 +81,17 @@ export async function withinRateLimit(ip: string): Promise<boolean> {
     ["INCR", key],
   ]);
   return Number(count) <= RATE_LIMIT;
+}
+
+/** Eight sign-in emails an hour to one address, however many machines ask. */
+export async function withinAddressLimit(email: string): Promise<boolean> {
+  if (!isRedisConfigured()) return false;
+  const key = await addressKey(normaliseEmail(email));
+  const [, count] = await redisPipeline([
+    ["SET", key, "0", "EX", RATE_WINDOW_SECONDS, "NX"],
+    ["INCR", key],
+  ]);
+  return Number(count) <= ADDRESS_LIMIT;
 }
 
 /** Creates the one-time link and emails it. Returns false if nothing was sent. */
@@ -80,7 +106,9 @@ export async function sendSignInLink(
     ["SET", await linkKey(token), address, "EX", LINK_TTL_SECONDS],
   ]);
 
-  const link = `${origin}/api/auth/callback?token=${token}`;
+  // The link lands on a page that asks for one tap. It deliberately does not
+  // land on something a mail filter could spend by merely opening it.
+  const link = `${origin}/signin/confirm?token=${token}`;
   return sendEmail({
     from: NIMBUS_FROM,
     to: address,
@@ -104,14 +132,32 @@ export async function useSignInLink(token: string): Promise<string | null> {
   if (!isRedisConfigured()) return null;
   if (!/^[0-9a-f]{64}$/.test(token)) return null;
 
+  // Reading and spending the link must be one step. Two clicks that land at
+  // the same moment would otherwise both find the email still there and both
+  // open a session. GETDEL does it in a single command; where that command is
+  // missing, the fallback keeps the guarantee by trusting the delete, not the
+  // read — only the caller whose DEL actually removed the key gets in.
   const key = await linkKey(token);
-  const [email] = await redisPipeline([["GET", key]]);
+  let email: unknown;
+  try {
+    [email] = await redisPipeline([["GETDEL", key]]);
+  } catch {
+    const [read] = await redisPipeline([["GET", key]]);
+    const [removed] = await redisPipeline([["DEL", key]]);
+    email = Number(removed) === 1 ? read : null;
+  }
   if (typeof email !== "string" || !email) return null;
-  await redisPipeline([["DEL", key]]);
 
   const id = randomToken();
+  const opened = await sessionKey(id);
+  const owned = await sessionsKey(email);
   await redisPipeline([
-    ["SET", await sessionKey(id), email, "EX", SESSION_TTL_SECONDS],
+    ["SET", opened, email, "EX", SESSION_TTL_SECONDS],
+    // The creator's own list of open sessions, which is what makes "sign out
+    // everywhere" possible. It outlives any single session by a day, so the
+    // last entry is never orphaned before the session it names.
+    ["SADD", owned, opened],
+    ["EXPIRE", owned, SESSION_TTL_SECONDS + 86_400],
   ]);
   return id;
 }
@@ -129,9 +175,41 @@ export async function endSession(id: string | undefined): Promise<void> {
   if (!id || !isRedisConfigured()) return;
   if (!/^[0-9a-f]{64}$/.test(id)) return;
   try {
-    await redisPipeline([["DEL", await sessionKey(id)]]);
+    const key = await sessionKey(id);
+    const [email] = await redisPipeline([["GET", key]]);
+    const commands: (string | number)[][] = [["DEL", key]];
+    if (typeof email === "string" && email) {
+      commands.push(["SREM", await sessionsKey(email), key]);
+    }
+    await redisPipeline(commands);
   } catch (error) {
     console.error("sign-out failed", error);
+  }
+}
+
+/**
+ * Closes every session this creator has open, anywhere.
+ *
+ * This is the answer to a session cookie that walked off on a borrowed laptop:
+ * without it, a thirty-day session is thirty days whatever the creator does.
+ * Returns how many were closed.
+ */
+export async function endAllSessions(email: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+  const owned = await sessionsKey(normaliseEmail(email));
+  try {
+    const [members] = await redisPipeline([["SMEMBERS", owned]]);
+    const keys = Array.isArray(members)
+      ? members.filter((key): key is string => typeof key === "string")
+      : [];
+    await redisPipeline([
+      ...keys.map((key) => ["DEL", key] as (string | number)[]),
+      ["DEL", owned],
+    ]);
+    return keys.length;
+  } catch (error) {
+    console.error("sign-out everywhere failed", error);
+    return 0;
   }
 }
 

@@ -354,6 +354,7 @@ export const PAGES: TopicPage[] = [
         rows: [
           ["Monthly price", "$29 and $99", "$29 and $99, planned"],
           ["Cut of each sale", "0% platform fee", "0% platform fee"],
+          ["Signing in", "An account with a password. Their own signup asks for name, email and password", "A link sent to your email. No password to invent, and none kept here to be stolen"],
           ["Ways to be paid", "Stripe or PayPal", "Stripe only — we are behind them here"],
           ["Whose Stripe account", "One they manage. Their own help centre: you cannot connect an existing Stripe account", "Your own. Proved in the demo store, and not open to new stores yet"],
           ["Getting paid", "Cash out inside Stan, $10 minimum, whole balance only", "Your own Stripe payout schedule. Not open to new stores yet"],
@@ -650,7 +651,7 @@ export const PAGES: TopicPage[] = [
         title: "What you can sell",
         head: ["", "Stan", "Nimbus Labs"],
         rows: [
-          ["Digital downloads", "Yes, up to 5 GB", "Working in the demo store. Uploading your own file is not built yet"],
+          ["Digital downloads", "Yes, up to 5 GB", "Yes, up to 50 MB on your own store"],
           ["Courses with drip and analytics", "Yes", "Not available"],
           ["Memberships and subscriptions", "Yes", "Not available"],
           ["Coaching calls with a calendar", "Yes", "Not available"],
@@ -692,7 +693,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Read this line before anything else",
-        body: "Today Nimbus Labs is two things. One is a demo store anyone can open and buy from with a test card: the page, the price options, the Stripe checkout made on the creator account with nothing taken on top, and the file delivered the second the payment clears. The other is your own side of it: an account you sign in to without a password, a store address that is yours, and an editor for the name, the description and what you sell with its price. That store cannot take a payment yet, and it says so on its own page. Everything marked as not available is exactly that — not promised, not dated. A line only turns green when you can open it and try it.",
+        body: "Today Nimbus Labs is two things. One is a demo store anyone can open and buy from with a test card: the page, the price options, the Stripe checkout made on the creator account with nothing taken on top, and the file delivered the second the payment clears. The other is your own side of it: an account you sign in to without a password, a store address that is yours, and an editor for the name, the description, what you sell with its price and the file each one delivers. That store cannot take a payment yet, and it says so on its own page. Everything marked as not available is exactly that — not promised, not dated. A line only turns green when you can open it and try it.",
       },
       {
         kind: "note",

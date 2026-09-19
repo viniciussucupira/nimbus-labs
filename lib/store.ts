@@ -11,6 +11,7 @@
  * people asking for the same name at the same moment cannot both win.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import type { ProductFile } from "@/lib/product-file";
 
 /**
  * What an address may look like: 3 to 24 characters, starting and ending with
@@ -109,6 +110,8 @@ export type Product = {
   summary: string;
   priceCents: number;
   createdAt: string;
+  /** The file the buyer gets, once the creator has put one there. */
+  file: ProductFile | null;
 };
 
 export type Store = {
@@ -149,6 +152,35 @@ const ownerKey = async (email: string) =>
 
 const handleKey = (handle: string) => `nl:store:handle:${handle}`;
 
+/**
+ * The folder in the file store that belongs to one account.
+ *
+ * Derived from the email, so it cannot be guessed from a store address, and
+ * salted differently from the Redis key so that seeing one never gives the
+ * other.
+ */
+export async function storeFolder(email: string): Promise<string> {
+  return (await sha256Hex(`nimbus-files:${email.toLowerCase()}`)).slice(0, 32);
+}
+
+function parseFile(raw: unknown): ProductFile | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Partial<ProductFile>;
+  if (typeof value.pathname !== "string" || !value.pathname) return null;
+  if (typeof value.name !== "string" || !value.name) return null;
+  if (typeof value.bytes !== "number" || !Number.isFinite(value.bytes)) {
+    return null;
+  }
+  return {
+    pathname: value.pathname,
+    name: value.name,
+    bytes: value.bytes,
+    contentType:
+      typeof value.contentType === "string" ? value.contentType : "",
+    addedAt: typeof value.addedAt === "string" ? value.addedAt : "",
+  };
+}
+
 function parseProducts(raw: unknown): Product[] {
   if (!Array.isArray(raw)) return [];
   const products: Product[] = [];
@@ -168,6 +200,7 @@ function parseProducts(raw: unknown): Product[] {
           : "",
       priceCents: value.priceCents,
       createdAt: typeof value.createdAt === "string" ? value.createdAt : "",
+      file: parseFile(value.file),
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -506,6 +539,7 @@ export async function addProduct(
     summary: rawSummary.trim().slice(0, MAX_SUMMARY_LENGTH),
     priceCents: fields.priceCents,
     createdAt: new Date().toISOString(),
+    file: null,
   };
 
   const next: Store = { ...store, products: [...store.products, product] };
@@ -586,4 +620,48 @@ export async function moveProduct(
   const next: Store = { ...store, products };
   await saveStore(next);
   return { ok: true, store: next };
+}
+
+export type FileResult =
+  | { ok: true; store: Store; removed: ProductFile | null }
+  | { ok: false; reason: "none" | "unknown" | "invalid" };
+
+/**
+ * Puts a file on a product, or takes it off.
+ *
+ * The blob itself is written and deleted by the route, because that talks to
+ * the file store over the network and this does not. What comes back is the
+ * file that was displaced, so the caller can delete it once the record that
+ * pointed at it is safely written. Deleting it first would risk a product
+ * pointing at nothing if the write then failed.
+ */
+export async function setProductFile(
+  email: string,
+  id: string,
+  file: ProductFile | null,
+): Promise<FileResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.products.findIndex((product) => product.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+
+  const removed = store.products[at].file;
+  const products = [...store.products];
+  products[at] = { ...products[at], file };
+
+  const next: Store = { ...store, products };
+  await saveStore(next);
+  return { ok: true, store: next, removed };
+}
+
+/** The file on one product, or null. Used before serving a download. */
+export async function productFile(
+  email: string,
+  id: string,
+): Promise<{ product: Product; file: ProductFile } | null> {
+  const store = await storeForEmail(email);
+  if (!store) return null;
+  const product = store.products.find((entry) => entry.id === id);
+  if (!product || !product.file) return null;
+  return { product, file: product.file };
 }

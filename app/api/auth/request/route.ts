@@ -5,6 +5,7 @@ import {
   MAX_EMAIL_LENGTH,
   isAuthConfigured,
   sendSignInLink,
+  withinAddressLimit,
   withinRateLimit,
 } from "@/lib/auth";
 
@@ -65,6 +66,11 @@ export async function POST(request: NextRequest) {
 
   try {
     if (!(await withinRateLimit(ip))) {
+      return Response.json({ ok: false, error: "rate_limited" }, { status: 429 });
+    }
+    // The counter above bounds one machine. This one bounds one inbox, so a
+    // flood sent from many machines cannot bury a creator in sign-in emails.
+    if (!(await withinAddressLimit(email))) {
       return Response.json({ ok: false, error: "rate_limited" }, { status: 429 });
     }
     await sendSignInLink(email, originFrom(request));

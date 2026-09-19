@@ -142,6 +142,14 @@ export default async function StudioPage() {
               Sign out
             </button>
           </form>
+          <form action="/api/auth/signout-all" method="post">
+            <button
+              type="submit"
+              className="rounded-full px-5 py-3 text-sm font-bold text-ink-soft underline underline-offset-2 transition hover:text-violet-deep"
+            >
+              Sign out everywhere
+            </button>
+          </form>
         </div>
       </main>
     </div>
