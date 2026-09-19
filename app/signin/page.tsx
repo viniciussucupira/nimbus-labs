@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SignInForm } from "@/components/signin-form";
+import { isConnectConfigured } from "@/lib/stripe-connect";
 
 export const metadata: Metadata = {
   title: "Sign in — Nimbus Labs",
@@ -85,13 +86,19 @@ export default async function SignInPage({
         </div>
 
         <div className="mt-8 rounded-3xl bg-white/70 p-6 text-sm leading-relaxed text-ink-soft">
-          <p className="font-bold text-ink">Creator stores are not open yet</p>
+          <p className="font-bold text-ink">
+            {isConnectConfigured()
+              ? "Creator stores are open"
+              : "Creator stores are not open yet"}
+          </p>
           <p className="mt-2">
             Signing in works. Behind it you can take your address, write your
             products, upload the file each one delivers and connect your own
-            Stripe account. What is still missing is the checkout itself — the
-            page that charges your buyer on that account. The mission page
-            lists exactly what exists and what does not.
+            Stripe account.{" "}
+            {isConnectConfigured()
+              ? "Your buyers can pay on that account, and the file is handed over the moment Stripe confirms it."
+              : "What is still missing is the checkout itself — the page that charges your buyer on that account."}{" "}
+            The mission page lists exactly what exists and what does not.
           </p>
         </div>
 
