@@ -12,7 +12,15 @@
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 
-export const HANDLE_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,22}[a-z0-9])$/;
+/**
+ * What an address may look like: 3 to 24 characters, starting and ending with
+ * a letter or a number, with dots, hyphens and underscores allowed in between.
+ *
+ * Those three are there on purpose. A creator whose name everywhere else is
+ * maria.souza or maria_souza should be able to keep it here instead of
+ * inventing a different one for this store alone.
+ */
+export const HANDLE_PATTERN = /^[a-z0-9](?:[a-z0-9._-]{1,22}[a-z0-9])$/;
 export const MAX_NAME_LENGTH = 60;
 export const MAX_BIO_LENGTH = 160;
 
