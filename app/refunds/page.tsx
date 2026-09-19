@@ -12,19 +12,9 @@ export default function RefundsPage() {
     <LegalPage title="Refund Policy" lastUpdated="September 18, 2026">
       <p>
         This Refund Policy applies to what you pay Nimbus Labs, an independent
-        software studio. It covers Retone (
-        <a
-          href="https://retoneai.net"
-          className="text-black underline underline-offset-2 hover:no-underline"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          retoneai.net
-        </a>
-        ), billed at US$14 per month or US$49 as a one-time purchase unless a
-        different price is shown at checkout, and any other Nimbus Labs
-        subscription we may offer, including a creator store subscription once
-        stores open.
+        software studio, for the creator store at nimbuslabsai.com — including
+        a creator store subscription once stores open, at whatever price is
+        shown at checkout.
       </p>
       <p>
         It does not cover something you bought from a creator&apos;s store.
