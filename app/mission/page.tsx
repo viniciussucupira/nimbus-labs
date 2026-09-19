@@ -75,8 +75,10 @@ const BUILT = [
 const STRIPE_LINE =
   "Connecting your own Stripe account from the studio, so charges are made on it and not on ours";
 
+const CHECKOUT_LINE =
+  "Selling: the buyer pays on your account and the file is handed over the moment Stripe confirms it";
+
 const NOT_BUILT = [
-  "The checkout itself, which charges your buyer on your connected account",
   "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
   "Memberships that charge every month",
@@ -89,10 +91,11 @@ const NOT_BUILT = [
 export default function MissionPage() {
   // Whether this deployment can actually reach Stripe decides which list the
   // line belongs in. A feature nobody here can press is not a built feature.
-  const built = isConnectConfigured() ? [...BUILT, STRIPE_LINE] : BUILT;
-  const notBuilt = isConnectConfigured()
+  const ready = isConnectConfigured();
+  const built = ready ? [...BUILT, STRIPE_LINE, CHECKOUT_LINE] : BUILT;
+  const notBuilt = ready
     ? NOT_BUILT
-    : [STRIPE_LINE, ...NOT_BUILT];
+    : [STRIPE_LINE, CHECKOUT_LINE, ...NOT_BUILT];
   return (
     <div className="flex min-h-screen flex-col bg-white text-ink">
       <RevealOnScroll />
