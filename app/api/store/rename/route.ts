@@ -51,8 +51,8 @@ export async function POST(request: NextRequest) {
     const result = await renameHandle(email, handle);
     if (!result.ok) {
       return Response.json(
-        { ok: false, error: result.reason, hoursLeft: result.hoursLeft },
-        { status: result.reason === "too_soon" ? 429 : 400 },
+        { ok: false, error: result.reason, limit: result.limit },
+        { status: result.reason === "too_many" ? 409 : 400 },
       );
     }
     return Response.json({ ok: true, handle: result.store.handle });
