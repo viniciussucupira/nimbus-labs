@@ -108,19 +108,19 @@ const FEATURES = [
     span: "",
   },
   {
-    title: "Your own domain",
-    body: "yourname.com pointing at your store, with the certificate handled for you.",
-    state: "Being built",
+    title: "Your own address",
+    body: "Take it in a minute, change it whenever you like, and every address you ever used keeps working.",
+    state: "Live now",
     tint: "bg-pink-brand text-white",
-    emoji: "🌐",
+    emoji: "🔗",
     span: "",
   },
   {
-    title: "A customer area",
-    body: "Your buyers find every purchase in one place instead of digging through old e-mails.",
-    state: "Being built",
+    title: "No password, ever",
+    body: "You sign in with a link sent to your e-mail. Nothing to invent, nothing for us to lose.",
+    state: "Live now",
     tint: "bg-sky-brand text-ink",
-    emoji: "🗂️",
+    emoji: "✉️",
     span: "md:col-span-2",
   },
 ];
@@ -147,9 +147,9 @@ const COMPARE = [
     nimbus: "Working in the demo store today",
   },
   {
-    row: "Your own domain",
-    stan: "Not available",
-    nimbus: "Being built",
+    row: "Changing your store address",
+    stan: "Old links forwarded on a best effort, not guaranteed",
+    nimbus: "Every address you ever used keeps working",
   },
 ];
 
@@ -374,12 +374,12 @@ export default function Home() {
                 What is in the box
               </p>
               <h2 className="font-display mt-3 max-w-xl text-3xl font-black sm:text-4xl">
-                Every card says what is live and what is still being built
+                Every card here is something you can open and try
               </h2>
             </div>
             <p className="max-w-sm text-ink-soft">
-              No feature is listed here before it exists in the code. You can
-              open the demo store and check any of the green ones yourself.
+              No feature is listed here before it exists in the code. What is
+              missing is listed on the mission page instead, by name.
             </p>
           </div>
 

@@ -24,7 +24,6 @@ export type TopicPage = {
 };
 
 const LIVE = { label: "Live in the demo store today", tone: "live" as const };
-const BUILDING = { label: "Being built — not available yet", tone: "building" as const };
 const PROOF = { label: "Checked and dated", tone: "proof" as const };
 
 export const PAGES: TopicPage[] = [
@@ -57,7 +56,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "What is not there yet",
-        body: "Categories and search for a store with dozens of products, and your own domain. Both are on the list, and neither is described here as if it already worked.",
+        body: "Categories and search for a store with dozens of products, and your own domain. Neither exists, and neither is described here as if it did.",
       },
       {
         kind: "quote",
@@ -219,8 +218,8 @@ export const PAGES: TopicPage[] = [
       },
       {
         kind: "note",
-        title: "Being built for this audience",
-        body: "Booking a call directly on the page. Today a paid call is delivered as a scheduling link inside the file, which works but is not elegant.",
+        title: "How a paid call works here today",
+        body: "There is no calendar on the page. You sell the call like any other product and put your own scheduling link inside the file the buyer receives. It works, it is not elegant, and it is the honest state of it.",
       },
     ],
   },
@@ -350,7 +349,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "table",
         title: "The part that decides",
-        note: "Sources: Stan's help centre articles 'Creator vs. Creator Pro', 'How to Connect Stan with Stripe', 'How to Cash Out Inside Stan', 'Experiment: How to Connect an Existing Stripe Account' and 'How to Subscribe on the Stan Mobile App', read on 18 September 2026.",
+        note: "Sources: Stan's help centre articles 'Creator vs. Creator Pro', 'How to Connect Stan with Stripe', 'How to Cash Out Inside Stan', 'Experiment: How to Connect an Existing Stripe Account' and 'How to Subscribe on the Stan Mobile App', read on 18 September 2026; 'Can I Create More Than One Stan Store?' and 'How to Change Your Stan Username or Email', read on 19 September 2026.",
         head: ["", "Stan", "Nimbus Labs"],
         rows: [
           ["Monthly price", "$29 and $99", "$29 and $99, planned"],
@@ -362,9 +361,10 @@ export const PAGES: TopicPage[] = [
           ["Phone app", "iPhone and iPad, for running your store. Not on Android", "None. The site installs to the home screen on both"],
           ["Several prices for one product", "Listed as a top feature request, not available", "Working today"],
           ["An About me section", "Only on one theme", "On every store"],
-          ["Your own domain", "Not available", "Being built"],
-          ["Customer area for all purchases", "Courses only", "Being built"],
-          ["Several stores in one account", "Not available", "Being built"],
+          ["Your own domain", "Not available", "Not available"],
+          ["Changing your store address", "Any time. Their help centre says old links are forwarded on a best effort, cannot be guaranteed, and advises resending them", "Any time. Every address the store ever used keeps working, for good"],
+          ["Customer area for all purchases", "Courses only", "Not available. A buyer who loses the link gets it sent again, with no account"],
+          ["Several stores in one account", "Not in one account. Several accounts, each with its own email and its own subscription", "Not available. One store per account, the same as theirs"],
         ],
       },
       {
@@ -615,7 +615,7 @@ export const PAGES: TopicPage[] = [
     blocks: [
       {
         kind: "lead",
-        text: "The goal is to offer everything Stan offers and more. This page is the scoreboard for that promise, and it is deliberately uncomfortable: most lines still say \u201cbeing built\u201d.",
+        text: "The goal is to offer everything Stan offers and more. This page is the scoreboard for that goal, and it is deliberately uncomfortable: most lines still say that we do not have it.",
       },
       {
         kind: "table",
@@ -625,7 +625,7 @@ export const PAGES: TopicPage[] = [
         rows: [
           ["iPhone app", "Yes \u2014 creator app, 4.9 stars, 12,000 ratings", "Installable web app today; App Store app on the roadmap"],
           ["Android app", "No \u2014 none, by their own documentation", "Installable web app today; Google Play app on the roadmap"],
-          ["Buyer app", "Yes, on iPhone only (last updated June 2024)", "Being built"],
+          ["Buyer app", "Yes, on iPhone only (last updated June 2024)", "Not available. The store itself installs to the home screen on both phones"],
           ["Annual plan inside the app", "Not possible \u2014 browser only", "Same price on every device"],
           ["Add to home screen", "Not advertised", "Yes, on Android and iPhone"],
         ],
@@ -639,10 +639,10 @@ export const PAGES: TopicPage[] = [
           ["Themes and colours", "Yes, limited", "Yes"],
           ["About me section", "One theme only", "Every store"],
           ["Several prices in one product", "Not available", "Working today"],
-          ["Custom domain", "Not available", "Being built"],
-          ["Custom code on the page", "Explicitly not supported", "Being built"],
-          ["Embed the store on your own site", "Not available", "Being built"],
-          ["Several stores in one account", "Not available", "Being built"],
+          ["Custom domain", "Not available", "Not available"],
+          ["Custom code on the page", "Explicitly not supported", "Not available"],
+          ["Embed the store on your own site", "Not available", "Not available"],
+          ["Several stores in one account", "Not in one account. Several accounts, each with its own email and its own subscription", "Not available. One store per account, the same as theirs"],
         ],
       },
       {
@@ -651,14 +651,14 @@ export const PAGES: TopicPage[] = [
         head: ["", "Stan", "Nimbus Labs"],
         rows: [
           ["Digital downloads", "Yes, up to 5 GB", "Yes"],
-          ["Courses with drip and analytics", "Yes", "Being built"],
-          ["Memberships and subscriptions", "Yes", "Being built"],
-          ["Coaching calls with a calendar", "Yes", "Being built"],
-          ["Live webinars", "Yes", "Being built"],
-          ["Lead magnets", "Yes", "Being built"],
-          ["Community", "Yes, one per account", "Being built"],
-          ["Physical products", "Not supported", "Being built"],
-          ["Course quizzes and certificates", "Not available", "Being built"],
+          ["Courses with drip and analytics", "Yes", "Not available"],
+          ["Memberships and subscriptions", "Yes", "Not available"],
+          ["Coaching calls with a calendar", "Yes", "Not available"],
+          ["Live webinars", "Yes", "Not available"],
+          ["Lead magnets", "Yes", "Not available"],
+          ["Community", "Yes, one per account", "Not available"],
+          ["Physical products", "Not supported", "Not available"],
+          ["Course quizzes and certificates", "Not available", "Not available"],
         ],
       },
       {
@@ -670,10 +670,10 @@ export const PAGES: TopicPage[] = [
           ["Whose Stripe account", "One managed by the platform", "Yours"],
           ["Getting paid", "Manual cash-out, $10 minimum", "Your Stripe payout schedule"],
           ["Klarna and Afterpay", "Yes, on the $99 plan", "Tested and accepted by Stripe; shipping with the store"],
-          ["Discount codes", "Yes, on the $99 plan", "Being built"],
-          ["Order bumps and upsells", "Yes, on the $99 plan", "Being built"],
-          ["Payment plans", "Yes, on the $99 plan", "Being built"],
-          ["Sales tax collection", "Yes", "Being built"],
+          ["Discount codes", "Yes, on the $99 plan", "Not available"],
+          ["Order bumps and upsells", "Yes, on the $99 plan", "Not available"],
+          ["Payment plans", "Yes, on the $99 plan", "Not available"],
+          ["Sales tax collection", "Yes", "Not available"],
         ],
       },
       {
@@ -681,18 +681,18 @@ export const PAGES: TopicPage[] = [
         title: "Marketing",
         head: ["", "Stan", "Nimbus Labs"],
         rows: [
-          ["E-mail broadcasts and flows", "Yes, on the $99 plan only", "Being built"],
-          ["Instagram auto-DM", "Yes, on the $29 plan", "Being built"],
-          ["Funnels up to 20 pages", "Yes, on the $99 plan, since June 2026", "Being built"],
+          ["E-mail broadcasts and flows", "Yes, on the $99 plan only", "Not available"],
+          ["Instagram auto-DM", "Yes, on the $29 plan", "Not available"],
+          ["Funnels up to 20 pages", "Yes, on the $99 plan, since June 2026", "Not available"],
           ["Affiliates paid automatically", "Yes, on the $99 plan", "Needs a United States company \u2014 planned, with the cost published"],
-          ["Advertising pixels", "Yes, on the $99 plan", "Being built"],
-          ["Public API and webhooks", "None published", "Being built"],
+          ["Advertising pixels", "Yes, on the $99 plan", "Not available"],
+          ["Public API and webhooks", "None published", "Not available"],
         ],
       },
       {
         kind: "note",
         title: "Read this line before anything else",
-        body: "Today Nimbus Labs is one working store: page, price options, Stripe checkout on the creator's own account and instant file delivery. Everything marked as being built is a promise with no date attached yet, and it will only move to green when you can open it and try it.",
+        body: "Today Nimbus Labs is one working store: page, price options, Stripe checkout on the creator's own account and instant file delivery, plus an account you sign in to and a store address of your own. Everything marked as not available is exactly that — not promised, not dated. A line only turns green when you can open it and try it.",
       },
       {
         kind: "note",
