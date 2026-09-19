@@ -7,17 +7,36 @@
  * is what lets the site say the buyer pays into the creator's own account
  * without stretching the truth.
  *
- * Standard accounts with Connect Onboarding, which is Stripe's stable path.
- * Their newer Accounts v2 API is still on a preview API version, and a
- * one-person company should not have its money path pinned to a preview.
+ * Accounts v2, because Stripe now refuses v1 account creation for new Connect
+ * integrations and points here. The shape below is not a style choice:
+ *
+ *   dashboard: "full"        the creator logs into Stripe itself
+ *   fees_collector: stripe   Stripe bills them, not us
+ *   losses_collector: stripe disputes and refunds are theirs, settled with Stripe
+ *
+ * Those three together are what Stripe calls a full-dashboard account, and it
+ * is the only arrangement a platform registered in one country may open for a
+ * creator in another. The platform-controlled variants — a dashboard we own,
+ * fees and losses collected by us — are refused across a border. So the honest
+ * design and the possible design are the same design here.
  */
 
 /** Local tests may point this at a mock on 127.0.0.1; nothing else is taken. */
-const STRIPE_API = /^http:\/\/127\.0\.0\.1:\d+$/.test(
+const STRIPE_ROOT = /^http:\/\/127\.0\.0\.1:\d+$/.test(
   process.env.STRIPE_CONNECT_API_BASE ?? "",
 )
-  ? `${process.env.STRIPE_CONNECT_API_BASE}/v1`
-  : "https://api.stripe.com/v1";
+  ? (process.env.STRIPE_CONNECT_API_BASE as string)
+  : "https://api.stripe.com";
+
+/**
+ * Pinned on purpose.
+ *
+ * This file reads specific fields out of specific shapes. Letting the account's
+ * default version float means a Stripe release could quietly change what
+ * `capabilities.card_payments.status` looks like and the site would start
+ * telling creators the wrong thing about their own money.
+ */
+const STRIPE_VERSION = "2026-08-26.dahlia";
 
 /** A link Stripe hands back is short-lived and single use. */
 export const ONBOARDING_LINK_TTL_SECONDS = 5 * 60;
@@ -37,61 +56,144 @@ export function isConnectInTestMode(): boolean {
   return /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY?.trim() ?? "");
 }
 
+/**
+ * Carries what Stripe actually said.
+ *
+ * An earlier version of this file kept only the error code and threw the
+ * message away. A creator then hit a plain "400 invalid_request_error" in the
+ * logs and the reason — that the whole endpoint had been retired — took a trip
+ * through the Stripe dashboard to find. The message is the useful part.
+ */
 export class StripeConnectError extends Error {
   readonly status: number;
+  readonly code: string;
+  readonly stripeMessage: string;
 
-  constructor(status: number, code: string) {
-    super(`Stripe request failed (${status} ${code})`);
+  constructor(status: number, code: string, stripeMessage: string) {
+    super(`Stripe request failed (${status} ${code}): ${stripeMessage}`);
     this.status = status;
+    this.code = code;
+    this.stripeMessage = stripeMessage;
+  }
+
+  /** The creator's country is one this platform may not open an account in. */
+  get isCrossBorderRefusal(): boolean {
+    return this.code === "cross_border_connected_account_creation_not_allowed";
   }
 }
 
 async function stripeRequest(
   method: "GET" | "POST",
   path: string,
-  body?: URLSearchParams,
+  body?: unknown,
 ): Promise<Record<string, unknown>> {
   const key = platformKey();
   if (!key) throw new Error("Stripe is not configured");
 
-  const response = await fetch(`${STRIPE_API}${path}`, {
+  const response = await fetch(`${STRIPE_ROOT}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${key}`,
-      ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+      "Stripe-Version": STRIPE_VERSION,
+      // API v2 speaks JSON, unlike the form-encoded v1 endpoints.
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
     },
-    body,
+    body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
   });
 
-  const data = (await response.json()) as Record<string, unknown>;
+  const data = (await response.json().catch(() => ({}))) as Record<
+    string,
+    unknown
+  >;
   if (!response.ok) {
-    const error = data.error as { code?: string; type?: string } | undefined;
+    const error = data.error as
+      | { code?: string; type?: string; message?: string }
+      | undefined;
     throw new StripeConnectError(
       response.status,
       error?.code ?? error?.type ?? "unknown",
+      error?.message ?? "Stripe gave no reason.",
     );
   }
   return data;
 }
 
 /**
+ * The countries a creator can pick from.
+ *
+ * One list, used both to draw the menu and to check what comes back, so the
+ * form can never accept something it did not offer. Stripe may still refuse a
+ * country on this list — its rules change and they depend on where our own
+ * account is registered — and that refusal is reported as itself rather than
+ * as a generic failure.
+ */
+export const COUNTRIES: { code: string; name: string }[] = [
+  { code: "us", name: "United States" },
+  { code: "gb", name: "United Kingdom" },
+  { code: "ca", name: "Canada" },
+  { code: "au", name: "Australia" },
+  { code: "ie", name: "Ireland" },
+  { code: "nz", name: "New Zealand" },
+  { code: "de", name: "Germany" },
+  { code: "fr", name: "France" },
+  { code: "es", name: "Spain" },
+  { code: "it", name: "Italy" },
+  { code: "nl", name: "Netherlands" },
+  { code: "pt", name: "Portugal" },
+  { code: "be", name: "Belgium" },
+  { code: "at", name: "Austria" },
+  { code: "se", name: "Sweden" },
+  { code: "dk", name: "Denmark" },
+  { code: "no", name: "Norway" },
+  { code: "fi", name: "Finland" },
+  { code: "pl", name: "Poland" },
+  { code: "ch", name: "Switzerland" },
+];
+
+const OFFERED = new Set(COUNTRIES.map((country) => country.code));
+
+/** Empty for anything we did not put on the menu ourselves. */
+export function normaliseCountry(value: string): string {
+  const trimmed = value.trim().toLowerCase();
+  return OFFERED.has(trimmed) ? trimmed : "";
+}
+
+/**
  * Opens a Stripe account that belongs to the creator.
  *
- * `type: standard` is the whole point: the account holder signs Stripe's
- * agreement themselves, logs into Stripe themselves, and can walk away from
- * Nimbus without losing it.
+ * The country has to be settled here, before Stripe's onboarding starts, and
+ * it cannot be changed afterwards — which is why the studio asks for it in
+ * plain words rather than guessing from an IP address.
+ *
+ * The store's own address is left for onboarding to collect. Stripe asks the
+ * creator for their business URL there, and an answer they gave themselves is
+ * worth more on their account than one we filled in for them.
  */
-export async function createConnectedAccount(
-  email: string,
-  storeUrl: string,
-): Promise<string> {
-  const body = new URLSearchParams({
-    type: "standard",
-    email,
-    "business_profile[url]": storeUrl,
+export async function createConnectedAccount(options: {
+  email: string;
+  country: string;
+  displayName: string;
+}): Promise<string> {
+  const country = normaliseCountry(options.country);
+  if (!country) throw new Error("A country is needed to open an account");
+
+  const account = await stripeRequest("POST", "/v2/core/accounts", {
+    contact_email: options.email,
+    display_name: options.displayName,
+    dashboard: "full",
+    identity: { country },
+    configuration: {
+      merchant: { capabilities: { card_payments: { requested: true } } },
+    },
+    defaults: {
+      responsibilities: {
+        fees_collector: "stripe",
+        losses_collector: "stripe",
+      },
+    },
   });
-  const account = await stripeRequest("POST", "/accounts", body);
+
   const id = account.id;
   if (typeof id !== "string" || !id) {
     throw new Error("Stripe did not return an account id");
@@ -110,13 +212,18 @@ export async function createOnboardingLink(
   accountId: string,
   origin: string,
 ): Promise<string> {
-  const body = new URLSearchParams({
+  const link = await stripeRequest("POST", "/v2/core/account_links", {
     account: accountId,
-    refresh_url: `${origin}/api/stripe/refresh`,
-    return_url: `${origin}/api/stripe/return`,
-    type: "account_onboarding",
+    use_case: {
+      type: "account_onboarding",
+      account_onboarding: {
+        configurations: ["merchant"],
+        refresh_url: `${origin}/api/stripe/refresh`,
+        return_url: `${origin}/api/stripe/return`,
+      },
+    },
   });
-  const link = await stripeRequest("POST", "/account_links", body);
+
   if (typeof link.url !== "string" || !link.url) {
     throw new Error("Stripe did not return an onboarding link");
   }
@@ -128,14 +235,39 @@ export type AccountState = {
   detailsSubmitted: boolean;
 };
 
-/** Asks Stripe what that account can actually do right now. */
+type MerchantConfiguration = {
+  capabilities?: { card_payments?: { status?: unknown } };
+};
+
+type Requirements = {
+  summary?: { minimum_deadline?: { status?: unknown } };
+};
+
+/**
+ * Asks Stripe what that account can actually do right now.
+ *
+ * Read every time rather than remembered, because a capability can be switched
+ * off by Stripe hours after onboarding finished, and a store that says "buy"
+ * over a dead account wastes a buyer's time and the creator's reputation.
+ */
 export async function readAccount(accountId: string): Promise<AccountState> {
   const account = await stripeRequest(
     "GET",
-    `/accounts/${encodeURIComponent(accountId)}`,
+    `/v2/core/accounts/${encodeURIComponent(accountId)}` +
+      "?include=configuration.merchant&include=requirements",
   );
+
+  const configuration = account.configuration as
+    | { merchant?: MerchantConfiguration }
+    | undefined;
+  const status = configuration?.merchant?.capabilities?.card_payments?.status;
+
+  const requirements = account.requirements as Requirements | undefined;
+  const deadline = requirements?.summary?.minimum_deadline?.status;
+
   return {
-    chargesEnabled: account.charges_enabled === true,
-    detailsSubmitted: account.details_submitted === true,
+    chargesEnabled: status === "active",
+    // Onboarding still has something outstanding while a deadline is past due.
+    detailsSubmitted: deadline !== "past_due",
   };
 }
