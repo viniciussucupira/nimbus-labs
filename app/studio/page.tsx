@@ -6,6 +6,7 @@ import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { storeForEmail } from "@/lib/store";
 import { HandleForm } from "@/components/handle-form";
 import { RenameForm } from "@/components/rename-form";
+import { OldAddresses } from "@/components/old-addresses";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
@@ -68,24 +69,7 @@ export default async function StudioPage() {
               <RenameForm current={store.handle} />
             </div>
 
-            {store.previousHandles.length > 0 ? (
-              <div className="mt-5 rounded-2xl bg-cream p-4">
-                <p className="text-sm font-bold text-ink">
-                  Your older addresses still work
-                </p>
-                <ul className="mt-2 space-y-1">
-                  {store.previousHandles.map((old) => (
-                    <li key={old} className="font-mono text-sm text-ink-soft">
-                      nimbuslabsai.com/@{old}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-2 text-sm text-ink-soft">
-                  Anyone opening one of these lands on your store. Nothing you
-                  already published has to be changed.
-                </p>
-              </div>
-            ) : null}
+            <OldAddresses handles={store.previousHandles} />
 
             <p className="mt-5 text-sm text-ink-soft">
               The page is live and it is empty, because there is nothing to sell
