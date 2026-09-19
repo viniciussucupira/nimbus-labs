@@ -13,6 +13,8 @@
  *   nl:auth:session:<hash>  -> email, 30 days, deleted on sign-out
  *   nl:auth:sessions:<hash> -> the set of a creator's live sessions, so that
  *                              they can close every one of them at once
+ *   nl:auth:move:<hash>     -> a move from one address to another, 15 minutes,
+ *                              spent on the tap that finishes it
  *
  * Two counters keep the sending honest: one for the machine that asks, one for
  * the address that would receive. The second one matters because the first one
@@ -69,6 +71,9 @@ const sessionsKey = async (email: string) =>
 const rateKey = async (ip: string) =>
   `nl:rl:signin:${(await sha256Hex(`nimbus-signin:${ip}`)).slice(0, 32)}`;
 
+const moveKey = async (token: string) =>
+  `nl:auth:move:${(await sha256Hex(`nimbus-auth-move:${token}`)).slice(0, 40)}`;
+
 const addressKey = async (email: string) =>
   `nl:rl:address:${(await sha256Hex(`nimbus-signin-address:${email}`)).slice(0, 32)}`;
 
@@ -81,6 +86,108 @@ export async function withinRateLimit(ip: string): Promise<boolean> {
     ["INCR", key],
   ]);
   return Number(count) <= RATE_LIMIT;
+}
+
+/**
+ * Starts a move of the sign-in address, and tells both sides.
+ *
+ * The link goes to the NEW address, because holding that inbox is the whole
+ * proof being asked for. The OLD address gets a plain notice instead of a
+ * link, so that a creator whose account is already in someone else's hands
+ * learns about it while it is still theirs to save.
+ */
+export async function sendMoveLink(
+  from: string,
+  to: string,
+  origin: string,
+): Promise<boolean> {
+  const fromAddress = normaliseEmail(from);
+  const toAddress = normaliseEmail(to);
+  const token = randomToken();
+
+  await redisPipeline([
+    [
+      "SET",
+      await moveKey(token),
+      JSON.stringify({ from: fromAddress, to: toAddress }),
+      "EX",
+      LINK_TTL_SECONDS,
+    ],
+  ]);
+
+  // Best effort, and deliberately not awaited into the result: the creator's
+  // move must not fail because a notice could not be delivered.
+  void sendEmail({
+    from: NIMBUS_FROM,
+    to: fromAddress,
+    subject: "Someone asked to move your Nimbus account",
+    text: [
+      `A request was made to move your Nimbus Labs account to ${toAddress}.`,
+      "",
+      "If that was you, finish it from the link sent to that address.",
+      "",
+      "If it was not you, sign in here and sign out everywhere. Nothing has",
+      "moved yet, and nothing moves until someone opens the link sent to that",
+      "other address.",
+    ].join("\n"),
+  }).catch(() => undefined);
+
+  return sendEmail({
+    from: NIMBUS_FROM,
+    to: toAddress,
+    subject: "Finish moving your Nimbus account",
+    text: [
+      `Your Nimbus Labs account at ${fromAddress} is being moved here.`,
+      "",
+      `${origin}/signin/confirm-move?token=${token}`,
+      "",
+      "It works once and stops working in 15 minutes.",
+      "If you did not ask for it, ignore this email — nothing happens.",
+    ].join("\n"),
+  });
+}
+
+/** Spends a move link and says which address is moving where. */
+export async function useMoveLink(
+  token: string,
+): Promise<{ from: string; to: string } | null> {
+  if (!isRedisConfigured()) return null;
+  if (!/^[0-9a-f]{64}$/.test(token)) return null;
+
+  const key = await moveKey(token);
+  let raw: unknown;
+  try {
+    [raw] = await redisPipeline([["GETDEL", key]]);
+  } catch {
+    const [read] = await redisPipeline([["GET", key]]);
+    const [removed] = await redisPipeline([["DEL", key]]);
+    raw = Number(removed) === 1 ? read : null;
+  }
+  if (typeof raw !== "string" || !raw) return null;
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    const { from, to } = parsed as { from?: unknown; to?: unknown };
+    if (typeof from !== "string" || typeof to !== "string") return null;
+    if (!from || !to) return null;
+    return { from, to };
+  } catch {
+    return null;
+  }
+}
+
+/** Opens a session for an address that has just proved it holds the inbox. */
+export async function openSession(email: string): Promise<string> {
+  const id = randomToken();
+  const opened = await sessionKey(id);
+  const owned = await sessionsKey(normaliseEmail(email));
+  await redisPipeline([
+    ["SET", opened, normaliseEmail(email), "EX", SESSION_TTL_SECONDS],
+    ["SADD", owned, opened],
+    ["EXPIRE", owned, SESSION_TTL_SECONDS + 86_400],
+  ]);
+  return id;
 }
 
 /** Eight sign-in emails an hour to one address, however many machines ask. */
