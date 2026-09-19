@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
 
 type Params = { params: Promise<{ handle: string }> };
 
@@ -31,8 +31,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title: `${store.name} — Nimbus Labs`,
     description: store.bio || `The store of ${store.name} on Nimbus Labs.`,
-    // An empty store has nothing to offer a search engine yet.
-    robots: { index: false, follow: true },
+    // An empty store has nothing to offer a search engine yet. One with
+    // something on it does, so it stops hiding the moment it has.
+    robots: { index: store.products.length > 0, follow: true },
   };
 }
 
@@ -76,13 +77,52 @@ export default async function StorePage({ params }: Params) {
             <p className="mt-4 text-lg text-ink-soft">{store.bio}</p>
           ) : null}
 
-          <div className="mt-8 rounded-3xl border-2 border-dashed border-ink/15 p-6">
-            <p className="font-bold text-ink">Nothing for sale yet</p>
-            <p className="mt-2 text-sm text-ink-soft">
-              This store is open but empty. When {store.name} adds something,
-              it shows up here.
-            </p>
-          </div>
+          {store.products.length === 0 ? (
+            <div className="mt-8 rounded-3xl border-2 border-dashed border-ink/15 p-6">
+              <p className="font-bold text-ink">Nothing for sale yet</p>
+              <p className="mt-2 text-sm text-ink-soft">
+                This store is open but empty. When {store.name} adds something,
+                it shows up here.
+              </p>
+            </div>
+          ) : (
+            <>
+              <ul className="mt-8 space-y-4 text-left">
+                {store.products.map((product) => (
+                  <li
+                    key={product.id}
+                    className="rounded-3xl border-2 border-ink/5 bg-cream p-5 sm:p-6"
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <h2 className="font-display text-lg font-black text-ink">
+                        {product.title}
+                      </h2>
+                      <p className="font-mono text-lg font-bold text-violet-deep">
+                        {`$${centsToPrice(product.priceCents)}`}
+                      </p>
+                    </div>
+                    {product.summary ? (
+                      <p className="mt-2 text-ink-soft">{product.summary}</p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+
+              {/*
+                Said plainly, because the alternative is a button that takes a
+                card and does nothing. Prices are shown because they are the
+                creator's real prices; what is missing is the till, and this
+                says so without promising a date for it.
+              */}
+              <p className="mt-6 rounded-3xl border-2 border-dashed border-ink/15 p-5 text-sm text-ink-soft">
+                <strong className="text-ink">
+                  This store cannot take payments yet.
+                </strong>{" "}
+                The prices above are real, and nothing here can charge a card.
+                To buy, write to {store.name} directly.
+              </p>
+            </>
+          )}
         </div>
 
         <div className="mt-8 text-center">
