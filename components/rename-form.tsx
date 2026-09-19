@@ -42,7 +42,7 @@ export function RenameForm({ current }: { current: string }) {
       const data = (await response.json()) as {
         ok?: boolean;
         error?: string;
-        hoursLeft?: number;
+        limit?: number;
       };
       if (data.ok) {
         setState({ kind: "closed" });
@@ -53,8 +53,8 @@ export function RenameForm({ current }: { current: string }) {
       setState({
         kind: "error",
         message:
-          data.error === "too_soon"
-            ? `An address can be changed once a day. Try again in ${data.hoursLeft ?? 24} hours.`
+          data.error === "too_many"
+            ? `A store keeps up to ${data.limit ?? 5} addresses, and yours is full. Going back to one you already had still works.`
             : (MESSAGES[data.error ?? ""] ?? MESSAGES.server_error),
       });
     } catch {
