@@ -113,7 +113,15 @@ const FEATURES = [
     state: "Live now",
     tint: "bg-pink-brand text-white",
     emoji: "🔗",
-    span: "",
+    span: "md:col-span-2",
+  },
+  {
+    title: "Your own products, your own prices",
+    body: "Write what you sell, what the buyer gets and what it costs. It is on your page the second you save it.",
+    state: "Live now",
+    tint: "bg-lilac text-violet-deep",
+    emoji: "🛍️",
+    span: "md:col-span-2",
   },
   {
     title: "No password, ever",
@@ -121,7 +129,7 @@ const FEATURES = [
     state: "Live now",
     tint: "bg-sky-brand text-ink",
     emoji: "✉️",
-    span: "md:col-span-2",
+    span: "",
   },
 ];
 
