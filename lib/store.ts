@@ -66,10 +66,25 @@ const RESERVED = new Set([
  *
  * There is no waiting between changes: a creator who mistypes a name fixes it
  * a second later. The only limit is this one, and it exists because an old
- * address stays locked to the store for good — without a ceiling, a single
- * account could sit on every good name and leave nothing for anyone else.
+ * address stays held by the store so its published links keep working —
+ * without a ceiling, a single account could sit on every good name and leave
+ * nothing for anyone else. It is a ceiling on what one store holds at once:
+ * letting an address go frees the slot and hands the name back.
  */
-export const MAX_ADDRESSES = 5;
+export const MAX_ADDRESSES = 10;
+
+/**
+ * How long a released address stays dark before anyone may take it.
+ *
+ * Letting go of an address frees the slot at once, but the name does not go
+ * straight back on the shelf. For a month it answers nothing at all, so a link
+ * still printed somewhere leads to a dead end rather than to the store of a
+ * stranger. The creator waits for nothing; only the next taker does.
+ */
+export const RELEASE_QUARANTINE_DAYS = 30;
+
+/** Marks a name that was let go and is not owned by anyone yet. */
+const RELEASED_PREFIX = "released:";
 
 export type Store = {
   handle: string;
@@ -77,7 +92,7 @@ export type Store = {
   bio: string;
   email: string;
   createdAt: string;
-  /** Addresses this store used before. They still lead here, for good. */
+  /** Addresses this store used before. They lead here until it lets them go. */
   previousHandles: string[];
   renamedAt: string;
 };
@@ -143,6 +158,8 @@ export async function storeForHandle(handle: string): Promise<Store | null> {
   if (handleProblem(handle)) return null;
   const [email] = await redisPipeline([["GET", handleKey(handle)]]);
   if (typeof email !== "string" || !email) return null;
+  // A name that was let go is held, not owned: it leads nowhere on purpose.
+  if (email.startsWith(RELEASED_PREFIX)) return null;
   const [raw] = await redisPipeline([["GET", await ownerKey(email)]]);
   return parseStore(raw);
 }
@@ -254,5 +271,55 @@ export async function renameHandle(
   };
 
   await redisPipeline([["SET", await ownerKey(email), JSON.stringify(next)]]);
+  return { ok: true, store: next };
+}
+
+export type ReleaseResult =
+  | { ok: true; store: Store }
+  | { ok: false; reason: "none" | "current" | "unknown" };
+
+/**
+ * Lets go of an address the store used before.
+ *
+ * This is the one destructive thing a creator can do to their own audience,
+ * so it is never automatic and never implied: a link still printed under that
+ * name stops working the moment it is released, and a month later the name
+ * may belong to somebody else. It exists because the opposite is worse. An
+ * address mistyped and abandoned a minute later, never published anywhere,
+ * would otherwise sit on a slot for good.
+ *
+ * Freeing the slot costs the name: it goes back on the shelf rather than
+ * staying quietly in this account. That is what keeps the ceiling honest —
+ * nobody can pile up names by releasing them.
+ */
+export async function releaseHandle(
+  email: string,
+  rawHandle: string,
+): Promise<ReleaseResult> {
+  const handle = normaliseHandle(rawHandle);
+
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  if (store.handle === handle) return { ok: false, reason: "current" };
+  if (!store.previousHandles.includes(handle)) {
+    return { ok: false, reason: "unknown" };
+  }
+
+  await redisPipeline([
+    [
+      "SET",
+      handleKey(handle),
+      `${RELEASED_PREFIX}${new Date().toISOString()}`,
+      "EX",
+      RELEASE_QUARANTINE_DAYS * 24 * 60 * 60,
+    ],
+  ]);
+
+  const next: Store = {
+    ...store,
+    previousHandles: store.previousHandles.filter((old) => old !== handle),
+  };
+  await redisPipeline([["SET", await ownerKey(email), JSON.stringify(next)]]);
+
   return { ok: true, store: next };
 }
