@@ -39,7 +39,16 @@ const SECTIONS: Section[] = [
         q: "Can I put my own products on my store?",
         a: [
           "Yes. On your account page you write the name of the store, the line under it, and each thing you sell with what the buyer gets and the price. It is on your page the moment you save it, and you can reorder or remove any of it.",
-          "A store holds up to twenty things, each with one price in US dollars. Uploading the file itself is not built yet, and neither is taking the payment, so what is on your page today is the offer, not the sale.",
+          "A store holds up to twenty things, each with one price in US dollars. You can also put the file itself on each one, and open it again to check it is the right one.",
+          "What is still missing is the payment. Nothing here can charge a card yet, so what is on your page today is the offer, not the sale.",
+        ],
+      },
+      {
+        q: "What file can I sell, and how big?",
+        a: [
+          "Up to 50 MB, in any of these: PDF, ePub, ZIP, PNG, JPG, GIF, WebP, SVG, MP3, WAV, M4A, MP4, MOV, TXT, CSV, Markdown, Word, Excel and PowerPoint.",
+          "Anything that runs — a program, an installer, a script — is refused. A store that hands out software is a store that hands out malware the day an account is taken over.",
+          "The file goes straight from your browser to storage that needs a key to read. It is never named or linked on your public page, and the only way it comes out is through us, after we have checked who is asking. You can open it yourself from your account page to be sure it is the right one.",
         ],
       },
       {

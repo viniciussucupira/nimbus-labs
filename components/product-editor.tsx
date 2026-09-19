@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { uploadPresigned } from "@vercel/blob/client";
 import {
   MAX_PRODUCTS,
   MAX_SUMMARY_LENGTH,
@@ -9,11 +10,20 @@ import {
   centsToPrice,
   type Product,
 } from "@/lib/store";
+import {
+  ACCEPT_ATTRIBUTE,
+  MAX_FILE_BYTES,
+  fileFolder,
+  readableSize,
+  safeFileName,
+} from "@/lib/product-file";
 
 const MESSAGES: Record<string, string> = {
   title: "Give it a name before saving.",
   price: "Type an amount between 1 and 5000, like 27 or 27.50.",
   unknown: "That is no longer on your store.",
+  too_big: `That file is over ${Math.round(MAX_FILE_BYTES / (1024 * 1024))} MB, which is the most a store can hold.`,
+  wrong_type: "That kind of file is not one a store can sell here.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Sign in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
@@ -177,8 +187,124 @@ function ProductForm({
   );
 }
 
+/** The file a product delivers: what is there, and how to change it. */
+function FileBlock({
+  product,
+  busy,
+  percent,
+  error,
+  onPick,
+  onDetach,
+}: {
+  product: Product;
+  busy: boolean;
+  percent: number;
+  error: string | null;
+  onPick: (file: File) => void;
+  onDetach: () => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const file = product.file;
+
+  return (
+    <div className="mt-3 rounded-2xl bg-white p-3">
+      <input
+        ref={input}
+        type="file"
+        accept={ACCEPT_ATTRIBUTE}
+        className="hidden"
+        onChange={(event) => {
+          const chosen = event.target.files?.[0];
+          event.target.value = "";
+          if (chosen) onPick(chosen);
+        }}
+      />
+
+      {busy ? (
+        <div>
+          <p className="text-sm font-bold text-ink">Sending the file…</p>
+          <div
+            className="mt-2 h-2 w-full overflow-hidden rounded-full bg-cream"
+            role="progressbar"
+            aria-valuenow={percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-violet-brand to-pink-brand transition-all"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+          <p className="mt-1 text-sm text-ink-soft">{percent}%</p>
+        </div>
+      ) : file ? (
+        <>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p className="text-sm font-bold text-ink">{file.name}</p>
+            <p className="font-mono text-sm text-ink-soft">
+              {readableSize(file.bytes)}
+            </p>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
+            <a
+              href={`/api/store/file/download?id=${encodeURIComponent(product.id)}`}
+              className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+            >
+              Open it to check
+            </a>
+            <button
+              type="button"
+              onClick={() => input.current?.click()}
+              className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+            >
+              Replace it
+            </button>
+            <button
+              type="button"
+              onClick={onDetach}
+              className="text-ink-soft underline underline-offset-4 transition hover:text-pink-brand"
+            >
+              Take it off
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-sm font-bold text-ink">No file on this yet</p>
+          <p className="mt-1 text-sm text-ink-soft">
+            This is what the buyer downloads. Up to{" "}
+            {Math.round(MAX_FILE_BYTES / (1024 * 1024))} MB.
+          </p>
+          <button
+            type="button"
+            onClick={() => input.current?.click()}
+            className="mt-2 rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+          >
+            Choose the file
+          </button>
+        </>
+      )}
+
+      {error ? (
+        <p
+          className="mt-2 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /** The list of what the store offers, and every way to change it. */
-export function ProductEditor({ products }: { products: Product[] }) {
+export function ProductEditor({
+  products,
+  folder,
+}: {
+  products: Product[];
+  folder: string;
+}) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -186,8 +312,91 @@ export function ProductEditor({ products }: { products: Product[] }) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fileBusyId, setFileBusyId] = useState<string | null>(null);
+  const [percent, setPercent] = useState(0);
+  const [fileError, setFileError] = useState<{ id: string; message: string } | null>(
+    null,
+  );
 
   const full = products.length >= MAX_PRODUCTS;
+
+  /** Tells the store which file a product delivers, once it is really there. */
+  async function attach(payload: Record<string, unknown>): Promise<string | null> {
+    try {
+      const response = await fetch("/api/store/file/attach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = (await response.json()) as { ok?: boolean; error?: string };
+      if (data.ok) return null;
+      return MESSAGES[data.error ?? ""] ?? MESSAGES.server_error;
+    } catch {
+      return MESSAGES.server_error;
+    }
+  }
+
+  /**
+   * Sends one file straight from this browser to the private store.
+   *
+   * It never passes through our server, which is why a large file is possible
+   * at all. The size and the kind are checked here so an impossible upload
+   * fails in a second rather than after a long climb, and checked again by the
+   * signature on the way in, because a check in a browser is a courtesy and
+   * not a defence.
+   */
+  async function upload(product: Product, chosen: File) {
+    setFileError(null);
+    if (chosen.size > MAX_FILE_BYTES) {
+      setFileError({ id: product.id, message: MESSAGES.too_big });
+      return;
+    }
+
+    setFileBusyId(product.id);
+    setPercent(0);
+    try {
+      const pathname =
+        fileFolder(folder, product.id) + safeFileName(chosen.name);
+      const result = await uploadPresigned(pathname, chosen, {
+        access: "private",
+        handleUploadUrl: "/api/store/file",
+        clientPayload: JSON.stringify({ productId: product.id }),
+        onUploadProgress: (progress) => setPercent(progress.percentage),
+      });
+
+      const problem = await attach({
+        id: product.id,
+        pathname: result.pathname,
+        name: chosen.name,
+      });
+      if (problem) {
+        setFileError({ id: product.id, message: problem });
+        return;
+      }
+      router.refresh();
+    } catch (thrown) {
+      const message =
+        thrown instanceof Error && /content type|not allowed/i.test(thrown.message)
+          ? MESSAGES.wrong_type
+          : MESSAGES.server_error;
+      setFileError({ id: product.id, message });
+    } finally {
+      setFileBusyId(null);
+      setPercent(0);
+    }
+  }
+
+  async function detach(product: Product) {
+    setFileError(null);
+    setFileBusyId(product.id);
+    const problem = await attach({ id: product.id, detach: true });
+    setFileBusyId(null);
+    if (problem) {
+      setFileError({ id: product.id, message: problem });
+      return;
+    }
+    router.refresh();
+  }
 
   async function run(payload: Record<string, unknown>, done: () => void) {
     setBusy(true);
@@ -330,6 +539,19 @@ export function ProductEditor({ products }: { products: Product[] }) {
                   )}
                 </div>
 
+                <FileBlock
+                  product={product}
+                  busy={fileBusyId === product.id}
+                  percent={percent}
+                  error={
+                    fileError && fileError.id === product.id
+                      ? fileError.message
+                      : null
+                  }
+                  onPick={(chosen) => upload(product, chosen)}
+                  onDetach={() => detach(product)}
+                />
+
                 {removingId === product.id ? (
                   <div className="mt-3 rounded-2xl border-2 border-pink-brand/30 bg-white p-4">
                     <p className="text-sm text-ink-soft">
@@ -424,7 +646,9 @@ export function ProductEditor({ products }: { products: Product[] }) {
       <p className="mt-5 rounded-2xl bg-cream px-4 py-3 text-sm text-ink-soft">
         <strong className="text-ink">Nobody can pay you yet.</strong> What you
         write here is on your page the moment you save it, with the price, and
-        the page says plainly that it cannot take a payment.
+        the page says plainly that it cannot take a payment. Your file is kept
+        where only this account can reach it, and it is never named or linked
+        on the public page.
       </p>
     </div>
   );

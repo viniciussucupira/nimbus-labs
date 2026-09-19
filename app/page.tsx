@@ -125,7 +125,7 @@ const FEATURES = [
   },
   {
     title: "No password, ever",
-    body: "You sign in with a link sent to your e-mail. Nothing to invent, nothing for us to lose.",
+    body: "You sign in with a link sent to your e-mail. Nothing to invent, and no password of yours for us to lose.",
     state: "Live now",
     tint: "bg-sky-brand text-ink",
     emoji: "✉️",

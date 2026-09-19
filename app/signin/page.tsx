@@ -18,6 +18,10 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     title: "You are signed out",
     body: "Your session is closed on this device.",
   },
+  "out-everywhere": {
+    title: "You are signed out everywhere",
+    body: "Every session you had open is closed, on every device. A fresh link signs you back in.",
+  },
 };
 
 export default async function SignInPage({
@@ -67,9 +71,11 @@ export default async function SignInPage({
         <div className="mt-8 rounded-3xl bg-white/70 p-6 text-sm leading-relaxed text-ink-soft">
           <p className="font-bold text-ink">Creator stores are not open yet</p>
           <p className="mt-2">
-            Signing in works, and today there is little behind it: your account
-            and nothing else. The store itself is being built in the open, and
-            the mission page lists exactly what exists and what does not.
+            Signing in works. Behind it you can take your address, write your
+            products and upload the file each one delivers. What is still
+            missing is the part that takes money: connecting your own Stripe
+            account, and the checkout that pays into it. The mission page lists
+            exactly what exists and what does not.
           </p>
         </div>
 
