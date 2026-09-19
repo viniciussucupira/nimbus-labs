@@ -59,12 +59,12 @@ const BUILT = [
   "Your own store address, live the moment you take it",
   "A change of address that never breaks the link already in your bio",
   "An editor for your own store: the name, the description, and what you sell with its price",
+  "The file you sell, uploaded straight from your browser and kept where only you can reach it",
   "A store that installs to the home screen on iPhone and Android",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
 
 const NOT_BUILT = [
-  "Uploading the file you sell — what you write on your store today has a price and no file behind it",
   "Connecting your own Stripe account, so your store can take a payment at all",
   "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
