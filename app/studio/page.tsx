@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { storeForEmail } from "@/lib/store";
+import { storeForEmail, storeFolder } from "@/lib/store";
 import { HandleForm } from "@/components/handle-form";
 import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
@@ -16,7 +16,6 @@ export const metadata: Metadata = {
 };
 
 const NEXT = [
-  "Uploading the file you sell",
   "Connecting your own Stripe account",
   "The list of your orders",
 ];
@@ -27,6 +26,7 @@ export default async function StudioPage() {
   if (!email) redirect("/signin");
 
   const store = await storeForEmail(email);
+  const folder = store ? await storeFolder(email) : "";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
@@ -78,7 +78,7 @@ export default async function StudioPage() {
               <OldAddresses handles={store.previousHandles} />
             </div>
 
-            <ProductEditor products={store.products} />
+            <ProductEditor products={store.products} folder={folder} />
           </>
         ) : (
           <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
