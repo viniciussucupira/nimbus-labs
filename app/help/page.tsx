@@ -163,6 +163,14 @@ const SECTIONS: Section[] = [
           "Not yet. It is on the list, and this page will say so on the day it works.",
         ],
       },
+      {
+        q: "Can I change my store address later?",
+        a: [
+          "Yes, whenever you want, from your own account page. Nobody has to be asked and there is nothing to wait for.",
+          "Your store does not move: same page, same name, same description, same products. Only the address changes.",
+          "Every address your store has ever used keeps working and sends people to the current one, so the link already in your bio, in old posts and in messages other people sent never breaks. A store holds up to ten addresses, and you can hand one back if you are sure it was never given to anyone.",
+        ],
+      },
     ],
   },
   {
