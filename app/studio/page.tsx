@@ -10,6 +10,7 @@ import { OldAddresses } from "@/components/old-addresses";
 import { DetailsForm } from "@/components/details-form";
 import { ProductEditor } from "@/components/product-editor";
 import {
+  COUNTRIES,
   isConnectConfigured,
   isConnectInTestMode,
 } from "@/lib/stripe-connect";
@@ -50,11 +51,20 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
     title: "Connecting is not switched on yet",
     body: "The platform side of Stripe is not configured, so nothing would happen. Nothing was changed.",
   },
+  country: {
+    title: "Stripe needs to know where you are",
+    body: "Pick the country your bank account is in before connecting. It is fixed once the account is open, so it is worth a second's thought.",
+  },
+  "country-unsupported": {
+    title: "Stripe will not open an account in that country from here",
+    body: "Nothing was charged and nothing was created. This is a limit on our side, not a judgement on you: our own Stripe account is registered in a country Stripe does not yet let us open accounts from into yours. Write to us and we will tell you honestly whether that is changing.",
+  },
   error: {
     title: "Stripe did not answer as expected",
     body: "Nothing was changed. Try again in a moment.",
   },
 };
+
 
 const ADDRESS_NOTICES: Record<string, { title: string; body: string }> = {
   sent: {
@@ -194,9 +204,36 @@ export default async function StudioPage({
               ) : !store.stripeAccountId ? (
                 <>
                   <form action="/api/stripe/connect" method="post" className="mt-5">
+                    <label
+                      htmlFor="stripe-country"
+                      className="block text-sm font-bold text-ink"
+                    >
+                      Which country is your bank account in?
+                    </label>
+                    <select
+                      id="stripe-country"
+                      name="country"
+                      required
+                      defaultValue=""
+                      className="mt-2 w-full max-w-xs rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-sm font-semibold text-ink"
+                    >
+                      <option value="" disabled>
+                        Choose a country
+                      </option>
+                      {COUNTRIES.map((country) => (
+                        <option key={country.code} value={country.code}>
+                          {country.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-2 max-w-md text-sm text-ink-soft">
+                      Stripe fixes this when the account is opened and it cannot
+                      be changed afterwards, so pick the country your bank
+                      account is really in.
+                    </p>
                     <button
                       type="submit"
-                      className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                      className="mt-4 rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
                     >
                       Connect your Stripe account
                     </button>
