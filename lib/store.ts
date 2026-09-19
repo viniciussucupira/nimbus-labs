@@ -53,8 +53,15 @@ const RESERVED = new Set([
   "www",
 ]);
 
-/** How long a creator waits between one address change and the next. */
-export const RENAME_COOLDOWN_HOURS = 24;
+/**
+ * How many addresses one store may ever hold, counting the one it uses now.
+ *
+ * There is no waiting between changes: a creator who mistypes a name fixes it
+ * a second later. The only limit is this one, and it exists because an old
+ * address stays locked to the store for good — without a ceiling, a single
+ * account could sit on every good name and leave nothing for anyone else.
+ */
+export const MAX_ADDRESSES = 5;
 
 export type Store = {
   handle: string;
@@ -188,8 +195,8 @@ export type RenameResult =
   | { ok: true; store: Store }
   | {
       ok: false;
-      reason: "taken" | "reserved" | "shape" | "none" | "same" | "too_soon";
-      hoursLeft?: number;
+      reason: "taken" | "reserved" | "shape" | "none" | "same" | "too_many";
+      limit?: number;
     };
 
 /**
@@ -200,6 +207,9 @@ export type RenameResult =
  * So the old address is never handed to anyone else and never stops working:
  * it keeps pointing at this store, and the page sends visitors on to the new
  * address by itself. Nothing published has to be redone.
+ *
+ * Nobody has to be asked, and nothing has to be waited for. The creator does
+ * it alone, and it takes effect on the spot.
  */
 export async function renameHandle(
   email: string,
@@ -213,20 +223,12 @@ export async function renameHandle(
   if (!store) return { ok: false, reason: "none" };
   if (store.handle === handle) return { ok: false, reason: "same" };
 
-  if (store.renamedAt) {
-    const since = Date.now() - Date.parse(store.renamedAt);
-    const wait = RENAME_COOLDOWN_HOURS * 60 * 60 * 1000;
-    if (Number.isFinite(since) && since >= 0 && since < wait) {
-      return {
-        ok: false,
-        reason: "too_soon",
-        hoursLeft: Math.ceil((wait - since) / (60 * 60 * 1000)),
-      };
-    }
-  }
-
-  // Going back to an address this store already owns needs no new lock.
+  // Going back to an address this store already owns costs nothing: no new
+  // lock, and no room on the shelf, because it never stopped being theirs.
   if (!store.previousHandles.includes(handle)) {
+    if (store.previousHandles.length + 2 > MAX_ADDRESSES) {
+      return { ok: false, reason: "too_many", limit: MAX_ADDRESSES };
+    }
     const [taken] = await redisPipeline([
       ["SET", handleKey(handle), email.toLowerCase(), "NX"],
     ]);
