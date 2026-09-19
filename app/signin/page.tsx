@@ -88,10 +88,10 @@ export default async function SignInPage({
           <p className="font-bold text-ink">Creator stores are not open yet</p>
           <p className="mt-2">
             Signing in works. Behind it you can take your address, write your
-            products and upload the file each one delivers. What is still
-            missing is the part that takes money: connecting your own Stripe
-            account, and the checkout that pays into it. The mission page lists
-            exactly what exists and what does not.
+            products, upload the file each one delivers and connect your own
+            Stripe account. What is still missing is the checkout itself — the
+            page that charges your buyer on that account. The mission page
+            lists exactly what exists and what does not.
           </p>
         </div>
 
