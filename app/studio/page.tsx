@@ -20,13 +20,59 @@ const NEXT = [
   "The list of your orders",
 ];
 
-export default async function StudioPage() {
+const ADDRESS_NOTICES: Record<string, { title: string; body: string }> = {
+  sent: {
+    title: "Check the new address",
+    body: "We sent a link there. Opening it and tapping the button finishes the move. Nothing has changed yet, and the old address stays in charge until it does.",
+  },
+  moved: {
+    title: "Your account moved",
+    body: "This address signs you in from now on. Every session the old one had open is closed.",
+  },
+  same: {
+    title: "That is the address you already use",
+    body: "Nothing to move.",
+  },
+  invalid: {
+    title: "That does not look like an email address",
+    body: "Check it and try again.",
+  },
+  taken: {
+    title: "That address already has a store",
+    body: "An account cannot be moved on top of another one.",
+  },
+  none: {
+    title: "There is no store to move yet",
+    body: "Take your address first. Until then, simply sign in with whichever email you prefer.",
+  },
+  limited: {
+    title: "Too many attempts for that address",
+    body: "Wait an hour and try again.",
+  },
+  unavailable: {
+    title: "Moving is not available right now",
+    body: "Sending is not configured. Nothing was changed.",
+  },
+  error: {
+    title: "Something went wrong on our side",
+    body: "Nothing was changed. Try again in a moment.",
+  },
+};
+
+export default async function StudioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const cookieStore = await cookies();
   const email = await emailForSession(cookieStore.get(SESSION_COOKIE)?.value);
   if (!email) redirect("/signin");
 
   const store = await storeForEmail(email);
   const folder = store ? await storeFolder(email) : "";
+  const params = await searchParams;
+  const notice =
+    ADDRESS_NOTICES[typeof params.address === "string" ? params.address : ""];
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
@@ -47,6 +93,13 @@ export default async function StudioPage() {
           As <strong className="text-ink">{email}</strong>. No password was
           created, and none is stored.
         </p>
+
+        {notice ? (
+          <div className="mt-6 rounded-3xl border-2 border-amber-brand/40 bg-amber-brand/10 p-5">
+            <p className="font-bold text-ink">{notice.title}</p>
+            <p className="mt-1 text-sm text-ink-soft">{notice.body}</p>
+          </div>
+        ) : null}
 
         {store ? (
           <>
@@ -79,6 +132,46 @@ export default async function StudioPage() {
             </div>
 
             <ProductEditor products={store.products} folder={folder} />
+
+            <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+              <p className="font-display text-xl font-black text-ink">
+                The email that signs you in
+              </p>
+              <p className="mt-2 text-ink-soft">
+                Your store lives behind this address, so losing the inbox would
+                mean losing the store. Move it to another one while you still
+                can — when you change jobs, or leave a provider behind.
+              </p>
+              <form
+                action="/api/store/address"
+                method="post"
+                className="mt-5 flex flex-wrap items-end gap-3"
+              >
+                <label className="flex-1 basis-64 text-sm font-bold text-ink">
+                  Move to
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    maxLength={254}
+                    placeholder="you@somewhere-else.com"
+                    className="mt-1 w-full rounded-full border-2 border-ink/10 px-5 py-3 text-base font-normal text-ink outline-none transition focus:border-violet-brand"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                >
+                  Send the link there
+                </button>
+              </form>
+              <p className="mt-4 text-sm text-ink-soft">
+                The link goes to the new address, because holding that inbox is
+                the proof. The old one gets a plain notice, with no link, so
+                that a move you did not ask for reaches you while the account is
+                still yours.
+              </p>
+            </div>
           </>
         ) : (
           <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
