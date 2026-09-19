@@ -57,6 +57,7 @@ const BUILT = [
   "A buyer who loses that link gets it sent again — no account, no password",
   "A creator account you sign in to with an emailed link, and no password at all",
   "Your own store address, live the moment you take it",
+  "A change of address that never breaks the link already in your bio",
   "A store that installs to the home screen on iPhone and Android",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
