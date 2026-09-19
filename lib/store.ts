@@ -53,12 +53,18 @@ const RESERVED = new Set([
   "www",
 ]);
 
+/** How long a creator waits between one address change and the next. */
+export const RENAME_COOLDOWN_HOURS = 24;
+
 export type Store = {
   handle: string;
   name: string;
   bio: string;
   email: string;
   createdAt: string;
+  /** Addresses this store used before. They still lead here, for good. */
+  previousHandles: string[];
+  renamedAt: string;
 };
 
 export function normaliseHandle(raw: string): string {
@@ -97,6 +103,10 @@ function parseStore(raw: unknown): Store | null {
       bio: value.bio ?? "",
       email: value.email,
       createdAt: value.createdAt ?? "",
+      previousHandles: Array.isArray(value.previousHandles)
+        ? value.previousHandles.filter((h) => typeof h === "string")
+        : [],
+      renamedAt: value.renamedAt ?? "",
     };
   } catch {
     return null;
@@ -156,6 +166,8 @@ export async function claimHandle(
     bio: rawBio.trim().slice(0, MAX_BIO_LENGTH),
     email: email.toLowerCase(),
     createdAt: new Date().toISOString(),
+    previousHandles: [],
+    renamedAt: "",
   };
 
   try {
@@ -170,4 +182,67 @@ export async function claimHandle(
   }
 
   return { ok: true, store };
+}
+
+export type RenameResult =
+  | { ok: true; store: Store }
+  | {
+      ok: false;
+      reason: "taken" | "reserved" | "shape" | "none" | "same" | "too_soon";
+      hoursLeft?: number;
+    };
+
+/**
+ * Moves a store to a new address without breaking the old one.
+ *
+ * The first address a creator picks is usually picked in a hurry, and by then
+ * it is already in their bio, in old posts and in messages other people sent.
+ * So the old address is never handed to anyone else and never stops working:
+ * it keeps pointing at this store, and the page sends visitors on to the new
+ * address by itself. Nothing published has to be redone.
+ */
+export async function renameHandle(
+  email: string,
+  rawHandle: string,
+): Promise<RenameResult> {
+  const handle = normaliseHandle(rawHandle);
+  const problem = handleProblem(handle);
+  if (problem) return { ok: false, reason: problem };
+
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  if (store.handle === handle) return { ok: false, reason: "same" };
+
+  if (store.renamedAt) {
+    const since = Date.now() - Date.parse(store.renamedAt);
+    const wait = RENAME_COOLDOWN_HOURS * 60 * 60 * 1000;
+    if (Number.isFinite(since) && since >= 0 && since < wait) {
+      return {
+        ok: false,
+        reason: "too_soon",
+        hoursLeft: Math.ceil((wait - since) / (60 * 60 * 1000)),
+      };
+    }
+  }
+
+  // Going back to an address this store already owns needs no new lock.
+  if (!store.previousHandles.includes(handle)) {
+    const [taken] = await redisPipeline([
+      ["SET", handleKey(handle), email.toLowerCase(), "NX"],
+    ]);
+    if (taken === null) return { ok: false, reason: "taken" };
+  }
+
+  const next: Store = {
+    ...store,
+    handle,
+    previousHandles: [
+      ...store.previousHandles.filter((old) => old !== handle),
+      store.handle,
+    ].slice(-20),
+    renamedAt: new Date().toISOString(),
+  };
+
+  await redisPipeline([["SET", await ownerKey(email), JSON.stringify(next)]]);
+  return { ok: true, store: next };
 }

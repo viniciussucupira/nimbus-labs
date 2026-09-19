@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { storeForEmail } from "@/lib/store";
 import { HandleForm } from "@/components/handle-form";
+import { RenameForm } from "@/components/rename-form";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
@@ -57,12 +58,35 @@ export default async function StudioPage() {
             <p className="mt-1 break-all font-mono text-lg text-violet-deep">
               nimbuslabsai.com/@{store.handle}
             </p>
-            <Link
-              href={`/@${store.handle}`}
-              className="mt-5 inline-block rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
-            >
-              Open my store
-            </Link>
+            <div className="mt-5 flex flex-wrap items-center gap-4">
+              <Link
+                href={`/@${store.handle}`}
+                className="inline-block rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+              >
+                Open my store
+              </Link>
+              <RenameForm current={store.handle} />
+            </div>
+
+            {store.previousHandles.length > 0 ? (
+              <div className="mt-5 rounded-2xl bg-cream p-4">
+                <p className="text-sm font-bold text-ink">
+                  Your older addresses still work
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {store.previousHandles.map((old) => (
+                    <li key={old} className="font-mono text-sm text-ink-soft">
+                      nimbuslabsai.com/@{old}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-sm text-ink-soft">
+                  Anyone opening one of these lands on your store. Nothing you
+                  already published has to be changed.
+                </p>
+              </div>
+            ) : null}
+
             <p className="mt-5 text-sm text-ink-soft">
               The page is live and it is empty, because there is nothing to sell
               on it yet. The editor is the next piece being built.
@@ -74,8 +98,9 @@ export default async function StudioPage() {
               Take your address
             </p>
             <p className="mt-2 mb-6 text-ink-soft">
-              This is the link you put in your bio. Pick it once — it is how
-              people find you, so it does not change afterwards.
+              This is the link you put in your bio. Pick one now without
+              agonising over it: you can change it later, and the old address
+              keeps working and sends people to the new one.
             </p>
             <HandleForm />
           </div>
