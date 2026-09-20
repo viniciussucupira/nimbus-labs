@@ -15,13 +15,7 @@ import {
   optionDelivers,
 } from "@/lib/product-option";
 import { isPaidUp } from "@/lib/billing";
-
-/** Local tests may point this at a mock on 127.0.0.1; nothing else is taken. */
-const STRIPE_API = /^http:\/\/127\.0\.0\.1:\d+$/.test(
-  process.env.STRIPE_CONNECT_API_BASE ?? "",
-)
-  ? `${process.env.STRIPE_CONNECT_API_BASE}/v1`
-  : "https://api.stripe.com/v1";
+import { StripeError, onAccount, platformKey } from "@/lib/stripe-account";
 
 /**
  * How long a paid link keeps working.
@@ -34,12 +28,6 @@ const STRIPE_API = /^http:\/\/127\.0\.0\.1:\d+$/.test(
 export const DOWNLOAD_WINDOW_SECONDS = 3 * 24 * 60 * 60;
 
 const SESSION_ID_PATTERN = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
-
-function platformKey(): string | null {
-  const key = process.env.STRIPE_SECRET_KEY?.trim();
-  if (!key || !/^(sk|rk)_(test|live)_/.test(key)) return null;
-  return key;
-}
 
 export function isSellingConfigured(): boolean {
   return platformKey() !== null;
@@ -97,54 +85,6 @@ export function fromPriceCents(product: Product): number {
   return lowestPriceCents(sellableOptions(product), product.priceCents);
 }
 
-class StripeError extends Error {
-  readonly status: number;
-  readonly code: string;
-
-  constructor(status: number, code: string, stripeMessage: string) {
-    // Stripe's own sentence is kept, because a bare code in a log is a trip
-    // through the Stripe dashboard before anyone knows what went wrong.
-    super(`Stripe request failed (${status} ${code}): ${stripeMessage}`);
-    this.status = status;
-    this.code = code;
-  }
-}
-
-async function onAccount(
-  method: "GET" | "POST",
-  account: string,
-  path: string,
-  body?: URLSearchParams,
-): Promise<Record<string, unknown>> {
-  const key = platformKey();
-  if (!key) throw new Error("Selling is not configured");
-
-  const response = await fetch(`${STRIPE_API}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${key}`,
-      // The whole point: this acts on the creator's account, not ours.
-      "Stripe-Account": account,
-      ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
-    },
-    body,
-    cache: "no-store",
-  });
-
-  const data = (await response.json()) as Record<string, unknown>;
-  if (!response.ok) {
-    const error = data.error as
-      | { code?: string; type?: string; message?: string }
-      | undefined;
-    throw new StripeError(
-      response.status,
-      error?.code ?? error?.type ?? "unknown",
-      error?.message ?? "Stripe gave no reason.",
-    );
-  }
-  return data;
-}
-
 /**
  * Opens a checkout for one product and returns where to send the buyer.
  *
@@ -194,6 +134,13 @@ export async function createCheckout(
   // Which option was bought decides which file is handed over later, so it
   // travels with the charge rather than being worked out again afterwards.
   if (chosen) body.set("metadata[option]", chosen.id);
+
+  // The box a buyer types a discount code into, shown only by a store that has
+  // one. An empty box on every checkout is an invitation to go and look for a
+  // code that does not exist, and a buyer who leaves to search for one is a
+  // buyer who may not come back. What a code takes off is worked out by Stripe
+  // from a coupon on the creator's own account; no amount is decided here.
+  if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
 
   if (membership) {
     // The subscription is created on the creator's own account, like every
