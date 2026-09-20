@@ -3,7 +3,12 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { centsToPrice, storeForEmail, storeFolder } from "@/lib/store";
+import {
+  centsToPrice,
+  setSubscription,
+  storeForEmail,
+  storeFolder,
+} from "@/lib/store";
 import { HandleForm } from "@/components/handle-form";
 import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
@@ -15,6 +20,12 @@ import {
   isConnectInTestMode,
 } from "@/lib/stripe-connect";
 import { ORDERS_PAGE_SIZE, canSell, listSales } from "@/lib/store-checkout";
+import {
+  PRICE_CENTS,
+  TRIAL_DAYS,
+  isBillingConfigured,
+  readSubscription,
+} from "@/lib/billing";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
@@ -70,6 +81,37 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
 };
 
 
+const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
+  on: {
+    title: "You are subscribed",
+    body: "Your trial has started and your store can take money. Nothing is charged until the trial ends, and you can stop it from your Stripe receipt at any time.",
+  },
+  pending: {
+    title: "Stripe has not confirmed the payment yet",
+    body: "The subscription exists but is not in good standing yet. Open it again in a moment; nothing here was lost.",
+  },
+  cancelled: {
+    title: "Nothing was started",
+    body: "You closed the payment page. No card was charged and your store is exactly as you left it.",
+  },
+  unfinished: {
+    title: "That did not finish",
+    body: "Stripe has no completed subscription for this store, so nothing was written down. Start it again below.",
+  },
+  already: {
+    title: "You already pay for this store",
+    body: "There is nothing to start. One store, one subscription.",
+  },
+  unavailable: {
+    title: "Paying is not switched on yet",
+    body: "Our side of Stripe is not configured, so nothing would happen. Nothing was changed.",
+  },
+  error: {
+    title: "Stripe did not answer as expected",
+    body: "Nothing was charged. Try again in a moment.",
+  },
+};
+
 const ADDRESS_NOTICES: Record<string, { title: string; body: string }> = {
   sent: {
     title: "Check the new address",
@@ -123,13 +165,39 @@ export default async function StudioPage({
   const params = await searchParams;
   const notice =
     ADDRESS_NOTICES[typeof params.address === "string" ? params.address : ""] ??
-    STRIPE_NOTICES[typeof params.stripe === "string" ? params.stripe : ""];
+    STRIPE_NOTICES[typeof params.stripe === "string" ? params.stripe : ""] ??
+    BILLING_NOTICES[typeof params.billing === "string" ? params.billing : ""];
+  // The snapshot the public store page trusts is refreshed here, because this
+  // is the page the creator opens and therefore the moment they would notice
+  // it being wrong. A store that never started a subscription is not asked
+  // about, and neither is one on a deployment with no billing configured.
+  const live =
+    store?.subscriptionId && isBillingConfigured()
+      ? await readSubscription(store.subscriptionId)
+      : null;
+  // "unknown" means Stripe could not be asked, which is not the same as not
+  // paying. The snapshot stands rather than closing a paying creator's till
+  // over a network blip.
+  const paid =
+    live && live.state !== "unknown"
+      ? live.state === "active"
+      : Boolean(store?.subscriptionActive);
+  if (store && live && live.state !== "unknown" && paid !== store.subscriptionActive) {
+    await setSubscription(email, { active: paid });
+  }
+  // Everything below reads this, not the record we loaded, so one page never
+  // shows two different answers to the same question.
+  const current = store ? { ...store, subscriptionActive: paid } : null;
+  const trialing = live?.state === "active" && live.trialing;
+
   // Only asked for when there is a store that can actually have sold
   // something, so a creator who has not connected Stripe never waits on a
   // request that could only come back empty.
-  const sold = store && store.stripeAccountId ? await listSales(store) : null;
+  const sold =
+    current && current.stripeAccountId ? await listSales(current) : null;
   const connectReady = isConnectConfigured();
   const connectTestMode = isConnectInTestMode();
+  const billingReady = isBillingConfigured();
   const NEXT = connectReady ? NEXT_WHEN_SELLING : NEXT_WHEN_NOT;
 
   return (
@@ -192,7 +260,7 @@ export default async function StudioPage({
             <ProductEditor
               products={store.products}
               folder={folder}
-              selling={canSell(store)}
+              selling={current ? canSell(current) : false}
               testMode={isConnectInTestMode()}
             />
 
@@ -322,6 +390,64 @@ export default async function StudioPage({
                 </p>
               ) : null}
             </div>
+
+            {billingReady ? (
+              <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+                <p className="font-display text-xl font-black text-ink">
+                  What you pay us
+                </p>
+                <p className="mt-2 text-ink-soft">
+                  One price, and nothing on top of it. We take 0% of what you
+                  sell, because what you sell never passes through us — the
+                  subscription is our whole income, and it is the same whether
+                  you sell three files or three thousand.
+                </p>
+
+                {paid ? (
+                  <>
+                    <p className="mt-5 rounded-2xl bg-mint-brand/12 px-4 py-3 text-sm font-semibold text-mint-deep">
+                      {trialing
+                        ? `You are inside the ${TRIAL_DAYS}-day trial. No card has been charged yet.`
+                        : `Subscribed at $${(PRICE_CENTS / 100).toFixed(0)} a month.`}
+                    </p>
+                    <p className="mt-3 text-sm text-ink-soft">
+                      Stripe emailed you a receipt when this started, and that
+                      receipt is where you cancel. We do not put a cancel button
+                      behind a chat with us, and we never need to be asked
+                      twice.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-5 text-ink-soft">
+                      Your address, your page, the editor and connecting Stripe
+                      are free and stay free. What the subscription switches on
+                      is the till: taking a card for what you list.
+                    </p>
+                    <form action="/api/billing/checkout" method="post" className="mt-5">
+                      <button
+                        type="submit"
+                        className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                      >
+                        {/* One string, not three. Split across JSX nodes it
+                            comes out of the server with markers in the middle,
+                            which is invisible to a reader and a lie to anything
+                            that searches the page for the sentence. */}
+                        {`Start the ${TRIAL_DAYS}-day trial \u2014 $${(
+                          PRICE_CENTS / 100
+                        ).toFixed(0)} a month after that`}
+                      </button>
+                    </form>
+                    <p className="mt-3 text-sm text-ink-soft">
+                      Nothing is charged today. The card is taken now and first
+                      billed in {TRIAL_DAYS} days, so you can open a store, sell
+                      something real and decide with an answer instead of a
+                      guess.
+                    </p>
+                  </>
+                )}
+              </div>
+            ) : null}
 
             {sold ? (
               <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
