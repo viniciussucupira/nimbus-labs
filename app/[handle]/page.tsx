@@ -2,7 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
-import { canSell, canSellProduct } from "@/lib/store-checkout";
+import {
+  canSell,
+  canSellProduct,
+  fromPriceCents,
+  sellableOptions,
+} from "@/lib/store-checkout";
 import { everyLabel } from "@/lib/product-recurring";
 import { linkHost } from "@/lib/product-link";
 import { isConnectInTestMode } from "@/lib/stripe-connect";
@@ -103,7 +108,13 @@ export default async function StorePage({ params }: Params) {
           {store.products.length > 0 ? (
             <>
               <ul className="mt-8 space-y-4 text-left">
-                {store.products.map((product) => (
+                {store.products.map((product) => {
+                  const options = sellableOptions(product);
+                  const from = fromPriceCents(product);
+                  const every = product.recurring
+                    ? ` ${everyLabel(product.recurring.interval)}`
+                    : "";
+                  return (
                   <li
                     key={product.id}
                     className="rounded-3xl border-2 border-ink/5 bg-cream p-5 sm:p-6"
@@ -113,11 +124,9 @@ export default async function StorePage({ params }: Params) {
                         {product.title}
                       </h2>
                       <p className="font-mono text-lg font-bold text-violet-deep">
-                        {product.recurring
-                          ? `$${centsToPrice(product.priceCents)} ${everyLabel(
-                              product.recurring.interval,
-                            )}`
-                          : `$${centsToPrice(product.priceCents)}`}
+                        {`${options.length > 1 ? "from " : ""}$${centsToPrice(
+                          from,
+                        )}${every}`}
                       </p>
                     </div>
                     {product.summary ? (
@@ -132,15 +141,59 @@ export default async function StorePage({ params }: Params) {
                       >
                         <input type="hidden" name="handle" value={store.handle} />
                         <input type="hidden" name="product" value={product.id} />
+                        {/*
+                          Radio cards, and nothing else. The form sends the id
+                          of the option the buyer picked; what it costs is read
+                          from the creator's own record on the server, so the
+                          price cannot be sent from here. Plain radios also
+                          mean the choice works with JavaScript turned off.
+                        */}
+                        {options.length > 0 ? (
+                          <fieldset className="mb-4">
+                            <legend className="sr-only">
+                              {`Choose an option for ${product.title}`}
+                            </legend>
+                            <div className="space-y-2">
+                              {options.map((option, index) => (
+                                <label
+                                  key={option.id}
+                                  htmlFor={`o-${option.id}`}
+                                  className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 transition hover:border-violet-brand has-[:checked]:border-violet-brand has-[:checked]:bg-lilac"
+                                >
+                                  <span className="flex items-center gap-3">
+                                    <input
+                                      id={`o-${option.id}`}
+                                      type="radio"
+                                      name="option"
+                                      value={option.id}
+                                      defaultChecked={index === 0}
+                                      className="h-4 w-4 accent-violet-brand"
+                                    />
+                                    <span className="font-bold text-ink">
+                                      {option.label}
+                                    </span>
+                                  </span>
+                                  <span className="font-mono font-bold text-violet-deep">
+                                    {`$${centsToPrice(option.priceCents)}${every}`}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          </fieldset>
+                        ) : null}
                         <button
                           type="submit"
                           className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
                         >
-                          {product.recurring
-                            ? `Subscribe \u2014 $${centsToPrice(
-                                product.priceCents,
-                              )} ${everyLabel(product.recurring.interval)}`
-                            : `Buy for $${centsToPrice(product.priceCents)}`}
+                          {options.length > 0
+                            ? product.recurring
+                              ? "Subscribe"
+                              : "Buy the one you picked"
+                            : product.recurring
+                              ? `Subscribe \u2014 $${centsToPrice(
+                                  product.priceCents,
+                                )}${every}`
+                              : `Buy for $${centsToPrice(product.priceCents)}`}
                         </button>
                       </form>
                     ) : selling ? (
@@ -154,7 +207,8 @@ export default async function StorePage({ params }: Params) {
                       </p>
                     ) : null}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
 
               {/*
