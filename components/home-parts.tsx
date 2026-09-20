@@ -184,6 +184,7 @@ const PLAN = {
     "Your buyer pays into your own Stripe account",
     "The file delivered the second the payment clears",
     "What you have sold, read from your own Stripe account",
+    "200 GB of downloads a month, and we say so instead of hiding it",
     "0% cut of your sales",
   ],
 };
