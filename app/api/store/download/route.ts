@@ -79,11 +79,14 @@ export async function GET(request: NextRequest) {
     return plain(status, message);
   }
 
-  const file = order.product.file;
+  // The file of the option that was bought, when the product has options, and
+  // the product's own when it does not. Worked out once, in readOrder, so this
+  // route and the page the buyer is looking at can never disagree.
+  const file = order.file;
   if (!file) {
     // A product that delivers a link has nothing here to send. The buyer is
     // told where it actually is rather than that their purchase is missing.
-    if (order.product.link) {
+    if (order.link) {
       return plain(
         409,
         "This product is not a download. Open the order page again and use the link on it.",
