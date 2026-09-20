@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
 import { canSell, canSellProduct } from "@/lib/store-checkout";
+import { everyLabel } from "@/lib/product-recurring";
 import { isConnectInTestMode } from "@/lib/stripe-connect";
 
 type Params = { params: Promise<{ handle: string }> };
@@ -105,7 +106,11 @@ export default async function StorePage({ params }: Params) {
                         {product.title}
                       </h2>
                       <p className="font-mono text-lg font-bold text-violet-deep">
-                        {`$${centsToPrice(product.priceCents)}`}
+                        {product.recurring
+                          ? `$${centsToPrice(product.priceCents)} ${everyLabel(
+                              product.recurring.interval,
+                            )}`
+                          : `$${centsToPrice(product.priceCents)}`}
                       </p>
                     </div>
                     {product.summary ? (
@@ -124,7 +129,11 @@ export default async function StorePage({ params }: Params) {
                           type="submit"
                           className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
                         >
-                          {`Buy for $${centsToPrice(product.priceCents)}`}
+                          {product.recurring
+                            ? `Subscribe \u2014 $${centsToPrice(
+                                product.priceCents,
+                              )} ${everyLabel(product.recurring.interval)}`
+                            : `Buy for $${centsToPrice(product.priceCents)}`}
                         </button>
                       </form>
                     ) : selling ? (
