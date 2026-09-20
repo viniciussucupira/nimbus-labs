@@ -17,6 +17,7 @@ import {
   readableSize,
   safeFileName,
 } from "@/lib/product-file";
+import { LINK_PROBLEMS, type LinkProblem, linkHost } from "@/lib/product-link";
 
 const MESSAGES: Record<string, string> = {
   title: "Give it a name before saving.",
@@ -45,8 +46,16 @@ async function send(payload: Record<string, unknown>): Promise<string | null> {
       ok?: boolean;
       error?: string;
       limit?: number;
+      reason?: string;
     };
     if (data.ok) return null;
+    if (data.error === "link") {
+      // The server says which way the link was wrong; the creator gets that
+      // sentence rather than a generic failure they cannot act on.
+      return (
+        LINK_PROBLEMS[data.reason as LinkProblem] ?? LINK_PROBLEMS.shape
+      );
+    }
     if (data.error === "too_many") {
       return `A store lists up to ${data.limit ?? MAX_PRODUCTS} things, and yours is full. Remove one to add another.`;
     }
@@ -195,6 +204,8 @@ function FileBlock({
   error,
   onPick,
   onDetach,
+  onLink,
+  onUnlink,
 }: {
   product: Product;
   busy: boolean;
@@ -202,9 +213,14 @@ function FileBlock({
   error: string | null;
   onPick: (file: File) => void;
   onDetach: () => void;
+  onLink: (url: string) => void;
+  onUnlink: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const [typing, setTyping] = useState(false);
+  const [url, setUrl] = useState("");
   const file = product.file;
+  const link = product.link;
 
   return (
     <div className="mt-3 rounded-2xl bg-white p-3">
@@ -268,22 +284,118 @@ function FileBlock({
             </button>
           </div>
         </>
+      ) : link ? (
+        <>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <p className="text-sm font-bold text-ink">
+              {`Delivered from ${linkHost(link)}`}
+            </p>
+          </div>
+          <p className="mt-1 break-all font-mono text-xs text-ink-soft">
+            {link}
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+            >
+              Open it to check
+            </a>
+            <button
+              type="button"
+              onClick={() => {
+                setUrl(link);
+                setTyping(true);
+              }}
+              className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+            >
+              Change it
+            </button>
+            <button
+              type="button"
+              onClick={onUnlink}
+              className="text-ink-soft underline underline-offset-4 transition hover:text-pink-brand"
+            >
+              Take it off
+            </button>
+          </div>
+        </>
       ) : (
         <>
-          <p className="text-sm font-bold text-ink">No file on this yet</p>
-          <p className="mt-1 text-sm text-ink-soft">
-            This is what the buyer downloads. Up to{" "}
-            {Math.round(MAX_FILE_BYTES / (1024 * 1024))} MB.
+          <p className="text-sm font-bold text-ink">
+            Nothing on this yet
           </p>
-          <button
-            type="button"
-            onClick={() => input.current?.click()}
-            className="mt-2 rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
-          >
-            Choose the file
-          </button>
+          <p className="mt-1 text-sm text-ink-soft">
+            {`Upload the file the buyer downloads, up to ${Math.round(
+              MAX_FILE_BYTES / (1024 * 1024),
+            )} MB \u2014 or point at where it already lives, if it is bigger than that or is not a file at all.`}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => input.current?.click()}
+              className="rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+            >
+              Choose the file
+            </button>
+            <button
+              type="button"
+              onClick={() => setTyping(true)}
+              className="rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+            >
+              Use a link instead
+            </button>
+          </div>
         </>
       )}
+
+      {typing ? (
+        <form
+          className="mt-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onLink(url);
+            setTyping(false);
+          }}
+        >
+          <label
+            htmlFor={`link-${product.id}`}
+            className="block text-sm font-bold text-ink"
+          >
+            Where the buyer should be sent
+          </label>
+          <input
+            id={`link-${product.id}`}
+            type="url"
+            value={url}
+            autoFocus
+            onChange={(event) => setUrl(event.target.value)}
+            placeholder="https://"
+            className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-2.5 text-sm outline-none focus:border-violet-brand"
+          />
+          <p className="mt-1 text-sm text-ink-soft">
+            A Google Drive folder, a private video page, a Notion page — anything
+            with an https address. Check that anyone with the link can open it.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="submit"
+              className="rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5"
+            >
+              Save the link
+            </button>
+            <button
+              type="button"
+              onClick={() => setTyping(false)}
+              className="rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-ink/30"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : null}
 
       {error ? (
         <p
@@ -396,6 +508,30 @@ export function ProductEditor({
     setFileError(null);
     setFileBusyId(product.id);
     const problem = await attach({ id: product.id, detach: true });
+    setFileBusyId(null);
+    if (problem) {
+      setFileError({ id: product.id, message: problem });
+      return;
+    }
+    router.refresh();
+  }
+
+  async function linkTo(product: Product, url: string) {
+    setFileError(null);
+    setFileBusyId(product.id);
+    const problem = await send({ action: "link", id: product.id, link: url });
+    setFileBusyId(null);
+    if (problem) {
+      setFileError({ id: product.id, message: problem });
+      return;
+    }
+    router.refresh();
+  }
+
+  async function unlink(product: Product) {
+    setFileError(null);
+    setFileBusyId(product.id);
+    const problem = await send({ action: "unlink", id: product.id });
     setFileBusyId(null);
     if (problem) {
       setFileError({ id: product.id, message: problem });
@@ -556,6 +692,8 @@ export function ProductEditor({
                   }
                   onPick={(chosen) => upload(product, chosen)}
                   onDetach={() => detach(product)}
+                  onLink={(url) => linkTo(product, url)}
+                  onUnlink={() => unlink(product)}
                 />
 
                 {removingId === product.id ? (
