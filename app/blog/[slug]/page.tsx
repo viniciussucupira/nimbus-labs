@@ -170,10 +170,10 @@ export default async function BlogPostPage({
                 Open the live demo store
               </Link>
               <Link
-                href="/creators"
+                href="/signin"
                 className="rounded-full border-2 border-white/70 px-7 py-3.5 font-bold text-white transition hover:bg-white hover:text-violet-deep"
               >
-                Get early access
+                Start your store
               </Link>
             </div>
           </div>
