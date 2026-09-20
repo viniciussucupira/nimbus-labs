@@ -64,6 +64,7 @@ const BUILT = [
   "An editor for your own store: the name, the description, and what you sell with its price",
   "The file you sell, uploaded straight from your browser and kept where only you can reach it",
   "Or a link instead of a file, for what is too big to upload or is not a file at all",
+  "Memberships: daily, weekly, monthly or yearly, charged on your own Stripe account",
   "A store that installs to the home screen on iPhone and Android",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
@@ -93,7 +94,6 @@ const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a mon
 const NOT_BUILT = [
   "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
-  "Memberships that charge every month",
   "Communities and group chat",
   "Scheduled calls with a calendar",
   "Email marketing and automations",
