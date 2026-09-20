@@ -1,0 +1,352 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  CODE_PROBLEMS,
+  type CodeProblem,
+  type DiscountCode,
+  offLabel,
+} from "@/lib/discount";
+
+const MESSAGES: Record<string, string> = {
+  none: "This account has no store yet.",
+  not_selling:
+    "Codes come off a charge, so they need your Stripe account connected and your subscription running.",
+  taken: "You already have a live code with that word. Pick another.",
+  stripe: "Stripe did not answer just now. Try again in a moment.",
+  signed_out: "Your session ended. Sign in again.",
+  unavailable: "Stores are not switched on yet, so nothing was saved.",
+  server_error: "Something went wrong on our side. Try again in a moment.",
+};
+
+type Answer = { codes?: DiscountCode[]; problem?: string };
+
+async function send(payload: Record<string, unknown>): Promise<Answer> {
+  try {
+    const response = await fetch("/api/store/discount", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = (await response.json()) as {
+      ok?: boolean;
+      error?: string;
+      reason?: string;
+      codes?: DiscountCode[];
+    };
+    if (data.ok) return { codes: data.codes ?? [] };
+    if (data.error === "code") {
+      // The server says which way it was wrong; the creator gets that sentence
+      // rather than a failure they cannot act on.
+      return {
+        problem: CODE_PROBLEMS[data.reason as CodeProblem] ?? CODE_PROBLEMS.shape,
+      };
+    }
+    return { problem: MESSAGES[data.error ?? ""] ?? MESSAGES.server_error };
+  } catch {
+    return { problem: MESSAGES.server_error };
+  }
+}
+
+const whenLabel = (seconds: number) =>
+  new Date(seconds * 1000).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+/**
+ * The discount codes on the creator's own Stripe account.
+ *
+ * The list is fetched rather than passed in, because it is Stripe's list and
+ * not ours: asking on the server would make the whole studio wait on a call to
+ * Stripe just to draw a page that is mostly about something else.
+ */
+export function DiscountEditor({ selling }: { selling: boolean }) {
+  const [codes, setCodes] = useState<DiscountCode[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [code, setCode] = useState("");
+  const [kind, setKind] = useState<"percent" | "amount">("percent");
+  const [percent, setPercent] = useState("20");
+  const [amount, setAmount] = useState("10");
+  const [uses, setUses] = useState("");
+
+  useEffect(() => {
+    if (!selling) return;
+    let alive = true;
+    setLoading(true);
+    send({ action: "list" }).then((answer) => {
+      if (!alive) return;
+      setLoading(false);
+      if (answer.codes) setCodes(answer.codes);
+      else setError(answer.problem ?? null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [selling]);
+
+  async function run(payload: Record<string, unknown>, done: () => void) {
+    setBusy(true);
+    setError(null);
+    const answer = await send(payload);
+    setBusy(false);
+    if (!answer.codes) {
+      setError(answer.problem ?? MESSAGES.server_error);
+      return;
+    }
+    setCodes(answer.codes);
+    done();
+  }
+
+  const live = (codes ?? []).filter((entry) => entry.active);
+  const past = (codes ?? []).filter((entry) => !entry.active);
+
+  return (
+    <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+      <p className="font-display text-xl font-black text-ink">Discount codes</p>
+
+      {!selling ? (
+        <p className="mt-2 text-ink-soft">
+          A code comes off a charge, so this opens once your Stripe account is
+          connected and your subscription is running. The trial counts.
+        </p>
+      ) : (
+        <>
+          <p className="mt-2 text-ink-soft">
+            A word a buyer types at checkout for money off. The codes live on
+            your own Stripe account, so the count of how many times each one has
+            been used is Stripe&apos;s count, not ours — and if you ever leave,
+            they leave with you.
+          </p>
+
+          {loading ? (
+            <p className="mt-5 text-sm text-ink-soft">Asking Stripe…</p>
+          ) : null}
+
+          {live.length > 0 ? (
+            <ul className="mt-5 space-y-3">
+              {live.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="rounded-2xl border-2 border-ink/5 bg-cream p-4"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="font-mono text-lg font-black text-ink">
+                      {entry.code}
+                    </p>
+                    <p className="font-bold text-violet-deep">
+                      {entry.off ? offLabel(entry.off) : "Made in Stripe"}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm text-ink-soft">
+                    {`Used ${entry.timesRedeemed} ${
+                      entry.timesRedeemed === 1 ? "time" : "times"
+                    }`}
+                    {entry.maxRedemptions !== null
+                      ? ` of ${entry.maxRedemptions}`
+                      : ""}
+                    {entry.expiresAt !== null
+                      ? `. Stops on ${whenLabel(entry.expiresAt)}`
+                      : ""}
+                    .
+                  </p>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => run({ action: "stop", id: entry.id }, () => {})}
+                    className="mt-2 text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-pink-brand disabled:no-underline disabled:opacity-40"
+                  >
+                    Switch it off
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {codes !== null && live.length === 0 && !adding ? (
+            <p className="mt-5 text-sm text-ink-soft">
+              No live code right now. A buyer sees no box to type one into,
+              which is how it should be until there is something to type.
+            </p>
+          ) : null}
+
+          {past.length > 0 ? (
+            <p className="mt-4 text-sm text-ink-soft">
+              {`${past.length} ${past.length === 1 ? "code is" : "codes are"} switched off, used up or past their date. They stay in your Stripe account, on the receipts they were used on.`}
+            </p>
+          ) : null}
+
+          {adding ? (
+            <form
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (busy) return;
+                run(
+                  {
+                    action: "add",
+                    code,
+                    kind,
+                    percent,
+                    amount,
+                    uses,
+                  },
+                  () => {
+                    setAdding(false);
+                    setCode("");
+                    setUses("");
+                  },
+                );
+              }}
+              className="mt-5 space-y-4 rounded-2xl border-2 border-violet-brand/30 bg-white p-4"
+            >
+              <div>
+                <label
+                  htmlFor="discount-code"
+                  className="block text-sm font-bold text-ink"
+                >
+                  The code
+                </label>
+                <input
+                  id="discount-code"
+                  type="text"
+                  required
+                  maxLength={24}
+                  value={code}
+                  onChange={(event) =>
+                    setCode(event.target.value.toUpperCase())
+                  }
+                  placeholder="LAUNCH20"
+                  className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-3 font-mono text-ink outline-none transition focus:border-violet-brand"
+                />
+                <p className="mt-1 text-sm text-ink-soft">
+                  Letters, numbers and dashes. A buyer can type it in any case.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label
+                    htmlFor="discount-kind"
+                    className="block text-sm font-bold text-ink"
+                  >
+                    What it takes off
+                  </label>
+                  <select
+                    id="discount-kind"
+                    value={kind}
+                    onChange={(event) =>
+                      setKind(event.target.value === "amount" ? "amount" : "percent")
+                    }
+                    className="mt-1 rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+                  >
+                    <option value="percent">A percentage</option>
+                    <option value="amount">An amount</option>
+                  </select>
+                </div>
+                <div className="w-28">
+                  <label
+                    htmlFor="discount-value"
+                    className="block text-sm font-bold text-ink"
+                  >
+                    {kind === "percent" ? "Percent" : "Dollars"}
+                  </label>
+                  <input
+                    id="discount-value"
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    value={kind === "percent" ? percent : amount}
+                    onChange={(event) =>
+                      kind === "percent"
+                        ? setPercent(event.target.value)
+                        : setAmount(event.target.value)
+                    }
+                    className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+                  />
+                </div>
+                <div className="w-36">
+                  <label
+                    htmlFor="discount-uses"
+                    className="block text-sm font-bold text-ink"
+                  >
+                    Uses, at most
+                  </label>
+                  <input
+                    id="discount-uses"
+                    type="text"
+                    inputMode="numeric"
+                    value={uses}
+                    onChange={(event) => setUses(event.target.value)}
+                    placeholder="No limit"
+                    className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+                  />
+                </div>
+              </div>
+
+              <p className="text-sm text-ink-soft">
+                It comes off the payment it is typed into. On a membership that
+                is the first charge, not every renewal.
+              </p>
+
+              {error ? (
+                <p
+                  role="alert"
+                  className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-ink"
+                >
+                  {error}
+                </p>
+              ) : null}
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+                >
+                  {busy ? "Making it…" : "Make the code"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdding(false);
+                    setError(null);
+                  }}
+                  className="rounded-full border-2 border-ink/15 px-6 py-3 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setAdding(true);
+                  setError(null);
+                }}
+                className="mt-5 rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+              >
+                Make a code
+              </button>
+              {error ? (
+                <p
+                  role="alert"
+                  className="mt-3 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-ink"
+                >
+                  {error}
+                </p>
+              ) : null}
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
