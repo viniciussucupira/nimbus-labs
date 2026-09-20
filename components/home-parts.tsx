@@ -159,7 +159,15 @@ export function StoreMock() {
   );
 }
 
-/* Pricing with a monthly / yearly switch. */
+/*
+ * Pricing with a monthly / yearly switch.
+ *
+ * One plan, and every line under it is something you can open and try today.
+ * There was a second plan here, at $99, and it listed memberships, buy now
+ * pay later and a priority support tier. None of the three exist in this
+ * codebase. A price with a feature beside it is a promise, and a promise we
+ * cannot keep is worse than a shorter list, so the list got shorter.
+ */
 const PLANS = [
   {
     name: "Starter",
@@ -168,23 +176,11 @@ const PLANS = [
     accent: "from-violet-brand to-sky-brand",
     tagline: "One store, everything you need to sell a file.",
     perks: [
-      "Store page with your links and products",
-      "Several price options per product",
-      "Instant file delivery after payment",
+      "Your own store address, live the moment you take it",
+      "Your buyer pays into your own Stripe account",
+      "The file delivered the second the payment clears",
+      "What you have sold, read from your own Stripe account",
       "0% cut of your sales",
-    ],
-  },
-  {
-    name: "Creator Pro",
-    monthly: 99,
-    yearly: 948,
-    accent: "from-pink-brand to-amber-brand",
-    tagline: "For the creator selling more than one thing.",
-    perks: [
-      "Everything in Starter",
-      "Buy now, pay later at checkout",
-      "Subscriptions and memberships",
-      "Priority support with a written answer time",
     ],
   },
 ];
@@ -221,7 +217,7 @@ export function Pricing() {
         </div>
       </div>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
+      <div className="mx-auto mt-8 grid max-w-md gap-6">
         {PLANS.map((plan) => (
           <div
             key={plan.name}
@@ -270,7 +266,7 @@ export function Pricing() {
 const QUESTIONS = [
   {
     q: "Can I sign up and start selling today?",
-    a: "No, and we are not going to pretend otherwise. What exists today is the demo store you can buy from with a Stripe test card. Early access opens with the first creators we talk to, and the price above is the planned price, not a charge.",
+    a: "Yes. You take your store address, connect your own Stripe account, put up what you sell, and a buyer can pay for it — on your account, with nothing taken on top. The one thing not switched on yet is our own charge: the price above is the planned price, and nobody has been billed for it.",
   },
   {
     q: "Who holds the money from my sales?",
