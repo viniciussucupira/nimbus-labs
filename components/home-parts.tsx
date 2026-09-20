@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 
 /* Reveals every element with .reveal as it scrolls into view. */
 export function RevealOnScroll() {
@@ -160,103 +161,82 @@ export function StoreMock() {
 }
 
 /*
- * Pricing with a monthly / yearly switch.
- *
  * One plan, and every line under it is something you can open and try today.
+ *
  * There was a second plan here, at $99, and it listed memberships, buy now
  * pay later and a priority support tier. None of the three exist in this
  * codebase. A price with a feature beside it is a promise, and a promise we
  * cannot keep is worse than a shorter list, so the list got shorter.
+ *
+ * There was also a monthly / yearly switch, and the yearly side of it showed
+ * $300 a year. Billing only ever opens a monthly subscription, so the yearly
+ * price was a number nobody could actually pay. The switch is gone until the
+ * code behind it exists; a price you cannot buy is the same kind of lie as a
+ * feature you cannot use.
  */
-const PLANS = [
-  {
-    name: "Starter",
-    monthly: 29,
-    yearly: 300,
-    accent: "from-violet-brand to-sky-brand",
-    tagline: "One store, everything you need to sell a file.",
-    perks: [
-      "Your own store address, live the moment you take it",
-      "Your buyer pays into your own Stripe account",
-      "The file delivered the second the payment clears",
-      "What you have sold, read from your own Stripe account",
-      "0% cut of your sales",
-    ],
-  },
-];
+const PLAN = {
+  name: "Starter",
+  monthly: PRICE_CENTS / 100,
+  accent: "from-violet-brand to-sky-brand",
+  tagline: "One store, everything you need to sell a file.",
+  perks: [
+    "Your own store address, live the moment you take it",
+    "Your buyer pays into your own Stripe account",
+    "The file delivered the second the payment clears",
+    "What you have sold, read from your own Stripe account",
+    "0% cut of your sales",
+  ],
+};
 
+/**
+ * The price and the trial are imported rather than typed in, so this card and
+ * the checkout a creator actually lands on cannot drift apart. lib/plan.ts
+ * holds no secrets, which is what makes it safe to import from a component
+ * that runs in the browser.
+ */
 export function Pricing() {
-  const [yearly, setYearly] = useState(false);
-
   return (
-    <div>
-      <div className="flex justify-center">
+    <div className="mx-auto mt-2 grid max-w-md gap-6">
+      <div className="nb-lift reveal relative overflow-hidden rounded-3xl border-2 border-ink/10 bg-white p-7 shadow-xl shadow-ink/5">
         <div
-          role="group"
-          aria-label="Billing period"
-          className="inline-flex rounded-full border-2 border-ink/10 bg-white p-1"
-        >
-          {[
-            { label: "Monthly", value: false },
-            { label: "Yearly", value: true },
-          ].map((opt) => (
-            <button
-              key={opt.label}
-              type="button"
-              aria-pressed={yearly === opt.value}
-              onClick={() => setYearly(opt.value)}
-              className={`rounded-full px-5 py-2 text-sm font-bold transition ${
-                yearly === opt.value
-                  ? "bg-ink text-white"
-                  : "text-ink-soft hover:text-ink"
-              }`}
-            >
-              {opt.label}
-            </button>
+          aria-hidden="true"
+          className={`absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${PLAN.accent} opacity-20 blur-2xl`}
+        />
+        <p className="font-display text-xl font-extrabold text-ink">
+          {PLAN.name}
+        </p>
+        <p className="mt-1 text-sm text-ink-soft">{PLAN.tagline}</p>
+        <p className="mt-5 flex items-end gap-1">
+          <span className="font-display text-5xl font-black text-ink">
+            ${PLAN.monthly}
+          </span>
+          <span className="pb-2 text-sm font-semibold text-ink-soft">
+            per month
+          </span>
+        </p>
+        <p className="mt-3 rounded-2xl bg-mint-brand/12 px-4 py-2.5 text-sm font-semibold text-mint-deep">
+          {`Free for the first ${TRIAL_DAYS} days. No card until then.`}
+        </p>
+        <ul className="mt-6 space-y-2 text-sm text-ink">
+          {PLAN.perks.map((perk) => (
+            <li key={perk} className="flex gap-2">
+              <span aria-hidden="true" className="text-mint-deep">
+                ✔
+              </span>
+              <span>{perk}</span>
+            </li>
           ))}
-        </div>
-      </div>
-
-      <div className="mx-auto mt-8 grid max-w-md gap-6">
-        {PLANS.map((plan) => (
-          <div
-            key={plan.name}
-            className="nb-lift reveal relative overflow-hidden rounded-3xl border-2 border-ink/10 bg-white p-7 shadow-xl shadow-ink/5"
-          >
-            <div
-              aria-hidden="true"
-              className={`absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br ${plan.accent} opacity-20 blur-2xl`}
-            />
-            <p className="font-display text-xl font-extrabold text-ink">
-              {plan.name}
-            </p>
-            <p className="mt-1 text-sm text-ink-soft">{plan.tagline}</p>
-            <p className="mt-5 flex items-end gap-1">
-              <span className="font-display text-5xl font-black text-ink">
-                ${yearly ? plan.yearly : plan.monthly}
-              </span>
-              <span className="pb-2 text-sm font-semibold text-ink-soft">
-                {yearly ? "per year" : "per month"}
-              </span>
-            </p>
-            <ul className="mt-6 space-y-2 text-sm text-ink">
-              {plan.perks.map((perk) => (
-                <li key={perk} className="flex gap-2">
-                  <span aria-hidden="true" className="text-mint-deep">
-                    ✔
-                  </span>
-                  <span>{perk}</span>
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/creators"
-              className={`mt-7 block rounded-full bg-gradient-to-r ${plan.accent} px-5 py-3 text-center font-bold text-white shadow-lg transition hover:brightness-110 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand`}
-            >
-              Get early access
-            </Link>
-          </div>
-        ))}
+        </ul>
+        <Link
+          href="/signin"
+          className={`mt-7 block rounded-full bg-gradient-to-r ${PLAN.accent} px-5 py-3 text-center font-bold text-white shadow-lg transition hover:brightness-110 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand`}
+        >
+          Start your store
+        </Link>
+        <p className="mt-4 text-center text-xs text-ink-soft">
+          Cancel from the receipt Stripe emails you. There is no cancel button
+          hidden behind a conversation with us.
+        </p>
       </div>
     </div>
   );
@@ -266,7 +246,7 @@ export function Pricing() {
 const QUESTIONS = [
   {
     q: "Can I sign up and start selling today?",
-    a: "Yes. You take your store address, connect your own Stripe account, put up what you sell, and a buyer can pay for it — on your account, with nothing taken on top. The one thing not switched on yet is our own charge: the price above is the planned price, and nobody has been billed for it.",
+    a: `Yes. You take your store address, connect your own Stripe account, put up what you sell, and a buyer can pay for it — on your account, with nothing taken on top. The address, the page, the editor and connecting Stripe are free. What the $${PRICE_CENTS / 100} subscription switches on is the till, and the first ${TRIAL_DAYS} days of it are free, so you can sell before you decide whether it is worth paying for.`,
   },
   {
     q: "Who holds the money from my sales?",
