@@ -11,7 +11,13 @@
  * people asking for the same name at the same moment cannot both win.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
-import type { ProductFile } from "@/lib/product-file";
+import { type ProductFile, parseProductFile } from "@/lib/product-file";
+import {
+  MAX_OPTIONS,
+  MAX_OPTION_LABEL_LENGTH,
+  type ProductOption,
+  parseOptions,
+} from "@/lib/product-option";
 import { MAX_LINK_LENGTH } from "@/lib/product-link";
 import { type Recurring, parseRecurring } from "@/lib/product-recurring";
 import {
@@ -134,6 +140,14 @@ export type Product = {
    * one-off. Null is a single sale, which is what most products are.
    */
   recurring: Recurring | null;
+  /**
+   * Several prices under one product card, each delivering its own thing.
+   *
+   * Empty is the ordinary case: the product has the one price and the one
+   * delivery above. When this is not empty those two are not charged and not
+   * handed over — the option the buyer picked is.
+   */
+  options: ProductOption[];
 };
 
 export type Store = {
@@ -225,24 +239,6 @@ export async function storeFolder(email: string): Promise<string> {
   return (await sha256Hex(`nimbus-files:${email.toLowerCase()}`)).slice(0, 32);
 }
 
-function parseFile(raw: unknown): ProductFile | null {
-  if (!raw || typeof raw !== "object") return null;
-  const value = raw as Partial<ProductFile>;
-  if (typeof value.pathname !== "string" || !value.pathname) return null;
-  if (typeof value.name !== "string" || !value.name) return null;
-  if (typeof value.bytes !== "number" || !Number.isFinite(value.bytes)) {
-    return null;
-  }
-  return {
-    pathname: value.pathname,
-    name: value.name,
-    bytes: value.bytes,
-    contentType:
-      typeof value.contentType === "string" ? value.contentType : "",
-    addedAt: typeof value.addedAt === "string" ? value.addedAt : "",
-  };
-}
-
 function parseProducts(raw: unknown): Product[] {
   if (!Array.isArray(raw)) return [];
   const products: Product[] = [];
@@ -262,7 +258,7 @@ function parseProducts(raw: unknown): Product[] {
           : "",
       priceCents: value.priceCents,
       createdAt: typeof value.createdAt === "string" ? value.createdAt : "",
-      file: parseFile(value.file),
+      file: parseProductFile(value.file),
       // Records written before links existed simply have no link, which is
       // the same as not having one now.
       link:
@@ -270,6 +266,7 @@ function parseProducts(raw: unknown): Product[] {
           ? value.link.slice(0, MAX_LINK_LENGTH)
           : null,
       recurring: parseRecurring(value.recurring),
+      options: parseOptions(value.options),
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -735,6 +732,9 @@ function freshId(store: Store): string {
   // somebody else. Both lists are counted.
   const taken = new Set([
     ...store.products.map((product) => product.id),
+    ...store.products.flatMap((product) =>
+      product.options.map((option) => option.id),
+    ),
     ...store.links.map((link) => link.id),
   ]);
   for (let attempt = 0; attempt < 50; attempt += 1) {
@@ -785,6 +785,7 @@ export async function addProduct(
     file: null,
     link: null,
     recurring,
+    options: [],
   };
 
   const next: Store = { ...store, products: [...store.products, product] };
@@ -873,8 +874,72 @@ export type FileResult =
   | { ok: true; store: Store; removed: ProductFile | null }
   | { ok: false; reason: "none" | "unknown" | "invalid" };
 
+/** What is handed over when something is paid for. One or the other. */
+export type Delivery = { file: ProductFile | null; link: string | null };
+
 /**
- * Puts a file on a product, or takes it off.
+ * The delivery an id names: a product's own, or one of its options'.
+ *
+ * Option ids are unique across the whole store, so one id is enough to find
+ * either, and the screens above never have to say which kind they mean. That
+ * is also what lets an option's file live under the same folder rule a
+ * product's does, with no second path shape to get wrong.
+ */
+export function deliveryAt(
+  store: Store,
+  id: string,
+): { product: Product; option: ProductOption | null } | null {
+  for (const product of store.products) {
+    if (product.id === id) return { product, option: null };
+    const option = product.options.find((entry) => entry.id === id);
+    if (option) return { product, option };
+  }
+  return null;
+}
+
+/** Whether this store owns that id, asked before any upload is signed. */
+export function ownsDeliveryId(store: Store, id: string): boolean {
+  return deliveryAt(store, id) !== null;
+}
+
+/**
+ * Rewrites the delivery an id names, wherever it hangs.
+ *
+ * Returns the new product list and what was there before, so the caller can
+ * release the storage the old file used once the record that replaced it is
+ * safely written.
+ */
+function rewriteDelivery(
+  products: Product[],
+  id: string,
+  change: (current: Delivery) => Delivery,
+): { products: Product[]; previous: Delivery } | null {
+  for (let i = 0; i < products.length; i += 1) {
+    const product = products[i];
+
+    if (product.id === id) {
+      const previous: Delivery = { file: product.file, link: product.link };
+      const copy = [...products];
+      copy[i] = { ...product, ...change(previous) };
+      return { products: copy, previous };
+    }
+
+    const at = product.options.findIndex((option) => option.id === id);
+    if (at >= 0) {
+      const option = product.options[at];
+      const previous: Delivery = { file: option.file, link: option.link };
+      const options = [...product.options];
+      options[at] = { ...option, ...change(previous) };
+      const copy = [...products];
+      copy[i] = { ...product, options };
+      return { products: copy, previous };
+    }
+  }
+  return null;
+}
+
+/**
+ * Puts a file on a product or on one of its price options, or takes it off.
  *
  * The blob itself is written and deleted by the route, because that talks to
  * the file store over the network and this does not. What comes back is the
@@ -889,21 +954,20 @@ export async function setProductFile(
 ): Promise<FileResult> {
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
-  const at = store.products.findIndex((product) => product.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
+  // A file replaces a link. One thing is delivered, never two.
+  const done = rewriteDelivery(store.products, id, (current) => ({
+    file,
+    link: file ? null : current.link,
+  }));
+  if (!done) return { ok: false, reason: "unknown" };
 
-  const removed = store.products[at].file;
-  const products = [...store.products];
-  // A file replaces a link. The product delivers one thing.
-  products[at] = { ...products[at], file, link: file ? null : products[at].link };
-
-  const next: Store = { ...store, products };
+  const next: Store = { ...store, products: done.products };
   await saveStore(next);
-  return { ok: true, store: next, removed };
+  return { ok: true, store: next, removed: done.previous.file };
 }
 
 /**
- * Points a product at a link instead of a file, or takes the link away.
+ * Points a product or option at a link instead of a file, or takes it away.
  *
  * Mirrors setProductFile, including the part that matters: setting one clears
  * the other. It returns the file that was displaced so the caller can release
@@ -916,32 +980,43 @@ export async function setProductLink(
 ): Promise<FileResult> {
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
-  const at = store.products.findIndex((product) => product.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
-
-  const removed = link ? store.products[at].file : null;
-  const products = [...store.products];
-  products[at] = {
-    ...products[at],
+  const done = rewriteDelivery(store.products, id, (current) => ({
     link,
-    file: link ? null : products[at].file,
-  };
+    file: link ? null : current.file,
+  }));
+  if (!done) return { ok: false, reason: "unknown" };
 
-  const next: Store = { ...store, products };
+  const next: Store = { ...store, products: done.products };
   await saveStore(next);
-  return { ok: true, store: next, removed };
+  // Taking a link off displaces nothing; putting one on displaces the file.
+  return { ok: true, store: next, removed: link ? done.previous.file : null };
 }
 
-/** The file on one product, or null. Used before serving a download. */
+/**
+ * The file an id names, or null. Used before serving a download.
+ *
+ * Reaches an option's file as readily as a product's, so a creator can open
+ * each price option and check that the right thing is behind it.
+ */
 export async function productFile(
   email: string,
   id: string,
 ): Promise<{ product: Product; file: ProductFile } | null> {
   const store = await storeForEmail(email);
   if (!store) return null;
-  const product = store.products.find((entry) => entry.id === id);
-  if (!product || !product.file) return null;
-  return { product, file: product.file };
+  const found = deliveryAt(store, id);
+  if (!found) return null;
+  const file = found.option ? found.option.file : found.product.file;
+  return file ? { product: found.product, file } : null;
+}
+
+/** Every file a product holds, its options included. Read before removing it. */
+export function filesOnProduct(product: Product): ProductFile[] {
+  const files = product.file ? [product.file] : [];
+  for (const option of product.options) {
+    if (option.file) files.push(option.file);
+  }
+  return files;
 }
 
 export type LinkResult =
@@ -1048,4 +1123,155 @@ export async function moveStoreLink(
   const next: Store = { ...store, links };
   await saveStore(next);
   return { ok: true, store: next };
+}
+
+export type OptionResult =
+  | { ok: true; store: Store; removed: ProductFile[] }
+  | {
+      ok: false;
+      reason: "none" | "label" | "price" | "too_many" | "unknown";
+      limit?: number;
+    };
+
+/** Checks a label and a typed price for one option. */
+function readOption(
+  rawLabel: string,
+  rawPrice: string,
+): { label: string; priceCents: number } | "label" | "price" {
+  const label = rawLabel.trim().slice(0, MAX_OPTION_LABEL_LENGTH);
+  if (!label) return "label";
+  const priceCents = priceToCents(rawPrice);
+  if (priceCents === null) return "price";
+  if (priceCents < MIN_PRICE_CENTS || priceCents > MAX_PRICE_CENTS) {
+    return "price";
+  }
+  return { label, priceCents };
+}
+
+/** Adds a price option to a product, at the end of its list. */
+export async function addOption(
+  email: string,
+  productId: string,
+  rawLabel: string,
+  rawPrice: string,
+): Promise<OptionResult> {
+  const fields = readOption(rawLabel, rawPrice);
+  if (typeof fields === "string") return { ok: false, reason: fields };
+
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.products.findIndex((product) => product.id === productId);
+  if (at < 0) return { ok: false, reason: "unknown" };
+  if (store.products[at].options.length >= MAX_OPTIONS) {
+    return { ok: false, reason: "too_many", limit: MAX_OPTIONS };
+  }
+
+  const option: ProductOption = {
+    id: freshId(store),
+    label: fields.label,
+    priceCents: fields.priceCents,
+    file: null,
+    link: null,
+  };
+
+  const products = [...store.products];
+  products[at] = {
+    ...products[at],
+    options: [...products[at].options, option],
+  };
+
+  const next: Store = { ...store, products };
+  await saveStore(next);
+  return { ok: true, store: next, removed: [] };
+}
+
+/** Changes an option's label or price, keeping its place and its delivery. */
+export async function editOption(
+  email: string,
+  id: string,
+  rawLabel: string,
+  rawPrice: string,
+): Promise<OptionResult> {
+  const fields = readOption(rawLabel, rawPrice);
+  if (typeof fields === "string") return { ok: false, reason: fields };
+
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const found = deliveryAt(store, id);
+  if (!found || !found.option) return { ok: false, reason: "unknown" };
+
+  const products = store.products.map((product) => {
+    if (product.id !== found.product.id) return product;
+    return {
+      ...product,
+      options: product.options.map((option) =>
+        option.id === id
+          ? { ...option, label: fields.label, priceCents: fields.priceCents }
+          : option,
+      ),
+    };
+  });
+
+  const next: Store = { ...store, products };
+  await saveStore(next);
+  return { ok: true, store: next, removed: [] };
+}
+
+/**
+ * Takes an option off a product.
+ *
+ * The file it held is handed back rather than deleted here, for the same
+ * reason every other delivery change works that way: the record stops
+ * pointing at it first, and only then is the storage released.
+ */
+export async function removeOption(
+  email: string,
+  id: string,
+): Promise<OptionResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const found = deliveryAt(store, id);
+  if (!found || !found.option) return { ok: false, reason: "unknown" };
+
+  const removed = found.option.file ? [found.option.file] : [];
+  const products = store.products.map((product) =>
+    product.id === found.product.id
+      ? {
+          ...product,
+          options: product.options.filter((option) => option.id !== id),
+        }
+      : product,
+  );
+
+  const next: Store = { ...store, products };
+  await saveStore(next);
+  return { ok: true, store: next, removed };
+}
+
+/** Moves an option one place up or down within its own product. */
+export async function moveOption(
+  email: string,
+  id: string,
+  direction: "up" | "down",
+): Promise<OptionResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const found = deliveryAt(store, id);
+  if (!found || !found.option) return { ok: false, reason: "unknown" };
+
+  const current = found.product.options;
+  const at = current.findIndex((option) => option.id === id);
+  const to = direction === "up" ? at - 1 : at + 1;
+  if (to < 0 || to >= current.length) return { ok: true, store, removed: [] };
+
+  const options = [...current];
+  [options[at], options[to]] = [options[to], options[at]];
+
+  const products = store.products.map((product) =>
+    product.id === found.product.id ? { ...product, options } : product,
+  );
+
+  const next: Store = { ...store, products };
+  await saveStore(next);
+  return { ok: true, store: next, removed: [] };
 }
