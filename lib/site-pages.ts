@@ -35,7 +35,7 @@ export const PAGES: TopicPage[] = [
     title: "A store page that looks like",
     highlight: "you, not like a template",
     intro:
-      "One address with your face, your colours, your links and your products. The page is built to be read on a phone in a few seconds, because that is where your buyer opens it.",
+      "One address with your name, your line, your links and your products. The page is built to be read on a phone in a few seconds, because that is where your buyer opens it.",
     badge: LIVE,
     accent: "from-violet-brand to-sky-brand",
     blocks: [
@@ -47,16 +47,16 @@ export const PAGES: TopicPage[] = [
         kind: "cards",
         title: "What the store page carries",
         items: [
-          { emoji: "🖼️", title: "Your cover and your photo", body: "A cover image and a portrait, not initials in a grey circle.", tint: "bg-violet-brand/10 text-violet-deep" },
-          { emoji: "🔗", title: "Link buttons", body: "Free resources, social profiles, a booking link — each with its own icon.", tint: "bg-sky-brand/15 text-sky-brand" },
-          { emoji: "🛍️", title: "Product cards", body: "Cover art, description, what is inside, and the price options.", tint: "bg-pink-brand/10 text-pink-brand" },
-          { emoji: "🙋", title: "An About me section", body: "On every store, not only on one theme.", tint: "bg-amber-brand/15 text-amber-brand" },
+          { emoji: "🔤", title: "Your name at the top", body: "Your name, your address and one line about you. A photo of your own is not built yet, so today the page draws your initial.", tint: "bg-violet-brand/10 text-violet-deep" },
+          { emoji: "🔗", title: "Link buttons", body: "The channel, the profile, the booking page — with the site each one leads to printed under it. None of them charges anything.", tint: "bg-sky-brand/15 text-sky-brand" },
+          { emoji: "🛍️", title: "Product cards", body: "The title, what is inside, the price, and the button that buys it.", tint: "bg-pink-brand/10 text-pink-brand" },
+          { emoji: "🙋", title: "A line about you", body: "Under your name, on every store — not locked behind one theme.", tint: "bg-amber-brand/15 text-amber-brand" },
         ],
       },
       {
         kind: "note",
         title: "What is not there yet",
-        body: "Categories and search for a store with dozens of products, and your own domain. Neither exists, and neither is described here as if it did.",
+        body: "A photo of your own and colours of your own: every store draws your initial and wears the same palette today. Categories and search for a store with dozens of products, and your own domain. None of those exists, and none is described above as if it did.",
       },
       {
         kind: "quote",
@@ -78,7 +78,7 @@ export const PAGES: TopicPage[] = [
     blocks: [
       {
         kind: "lead",
-        text: "Stan's own help centre lists pricing tiers among its most requested features and states plainly that there is no native way to offer them under one product. On Nimbus Labs this is already working, tested and in production.",
+        text: "Stan's own help centre lists pricing tiers among its most requested features and states plainly that there is no native way to offer them under one product. On Nimbus Labs this is written, tested and running in production — on the demo store, which is what the badge above says. Building the same into a creator's own editor is not finished, so a store you make today gives one price per product. This page will drop this paragraph on the day that stops being true.",
       },
       {
         kind: "steps",
@@ -361,7 +361,7 @@ export const PAGES: TopicPage[] = [
           ["Where you see your money", "Their Income tab. A Stripe Custom account has no Stripe login", "stripe.com, like any other business of yours"],
           ["Phone app", "iPhone and iPad, for running your store. Not on Android", "None. The site installs to the home screen on both"],
           ["Several prices for one product", "Listed as a top feature request, not available", "Working in the demo store. Your own store takes one price per item today"],
-          ["An About me section", "Only on one theme", "On every store"],
+          ["A line about you on the page", "Their About me, on one theme only", "On every store, under your name"],
           ["Your own domain", "Not available", "Not available"],
           ["Changing your store address", "Any time. Their help centre says old links are forwarded on a best effort, cannot be guaranteed, and advises resending them", "Any time. Every address the store ever used keeps working, for good"],
           ["Customer area for all purchases", "Courses only", "Not available. A buyer who loses the link gets it sent again, with no account"],
@@ -640,7 +640,7 @@ export const PAGES: TopicPage[] = [
         rows: [
           ["Store page on a phone", "Yes", "Yes, and faster (97\u2013100 against 57\u201358 on PageSpeed)"],
           ["Themes and colours", "Yes, limited", "Not available. One look, the same on every store"],
-          ["About me section", "One theme only", "Every store"],
+          ["A line about you on the page", "About me, one theme only", "Every store, under your name"],
           ["Several prices in one product", "Not available", "Working in the demo store. Your own store takes one price per item"],
           ["Custom domain", "Not available", "Not available"],
           ["Custom code on the page", "Explicitly not supported", "Not available"],
@@ -662,6 +662,7 @@ export const PAGES: TopicPage[] = [
           ["Live webinars", "Yes", "Not available"],
           ["Lead magnets", "Yes", "Not available"],
           ["Community", "Yes, one per account", "Not available"],
+          ["External links on your page", "Yes, as one of their product types", "Yes, as their own list — no price on them and nothing to check out"],
           ["Physical products", "Not supported", "Not available"],
           ["Course quizzes and certificates", "Not available", "Not available"],
         ],
