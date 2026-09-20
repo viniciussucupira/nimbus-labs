@@ -87,7 +87,7 @@ const FEATURES = [
   {
     title: "Several prices for one product",
     body: "One week for $27, five weeks for $39 — the buyer picks, and each option delivers its own file.",
-    state: "Live in the demo",
+    state: "Live now",
     tint: "bg-violet-brand text-white",
     emoji: "🏷️",
     span: "md:col-span-2",
@@ -153,7 +153,7 @@ const COMPARE = [
   {
     row: "Several prices for one product",
     stan: "Not available",
-    nimbus: "Working in the demo store today",
+    nimbus: "Up to three on any product",
   },
   {
     row: "Changing your store address",
