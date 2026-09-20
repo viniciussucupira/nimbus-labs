@@ -35,12 +35,17 @@ export async function POST(request: NextRequest) {
 
   let handle = "";
   let productId = "";
+  let optionId = "";
   try {
     const form = await request.formData();
     const h = form.get("handle");
     const p = form.get("product");
+    // An id, and only an id. The amount that goes to Stripe is read from the
+    // option the creator saved, never from this form.
+    const o = form.get("option");
     handle = typeof h === "string" ? normaliseHandle(h) : "";
     productId = typeof p === "string" ? p : "";
+    optionId = typeof o === "string" ? o : "";
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -57,7 +62,7 @@ export async function POST(request: NextRequest) {
   if (!canSellProduct(store, product)) return away(`/@${store.handle}`);
 
   try {
-    const url = await createCheckout(store, product, origin);
+    const url = await createCheckout(store, product, origin, optionId);
     return new Response(null, {
       status: 303,
       headers: { Location: url, "Cache-Control": "no-store" },
