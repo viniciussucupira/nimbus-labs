@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
 import { linkHost } from "@/lib/product-link";
+import { everyLabel } from "@/lib/product-recurring";
 import { readOrder } from "@/lib/store-checkout";
 
 export const metadata: Metadata = {
@@ -78,10 +79,23 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 Thank you
               </h1>
               <p className="mt-4 text-lg text-ink-soft">
-                You bought{" "}
+                {order.product.recurring ? "You subscribed to " : "You bought "}
                 <strong className="text-ink">{order.product.title}</strong> from{" "}
-                {store.name} for {`$${centsToPrice(order.amount)}`}.
+                {store.name} for{" "}
+                {order.product.recurring
+                  ? `$${centsToPrice(order.amount)} ${everyLabel(
+                      order.product.recurring.interval,
+                    )}`
+                  : `$${centsToPrice(order.amount)}`}
+                .
               </p>
+              {order.product.recurring ? (
+                <p className="mt-3 rounded-2xl bg-lilac px-4 py-3 text-sm text-ink-soft">
+                  {`This renews ${everyLabel(
+                    order.product.recurring.interval,
+                  )} until you cancel it. The charge is made by ${store.name}, on their own account, and the receipt they send you is where you cancel \u2014 not here.`}
+                </p>
+              ) : null}
 
               {order.product.link ? (
                 <>
