@@ -18,7 +18,12 @@ import {
   fileFolder,
   readableSize,
   safeFileName,
+  type ProductFile,
 } from "@/lib/product-file";
+import {
+  MAX_OPTIONS,
+  MAX_OPTION_LABEL_LENGTH,
+} from "@/lib/product-option";
 import { LINK_PROBLEMS, type LinkProblem, linkHost } from "@/lib/product-link";
 import {
   INTERVALS,
@@ -26,6 +31,15 @@ import {
   everyLabel,
   intervalName,
 } from "@/lib/product-recurring";
+
+/** What to say when a price option is refused, over and above the shared set. */
+const OPTION_MESSAGES: Record<string, string> = {
+  price: "Type an amount between 1 and 5000, like 39 or 39.50.",
+  unknown: "That price is no longer on this product.",
+  none: "This account has no store yet.",
+  signed_out: "Your session ended. Sign in again.",
+  unavailable: "Stores are not switched on yet, so nothing was saved.",
+};
 
 const MESSAGES: Record<string, string> = {
   title: "Give it a name before saving.",
@@ -242,9 +256,378 @@ function ProductForm({
   );
 }
 
-/** The file a product delivers: what is there, and how to change it. */
-function FileBlock({
+/**
+ * The several prices one product may be sold at.
+ *
+ * Kept below the product rather than inside its form, because adding a price
+ * is not editing the product: the title and the description stay as they are
+ * while the creator works out what to charge. Each option carries its own
+ * file or link, so the block that attaches one is the same block a product
+ * without options uses.
+ */
+function OptionsBlock({
   product,
+  fileBusyId,
+  percent,
+  fileError,
+  onPick,
+  onDetach,
+  onLink,
+  onUnlink,
+}: {
+  product: Product;
+  fileBusyId: string | null;
+  percent: number;
+  fileError: { id: string; message: string } | null;
+  onPick: (id: string, file: File) => void;
+  onDetach: (id: string) => void;
+  onLink: (id: string, url: string) => void;
+  onUnlink: (id: string) => void;
+}) {
+  const router = useRouter();
+  const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [label, setLabel] = useState("");
+  const [price, setPrice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run(payload: Record<string, unknown>, done: () => void) {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/store/option", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        limit?: number;
+      };
+      if (!data.ok) {
+        setError(
+          data.error === "too_many"
+            ? `A product carries up to ${data.limit ?? MAX_OPTIONS} prices.`
+            : data.error === "label"
+              ? "Give this price a name the buyer will read, like “5 weeks”."
+              : (OPTION_MESSAGES[data.error ?? ""] ?? MESSAGES.server_error),
+        );
+        return;
+      }
+      done();
+      router.refresh();
+    } catch {
+      setError(MESSAGES.server_error);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const form = (submitLabel: string, onSubmit: () => void, onCancel: () => void) => (
+    <form
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!busy) onSubmit();
+      }}
+      className="mt-2 space-y-3 rounded-2xl border-2 border-violet-brand/30 bg-white p-4"
+    >
+      <div className="flex flex-wrap gap-3">
+        <div className="min-w-[10rem] flex-1">
+          <label
+            htmlFor={`option-label-${product.id}`}
+            className="block text-sm font-bold text-ink"
+          >
+            What this one is
+          </label>
+          <input
+            id={`option-label-${product.id}`}
+            type="text"
+            required
+            maxLength={MAX_OPTION_LABEL_LENGTH}
+            value={label}
+            onChange={(event) => setLabel(event.target.value)}
+            placeholder="5 weeks"
+            className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-2.5 text-sm outline-none focus:border-violet-brand"
+          />
+        </div>
+        <div className="w-28">
+          <label
+            htmlFor={`option-price-${product.id}`}
+            className="block text-sm font-bold text-ink"
+          >
+            Price
+          </label>
+          <input
+            id={`option-price-${product.id}`}
+            type="text"
+            inputMode="decimal"
+            required
+            value={price}
+            onChange={(event) => setPrice(event.target.value)}
+            placeholder="39"
+            className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-2.5 text-sm outline-none focus:border-violet-brand"
+          />
+        </div>
+      </div>
+
+      {error ? (
+        <p
+          role="alert"
+          className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-ink"
+        >
+          {error}
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+        >
+          {busy ? "Saving…" : submitLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+
+  return (
+    <div className="mt-3 rounded-2xl border-2 border-dashed border-ink/10 p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-sm font-bold text-ink">
+          {product.options.length === 0
+            ? "One price, or several"
+            : "What this is sold at"}
+        </p>
+        {product.options.length > 0 ? (
+          <p className="text-sm text-ink-soft">
+            {product.options.length} of {MAX_OPTIONS}
+          </p>
+        ) : null}
+      </div>
+
+      {product.options.length === 0 ? (
+        <p className="mt-1 text-sm text-ink-soft">
+          Right now this sells at the one price above. Add a second and the
+          buyer picks — one week or five, personal or commercial — and each one
+          hands over its own file.
+        </p>
+      ) : (
+        <p className="mt-1 text-sm text-ink-soft">
+          The buyer picks one of these. While they are here, the single price on
+          the product above is not charged and not shown.
+        </p>
+      )}
+
+      <ul className="mt-3 space-y-2">
+        {product.options.map((option, index) => (
+          <li key={option.id} className="rounded-2xl bg-cream p-3">
+            {editingId === option.id ? (
+              form(
+                "Save",
+                () =>
+                  run({ action: "edit", id: option.id, label, price }, () =>
+                    setEditingId(null),
+                  ),
+                () => {
+                  setEditingId(null);
+                  setError(null);
+                },
+              )
+            ) : (
+              <>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="font-bold text-ink">{option.label}</p>
+                  <p className="font-mono font-bold text-violet-deep">
+                    {`$${centsToPrice(option.priceCents)}`}
+                  </p>
+                </div>
+
+                {!option.file && !option.link ? (
+                  /*
+                    Said here rather than discovered by a buyer. An option with
+                    nothing behind it is left off the store page entirely, and
+                    the creator is the one who can fix that.
+                  */
+                  <p className="mt-1 text-sm font-semibold text-pink-brand">
+                    Nothing to hand over yet, so this one is hidden from your
+                    page.
+                  </p>
+                ) : null}
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLabel(option.label);
+                      setPrice(centsToPrice(option.priceCents));
+                      setError(null);
+                      setAdding(false);
+                      setEditingId(option.id);
+                    }}
+                    className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || index === 0}
+                    onClick={() =>
+                      run({ action: "move", id: option.id, direction: "up" }, () => {})
+                    }
+                    className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40"
+                  >
+                    Move up
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || index === product.options.length - 1}
+                    onClick={() =>
+                      run(
+                        { action: "move", id: option.id, direction: "down" },
+                        () => {},
+                      )
+                    }
+                    className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40"
+                  >
+                    Move down
+                  </button>
+                  {removingId === option.id ? null : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRemovingId(option.id);
+                        setError(null);
+                      }}
+                      className="text-ink-soft underline underline-offset-4 transition hover:text-pink-brand"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+
+                <FileBlock
+                  target={option}
+                  busy={fileBusyId === option.id}
+                  percent={percent}
+                  error={
+                    fileError && fileError.id === option.id
+                      ? fileError.message
+                      : null
+                  }
+                  onPick={(chosen) => onPick(option.id, chosen)}
+                  onDetach={() => onDetach(option.id)}
+                  onLink={(url) => onLink(option.id, url)}
+                  onUnlink={() => onUnlink(option.id)}
+                />
+
+                {removingId === option.id ? (
+                  <div className="mt-2 rounded-2xl border-2 border-pink-brand/30 bg-white p-3">
+                    <p className="text-sm text-ink-soft">
+                      Remove <strong className="text-ink">{option.label}</strong>
+                      {option.file
+                        ? ". The file on it is deleted with it."
+                        : ". Nothing else on the product changes."}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          run({ action: "remove", id: option.id }, () =>
+                            setRemovingId(null),
+                          )
+                        }
+                        className="rounded-full bg-pink-brand px-5 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+                      >
+                        {busy ? "Removing…" : "Remove it"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRemovingId(null)}
+                        className="rounded-full border-2 border-ink/15 px-5 py-2 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+                      >
+                        Keep it
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      {adding
+        ? form(
+            "Add this price",
+            () =>
+              run({ action: "add", id: product.id, label, price }, () =>
+                setAdding(false),
+              ),
+            () => {
+              setAdding(false);
+              setError(null);
+            },
+          )
+        : product.options.length >= MAX_OPTIONS
+          ? null
+          : (
+            <button
+              type="button"
+              onClick={() => {
+                setLabel("");
+                setPrice("");
+                setError(null);
+                setEditingId(null);
+                setAdding(true);
+              }}
+              className="mt-2 rounded-full border-2 border-ink/15 px-5 py-2 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+            >
+              {product.options.length === 0
+                ? "Sell it at several prices"
+                : "Add another price"}
+            </button>
+          )}
+
+      {error && !adding && !editingId ? (
+        <p
+          role="alert"
+          className="mt-2 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-ink"
+        >
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * What something delivers: a product, or one price option of one.
+ *
+ * Both hold a file or a link the same way and under the same folder rule, so
+ * they are edited by the same block rather than by two that drift apart.
+ */
+type Delivers = {
+  id: string;
+  file: ProductFile | null;
+  link: string | null;
+};
+
+/** The file something delivers: what is there, and how to change it. */
+function FileBlock({
+  target,
   busy,
   percent,
   error,
@@ -253,7 +636,7 @@ function FileBlock({
   onLink,
   onUnlink,
 }: {
-  product: Product;
+  target: Delivers;
   busy: boolean;
   percent: number;
   error: string | null;
@@ -265,8 +648,8 @@ function FileBlock({
   const input = useRef<HTMLInputElement>(null);
   const [typing, setTyping] = useState(false);
   const [url, setUrl] = useState("");
-  const file = product.file;
-  const link = product.link;
+  const file = target.file;
+  const link = target.link;
 
   return (
     <div className="mt-3 rounded-2xl bg-white p-3">
@@ -309,7 +692,7 @@ function FileBlock({
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
             <a
-              href={`/api/store/file/download?id=${encodeURIComponent(product.id)}`}
+              href={`/api/store/file/download?id=${encodeURIComponent(target.id)}`}
               className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
             >
               Open it to check
@@ -405,13 +788,13 @@ function FileBlock({
           }}
         >
           <label
-            htmlFor={`link-${product.id}`}
+            htmlFor={`link-${target.id}`}
             className="block text-sm font-bold text-ink"
           >
             Where the buyer should be sent
           </label>
           <input
-            id={`link-${product.id}`}
+            id={`link-${target.id}`}
             type="url"
             value={url}
             autoFocus
@@ -507,22 +890,21 @@ export function ProductEditor({
    * signature on the way in, because a check in a browser is a courtesy and
    * not a defence.
    */
-  async function upload(product: Product, chosen: File) {
+  async function upload(id: string, chosen: File) {
     setFileError(null);
     if (chosen.size > MAX_FILE_BYTES) {
-      setFileError({ id: product.id, message: MESSAGES.too_big });
+      setFileError({ id, message: MESSAGES.too_big });
       return;
     }
 
-    setFileBusyId(product.id);
+    setFileBusyId(id);
     setPercent(0);
     try {
-      const pathname =
-        fileFolder(folder, product.id) + safeFileName(chosen.name);
+      const pathname = fileFolder(folder, id) + safeFileName(chosen.name);
       const result = await uploadPresigned(pathname, chosen, {
         access: "private",
         handleUploadUrl: "/api/store/file",
-        clientPayload: JSON.stringify({ productId: product.id }),
+        clientPayload: JSON.stringify({ productId: id }),
         // In parts once it is worth it, so a dropped connection costs one
         // part rather than the whole upload.
         multipart: chosen.size > MULTIPART_ABOVE_BYTES,
@@ -530,12 +912,12 @@ export function ProductEditor({
       });
 
       const problem = await attach({
-        id: product.id,
+        id,
         pathname: result.pathname,
         name: chosen.name,
       });
       if (problem) {
-        setFileError({ id: product.id, message: problem });
+        setFileError({ id, message: problem });
         return;
       }
       router.refresh();
@@ -544,44 +926,44 @@ export function ProductEditor({
         thrown instanceof Error && /content type|not allowed/i.test(thrown.message)
           ? MESSAGES.wrong_type
           : MESSAGES.server_error;
-      setFileError({ id: product.id, message });
+      setFileError({ id, message });
     } finally {
       setFileBusyId(null);
       setPercent(0);
     }
   }
 
-  async function detach(product: Product) {
+  async function detach(id: string) {
     setFileError(null);
-    setFileBusyId(product.id);
-    const problem = await attach({ id: product.id, detach: true });
+    setFileBusyId(id);
+    const problem = await attach({ id, detach: true });
     setFileBusyId(null);
     if (problem) {
-      setFileError({ id: product.id, message: problem });
+      setFileError({ id, message: problem });
       return;
     }
     router.refresh();
   }
 
-  async function linkTo(product: Product, url: string) {
+  async function linkTo(id: string, url: string) {
     setFileError(null);
-    setFileBusyId(product.id);
-    const problem = await send({ action: "link", id: product.id, link: url });
+    setFileBusyId(id);
+    const problem = await send({ action: "link", id, link: url });
     setFileBusyId(null);
     if (problem) {
-      setFileError({ id: product.id, message: problem });
+      setFileError({ id, message: problem });
       return;
     }
     router.refresh();
   }
 
-  async function unlink(product: Product) {
+  async function unlink(id: string) {
     setFileError(null);
-    setFileBusyId(product.id);
-    const problem = await send({ action: "unlink", id: product.id });
+    setFileBusyId(id);
+    const problem = await send({ action: "unlink", id });
     setFileBusyId(null);
     if (problem) {
-      setFileError({ id: product.id, message: problem });
+      setFileError({ id, message: problem });
       return;
     }
     router.refresh();
@@ -734,19 +1116,38 @@ export function ProductEditor({
                   )}
                 </div>
 
-                <FileBlock
+                {/*
+                  With price options there is nothing to attach to the product
+                  itself: each option delivers its own thing, and a file here
+                  would be one nobody is ever sent. So the block moves inside
+                  the options rather than sitting above them unused.
+                */}
+                {product.options.length === 0 ? (
+                  <FileBlock
+                    target={product}
+                    busy={fileBusyId === product.id}
+                    percent={percent}
+                    error={
+                      fileError && fileError.id === product.id
+                        ? fileError.message
+                        : null
+                    }
+                    onPick={(chosen) => upload(product.id, chosen)}
+                    onDetach={() => detach(product.id)}
+                    onLink={(url) => linkTo(product.id, url)}
+                    onUnlink={() => unlink(product.id)}
+                  />
+                ) : null}
+
+                <OptionsBlock
                   product={product}
-                  busy={fileBusyId === product.id}
+                  fileBusyId={fileBusyId}
                   percent={percent}
-                  error={
-                    fileError && fileError.id === product.id
-                      ? fileError.message
-                      : null
-                  }
-                  onPick={(chosen) => upload(product, chosen)}
-                  onDetach={() => detach(product)}
-                  onLink={(url) => linkTo(product, url)}
-                  onUnlink={() => unlink(product)}
+                  fileError={fileError}
+                  onPick={upload}
+                  onDetach={detach}
+                  onLink={linkTo}
+                  onUnlink={unlink}
                 />
 
                 {removingId === product.id ? (
