@@ -26,7 +26,7 @@ export const MENUS: Menu[] = [
     items: [
       {
         label: "Store page",
-        description: "Your links, your products, your face. One address.",
+        description: "Your links, your products, your name. One address.",
         href: "/platform/store-page",
         emoji: "🏪",
         tint: "bg-violet-brand/10 text-violet-deep",
