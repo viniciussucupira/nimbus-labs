@@ -70,7 +70,7 @@ const STEPS = [
   {
     n: "02",
     title: "Build a store that looks like you",
-    body: "Your photo, your colours, your links, your products — with as many price options as the product needs.",
+    body: "Your name, your line, your products, and the links to everywhere else you are — a price on what you sell, and none on what you do not.",
     art: "from-pink-brand to-amber-brand",
     emoji: "🎨",
   },
@@ -101,9 +101,9 @@ const FEATURES = [
     span: "",
   },
   {
-    title: "An About me section",
-    body: "A face and a story on the page, not only a list of buttons.",
-    state: "Live in the demo",
+    title: "A line about you",
+    body: "Your name and a line under it, on every store, not only a list of buttons.",
+    state: "Live now",
     tint: "bg-amber-brand text-ink",
     emoji: "🙋",
     span: "",
