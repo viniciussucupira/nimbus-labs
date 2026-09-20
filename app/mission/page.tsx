@@ -63,6 +63,7 @@ const BUILT = [
   "A change of address that never breaks the link already in your bio",
   "An editor for your own store: the name, the description, and what you sell with its price",
   "The file you sell, uploaded straight from your browser and kept where only you can reach it",
+  "Or a link instead of a file, for what is too big to upload or is not a file at all",
   "A store that installs to the home screen on iPhone and Android",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
