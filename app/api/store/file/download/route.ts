@@ -6,6 +6,7 @@ import {
   DOWNLOAD_URL_SECONDS,
   REDIRECT_ABOVE_BYTES,
 } from "@/lib/product-file";
+import { recordDelivery } from "@/lib/delivery";
 import { isRedisConfigured } from "@/lib/redis";
 
 /**
@@ -69,6 +70,9 @@ export async function GET(request: NextRequest) {
         status: 502,
       });
     }
+    // A creator pulling their own file costs exactly what a buyer pulling it
+    // costs, so it is counted the same way rather than quietly excused.
+    await recordDelivery(found.file.pathname, found.file.bytes);
     return new Response(null, {
       status: 302,
       headers: { Location: url, "Cache-Control": "private, no-store" },
@@ -81,6 +85,7 @@ export async function GET(request: NextRequest) {
       return new Response("The file is not there any more.", { status: 404 });
     }
 
+    await recordDelivery(found.file.pathname, found.file.bytes);
     return new Response(result.stream, {
       headers: {
         "Content-Type": found.file.contentType || "application/octet-stream",
