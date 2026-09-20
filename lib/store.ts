@@ -194,6 +194,17 @@ export type Store = {
    * buy should reach the thing they came for first.
    */
   links: StoreLink[];
+  /**
+   * Whether this store had a live discount code the last time we looked.
+   *
+   * The codes themselves live on the creator's Stripe account and are read
+   * from there; this is only the answer to "should the checkout show a box to
+   * type one into". It is a snapshot so that a buyer clicking buy never waits
+   * on a call to Stripe, and being wrong costs nothing worse than an empty
+   * box or a hidden one — never a wrong price, because the discount itself
+   * is Stripe's arithmetic and not ours.
+   */
+  hasDiscounts: boolean;
 };
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
@@ -311,6 +322,7 @@ function parseStore(raw: unknown): Store | null {
       // Stores written before links existed simply have none, which is the
       // same as a store nobody has added one to yet.
       links: parseStoreLinks(value.links),
+      hasDiscounts: value.hasDiscounts === true,
     };
   } catch {
     return null;
@@ -410,6 +422,7 @@ export async function claimHandle(
     subscriptionCheckedAt: "",
     products: [],
     links: [],
+    hasDiscounts: false,
   };
 
   try {
@@ -1274,4 +1287,24 @@ export async function moveOption(
   const next: Store = { ...store, products };
   await saveStore(next);
   return { ok: true, store: next, removed: [] };
+}
+
+/**
+ * Records whether this store has a live discount code.
+ *
+ * Only a snapshot of an answer that lives on the creator's Stripe account, so
+ * the buyer's checkout does not have to ask Stripe on every click. It is
+ * written whenever the creator's own screen has just read the real list.
+ */
+export async function setHasDiscounts(
+  email: string,
+  hasDiscounts: boolean,
+): Promise<Store | null> {
+  const store = await storeForEmail(email);
+  if (!store) return null;
+  if (store.hasDiscounts === hasDiscounts) return store;
+
+  const next: Store = { ...store, hasDiscounts };
+  await saveStore(next);
+  return next;
 }
