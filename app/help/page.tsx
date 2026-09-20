@@ -39,7 +39,7 @@ const SECTIONS: Section[] = [
         q: "Can I put my own products on my store?",
         a: [
           "Yes. On your account page you write the name of the store, the line under it, and each thing you sell with what the buyer gets and the price. It is on your page the moment you save it, and you can reorder or remove any of it.",
-          "A store holds up to twenty things, each with one price in US dollars. You can also put the file itself on each one, and open it again to check it is the right one.",
+          "A store holds up to twenty things, priced in US dollars — one price each, or up to three if you want the buyer to choose. You can also put the file itself on each one, and open it again to check it is the right one.",
           "Your page can take a card as soon as two things are true: Stripe has cleared your connected account, and your subscription is running — the trial counts. Until then the page says so plainly, to you and to anyone who opens it.",
         ],
       },
@@ -170,9 +170,9 @@ const SECTIONS: Section[] = [
       {
         q: "What can I sell?",
         a: [
-          "Digital files — one price each — and memberships that charge on a schedule. What is too big to upload, or is not a file at all, is sold as a link to where it already lives.",
+          "Digital files, and memberships that charge on a schedule. What is too big to upload, or is not a file at all, is sold as a link to where it already lives.",
+          "One product can carry up to three prices — one week and five weeks, personal and commercial — and each one hands over its own file or its own link. The buyer picks on the card, and what they are charged is read from what you saved rather than from the page they are looking at.",
           "Your page also holds links that are not for sale, with no price and no checkout on them: the channel, the podcast, the profile, the booking page you already pay someone else for.",
-          "One thing the demo store has that your own editor does not yet: several prices on the same product. It is real and it runs in production there, and building the same into your editor is not done. Until it is, that is two products rather than one.",
         ],
       },
       {
