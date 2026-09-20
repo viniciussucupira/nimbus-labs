@@ -13,6 +13,7 @@
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import type { ProductFile } from "@/lib/product-file";
 import { MAX_LINK_LENGTH } from "@/lib/product-link";
+import { type Recurring, parseRecurring } from "@/lib/product-recurring";
 
 /**
  * What an address may look like: 3 to 24 characters, starting and ending with
@@ -122,6 +123,11 @@ export type Product = {
    * in the two setters below rather than in whatever screen calls them.
    */
   link: string | null;
+  /**
+   * The schedule this is charged on, when it is a membership rather than a
+   * one-off. Null is a single sale, which is what most products are.
+   */
+  recurring: Recurring | null;
 };
 
 export type Store = {
@@ -251,6 +257,7 @@ function parseProducts(raw: unknown): Product[] {
         typeof value.link === "string" && value.link
           ? value.link.slice(0, MAX_LINK_LENGTH)
           : null,
+      recurring: parseRecurring(value.recurring),
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -736,6 +743,7 @@ export async function addProduct(
   rawTitle: string,
   rawSummary: string,
   rawPrice: string,
+  recurring: Recurring | null = null,
 ): Promise<ProductResult> {
   const fields = readFields(rawTitle, rawPrice);
   if (typeof fields === "string") return { ok: false, reason: fields };
@@ -754,6 +762,7 @@ export async function addProduct(
     createdAt: new Date().toISOString(),
     file: null,
     link: null,
+    recurring,
   };
 
   const next: Store = { ...store, products: [...store.products, product] };
@@ -768,6 +777,7 @@ export async function editProduct(
   rawTitle: string,
   rawSummary: string,
   rawPrice: string,
+  recurring: Recurring | null = null,
 ): Promise<ProductResult> {
   const fields = readFields(rawTitle, rawPrice);
   if (typeof fields === "string") return { ok: false, reason: fields };
@@ -783,6 +793,7 @@ export async function editProduct(
     title: fields.title,
     summary: rawSummary.trim().slice(0, MAX_SUMMARY_LENGTH),
     priceCents: fields.priceCents,
+    recurring,
   };
 
   const next: Store = { ...store, products };
