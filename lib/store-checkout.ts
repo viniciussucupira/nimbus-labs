@@ -8,6 +8,7 @@
  * page is this file.
  */
 import type { Product, Store } from "@/lib/store";
+import { isPaidUp } from "@/lib/billing";
 
 /** Local tests may point this at a mock on 127.0.0.1; nothing else is taken. */
 const STRIPE_API = /^http:\/\/127\.0\.0\.1:\d+$/.test(
@@ -49,7 +50,12 @@ export function canSell(store: Store): boolean {
   return (
     isSellingConfigured() &&
     Boolean(store.stripeAccountId) &&
-    store.stripeChargesEnabled
+    store.stripeChargesEnabled &&
+    // The third condition is how this company stays alive. Everything else
+    // here is free — the address, the page, the editor, connecting Stripe —
+    // and what the subscription buys is the till. A creator inside the trial
+    // passes this too, because a trial that cannot sell proves nothing.
+    isPaidUp(store)
   );
 }
 
