@@ -14,6 +14,12 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import type { ProductFile } from "@/lib/product-file";
 import { MAX_LINK_LENGTH } from "@/lib/product-link";
 import { type Recurring, parseRecurring } from "@/lib/product-recurring";
+import {
+  MAX_LINK_TITLE_LENGTH,
+  MAX_STORE_LINKS,
+  type StoreLink,
+  parseStoreLinks,
+} from "@/lib/store-link";
 
 /**
  * What an address may look like: 3 to 24 characters, starting and ending with
@@ -168,6 +174,12 @@ export type Store = {
   subscriptionCheckedAt: string;
   /** What the store lists, in the order the creator put them in. */
   products: Product[];
+  /**
+   * Links that are not for sale: the rest of the creator's life, in the order
+   * they chose. Shown under what is for sale, because somebody who came to
+   * buy should reach the thing they came for first.
+   */
+  links: StoreLink[];
 };
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
@@ -299,6 +311,9 @@ function parseStore(raw: unknown): Store | null {
       subscriptionActive: value.subscriptionActive === true,
       subscriptionCheckedAt: value.subscriptionCheckedAt ?? "",
       products: parseProducts(value.products),
+      // Stores written before links existed simply have none, which is the
+      // same as a store nobody has added one to yet.
+      links: parseStoreLinks(value.links),
     };
   } catch {
     return null;
@@ -397,6 +412,7 @@ export async function claimHandle(
     subscriptionActive: false,
     subscriptionCheckedAt: "",
     products: [],
+    links: [],
   };
 
   try {
@@ -712,9 +728,15 @@ export type ProductResult =
       limit?: number;
     };
 
-/** An id no other product in this store is using. */
+/** An id nothing else in this store is using. */
 function freshId(store: Store): string {
-  const taken = new Set(store.products.map((product) => product.id));
+  // Products and links are separate lists, but an id is read from a form and
+  // an id shared between the two is an accident waiting to be found by
+  // somebody else. Both lists are counted.
+  const taken = new Set([
+    ...store.products.map((product) => product.id),
+    ...store.links.map((link) => link.id),
+  ]);
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const id = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
     if (!taken.has(id)) return id;
@@ -920,4 +942,110 @@ export async function productFile(
   const product = store.products.find((entry) => entry.id === id);
   if (!product || !product.file) return null;
   return { product, file: product.file };
+}
+
+export type LinkResult =
+  | { ok: true; store: Store }
+  | {
+      ok: false;
+      reason: "none" | "title" | "too_many" | "unknown";
+      limit?: number;
+    };
+
+/**
+ * Adds a link to the page, at the end of the list.
+ *
+ * The address arrives already checked and normalised by readLink, because the
+ * route that took it from the creator is the place that knows how to tell them
+ * which way it was wrong. What is left to check here is the title, which is
+ * the only thing a visitor reads before deciding to follow it.
+ */
+export async function addStoreLink(
+  email: string,
+  rawTitle: string,
+  url: string,
+): Promise<LinkResult> {
+  const title = rawTitle.trim().slice(0, MAX_LINK_TITLE_LENGTH);
+  if (!title) return { ok: false, reason: "title" };
+
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  if (store.links.length >= MAX_STORE_LINKS) {
+    return { ok: false, reason: "too_many", limit: MAX_STORE_LINKS };
+  }
+
+  const link: StoreLink = {
+    id: freshId(store),
+    title,
+    url,
+    addedAt: new Date().toISOString(),
+  };
+
+  const next: Store = { ...store, links: [...store.links, link] };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+/** Changes a link already on the page, keeping its place in the list. */
+export async function editStoreLink(
+  email: string,
+  id: string,
+  rawTitle: string,
+  url: string,
+): Promise<LinkResult> {
+  const title = rawTitle.trim().slice(0, MAX_LINK_TITLE_LENGTH);
+  if (!title) return { ok: false, reason: "title" };
+
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.links.findIndex((link) => link.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+
+  const links = [...store.links];
+  links[at] = { ...links[at], title, url };
+
+  const next: Store = { ...store, links };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+/** Takes a link off the page. Nothing else changes. */
+export async function removeStoreLink(
+  email: string,
+  id: string,
+): Promise<LinkResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  if (!store.links.some((link) => link.id === id)) {
+    return { ok: false, reason: "unknown" };
+  }
+
+  const next: Store = {
+    ...store,
+    links: store.links.filter((link) => link.id !== id),
+  };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+/** Moves a link one place up or down, the way a product moves. */
+export async function moveStoreLink(
+  email: string,
+  id: string,
+  direction: "up" | "down",
+): Promise<LinkResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.links.findIndex((link) => link.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+
+  const to = direction === "up" ? at - 1 : at + 1;
+  if (to < 0 || to >= store.links.length) return { ok: true, store };
+
+  const links = [...store.links];
+  [links[at], links[to]] = [links[to], links[at]];
+
+  const next: Store = { ...store, links };
+  await saveStore(next);
+  return { ok: true, store: next };
 }
