@@ -48,7 +48,17 @@ export async function GET(request: NextRequest) {
   }
 
   const file = order.product.file;
-  if (!file) return plain(404, "There is no file on this product.");
+  if (!file) {
+    // A product that delivers a link has nothing here to send. The buyer is
+    // told where it actually is rather than that their purchase is missing.
+    if (order.product.link) {
+      return plain(
+        409,
+        "This product is not a download. Open the order page again and use the link on it.",
+      );
+    }
+    return plain(404, "There is no file on this product.");
+  }
 
   try {
     const result = await get(file.pathname, { access: "private" });
