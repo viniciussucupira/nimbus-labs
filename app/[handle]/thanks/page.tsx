@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
+import { linkHost } from "@/lib/product-link";
 import { readOrder } from "@/lib/store-checkout";
 
 export const metadata: Metadata = {
@@ -82,20 +83,44 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 {store.name} for {`$${centsToPrice(order.amount)}`}.
               </p>
 
-              <a
-                href={`/api/store/download?handle=${encodeURIComponent(
-                  store.handle,
-                )}&session_id=${encodeURIComponent(sessionId ?? "")}`}
-                className="mt-7 inline-block rounded-full bg-ink px-7 py-4 text-base font-bold text-white transition hover:-translate-y-0.5"
-              >
-                Download it
-              </a>
+              {order.product.link ? (
+                <>
+                  {/* Shown rather than followed. A buyer who has paid should
+                      see where they are about to go before they go there, and
+                      this address belongs to the creator, not to us. */}
+                  <a
+                    href={order.product.link}
+                    rel="noopener noreferrer nofollow"
+                    target="_blank"
+                    className="mt-7 inline-block rounded-full bg-ink px-7 py-4 text-base font-bold text-white transition hover:-translate-y-0.5"
+                  >
+                    Open what you bought
+                  </a>
+                  <p className="mt-5 text-sm text-ink-soft">
+                    {`It is kept on ${linkHost(order.product.link)} by ${store.name}, not here. Save the address: `}
+                    <span className="break-all font-semibold text-ink">
+                      {order.product.link}
+                    </span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <a
+                    href={`/api/store/download?handle=${encodeURIComponent(
+                      store.handle,
+                    )}&session_id=${encodeURIComponent(sessionId ?? "")}`}
+                    className="mt-7 inline-block rounded-full bg-ink px-7 py-4 text-base font-bold text-white transition hover:-translate-y-0.5"
+                  >
+                    Download it
+                  </a>
 
-              <p className="mt-5 text-sm text-ink-soft">
-                This link works for about {hours} more{" "}
-                {hours === 1 ? "hour" : "hours"}. Keep the page, or keep the
-                email Stripe sent you — it has the same link.
-              </p>
+                  <p className="mt-5 text-sm text-ink-soft">
+                    This link works for about {hours} more{" "}
+                    {hours === 1 ? "hour" : "hours"}. Keep the page, or keep the
+                    email Stripe sent you — it has the same link.
+                  </p>
+                </>
+              )}
               {order.email ? (
                 <p className="mt-2 text-sm text-ink-soft">
                   Your receipt went to {order.email}. It comes from {store.name},
