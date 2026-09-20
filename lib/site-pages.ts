@@ -381,7 +381,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Stan is ahead, and we say so",
-        body: "Stan has years of features we do not have: payment plans, discount codes, order bumps and upsells, funnels, affiliates paid automatically, email broadcasts and flows, pixel tracking, automated Instagram replies, courses with a proper student area, communities, an app for iPhone and iPad, and a support team with a track record. If you depend on those today, Stan is the better tool today.",
+        body: "Stan has years of features we do not have: payment plans, order bumps and upsells, funnels, affiliates paid automatically, email broadcasts and flows, pixel tracking, automated Instagram replies, courses with a proper student area, communities, an app for iPhone and iPad, and a support team with a track record. If you depend on those today, Stan is the better tool today.",
       },
     ],
   },
@@ -453,7 +453,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Gumroad is ahead of us today",
-        body: "A marketplace that can send you buyers; affiliates; automated email workflows and a newsletter; licence keys; PDF stamping; discount codes; upsells; installment plans; ratings and reviews; your own domain; Zapier and a public API; purchasing power parity pricing; and a mobile app. We have none of those. They have been doing this since 2011 and it shows.",
+        body: "A marketplace that can send you buyers; affiliates; automated email workflows and a newsletter; licence keys; PDF stamping; upsells; installment plans; ratings and reviews; your own domain; Zapier and a public API; purchasing power parity pricing; and a mobile app. We have none of those. They have been doing this since 2011 and it shows.",
       },
     ],
   },
@@ -676,7 +676,7 @@ export const PAGES: TopicPage[] = [
           ["Whose Stripe account", "One managed by the platform", "Yours"],
           ["Getting paid", "Manual cash-out, $10 minimum", "Your Stripe payout schedule"],
           ["Klarna and Afterpay", "Yes, on the $99 plan", "Whatever your own Stripe account accepts"],
-          ["Discount codes", "Yes, on the $99 plan", "Not available"],
+          ["Discount codes", "Yes, on the $99 plan", "Yes, in the one price \u2014 kept on your own Stripe account"],
           ["Order bumps and upsells", "Yes, on the $99 plan", "Not available"],
           ["Payment plans", "Yes, on the $99 plan", "Not available"],
           ["Sales tax collection", "Yes", "Not available"],
