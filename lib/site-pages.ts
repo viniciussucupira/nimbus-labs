@@ -413,7 +413,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "table",
         title: "The part that decides",
-        note: "Sources: Gumroad's pricing page, and their help centre articles 'Getting paid by Gumroad' and 'Connect your Stripe account to Gumroad', read on 18 September 2026.",
+        note: "Sources: Gumroad's pricing page and their help centre articles 'Getting paid by Gumroad', 'Connect your Stripe account to Gumroad' and 'Sales tax on Gumroad'. Fees and the merchant-of-record line re-read on 20 September 2026 and unchanged.",
         head: ["", "Gumroad", "Nimbus Labs"],
         rows: [
           ["Cut of each sale", "10% + $0.50 direct, 30% via Discover", "0%"],
@@ -423,7 +423,8 @@ export const PAGES: TopicPage[] = [
           ["Minimum to be paid", "$100, higher in some countries", "Whatever your own Stripe is set to"],
           ["Instant payout", "United States only, 3% fee, after 60 days", "Not needed — the account is already yours"],
           ["Disputes", "They handle them for you", "Yours, in your own dashboard"],
-          ["EU and UK VAT", "Collected and paid by them", "Not handled — it stays yours"],
+          ["Who is the seller of record", "Gumroad. They are the merchant of record on every sale", "You are. The charge is on your account, in your name"],
+          ["Sales tax, VAT and GST", "They collect and remit it worldwide, by their own help centre", "Not handled. Being the seller means the tax is yours"],
           ["A marketplace that sends buyers", "Discover, at 30% of the sale", "None"],
           ["Several prices for one product", "Versions and pay-what-you-want", "Price options, working today"],
         ],
@@ -446,7 +447,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "If you sell less than that, use Gumroad",
-        body: "We are not going to pretend otherwise. If you are selling a handful of files a month, a percentage of almost nothing is cheaper than a monthly price, and Gumroad also takes on the EU and UK VAT, which is real work. Come back when the cut starts to hurt.",
+        body: "We are not going to pretend otherwise. If you are selling a handful of files a month, a percentage of almost nothing is cheaper than a monthly price, and Gumroad is also the merchant of record and collects and remits sales tax worldwide, which is real work and real risk taken off you. Come back when the cut starts to hurt.",
       },
       {
         kind: "note",
