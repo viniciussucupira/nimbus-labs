@@ -1,7 +1,11 @@
 import type { NextRequest } from "next/server";
-import { get } from "@vercel/blob";
+import { get, issueSignedToken, presignUrl } from "@vercel/blob";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { productFile } from "@/lib/store";
+import {
+  DOWNLOAD_URL_SECONDS,
+  REDIRECT_ABOVE_BYTES,
+} from "@/lib/product-file";
 import { isRedisConfigured } from "@/lib/redis";
 
 /**
@@ -14,6 +18,34 @@ import { isRedisConfigured } from "@/lib/redis";
  * and streamed on. The blob's own URL is never handed out, because a URL that
  * works is a URL that can be forwarded.
  */
+
+/**
+ * A short-lived URL the buyer's browser can fetch straight from storage.
+ *
+ * Used for large files only. It keeps the bytes out of this function, which
+ * halves what delivery costs and removes the time limit a long download on a
+ * slow line would otherwise hit. The URL expires in minutes and is signed for
+ * one pathname, so forwarding it buys very little.
+ */
+async function signedDownload(pathname: string): Promise<string | null> {
+  try {
+    const token = await issueSignedToken({
+      pathname,
+      operations: ["get"],
+      validUntil: Date.now() + DOWNLOAD_URL_SECONDS * 1000,
+    });
+    const { presignedUrl } = await presignUrl(token, {
+      operation: "get",
+      pathname,
+      access: "private",
+    });
+    return presignedUrl;
+  } catch (error) {
+    console.error("signing a download failed", error);
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const email = await emailForSession(
     request.cookies.get(SESSION_COOKIE)?.value,
@@ -29,6 +61,19 @@ export async function GET(request: NextRequest) {
 
   const found = await productFile(email, id);
   if (!found) return new Response("No file on that product.", { status: 404 });
+
+  if (found.file.bytes > REDIRECT_ABOVE_BYTES) {
+    const url = await signedDownload(found.file.pathname);
+    if (!url) {
+      return new Response("We could not fetch the file right now.", {
+        status: 502,
+      });
+    }
+    return new Response(null, {
+      status: 302,
+      headers: { Location: url, "Cache-Control": "private, no-store" },
+    });
+  }
 
   try {
     const result = await get(found.file.pathname, { access: "private" });
