@@ -174,9 +174,16 @@ const SECTIONS: Section[] = [
         ],
       },
       {
-        q: "Can I sell courses, memberships or a community?",
+        q: "Can I sell a membership?",
         a: [
-          "Not yet. Lessons with progress, recurring memberships, communities, scheduled calls, email automations and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
+          "Yes. Any product can charge on a schedule instead of once: daily, weekly, monthly or yearly. The subscription is created on your own Stripe account, like every other charge here, so the member is your customer, in your dashboard, and the renewals are 0% to us as well.",
+          "Two things it does not do yet, said plainly. A membership runs until the member cancels \u2014 you cannot set it to stop after six payments. And it does not take access back when somebody stops paying: if what you deliver is a link, that link keeps working, so remove them wherever you actually keep the thing. Your Stripe dashboard is where you see who is still paying.",
+        ],
+      },
+      {
+        q: "Can I sell courses or a community?",
+        a: [
+          "Not yet. Lessons with progress, communities, scheduled calls, webinars, email automations and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
         ],
       },
       {
