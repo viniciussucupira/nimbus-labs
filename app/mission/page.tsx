@@ -3,6 +3,8 @@ import Link from "next/link";
 import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
+import { isBillingConfigured } from "@/lib/billing";
+import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 import { isConnectConfigured } from "@/lib/stripe-connect";
 
 export const metadata: Metadata = {
@@ -81,6 +83,12 @@ const CHECKOUT_LINE =
 const ORDERS_LINE =
   "A list of what you have sold, read from your own Stripe account, with the buyer’s address so you can answer them";
 
+/**
+ * The line about our own income, which belongs to whether billing can reach
+ * Stripe from this deployment rather than to whether we have written the code.
+ */
+const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month, free for the first ${TRIAL_DAYS} days, cancelled from the receipt Stripe emails you`;
+
 const NOT_BUILT = [
   "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
@@ -95,12 +103,17 @@ export default function MissionPage() {
   // Whether this deployment can actually reach Stripe decides which list the
   // line belongs in. A feature nobody here can press is not a built feature.
   const ready = isConnectConfigured();
-  const built = ready
-    ? [...BUILT, STRIPE_LINE, CHECKOUT_LINE, ORDERS_LINE]
-    : BUILT;
-  const notBuilt = ready
-    ? NOT_BUILT
-    : [STRIPE_LINE, CHECKOUT_LINE, ORDERS_LINE, ...NOT_BUILT];
+  const billing = isBillingConfigured();
+  const built = [
+    ...BUILT,
+    ...(ready ? [STRIPE_LINE, CHECKOUT_LINE, ORDERS_LINE] : []),
+    ...(billing ? [BILLING_LINE] : []),
+  ];
+  const notBuilt = [
+    ...(ready ? [] : [STRIPE_LINE, CHECKOUT_LINE, ORDERS_LINE]),
+    ...(billing ? [] : [BILLING_LINE]),
+    ...NOT_BUILT,
+  ];
   return (
     <div className="flex min-h-screen flex-col bg-white text-ink">
       <RevealOnScroll />
@@ -285,10 +298,10 @@ export default function MissionPage() {
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Link
-                href="/creators"
+                href="/signin"
                 className="rounded-full bg-white px-7 py-3.5 font-bold text-violet-deep shadow-lg transition hover:-translate-y-0.5"
               >
-                Get early access
+                Start your store
               </Link>
               <Link
                 href="/blog"
