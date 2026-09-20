@@ -7,7 +7,7 @@ import { SiteNav } from "@/components/site-nav";
 export const metadata: Metadata = {
   title: "Help centre — Nimbus Labs",
   description:
-    "Straight answers about the demo store, the money, the files and early access. If an answer is 'not yet', it says not yet.",
+    "Straight answers about the store, the money, the files and what the subscription buys. If an answer is 'not yet', it says not yet.",
 };
 
 type Section = {
@@ -24,14 +24,14 @@ const SECTIONS: Section[] = [
     id: "getting-started",
     emoji: "🚀",
     title: "Getting started",
-    blurb: "What Nimbus is right now, and what early access means.",
+    blurb: "What Nimbus is right now, and what it costs to start.",
     tone: "bg-lilac",
     items: [
       {
         q: "What is Nimbus today?",
         a: [
-          "You can sign up today, take your own store address and build the page: its name, its description, and what you sell with its price. What you cannot do yet is be paid — no store here can charge a card, and every store page says so plainly to anyone who opens it.",
-          "What proves the selling itself works is the demo store: price options on a product, a Stripe checkout made on the creator account, and the file delivered the second the payment clears. You can buy from it with a test card.",
+          "You sign up, take your own store address and build the page: its name, its description, and what you sell with its price. You connect your own Stripe account, and once Stripe has cleared it your page can take a card. The money is charged on your account, not ours.",
+          "You can see the whole path before signing up. The demo store has price options on a product, a Stripe checkout made on the creator account, and the file delivered the second the payment clears. You can buy from it with a test card.",
           "The mission page lists everything that is built and everything that is not, in two columns, so nobody signs up expecting the wrong thing.",
         ],
       },
@@ -40,7 +40,7 @@ const SECTIONS: Section[] = [
         a: [
           "Yes. On your account page you write the name of the store, the line under it, and each thing you sell with what the buyer gets and the price. It is on your page the moment you save it, and you can reorder or remove any of it.",
           "A store holds up to twenty things, each with one price in US dollars. You can also put the file itself on each one, and open it again to check it is the right one.",
-          "What is still missing is the payment. Nothing here can charge a card yet, so what is on your page today is the offer, not the sale.",
+          "Your page can take a card as soon as two things are true: Stripe has cleared your connected account, and your subscription is running — the trial counts. Until then the page says so plainly, to you and to anyone who opens it.",
         ],
       },
       {
@@ -52,10 +52,10 @@ const SECTIONS: Section[] = [
         ],
       },
       {
-        q: "What does early access mean?",
+        q: "What does it cost to start?",
         a: [
-          "You tell us what you sell and what breaks for you today. That is all. There is nothing to pay, no card to enter, and no account created.",
-          "We only email you if you tick the box that says so, and every email has a link that stops them for good.",
+          "Nothing to sign up. Your store address, your page, the editor and connecting Stripe are free and stay free.",
+          "What the $29 monthly subscription switches on is the till: your page taking a card. The first 14 days of it are free and no card is asked for to begin, so you can put a product up and make a sale before you decide whether it is worth paying for.",
         ],
       },
       {
@@ -66,9 +66,10 @@ const SECTIONS: Section[] = [
         ],
       },
       {
-        q: "When does it open?",
+        q: "Is it open, or is this a waiting list?",
         a: [
-          "We are not going to invent a date. Everyone on the early access list hears first, and the mission page is updated the day something new is actually working.",
+          "Open. You can take an address and be selling the same day.",
+          "It is also young, and the mission page lists what is built and what is not, in two columns, so you can see what you are signing up to before you do. That page is updated the day something new actually works, not the day it is planned.",
         ],
       },
     ],
@@ -96,7 +97,7 @@ const SECTIONS: Section[] = [
       {
         q: "Can I put my own file in it?",
         a: [
-          "Not in the public demo. That is what early access is for: when your store is set up, the file is yours and the page is yours.",
+          "Not in the public demo, which is a fixed sample everyone shares. Your own store is where your file goes: take an address, upload it, and the page and the file are yours.",
         ],
       },
     ],
@@ -229,7 +230,7 @@ const SECTIONS: Section[] = [
       {
         q: "What do you store about me?",
         a: [
-          "For early access: what you typed in the form and, if you ticked the box, your email address. The privacy page lists it in full.",
+          "For your store: the email address that signs you in, the store you build, and the Stripe account id you connect. For the research form: what you typed in it and, if you ticked the box, your email address. The privacy page lists it in full.",
         ],
       },
       {
