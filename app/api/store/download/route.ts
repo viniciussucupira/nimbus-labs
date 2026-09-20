@@ -6,6 +6,7 @@ import {
   DOWNLOAD_URL_SECONDS,
   REDIRECT_ABOVE_BYTES,
 } from "@/lib/product-file";
+import { recordDelivery } from "@/lib/delivery";
 
 /**
  * Hands the buyer the file they paid for.
@@ -97,6 +98,7 @@ export async function GET(request: NextRequest) {
   if (file.bytes > REDIRECT_ABOVE_BYTES) {
     const url = await signedDownload(file.pathname);
     if (!url) return plain(502, "We could not fetch the file right now.");
+    await recordDelivery(file.pathname, file.bytes);
     return new Response(null, {
       status: 302,
       headers: { Location: url, "Cache-Control": "private, no-store" },
@@ -109,6 +111,7 @@ export async function GET(request: NextRequest) {
       return plain(404, "The file is not there any more.");
     }
 
+    await recordDelivery(file.pathname, file.bytes);
     return new Response(result.stream, {
       headers: {
         "Content-Type": file.contentType || "application/octet-stream",
