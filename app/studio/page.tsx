@@ -335,7 +335,13 @@ export default async function StudioPage({
                     Nothing is lost — your sales are on your Stripe account
                     whether this page can reach it or not.
                   </p>
-                ) : sold.state === "ok" && sold.sales.length === 0 ? (
+                ) : sold.state === "unavailable" ? (
+                  <p className="mt-5 rounded-3xl bg-cream p-5 text-sm text-ink-soft">
+                    Nothing can have sold yet, because Stripe has not cleared
+                    your account to take payments. Finish what it asks for
+                    above, and your sales will appear here.
+                  </p>
+                ) : sold.sales.length === 0 ? (
                   <p className="mt-5 rounded-3xl bg-cream p-5 text-sm text-ink-soft">
                     Nothing sold yet. When someone buys, the sale shows up here
                     with who bought it, so you can answer them.
@@ -343,7 +349,7 @@ export default async function StudioPage({
                 ) : (
                   <>
                     <ul className="mt-5 space-y-3">
-                      {sold.state === "ok" ? sold.sales.map((sale) => (
+                      {sold.sales.map((sale) => (
                         <li
                           key={sale.reference}
                           className="rounded-3xl bg-cream p-5"
@@ -381,7 +387,7 @@ export default async function StudioPage({
                             Stripe reference {sale.reference}
                           </p>
                         </li>
-                      )) : null}
+                      ))}
                     </ul>
                     <p className="mt-4 text-sm text-ink-soft">
                       The {ORDERS_PAGE_SIZE} most recent. Every sale you have
