@@ -160,6 +160,14 @@ const SECTIONS: Section[] = [
     tone: "bg-sky-brand/12",
     items: [
       {
+        q: "Is there a limit on how much my buyers download?",
+        a: [
+          "Your plan covers 200 GB of downloads a month for your store. Your account page shows what you have sent out so far, counted from the moment each download starts.",
+          "If you go past it, nothing is cut off. Somebody paid you for that file and they get it — we are not going to take a sale and then break it to protect our own bill. We write to you instead, and we work it out.",
+          "To put the number in scale: 200 GB is two hundred copies of a one-gigabyte course, or forty thousand copies of a five-megabyte guide, in a single month.",
+        ],
+      },
+      {
         q: "What can I sell?",
         a: [
           "Digital files, with up to three price options on the same product — different amounts, formats or licences. Your store page also holds free links, so a lead magnet or a free sample can sit next to the paid product.",
