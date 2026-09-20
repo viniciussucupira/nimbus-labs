@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "@/lib/site-url";
 
 /* Both faces are served from our own domain, as one variable file each, so
    the browser never stops to ask fonts.googleapis.com for a stylesheet
@@ -17,7 +18,6 @@ const jakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
-const SITE_URL = "https://nimbuslabsai.com";
 const SITE_TITLE =
   "Nimbus Labs — the link-in-bio store that pays into your own Stripe";
 const SITE_DESCRIPTION =
