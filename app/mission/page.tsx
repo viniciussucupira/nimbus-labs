@@ -66,6 +66,7 @@ const BUILT = [
   "Or a link instead of a file, for what is too big to upload or is not a file at all",
   "Memberships: daily, weekly, monthly or yearly, charged on your own Stripe account",
   "Links to everywhere else you are — the channel, the podcast, the booking page — with no price and no checkout on them",
+  "Discount codes a buyer types at checkout, made as coupons on your own Stripe account",
   "A store that installs to the home screen on iPhone and Android",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
