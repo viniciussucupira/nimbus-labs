@@ -101,6 +101,29 @@ export type ProductFile = {
 };
 
 /**
+ * Whatever came back from storage, made safe to use.
+ *
+ * Lives here rather than beside the store record because a file hangs on a
+ * product and on a price option alike, and both read it back the same way.
+ */
+export function parseProductFile(raw: unknown): ProductFile | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Partial<ProductFile>;
+  if (typeof value.pathname !== "string" || !value.pathname) return null;
+  if (typeof value.name !== "string" || !value.name) return null;
+  if (typeof value.bytes !== "number" || !Number.isFinite(value.bytes)) {
+    return null;
+  }
+  return {
+    pathname: value.pathname,
+    name: value.name,
+    bytes: value.bytes,
+    contentType: typeof value.contentType === "string" ? value.contentType : "",
+    addedAt: typeof value.addedAt === "string" ? value.addedAt : "",
+  };
+}
+
+/**
  * The folder that belongs to one store and one product.
  *
  * Every upload is forced under this prefix, and every file we read back is
