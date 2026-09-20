@@ -232,9 +232,12 @@ export type Sale = {
   stillDownloadable: boolean;
 };
 
+// Each state is its own member so a check on one narrows the rest away;
+// a combined "unavailable" | "error" member does not narrow in a JSX chain.
 export type SaleList =
   | { state: "ok"; sales: Sale[] }
-  | { state: "unavailable" | "error" };
+  | { state: "unavailable" }
+  | { state: "error" };
 
 type SessionRecord = {
   id?: unknown;
