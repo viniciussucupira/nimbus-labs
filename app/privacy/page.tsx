@@ -50,9 +50,9 @@ export default function PrivacyPage() {
         <p>
           <strong className="text-black">What a creator puts in a store.</strong>{" "}
           If you run a Nimbus store, we host what you put in it: your store
-          name and description, your photo if you add one, your product titles,
-          prices and descriptions, and the files you upload for delivery to
-          your buyers.
+          name and description, your product titles, prices and descriptions,
+          the links you put on the page, and the files you upload for delivery
+          to your buyers.
         </p>
         <p>
           <strong className="text-black">Buyer information.</strong> When
