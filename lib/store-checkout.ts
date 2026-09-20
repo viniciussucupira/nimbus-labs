@@ -60,10 +60,14 @@ export function canSellProduct(store: Store, product: Product): boolean {
 
 class StripeError extends Error {
   readonly status: number;
+  readonly code: string;
 
-  constructor(status: number, code: string) {
-    super(`Stripe request failed (${status} ${code})`);
+  constructor(status: number, code: string, stripeMessage: string) {
+    // Stripe's own sentence is kept, because a bare code in a log is a trip
+    // through the Stripe dashboard before anyone knows what went wrong.
+    super(`Stripe request failed (${status} ${code}): ${stripeMessage}`);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -90,10 +94,13 @@ async function onAccount(
 
   const data = (await response.json()) as Record<string, unknown>;
   if (!response.ok) {
-    const error = data.error as { code?: string; type?: string } | undefined;
+    const error = data.error as
+      | { code?: string; type?: string; message?: string }
+      | undefined;
     throw new StripeError(
       response.status,
       error?.code ?? error?.type ?? "unknown",
+      error?.message ?? "Stripe gave no reason.",
     );
   }
   return data;
@@ -115,6 +122,10 @@ export async function createCheckout(
     "line_items[0][price_data][product_data][name]": product.title,
     "metadata[store]": store.handle,
     "metadata[product]": product.id,
+    // Kept on the charge itself so the order still says what was sold after
+    // the creator renames or removes the product. Stripe's record outlives
+    // ours, and the creator should not lose the history by tidying the store.
+    "metadata[title]": product.title.slice(0, 480),
     "payment_intent_data[metadata][store]": store.handle,
     "payment_intent_data[metadata][product]": product.id,
     success_url: `${origin}/@${store.handle}/thanks?session_id={CHECKOUT_SESSION_ID}`,
@@ -204,4 +215,93 @@ export async function readOrder(
     email,
     secondsLeft: Math.max(0, Math.floor(DOWNLOAD_WINDOW_SECONDS - age)),
   };
+}
+
+/** How many past sales the studio shows at once. */
+export const ORDERS_PAGE_SIZE = 25;
+
+export type Sale = {
+  /** Stripe's own id for the sale. The creator can search it in Stripe. */
+  reference: string;
+  title: string;
+  amount: number;
+  email: string | null;
+  /** Seconds since the epoch, as Stripe counts them. */
+  paidAt: number;
+  /** Whether the buyer's own download link still opens. */
+  stillDownloadable: boolean;
+};
+
+export type SaleList =
+  | { state: "ok"; sales: Sale[] }
+  | { state: "unavailable" | "error" };
+
+type SessionRecord = {
+  id?: unknown;
+  status?: unknown;
+  payment_status?: unknown;
+  created?: unknown;
+  amount_total?: unknown;
+  metadata?: Record<string, string> | null;
+  customer_details?: { email?: unknown } | null;
+};
+
+/**
+ * What this store has sold.
+ *
+ * Read from the creator's own Stripe account every time rather than kept in a
+ * table here. That costs a request, and it buys something worth more: there is
+ * no second copy of the sales record to drift from the real one, and nothing
+ * for us to lose, leak or quietly get wrong. Stripe is the ledger; this is a
+ * window onto it.
+ *
+ * Only paid sessions carrying this store's handle are returned, so one
+ * creator's account can never show another's sales even if an id were reused.
+ */
+export async function listSales(store: Store): Promise<SaleList> {
+  if (!canSell(store)) return { state: "unavailable" };
+
+  let page: Record<string, unknown>;
+  try {
+    page = await onAccount(
+      "GET",
+      store.stripeAccountId as string,
+      `/checkout/sessions?limit=${ORDERS_PAGE_SIZE}`,
+    );
+  } catch (error) {
+    console.error("listing orders failed", error);
+    return { state: "error" };
+  }
+
+  const rows = Array.isArray(page.data) ? (page.data as SessionRecord[]) : [];
+  const now = Date.now() / 1000;
+
+  const sales = rows
+    .filter(
+      (row) =>
+        row.status === "complete" &&
+        row.payment_status === "paid" &&
+        row.metadata?.store === store.handle,
+    )
+    .map((row): Sale => {
+      const paidAt = typeof row.created === "number" ? row.created : 0;
+      const known = store.products.find((p) => p.id === row.metadata?.product);
+      const email = row.customer_details?.email;
+      return {
+        reference: typeof row.id === "string" ? row.id : "",
+        // The title recorded on the charge wins, because it is what the buyer
+        // saw. The current product name is only a fallback for older sales.
+        title:
+          row.metadata?.title ||
+          known?.title ||
+          "A product that is no longer listed",
+        amount: typeof row.amount_total === "number" ? row.amount_total : 0,
+        email: typeof email === "string" && email ? email : null,
+        paidAt,
+        stillDownloadable: now - paidAt <= DOWNLOAD_WINDOW_SECONDS,
+      };
+    })
+    .filter((sale) => sale.reference !== "");
+
+  return { state: "ok", sales };
 }
