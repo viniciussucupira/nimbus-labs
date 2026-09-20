@@ -39,6 +39,131 @@ export const BLOG_CATEGORIES = [
 
 export const BLOG_POSTS: BlogPost[] = [
   {
+    slug: "what-selling-on-gumroad-costs",
+    title: "What selling on Gumroad actually costs, in money and in days",
+    category: "Comparisons",
+    date: "2026-09-20",
+    readMinutes: 9,
+    excerpt:
+      "The fee on their pricing page is not the fee on the sale, the money lands in their balance rather than yours, and there is a good reason for both. The whole arithmetic, from their own pages.",
+    kicker: "Read before you pick a platform",
+    from: "#ff8a1f",
+    to: "#c81e5a",
+    body: [
+      {
+        type: "p",
+        text: "Gumroad's pricing page shows two numbers: 10% plus 50 cents on a sale you bring yourself, and 30% on a sale their Discover marketplace brings you. There is no monthly fee. That is a clear offer and for plenty of people it is the right one. It is also not the whole cost, and the rest is not hidden \u2014 it is written in their own help centre, on the pages most sellers open only after something has gone wrong.",
+      },
+      { type: "h2", text: "The fee on the pricing page does not include the card fee" },
+      {
+        type: "p",
+        text: "Their fees article says it plainly: the 10% plus 50 cents does not cover credit card processing, which they put at 2.9% plus 30 cents. Both come out of the same sale.",
+      },
+      {
+        type: "p",
+        text: "On a $27 file sold through your own link, that is $3.20 to Gumroad and about $1.08 to the card network. You keep $22.72. Nothing here is concealed. The two figures simply live on two different pages, and only one of them is on the page you read before signing up.",
+      },
+      {
+        type: "p",
+        text: "One more figure, because it runs in your favour: once your paid sales in a calendar month reach $20,000, new direct sales for the rest of that month are charged 5% plus 50 cents instead. It resets on the first, and there is nothing to apply for. At $27 a file, that threshold is around 740 sales in a month.",
+      },
+      { type: "h2", text: "The money arrives in their balance, not in yours" },
+      {
+        type: "p",
+        text: "This is the part that surprises people. A sale does not land in your bank account, and it does not land in a payment account of yours. It lands in a Gumroad balance, and it leaves that balance on a schedule.",
+      },
+      {
+        type: "ul",
+        items: [
+          "You need at least $100 in balance before a payout is sent at all. A number of countries have a higher minimum in local currency.",
+          "On the weekly, monthly and quarterly schedules, a sale waits at least seven days in the balance before it is eligible to leave.",
+          "A payout covers sales made up to the previous Friday, counted in UTC.",
+          "Your payout day depends on where your bank account is: Tuesday, Wednesday or Thursday for bank accounts, Friday for PayPal. The bank transfer itself then takes a further two to seven business days.",
+          "Before your first payout, they review the account. They say that takes one to three weeks.",
+          "Getting it sooner costs: PayPal payouts carry a 2% fee, and instant payouts are 3%, United States only, and only once the account has been processing for sixty days.",
+          "You are paid in your local currency, converted at the exchange rate at the time of the sale rather than the time of the payout.",
+        ],
+      },
+      {
+        type: "p",
+        text: "Put those together for somebody making their first sales and the distance between a buyer paying and you having the money can run to several weeks \u2014 almost all of it structural, none of it anything you did wrong.",
+      },
+      { type: "h2", text: "Why it is built that way" },
+      {
+        type: "p",
+        text: "It would be easy to make that sound like a trap. It is not. Since 1 January 2025, Gumroad is the merchant of record on every sale, which means they are legally the seller and you are not. They say so on their own pricing page, and it is why they collect and remit sales tax worldwide.",
+      },
+      {
+        type: "p",
+        text: "Being the seller is what pays for the things Gumroad genuinely takes off you: VAT in the European Union, GST where it applies, state sales tax in the United States, collected and filed without you ever learning what any of it means. It is also what forces everything in the list above. If the sale is legally theirs, the money is theirs first. If their bank holds them responsible for that sale, they have to hold something back against a refund or a chargeback, and they have to be able to stop an account that is costing them.",
+      },
+      {
+        type: "p",
+        text: "Their own suspension page does not dress this up either. They explain that they have to follow the rules of their banking partners and payment processors in order to keep operating, that this sometimes means removing a creator they would rather keep, and that depending on which policy was broken they may not be able to pay a remaining balance out.",
+      },
+      {
+        type: "note",
+        text: "Read that last sentence as a seller rather than as a critic. It is honest and it is accurate, and it is the real price of the 10%. You are not renting a checkout. You are selling through somebody else's company, with their bank and their appetite for risk.",
+      },
+      { type: "h2", text: "What the other arrangement looks like" },
+      {
+        type: "p",
+        text: "The alternative is not a cheaper version of the same thing. It is a different arrangement, and it costs you something too.",
+      },
+      {
+        type: "p",
+        text: "You open your own Stripe account. The buyer's card is charged on it directly. The money is in your account at the moment of the sale, your own business name is on the buyer's statement, and the payout schedule is whatever you set in your own Stripe dashboard. Nobody holds a balance for you, because there is no balance to hold.",
+      },
+      {
+        type: "p",
+        text: "Then the bill for that. You are the seller of record, so the sales tax is yours to work out. A chargeback is argued by you. A refund is one you issue. Nobody stands between you and your buyer, which is the whole point, and it is also the work.",
+      },
+      { type: "h2", text: "The arithmetic, at four sizes" },
+      {
+        type: "steps",
+        items: [
+          {
+            title: "Five sales of $27 in a month",
+            text: "Gumroad leaves you $113.59. Your own Stripe with a $29 monthly plan leaves you $100.59. Gumroad wins by $13, and at that volume you should be using it.",
+          },
+          {
+            title: "Nine sales of $27",
+            text: "Gumroad leaves you $204.45. Your own Stripe leaves you $204.25. This is the crossing point, give or take a sale.",
+          },
+          {
+            title: "A hundred sales of $27",
+            text: "Gumroad leaves you $2,271.70. Your own Stripe leaves you $2,562.70. The difference is $291, in one month.",
+          },
+          {
+            title: "Five hundred sales of $27",
+            text: "Gumroad leaves you $11,358.50. Your own Stripe leaves you $12,929.50. The difference is $1,571, in one month, and it comes back every month.",
+          },
+        ],
+      },
+      {
+        type: "p",
+        text: "The gap widens for no clever reason. A percentage grows with you and a fixed price does not. $3.20 a sale is nothing at five sales and a salary at five hundred.",
+      },
+      { type: "h2", text: "Which one you should actually be on" },
+      {
+        type: "p",
+        text: "If you sell a handful of files a month, stay on Gumroad. A percentage of a small number is smaller than $29, and the tax work they do is real work you would otherwise do badly or not at all. We are not going to pretend otherwise to win a sale that would leave you worse off.",
+      },
+      {
+        type: "p",
+        text: "If being the seller of record is the part that worries you \u2014 if the thought of being personally answerable for sales tax in countries you have never visited is what keeps you up \u2014 stay on Gumroad whatever the arithmetic says. That is a good reason, and the maths does not beat it.",
+      },
+      {
+        type: "p",
+        text: "Move when the cut becomes a number you notice, and when being your own merchant reads as ownership rather than exposure. For a $27 file that is somewhere around nine sales a month, and it is different for everybody.",
+      },
+      {
+        type: "note",
+        text: "Every figure here is from Gumroad's own pages, read on 20 September 2026: their pricing page for 10% plus 50 cents, 30% on Discover and the merchant-of-record change of 1 January 2025; 'Gumroad's fees' for card processing not being included and for the $20,000 discount; 'Getting paid by Gumroad' for the $100 minimum, the seven-day hold, the payout days, the 2% PayPal fee, the 3% instant payout and the one-to-three-week review; and their 'Account suspension FAQ' for what can happen to a balance. The card rate is Stripe's published United States online rate. If any of it has changed since, this page is wrong until we fix it, and we would rather be told than left looking accurate.",
+      },
+    ],
+  },
+  {
     slug: "sell-a-digital-file-from-your-bio",
     title: "How to sell a digital file from the link in your bio",
     category: "Getting started",
@@ -567,7 +692,7 @@ export const BLOG_POSTS: BlogPost[] = [
 ];
 
 /** The one we point new readers at first. */
-export const FEATURED_SLUG = "sell-a-digital-file-from-your-bio";
+export const FEATURED_SLUG = "what-selling-on-gumroad-costs";
 
 /**
  * Newest first. Posts published on the same day keep the order they are
