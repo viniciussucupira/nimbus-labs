@@ -126,8 +126,10 @@ export async function createCheckout(
 ): Promise<string> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
 
+  const membership = product.recurring;
+
   const body = new URLSearchParams({
-    mode: "payment",
+    mode: membership ? "subscription" : "payment",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": "usd",
     "line_items[0][price_data][unit_amount]": String(product.priceCents),
@@ -138,11 +140,21 @@ export async function createCheckout(
     // the creator renames or removes the product. Stripe's record outlives
     // ours, and the creator should not lose the history by tidying the store.
     "metadata[title]": product.title.slice(0, 480),
-    "payment_intent_data[metadata][store]": store.handle,
-    "payment_intent_data[metadata][product]": product.id,
     success_url: `${origin}/@${store.handle}/thanks?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/@${store.handle}`,
   });
+
+  if (membership) {
+    // The subscription is created on the creator's own account, like every
+    // other charge here, so the member is their customer and not ours.
+    body.set("line_items[0][price_data][recurring][interval]", membership.interval);
+    body.set("subscription_data[metadata][store]", store.handle);
+    body.set("subscription_data[metadata][product]", product.id);
+  } else {
+    body.set("payment_intent_data[metadata][store]", store.handle);
+    body.set("payment_intent_data[metadata][product]", product.id);
+  }
+
   if (product.summary) {
     body.set("line_items[0][price_data][product_data][description]", product.summary);
   }
