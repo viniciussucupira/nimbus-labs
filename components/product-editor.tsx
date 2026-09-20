@@ -20,6 +20,12 @@ import {
   safeFileName,
 } from "@/lib/product-file";
 import { LINK_PROBLEMS, type LinkProblem, linkHost } from "@/lib/product-link";
+import {
+  INTERVALS,
+  type Interval,
+  everyLabel,
+  intervalName,
+} from "@/lib/product-recurring";
 
 const MESSAGES: Record<string, string> = {
   title: "Give it a name before saving.",
@@ -33,9 +39,15 @@ const MESSAGES: Record<string, string> = {
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
-type Draft = { title: string; summary: string; price: string };
+type Draft = {
+  title: string;
+  summary: string;
+  price: string;
+  /** "" means a single sale. Anything else is how often it charges. */
+  every: "" | Interval;
+};
 
-const EMPTY: Draft = { title: "", summary: "", price: "" };
+const EMPTY: Draft = { title: "", summary: "", price: "", every: "" };
 
 async function send(payload: Record<string, unknown>): Promise<string | null> {
   try {
@@ -166,6 +178,38 @@ function ProductForm({
         <p className="mt-1 text-sm text-ink-soft">
           Every store here charges in US dollars. No other currency is handled
           yet.
+        </p>
+      </div>
+
+      <div>
+        <label
+          htmlFor="product-every"
+          className="block text-sm font-bold text-ink"
+        >
+          How often it charges
+        </label>
+        <select
+          id="product-every"
+          name="every"
+          value={draft.every}
+          onChange={(event) =>
+            setDraft({ ...draft, every: event.target.value as "" | Interval })
+          }
+          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+        >
+          <option value="">Once — a single sale</option>
+          {INTERVALS.map((interval) => (
+            <option key={interval} value={interval}>
+              {`${intervalName(interval)} \u2014 charged ${everyLabel(interval)}`}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-sm text-ink-soft">
+          {draft.every
+            ? `A membership. The member is charged ${everyLabel(
+                draft.every,
+              )} on your own Stripe account until they cancel, and they cancel from the receipt Stripe sends them. Taking access back when somebody stops paying is yours to do, wherever you keep the thing.`
+            : "Most things are sold once. Pick a schedule to make this a membership instead."}
         </p>
       </div>
 
@@ -568,6 +612,7 @@ export function ProductEditor({
       title: product.title,
       summary: product.summary,
       price: centsToPrice(product.priceCents),
+      every: product.recurring ? product.recurring.interval : "",
     });
     setError(null);
     setAdding(false);
@@ -613,6 +658,7 @@ export function ProductEditor({
                       title: draft.title,
                       summary: draft.summary,
                       price: draft.price,
+                      every: draft.every,
                     },
                     () => setEditingId(null),
                   )
@@ -627,7 +673,11 @@ export function ProductEditor({
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-bold text-ink">{product.title}</p>
                   <p className="font-mono font-bold text-violet-deep">
-                    {`$${centsToPrice(product.priceCents)}`}
+                    {product.recurring
+                      ? `$${centsToPrice(product.priceCents)} ${everyLabel(
+                          product.recurring.interval,
+                        )}`
+                      : `$${centsToPrice(product.priceCents)}`}
                   </p>
                 </div>
                 {product.summary ? (
@@ -751,6 +801,7 @@ export function ProductEditor({
                   title: draft.title,
                   summary: draft.summary,
                   price: draft.price,
+                  every: draft.every,
                 },
                 () => {
                   setAdding(false);
