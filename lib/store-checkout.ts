@@ -59,9 +59,15 @@ export function canSell(store: Store): boolean {
   );
 }
 
-/** A product can only be sold once there is something to hand over. */
+/**
+ * A product can only be sold once there is something to hand over.
+ *
+ * Either kind counts: a file we host, or a link to wherever the creator keeps
+ * it. What is refused is a product with neither, because a buyer would pay and
+ * then be shown nothing.
+ */
 export function canSellProduct(store: Store, product: Product): boolean {
-  return canSell(store) && product.file !== null;
+  return canSell(store) && (product.file !== null || product.link !== null);
 }
 
 class StripeError extends Error {
