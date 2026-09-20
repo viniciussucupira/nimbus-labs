@@ -12,6 +12,7 @@
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import type { ProductFile } from "@/lib/product-file";
+import { MAX_LINK_LENGTH } from "@/lib/product-link";
 
 /**
  * What an address may look like: 3 to 24 characters, starting and ending with
@@ -112,6 +113,15 @@ export type Product = {
   createdAt: string;
   /** The file the buyer gets, once the creator has put one there. */
   file: ProductFile | null;
+  /**
+   * Where the buyer is sent instead, when the product lives somewhere else.
+   *
+   * A product delivers one or the other, never both: a buyer who has paid
+   * should be shown one thing to open, not asked to choose. Setting a link
+   * clears the file and setting a file clears the link, and that rule lives
+   * in the two setters below rather than in whatever screen calls them.
+   */
+  link: string | null;
 };
 
 export type Store = {
@@ -235,6 +245,12 @@ function parseProducts(raw: unknown): Product[] {
       priceCents: value.priceCents,
       createdAt: typeof value.createdAt === "string" ? value.createdAt : "",
       file: parseFile(value.file),
+      // Records written before links existed simply have no link, which is
+      // the same as not having one now.
+      link:
+        typeof value.link === "string" && value.link
+          ? value.link.slice(0, MAX_LINK_LENGTH)
+          : null,
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -737,6 +753,7 @@ export async function addProduct(
     priceCents: fields.priceCents,
     createdAt: new Date().toISOString(),
     file: null,
+    link: null,
   };
 
   const next: Store = { ...store, products: [...store.products, product] };
@@ -844,7 +861,38 @@ export async function setProductFile(
 
   const removed = store.products[at].file;
   const products = [...store.products];
-  products[at] = { ...products[at], file };
+  // A file replaces a link. The product delivers one thing.
+  products[at] = { ...products[at], file, link: file ? null : products[at].link };
+
+  const next: Store = { ...store, products };
+  await saveStore(next);
+  return { ok: true, store: next, removed };
+}
+
+/**
+ * Points a product at a link instead of a file, or takes the link away.
+ *
+ * Mirrors setProductFile, including the part that matters: setting one clears
+ * the other. It returns the file that was displaced so the caller can release
+ * the storage it used, once the record that pointed at it is safely written.
+ */
+export async function setProductLink(
+  email: string,
+  id: string,
+  link: string | null,
+): Promise<FileResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.products.findIndex((product) => product.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+
+  const removed = link ? store.products[at].file : null;
+  const products = [...store.products];
+  products[at] = {
+    ...products[at],
+    link,
+    file: link ? null : products[at].file,
+  };
 
   const next: Store = { ...store, products };
   await saveStore(next);
