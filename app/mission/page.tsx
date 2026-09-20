@@ -54,7 +54,7 @@ const VALUES = [
 
 const BUILT = [
   "A store page with your links, your products and your own look",
-  "Price options on one product — one week, five weeks, the season",
+  "Price options on one product — one week, five weeks, the season — on the demo store, not yet in your own editor",
   "A Stripe checkout that charges the creator account directly, with nothing taken on top — running in test mode on the demo store",
   "The file delivered the second the payment clears, with a link that expires",
   "A buyer who loses that link gets it sent again — no account, no password",
@@ -65,6 +65,7 @@ const BUILT = [
   "The file you sell, uploaded straight from your browser and kept where only you can reach it",
   "Or a link instead of a file, for what is too big to upload or is not a file at all",
   "Memberships: daily, weekly, monthly or yearly, charged on your own Stripe account",
+  "Links to everywhere else you are — the channel, the podcast, the booking page — with no price and no checkout on them",
   "A store that installs to the home screen on iPhone and Android",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
