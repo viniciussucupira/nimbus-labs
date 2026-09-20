@@ -80,7 +80,11 @@ export default async function ThanksPage({ params, searchParams }: Params) {
               </h1>
               <p className="mt-4 text-lg text-ink-soft">
                 {order.product.recurring ? "You subscribed to " : "You bought "}
-                <strong className="text-ink">{order.product.title}</strong> from{" "}
+                <strong className="text-ink">
+                  {order.option
+                    ? `${order.product.title} (${order.option.label})`
+                    : order.product.title}
+                </strong> from{" "}
                 {store.name} for{" "}
                 {order.product.recurring
                   ? `$${centsToPrice(order.amount)} ${everyLabel(
@@ -97,13 +101,13 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 </p>
               ) : null}
 
-              {order.product.link ? (
+              {order.link ? (
                 <>
                   {/* Shown rather than followed. A buyer who has paid should
                       see where they are about to go before they go there, and
                       this address belongs to the creator, not to us. */}
                   <a
-                    href={order.product.link}
+                    href={order.link}
                     rel="noopener noreferrer nofollow"
                     target="_blank"
                     className="mt-7 inline-block rounded-full bg-ink px-7 py-4 text-base font-bold text-white transition hover:-translate-y-0.5"
@@ -111,13 +115,13 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     Open what you bought
                   </a>
                   <p className="mt-5 text-sm text-ink-soft">
-                    {`It is kept on ${linkHost(order.product.link)} by ${store.name}, not here. Save the address: `}
+                    {`It is kept on ${linkHost(order.link)} by ${store.name}, not here. Save the address: `}
                     <span className="break-all font-semibold text-ink">
-                      {order.product.link}
+                      {order.link}
                     </span>
                   </p>
                 </>
-              ) : (
+              ) : order.file ? (
                 <>
                   <a
                     href={`/api/store/download?handle=${encodeURIComponent(
@@ -134,6 +138,20 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     email Stripe sent you — it has the same link.
                   </p>
                 </>
+              ) : (
+                /*
+                  Paid, and there is nothing behind it: the creator took the
+                  option away between the payment and this page. Saying so,
+                  with the address to write to, is the only honest answer —
+                  the money reached the creator's own account, so the creator
+                  is who can fix it.
+                */
+                <p className="mt-7 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm text-ink">
+                  <strong>Your payment went through, and this one has
+                  nothing attached to send.</strong> That is on {store.name} to
+                  put right, and the charge is on their own Stripe account, so
+                  reply to the receipt Stripe emailed you and they will see it.
+                </p>
               )}
               {order.email ? (
                 <p className="mt-2 text-sm text-ink-soft">
