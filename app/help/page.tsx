@@ -170,7 +170,9 @@ const SECTIONS: Section[] = [
       {
         q: "What can I sell?",
         a: [
-          "Digital files, with up to three price options on the same product — different amounts, formats or licences. Your store page also holds free links, so a lead magnet or a free sample can sit next to the paid product.",
+          "Digital files — one price each — and memberships that charge on a schedule. What is too big to upload, or is not a file at all, is sold as a link to where it already lives.",
+          "Your page also holds links that are not for sale, with no price and no checkout on them: the channel, the podcast, the profile, the booking page you already pay someone else for.",
+          "One thing the demo store has that your own editor does not yet: several prices on the same product. It is real and it runs in production there, and building the same into your editor is not done. Until it is, that is two products rather than one.",
         ],
       },
       {
