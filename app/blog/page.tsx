@@ -137,20 +137,19 @@ export default function BlogIndexPage() {
             <div className="relative grid gap-8 lg:grid-cols-[1.2fr_1fr] lg:items-center">
               <div>
                 <h2 className="font-display text-3xl font-black sm:text-4xl">
-                  Want an email when Nimbus opens?
+                  Nimbus is open. Take your address.
                 </h2>
                 <p className="mt-4 text-white/80">
-                  Leave your address on the early access page. We write when
-                  there is something real to say — a page you can use, a feature
-                  that shipped, a number we measured. Nothing else, and you can
-                  leave at any time.
+                  The store address, the page and the editor cost nothing. Your
+                  buyer pays into your own Stripe account, and we take 0% of the
+                  sale. Reading about it is useful; having one is better.
                 </p>
                 <div className="mt-7 flex flex-wrap gap-3">
                   <Link
-                    href="/creators"
+                    href="/signin"
                     className="rounded-full bg-white px-7 py-3.5 font-bold text-violet-deep shadow-lg transition hover:-translate-y-0.5"
                   >
-                    Get early access
+                    Start your store
                   </Link>
                   <Link
                     href="/demo"
