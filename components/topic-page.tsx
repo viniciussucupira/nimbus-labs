@@ -252,10 +252,10 @@ export function TopicPageView({ page }: { page: TopicPage }) {
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
-                href="/creators"
+                href="/signin"
                 className="rounded-full bg-white px-7 py-3.5 font-bold text-violet-deep shadow-lg transition hover:-translate-y-0.5"
               >
-                Get early access
+                Start your store
               </Link>
               <Link
                 href="/demo"
