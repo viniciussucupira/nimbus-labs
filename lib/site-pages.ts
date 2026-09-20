@@ -453,7 +453,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Gumroad is ahead of us today",
-        body: "A marketplace that can send you buyers; memberships and subscriptions; affiliates; automated email workflows and a newsletter; licence keys; PDF stamping; discount codes; upsells; installment plans; ratings and reviews; your own domain; Zapier and a public API; purchasing power parity pricing; and a mobile app. We have none of those. They have been doing this since 2011 and it shows.",
+        body: "A marketplace that can send you buyers; affiliates; automated email workflows and a newsletter; licence keys; PDF stamping; discount codes; upsells; installment plans; ratings and reviews; your own domain; Zapier and a public API; purchasing power parity pricing; and a mobile app. We have none of those. They have been doing this since 2011 and it shows.",
       },
     ],
   },
@@ -497,7 +497,7 @@ export const PAGES: TopicPage[] = [
           ["What you are buying", "A whole suite: link in bio, websites, media kit, email, an affiliate network, AI tools", "One store page, built to sell a file"],
           ["A free plan", "Yes, and you can sell on it", "None"],
           ["Order bumps and upsells", "Yes", "Not built yet"],
-          ["Memberships and courses", "Yes, from the $30 plan", "Not built yet"],
+          ["Memberships and courses", "Yes, from the $30 plan", "Memberships yes. Courses not built yet"],
         ],
       },
       {
@@ -657,7 +657,7 @@ export const PAGES: TopicPage[] = [
           ["Selling something bigger", "Their help centre: host it on Google Drive or Dropbox and use Redirect to URL", "Sell it as a link. Same escape hatch, and we say so on the product itself"],
           ["How much your buyers may download", "No figure in their help centre", "200 GB a month, published, and shown in your account as it is used"],
           ["Courses with drip and analytics", "Yes", "Not available"],
-          ["Memberships and subscriptions", "Yes", "Not available"],
+          ["Memberships and subscriptions", "Yes \u2014 daily, weekly, monthly, annually, and can end after a set number of payments", "Yes \u2014 daily, weekly, monthly, yearly, on your own Stripe. No fixed-term option yet"],
           ["Coaching calls with a calendar", "Yes", "Not available"],
           ["Live webinars", "Yes", "Not available"],
           ["Lead magnets", "Yes", "Not available"],
