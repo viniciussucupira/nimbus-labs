@@ -8,6 +8,12 @@
  * page is this file.
  */
 import type { Product, Store } from "@/lib/store";
+import type { ProductFile } from "@/lib/product-file";
+import {
+  type ProductOption,
+  lowestPriceCents,
+  optionDelivers,
+} from "@/lib/product-option";
 import { isPaidUp } from "@/lib/billing";
 
 /** Local tests may point this at a mock on 127.0.0.1; nothing else is taken. */
@@ -60,14 +66,35 @@ export function canSell(store: Store): boolean {
 }
 
 /**
+ * The options a buyer may actually be offered.
+ *
+ * An option with nothing behind it is left off the page rather than sold and
+ * apologised for afterwards. The creator is told about it in the studio, which
+ * is where it can be fixed; the buyer never meets it.
+ */
+export function sellableOptions(product: Product): ProductOption[] {
+  return product.options.filter(optionDelivers);
+}
+
+/**
  * A product can only be sold once there is something to hand over.
  *
  * Either kind counts: a file we host, or a link to wherever the creator keeps
  * it. What is refused is a product with neither, because a buyer would pay and
  * then be shown nothing.
+ *
+ * With price options the same question is asked of them instead of the
+ * product: at least one has to be ready, because that is what the buyer picks.
  */
 export function canSellProduct(store: Store, product: Product): boolean {
-  return canSell(store) && (product.file !== null || product.link !== null);
+  if (!canSell(store)) return false;
+  if (product.options.length > 0) return sellableOptions(product).length > 0;
+  return product.file !== null || product.link !== null;
+}
+
+/** The figure a product card leads with: the cheapest way in. */
+export function fromPriceCents(product: Product): number {
+  return lowestPriceCents(sellableOptions(product), product.priceCents);
 }
 
 class StripeError extends Error {
@@ -118,31 +145,55 @@ async function onAccount(
   return data;
 }
 
-/** Opens a checkout for one product and returns where to send the buyer. */
+/**
+ * Opens a checkout for one product and returns where to send the buyer.
+ *
+ * When the product has price options, the buyer's form sends an option id and
+ * nothing else about money. The amount charged is read from the option the
+ * creator saved, found here, on the server. A page that accepted a price from
+ * the form would be a page where anything can be bought for a cent, and that
+ * is the single rule this whole feature rests on.
+ */
 export async function createCheckout(
   store: Store,
   product: Product,
   origin: string,
+  optionId?: string,
 ): Promise<string> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
 
+  const offered = sellableOptions(product);
+  let chosen: ProductOption | null = null;
+  if (offered.length > 0) {
+    chosen = offered.find((option) => option.id === optionId) ?? null;
+    // No id, or one that names nothing this product offers. Refusing beats
+    // guessing: a buyer charged for the option they did not pick is a refund.
+    if (!chosen) throw new Error("This product needs one of its options");
+  }
+
   const membership = product.recurring;
+  const priceCents = chosen ? chosen.priceCents : product.priceCents;
+  const name = chosen ? `${product.title} (${chosen.label})` : product.title;
 
   const body = new URLSearchParams({
     mode: membership ? "subscription" : "payment",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": "usd",
-    "line_items[0][price_data][unit_amount]": String(product.priceCents),
-    "line_items[0][price_data][product_data][name]": product.title,
+    "line_items[0][price_data][unit_amount]": String(priceCents),
+    "line_items[0][price_data][product_data][name]": name,
     "metadata[store]": store.handle,
     "metadata[product]": product.id,
     // Kept on the charge itself so the order still says what was sold after
     // the creator renames or removes the product. Stripe's record outlives
     // ours, and the creator should not lose the history by tidying the store.
-    "metadata[title]": product.title.slice(0, 480),
+    "metadata[title]": name.slice(0, 480),
     success_url: `${origin}/@${store.handle}/thanks?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/@${store.handle}`,
   });
+
+  // Which option was bought decides which file is handed over later, so it
+  // travels with the charge rather than being worked out again afterwards.
+  if (chosen) body.set("metadata[option]", chosen.id);
 
   if (membership) {
     // The subscription is created on the creator's own account, like every
@@ -150,9 +201,11 @@ export async function createCheckout(
     body.set("line_items[0][price_data][recurring][interval]", membership.interval);
     body.set("subscription_data[metadata][store]", store.handle);
     body.set("subscription_data[metadata][product]", product.id);
+    if (chosen) body.set("subscription_data[metadata][option]", chosen.id);
   } else {
     body.set("payment_intent_data[metadata][store]", store.handle);
     body.set("payment_intent_data[metadata][product]", product.id);
+    if (chosen) body.set("payment_intent_data[metadata][option]", chosen.id);
   }
 
   if (product.summary) {
@@ -175,6 +228,11 @@ export type Order =
   | {
       state: "paid";
       product: Product;
+      /** The price option that was bought, when the product has any. */
+      option: ProductOption | null;
+      /** What to hand over: the option's if there was one, else the product's. */
+      file: ProductFile | null;
+      link: string | null;
       amount: number;
       /** The address the buyer paid with, so the link can be sent again. */
       email: string | null;
@@ -220,6 +278,12 @@ export async function readOrder(
   const product = store.products.find((p) => p.id === metadata?.product);
   if (!product) return { state: "invalid" };
 
+  // The option is read from the charge, not from anything the visitor sends.
+  // An option the creator has since removed leaves the order readable and its
+  // delivery empty, which the pages say plainly rather than guessing another.
+  const option =
+    product.options.find((entry) => entry.id === metadata?.option) ?? null;
+
   if (session.status !== "complete" || session.payment_status !== "paid") {
     return { state: "unpaid" };
   }
@@ -235,6 +299,9 @@ export async function readOrder(
   return {
     state: "paid",
     product,
+    option,
+    file: option ? option.file : product.options.length > 0 ? null : product.file,
+    link: option ? option.link : product.options.length > 0 ? null : product.link,
     amount: typeof session.amount_total === "number" ? session.amount_total : 0,
     email,
     secondsLeft: Math.max(0, Math.floor(DOWNLOAD_WINDOW_SECONDS - age)),
