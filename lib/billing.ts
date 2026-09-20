@@ -12,22 +12,20 @@
  * never be confused: a charge made on the wrong one is either us taking a cut
  * we promised not to take, or us billing ourselves.
  */
+import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 import {
   CUSTOMER_PATTERN,
   SUBSCRIPTION_PATTERN,
   type Store,
 } from "@/lib/store";
 
-/** What a creator pays, in cents. Matches the price published on the site. */
-export const PRICE_CENTS = 2900;
-
 /**
- * Days before the first charge.
- *
- * Long enough to open a store, connect Stripe and make a real sale, which is
- * the only honest way to find out whether this is worth paying for.
+ * The price and the trial come from lib/plan.ts and are passed straight
+ * through, so the checkout this file opens and the price the site advertises
+ * cannot drift apart. They are re-exported because this file is where the
+ * rest of the app already looks for them.
  */
-export const TRIAL_DAYS = 14;
+export { PRICE_CENTS, TRIAL_DAYS };
 
 /** Local tests may point this at a mock on 127.0.0.1; nothing else is taken. */
 const STRIPE_API = /^http:\/\/127\.0\.0\.1:\d+$/.test(
