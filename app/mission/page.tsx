@@ -78,6 +78,9 @@ const STRIPE_LINE =
 const CHECKOUT_LINE =
   "Selling: the buyer pays on your account and the file is handed over the moment Stripe confirms it";
 
+const ORDERS_LINE =
+  "A list of what you have sold, read from your own Stripe account, with the buyer’s address so you can answer them";
+
 const NOT_BUILT = [
   "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
@@ -92,10 +95,12 @@ export default function MissionPage() {
   // Whether this deployment can actually reach Stripe decides which list the
   // line belongs in. A feature nobody here can press is not a built feature.
   const ready = isConnectConfigured();
-  const built = ready ? [...BUILT, STRIPE_LINE, CHECKOUT_LINE] : BUILT;
+  const built = ready
+    ? [...BUILT, STRIPE_LINE, CHECKOUT_LINE, ORDERS_LINE]
+    : BUILT;
   const notBuilt = ready
     ? NOT_BUILT
-    : [STRIPE_LINE, CHECKOUT_LINE, ...NOT_BUILT];
+    : [STRIPE_LINE, CHECKOUT_LINE, ORDERS_LINE, ...NOT_BUILT];
   return (
     <div className="flex min-h-screen flex-col bg-white text-ink">
       <RevealOnScroll />
