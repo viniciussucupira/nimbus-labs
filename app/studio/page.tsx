@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { storeForEmail, storeFolder } from "@/lib/store";
+import { centsToPrice, storeForEmail, storeFolder } from "@/lib/store";
 import { HandleForm } from "@/components/handle-form";
 import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
@@ -14,22 +14,26 @@ import {
   isConnectConfigured,
   isConnectInTestMode,
 } from "@/lib/stripe-connect";
+import { ORDERS_PAGE_SIZE, listSales } from "@/lib/store-checkout";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
   robots: { index: false, follow: false },
 };
 
-const NEXT_WHEN_SELLING = ["The list of your orders"];
+const NEXT_WHEN_SELLING = [
+  "Courses, memberships and scheduled calls",
+  "PayPal as a second way to be paid",
+];
 const NEXT_WHEN_NOT = [
   "The checkout that pays into your account",
-  "The list of your orders",
+  "The list of what you have sold",
 ];
 
 const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
   ready: {
     title: "Stripe says your account can take payments",
-    body: "That is Stripe's answer, not ours. The checkout that uses it is the next piece being built.",
+    body: "That is Stripe's answer, not ours. Your store can take money now, and what you sell shows up further down this page.",
   },
   pending: {
     title: "Stripe still wants something from you",
@@ -120,6 +124,10 @@ export default async function StudioPage({
   const notice =
     ADDRESS_NOTICES[typeof params.address === "string" ? params.address : ""] ??
     STRIPE_NOTICES[typeof params.stripe === "string" ? params.stripe : ""];
+  // Only asked for when there is a store that can actually have sold
+  // something, so a creator who has not connected Stripe never waits on a
+  // request that could only come back empty.
+  const sold = store && store.stripeAccountId ? await listSales(store) : null;
   const connectReady = isConnectConfigured();
   const connectTestMode = isConnectInTestMode();
   const NEXT = connectReady ? NEXT_WHEN_SELLING : NEXT_WHEN_NOT;
@@ -309,6 +317,81 @@ export default async function StudioPage({
                 </p>
               ) : null}
             </div>
+
+            {sold ? (
+              <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+                <p className="font-display text-xl font-black text-ink">
+                  What you have sold
+                </p>
+                <p className="mt-2 text-ink-soft">
+                  Read from your own Stripe account each time you open this
+                  page. We keep no second copy of it, so there is nothing here
+                  to go stale or go missing.
+                </p>
+
+                {sold.state === "error" ? (
+                  <p className="mt-5 rounded-3xl bg-amber-brand/10 p-5 text-sm text-ink-soft">
+                    Stripe did not answer just now, so this list is not showing.
+                    Nothing is lost — your sales are on your Stripe account
+                    whether this page can reach it or not.
+                  </p>
+                ) : sold.state === "ok" && sold.sales.length === 0 ? (
+                  <p className="mt-5 rounded-3xl bg-cream p-5 text-sm text-ink-soft">
+                    Nothing sold yet. When someone buys, the sale shows up here
+                    with who bought it, so you can answer them.
+                  </p>
+                ) : (
+                  <>
+                    <ul className="mt-5 space-y-3">
+                      {sold.state === "ok" ? sold.sales.map((sale) => (
+                        <li
+                          key={sale.reference}
+                          className="rounded-3xl bg-cream p-5"
+                        >
+                          <div className="flex flex-wrap items-baseline justify-between gap-2">
+                            <p className="font-bold text-ink">{sale.title}</p>
+                            <p className="font-display font-black text-ink">
+                              ${centsToPrice(sale.amount)}
+                            </p>
+                          </div>
+                          <p className="mt-1 text-sm text-ink-soft">
+                            {sale.email ? (
+                              <>
+                                Bought by{" "}
+                                <a
+                                  href={`mailto:${sale.email}`}
+                                  className="underline underline-offset-2"
+                                >
+                                  {sale.email}
+                                </a>
+                              </>
+                            ) : (
+                              "Bought without an email address on the receipt"
+                            )}{" "}
+                            on{" "}
+                            {new Date(sale.paidAt * 1000).toLocaleDateString(
+                              "en-GB",
+                              { day: "numeric", month: "long", year: "numeric" },
+                            )}
+                          </p>
+                          <p className="mt-1 text-xs text-ink-soft">
+                            {sale.stillDownloadable
+                              ? "Their download link still works."
+                              : "Their download link has expired — send them the file yourself if they ask."}{" "}
+                            Stripe reference {sale.reference}
+                          </p>
+                        </li>
+                      )) : null}
+                    </ul>
+                    <p className="mt-4 text-sm text-ink-soft">
+                      The {ORDERS_PAGE_SIZE} most recent. Every sale you have
+                      ever made is in your own Stripe dashboard, which is the
+                      real record.
+                    </p>
+                  </>
+                )}
+              </div>
+            ) : null}
 
             <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
               <p className="font-display text-xl font-black text-ink">
