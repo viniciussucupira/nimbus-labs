@@ -4,9 +4,9 @@ import { SignInForm } from "@/components/signin-form";
 import { isConnectConfigured } from "@/lib/stripe-connect";
 
 export const metadata: Metadata = {
-  title: "Sign in — Nimbus Labs",
+  title: "Start your store — Nimbus Labs",
   description:
-    "Sign in to Nimbus Labs with a link sent to your email. No password to invent.",
+    "Start a Nimbus Labs store, or open the one you have, with a link sent to your email. No password to invent.",
   robots: { index: false, follow: false },
 };
 
@@ -67,11 +67,12 @@ export default async function SignInPage({
         </p>
 
         <h1 className="font-display mt-5 text-4xl font-black leading-tight sm:text-5xl">
-          Sign in
+          Start your store
         </h1>
         <p className="mt-4 text-lg text-ink-soft">
-          Type your email and we send a link. Clicking it signs you in — there is
-          no password here, on purpose.
+          Type your email and we send a link. Clicking it opens your store if you
+          already have one, and starts one if you do not — there is no password
+          here, on purpose, and nothing to pay to begin.
         </p>
 
         {notice ? (
