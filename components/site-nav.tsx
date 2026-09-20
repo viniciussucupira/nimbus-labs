@@ -337,11 +337,11 @@ export function SiteNav() {
               Sign in
             </Link>
             <Link
-              href="/creators"
+              href="/signin"
               className="rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-4 py-2.5 text-[13px] font-bold text-white shadow-lg shadow-violet-brand/30 transition hover:shadow-xl hover:shadow-pink-brand/30 sm:px-5 sm:text-sm focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
             >
-              <span className="sm:hidden">Early access</span>
-              <span className="hidden sm:inline">Get early access</span>
+              <span className="sm:hidden">Start store</span>
+              <span className="hidden sm:inline">Start your store</span>
             </Link>
             <button
               type="button"
@@ -500,11 +500,11 @@ export function SiteNav() {
           </li>
           <li>
             <Link
-              href="/creators"
+              href="/signin"
               onClick={closeAll}
               className="block rounded-3xl bg-gradient-to-r from-violet-brand to-pink-brand px-5 py-4 text-center font-bold text-white"
             >
-              Get early access
+              Start your store
             </Link>
           </li>
         </ul>
