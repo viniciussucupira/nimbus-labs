@@ -10,6 +10,7 @@ import {
   RevealOnScroll,
   StoreMock,
 } from "@/components/home-parts";
+import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 
 export const metadata: Metadata = {
   title: "Nimbus Labs — the link-in-bio store that pays into your own Stripe",
@@ -255,13 +256,16 @@ export default function Home() {
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
-                href="/creators"
+                href="/signin"
                 className="rounded-full bg-white px-7 py-3.5 font-bold text-violet-deep shadow-xl shadow-ink/30 transition hover:-translate-y-0.5 hover:shadow-2xl focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
-                Get early access
+                Start your store
               </Link>
               <DemoWindow />
             </div>
+            <p className="mt-3 text-sm text-white/70">
+              {`Free for ${TRIAL_DAYS} days, then $${PRICE_CENTS / 100} a month. No card to begin.`}
+            </p>
 
             {/* On a phone the floating portraits do not fit, so the faces
                 come here instead, right under the buttons. */}
@@ -632,12 +636,12 @@ export default function Home() {
             Pricing
           </p>
           <h2 className="font-display mt-3 text-3xl font-black sm:text-4xl">
-            The same price as Stan, with more in the box
+            The same price as Stan, a different deal on your money
           </h2>
           <p className="mt-4 text-ink-soft">
-            Nothing is charged today. These are the planned prices for early
-            access, and you will be told the exact terms before any card is
-            asked for.
+            One monthly price, 0% of your sales, and the sale itself lands in
+            your own Stripe account rather than in ours. The price is what you
+            pay us; it is not a share of what you earn.
           </p>
         </div>
         <div className="mt-10">
@@ -670,19 +674,17 @@ export default function Home() {
         />
         <div className="relative mx-auto max-w-3xl px-4 text-center">
           <h2 className="font-display text-3xl font-black sm:text-5xl">
-            Tell me what is broken in your store today
+            Take your address and put something up for sale
           </h2>
           <p className="mt-5 text-lg text-white/90">
-            Early access opens with the first creators who answer. It takes two
-            minutes, there is nothing to buy, and you get the answers in
-            writing.
+            {`Your store address and page cost nothing. Connect your own Stripe account, list what you sell, and the till is free for ${TRIAL_DAYS} days — long enough to make a sale before you decide whether we are worth $${PRICE_CENTS / 100} a month.`}
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
             <Link
-              href="/creators"
+              href="/signin"
               className="rounded-full bg-white px-8 py-4 font-bold text-violet-deep shadow-xl transition hover:-translate-y-0.5"
             >
-              Get early access
+              Start your store
             </Link>
             <Link
               href="/demo"
@@ -691,6 +693,13 @@ export default function Home() {
               See the live store
             </Link>
           </div>
+          <p className="mt-6 text-sm text-white/75">
+            Rather tell us what is broken in your store today?{" "}
+            <Link href="/creators" className="font-bold underline">
+              Two minutes, eight questions, nothing to buy
+            </Link>
+            .
+          </p>
         </div>
       </section>
       </main>
