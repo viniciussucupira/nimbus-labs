@@ -301,9 +301,15 @@ function FileBlock({
 export function ProductEditor({
   products,
   folder,
+  selling,
+  testMode,
 }: {
   products: Product[];
   folder: string;
+  /** Whether this store can actually take a card right now. */
+  selling: boolean;
+  /** Whether the platform is pointed at Stripe's test mode. */
+  testMode: boolean;
 }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
@@ -643,12 +649,41 @@ export function ProductEditor({
         </p>
       ) : null}
 
+      {/*
+        Three states, because there are three truths and the wrong one is a
+        lie the moment the other becomes true. A line hard-coded to "nobody
+        can pay you" goes stale the hour Stripe clears an account; a line
+        hard-coded to "you can be paid" is worse, because somebody sets a
+        price on it.
+      */}
       <p className="mt-5 rounded-2xl bg-cream px-4 py-3 text-sm text-ink-soft">
-        <strong className="text-ink">Nobody can pay you yet.</strong> What you
-        write here is on your page the moment you save it, with the price, and
-        the page says plainly that it cannot take a payment. Your file is kept
-        where only this account can reach it, and it is never named or linked
-        on the public page.
+        {!selling ? (
+          <>
+            <strong className="text-ink">Nobody can pay you yet.</strong> What
+            you write here is on your page the moment you save it, with the
+            price, and the page says plainly that it cannot take a payment.
+          </>
+        ) : testMode ? (
+          <>
+            <strong className="text-ink">
+              Your page can take a card, in Stripe&apos;s test mode.
+            </strong>{" "}
+            What you write here is on your page the moment you save it, and the
+            checkout on it is real — but it is running against Stripe in test
+            mode, so no real money moves and no real card is charged.
+          </>
+        ) : (
+          <>
+            <strong className="text-ink">
+              Your page can take a card for this.
+            </strong>{" "}
+            What you write here is on your page the moment you save it, and a
+            buyer can pay for it straight away, on your own Stripe account,
+            with nothing taken on top.
+          </>
+        )}{" "}
+        Your file is kept where only this account can reach it, and it is never
+        named or linked on the public page.
       </p>
     </div>
   );
