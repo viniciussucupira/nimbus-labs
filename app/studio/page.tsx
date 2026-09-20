@@ -20,6 +20,8 @@ import {
   isConnectInTestMode,
 } from "@/lib/stripe-connect";
 import { ORDERS_PAGE_SIZE, canSell, listSales } from "@/lib/store-checkout";
+import { deliveredThisMonth } from "@/lib/delivery";
+import { readableSize } from "@/lib/product-file";
 import {
   PRICE_CENTS,
   TRIAL_DAYS,
@@ -195,6 +197,10 @@ export default async function StudioPage({
   // request that could only come back empty.
   const sold =
     current && current.stripeAccountId ? await listSales(current) : null;
+
+  // What this store has sent out this month, so the one cost that scales with
+  // use is visible to the creator before it is visible on our bill.
+  const delivery = store ? await deliveredThisMonth(folder) : null;
   const connectReady = isConnectConfigured();
   const connectTestMode = isConnectInTestMode();
   const billingReady = isBillingConfigured();
@@ -390,6 +396,57 @@ export default async function StudioPage({
                 </p>
               ) : null}
             </div>
+
+            {delivery ? (
+              <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+                <p className="font-display text-xl font-black text-ink">
+                  What you have sent out this month
+                </p>
+                <p className="mt-2 text-ink-soft">
+                  {`${readableSize(delivery.bytes)} of the ${readableSize(
+                    delivery.allowance,
+                  )} your plan covers. Counted when a download starts, including the ones you open yourself to check.`}
+                </p>
+                <div
+                  className="mt-4 h-2 w-full overflow-hidden rounded-full bg-cream"
+                  role="progressbar"
+                  aria-valuenow={Math.min(
+                    100,
+                    Math.round((delivery.bytes / delivery.allowance) * 100),
+                  )}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label="Delivery used this month"
+                >
+                  <div
+                    className={`h-full rounded-full ${
+                      delivery.over
+                        ? "bg-amber-brand"
+                        : "bg-gradient-to-r from-mint-brand to-sky-brand"
+                    }`}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.max(
+                          1,
+                          Math.round(
+                            (delivery.bytes / delivery.allowance) * 100,
+                          ),
+                        ),
+                      )}%`,
+                    }}
+                  />
+                </div>
+                {delivery.over ? (
+                  <p className="mt-4 rounded-2xl bg-amber-brand/15 px-4 py-3 text-sm text-ink">
+                    You are past what the plan covers this month.{" "}
+                    <strong>Nothing has been cut off and nothing will be.</strong>{" "}
+                    A buyer who paid always gets what they paid for. We will
+                    write to you about it rather than quietly stop your store.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             {billingReady ? (
               <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
