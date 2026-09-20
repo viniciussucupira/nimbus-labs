@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
 import { canSell, canSellProduct } from "@/lib/store-checkout";
+import { isConnectInTestMode } from "@/lib/stripe-connect";
 
 type Params = { params: Promise<{ handle: string }> };
 
@@ -48,6 +49,9 @@ export default async function StorePage({ params }: Params) {
   if (asked !== store.handle) permanentRedirect(`/@${store.handle}`);
 
   const selling = canSell(store);
+  // A buyer standing in front of a checkout deserves to know it is a rehearsal
+  // before typing a card number into it, not after.
+  const rehearsal = selling && isConnectInTestMode();
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
@@ -143,7 +147,17 @@ export default async function StorePage({ params }: Params) {
                 creator's real prices; what is missing is the till, and this
                 says so without promising a date for it.
               */}
-              {selling ? (
+              {rehearsal ? (
+                <p className="mt-6 rounded-3xl border-2 border-dashed border-ink/15 p-5 text-sm text-ink-soft">
+                  <strong className="text-ink">
+                    This checkout is running in Stripe&apos;s test mode.
+                  </strong>{" "}
+                  No real money moves through it and no real card is charged,
+                  so do not put a card you own into it. When it is switched on,
+                  payment is taken by Stripe on {store.name}&apos;s own account:
+                  Nimbus never holds the money and takes none of it.
+                </p>
+              ) : selling ? (
                 <p className="mt-6 text-sm text-ink-soft">
                   Payment is taken by Stripe on {store.name}&apos;s own account.
                   Nimbus never holds the money and takes none of it.
