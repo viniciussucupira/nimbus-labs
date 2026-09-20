@@ -13,6 +13,8 @@ import {
 import {
   ACCEPT_ATTRIBUTE,
   MAX_FILE_BYTES,
+  MULTIPART_ABOVE_BYTES,
+  maxFileLabel,
   fileFolder,
   readableSize,
   safeFileName,
@@ -23,7 +25,7 @@ const MESSAGES: Record<string, string> = {
   title: "Give it a name before saving.",
   price: "Type an amount between 1 and 5000, like 27 or 27.50.",
   unknown: "That is no longer on your store.",
-  too_big: `That file is over ${Math.round(MAX_FILE_BYTES / (1024 * 1024))} MB, which is the most a store can hold.`,
+  too_big: `That file is over ${maxFileLabel()}, which is the most a store can hold.`,
   wrong_type: "That kind of file is not one a store can sell here.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Sign in again.",
@@ -328,9 +330,7 @@ function FileBlock({
             Nothing on this yet
           </p>
           <p className="mt-1 text-sm text-ink-soft">
-            {`Upload the file the buyer downloads, up to ${Math.round(
-              MAX_FILE_BYTES / (1024 * 1024),
-            )} MB \u2014 or point at where it already lives, if it is bigger than that or is not a file at all.`}
+            {`Upload the file the buyer downloads, up to ${maxFileLabel()} \u2014 or point at where it already lives, if it is bigger than that or is not a file at all.`}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button
@@ -479,6 +479,9 @@ export function ProductEditor({
         access: "private",
         handleUploadUrl: "/api/store/file",
         clientPayload: JSON.stringify({ productId: product.id }),
+        // In parts once it is worth it, so a dropped connection costs one
+        // part rather than the whole upload.
+        multipart: chosen.size > MULTIPART_ABOVE_BYTES,
         onUploadProgress: (progress) => setPercent(progress.percentage),
       });
 
