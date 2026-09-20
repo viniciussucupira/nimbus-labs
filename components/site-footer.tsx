@@ -58,10 +58,10 @@ export function SiteFooter() {
             A store page for creators, built in public by Vinicius Sucupira.
           </p>
           <Link
-            href="/creators"
+            href="/signin"
             className="mt-5 inline-block rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-5 py-2.5 text-sm font-bold text-white transition hover:brightness-110 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
-            Get early access
+            Start your store
           </Link>
 
           <div className="mt-6">
@@ -118,7 +118,10 @@ export function SiteFooter() {
       </div>
 
       <div className="relative mx-auto mt-12 max-w-6xl border-t border-white/10 pt-6 text-xs text-white/50">
-        <p>© 2026 Nimbus Labs. Early access, not a finished product.</p>
+        <p>
+          © 2026 Nimbus Labs. Young, and honest about which parts are
+          finished.
+        </p>
         <p className="mt-2">
           Photographs from Unsplash, used for illustration. The people in them
           are not Nimbus Labs customers, and nothing on this site is a
