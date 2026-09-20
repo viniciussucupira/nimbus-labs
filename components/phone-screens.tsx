@@ -75,7 +75,7 @@ export function PhoneScreens() {
           {/* 1 — the store */}
           <Phone
             label="1. Your store"
-            caption="Your face, your links, your products."
+            caption="The demo store: a face, links and products."
             tilt="lg:-rotate-2"
           >
             <div className="relative">
