@@ -352,11 +352,11 @@ export const PAGES: TopicPage[] = [
         note: "Sources: Stan's help centre articles 'Creator vs. Creator Pro', 'How to Connect Stan with Stripe', 'How to Cash Out Inside Stan', 'Experiment: How to Connect an Existing Stripe Account' and 'How to Subscribe on the Stan Mobile App', read on 18 September 2026; 'Can I Create More Than One Stan Store?' and 'How to Change Your Stan Username or Email', read on 19 September 2026.",
         head: ["", "Stan", "Nimbus Labs"],
         rows: [
-          ["Monthly price", "$29 and $99", "$29. Not charged yet"],
+          ["Monthly price", "$29 and $99", "$29, free for the first 14 days"],
           ["Cut of each sale", "0% platform fee", "0% platform fee"],
           ["Signing in", "An account with a password. Their own signup asks for name, email and password", "A link sent to your email. No password to invent, and none kept here to be stolen"],
           ["Ways to be paid", "Stripe or PayPal", "Stripe only — we are behind them here"],
-          ["Whose Stripe account", "One they manage. Their own help centre: you cannot connect an existing Stripe account", "Your own. Proved in the demo store, and not open to new stores yet"],
+          ["Whose Stripe account", "One they manage. Their own help centre: you cannot connect an existing Stripe account", "Your own. You connect it from your account page and it stays yours"],
           ["Getting paid", "Cash out inside Stan, $10 minimum, whole balance only", "Your own Stripe payout schedule"],
           ["Where you see your money", "Their Income tab. A Stripe Custom account has no Stripe login", "stripe.com, like any other business of yours"],
           ["Phone app", "iPhone and iPad, for running your store. Not on Android", "None. The site installs to the home screen on both"],
@@ -413,11 +413,12 @@ export const PAGES: TopicPage[] = [
       {
         kind: "table",
         title: "The part that decides",
-        note: "Sources: Gumroad's pricing page and their help centre articles 'Getting paid by Gumroad', 'Connect your Stripe account to Gumroad' and 'Sales tax on Gumroad'. Fees and the merchant-of-record line re-read on 20 September 2026 and unchanged.",
+        note: "Sources: Gumroad's pricing page and their help centre articles 'Gumroad's fees', 'Getting paid by Gumroad', 'Connect your Stripe account to Gumroad' and 'Sales tax on Gumroad', all re-read on 20 September 2026.",
         head: ["", "Gumroad", "Nimbus Labs"],
         rows: [
           ["Cut of each sale", "10% + $0.50 direct, 30% via Discover", "0%"],
-          ["Monthly price", "None", "$29. Not charged yet"],
+          ["Card fee on top of that", "Stripe's 2.9% + $0.30. Their own fees page says the 10% + $0.50 does not include credit card processing", "Stripe's 2.9% + $0.30, and nothing else"],
+          ["Monthly price", "None", "$29, free for the first 14 days"],
           ["Whose payment account", "Theirs. New sellers can no longer connect their own Stripe", "Your own Stripe, from the first sale"],
           ["When the money reaches you", "Into their balance, 7-day hold, then a weekly payout", "At the moment of sale"],
           ["Minimum to be paid", "$100, higher in some countries", "Whatever your own Stripe is set to"],
@@ -438,16 +439,16 @@ export const PAGES: TopicPage[] = [
         kind: "steps",
         title: "The same $27 file, on both",
         items: [
-          { title: "On Gumroad", body: "10% of $27 is $2.70, plus $0.50, so $3.20 leaves the sale. You keep $23.80, and they pay the card fee out of their cut." },
+          { title: "On Gumroad", body: "10% of $27 is $2.70, plus $0.50, so $3.20 goes to Gumroad. Their own fees page says that figure does not include credit card processing, so Stripe's 2.9% + $0.30 — about $1.08 — comes out as well. You keep $22.72." },
           { title: "On Nimbus", body: "We take nothing. Stripe charges you its own published rate on your own account — about $1.08 on $27 — so you keep $25.92, and you pay us a fixed monthly price." },
-          { title: "The honest break-even", body: "The difference is $2.12 a sale. At $29 a month, the two cost you the same at about 14 sales of $27. Below that, Gumroad is cheaper for you. Above it, the gap grows every month and never stops." },
+          { title: "The honest break-even", body: "The difference is $3.20 a sale, which is exactly Gumroad's cut, because the card fee is paid either way. At $29 a month the two cost you the same at about nine sales of $27. Below that, Gumroad is cheaper for you. Above it, the gap grows every month and never stops." },
           { title: "At a hundred sales", body: "Gumroad's cut is $320 that month. Ours is $29, whether you sell a hundred files or a thousand." },
         ],
       },
       {
         kind: "note",
         title: "If you sell less than that, use Gumroad",
-        body: "We are not going to pretend otherwise. If you are selling a handful of files a month, a percentage of almost nothing is cheaper than a monthly price, and Gumroad is also the merchant of record and collects and remits sales tax worldwide, which is real work and real risk taken off you. Come back when the cut starts to hurt.",
+        body: "We are not going to pretend otherwise. Under about nine $27 sales a month, a percentage of almost nothing is cheaper than a monthly price, and Gumroad is also the merchant of record and collects and remits sales tax worldwide, which is real work and real risk taken off you. Come back when the cut starts to hurt.",
       },
       {
         kind: "note",
@@ -488,7 +489,7 @@ export const PAGES: TopicPage[] = [
         head: ["", "Beacons", "Nimbus Labs"],
         rows: [
           ["Cut of each sale", "9% on the free and $10 plans. 0% from the $30 plan up", "0%, on every plan"],
-          ["Monthly price", "$0, $10, $30 and $100", "$29. Not charged yet"],
+          ["Monthly price", "$0, $10, $30 and $100", "$29, free for the first 14 days"],
           ["Whose payment account", "Your own Stripe or PayPal", "Your own Stripe"],
           ["Ways to be paid", "Stripe or PayPal", "Stripe only — we are behind them here"],
           ["When the money reaches you", "At the moment of sale, into your own account", "At the moment of sale, into your own account"],
@@ -694,7 +695,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Read this line before anything else",
-        body: "Today you can sign in without a password, take a store address that is yours, write what you sell with its price, upload the file each one delivers, connect your own Stripe account, and be paid on it — the buyer's card is charged on your account, with nothing taken on top, and the file goes out the second Stripe confirms. The demo store is still there to try first, with a test card. What is not switched on is our own charge: the $29 is the price we intend, and nobody has been billed for it. Everything marked as not available is exactly that — not promised, not dated. A line only turns green when you can open it and try it.",
+        body: "Today you can sign in without a password, take a store address that is yours, write what you sell with its price, upload the file each one delivers, connect your own Stripe account, and be paid on it — the buyer's card is charged on your account, with nothing taken on top, and the file goes out the second Stripe confirms. The demo store is still there to try first, with a test card. Our own charge is switched on: $29 a month, free for the first 14 days, and it is what turns your page's till on. Everything marked as not available is exactly that — not promised, not dated. A line only turns green when you can open it and try it.",
       },
       {
         kind: "note",
