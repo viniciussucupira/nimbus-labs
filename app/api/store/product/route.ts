@@ -12,6 +12,7 @@ import {
   type ProductResult,
 } from "@/lib/store";
 import { MAX_LINK_LENGTH, readLink } from "@/lib/product-link";
+import { readRecurring } from "@/lib/product-recurring";
 import { guardStoreWrite, text } from "@/lib/store-request";
 
 const ACTIONS = new Set(["add", "edit", "remove", "move", "link", "unlink"]);
@@ -49,6 +50,9 @@ export async function POST(request: NextRequest) {
   const summary = text(body.summary, MAX_SUMMARY_LENGTH);
   const price = text(body.price, 20);
   const link = text(body.link, MAX_LINK_LENGTH);
+  // Absent or unrecognised means a single sale, which is what a product is
+  // unless the creator says otherwise.
+  const recurring = readRecurring(text(body.every, 10));
 
   if (action !== "add" && !id) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
@@ -57,9 +61,9 @@ export async function POST(request: NextRequest) {
   try {
     let result: ProductResult;
     if (action === "add") {
-      result = await addProduct(email, title, summary, price);
+      result = await addProduct(email, title, summary, price, recurring);
     } else if (action === "edit") {
-      result = await editProduct(email, id, title, summary, price);
+      result = await editProduct(email, id, title, summary, price, recurring);
     } else if (action === "remove") {
       // Read the file before the product is gone, so the storage it used can
       // be released once the removal is safely written.
