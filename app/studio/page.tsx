@@ -14,6 +14,7 @@ import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
 import { DetailsForm } from "@/components/details-form";
 import { ProductEditor } from "@/components/product-editor";
+import { LinkEditor } from "@/components/link-editor";
 import {
   COUNTRIES,
   isConnectConfigured,
@@ -269,6 +270,8 @@ export default async function StudioPage({
               selling={current ? canSell(current) : false}
               testMode={isConnectInTestMode()}
             />
+
+            <LinkEditor links={store.links} />
 
             <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
               <p className="font-display text-xl font-black text-ink">
