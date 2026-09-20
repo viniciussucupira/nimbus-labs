@@ -655,6 +655,7 @@ export const PAGES: TopicPage[] = [
         rows: [
           ["Digital downloads", "Yes, up to 5 GB", "Yes, up to 5 GB"],
           ["Selling something bigger", "Their help centre: host it on Google Drive or Dropbox and use Redirect to URL", "Sell it as a link. Same escape hatch, and we say so on the product itself"],
+          ["How much your buyers may download", "No figure in their help centre", "200 GB a month, published, and shown in your account as it is used"],
           ["Courses with drip and analytics", "Yes", "Not available"],
           ["Memberships and subscriptions", "Yes", "Not available"],
           ["Coaching calls with a calendar", "Yes", "Not available"],
