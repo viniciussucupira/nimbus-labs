@@ -54,7 +54,7 @@ const VALUES = [
 
 const BUILT = [
   "A store page with your links, your products and your own look",
-  "Price options on one product — one week, five weeks, the season — on the demo store, not yet in your own editor",
+  "Price options on one product — one week, five weeks, the season — up to three, each handing over its own file or link",
   "A Stripe checkout that charges the creator account directly, with nothing taken on top — running in test mode on the demo store",
   "The file delivered the second the payment clears, with a link that expires",
   "A buyer who loses that link gets it sent again — no account, no password",
