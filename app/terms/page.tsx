@@ -59,11 +59,12 @@ export default function TermsPage() {
           creator is a subscription for the store itself.
         </p>
         <p>
-          Creator stores are not open to the public yet. What this website
-          offers today is a working demo store and an early access list. When
-          stores open, the subscription price and the payment provider will be
-          shown before you are asked to pay, and these Terms will apply to that
-          subscription.
+          Creator stores are open. Taking a store address, building the page and
+          connecting a Stripe account are free. Taking a card on that page
+          requires a paid subscription, which begins with a free trial of 14
+          days and then renews monthly at the price shown on the home page until
+          it is cancelled. The price and the payment provider are shown before
+          any card is asked for, and these Terms apply to that subscription.
         </p>
         <p>
           We may update, improve, or discontinue features. When practical, we
