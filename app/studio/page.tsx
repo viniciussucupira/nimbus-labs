@@ -14,7 +14,7 @@ import {
   isConnectConfigured,
   isConnectInTestMode,
 } from "@/lib/stripe-connect";
-import { ORDERS_PAGE_SIZE, listSales } from "@/lib/store-checkout";
+import { ORDERS_PAGE_SIZE, canSell, listSales } from "@/lib/store-checkout";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
@@ -189,7 +189,12 @@ export default async function StudioPage({
               <OldAddresses handles={store.previousHandles} />
             </div>
 
-            <ProductEditor products={store.products} folder={folder} />
+            <ProductEditor
+              products={store.products}
+              folder={folder}
+              selling={canSell(store)}
+              testMode={isConnectInTestMode()}
+            />
 
             <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
               <p className="font-display text-xl font-black text-ink">
