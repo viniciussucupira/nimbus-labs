@@ -13,13 +13,41 @@
 /**
  * The biggest file a store may hold, and why this number.
  *
- * It is not a technical ceiling — the storage takes far more. It is a money
- * ceiling. Storage and download are both metered, so a cap that nobody sane
- * hits keeps the bill near zero while the platform has no paying creators,
- * and fifty megabytes is past what a book, a pack of templates or a set of
- * presets needs. Raising it is one number and a sentence on the help page.
+ * Five gigabytes, which is what Stan says it supports, so a creator choosing
+ * between the two is never choosing on this. It used to be fifty megabytes,
+ * set when nothing could be delivered without passing through a function and
+ * a big file therefore could not be delivered at all.
+ *
+ * It is still a money ceiling as much as a technical one. Storage is cheap
+ * — pennies per gigabyte per month — but delivery is not, so what actually
+ * bounds the bill is how much is sent in a month rather than how big any one
+ * file is. That allowance is the thing to publish and enforce.
  */
-export const MAX_FILE_BYTES = 50 * 1024 * 1024;
+export const MAX_FILE_BYTES = 5 * 1024 * 1024 * 1024;
+
+/**
+ * Above this, the browser uploads in parts rather than in one request.
+ *
+ * A single request carrying a gigabyte is one dropped connection away from
+ * starting again from nothing. In parts, only the failed part repeats.
+ */
+export const MULTIPART_ABOVE_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Above this, a paid download is a redirect rather than a stream.
+ *
+ * Streaming through our own function lets us set the saved file name and
+ * force a download, which is nicer, so small files still go that way. But
+ * every byte then counts twice — data transfer out of storage and origin
+ * transfer out of the function — and the function has a time limit a large
+ * file on a slow line will pass. Above this size the buyer is redirected to
+ * a signed URL that expires in minutes, the bytes go straight from storage,
+ * and the download cannot time out.
+ */
+export const REDIRECT_ABOVE_BYTES = 20 * 1024 * 1024;
+
+/** How long a signed download URL stays good. Long enough to start, no more. */
+export const DOWNLOAD_URL_SECONDS = 5 * 60;
 
 /**
  * What a creator may sell.
@@ -98,11 +126,23 @@ export function ownsPath(
   return !pathname.slice(prefix.length).includes("/");
 }
 
-/** A size a person reads: 2.4 MB, 812 KB. */
+/** A size a person reads: 1.4 GB, 2.4 MB, 812 KB. */
 export function readableSize(bytes: number): string {
+  const gb = 1024 * 1024 * 1024;
+  // "5 GB" rather than "5.0 GB": a round number reads as a limit, and a
+  // limit with a decimal on it reads as a measurement of something.
+  if (bytes >= gb) {
+    const size = (bytes / gb).toFixed(1).replace(/\.0$/, "");
+    return `${size} GB`;
+  }
   if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${bytes} bytes`;
+}
+
+/** The limit, said the way the pages say it. */
+export function maxFileLabel(): string {
+  return readableSize(MAX_FILE_BYTES);
 }
 
 /** Keeps a file name that is safe to put in a header and to save to a disk. */
