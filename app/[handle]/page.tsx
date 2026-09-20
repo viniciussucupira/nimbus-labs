@@ -4,6 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
 import { canSell, canSellProduct } from "@/lib/store-checkout";
 import { everyLabel } from "@/lib/product-recurring";
+import { linkHost } from "@/lib/product-link";
 import { isConnectInTestMode } from "@/lib/stripe-connect";
 
 type Params = { params: Promise<{ handle: string }> };
@@ -35,8 +36,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     title: `${store.name} — Nimbus Labs`,
     description: store.bio || `The store of ${store.name} on Nimbus Labs.`,
     // An empty store has nothing to offer a search engine yet. One with
-    // something on it does, so it stops hiding the moment it has.
-    robots: { index: store.products.length > 0, follow: true },
+    // something on it does, so it stops hiding the moment it has. A page of
+    // links alone counts: it is a page somebody may be looking for.
+    robots: {
+      index: store.products.length > 0 || store.links.length > 0,
+      follow: true,
+    },
   };
 }
 
@@ -85,15 +90,17 @@ export default async function StorePage({ params }: Params) {
             <p className="mt-4 text-lg text-ink-soft">{store.bio}</p>
           ) : null}
 
-          {store.products.length === 0 ? (
+          {store.products.length === 0 && store.links.length === 0 ? (
             <div className="mt-8 rounded-3xl border-2 border-dashed border-ink/15 p-6">
-              <p className="font-bold text-ink">Nothing for sale yet</p>
+              <p className="font-bold text-ink">Nothing here yet</p>
               <p className="mt-2 text-sm text-ink-soft">
-                This store is open but empty. When {store.name} adds something,
+                This page is open but empty. When {store.name} adds something,
                 it shows up here.
               </p>
             </div>
-          ) : (
+          ) : null}
+
+          {store.products.length > 0 ? (
             <>
               <ul className="mt-8 space-y-4 text-left">
                 {store.products.map((product) => (
@@ -181,7 +188,35 @@ export default async function StorePage({ params }: Params) {
                 </p>
               )}
             </>
-          )}
+          ) : null}
+
+          {/*
+            The other half of link in bio. These take no money and deliver
+            nothing: they are where else this person can be found. The site
+            each one leads to is printed under it, so a visitor knows where
+            they are being sent before they go.
+          */}
+          {store.links.length > 0 ? (
+            <ul className="mt-8 space-y-3 text-left">
+              {store.links.map((link) => (
+                <li key={link.id}>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer nofollow ugc"
+                    className="block rounded-3xl border-2 border-ink/10 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-violet-brand sm:px-6"
+                  >
+                    <span className="block font-bold text-ink">
+                      {link.title}
+                    </span>
+                    <span className="mt-0.5 block font-mono text-xs text-ink-soft">
+                      {linkHost(link.url)}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
 
         <div className="mt-8 text-center">
