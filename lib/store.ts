@@ -138,12 +138,28 @@ export type Store = {
    */
   stripeChargesEnabled: boolean;
   stripeCheckedAt: string;
+  /**
+   * What the creator pays us, on our own Stripe account — the other side of
+   * the two above, which are about their account.
+   *
+   * The identifiers are kept so the studio can ask Stripe the current state,
+   * and `subscriptionActive` is the snapshot of that answer, so a buyer
+   * opening a store page never waits on a call to Stripe.
+   */
+  stripeCustomerId: string | null;
+  subscriptionId: string | null;
+  subscriptionActive: boolean;
+  subscriptionCheckedAt: string;
   /** What the store lists, in the order the creator put them in. */
   products: Product[];
 };
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
 export const STRIPE_ACCOUNT_PATTERN = /^acct_[A-Za-z0-9]{8,64}$/;
+
+/** The same, for the customer and subscription that pay us. */
+export const CUSTOMER_PATTERN = /^cus_[A-Za-z0-9]{6,64}$/;
+export const SUBSCRIPTION_PATTERN = /^sub_[A-Za-z0-9]{6,64}$/;
 
 export function normaliseHandle(raw: string): string {
   return raw.trim().replace(/^@+/, "").toLowerCase();
@@ -247,6 +263,18 @@ function parseStore(raw: unknown): Store | null {
           : null,
       stripeChargesEnabled: value.stripeChargesEnabled === true,
       stripeCheckedAt: value.stripeCheckedAt ?? "",
+      stripeCustomerId:
+        typeof value.stripeCustomerId === "string" &&
+        CUSTOMER_PATTERN.test(value.stripeCustomerId)
+          ? value.stripeCustomerId
+          : null,
+      subscriptionId:
+        typeof value.subscriptionId === "string" &&
+        SUBSCRIPTION_PATTERN.test(value.subscriptionId)
+          ? value.subscriptionId
+          : null,
+      subscriptionActive: value.subscriptionActive === true,
+      subscriptionCheckedAt: value.subscriptionCheckedAt ?? "",
       products: parseProducts(value.products),
     };
   } catch {
@@ -341,6 +369,10 @@ export async function claimHandle(
     stripeAccountId: null,
     stripeChargesEnabled: false,
     stripeCheckedAt: "",
+    stripeCustomerId: null,
+    subscriptionId: null,
+    subscriptionActive: false,
+    subscriptionCheckedAt: "",
     products: [],
   };
 
@@ -444,6 +476,50 @@ export async function setStripeAccount(
   };
   await saveStore(next);
   return { ok: true, store: next };
+}
+
+/**
+ * Writes down who is paying us, and whether that payment is in good standing.
+ *
+ * Called on the way back from checkout and every time the studio is opened,
+ * so the snapshot the public store page trusts is refreshed at the moment the
+ * creator would notice it being wrong.
+ */
+export async function setSubscription(
+  email: string,
+  fields: {
+    customerId?: string | null;
+    subscriptionId?: string | null;
+    active: boolean;
+  },
+): Promise<Store | null> {
+  const store = await storeForEmail(email);
+  if (!store) return null;
+
+  const customerId =
+    fields.customerId === undefined ? store.stripeCustomerId : fields.customerId;
+  const subscriptionId =
+    fields.subscriptionId === undefined
+      ? store.subscriptionId
+      : fields.subscriptionId;
+
+  // A malformed id is refused rather than written down, for the same reason a
+  // malformed account id is: a bad id here means every later question about
+  // this store's subscription asks Stripe about something that is not it.
+  if (customerId !== null && !CUSTOMER_PATTERN.test(customerId)) return null;
+  if (subscriptionId !== null && !SUBSCRIPTION_PATTERN.test(subscriptionId)) {
+    return null;
+  }
+
+  const next: Store = {
+    ...store,
+    stripeCustomerId: customerId,
+    subscriptionId,
+    subscriptionActive: fields.active,
+    subscriptionCheckedAt: new Date().toISOString(),
+  };
+  await saveStore(next);
+  return next;
 }
 
 /** Forgets the connection here. Returns the account that was let go. */
