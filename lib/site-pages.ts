@@ -73,18 +73,18 @@ export const PAGES: TopicPage[] = [
     highlight: "several prices",
     intro:
       "A one-week plan for $27 and a five-week plan for $39, from the same product card. The buyer picks, and each option delivers its own file.",
-    badge: LIVE,
+    badge: { label: "Live in your own store today", tone: "live" as const },
     accent: "from-pink-brand to-amber-brand",
     blocks: [
       {
         kind: "lead",
-        text: "Stan's own help centre lists pricing tiers among its most requested features and states plainly that there is no native way to offer them under one product. On Nimbus Labs this is written, tested and running in production — on the demo store, which is what the badge above says. Building the same into a creator's own editor is not finished, so a store you make today gives one price per product. This page will drop this paragraph on the day that stops being true.",
+        text: "Stan's own help centre lists pricing tiers among its most requested features and states plainly that there is no native way to offer them under one product. Here it is in your own editor: put up to three prices on any product, give each one its own file or its own link, and the buyer picks on the card. The amount charged is read from what you saved, never from the page.",
       },
       {
         kind: "steps",
         title: "How it works",
         items: [
-          { title: "You define the options", body: "A label, a short detail, a price and the file that option delivers." },
+          { title: "You define the options", body: "A name the buyer reads, a price, and the file or the link that option hands over." },
           { title: "The buyer chooses one", body: "Radio cards on the product, no extra page, no JavaScript needed to see the prices." },
           { title: "The server sets the price", body: "The price comes from the option identifier, never from the form, so nobody can send their own price." },
           { title: "The right file is delivered", body: "The chosen option is stored with the payment and decides which file the download gives back." },
@@ -360,7 +360,7 @@ export const PAGES: TopicPage[] = [
           ["Getting paid", "Cash out inside Stan, $10 minimum, whole balance only", "Your own Stripe payout schedule"],
           ["Where you see your money", "Their Income tab. A Stripe Custom account has no Stripe login", "stripe.com, like any other business of yours"],
           ["Phone app", "iPhone and iPad, for running your store. Not on Android", "None. The site installs to the home screen on both"],
-          ["Several prices for one product", "Listed as a top feature request, not available", "Working in the demo store. Your own store takes one price per item today"],
+          ["Several prices for one product", "Listed as a top feature request, not available", "Up to three on any product, each with its own file or link"],
           ["A line about you on the page", "Their About me, on one theme only", "On every store, under your name"],
           ["Your own domain", "Not available", "Not available"],
           ["Changing your store address", "Any time. Their help centre says old links are forwarded on a best effort, cannot be guaranteed, and advises resending them", "Any time. Every address the store ever used keeps working, for good"],
@@ -641,7 +641,7 @@ export const PAGES: TopicPage[] = [
           ["Store page on a phone", "Yes", "Yes, and faster (97\u2013100 against 57\u201358 on PageSpeed)"],
           ["Themes and colours", "Yes, limited", "Not available. One look, the same on every store"],
           ["A line about you on the page", "About me, one theme only", "Every store, under your name"],
-          ["Several prices in one product", "Not available", "Working in the demo store. Your own store takes one price per item"],
+          ["Several prices in one product", "Not available", "Up to three, each delivering its own thing"],
           ["Custom domain", "Not available", "Not available"],
           ["Custom code on the page", "Explicitly not supported", "Not available"],
           ["Embed the store on your own site", "Not available", "Not available"],
