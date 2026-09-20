@@ -25,14 +25,27 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = postBySlug(slug);
   if (!post) return {};
+  // Both blocks are spelled out, and that is deliberate. Setting only
+  // `openGraph` here replaces the layout's copy of it and drops the image and
+  // the address with it, while `twitter` quietly keeps inheriting the home
+  // page's title — so an article used to share as the whole site. The picture
+  // itself comes from opengraph-image.tsx beside this file.
   return {
     title: `${post.title} — The Nimbus Journal`,
     description: post.excerpt,
+    alternates: { canonical: `/blog/${post.slug}` },
     openGraph: {
       type: "article",
+      url: `/blog/${post.slug}`,
+      siteName: "Nimbus Labs",
       title: post.title,
       description: post.excerpt,
       publishedTime: post.date,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.excerpt,
     },
   };
 }
