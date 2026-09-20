@@ -329,7 +329,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Honest about file size",
-        body: "We host up to 50 MB per file today, which is a real limit and smaller than the big platforms. If your pack is heavier than that, sell it as a link instead: keep the files wherever they already are and the buyer is sent straight there the moment they pay. Raising what we host ourselves is the next thing being built, and this line will say the new number the day it works.",
+        body: "We host up to 5 GB per file, which is what Stan says it supports, so this is not a reason to choose between us. Heavier than that, or not a file at all \u2014 a workspace, a private feed, a folder that keeps growing \u2014 and you sell it as a link instead: it stays where you already keep it and the buyer is sent straight there the moment they pay.",
       },
     ],
   },
@@ -653,7 +653,7 @@ export const PAGES: TopicPage[] = [
         title: "What you can sell",
         head: ["", "Stan", "Nimbus Labs"],
         rows: [
-          ["Digital downloads", "Yes, up to 5 GB", "Yes, up to 50 MB hosted here"],
+          ["Digital downloads", "Yes, up to 5 GB", "Yes, up to 5 GB"],
           ["Selling something bigger", "Their help centre: host it on Google Drive or Dropbox and use Redirect to URL", "Sell it as a link. Same escape hatch, and we say so on the product itself"],
           ["Courses with drip and analytics", "Yes", "Not available"],
           ["Memberships and subscriptions", "Yes", "Not available"],
