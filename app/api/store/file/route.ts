@@ -5,7 +5,7 @@ import {
   type HandleUploadPresignedBody,
 } from "@vercel/blob/client";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { storeForEmail, storeFolder } from "@/lib/store";
+import { ownsDeliveryId, storeForEmail, storeFolder } from "@/lib/store";
 import {
   ALLOWED_CONTENT_TYPES,
   MAX_FILE_BYTES,
@@ -75,9 +75,9 @@ export async function POST(request: NextRequest) {
         } catch {
           throw new Error("invalid");
         }
-        if (!store.products.some((product) => product.id === productId)) {
-          throw new Error("unknown");
-        }
+        // A price option owns a folder exactly as a product does, and its id
+        // is unique across the store, so one check covers both.
+        if (!ownsDeliveryId(store, productId)) throw new Error("unknown");
 
         const folder = await storeFolder(email);
         if (!ownsPath(pathname, folder, productId)) throw new Error("invalid");
