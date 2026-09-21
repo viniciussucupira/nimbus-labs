@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
+import {
+  centsToPrice,
+  isFree,
+  normaliseHandle,
+  storeForHandle,
+} from "@/lib/store";
 import {
   canSell,
   canSellProduct,
@@ -11,6 +16,7 @@ import {
 import { everyLabel } from "@/lib/product-recurring";
 import { linkHost } from "@/lib/product-link";
 import { isConnectInTestMode } from "@/lib/stripe-connect";
+import { canGiveProduct } from "@/lib/free";
 
 type Params = { params: Promise<{ handle: string }> };
 
@@ -63,6 +69,9 @@ export default async function StorePage({ params }: Params) {
   // A buyer standing in front of a checkout deserves to know it is a rehearsal
   // before typing a card number into it, not after.
   const rehearsal = selling && isConnectInTestMode();
+  // The note about payments is about things that cost money. A page that only
+  // gives things away has no card to talk about.
+  const hasPriced = store.products.some((product) => !isFree(product));
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
@@ -124,16 +133,90 @@ export default async function StorePage({ params }: Params) {
                         {product.title}
                       </h2>
                       <p className="font-mono text-lg font-bold text-violet-deep">
-                        {`${options.length > 1 ? "from " : ""}$${centsToPrice(
-                          from,
-                        )}${every}`}
+                        {isFree(product)
+                          ? "Free"
+                          : `${options.length > 1 ? "from " : ""}$${centsToPrice(
+                              from,
+                            )}${every}`}
                       </p>
                     </div>
                     {product.summary ? (
                       <p className="mt-2 text-ink-soft">{product.summary}</p>
                     ) : null}
 
-                    {canSellProduct(store, product) ? (
+                    {isFree(product) ? (
+                      canGiveProduct(store, product) ? (
+                        /*
+                          Given away for an address, and the address is only
+                          kept once its owner uses the link we email. The box
+                          starts empty and stays the visitor's to tick:
+                          wanting the file is not agreeing to more email.
+                        */
+                        <form
+                          action="/api/store/free"
+                          method="post"
+                          className="mt-4 space-y-3"
+                        >
+                          <input type="hidden" name="handle" value={store.handle} />
+                          <input type="hidden" name="product" value={product.id} />
+                          <div aria-hidden="true" className="hidden">
+                            <label>
+                              Leave this empty
+                              <input
+                                type="text"
+                                name="website"
+                                tabIndex={-1}
+                                autoComplete="off"
+                              />
+                            </label>
+                          </div>
+                          <label
+                            htmlFor={`e-${product.id}`}
+                            className="block text-sm font-bold text-ink"
+                          >
+                            Your email
+                          </label>
+                          <input
+                            id={`e-${product.id}`}
+                            type="email"
+                            name="email"
+                            required
+                            maxLength={254}
+                            autoComplete="email"
+                            placeholder="you@example.com"
+                            className="w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand placeholder:text-ink-soft/50"
+                          />
+                          <label
+                            htmlFor={`c-${product.id}`}
+                            className="flex cursor-pointer items-start gap-3 text-sm text-ink-soft"
+                          >
+                            <input
+                              id={`c-${product.id}`}
+                              type="checkbox"
+                              name="consent"
+                              value="yes"
+                              className="mt-0.5 h-4 w-4 shrink-0 accent-violet-brand"
+                            />
+                            <span>
+                              {`Also send me emails from ${store.name}. I can unsubscribe whenever I like.`}
+                            </span>
+                          </label>
+                          <button
+                            type="submit"
+                            className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                          >
+                            Email it to me
+                          </button>
+                          <p className="text-xs text-ink-soft">
+                            {`We email you a link to it. ${store.name} gets your address, marked with whether you ticked the box, and Nimbus uses it for nothing else.`}
+                          </p>
+                        </form>
+                      ) : (
+                        <p className="mt-4 text-sm text-ink-soft">
+                          Not available right now.
+                        </p>
+                      )
+                    ) : canSellProduct(store, product) ? (
                       <form
                         action="/api/store/checkout"
                         method="post"
@@ -217,7 +300,7 @@ export default async function StorePage({ params }: Params) {
                 creator's real prices; what is missing is the till, and this
                 says so without promising a date for it.
               */}
-              {rehearsal ? (
+              {!hasPriced ? null : rehearsal ? (
                 <p className="mt-6 rounded-3xl border-2 border-dashed border-ink/15 p-5 text-sm text-ink-soft">
                   <strong className="text-ink">
                     This checkout is running in Stripe&apos;s test mode.
