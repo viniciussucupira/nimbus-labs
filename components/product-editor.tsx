@@ -8,6 +8,7 @@ import {
   MAX_SUMMARY_LENGTH,
   MAX_TITLE_LENGTH,
   centsToPrice,
+  isFree,
   type Product,
 } from "@/lib/store";
 import {
@@ -35,6 +36,7 @@ import {
 /** What to say when a price option is refused, over and above the shared set. */
 const OPTION_MESSAGES: Record<string, string> = {
   price: "Type an amount between 1 and 5000, like 39 or 39.50.",
+  free: "This one is free, so it has no prices to add. Give it a price first.",
   unknown: "That price is no longer on this product.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Sign in again.",
@@ -43,7 +45,8 @@ const OPTION_MESSAGES: Record<string, string> = {
 
 const MESSAGES: Record<string, string> = {
   title: "Give it a name before saving.",
-  price: "Type an amount between 1 and 5000, like 27 or 27.50.",
+  price: "Type 0 to give it away, or an amount between 1 and 5000, like 27 or 27.50.",
+  free: "Something free is given once, for an email address, so it cannot be a membership or have several prices. Take those off first.",
   unknown: "That is no longer on your store.",
   too_big: `That file is over ${maxFileLabel()}, which is the most a store can hold.`,
   wrong_type: "That kind of file is not one a store can sell here.",
@@ -62,6 +65,11 @@ type Draft = {
 };
 
 const EMPTY: Draft = { title: "", summary: "", price: "", every: "" };
+
+/** Whether what was typed in the price field means free. */
+function typedFree(price: string): boolean {
+  return /^0+(\.0{1,2})?$/.test(price.trim());
+}
 
 async function send(payload: Record<string, unknown>): Promise<string | null> {
   try {
@@ -183,18 +191,26 @@ function ProductForm({
             required
             value={draft.price}
             onChange={(event) =>
-              setDraft({ ...draft, price: event.target.value })
+              setDraft({
+                ...draft,
+                price: event.target.value,
+                // Free is given once, so a schedule would be left behind
+                // pointing at nothing. It goes when the price goes to zero.
+                every: typedFree(event.target.value) ? "" : draft.every,
+              })
             }
             placeholder="27"
             className="w-full rounded-r-2xl bg-transparent px-2 py-3 text-ink outline-none placeholder:text-ink-soft/50"
           />
         </div>
         <p className="mt-1 text-sm text-ink-soft">
-          Every store here charges in US dollars. No other currency is handled
-          yet.
+          {typedFree(draft.price)
+            ? "Free. A visitor types their email and we send them a link to it; their address joins your list once they use that link, marked with whether they agreed to hear from you."
+            : "Every store here charges in US dollars. No other currency is handled yet. Type 0 to give it away for an email address instead."}
         </p>
       </div>
 
+      {typedFree(draft.price) ? null : (
       <div>
         <label
           htmlFor="product-every"
@@ -222,10 +238,11 @@ function ProductForm({
           {draft.every
             ? `A membership. The member is charged ${everyLabel(
                 draft.every,
-              )} on your own Stripe account until they cancel, and they cancel from the receipt Stripe sends them. Taking access back when somebody stops paying is yours to do, wherever you keep the thing.`
+              )} on your own Stripe account until it is cancelled. A member who wants to stop writes to you — a reply to the receipt Stripe sends them reaches you — and you cancel it in your Stripe dashboard. Taking access back when somebody stops paying is yours to do, wherever you keep the thing.`
             : "Most things are sold once. Pick a schedule to make this a membership instead."}
         </p>
       </div>
+      )}
 
       {error ? (
         <p
@@ -1055,11 +1072,13 @@ export function ProductEditor({
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-bold text-ink">{product.title}</p>
                   <p className="font-mono font-bold text-violet-deep">
-                    {product.recurring
-                      ? `$${centsToPrice(product.priceCents)} ${everyLabel(
-                          product.recurring.interval,
-                        )}`
-                      : `$${centsToPrice(product.priceCents)}`}
+                    {isFree(product)
+                      ? "Free"
+                      : product.recurring
+                        ? `$${centsToPrice(product.priceCents)} ${everyLabel(
+                            product.recurring.interval,
+                          )}`
+                        : `$${centsToPrice(product.priceCents)}`}
                   </p>
                 </div>
                 {product.summary ? (
@@ -1139,6 +1158,8 @@ export function ProductEditor({
                   />
                 ) : null}
 
+                {/* Several prices would put a price on something free. */}
+                {isFree(product) && product.options.length === 0 ? null : (
                 <OptionsBlock
                   product={product}
                   fileBusyId={fileBusyId}
@@ -1149,6 +1170,7 @@ export function ProductEditor({
                   onLink={linkTo}
                   onUnlink={unlink}
                 />
+                )}
 
                 {removingId === product.id ? (
                   <div className="mt-3 rounded-2xl border-2 border-pink-brand/30 bg-white p-4">
