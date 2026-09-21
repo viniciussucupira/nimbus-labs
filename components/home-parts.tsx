@@ -184,6 +184,7 @@ const PLAN = {
     "Your buyer pays into your own Stripe account",
     "The file delivered the second the payment clears",
     "What you have sold, read from your own Stripe account",
+    "Free products that build an email list you can download any time",
     "200 GB of downloads a month, and we say so instead of hiding it",
     "0% cut of your sales",
   ],
@@ -216,7 +217,7 @@ export function Pricing() {
           </span>
         </p>
         <p className="mt-3 rounded-2xl bg-mint-brand/12 px-4 py-2.5 text-sm font-semibold text-mint-deep">
-          {`Free for the first ${TRIAL_DAYS} days. No card until then.`}
+          {`Free for the first ${TRIAL_DAYS} days. Cancel before they end and your card is never charged.`}
         </p>
         <ul className="mt-6 space-y-2 text-sm text-ink">
           {PLAN.perks.map((perk) => (
@@ -235,8 +236,8 @@ export function Pricing() {
           Start your store
         </Link>
         <p className="mt-4 text-center text-xs text-ink-soft">
-          Cancel from the receipt Stripe emails you. There is no cancel button
-          hidden behind a conversation with us.
+          Cancel in one click from your studio. No email to us, no chat, no
+          second request.
         </p>
       </div>
     </div>
@@ -247,7 +248,7 @@ export function Pricing() {
 const QUESTIONS = [
   {
     q: "Can I sign up and start selling today?",
-    a: `Yes. You take your store address, connect your own Stripe account, put up what you sell, and a buyer can pay for it — on your account, with nothing taken on top. The address, the page, the editor and connecting Stripe are free. What the $${PRICE_CENTS / 100} subscription switches on is the till, and the first ${TRIAL_DAYS} days of it are free, so you can sell before you decide whether it is worth paying for.`,
+    a: `Yes. You take your store address, connect your own Stripe account, put up what you sell, and a buyer can pay for it — on your account, with nothing taken on top. The address, the page, the editor and connecting Stripe are free. What the $${PRICE_CENTS / 100} subscription switches on is the till — selling, and giving things away for an email address — and the first ${TRIAL_DAYS} days of it are free, so you can sell before you decide whether it is worth paying for.`,
   },
   {
     q: "Who holds the money from my sales?",
@@ -259,7 +260,7 @@ const QUESTIONS = [
   },
   {
     q: "Who is behind this?",
-    a: "Vinicius Sucupira, an independent builder working in public. Support is in English, in writing, with a response time we publish rather than promise loosely.",
+    a: "Vinicius Sucupira, an independent builder working in public. Support is in English, in writing, and a person answers it.",
   },
   {
     q: "Why is the demo store so bare?",
