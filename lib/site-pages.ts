@@ -307,10 +307,10 @@ export const PAGES: TopicPage[] = [
       {
         kind: "storecard",
         title: "What a design store looks like",
-        creator: "Theo Lang",
+        creator: "Tess Lang",
         tagline: "Film-look presets and Lightroom recipes",
-        photo: "photo-1553640662-9ab20b8fa2ea",
-        alt: "A man in a leather jacket, smiling",
+        photo: "photo-1619537139015-a8b26a07f849",
+        alt: "A woman with long dark hair, smiling against a deep teal wall",
         items: [
           { label: "Starter pack", detail: "6 presets, ZIP", price: "$15" },
           { label: "Full collection", detail: "28 presets plus a guide", price: "$49" },
