@@ -23,26 +23,26 @@ const PHOTO = (id: string, w = 400, h = 400) =>
 
 const HERO_FACES = [
   {
-    id: "photo-1662850886700-4ec19bd30d11",
-    alt: "A woman with curly hair, smiling",
+    id: "photo-1543871595-e11129e271cc",
+    alt: "A woman with long dark hair, smiling",
     className: "left-0 top-6 h-20 w-20 nb-float",
     ring: "ring-amber-brand",
   },
   {
-    id: "photo-1630939687530-241d630735df",
-    alt: "A woman with long dark hair, smiling",
+    id: "photo-1560365163-3e8d64e762ef",
+    alt: "A woman with a crown of sunflowers, smiling",
     className: "right-2 top-0 h-16 w-16 nb-float-slow",
     ring: "ring-pink-brand",
   },
   {
-    id: "photo-1671766013824-22d2bbbac15b",
-    alt: "A woman with blonde hair in a red coat, laughing",
+    id: "photo-1680049113650-4a1c24f61d71",
+    alt: "A woman with long blonde hair, laughing",
     className: "bottom-24 left-2 h-16 w-16 nb-float-slow",
     ring: "ring-mint-brand",
   },
   {
-    id: "photo-1573515159471-0eb7ec72912c",
-    alt: "A woman laughing against a turquoise wall",
+    id: "photo-1617812191081-2a24e3f30e45",
+    alt: "A woman with curly hair, laughing",
     className: "bottom-8 right-0 h-20 w-20 nb-float",
     ring: "ring-sky-brand",
   },
@@ -164,38 +164,38 @@ const COMPARE = [
 
 const GALLERY = [
   {
-    id: "photo-1619537139015-a8b26a07f849",
-    alt: "A woman with long dark hair, smiling against a deep teal wall",
+    id: "photo-1746790335260-4577f9953b11",
+    alt: "A woman in a green dress, smiling",
     label: "Photographers",
     tint: "from-violet-brand/80",
   },
   {
-    id: "photo-1595085610896-fb31cfd5d4b7",
-    alt: "A woman smiling in a red shirt",
+    id: "photo-1704054006064-2c5b922e7a1e",
+    alt: "A woman with long dark hair, smiling over her shoulder",
     label: "Coaches",
     tint: "from-pink-brand/80",
   },
   {
-    id: "photo-1746781420003-d15e604b9a10",
-    alt: "A woman laughing in the sunlight",
+    id: "photo-1611166819595-ac34987dfa57",
+    alt: "A woman smiling, eyes lowered, in soft light",
     label: "Nutritionists",
     tint: "from-mint-brand/80",
   },
   {
-    id: "photo-1758600587811-e9a20851cf7d",
-    alt: "A woman in a white shirt, smiling against a colourful wall",
+    id: "photo-1758523672333-12a4099a60b0",
+    alt: "A woman with long blonde hair, smiling against a turquoise wall",
     label: "Gamers",
     tint: "from-sky-brand/80",
   },
   {
-    id: "photo-1713370572362-35983645f6a7",
-    alt: "A woman laughing with her hands on her cheeks, against a bright green background",
+    id: "photo-1494790108377-be9c29b29330",
+    alt: "A woman in a red jumper, laughing",
     label: "Teachers",
     tint: "from-amber-brand/80",
   },
   {
-    id: "photo-1758600435656-9e3cdfe3c17f",
-    alt: "A woman listening to music on headphones, smiling",
+    id: "photo-1508002366005-75a695ee2d17",
+    alt: "A woman with dark curly hair, laughing over her shoulder",
     label: "Musicians",
     tint: "from-violet-deep/80",
   },
@@ -205,11 +205,11 @@ const GALLERY = [
    only fit from the small breakpoint up, so on a phone — where most creators
    open this page — there was nobody on the screen at all. This row fixes that. */
 const HELLO_FACES = [
-  { id: "photo-1544507888-56d73eb6046e", alt: "A woman laughing outdoors", ring: "ring-amber-brand" },
-  { id: "photo-1565793244233-3d09028aad47", alt: "A woman laughing, one hand in her hair", ring: "ring-mint-brand" },
-  { id: "photo-1594756154841-ac5d160dbf46", alt: "A woman laughing against a warm pink wall", ring: "ring-pink-brand" },
-  { id: "photo-1517677129300-07b130802f46", alt: "A woman in a denim jacket, laughing", ring: "ring-sky-brand" },
-  { id: "photo-1713370572362-35983645f6a7", alt: "A woman laughing against a bright green background", ring: "ring-violet-brand" },
+  { id: "photo-1477118476589-bff2c5c4cfbb", alt: "A woman in a black hat and red lipstick, smiling", ring: "ring-amber-brand" },
+  { id: "photo-1589268579398-1be8358506ab", alt: "A woman laughing under string lights", ring: "ring-mint-brand" },
+  { id: "photo-1598244145083-d46592b3bc4d", alt: "A woman with green eyes in a sun hat, smiling", ring: "ring-pink-brand" },
+  { id: "photo-1786874228053-886559a4bc25", alt: "A woman in a red polka-dot dress, smiling", ring: "ring-sky-brand" },
+  { id: "photo-1494790108377-be9c29b29330", alt: "A woman in a red jumper, laughing", ring: "ring-violet-brand" },
 ];
 
 export default function Home() {
