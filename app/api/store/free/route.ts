@@ -1,0 +1,89 @@
+import type { NextRequest } from "next/server";
+import { originFrom } from "@/lib/request-origin";
+import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { requestCopy } from "@/lib/free";
+
+const MAX_BODY_BYTES = 2_000;
+
+/**
+ * Asks for a free copy of something on a store.
+ *
+ * A plain HTML form, like the buy button, so it works with JavaScript turned
+ * off. The answer is always a page, never a file: the copy goes to the inbox
+ * that was typed, because that is the only way to know the address is real.
+ *
+ * The address typed never appears in the URL this sends the visitor to. A URL
+ * ends up in browser history, in server logs and in whatever analytics a page
+ * has, and none of those is a place for somebody's email.
+ */
+export async function POST(request: NextRequest) {
+  const origin = originFrom(request);
+
+  const sender = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (sender && host) {
+    try {
+      if (new URL(sender).host !== host) {
+        return new Response("forbidden", { status: 403 });
+      }
+    } catch {
+      return new Response("forbidden", { status: 403 });
+    }
+  }
+  if (Number(request.headers.get("content-length") ?? "0") > MAX_BODY_BYTES) {
+    return new Response("Too large", { status: 413 });
+  }
+
+  const away = (path: string) =>
+    new Response(null, {
+      status: 303,
+      headers: { Location: `${origin}${path}`, "Cache-Control": "no-store" },
+    });
+
+  let handle = "";
+  let productId = "";
+  let email = "";
+  let consent = false;
+  let honeypot = "";
+  try {
+    const form = await request.formData();
+    const read = (name: string) => {
+      const value = form.get(name);
+      return typeof value === "string" ? value : "";
+    };
+    handle = normaliseHandle(read("handle"));
+    productId = read("product").slice(0, 40);
+    email = read("email").slice(0, 300);
+    // Only an explicit "yes" counts. A box that is missing, empty or carries
+    // anything else is a box that was not ticked.
+    consent = read("consent") === "yes";
+    honeypot = read("website");
+  } catch {
+    return new Response("Bad request", { status: 400 });
+  }
+  if (!handle || !productId) return new Response("Bad request", { status: 400 });
+
+  const store = await storeForHandle(handle);
+  if (!store) return new Response("No such store.", { status: 404 });
+  const product = store.products.find((item) => item.id === productId);
+  if (!product) return away(`/@${store.handle}`);
+
+  const page = `/@${store.handle}/free?product=${encodeURIComponent(product.id)}`;
+
+  // A field no person can see. Whatever filled it in is told it worked, so it
+  // learns nothing, and no email goes anywhere.
+  if (honeypot.trim()) return away(`${page}&status=sent`);
+
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+
+  try {
+    const result = await requestCopy({ store, product, email, consent, ip, origin });
+    return away(`${page}&status=${result}`);
+  } catch (error) {
+    console.error("sending a free copy failed", error);
+    return away(`${page}&status=error`);
+  }
+}
