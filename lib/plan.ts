@@ -16,7 +16,11 @@
 export const PRICE_CENTS = 2900;
 
 /**
- * Days of the subscription that are free, with no card asked for.
+ * Days of the subscription that are free.
+ *
+ * The card is taken when the trial starts and first charged when it ends, and
+ * cancelling inside it — one click in the studio — means it is never charged.
+ * Every public sentence about the trial has to say exactly that, no more.
  *
  * Long enough for a creator to put a product up and actually sell something
  * before deciding whether we are worth paying for. A trial that ends before
