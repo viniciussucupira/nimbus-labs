@@ -57,7 +57,7 @@ const SECTIONS: Section[] = [
         q: "What does it cost to start?",
         a: [
           "Nothing to sign up. Your store address, your page, the editor and connecting Stripe are free and stay free.",
-          "What the $29 monthly subscription switches on is the till: your page taking a card. The first 14 days of it are free and no card is asked for to begin, so you can put a product up and make a sale before you decide whether it is worth paying for.",
+          "What the $29 monthly subscription switches on is the till: your page taking a card, and handing out what you give away for an email address. The first 14 days of it are free. Stripe takes your card when the trial starts and first charges it when the 14 days end; cancel before then — one click in your studio — and it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.",
         ],
       },
       {
@@ -179,9 +179,17 @@ const SECTIONS: Section[] = [
       {
         q: "What can I sell?",
         a: [
-          "Digital files, and memberships that charge on a schedule. What is too big to upload, or is not a file at all, is sold as a link to where it already lives.",
+          "Digital files, and memberships that charge on a schedule. What is too big to upload, or is not a file at all, is sold as a link to where it already lives. And anything can be given away for free, in exchange for an email address.",
           "One product can carry up to three prices — one week and five weeks, personal and commercial — and each one hands over its own file or its own link. The buyer picks on the card, and what they are charged is read from what you saved rather than from the page they are looking at.",
           "Your page also holds links that are not for sale, with no price and no checkout on them: the channel, the podcast, the profile, the booking page you already pay someone else for.",
+        ],
+      },
+      {
+        q: "Can I give something away for an email address?",
+        a: [
+          "Yes. Set a product's price to 0 and it becomes free: a visitor types their email, we send them a link to it, and when they use that link their address joins your list. Because the link has to be opened from their own inbox, every address on the list is real \u2014 no typos, and nobody signed up by someone else.",
+          "Under the email field there is a box, empty until the visitor ticks it, that says they want to hear from you. Your list keeps the two apart: you can download everyone who asked for something, or only the people who ticked the box, as a CSV that every email tool imports. It is yours to take at any time, with nothing to ask for.",
+          "Free products are handed out while your subscription or trial is on, and they do not need Stripe, because no money moves. A list holds up to 100,000 addresses.",
         ],
       },
       {
@@ -258,7 +266,7 @@ const SECTIONS: Section[] = [
       {
         q: "What do you store about me?",
         a: [
-          "For your store: the email address that signs you in, the store you build, and the Stripe account id you connect. For the research form: what you typed in it and, if you ticked the box, your email address. The privacy page lists it in full.",
+          "For your store: the email address that signs you in, the store you build, and the Stripe account id you connect. If you ask a store for something free: your email address, what you asked for, and whether you ticked the box to hear from that store \u2014 kept for that store and nobody else. For the research form: what you typed in it and, if you ticked the box, your email address. The privacy page lists it in full.",
         ],
       },
       {
