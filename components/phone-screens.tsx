@@ -4,7 +4,7 @@ import { InstallApp } from "@/components/install-app";
 const PHOTO = (id: string, w: number, h: number, faces = true) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop${faces ? "&crop=faces" : ""}&w=${w}&h=${h}&q=65`;
 
-const JENNY = "photo-1662850886700-4ec19bd30d11";
+const JENNY = "photo-1543871595-e11129e271cc";
 const FOOD = "photo-1535473895227-bdecb20fb157";
 
 function Phone({
