@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import {
   centsToPrice,
+  isFree,
   setSubscription,
   storeForEmail,
   storeFolder,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/stripe-connect";
 import { ORDERS_PAGE_SIZE, canSell, listSales } from "@/lib/store-checkout";
 import { deliveredThisMonth } from "@/lib/delivery";
+import { MAX_LEADS, listSize } from "@/lib/free";
 import { readableSize } from "@/lib/product-file";
 import {
   PRICE_CENTS,
@@ -37,8 +39,10 @@ export const metadata: Metadata = {
 };
 
 const NEXT_WHEN_SELLING = [
-  "Courses, memberships and scheduled calls",
-  "PayPal as a second way to be paid",
+  "Members cancelling on their own, without having to write to you",
+  "Visit counts, and pixels for Meta, TikTok and Google",
+  "Scheduled calls with a calendar",
+  "Courses with lessons",
 ];
 const NEXT_WHEN_NOT = [
   "The checkout that pays into your account",
@@ -235,6 +239,10 @@ export default async function StudioPage({
   // What this store has sent out this month, so the one cost that scales with
   // use is visible to the creator before it is visible on our bill.
   const delivery = store ? await deliveredThisMonth(folder) : null;
+  // The list is shown once there is something that fills it, or once it holds
+  // anybody — a creator who stops giving things away still owns what came in.
+  const list = store ? await listSize(store) : null;
+  const givesAway = store ? store.products.some((product) => isFree(product)) : false;
   const connectReady = isConnectConfigured();
   const connectTestMode = isConnectInTestMode();
   const billingReady = isBillingConfigured();
@@ -307,6 +315,69 @@ export default async function StudioPage({
             <LinkEditor links={store.links} />
 
             <DiscountEditor selling={current ? canSell(current) : false} />
+
+            {list && (givesAway || list.total > 0) ? (
+              <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+                <p className="font-display text-xl font-black text-ink">
+                  Your list
+                </p>
+                <p className="mt-2 text-ink-soft">
+                  {`${list.total.toLocaleString("en-US")} ${
+                    list.total === 1 ? "address" : "addresses"
+                  } from what you give away. ${list.agreed.toLocaleString("en-US")} of them agreed to hear from you.`}
+                </p>
+                <p className="mt-2 text-sm text-ink-soft">
+                  Every address on it was confirmed by the person who owns it,
+                  by using the link we emailed them. None of them is a typo, and
+                  none was typed in by somebody else.
+                </p>
+
+                {/* Plain GET forms rather than links: a link to a download
+                    is a link something may prefetch, and each prefetch would
+                    read the whole list. A form is only sent when pressed. */}
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <form action="/api/store/leads" method="get">
+                    <input type="hidden" name="who" value="agreed" />
+                    <button
+                      type="submit"
+                      className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                    >
+                      Download the ones who agreed
+                    </button>
+                  </form>
+                  <form action="/api/store/leads" method="get">
+                    <input type="hidden" name="who" value="everyone" />
+                    <button
+                      type="submit"
+                      className="rounded-full border-2 border-ink/15 px-6 py-3 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+                    >
+                      Download everyone
+                    </button>
+                  </form>
+                </div>
+                <p className="mt-4 text-sm text-ink-soft">
+                  A CSV file, which Mailchimp, Kit, Beehiiv and every other email
+                  tool imports. The ones who agreed ticked a box that starts
+                  empty. The rest asked for one thing and said no more — writing
+                  to them about something else is what spam laws, in Europe
+                  especially, are about, so the first file is the one for your
+                  newsletter. The list is yours: take it whenever you like, with
+                  nothing to ask for, and it goes with you if you leave.
+                </p>
+                {list.full ? (
+                  <p className="mt-4 rounded-2xl bg-amber-brand/15 px-4 py-3 text-sm text-ink">
+                    {`Your list has reached ${MAX_LEADS.toLocaleString("en-US")} addresses, which is as many as one store holds. New people still get what they ask for; their addresses are not added. Download the list and write to us.`}
+                  </p>
+                ) : null}
+                {givesAway && !paid ? (
+                  <p className="mt-4 rounded-2xl bg-cream px-4 py-3 text-sm text-ink-soft">
+                    Free products are handed out while your subscription or
+                    trial is on. Until then your page shows them as not
+                    available, and nobody is asked for an address.
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
               <p className="font-display text-xl font-black text-ink">
@@ -552,7 +623,8 @@ export default async function StudioPage({
                     <p className="mt-5 text-ink-soft">
                       Your address, your page, the editor and connecting Stripe
                       are free and stay free. What the subscription switches on
-                      is the till: taking a card for what you list.
+                      is the till: taking a card for what you sell, and handing
+                      out what you give away for an email address.
                     </p>
                     <form action="/api/billing/checkout" method="post" className="mt-5">
                       <button
