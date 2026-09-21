@@ -175,7 +175,14 @@ export async function readStartedSubscription(
 
 export type SubscriptionState =
   /** Paying, or inside the trial. Either way the store may take money. */
-  | { state: "active"; trialing: boolean; until: number }
+  | {
+      state: "active";
+      trialing: boolean;
+      /** When the paid period, or the trial, runs out. 0 if Stripe did not say. */
+      until: number;
+      /** Set to stop at `until`. Nothing more will be charged after it. */
+      cancelsAtEnd: boolean;
+    }
   /** Stripe knows it and it is not paying: unpaid, cancelled, incomplete. */
   | { state: "inactive"; reason: string }
   /** Stripe could not be asked. Says nothing about whether they pay. */
@@ -190,6 +197,48 @@ export type SubscriptionState =
  * timing.
  */
 const GOOD = new Set(["active", "trialing", "past_due"]);
+
+/**
+ * When the period already paid for, or the trial, runs out.
+ *
+ * Stripe moved `current_period_end` off the subscription and onto its items
+ * in 2025. This file sends no Stripe-Version header, so it reads whatever the
+ * account's default version returns: the item first, the old top-level field
+ * if an older account still carries it. While trialing it is the trial's end,
+ * because that is the date a creator in the trial is actually deciding about.
+ */
+function periodEnd(subscription: Record<string, unknown>, trialing: boolean): number {
+  if (trialing && typeof subscription.trial_end === "number") {
+    return subscription.trial_end;
+  }
+  const items = subscription.items as
+    | { data?: { current_period_end?: unknown }[] }
+    | undefined;
+  const fromItem = items?.data?.[0]?.current_period_end;
+  if (typeof fromItem === "number") return fromItem;
+  if (typeof subscription.current_period_end === "number") {
+    return subscription.current_period_end;
+  }
+  return 0;
+}
+
+/** One reading of a subscription, used for what Stripe sends back either way. */
+function stateOf(subscription: Record<string, unknown>): SubscriptionState {
+  const status = typeof subscription.status === "string" ? subscription.status : "";
+  if (!GOOD.has(status)) return { state: "inactive", reason: status || "unknown" };
+
+  const trialing = status === "trialing";
+  // Newer versions also fill `cancel_at` when a subscription is set to stop at
+  // the period's end, and a date set by hand in the dashboard lands there too.
+  // Either way it stops, and the date it stops on is the one to show.
+  const cancelAt = typeof subscription.cancel_at === "number" ? subscription.cancel_at : 0;
+  return {
+    state: "active",
+    trialing,
+    until: cancelAt || periodEnd(subscription, trialing),
+    cancelsAtEnd: subscription.cancel_at_period_end === true || cancelAt > 0,
+  };
+}
 
 /** Asks Stripe what a subscription is doing right now. */
 export async function readSubscription(
@@ -213,14 +262,35 @@ export async function readSubscription(
     return { state: "unknown" };
   }
 
-  const status = typeof subscription.status === "string" ? subscription.status : "";
-  if (!GOOD.has(status)) return { state: "inactive", reason: status || "unknown" };
+  return stateOf(subscription);
+}
 
-  const ends =
-    typeof subscription.current_period_end === "number"
-      ? subscription.current_period_end
-      : 0;
-  return { state: "active", trialing: status === "trialing", until: ends };
+/**
+ * Stops the subscription at the end of what is already paid for, or takes
+ * that back.
+ *
+ * Only ever the creator's own subscription: the id comes from their store
+ * record, never from the request. Stopping at the period's end rather than on
+ * the spot is what keeps the help page's promise — access until the end of
+ * the period already paid for — and inside the trial it means the card is
+ * never charged at all. Until that date the decision can be reversed.
+ *
+ * Errors are thrown, not swallowed: the caller has to tell the creator that
+ * nothing changed, and "Stripe did not answer" is not "cancelled".
+ */
+export async function setCancelAtPeriodEnd(
+  subscriptionId: string,
+  cancel: boolean,
+): Promise<SubscriptionState> {
+  if (!SUBSCRIPTION_PATTERN.test(subscriptionId)) {
+    return { state: "inactive", reason: "shape" };
+  }
+  const subscription = await onPlatform(
+    "POST",
+    `/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    new URLSearchParams({ cancel_at_period_end: cancel ? "true" : "false" }),
+  );
+  return stateOf(subscription);
 }
 
 /**
