@@ -127,6 +127,8 @@ export async function createDemoCheckout(
   const p = DEMO_PRODUCT;
   const body = new URLSearchParams({
     mode: "payment",
+    // The same language as the rest of the site, whatever the browser says.
+    locale: "en",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": p.currency,
     "line_items[0][price_data][unit_amount]": String(option.priceCents),
