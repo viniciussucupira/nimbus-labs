@@ -199,8 +199,8 @@ export const PAGES: TopicPage[] = [
         title: "What a coaching store looks like",
         creator: "Maya Ruiz",
         tagline: "Career coaching for first-time managers",
-        photo: "photo-1704054006064-2c5b922e7a1e",
-        alt: "A woman with long dark hair, smiling over her shoulder",
+        photo: "photo-1616065298043-67646192dcb5",
+        alt: "A woman with blonde hair and red lipstick, smiling",
         items: [
           { label: "Interview workbook", detail: "PDF, 18 pages", price: "$19" },
           { label: "Six-week programme", detail: "PDF plus weekly checklists", price: "$89" },
