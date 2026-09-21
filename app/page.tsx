@@ -170,8 +170,8 @@ const GALLERY = [
     tint: "from-violet-brand/80",
   },
   {
-    id: "photo-1704054006064-2c5b922e7a1e",
-    alt: "A woman with long dark hair, smiling over her shoulder",
+    id: "photo-1616065298043-67646192dcb5",
+    alt: "A woman with blonde hair and red lipstick, smiling",
     label: "Coaches",
     tint: "from-pink-brand/80",
   },
