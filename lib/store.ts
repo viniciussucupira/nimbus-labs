@@ -117,6 +117,23 @@ export const MAX_SUMMARY_LENGTH = 300;
 export const MIN_PRICE_CENTS = 100;
 export const MAX_PRICE_CENTS = 500_000;
 
+/**
+ * A price of exactly nothing is the one amount below the minimum that is
+ * allowed, and it means something different: the product is not sold, it is
+ * given away for an email address. Nothing about it ever reaches Stripe.
+ */
+export function isFree(product: Pick<Product, "priceCents">): boolean {
+  return product.priceCents === 0;
+}
+
+/** What a list id looks like: 32 hex characters, and nothing else. */
+export const LIST_ID_PATTERN = /^[0-9a-f]{32}$/;
+
+/** A fresh, unguessable id for a store's list of addresses. */
+export function newListId(): string {
+  return crypto.randomUUID().replace(/-/g, "");
+}
+
 /** One thing a store offers. */
 export type Product = {
   id: string;
@@ -205,6 +222,14 @@ export type Store = {
    * is Stripe's arithmetic and not ours.
    */
   hasDiscounts: boolean;
+  /**
+   * Where the addresses collected by free products are kept.
+   *
+   * An id of its own rather than anything derived from the sign-in address,
+   * because that address can move and the list has to move with the store
+   * without being copied. Null until the store first gives something away.
+   */
+  listId: string | null;
 };
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
@@ -323,6 +348,10 @@ function parseStore(raw: unknown): Store | null {
       // same as a store nobody has added one to yet.
       links: parseStoreLinks(value.links),
       hasDiscounts: value.hasDiscounts === true,
+      listId:
+        typeof value.listId === "string" && LIST_ID_PATTERN.test(value.listId)
+          ? value.listId
+          : null,
     };
   } catch {
     return null;
@@ -423,6 +452,7 @@ export async function claimHandle(
     products: [],
     links: [],
     hasDiscounts: false,
+    listId: newListId(),
   };
 
   try {
@@ -734,7 +764,7 @@ export type ProductResult =
   | { ok: true; store: Store }
   | {
       ok: false;
-      reason: "none" | "title" | "price" | "too_many" | "unknown";
+      reason: "none" | "title" | "price" | "free" | "too_many" | "unknown";
       limit?: number;
     };
 
@@ -766,6 +796,10 @@ function readFields(
   if (!title) return "title";
   const priceCents = priceToCents(rawPrice);
   if (priceCents === null) return "price";
+  // Zero is allowed and means free. Anything between zero and the minimum is
+  // not: Stripe will not charge it, and a buyer would meet a card form that
+  // cannot work.
+  if (priceCents === 0) return { title, priceCents };
   if (priceCents < MIN_PRICE_CENTS || priceCents > MAX_PRICE_CENTS) {
     return "price";
   }
@@ -782,6 +816,9 @@ export async function addProduct(
 ): Promise<ProductResult> {
   const fields = readFields(rawTitle, rawPrice);
   if (typeof fields === "string") return { ok: false, reason: fields };
+  // Something given away is given once. A membership that charges nothing
+  // would be a subscription to nothing, so the two cannot be combined.
+  if (fields.priceCents === 0 && recurring) return { ok: false, reason: "free" };
 
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
@@ -801,7 +838,14 @@ export async function addProduct(
     options: [],
   };
 
-  const next: Store = { ...store, products: [...store.products, product] };
+  const next: Store = {
+    ...store,
+    products: [...store.products, product],
+    // Stores opened before free products existed get their list the first
+    // time they give something away, in the creator's own write, so no
+    // visitor's request ever has to write the store record.
+    listId: store.listId ?? (fields.priceCents === 0 ? newListId() : null),
+  };
   await saveStore(next);
   return { ok: true, store: next };
 }
@@ -817,11 +861,18 @@ export async function editProduct(
 ): Promise<ProductResult> {
   const fields = readFields(rawTitle, rawPrice);
   if (typeof fields === "string") return { ok: false, reason: fields };
+  if (fields.priceCents === 0 && recurring) return { ok: false, reason: "free" };
 
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
   const at = store.products.findIndex((product) => product.id === id);
   if (at < 0) return { ok: false, reason: "unknown" };
+  // A product with several prices cannot become free: the buyer would be
+  // shown prices for a thing the page says costs nothing. Take the options
+  // off first, and the choice is the creator's rather than ours.
+  if (fields.priceCents === 0 && store.products[at].options.length > 0) {
+    return { ok: false, reason: "free" };
+  }
 
   const products = [...store.products];
   products[at] = {
@@ -832,7 +883,11 @@ export async function editProduct(
     recurring,
   };
 
-  const next: Store = { ...store, products };
+  const next: Store = {
+    ...store,
+    products,
+    listId: store.listId ?? (fields.priceCents === 0 ? newListId() : null),
+  };
   await saveStore(next);
   return { ok: true, store: next };
 }
@@ -1142,7 +1197,7 @@ export type OptionResult =
   | { ok: true; store: Store; removed: ProductFile[] }
   | {
       ok: false;
-      reason: "none" | "label" | "price" | "too_many" | "unknown";
+      reason: "none" | "label" | "price" | "free" | "too_many" | "unknown";
       limit?: number;
     };
 
@@ -1175,6 +1230,8 @@ export async function addOption(
   if (!store) return { ok: false, reason: "none" };
   const at = store.products.findIndex((product) => product.id === productId);
   if (at < 0) return { ok: false, reason: "unknown" };
+  // Several prices on something given away would put a price on it.
+  if (isFree(store.products[at])) return { ok: false, reason: "free" };
   if (store.products[at].options.length >= MAX_OPTIONS) {
     return { ok: false, reason: "too_many", limit: MAX_OPTIONS };
   }
