@@ -35,14 +35,14 @@ const HERO_FACES = [
     ring: "ring-pink-brand",
   },
   {
-    id: "photo-1757744705465-ea08b0ddc38a",
-    alt: "A young man in a navy jumper, smiling",
+    id: "photo-1671766013824-22d2bbbac15b",
+    alt: "A woman with blonde hair in a red coat, laughing",
     className: "bottom-24 left-2 h-16 w-16 nb-float-slow",
     ring: "ring-mint-brand",
   },
   {
-    id: "photo-1758598497192-15ffa411c3de",
-    alt: "A man with a beard, smiling",
+    id: "photo-1573515159471-0eb7ec72912c",
+    alt: "A woman laughing against a turquoise wall",
     className: "bottom-8 right-0 h-20 w-20 nb-float",
     ring: "ring-sky-brand",
   },
@@ -164,8 +164,8 @@ const COMPARE = [
 
 const GALLERY = [
   {
-    id: "photo-1553640662-9ab20b8fa2ea",
-    alt: "A man in a leather jacket, smiling",
+    id: "photo-1619537139015-a8b26a07f849",
+    alt: "A woman with long dark hair, smiling against a deep teal wall",
     label: "Photographers",
     tint: "from-violet-brand/80",
   },
@@ -182,8 +182,8 @@ const GALLERY = [
     tint: "from-mint-brand/80",
   },
   {
-    id: "photo-1507003211169-0a1dd7228f2d",
-    alt: "A man in a white t-shirt, smiling",
+    id: "photo-1758600587811-e9a20851cf7d",
+    alt: "A woman in a white shirt, smiling against a colourful wall",
     label: "Gamers",
     tint: "from-sky-brand/80",
   },
@@ -194,8 +194,8 @@ const GALLERY = [
     tint: "from-amber-brand/80",
   },
   {
-    id: "photo-1539694265588-f101b5569bd2",
-    alt: "A man smiling in bright pink and blue light",
+    id: "photo-1758600435656-9e3cdfe3c17f",
+    alt: "A woman listening to music on headphones, smiling",
     label: "Musicians",
     tint: "from-violet-deep/80",
   },
@@ -206,9 +206,9 @@ const GALLERY = [
    open this page — there was nobody on the screen at all. This row fixes that. */
 const HELLO_FACES = [
   { id: "photo-1544507888-56d73eb6046e", alt: "A woman laughing outdoors", ring: "ring-amber-brand" },
-  { id: "photo-1654817758777-c8a6101783ea", alt: "A man laughing, covered in colour", ring: "ring-mint-brand" },
+  { id: "photo-1565793244233-3d09028aad47", alt: "A woman laughing, one hand in her hair", ring: "ring-mint-brand" },
   { id: "photo-1594756154841-ac5d160dbf46", alt: "A woman laughing against a warm pink wall", ring: "ring-pink-brand" },
-  { id: "photo-1606337332936-b797a7d4f4c9", alt: "A man smiling outdoors", ring: "ring-sky-brand" },
+  { id: "photo-1517677129300-07b130802f46", alt: "A woman in a denim jacket, laughing", ring: "ring-sky-brand" },
   { id: "photo-1713370572362-35983645f6a7", alt: "A woman laughing against a bright green background", ring: "ring-violet-brand" },
 ];
 
