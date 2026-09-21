@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="September 18, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="September 21, 2026">
       <p>
         Nimbus Labs (“Nimbus Labs,” “we,” “us,” or “our”) is an independent
         software studio. This Privacy Policy explains how we collect, use,
@@ -62,6 +62,21 @@ export default function PrivacyPage() {
           completed and the creator can see it. The card details are handled by
           Stripe and never reach us. That buyer information belongs to the
           creator, not to us, and section 4 explains what that means.
+        </p>
+        <p>
+          <strong className="text-black">
+            Free copies, and a creator&apos;s list.
+          </strong>{" "}
+          When you ask a creator&apos;s store for something they give away for
+          free, we collect your email address, what you asked for, when, and
+          whether you ticked the box saying you want to hear from that creator.
+          The box starts empty. We send you one email, with the link to what
+          you asked for, and nothing else. When you use that link, your address
+          is added to that creator&apos;s list, marked with your choice, and
+          the creator can download the list. If you never use the link, the
+          request is deleted after 7 days and your address is not added to
+          anything. To limit abuse, we also keep a one-way hash of your email
+          address, and of your IP address, for one hour.
         </p>
         <p>
           <strong className="text-black">Usage and technical data.</strong> We
@@ -116,6 +131,11 @@ export default function PrivacyPage() {
             you for it;
           </li>
           <li>
+            send you a free copy you asked a creator&apos;s store for and, once
+            you use the link we sent, add your address to that creator&apos;s
+            list with the choice you made;
+          </li>
+          <li>
             communicate with you about your account, billing, and service
             updates;
           </li>
@@ -160,9 +180,12 @@ export default function PrivacyPage() {
             details directly;
           </li>
           <li>
-            <strong className="text-black">The creator you bought from</strong>
-            , who receives your email address and the details of your order,
-            because they are the seller;
+            <strong className="text-black">
+              The creator you bought from or asked for something free
+            </strong>
+            , who receives your email address and the details of your order or
+            request, including whether you agreed to hear from them, because it
+            is their store;
           </li>
           <li>
             <strong className="text-black">
@@ -186,11 +209,12 @@ export default function PrivacyPage() {
       <LegalSection title="4. If you buy from a creator’s store">
         <p>
           The store belongs to the creator, not to us. For the personal data of
-          that store&apos;s buyers, the creator is the controller and Nimbus
+          that store&apos;s buyers, and of the people who ask it for something
+          free, the creator is the controller and Nimbus
           Labs is their processor: we handle that data to run the store on
           their behalf and on their instructions, and we do not use it for our
           own purposes, do not sell it, and do not email a creator&apos;s
-          buyers to market anything of ours.
+          buyers or list to market anything of ours.
         </p>
         <p>
           In practice this means a request about your data as a buyer — a copy
@@ -228,6 +252,12 @@ export default function PrivacyPage() {
           emails are retained as long as
           needed to resolve your request and maintain a reasonable business
           record.
+        </p>
+        <p>
+          A creator&apos;s list is kept for as long as their store exists, or
+          until the creator, or the person on it, asks us to remove an address.
+          A request for a free copy whose link is never used is deleted after
+          7 days.
         </p>
         <p>
           Creator research answers are kept for up to 24 months from the date
