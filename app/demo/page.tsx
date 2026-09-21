@@ -75,8 +75,8 @@ export default function DemoStorePage() {
           />
           <div className="relative flex flex-col items-center">
             <img
-              src={`${UNSPLASH}photo-1662850886700-4ec19bd30d11?auto=format&fit=crop&crop=faces&w=224&h=224&q=70`}
-              alt="Jenny, the fictional cook behind this demo store: a woman with curly hair, smiling"
+              src={`${UNSPLASH}photo-1543871595-e11129e271cc?auto=format&fit=crop&crop=faces&w=224&h=224&q=70`}
+              alt="Jenny, the fictional cook behind this demo store: a woman with long dark hair, smiling"
               width={224}
               height={224}
               className="nb-float h-28 w-28 rounded-full object-cover shadow-xl shadow-violet-brand/20 ring-4 ring-white"
