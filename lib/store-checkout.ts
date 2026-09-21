@@ -120,6 +120,9 @@ export async function createCheckout(
 
   const body = new URLSearchParams({
     mode: membership ? "subscription" : "payment",
+    // In English, like every other page a buyer meets here, rather than in
+    // whatever language Stripe guesses from the browser.
+    locale: "en",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": "usd",
     "line_items[0][price_data][unit_amount]": String(priceCents),
