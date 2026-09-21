@@ -199,8 +199,8 @@ export const PAGES: TopicPage[] = [
         title: "What a coaching store looks like",
         creator: "Maya Ruiz",
         tagline: "Career coaching for first-time managers",
-        photo: "photo-1595085610896-fb31cfd5d4b7",
-        alt: "A woman smiling in a red shirt",
+        photo: "photo-1704054006064-2c5b922e7a1e",
+        alt: "A woman with long dark hair, smiling over her shoulder",
         items: [
           { label: "Interview workbook", detail: "PDF, 18 pages", price: "$19" },
           { label: "Six-week programme", detail: "PDF plus weekly checklists", price: "$89" },
@@ -239,8 +239,8 @@ export const PAGES: TopicPage[] = [
         title: "The live demo store",
         creator: "Harbor Kitchen",
         tagline: "Simple family meals by Jenny",
-        photo: "photo-1662850886700-4ec19bd30d11",
-        alt: "A woman with curly hair, smiling",
+        photo: "photo-1543871595-e11129e271cc",
+        alt: "A woman with long dark hair, smiling",
         items: [
           { label: "Weekly meal planner, 1 week", detail: "PDF, 1 page", price: "$27" },
           { label: "Weekly meal planner, 5 weeks", detail: "PDF, 5 pages", price: "$39" },
@@ -274,8 +274,8 @@ export const PAGES: TopicPage[] = [
         title: "What a fitness store looks like",
         creator: "Dani Cole",
         tagline: "Strength for people with desk jobs",
-        photo: "photo-1623717217554-72ca676de535",
-        alt: "A woman laughing",
+        photo: "photo-1617748142090-06eeb8fd1119",
+        alt: "A woman in a yellow dress, smiling outdoors",
         items: [
           { label: "4-week starter block", detail: "PDF plus video links", price: "$29" },
           { label: "12-week programme", detail: "PDF plus weekly tracker", price: "$79" },
@@ -309,8 +309,8 @@ export const PAGES: TopicPage[] = [
         title: "What a design store looks like",
         creator: "Tess Lang",
         tagline: "Film-look presets and Lightroom recipes",
-        photo: "photo-1619537139015-a8b26a07f849",
-        alt: "A woman with long dark hair, smiling against a deep teal wall",
+        photo: "photo-1746790335260-4577f9953b11",
+        alt: "A woman in a green dress, smiling",
         items: [
           { label: "Starter pack", detail: "6 presets, ZIP", price: "$15" },
           { label: "Full collection", detail: "28 presets plus a guide", price: "$49" },
