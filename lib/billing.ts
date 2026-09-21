@@ -105,6 +105,10 @@ export async function createBillingCheckout(
 ): Promise<string> {
   const body = new URLSearchParams({
     mode: "subscription",
+    // English, always. Left to itself Stripe picks the language of the
+    // browser, and a creator in the United States should never meet a
+    // payment page in whatever language the last person to test it spoke.
+    locale: "en",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": "usd",
     "line_items[0][price_data][unit_amount]": String(PRICE_CENTS),
