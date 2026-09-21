@@ -264,7 +264,7 @@ export default function Home() {
               <DemoWindow />
             </div>
             <p className="mt-3 text-sm text-white/70">
-              {`Free for ${TRIAL_DAYS} days, then $${PRICE_CENTS / 100} a month. No card to begin.`}
+              {`Free for ${TRIAL_DAYS} days, then $${PRICE_CENTS / 100} a month. Cancel in one click before then and you pay nothing.`}
             </p>
 
             {/* On a phone the floating portraits do not fit, so the faces
