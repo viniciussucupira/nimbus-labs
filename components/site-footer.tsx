@@ -63,31 +63,6 @@ export function SiteFooter() {
           >
             Start your store
           </Link>
-
-          <div className="mt-6">
-            <p className="text-sm font-semibold text-white">
-              Follow the build
-            </p>
-            <a
-              href="https://x.com/vinicius26108"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/60 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                className="h-4 w-4"
-                fill="currentColor"
-              >
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-              </svg>
-              @vinicius26108
-            </a>
-            <p className="mt-2 text-xs text-white/50">
-              The founder&apos;s account. Nimbus has no others yet.
-            </p>
-          </div>
         </div>
 
         {COLUMNS.map((column) => (
