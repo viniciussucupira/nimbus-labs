@@ -97,7 +97,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 <p className="mt-3 rounded-2xl bg-lilac px-4 py-3 text-sm text-ink-soft">
                   {`This renews ${everyLabel(
                     order.product.recurring.interval,
-                  )} until you cancel it. The charge is made by ${store.name}, on their own account, and the receipt they send you is where you cancel \u2014 not here.`}
+                  )} until you cancel it. The charge is made by ${store.name}, on their own account, so they are the one who can stop it: reply to the receipt Stripe emailed you and it reaches them.`}
                 </p>
               ) : null}
 
