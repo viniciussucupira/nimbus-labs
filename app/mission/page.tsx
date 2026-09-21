@@ -91,7 +91,7 @@ const ORDERS_LINE =
  * The line about our own income, which belongs to whether billing can reach
  * Stripe from this deployment rather than to whether we have written the code.
  */
-const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month, free for the first ${TRIAL_DAYS} days, cancelled from the receipt Stripe emails you`;
+const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month, free for the first ${TRIAL_DAYS} days, cancelled in one click from your studio`;
 
 const NOT_BUILT = [
   "PayPal as a second way to be paid — it is Stripe only today",
