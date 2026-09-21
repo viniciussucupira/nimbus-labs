@@ -88,7 +88,27 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
 const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
   on: {
     title: "You are subscribed",
-    body: "Your trial has started and your store can take money. Nothing is charged until the trial ends, and you can stop it from your Stripe receipt at any time.",
+    body: "Your trial has started and your store can take money. Nothing is charged until the trial ends, and you can cancel it on this page at any time.",
+  },
+  cancelling: {
+    title: "Cancelled",
+    body: "Nothing more will be charged. Your store keeps taking payments until the date below, and you can change your mind on this page until then.",
+  },
+  resumed: {
+    title: "Your subscription continues",
+    body: "The cancellation is undone. Nothing else changed.",
+  },
+  none: {
+    title: "There is no subscription to change",
+    body: "This store has not started one, so there is nothing to cancel.",
+  },
+  ended: {
+    title: "This subscription has already ended",
+    body: "Stripe says it is over, so there was nothing left to cancel and nothing was charged.",
+  },
+  "cancel-error": {
+    title: "Stripe did not answer",
+    body: "Nothing changed. Try again in a moment.",
   },
   pending: {
     title: "Stripe has not confirmed the payment yet",
@@ -193,6 +213,18 @@ export default async function StudioPage({
   // shows two different answers to the same question.
   const current = store ? { ...store, subscriptionActive: paid } : null;
   const trialing = live?.state === "active" && live.trialing;
+  // Read from Stripe on this page load. When Stripe could not be asked, the
+  // cancel button still shows: the route asks again before it does anything.
+  const cancelling = live?.state === "active" && live.cancelsAtEnd;
+  const endsOn =
+    live?.state === "active" && live.until > 0
+      ? new Date(live.until * 1000).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "UTC",
+        })
+      : null;
 
   // Only asked for when there is a store that can actually have sold
   // something, so a creator who has not connected Stripe never waits on a
@@ -466,18 +498,53 @@ export default async function StudioPage({
                   you sell three files or three thousand.
                 </p>
 
-                {paid ? (
+                {paid && cancelling ? (
+                  <>
+                    <p className="mt-5 rounded-2xl bg-amber-brand/15 px-4 py-3 text-sm font-semibold text-ink">
+                      {trialing
+                        ? `Cancelled inside the trial. Your card will not be charged, and your store keeps taking payments until ${endsOn ?? "the trial ends"}.`
+                        : `Cancelled. Nothing more will be charged, and your store keeps taking payments until ${endsOn ?? "the end of the period you paid for"}.`}
+                    </p>
+                    <form action="/api/billing/cancel" method="post" className="mt-4">
+                      <input type="hidden" name="intent" value="resume" />
+                      <button
+                        type="submit"
+                        className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                      >
+                        Keep my subscription
+                      </button>
+                    </form>
+                  </>
+                ) : paid ? (
                   <>
                     <p className="mt-5 rounded-2xl bg-mint-brand/12 px-4 py-3 text-sm font-semibold text-mint-deep">
                       {trialing
                         ? `You are inside the ${TRIAL_DAYS}-day trial. No card has been charged yet.`
                         : `Subscribed at $${(PRICE_CENTS / 100).toFixed(0)} a month.`}
                     </p>
+                    <details className="mt-4">
+                      <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
+                        Cancel the subscription
+                      </summary>
+                      <p className="mt-3 text-sm text-ink-soft">
+                        {trialing
+                          ? `Your store keeps taking payments until ${endsOn ?? "the trial ends"}, and your card is never charged.`
+                          : `Your store keeps taking payments until ${endsOn ?? "the end of the period you already paid for"}, and nothing more is charged.`}
+                      </p>
+                      <form action="/api/billing/cancel" method="post" className="mt-3">
+                        <input type="hidden" name="intent" value="cancel" />
+                        <button
+                          type="submit"
+                          className="rounded-full border-2 border-ink px-5 py-2.5 text-sm font-bold text-ink transition hover:-translate-y-0.5"
+                        >
+                          Yes, cancel it
+                        </button>
+                      </form>
+                    </details>
                     <p className="mt-3 text-sm text-ink-soft">
-                      Stripe emailed you a receipt when this started, and that
-                      receipt is where you cancel. We do not put a cancel button
-                      behind a chat with us, and we never need to be asked
-                      twice.
+                      No email to us, no chat, no second request. This button
+                      is the whole of it, and you can change your mind until
+                      the day it stops.
                     </p>
                   </>
                 ) : (
