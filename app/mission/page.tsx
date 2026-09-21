@@ -67,6 +67,7 @@ const BUILT = [
   "Memberships: daily, weekly, monthly or yearly, charged on your own Stripe account",
   "Links to everywhere else you are — the channel, the podcast, the booking page — with no price and no checkout on them",
   "Discount codes a buyer types at checkout, made as coupons on your own Stripe account",
+  "Free products given for an email address, each address confirmed by its owner, and the list downloadable from your studio at any time",
   "A store that installs to the home screen on iPhone and Android",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
