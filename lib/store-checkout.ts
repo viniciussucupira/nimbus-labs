@@ -75,6 +75,9 @@ export function sellableOptions(product: Product): ProductOption[] {
  * product: at least one has to be ready, because that is what the buyer picks.
  */
 export function canSellProduct(store: Store, product: Product): boolean {
+  // Something free is never sold. It has its own door, and a checkout for
+  // nothing would be a card form that cannot work.
+  if (product.priceCents === 0) return false;
   if (!canSell(store)) return false;
   if (product.options.length > 0) return sellableOptions(product).length > 0;
   return product.file !== null || product.link !== null;
