@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon } from "@/components/icons";
+import { Logo } from "@/components/logo";
 import { SignInForm } from "@/components/signin-form";
 import { isConnectConfigured } from "@/lib/stripe-connect";
 
@@ -51,72 +53,88 @@ export default async function SignInPage({
   const notice = NOTICES[status];
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -left-16 top-0 h-56 w-56 bg-violet-brand/25 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -right-20 bottom-0 h-64 w-64 bg-mint-brand/25 blur-3xl"
-      />
+    <div className="min-h-screen bg-paper text-ink lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <aside className="surface-night nb-grid-lines on-dark hidden flex-col justify-between p-10 lg:flex xl:p-14">
+        <Link href="/" className="w-fit rounded-[10px]" aria-label="Nimbus Labs, home">
+          <Logo tone="light" />
+        </Link>
+        <div className="max-w-md">
+          <p className="t-h2 balance text-white">
+            Your store. Your <span className="serif font-normal text-[#cfc4ff]">Stripe.</span> Your money.
+          </p>
+          <ul className="mt-10 space-y-5 text-white/75">
+            {[
+              { icon: "mail" as const, text: "No password. A link sent to your email signs you in." },
+              { icon: "bank" as const, text: "Your buyers pay into your own Stripe account." },
+              { icon: "percent" as const, text: "Nimbus takes 0% of your sales." },
+            ].map((item) => (
+              <li key={item.text} className="flex gap-3">
+                <span className="icon-tile icon-tile-sm">
+                  <Icon name={item.icon} size={18} />
+                </span>
+                <span className="pt-1.5">{item.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <Link href="/demo" className="link-arrow on-dark w-fit text-[0.9375rem]">
+          See the live demo store first
+          <Icon name="arrow-right" size={16} className="arrow" />
+        </Link>
+      </aside>
 
-      <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <p className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-ink-soft shadow-sm">
-          <span aria-hidden="true">☁️</span> Nimbus Labs
-        </p>
+      <main id="content" className="flex min-h-screen flex-col px-4 py-8 sm:px-8 lg:min-h-0 lg:justify-center lg:py-16">
+        <Link href="/" className="w-fit rounded-[10px] lg:hidden" aria-label="Nimbus Labs, home">
+          <Logo />
+        </Link>
 
-        <h1 className="font-display mt-5 text-4xl font-black leading-tight sm:text-5xl">
-          Start your store
-        </h1>
-        <p className="mt-4 text-lg text-ink-soft">
-          Type your email and we send a link. Clicking it opens your store if you
-          already have one, and starts one if you do not — there is no password
-          here, on purpose, and nothing to pay to begin.
-        </p>
+        <div className="mx-auto w-full max-w-md flex-1 pt-12 lg:flex-none lg:pt-0">
+          <h1 className="t-h1">Start your store</h1>
+          <p className="mt-4 text-ink-soft">
+            Type your email and we send a link. It opens your store if you already have one, and starts one if you do
+            not. There is no password here, on purpose, and nothing to pay to begin.
+          </p>
 
-        {notice ? (
-          <div className="mt-6 rounded-3xl border-2 border-amber-brand/40 bg-amber-brand/10 p-5">
-            <p className="font-bold text-ink">{notice.title}</p>
-            <p className="mt-1 text-sm text-ink-soft">{notice.body}</p>
+          {notice ? (
+            <div className="notice notice-warn mt-6" role="status">
+              <p className="font-semibold">{notice.title}</p>
+              <p className="mt-1">{notice.body}</p>
+            </div>
+          ) : null}
+
+          <div className="card mt-8 p-6 sm:p-8">
+            <SignInForm />
           </div>
-        ) : null}
 
-        <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-          <SignInForm />
+          <div className="mt-8 flex gap-3 text-[0.9375rem] text-ink-soft">
+            <Icon name="info" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
+            <p>
+              <span className="font-semibold text-ink">
+                {isConnectConfigured() ? "Creator stores are open. " : "Creator stores are not open yet. "}
+              </span>
+              Behind this page you take your address, write your products, upload the file each one delivers and connect
+              your own Stripe account.{" "}
+              {isConnectConfigured()
+                ? "Your buyers pay on that account, and the file is handed over the moment Stripe confirms it."
+                : "What is still missing is the checkout itself — the page that charges your buyer on that account."}{" "}
+              <Link href="/mission" className="link">
+                What is built so far
+              </Link>
+            </p>
+          </div>
         </div>
 
-        <div className="mt-8 rounded-3xl bg-white/70 p-6 text-sm leading-relaxed text-ink-soft">
-          <p className="font-bold text-ink">
-            {isConnectConfigured()
-              ? "Creator stores are open"
-              : "Creator stores are not open yet"}
-          </p>
-          <p className="mt-2">
-            Signing in works. Behind it you can take your address, write your
-            products, upload the file each one delivers and connect your own
-            Stripe account.{" "}
-            {isConnectConfigured()
-              ? "Your buyers can pay on that account, and the file is handed over the moment Stripe confirms it."
-              : "What is still missing is the checkout itself — the page that charges your buyer on that account."}{" "}
-            The mission page lists exactly what exists and what does not.
-          </p>
-        </div>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/"
-            className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
-          >
-            Back to the home page
+        <p className="mx-auto mt-12 w-full max-w-md text-sm text-ink-mute">
+          By continuing you agree to the{" "}
+          <Link href="/terms" className="link font-medium">
+            Terms
+          </Link>{" "}
+          and the{" "}
+          <Link href="/privacy" className="link font-medium">
+            Privacy Policy
           </Link>
-          <Link
-            href="/mission"
-            className="rounded-full border-2 border-ink/15 px-6 py-3 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
-          >
-            What is built so far
-          </Link>
-        </div>
+          .
+        </p>
       </main>
     </div>
   );
