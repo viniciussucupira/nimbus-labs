@@ -11,6 +11,7 @@ import { confirmBooking } from "@/lib/calls";
 import { readableTime, zoneName } from "@/lib/call-setup";
 import { SITE_URL } from "@/lib/site-url";
 import { StoreTracking } from "@/components/store-tracking";
+import { confirmStock } from "@/lib/stock";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -83,6 +84,11 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     }).catch((error) => console.error("confirming a booking failed", error));
   }
 
+  // A limited product's unit becomes a sale the moment its buyer is back.
+  if (order.state === "paid" && sessionId && order.product.stock !== null) {
+    await confirmStock(store, order.product, sessionId).catch((error) => console.error("confirming stock failed", error));
+  }
+
   const notice = order.state !== "paid" ? NOTICES[order.state] : null;
   const hours = order.state === "paid" ? Math.floor(order.secondsLeft / 3600) : 0;
 
@@ -107,7 +113,14 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   {order.option
                     ? `${order.product.title} (${order.option.label})`
                     : order.product.title}
-                </strong> from{" "}
+                </strong>
+                {order.bump ? (
+                  <>
+                    {" and "}
+                    <strong style={{ color: "var(--st-text)" }}>{order.bump.product.title}</strong>
+                  </>
+                ) : null}{" "}
+                from{" "}
                 {store.name} for{" "}
                 {order.product.recurring
                   ? `$${centsToPrice(order.amount)} ${everyLabel(
@@ -227,6 +240,38 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   reply to the receipt Stripe emailed you and they will see it.
                 </p>
               )}
+              {order.bump ? (
+                <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
+                  <p className="st-label">Also yours</p>
+                  <p className="mt-1 font-semibold">{order.bump.product.title}</p>
+                  {order.bump.link ? (
+                    <>
+                      <a
+                        href={order.bump.link}
+                        rel="noopener noreferrer nofollow"
+                        target="_blank"
+                        className="btn st-btn mt-3"
+                      >
+                        Open it
+                      </a>
+                      <p className="st-muted mt-3 break-all text-sm">{order.bump.link}</p>
+                    </>
+                  ) : order.bump.file ? (
+                    <a
+                      href={`/api/store/download?handle=${encodeURIComponent(store.handle)}&session_id=${encodeURIComponent(
+                        sessionId ?? "",
+                      )}&item=bump`}
+                      className="btn st-btn mt-3"
+                    >
+                      Download it
+                    </a>
+                  ) : (
+                    <p className="st-muted mt-2 text-sm">
+                      {`This one has nothing attached right now. Reply to your receipt and ${store.name} will send it.`}
+                    </p>
+                  )}
+                </div>
+              ) : null}
               {order.email ? (
                 <p className="st-muted mt-2 text-sm">
                   Your receipt went to {order.email}. It comes from {store.name},
