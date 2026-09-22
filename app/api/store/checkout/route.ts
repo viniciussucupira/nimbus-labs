@@ -1,7 +1,8 @@
-import type { NextRequest } from "next/server";
+import { type NextRequest, after } from "next/server";
 import { originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { canSellProduct, createCheckout } from "@/lib/store-checkout";
+import { countHit } from "@/lib/visit";
 
 /**
  * Starts a purchase.
@@ -65,6 +66,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const url = await createCheckout(store, product, origin, optionId);
+    // Counted once the buyer is on their way, so the count never slows them.
+    after(() => countHit(request, store, { kind: "checkout", id: product.id }));
     return new Response(null, {
       status: 303,
       headers: { Location: url, "Cache-Control": "no-store" },
