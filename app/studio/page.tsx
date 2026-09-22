@@ -4,6 +4,7 @@ import { Logo } from "@/components/logo";
 import { Icon } from "@/components/icons";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import {
   centsToPrice,
@@ -17,6 +18,9 @@ import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
 import { DetailsForm } from "@/components/details-form";
 import { LookEditor } from "@/components/look-editor";
+import { catchUpBookings, paidCalls } from "@/lib/calls";
+import { SITE_URL } from "@/lib/site-url";
+import { readableTime, zoneName } from "@/lib/call-setup";
 import { ProductEditor } from "@/components/product-editor";
 import { LinkEditor } from "@/components/link-editor";
 import { DiscountEditor } from "@/components/discount-editor";
@@ -44,9 +48,15 @@ export const metadata: Metadata = {
 const NEXT_WHEN_SELLING = [
   "Upsells and limited offers at checkout",
   "Visit counts, and pixels for Meta, TikTok and Google",
-  "Scheduled calls with a calendar",
   "Courses with lessons",
+  "Email to your list, from your studio",
 ];
+/** Calls that have not ended yet, soonest first. */
+function upcoming<T extends { start: number; end: number }>(list: T[]): T[] {
+  const now = Date.now();
+  return list.filter((call) => call.end > now).sort((a, b) => a.start - b.start);
+}
+
 const NEXT_WHEN_NOT = [
   "The checkout that pays into your account",
   "The list of what you have sold",
@@ -246,6 +256,17 @@ export default async function StudioPage({
   // anybody — a creator who stops giving things away still owns what came in.
   const list = store ? await listSize(store) : null;
   const givesAway = store ? store.products.some((product) => isFree(product)) : false;
+  // Booked calls are read from the creator's Stripe account, the ledger, and
+  // only asked for when the store sells calls at all.
+  const callProducts = store ? store.products.filter((product) => product.call) : [];
+  const paidList =
+    current && current.stripeAccountId && callProducts.length > 0
+      ? await paidCalls(current).catch(() => null)
+      : null;
+  const calls = paidList ? upcoming(paidList) : null;
+  // A buyer who paid and never came back from Stripe still gets their email,
+  // and so does the creator, the next time the creator looks.
+  if (current && paidList && paidList.length) after(() => catchUpBookings(current, paidList, SITE_URL));
   const connectReady = isConnectConfigured();
   const connectTestMode = isConnectInTestMode();
   const billingReady = isBillingConfigured();
@@ -332,7 +353,59 @@ export default async function StudioPage({
               folder={folder}
               selling={current ? canSell(current) : false}
               testMode={isConnectInTestMode()}
+              email={email}
             />
+
+            {callProducts.length > 0 ? (
+              <section className="card mt-8 p-6 sm:p-8" aria-labelledby="calls-title">
+                <h2 id="calls-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">
+                  Upcoming calls
+                </h2>
+                {!current?.stripeAccountId ? (
+                  <p className="mt-2 text-ink-soft">
+                    Calls can be booked once your Stripe account is connected and your store can take payments.
+                  </p>
+                ) : calls === null ? (
+                  <p className="mt-2 text-ink-soft">
+                    Your calls could not be read from Stripe just now. Nothing is lost; reload the page in a moment.
+                  </p>
+                ) : calls.length === 0 ? (
+                  <p className="mt-2 text-ink-soft">
+                    Nothing booked yet. When someone books, it shows up here, and you both get an email with a calendar file.
+                  </p>
+                ) : (
+                  <ul className="mt-4 divide-y divide-line">
+                    {calls.map((call) => {
+                      const product = store.products.find((p) => p.id === call.product);
+                      const tz = product?.call?.tz ?? callProducts[0].call?.tz ?? "UTC";
+                      return (
+                        <li key={call.session} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
+                          <span className="min-w-0">
+                            <span className="block font-semibold text-ink">
+                              {`${readableTime(call.start, tz)} ${zoneName(call.start, tz)}`}
+                            </span>
+                            <span className="block text-sm text-ink-soft">
+                              {product ? product.title : "A call that is no longer listed"}
+                              {call.email ? (
+                                <>
+                                  {" \u00b7 "}
+                                  <a href={`mailto:${call.email}`} className="link break-all">{call.email}</a>
+                                </>
+                              ) : null}
+                            </span>
+                          </span>
+                          {product?.call?.room ? (
+                            <a href={product.call.room} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-violet-deep underline underline-offset-4">
+                              Join
+                            </a>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </section>
+            ) : null}
 
             <LinkEditor links={store.links} />
 
@@ -738,9 +811,11 @@ export default async function StudioPage({
                             )}
                           </p>
                           <p className="mt-1 text-xs text-ink-soft">
-                            {sale.stillDownloadable
-                              ? "Their download link still works."
-                              : "Their download link has expired — send them the file yourself if they ask."}{" "}
+                            {sale.isCall
+                              ? "A booked call: the time is in both your calendars."
+                              : sale.stillDownloadable
+                                ? "Their download link still works."
+                                : "Their download link has expired — send them the file yourself if they ask."}{" "}
                             Stripe reference {sale.reference}
                           </p>
                         </li>
