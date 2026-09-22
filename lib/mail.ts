@@ -64,14 +64,15 @@ export async function usedThisMonth(listId: string | null): Promise<number> {
 }
 
 /**
- * How many list emails the whole company sends in one UTC day.
+ * How many list emails the whole company may send in one UTC day.
  *
- * The sender's plan has a daily ceiling shared with sign-in links and
- * receipts, and those must always get through. Until the sender's plan is
- * raised, list email keeps to a small share of that ceiling; the number is
- * set in MARKETING_DAILY_CAP, and 0 there means no daily ceiling of ours.
+ * The sender is on its Pro plan (50,000 a month, no daily ceiling), so by
+ * default there is no daily ceiling of ours either: 0 means none. If the
+ * sender's plan ever has a daily ceiling again, shared with sign-in links and
+ * receipts, MARKETING_DAILY_CAP keeps list email to a share of it, so those
+ * always get through; a send that reaches it waits and continues the next day.
  */
-const DEFAULT_DAILY_CAP = 50;
+const DEFAULT_DAILY_CAP = 0;
 function dailyCap(): number {
   const raw = process.env.MARKETING_DAILY_CAP?.trim();
   if (!raw) return DEFAULT_DAILY_CAP;
