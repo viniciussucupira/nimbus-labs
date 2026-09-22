@@ -290,6 +290,36 @@ export async function readSales(store: Store, now = Date.now()): Promise<SalesSt
     if (!after) break;
     if (page === 9) out.partial = true;
   }
+
+  // Products taken in one click after paying are charges of their own.
+  const add = (day: string, productId: string, cents: number) => {
+    const recent = day >= weekAgo;
+    const d = (out.byDay[day] ??= { sales: 0, cents: 0 });
+    d.sales += 1;
+    d.cents += cents;
+    const p = (out.byProduct[productId] ??= { sales: 0, cents: 0, sales7: 0, cents7: 0 });
+    p.sales += 1;
+    p.cents += cents;
+    out.sales += 1;
+    out.cents += cents;
+    if (recent) {
+      p.sales7 += 1;
+      p.cents7 += cents;
+      out.sales7 += 1;
+      out.cents7 += cents;
+    }
+  };
+  const intents = (await onAccount(
+    "GET",
+    store.stripeAccountId,
+    `/payment_intents?limit=100&created[gte]=${since}`,
+  )) as { data?: unknown };
+  for (const pi of Array.isArray(intents.data) ? (intents.data as Record<string, unknown>[]) : []) {
+    const meta = (pi.metadata ?? {}) as Record<string, string>;
+    if (meta.kind !== "upsell" || !handles.has(meta.store ?? "") || pi.status !== "succeeded") continue;
+    const created = typeof pi.created === "number" ? pi.created * 1000 : now;
+    add(dayKey(created), meta.product ?? "", typeof pi.amount === "number" ? pi.amount : 0);
+  }
   return out;
 }
 
