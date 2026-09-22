@@ -9,6 +9,7 @@ import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import {
   centsToPrice,
   isFree,
+  ensureStatsId,
   setSubscription,
   storeForEmail,
   storeFolder,
@@ -19,6 +20,9 @@ import { OldAddresses } from "@/components/old-addresses";
 import { DetailsForm } from "@/components/details-form";
 import { LookEditor } from "@/components/look-editor";
 import { catchUpBookings, paidCalls } from "@/lib/calls";
+import { readSales, readStats, studioStats } from "@/lib/stats";
+import { StatsPanel } from "@/components/stats-panel";
+import { PixelEditor } from "@/components/pixel-editor";
 import { SITE_URL } from "@/lib/site-url";
 import { readableTime, zoneName } from "@/lib/call-setup";
 import { ProductEditor } from "@/components/product-editor";
@@ -47,9 +51,9 @@ export const metadata: Metadata = {
 
 const NEXT_WHEN_SELLING = [
   "Upsells and limited offers at checkout",
-  "Visit counts, and pixels for Meta, TikTok and Google",
   "Courses with lessons",
   "Email to your list, from your studio",
+  "Your own domain",
 ];
 /** Calls that have not ended yet, soonest first. */
 function upcoming<T extends { start: number; end: number }>(list: T[]): T[] {
@@ -201,7 +205,10 @@ export default async function StudioPage({
   const email = await emailForSession(cookieStore.get(SESSION_COOKIE)?.value);
   if (!email) redirect("/signin");
 
-  const store = await storeForEmail(email);
+  const loaded = await storeForEmail(email);
+  // A store from before visits were counted gets its counter the first time
+  // its owner opens the studio.
+  const store = loaded && !loaded.statsId ? ((await ensureStatsId(email)) ?? loaded) : loaded;
   const folder = store ? await storeFolder(email) : "";
   const params = await searchParams;
   const notice =
@@ -267,6 +274,20 @@ export default async function StudioPage({
   // A buyer who paid and never came back from Stripe still gets their email,
   // and so does the creator, the next time the creator looks.
   if (current && paidList && paidList.length) after(() => catchUpBookings(current, paidList, SITE_URL));
+  // Visits from Redis and sales from the creator's Stripe, read side by side.
+  const [visits, salesRead] = current
+    ? await Promise.all([
+        readStats(current).catch(() => null),
+        current.stripeAccountId
+          ? readSales(current).then(
+              (value) => ({ state: "ok" as const, value }),
+              () => ({ state: "error" as const, value: null }),
+            )
+          : Promise.resolve({ state: "none" as const, value: null }),
+      ])
+    : [null, null];
+  const numbers =
+    current && visits && salesRead ? studioStats(current, visits, salesRead.value, salesRead.state) : null;
   const connectReady = isConnectConfigured();
   const connectTestMode = isConnectInTestMode();
   const billingReady = isBillingConfigured();
@@ -341,6 +362,8 @@ export default async function StudioPage({
               <OldAddresses handles={store.previousHandles} />
             </div>
 
+            {numbers ? <StatsPanel data={numbers} /> : null}
+
             <LookEditor
               look={store.look}
               photoId={store.photoId}
@@ -410,6 +433,8 @@ export default async function StudioPage({
             <LinkEditor links={store.links} />
 
             <DiscountEditor selling={current ? canSell(current) : false} />
+
+            <PixelEditor pixels={store.pixels} />
 
             {list && (givesAway || list.total > 0) ? (
               <div className="card mt-8 p-6 sm:p-8">
