@@ -53,10 +53,10 @@ export function RecoverForm() {
   if (state.kind === "sent") {
     return (
       <div
-        className="rounded-3xl border-2 border-mint-brand/40 bg-mint-brand/10 p-6"
+        className="notice notice-success "
         role="status"
       >
-        <p className="font-display text-xl font-black text-ink">
+        <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
           Check that inbox
         </p>
         <p className="mt-3 text-ink-soft">
@@ -73,7 +73,7 @@ export function RecoverForm() {
       <div>
         <label
           htmlFor="recover-email"
-          className="block text-sm font-bold text-ink"
+          className="field-label"
         >
           The email you paid with
         </label>
@@ -86,7 +86,7 @@ export function RecoverForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@example.com"
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-soft/60 focus:border-violet-brand"
+          className="field mt-2"
         />
       </div>
 
@@ -106,7 +106,7 @@ export function RecoverForm() {
 
       {state.kind === "error" ? (
         <p
-          className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          className="notice notice-error "
           role="alert"
         >
           {state.message}
@@ -116,7 +116,7 @@ export function RecoverForm() {
       <button
         type="submit"
         disabled={state.kind === "sending"}
-        className="w-full rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-7 py-3.5 font-bold text-white shadow-lg transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+        className="btn btn-primary btn-lg btn-block"
       >
         {state.kind === "sending" ? "Sending…" : "Send the link again"}
       </button>
