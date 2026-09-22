@@ -118,6 +118,14 @@ export default function PrivacyPage() {
           they were holding.
         </p>
         <p>
+          <strong className="text-black">A one-click offer after paying.</strong>{" "}
+          When a product is followed by a one-click offer, Stripe keeps the
+          buyer&apos;s card on the creator&apos;s account for payments the buyer
+          makes while present, and a cookie in the buyer&apos;s browser, for two
+          hours, lets only that browser take the offer. We keep a record of
+          whether the offer was taken, tied to that order, for eight days.
+        </p>
+        <p>
           <strong className="text-black">
             Free copies, and a creator&apos;s list.
           </strong>{" "}
