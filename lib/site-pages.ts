@@ -381,7 +381,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Stan is ahead, and we say so",
-        body: "Stan has years of features we do not have: payment plans, order bumps and upsells, funnels, affiliates paid automatically, email broadcasts and flows, pixel tracking, automated Instagram replies, courses with a proper student area, communities, an app for iPhone and iPad, and a support team with a track record. If you depend on those today, Stan is the better tool today.",
+        body: "Stan has years of features we do not have: payment plans, order bumps and upsells, funnels, affiliates paid automatically, email broadcasts and flows, automated Instagram replies, courses with a proper student area, communities, an app for iPhone and iPad, and a support team with a track record. If you depend on those today, Stan is the better tool today.",
       },
     ],
   },
@@ -691,7 +691,8 @@ export const PAGES: TopicPage[] = [
           ["Instagram auto-DM", "Yes, on the $29 plan", "Not available"],
           ["Funnels up to 20 pages", "Yes, on the $99 plan, since June 2026", "Not available"],
           ["Affiliates paid automatically", "Yes, on the $99 plan", "Needs a United States company \u2014 planned, with the cost published"],
-          ["Advertising pixels", "Yes, on the $99 plan", "Not available"],
+          ["Advertising pixels", "Yes, on the $99 plan", "Yes \u2014 Meta, Google, TikTok and Pinterest, on the one plan, with each purchase and its amount. Visitors are asked first where the law says so"],
+          ["Visits, sources and conversion", "Yes", "Yes \u2014 counted without cookies, with sales read from your own Stripe account"],
           ["Public API and webhooks", "None published", "Not available"],
         ],
       },
