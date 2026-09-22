@@ -1,8 +1,9 @@
-import type { NextRequest } from "next/server";
+import { type NextRequest, after } from "next/server";
 import { originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { canSellProduct } from "@/lib/store-checkout";
 import { holdAndCheckout, isCallProduct, releaseOwnHold } from "@/lib/calls";
+import { countHit } from "@/lib/visit";
 
 /** The checkout this browser last opened for a call, so going back frees it. */
 const HOLD_COOKIE = "nl_call_hold";
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
 
   const result = await holdAndCheckout({ store, product, start, buyerTz: tz, origin });
   if (!result.ok) return back(result.reason);
+  after(() => countHit(request, store, { kind: "checkout", id: product.id }));
   const secure = origin.startsWith("https://") ? "; Secure" : "";
   return new Response(null, {
     status: 303,
