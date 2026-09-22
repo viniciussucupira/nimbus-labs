@@ -42,7 +42,7 @@ export const metadata: Metadata = {
 };
 
 const NEXT_WHEN_SELLING = [
-  "Members cancelling on their own, without having to write to you",
+  "Upsells and limited offers at checkout",
   "Visit counts, and pixels for Meta, TikTok and Google",
   "Scheduled calls with a calendar",
   "Courses with lessons",
