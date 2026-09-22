@@ -23,6 +23,7 @@ import { type Recurring, parseRecurring } from "@/lib/product-recurring";
 import { type StoreLook, DEFAULT_LOOK, parseLook } from "@/lib/store-look";
 import { PHOTO_ID_PATTERN } from "@/lib/photo-limits";
 import { type CallSetup, parseSetup } from "@/lib/call-setup";
+import { type Pixels, NO_PIXELS, parsePixels } from "@/lib/pixels";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
@@ -256,6 +257,13 @@ export type Store = {
    * sign-in email moves anybody's booking.
    */
   callsId: string | null;
+  /**
+   * Where the counts of this store's visits are kept: an id of its own, so a
+   * new address or a new sign-in email carries the history along.
+   */
+  statsId: string | null;
+  /** The creator's own ad pixels, each null until they add it. */
+  pixels: Pixels;
 };
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
@@ -388,6 +396,11 @@ function parseStore(raw: unknown): Store | null {
         typeof value.callsId === "string" && LIST_ID_PATTERN.test(value.callsId)
           ? value.callsId
           : null,
+      statsId:
+        typeof value.statsId === "string" && LIST_ID_PATTERN.test(value.statsId)
+          ? value.statsId
+          : null,
+      pixels: parsePixels(value.pixels),
     };
   } catch {
     return null;
@@ -492,6 +505,8 @@ export async function claimHandle(
     look: { ...DEFAULT_LOOK },
     photoId: null,
     callsId: null,
+    statsId: newListId(),
+    pixels: { ...NO_PIXELS },
   };
 
   try {
@@ -836,6 +851,31 @@ export async function setProductCall(
   };
   await saveStore(next);
   return { ok: true, store: next };
+}
+
+/** Saves the creator's ad pixels. */
+export async function setPixels(
+  email: string,
+  pixels: Pixels,
+): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const next: Store = { ...store, pixels: parsePixels(pixels) };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+/**
+ * Gives a store written before visits were counted the id they are counted
+ * under. Called from the owner's own studio, so it never races a visitor.
+ */
+export async function ensureStatsId(email: string): Promise<Store | null> {
+  const store = await storeForEmail(email);
+  if (!store) return null;
+  if (store.statsId) return store;
+  const next: Store = { ...store, statsId: newListId() };
+  await saveStore(next);
+  return next;
 }
 
 /** Changes the theme and the colour of the public page. */
