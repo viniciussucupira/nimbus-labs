@@ -197,6 +197,7 @@ const SECTIONS: Section[] = [
         q: "Can I sell a membership?",
         a: [
           "Yes. Any product can charge on a schedule instead of once: daily, weekly, monthly or yearly. The subscription is created on your own Stripe account, like every other charge here, so the member is your customer, in your dashboard, and the renewals are 0% to us as well.",
+          "Members cancel on their own. Under every membership on your page there is a link: the member types the email they pay with, we send them a link, and it opens Stripe's own page for their membership, where cancelling is one click. It ends at the end of the period they have paid for, and nobody has to write to you or wait for you. They can change their card and see their receipts there too.",
           "Two things it does not do yet, said plainly. A membership runs until the member cancels \u2014 you cannot set it to stop after six payments. And it does not take access back when somebody stops paying: if what you deliver is a link, that link keeps working, so remove them wherever you actually keep the thing. Your Stripe dashboard is where you see who is still paying.",
         ],
       },
