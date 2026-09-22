@@ -253,15 +253,16 @@ export default async function StudioPage({
   return (
     <div className="min-h-screen bg-paper text-ink">
       <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
-        <div className="container-page flex h-16 items-center justify-between gap-3">
-          <Link href="/" className="rounded-[10px]" aria-label="Nimbus Labs, home">
+        <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-3">
+          <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Nimbus Labs, home">
             <Logo />
           </Link>
           <div className="flex items-center gap-3">
             <span className="hidden max-w-[16rem] truncate text-sm text-ink-mute md:inline">{email}</span>
             {store ? (
               <Link href={`/@${store.handle}`} className="btn btn-secondary btn-sm">
-                View my store
+                <span className="hidden min-[400px]:inline">View my store</span>
+                <span className="min-[400px]:hidden">My store</span>
                 <Icon name="arrow-up-right" size={16} />
               </Link>
             ) : null}
@@ -349,16 +350,16 @@ export default async function StudioPage({
                     is a link something may prefetch, and each prefetch would
                     read the whole list. A form is only sent when pressed. */}
                 <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <form action="/api/store/leads" method="get">
+                  <form action="/api/store/leads" method="get" className="max-w-full">
                     <input type="hidden" name="who" value="agreed" />
                     <button
                       type="submit"
-                      className="btn btn-primary"
+                      className="btn btn-primary btn-wrap"
                     >
                       Download the ones who agreed
                     </button>
                   </form>
-                  <form action="/api/store/leads" method="get">
+                  <form action="/api/store/leads" method="get" className="max-w-full">
                     <input type="hidden" name="who" value="everyone" />
                     <button
                       type="submit"
