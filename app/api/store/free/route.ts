@@ -1,7 +1,8 @@
-import type { NextRequest } from "next/server";
+import { type NextRequest, after } from "next/server";
 import { originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { requestCopy } from "@/lib/free";
+import { countHit } from "@/lib/visit";
 
 const MAX_BODY_BYTES = 2_000;
 
@@ -81,6 +82,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await requestCopy({ store, product, email, consent, ip, origin });
+    if (result === "sent") after(() => countHit(request, store, { kind: "checkout", id: product.id }));
     return away(`${page}&status=${result}`);
   } catch (error) {
     console.error("sending a free copy failed", error);
