@@ -4,6 +4,8 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { canSellProduct, createCheckout } from "@/lib/store-checkout";
 import { countHit } from "@/lib/visit";
 import { releaseStockHold, withStockHold } from "@/lib/stock";
+import { activeUpsell } from "@/lib/product-extras";
+import { UPSELL_COOKIE, newUpsellKey } from "@/lib/upsell";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -77,16 +79,26 @@ export async function POST(request: NextRequest) {
     const previous = request.cookies.get(HOLD_COOKIE)?.value ?? "";
     if (previous) await releaseStockHold(store, product, previous).catch(() => {});
 
+    // When an upsell follows, this browser gets a secret, and only its
+    // fingerprint travels with the charge.
+    const upsell = activeUpsell(store.products, product) ? newUpsellKey() : null;
     const held = await withStockHold(store, product, (expiresAt) =>
-      createCheckout(store, product, origin, optionId, { bump, expiresAt: expiresAt || undefined }),
+      createCheckout(store, product, origin, optionId, {
+        bump,
+        expiresAt: expiresAt || undefined,
+        upsellKey: upsell?.fingerprint,
+      }),
     );
     if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);
     // Counted once the buyer is on their way, so the count never slows them.
     after(() => countHit(request, store, { kind: "checkout", id: product.id }));
-    const headers: Record<string, string> = { Location: held.value.url, "Cache-Control": "no-store" };
+    const headers = new Headers({ Location: held.value.url, "Cache-Control": "no-store" });
+    const secure = origin.startsWith("https://") ? "; Secure" : "";
     if (product.stock !== null) {
-      const secure = origin.startsWith("https://") ? "; Secure" : "";
-      headers["Set-Cookie"] = `${HOLD_COOKIE}=${held.value.id}; Path=/api/store/checkout; Max-Age=1860; HttpOnly; SameSite=Lax${secure}`;
+      headers.append("Set-Cookie", `${HOLD_COOKIE}=${held.value.id}; Path=/api/store/checkout; Max-Age=1860; HttpOnly; SameSite=Lax${secure}`);
+    }
+    if (upsell) {
+      headers.append("Set-Cookie", `${UPSELL_COOKIE}=${upsell.secret}; Path=/; Max-Age=7200; HttpOnly; SameSite=Lax${secure}`);
     }
     return new Response(null, { status: 303, headers });
   } catch (error) {
