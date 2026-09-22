@@ -3,6 +3,10 @@ import { originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { canSellProduct, createCheckout } from "@/lib/store-checkout";
 import { countHit } from "@/lib/visit";
+import { releaseStockHold, withStockHold } from "@/lib/stock";
+
+/** The checkout this browser last opened for a limited product. */
+const HOLD_COOKIE = "nl_stock_hold";
 
 /**
  * Starts a purchase.
@@ -37,6 +41,7 @@ export async function POST(request: NextRequest) {
   let handle = "";
   let productId = "";
   let optionId = "";
+  let bump = false;
   try {
     const form = await request.formData();
     const h = form.get("handle");
@@ -47,6 +52,8 @@ export async function POST(request: NextRequest) {
     handle = typeof h === "string" ? normaliseHandle(h) : "";
     productId = typeof p === "string" ? p : "";
     optionId = typeof o === "string" ? o : "";
+    // Only a ticked box counts. What the addition costs is read from the store.
+    bump = form.get("bump") === "yes";
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -65,13 +72,23 @@ export async function POST(request: NextRequest) {
   if (product.call) return away(`/@${store.handle}/book/${product.id}`);
 
   try {
-    const url = await createCheckout(store, product, origin, optionId);
+    // A buyer who went back from Stripe's page hands back the unit they held
+    // before holding another.
+    const previous = request.cookies.get(HOLD_COOKIE)?.value ?? "";
+    if (previous) await releaseStockHold(store, product, previous).catch(() => {});
+
+    const held = await withStockHold(store, product, (expiresAt) =>
+      createCheckout(store, product, origin, optionId, { bump, expiresAt: expiresAt || undefined }),
+    );
+    if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);
     // Counted once the buyer is on their way, so the count never slows them.
     after(() => countHit(request, store, { kind: "checkout", id: product.id }));
-    return new Response(null, {
-      status: 303,
-      headers: { Location: url, "Cache-Control": "no-store" },
-    });
+    const headers: Record<string, string> = { Location: held.value.url, "Cache-Control": "no-store" };
+    if (product.stock !== null) {
+      const secure = origin.startsWith("https://") ? "; Secure" : "";
+      headers["Set-Cookie"] = `${HOLD_COOKIE}=${held.value.id}; Path=/api/store/checkout; Max-Age=1860; HttpOnly; SameSite=Lax${secure}`;
+    }
+    return new Response(null, { status: 303, headers });
   } catch (error) {
     console.error("checkout failed", error);
     return away(`/@${store.handle}/thanks?status=error`);
