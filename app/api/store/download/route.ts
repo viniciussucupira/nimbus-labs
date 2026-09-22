@@ -37,6 +37,15 @@ export async function GET(request: NextRequest) {
     return plain(status, message);
   }
 
+  // The product added at checkout has its own file, asked for by name.
+  if (request.nextUrl.searchParams.get("item") === "bump") {
+    if (!order.bump) return plain(404, "This order has nothing added to it.");
+    if (!order.bump.file) {
+      return plain(order.bump.link ? 409 : 404, order.bump.link ? "This one is not a download. Open the order page again and use the link on it." : "There is no file on this product.");
+    }
+    return serveFile(order.bump.file);
+  }
+
   // The file of the option that was bought, when the product has options, and
   // the product's own when it does not. Worked out once, in readOrder, so this
   // route and the page the buyer is looking at can never disagree.
