@@ -53,52 +53,31 @@ export async function generateMetadata({
 function Block({ block }: { block: BlogBlock }) {
   switch (block.type) {
     case "h2":
-      return (
-        <h2 className="font-display mt-12 text-2xl font-black text-ink sm:text-3xl">
-          {block.text}
-        </h2>
-      );
+      return <h2>{block.text}</h2>;
 
     case "p":
-      return (
-        <p className="mt-5 text-lg leading-relaxed text-ink-soft">
-          {block.text}
-        </p>
-      );
+      return <p>{block.text}</p>;
 
     case "ul":
       return (
-        <ul className="mt-6 space-y-3">
+        <ul>
           {block.items.map((item) => (
-            <li
-              key={item}
-              className="flex gap-3 rounded-2xl bg-lilac px-5 py-4 text-ink-soft"
-            >
-              <span aria-hidden="true" className="font-bold text-violet-deep">
-                →
-              </span>
-              <span>{item}</span>
-            </li>
+            <li key={item}>{item}</li>
           ))}
         </ul>
       );
 
     case "steps":
       return (
-        <ol className="mt-6 space-y-4">
+        <ol className="!list-none !pl-0 grid gap-3">
           {block.items.map((item, index) => (
-            <li
-              key={item.title}
-              className="flex gap-4 rounded-2xl border-2 border-ink/5 bg-white p-5 shadow-sm"
-            >
-              <span className="font-display flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-violet-brand text-sm font-black text-white">
+            <li key={item.title} className="!mt-0 flex gap-4 rounded-[var(--r-md)] border border-line bg-white p-5">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lilac text-sm font-semibold text-violet-deep">
                 {index + 1}
               </span>
               <span>
-                <span className="font-display block font-black text-ink">
-                  {item.title}
-                </span>
-                <span className="mt-1 block text-ink-soft">{item.text}</span>
+                <span className="block font-semibold text-ink">{item.title}</span>
+                <span className="mt-1 block text-[1rem]">{item.text}</span>
               </span>
             </li>
           ))}
@@ -107,8 +86,8 @@ function Block({ block }: { block: BlogBlock }) {
 
     case "note":
       return (
-        <aside className="mt-8 rounded-3xl border-l-8 border-amber-brand bg-cream p-6 text-ink-soft">
-          <p className="font-display mb-2 font-black text-ink">Worth knowing</p>
+        <aside className="rounded-[var(--r-md)] border border-line bg-sand p-6 text-[1rem]">
+          <p className="mb-1.5 font-semibold text-ink">Worth knowing</p>
           <p>{block.text}</p>
         </aside>
       );
@@ -129,78 +108,69 @@ export default async function BlogPostPage({
     .slice(0, 3);
 
   return (
-    <div className="flex min-h-screen flex-col bg-white text-ink">
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
       <RevealOnScroll />
       <SiteNav />
 
       <main id="content" className="flex-1">
-        <section
-          className="relative overflow-hidden text-white"
-          style={{
-            backgroundImage: `linear-gradient(135deg, ${post.from}, ${post.to})`,
-          }}
-        >
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 bg-[radial-gradient(circle_at_75%_15%,rgba(255,255,255,0.3),transparent_55%)]"
-          />
-          <div className="relative mx-auto max-w-3xl px-4 py-16 sm:py-20">
-            <Link
-              href="/blog"
-              className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold backdrop-blur transition hover:bg-white/25"
-            >
+        <header className="border-b border-line bg-white">
+          <div className="container-narrow py-12 sm:py-16">
+            <Link href="/blog" className="link-arrow text-[0.9375rem]">
               <span aria-hidden="true">←</span> The Nimbus Journal
             </Link>
-            <h1 className="font-display mt-6 text-4xl font-black leading-[1.08] sm:text-5xl">
-              {post.title}
-            </h1>
-            <p className="mt-5 text-lg text-white/90">{post.excerpt}</p>
-            <p className="mt-6 text-sm font-semibold text-white/75">
-              {post.category} · {formatPostDate(post.date)} ·{" "}
-              {post.readMinutes} min read
+            <p className="mt-8 flex flex-wrap items-center gap-3 text-sm text-ink-mute">
+              <span className="tag tag-brand">{post.category}</span>
+              <span>{formatPostDate(post.date)}</span>
+              <span aria-hidden="true">·</span>
+              <span>{post.readMinutes} min read</span>
+            </p>
+            <h1 className="t-h1 balance mt-5">{post.title}</h1>
+            <p className="t-lead mt-5 text-ink-soft">{post.excerpt}</p>
+            <p className="mt-8 flex items-center gap-3 text-sm">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-lilac font-semibold text-violet-deep">VS</span>
+              <span>
+                <span className="block font-semibold text-ink">Vinicius Sucupira</span>
+                <span className="text-ink-mute">Founder, Nimbus Labs</span>
+              </span>
             </p>
           </div>
-        </section>
+        </header>
 
-        <article className="mx-auto max-w-3xl px-4 py-14">
-          {post.body.map((block, index) => (
-            <Block key={index} block={block} />
-          ))}
+        <article className="container-narrow py-12 sm:py-16">
+          <div className="prose-nb">
+            {post.body.map((block, index) => (
+              <Block key={index} block={block} />
+            ))}
+          </div>
 
-          <div className="mt-14 rounded-3xl bg-gradient-to-br from-violet-brand to-pink-brand p-8 text-center text-white shadow-xl">
-            <h2 className="font-display text-2xl font-black sm:text-3xl">
-              See it working before you believe us
-            </h2>
-            <p className="mt-3 text-white/90">
-              The demo store is a real Stripe checkout with a test card. Buy the
-              file, watch it arrive, then decide.
+          <aside className="surface-night on-dark mt-16 overflow-hidden rounded-[var(--r-xl)] p-8 sm:p-10">
+            <h2 className="t-h3 text-[1.6rem] text-white">See it working before you believe us</h2>
+            <p className="mt-3 max-w-lg text-white/75">
+              The demo store is a real Stripe checkout with a test card. Buy the file, watch it arrive, then decide.
             </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/demo"
-                className="rounded-full bg-white px-7 py-3.5 font-bold text-violet-deep shadow-lg transition hover:-translate-y-0.5"
-              >
+            <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-4">
+              <Link href="/demo" className="btn btn-light">
                 Open the live demo store
               </Link>
-              <Link
-                href="/signin"
-                className="rounded-full border-2 border-white/70 px-7 py-3.5 font-bold text-white transition hover:bg-white hover:text-violet-deep"
-              >
+              <Link href="/signin" className="link-arrow on-dark">
                 Start your store
+                <span aria-hidden="true" className="arrow">
+                  →
+                </span>
               </Link>
             </div>
-          </div>
+          </aside>
         </article>
 
         {more.length > 0 ? (
-          <section className="mx-auto max-w-6xl px-4 pb-20">
-            <h2 className="font-display text-3xl font-black text-ink">
-              Read next
-            </h2>
-            <div className="mt-8 grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
-              {more.map((other) => (
-                <BlogCard key={other.slug} post={other} />
-              ))}
+          <section className="surface-sand">
+            <div className="container-page py-14 sm:py-20">
+              <h2 className="t-h2">Read next</h2>
+              <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {more.map((other) => (
+                  <BlogCard key={other.slug} post={other} />
+                ))}
+              </div>
             </div>
           </section>
         ) : null}
