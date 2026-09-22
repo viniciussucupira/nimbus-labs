@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon } from "@/components/icons";
 import { rememberOrder } from "@/lib/demo-recover";
 import {
   DEMO_PRODUCT,
@@ -62,26 +63,18 @@ export default async function DemoThanksPage({
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -left-16 top-0 h-56 w-56 bg-violet-brand/25 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -right-16 top-32 h-56 w-56 bg-pink-brand/20 blur-3xl"
-      />
+    <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
       <main id="content" className="relative mx-auto w-full max-w-md px-4 py-16">
-        <div className="rounded-3xl border-2 border-ink/10 bg-white p-8 shadow-xl shadow-ink/5">
+        <div className="card p-8">
           {order.state === "paid" ? (
             <>
-              <p aria-hidden="true" className="nb-float text-4xl">
-                🎉
-              </p>
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-mint-soft text-mint-deep">
+                <Icon name="check" size={24} strokeWidth={2.2} />
+              </span>
               <p className="mt-2 text-sm font-bold uppercase tracking-wider text-mint-deep">
                 Payment confirmed
               </p>
-              <h1 className="font-display mt-2 text-2xl font-black">
+              <h1 className="font-display mt-2 text-2xl font-semibold">
                 Thank you! Your file is ready.
               </h1>
               <p className="mt-3 text-ink-soft">
@@ -90,7 +83,7 @@ export default async function DemoThanksPage({
               </p>
               <a
                 href={`/api/demo/download?session_id=${encodeURIComponent(sessionId ?? "")}`}
-                className="mt-6 block rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-6 py-4 text-center text-lg font-bold text-white shadow-lg shadow-violet-brand/30 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+                className="btn btn-primary btn-lg mt-6 btn-block"
               >
                 Download the PDF
               </a>
@@ -100,7 +93,7 @@ export default async function DemoThanksPage({
             </>
           ) : (
             <>
-              <h1 className="font-display text-2xl font-black">
+              <h1 className="font-display text-2xl font-semibold">
                 {NOT_PAID[order.state].title}
               </h1>
               <p className="mt-3 text-ink-soft">
@@ -109,7 +102,7 @@ export default async function DemoThanksPage({
               {order.state === "expired" || order.state === "invalid" ? (
                 <Link
                   href="/demo/recover"
-                  className="mt-6 block rounded-full bg-ink px-6 py-3.5 text-center font-bold text-white transition hover:-translate-y-0.5"
+                  className="btn btn-primary mt-6 btn-block"
                 >
                   Send me the link again
                 </Link>
