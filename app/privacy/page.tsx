@@ -76,6 +76,33 @@ export default function PrivacyPage() {
           whether or not a membership was found.
         </p>
         <p>
+          <strong className="text-black">Counting visits to a store.</strong>{" "}
+          When a creator&apos;s store page is opened, the page tells us so,
+          with the site that sent the visitor or the campaign word in the link.
+          To count people rather than page loads we make a one-way fingerprint
+          of the day, the store, the visitor&apos;s network address and browser,
+          and add it to a counter that keeps only an estimate of how many
+          different fingerprints it has seen. The fingerprint and the address
+          are not stored, no cookie is set, and the counts are kept for about
+          thirteen months. The creator sees totals, never a person.
+        </p>
+        <p id="ads">
+          <strong className="text-black">
+            Ad measurement a creator switches on.
+          </strong>{" "}
+          A creator can add their own Meta, Google, TikTok or Pinterest pixel to
+          their store. When they do, and only once it is allowed, those pages
+          load that platform&apos;s script, which sets its own cookies and tells
+          the platform about page views, checkouts started, requests for free
+          products and purchases with their amount, on the creator&apos;s behalf
+          and under that platform&apos;s own privacy policy. Visitors in the
+          European Economic Area, the United Kingdom, Switzerland and Brazil are
+          asked first and nothing loads unless they agree; everywhere else the
+          pixels load unless the browser sends Global Privacy Control. The
+          choice is kept on the visitor&apos;s device for that store, and a link
+          at the foot of its pages changes it.
+        </p>
+        <p>
           <strong className="text-black">Booking a call.</strong> When someone
           books a paid call, we use the time they picked, their time zone and
           the email address on their Stripe receipt to hold that time while they
