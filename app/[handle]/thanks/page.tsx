@@ -62,20 +62,16 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   const hours = order.state === "paid" ? Math.floor(order.secondsLeft / 3600) : 0;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -left-16 top-0 h-56 w-56 bg-mint-brand/25 blur-3xl"
-      />
+    <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
 
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <div className="rounded-[2rem] border-2 border-ink/5 bg-white p-7 shadow-xl shadow-ink/5 sm:p-10">
+        <div className="card p-7 sm:p-10">
           {order.state === "paid" ? (
             <>
-              <p className="inline-flex items-center gap-2 rounded-full bg-mint-brand px-4 py-1.5 text-sm font-black text-mint-deep">
-                <span aria-hidden="true">✓</span> Paid
+              <p className="tag tag-live">
+                Paid
               </p>
-              <h1 className="font-display mt-5 text-3xl font-black leading-tight sm:text-4xl">
+              <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
                 Thank you
               </h1>
               <p className="mt-4 text-lg text-ink-soft">
@@ -110,7 +106,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     href={order.link}
                     rel="noopener noreferrer nofollow"
                     target="_blank"
-                    className="mt-7 inline-block rounded-full bg-ink px-7 py-4 text-base font-bold text-white transition hover:-translate-y-0.5"
+                    className="btn btn-primary btn-lg mt-7"
                   >
                     Open what you bought
                   </a>
@@ -127,7 +123,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     href={`/api/store/download?handle=${encodeURIComponent(
                       store.handle,
                     )}&session_id=${encodeURIComponent(sessionId ?? "")}`}
-                    className="mt-7 inline-block rounded-full bg-ink px-7 py-4 text-base font-bold text-white transition hover:-translate-y-0.5"
+                    className="btn btn-primary btn-lg mt-7"
                   >
                     Download it
                   </a>
@@ -146,7 +142,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   the money reached the creator's own account, so the creator
                   is who can fix it.
                 */
-                <p className="mt-7 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm text-ink">
+                <p className="mt-7 rounded-2xl bg-danger-soft px-4 py-3 text-sm text-ink">
                   <strong>Your payment went through, and this one has
                   nothing attached to send.</strong> That is on {store.name} to
                   put right, and the charge is on their own Stripe account, so
@@ -162,7 +158,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
             </>
           ) : (
             <>
-              <h1 className="font-display text-3xl font-black leading-tight sm:text-4xl">
+              <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">
                 {notice?.title ?? "We could not find this order"}
               </h1>
               <p className="mt-4 text-lg text-ink-soft">
