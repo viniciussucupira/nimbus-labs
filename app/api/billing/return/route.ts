@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
       active: started.active,
       tier: started.tier,
       cycle: started.cycle,
+      trialEnds: started.trialEnds,
     });
     if (!saved) return away(origin, "/studio?billing=error");
 

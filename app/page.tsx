@@ -5,7 +5,7 @@ import { PhoneScreens } from "@/components/phone-screens";
 import { SiteNav } from "@/components/site-nav";
 import { Icon, type IconName } from "@/components/icons";
 import { DemoWindow, Faq, HeroFlow, Pricing, RevealOnScroll } from "@/components/home-parts";
-import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
+import { PLAN_PRICES, PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 
 export const metadata: Metadata = {
   title: "Nimbus Labs — the link-in-bio store that pays into your own Stripe",
@@ -49,23 +49,23 @@ const LIVE: { icon: IconName; title: string; body: string }[] = [
   { icon: "door", title: "Members cancel on their own", body: "One click on Stripe's own page. Nobody has to write to you, and nobody feels trapped." },
   { icon: "palette", title: "Your photo, your colour", body: "Four themes, ten colours or your own. Every colour is checked so your page stays easy to read." },
   { icon: "link", title: "Your own address", body: "Change it whenever you like. Every address you ever used keeps working." },
-  { icon: "percent", title: "Discount codes", body: "Included on the one plan, not kept for a more expensive one." },
+  { icon: "percent", title: "Discount codes", body: `Included at $${PRICE} a month, not kept for a more expensive plan.` },
   { icon: "repeat", title: "Memberships", body: "Charge every week, month or year, on your own Stripe account." },
   { icon: "gift", title: "Free products for an email", body: "Each address confirmed by its owner. Download the list whenever you like." },
   { icon: "mail", title: "No password, ever", body: "Sign in with a link sent to your email. Nothing for us to lose." },
   { icon: "chart", title: "Your numbers", body: "Visitors, where they came from, checkouts and sales, counted without cookies." },
-  { icon: "target", title: "Ad pixels, on the one plan", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount. Visitors are asked first where the law says so." },
+  { icon: "target", title: `Ad pixels, at $${PRICE}`, body: "Meta, Google, TikTok and Pinterest see each purchase and its amount. Visitors are asked first where the law says so." },
   { icon: "plus", title: "Offers before and after paying", body: "A box the buyer ticks at checkout, and one click after paying on the same card. At your price." },
   { icon: "card", title: "Payment plans", body: "Two to twelve weekly or monthly payments. The buyer gets it after the first, and the plan ends by itself." },
   { icon: "receipt", title: "Sales tax by Stripe Tax", body: "Worked out from each buyer's address and added at checkout, on your own Stripe account." },
   { icon: "clock", title: "Limited quantities, counted for real", body: "Your page shows how many are left, from real payments, and stops selling at zero." },
   { icon: "phone", title: "Installs like an app", body: "Your store goes on the home screen of any iPhone or Android phone, with no app store in between." },
+  { icon: "chat", title: "Email to your list, on Pro", body: "One-off emails, emails for later and sequences that send themselves. Only to people who agreed, with one-click unsubscribe." },
 ];
 
 const NEXT = [
-  "Email to your list, from your studio",
-  "Your own domain",
-  "Several stores in one account",
+  "Your own domain, on Pro",
+  "Several stores in one account, on Pro",
 ];
 
 const CREATORS = [
@@ -441,8 +441,8 @@ export default function Home() {
                 <div>
                   <p className="font-semibold text-ink">Where Stan is ahead today</p>
                   <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                    Stan has email broadcasts, automatic Instagram replies and communities. We do not have
-                    those yet, and we say so on every page that could make you think otherwise.
+                    Stan has funnels, affiliates paid automatically, automatic Instagram replies and communities.
+                    We do not have those yet, and we say so on every page that could make you think otherwise.
                   </p>
                 </div>
                 <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3">
@@ -465,9 +465,9 @@ export default function Home() {
           <div className="container-page">
             <div className="reveal mx-auto max-w-2xl text-center">
               <p className="eyebrow">Pricing</p>
-              <h2 className="t-h2 balance mt-4">One price. Your sales stay yours.</h2>
+              <h2 className="t-h2 balance mt-4">Two plans. Your sales stay yours.</h2>
               <p className="mt-5 text-ink-soft">
-                {`The same $${PRICE} a month as Stan's Creator plan, with 0% of your sales and the sale itself landing in your own Stripe account.`}
+                {`The same $${PRICE} and $${PLAN_PRICES.pro.month / 100} a month as Stan's two plans, with 0% of your sales and the sale itself landing in your own Stripe account. The $${PRICE} plan holds what Stan keeps for its $${PLAN_PRICES.pro.month / 100} one: discount codes, pixels, order bumps, upsells and payment plans.`}
               </p>
             </div>
             <div className="reveal mx-auto mt-12 max-w-5xl">

@@ -145,8 +145,20 @@ export default function TermsPage() {
           </li>
         </ul>
         <p>
+          If you email your list through the Services, you also agree to write
+          only to people who agreed to hear from you; never to import an
+          address that was bought, rented, borrowed or collected without that
+          agreement; to give a true postal address where you can be reached,
+          which we print at the foot of each email; to write subject lines that
+          are not misleading; and to follow the laws on commercial email that
+          apply to you and to your readers, including the CAN-SPAM Act in the
+          United States. Every email carries an unsubscribe link we honor for
+          good, and you may not ask anyone to do more than press it.
+        </p>
+        <p>
           We may investigate suspected violations and take action, including
-          suspension or termination of your account.
+          pausing a send, switching off email for a store, or suspension or
+          termination of your account.
         </p>
       </LegalSection>
 
@@ -169,7 +181,17 @@ export default function TermsPage() {
           price will not apply to a period you have already paid for.
         </p>
         <p>
-          You may switch between monthly and yearly billing from your studio.
+          There are two plans. Nimbus Labs, at $29 a month or $300 a year,
+          includes everything to sell. Nimbus Labs Pro, at $99 a month or $948
+          a year, adds email to your list, with up to 50,000 emails a month,
+          counted together for one-off emails and sequences; during the free
+          trial a store may send up to 1,000 emails a month, and the full
+          number opens with the first payment. What is not sent in a month does
+          not carry over. Emails a month cannot cover wait for the next one.
+        </p>
+        <p>
+          You may switch between monthly and yearly billing, and between the
+          two plans, from your studio.
           A switch that costs more is charged when you make it, less the unused
           part of the period you already paid for. A switch that costs less
           leaves the unused part as credit on your account, applied to your

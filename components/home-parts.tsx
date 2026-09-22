@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/icons";
-import { PRICE_CENTS, TRIAL_DAYS, YEAR_PRICE_CENTS, yearSaving } from "@/lib/plan";
+import { PLAN_PRICES, PRICE_CENTS, PRO_MONTHLY_EMAILS, TRIAL_DAYS, TRIAL_MONTHLY_EMAILS, yearSaving } from "@/lib/plan";
 
 /* Reveals every element with .reveal as it scrolls into view, once. */
 export function RevealOnScroll() {
@@ -267,74 +267,104 @@ export function HeroFlow() {
 }
 
 /*
- * One plan, and every line under it is something you can open and try today.
- * A price with a feature beside it is a promise; a promise we cannot keep is
- * worse than a shorter list. The yearly price is the same plan paid once a
- * year, and the studio opens either.
+ * Two plans, and every line under them is something you can open and try
+ * today. A price with a feature beside it is a promise; a promise we cannot
+ * keep is worse than a shorter list. Each yearly price is the same plan paid
+ * once a year, and the studio opens either.
  */
 const INCLUDED = [
   "Your own store address, live the moment you take it",
   "Buyers pay into your own Stripe account",
-  "The file delivered the second the payment clears",
-  "Up to three prices on any product, and discount codes",
-  "Memberships billed every week, month or year",
+  "Files, courses, paid calls and memberships",
+  "Up to three prices on any product, discount codes and payment plans",
+  "Offers before and after paying, one click on the same card",
+  "Ad pixels, and your own numbers counted without cookies",
   "Free products that build an email list you can download",
-  "What you have sold, read from your own Stripe account",
 ];
 
-export function Pricing() {
-  const price = PRICE_CENTS / 100;
-  return (
-    <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-stretch">
-      <div className="card relative overflow-hidden p-7 sm:p-9">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-lg font-semibold text-ink">Nimbus</p>
-          <span className="tag tag-brand">One plan, everything included</span>
-        </div>
-        <p className="mt-6 flex items-baseline gap-2">
-          <span className="text-[3.5rem] font-semibold leading-none tracking-[-0.05em] text-ink">${price}</span>
-          <span className="text-ink-mute">per month</span>
-        </p>
-        <p className="mt-2 text-ink-soft">
-          {`Or $${YEAR_PRICE_CENTS / 100} a year, paid once \u2014 $${yearSaving("creator") / 100} less than twelve months.`}
-        </p>
-        <p className="mt-3 text-ink-soft">
-          {`Free for the first ${TRIAL_DAYS} days, and we email you a week before the first charge. Cancel in one click before it and your card is never charged.`}
-        </p>
-        <Link href="/signin" className="btn btn-primary btn-lg btn-block mt-7">
-          Start your store
-        </Link>
-        <p className="mt-3 text-center text-sm text-ink-mute">
-          Cancel in one click from your studio. No email to us, no chat, no second request.
-        </p>
-      </div>
+const PRO_INCLUDED = [
+  "Everything in Nimbus",
+  "One-off emails to your list, now or at a time you choose",
+  "Sequences that go out by themselves after someone joins or buys",
+  `Up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month (${TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")} during the free trial), from your name, with replies coming to you`,
+  "Import the list you already have; one-click unsubscribe in every email",
+];
 
-      <div className="card-flat p-7 sm:p-9">
-        <p className="font-semibold text-ink">What the plan includes</p>
-        <ul className="mt-5 space-y-3">
-          {INCLUDED.map((perk) => (
-            <li key={perk} className="flex gap-3 text-ink-soft">
-              <Icon name="check" size={18} strokeWidth={2.2} className="mt-1 shrink-0 text-mint-brand" />
-              <span>{perk}</span>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-6 grid gap-3 border-t border-line pt-5 text-sm sm:grid-cols-2">
-          <p className="flex gap-2 text-ink-soft">
-            <Icon name="percent" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
-            <span>
-              <strong className="font-semibold text-ink">0% of your sales.</strong> Stripe charges its own processing fee on
-              your account.
-            </span>
-          </p>
-          <p className="flex gap-2 text-ink-soft">
-            <Icon name="download" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
-            <span>
-              <strong className="font-semibold text-ink">200 GB of downloads a month.</strong> Stated here, not hidden in the
-              terms.
-            </span>
-          </p>
-        </div>
+function PlanCard({
+  name,
+  tag,
+  tier,
+  perks,
+  featured,
+  cta,
+}: {
+  name: string;
+  tag: string;
+  tier: "creator" | "pro";
+  perks: string[];
+  featured: boolean;
+  cta: string;
+}) {
+  const { month, year } = PLAN_PRICES[tier];
+  return (
+    <div className={`${featured ? "card" : "card-flat"} flex flex-col p-7 sm:p-9`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-lg font-semibold text-ink">{name}</p>
+        <span className={`tag ${featured ? "tag-brand" : ""}`}>{tag}</span>
+      </div>
+      <p className="mt-6 flex items-baseline gap-2">
+        <span className="text-[3.5rem] font-semibold leading-none tracking-[-0.05em] text-ink">${month / 100}</span>
+        <span className="text-ink-mute">per month</span>
+      </p>
+      <p className="mt-2 text-ink-soft">
+        {`Or $${year / 100} a year, paid once \u2014 $${yearSaving(tier) / 100} less than twelve months.`}
+      </p>
+      <ul className="mt-6 space-y-3">
+        {perks.map((perk) => (
+          <li key={perk} className="flex gap-3 text-ink-soft">
+            <Icon name="check" size={18} strokeWidth={2.2} className="mt-1 shrink-0 text-mint-brand" />
+            <span>{perk}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-auto pt-7">
+        <Link href="/signin" className={`btn ${featured ? "btn-primary" : "btn-secondary"} btn-lg btn-block`}>
+          {cta}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+export function Pricing() {
+  return (
+    <div>
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
+        <PlanCard name="Nimbus" tag="Everything to sell" tier="creator" perks={INCLUDED} featured cta="Start your store" />
+        <PlanCard name="Nimbus Pro" tag="With email to your list" tier="pro" perks={PRO_INCLUDED} featured={false} cta="Start on Pro" />
+      </div>
+      <div className="card-flat mt-6 grid gap-4 p-6 text-sm sm:grid-cols-3 sm:p-7">
+        <p className="flex gap-2 text-ink-soft">
+          <Icon name="clock" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
+          <span>
+            <strong className="font-semibold text-ink">{`Free for the first ${TRIAL_DAYS} days.`}</strong>
+            {" We email you a week before the first charge, and cancelling before it means your card is never charged. Cancel in one click from your studio. No email to us, no chat, no second request."}
+          </span>
+        </p>
+        <p className="flex gap-2 text-ink-soft">
+          <Icon name="percent" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
+          <span>
+            <strong className="font-semibold text-ink">0% of your sales.</strong> Stripe charges its own processing fee on
+            your account.
+          </span>
+        </p>
+        <p className="flex gap-2 text-ink-soft">
+          <Icon name="download" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
+          <span>
+            <strong className="font-semibold text-ink">200 GB of downloads a month.</strong> Stated here, not hidden in the
+            terms. Move between the plans from your studio whenever you like.
+          </span>
+        </p>
       </div>
     </div>
   );
@@ -356,7 +386,7 @@ const QUESTIONS = [
   },
   {
     q: "What does Stan have that Nimbus does not, yet?",
-    a: "Among other things: email broadcasts, automatic Instagram replies and communities. Every one is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
+    a: "Among other things: automatic Instagram replies, communities, funnels and paying affiliates. Every one is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
   },
   {
     q: "Who is behind this?",

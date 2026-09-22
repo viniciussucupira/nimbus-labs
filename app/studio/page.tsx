@@ -44,7 +44,7 @@ import {
   isBillingConfigured,
   readSubscription,
 } from "@/lib/billing";
-import { PLAN_PRICES, priceWords, yearSaving } from "@/lib/plan";
+import { PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, priceWords, yearSaving } from "@/lib/plan";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
@@ -52,9 +52,8 @@ export const metadata: Metadata = {
 };
 
 const NEXT_WHEN_SELLING = [
-  "Email to your list, from your studio",
-  "Your own domain",
-  "Several stores in one account",
+  "Your own domain, on Pro",
+  "Several stores in one account, on Pro",
 ];
 /** Calls that have not ended yet, soonest first. */
 function upcoming<T extends { start: number; end: number }>(list: T[]): T[] {
@@ -147,6 +146,14 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
   "switched-year": {
     title: "You now pay yearly",
     body: "The change is made at Stripe. The date below is when the next charge is due, and it is the only one for a year.",
+  },
+  "switched-tier-pro": {
+    title: "You are on Pro",
+    body: "Email to your list is switched on. Open Email, below your products, to set it up and write your first one.",
+  },
+  "switched-tier-creator": {
+    title: "You are back on the Nimbus Labs plan",
+    body: "Email to your list is off from now. Anything already paid for Pro is kept as credit on your account and pays your next charges until it runs out.",
   },
   "switched-month": {
     title: "You now pay monthly",
@@ -263,13 +270,16 @@ export default async function StudioPage({
     live && live.state !== "unknown"
       ? live.state === "active"
       : Boolean(store?.subscriptionActive);
-  const plan = live?.state === "active" ? { tier: live.tier, cycle: live.cycle } : null;
+  const plan =
+    live?.state === "active"
+      ? { tier: live.tier, cycle: live.cycle, trialEnds: live.trialing ? live.until : 0 }
+      : null;
   if (
     store &&
     live &&
     live.state !== "unknown" &&
     (paid !== store.subscriptionActive ||
-      (plan && (plan.tier !== store.tier || plan.cycle !== store.cycle)))
+      (plan && (plan.tier !== store.tier || plan.cycle !== store.cycle || plan.trialEnds !== store.trialEnds)))
   ) {
     await setSubscription(email, { active: paid, ...(plan ?? {}) });
   }
@@ -551,6 +561,23 @@ export default async function StudioPage({
               </div>
             ) : null}
 
+            {PRO_ON_SALE ? (
+              <div className="card mt-8 p-6 sm:p-8">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-lg font-semibold tracking-[-0.02em] text-ink">Email your list</p>
+                  <span className="tag tag-brand">Pro</span>
+                </div>
+                <p className="mt-2 text-ink-soft">
+                  {paid && tier === "pro"
+                    ? "Write to the people who agreed to hear from you: one-off emails, emails scheduled for later, and sequences that go out by themselves after someone joins or buys."
+                    : `One-off emails, emails scheduled for later, and sequences that go out by themselves after someone joins or buys. Part of Pro, at ${priceWords("pro", "month")}.`}
+                </p>
+                <Link href="/studio/email" className="btn btn-primary mt-5">
+                  {paid && tier === "pro" ? "Open Email" : "See what it does"}
+                </Link>
+              </div>
+            ) : null}
+
             </div>
             <div className="min-w-0">
             <div className="card mt-8 p-6 sm:p-8">
@@ -737,7 +764,7 @@ export default async function StudioPage({
                   What you pay us
                 </p>
                 <p className="mt-2 text-ink-soft">
-                  One plan, and nothing on top of it. We take 0% of what you
+                  A plan, and nothing on top of it. We take 0% of what you
                   sell, because what you sell never passes through us — the
                   subscription is our whole income, and it is the same whether
                   you sell three files or three thousand.
@@ -807,6 +834,45 @@ export default async function StudioPage({
                         </form>
                       </details>
                     )}
+                    {!changePending && PRO_ON_SALE && tier === "creator" ? (
+                      <details className="mt-4">
+                        <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
+                          {`Move up to Pro: ${priceWords("pro", billedYearly ? "year" : "month")}`}
+                        </summary>
+                        <p className="mt-3 text-sm text-ink-soft">
+                          {`Pro adds email to your list: one-off emails, emails scheduled for later and automatic sequences, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month. `}
+                          {trialing
+                            ? "Nothing is charged now. When the trial ends you pay the Pro price instead."
+                            : "You are charged the Pro price today, less what is left of what you already paid for. If your bank asks you to confirm, you are sent to confirm it, and nothing changes until it is paid."}
+                        </p>
+                        <form action="/api/billing/switch" method="post" className="mt-3">
+                          <input type="hidden" name="tier" value="pro" />
+                          <input type="hidden" name="cycle" value={billedYearly ? "year" : "month"} />
+                          <button type="submit" className="btn btn-primary btn-sm">
+                            Move up to Pro
+                          </button>
+                        </form>
+                      </details>
+                    ) : null}
+                    {!changePending && tier === "pro" ? (
+                      <details className="mt-4">
+                        <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
+                          {`Go back to the ${priceWords("creator", billedYearly ? "year" : "month")} plan`}
+                        </summary>
+                        <p className="mt-3 text-sm text-ink-soft">
+                          {trialing
+                            ? "Nothing is charged now, and email to your list switches off."
+                            : "Email to your list switches off from today. What is left of what you paid for Pro is kept as credit on your account and pays your next charges until it runs out."}
+                        </p>
+                        <form action="/api/billing/switch" method="post" className="mt-3">
+                          <input type="hidden" name="tier" value="creator" />
+                          <input type="hidden" name="cycle" value={billedYearly ? "year" : "month"} />
+                          <button type="submit" className="btn btn-secondary btn-sm">
+                            Go back
+                          </button>
+                        </form>
+                      </details>
+                    ) : null}
                     <details className="mt-4">
                       <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
                         Cancel the subscription
@@ -868,6 +934,23 @@ export default async function StudioPage({
                       something real and decide with an answer instead of a
                       guess. We email you a week before that first charge.
                     </p>
+                    {PRO_ON_SALE ? (
+                      <div className="mt-6 rounded-[var(--r-md)] bg-sand p-5">
+                        <p className="font-semibold text-ink">Pro</p>
+                        <p className="mt-1 text-sm text-ink-soft">
+                          {`Everything above, plus email to your list: one-off emails, emails scheduled for later and automatic sequences, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month. The same ${TRIAL_DAYS}-day trial.`}
+                        </p>
+                        <form action="/api/billing/checkout" method="post" className="mt-4 flex flex-col items-start gap-3">
+                          <input type="hidden" name="tier" value="pro" />
+                          <button type="submit" name="cycle" value="month" className="btn btn-secondary btn-wrap">
+                            {`Start the trial on Pro \u2014 ${priceWords("pro", "month")} after that`}
+                          </button>
+                          <button type="submit" name="cycle" value="year" className="btn btn-secondary btn-wrap">
+                            {`Or Pro yearly: ${priceWords("pro", "year")}, $${yearSaving("pro") / 100} less`}
+                          </button>
+                        </form>
+                      </div>
+                    ) : null}
                   </>
                 )}
               </div>

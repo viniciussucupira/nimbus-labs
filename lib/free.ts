@@ -30,6 +30,17 @@ import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { isPaidUp } from "@/lib/billing";
 import { type Product, type Store, isFree } from "@/lib/store";
+import {
+  type AddResult,
+  MAX_LEADS,
+  leadsKey,
+  listCounts,
+  mailable,
+  parseContact,
+  upsertContact,
+} from "@/lib/contacts";
+
+export { MAX_LEADS };
 
 /** How long the emailed link keeps working. */
 export const CLAIM_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -43,17 +54,6 @@ export const CLAIM_TTL_SECONDS = 7 * 24 * 60 * 60;
  */
 export const MAX_CLAIM_USES = 10;
 
-/**
- * How many addresses one store's list may hold.
- *
- * Published, like every other limit here. It is far past where a store on
- * one subscription is likely to be, and it exists so that one list can never
- * grow without end on an account paying the same as everyone else. Reaching
- * it never costs a visitor the file: they still get it, and the creator is
- * told the list is full.
- */
-export const MAX_LEADS = 100_000;
-
 /** Requests from one connection to one store, per hour. */
 const IP_LIMIT = 20;
 /**
@@ -64,9 +64,6 @@ const IP_LIMIT = 20;
  */
 const ADDRESS_LIMIT = 5;
 const RATE_WINDOW_SECONDS = 60 * 60;
-
-/** How many product names one address keeps on the list. */
-const MAX_TITLES = 20;
 
 async function sha256Hex(value: string): Promise<string> {
   const data = new TextEncoder().encode(value);
@@ -94,8 +91,6 @@ const ipKey = async (ip: string, handle: string) =>
   `nl:rl:free:ip:${(await sha256Hex(`nimbus-free-ip:${ip}:${handle}`)).slice(0, 32)}`;
 const addressKey = async (email: string) =>
   `nl:rl:free:addr:${(await sha256Hex(`nimbus-free-addr:${email}`)).slice(0, 32)}`;
-const leadsKey = (listId: string) => `nl:store:leads:${listId}`;
-const agreedKey = (listId: string) => `nl:store:leads:${listId}:agreed`;
 
 /**
  * Whether a product can be given away from this store right now.
@@ -267,35 +262,6 @@ export async function spendClaim(token: string): Promise<UseResult> {
   return { ok: true, claim };
 }
 
-/** One address on a store's list, as it is kept. */
-type Lead = {
-  /** Ticked the box to hear from the creator. */
-  agreed: boolean;
-  agreedAt: string;
-  firstAt: string;
-  lastAt: string;
-  /** What they asked for, by the name it had at the time. */
-  titles: string[];
-};
-
-function parseLead(raw: unknown): Lead | null {
-  if (typeof raw !== "string" || !raw) return null;
-  try {
-    const value = JSON.parse(raw) as Partial<Lead>;
-    return {
-      agreed: value.agreed === true,
-      agreedAt: typeof value.agreedAt === "string" ? value.agreedAt : "",
-      firstAt: typeof value.firstAt === "string" ? value.firstAt : "",
-      lastAt: typeof value.lastAt === "string" ? value.lastAt : "",
-      titles: Array.isArray(value.titles)
-        ? value.titles.filter((t): t is string => typeof t === "string").slice(0, MAX_TITLES)
-        : [],
-    };
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Puts a confirmed address on the store's list.
  *
@@ -311,61 +277,32 @@ export async function recordLead(
   store: Store,
   claim: Claim,
   title: string,
-): Promise<void> {
-  if (!store.listId || !isRedisConfigured()) return;
-  const key = leadsKey(store.listId);
+): Promise<AddResult | null> {
+  if (!store.listId || !isRedisConfigured()) return null;
   try {
-    const [raw, size] = await redisPipeline([
-      ["HGET", key, claim.e],
-      ["HLEN", key],
-    ]);
-    const before = parseLead(raw);
-    if (!before && Number(size) >= MAX_LEADS) {
-      console.error("a store's list is full", store.handle);
-      return;
-    }
-
-    const now = new Date().toISOString();
-    const agreedNow = claim.c && !before?.agreed;
-    const titles = before ? [...before.titles] : [];
-    if (!titles.includes(title)) titles.push(title);
-
-    const lead: Lead = {
-      agreed: Boolean(before?.agreed) || claim.c,
-      agreedAt: before?.agreed ? before.agreedAt : claim.c ? claim.at || now : "",
-      firstAt: before?.firstAt || now,
-      lastAt: now,
-      titles: titles.slice(-MAX_TITLES),
-    };
-
-    const commands: (string | number)[][] = [
-      ["HSET", key, claim.e, JSON.stringify(lead)],
-    ];
-    if (agreedNow) commands.push(["INCR", agreedKey(store.listId)]);
-    await redisPipeline(commands);
+    const result = await upsertContact(store.listId, claim.e, {
+      agreed: claim.c,
+      explicit: claim.c,
+      source: "free",
+      productId: claim.p,
+      title,
+      at: claim.at,
+    });
+    if (result.full) console.error("a store's list is full", store.handle);
+    return result;
   } catch (error) {
     console.error("could not record an address on a list", error);
+    return null;
   }
 }
 
 export type ListSize = { total: number; agreed: number; full: boolean };
 
-/** How many addresses the list holds, and how many agreed to hear more. */
+/** How many addresses the list holds, and how many may be written to. */
 export async function listSize(store: Store): Promise<ListSize> {
-  if (!store.listId || !isRedisConfigured()) {
-    return { total: 0, agreed: 0, full: false };
-  }
   try {
-    const [total, agreed] = await redisPipeline([
-      ["HLEN", leadsKey(store.listId)],
-      ["GET", agreedKey(store.listId)],
-    ]);
-    const t = Number(total) || 0;
-    return {
-      total: t,
-      agreed: Math.min(t, Number(agreed) || 0),
-      full: t >= MAX_LEADS,
-    };
+    const counts = await listCounts(store.listId);
+    return { total: counts.total, agreed: counts.mailable, full: counts.full };
   } catch (error) {
     console.error("could not read a list's size", error);
     return { total: 0, agreed: 0, full: false };
@@ -393,7 +330,7 @@ function cell(value: string): string {
  */
 export async function listAsCsv(store: Store, onlyAgreed: boolean): Promise<string> {
   const rows = [
-    ["email", "agreed_to_emails", "agreed_at", "first_at", "last_at", "asked_for"]
+    ["email", "agreed_to_emails", "agreed_at", "first_at", "last_at", "asked_for", "unsubscribed_at"]
       .map(cell)
       .join(","),
   ];
@@ -410,9 +347,9 @@ export async function listAsCsv(store: Store, onlyAgreed: boolean): Promise<stri
     const flat = Array.isArray(reply[1]) ? (reply[1] as unknown[]) : [];
     for (let i = 0; i + 1 < flat.length; i += 2) {
       const email = String(flat[i]);
-      const lead = parseLead(flat[i + 1]);
+      const lead = parseContact(flat[i + 1]);
       if (!lead) continue;
-      if (onlyAgreed && !lead.agreed) continue;
+      if (onlyAgreed && !mailable(lead)) continue;
       rows.push(
         [
           email,
@@ -421,6 +358,7 @@ export async function listAsCsv(store: Store, onlyAgreed: boolean): Promise<stri
           lead.firstAt,
           lead.lastAt,
           lead.titles.join("; "),
+          lead.unsubAt,
         ]
           .map(cell)
           .join(","),

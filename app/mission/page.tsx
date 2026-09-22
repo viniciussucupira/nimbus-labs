@@ -5,7 +5,7 @@ import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { isBillingConfigured } from "@/lib/billing";
-import { PRICE_CENTS, TRIAL_DAYS, YEAR_PRICE_CENTS } from "@/lib/plan";
+import { PLAN_PRICES, PRICE_CENTS, TRIAL_DAYS, YEAR_PRICE_CENTS } from "@/lib/plan";
 import { isConnectConfigured } from "@/lib/stripe-connect";
 
 export const metadata: Metadata = {
@@ -79,6 +79,7 @@ const BUILT = [
   "Links to everywhere else you are — the channel, the podcast, the booking page — with no price and no checkout on them",
   "Discount codes a buyer types at checkout, made as coupons on your own Stripe account",
   "Free products given for an email address, each address confirmed by its owner, and the list downloadable from your studio at any time",
+  "Email to your list, on Pro: one-off emails now or at a time you choose, and sequences that send themselves after someone joins or buys — only to people who agreed, with a one-click unsubscribe in every one",
   "A store that installs to the home screen on iPhone and Android",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
@@ -103,13 +104,14 @@ const ORDERS_LINE =
  * The line about our own income, which belongs to whether billing can reach
  * Stripe from this deployment rather than to whether we have written the code.
  */
-const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year, free for the first ${TRIAL_DAYS} days, with an email a week before the first charge, cancelled in one click from your studio`;
+const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year, or $${PLAN_PRICES.pro.month / 100} and $${PLAN_PRICES.pro.year / 100} on Pro, free for the first ${TRIAL_DAYS} days, with an email a week before the first charge, cancelled in one click from your studio`;
 
 const NOT_BUILT = [
   "PayPal as a second way to be paid — it is Stripe only today",
   "Communities and group chat",
   "Reading your Google or Outlook calendar, so a busy day closes by itself",
-  "Email marketing and automations",
+  "Your own domain for your store",
+  "Several stores in one account",
   "An affiliate programme",
 ];
 

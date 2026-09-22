@@ -58,19 +58,20 @@ const SECTIONS: Section[] = [
         q: "What does it cost to start?",
         a: [
           "Nothing to sign up. Your store address, your page, the editor and connecting Stripe are free and stay free.",
-          "What the subscription switches on is the till: your page taking a card, and handing out what you give away for an email address. It is $29 a month, or $300 a year paid once, which is $48 less. The first 14 days are free either way. Stripe takes your card when the trial starts and first charges it when the 14 days end; we email you a week before that charge, and if you cancel before it — one click in your studio — it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.",
+          "What the subscription switches on is the till: your page taking a card, and handing out what you give away for an email address. It is $29 a month, or $300 a year paid once, which is $48 less. Pro, which adds email to your list, is $99 a month or $948 a year. The first 14 days are free on either plan, monthly or yearly. Stripe takes your card when the trial starts and first charges it when the 14 days end; we email you a week before that charge, and if you cancel before it — one click in your studio — it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.",
         ],
       },
       {
         q: "What will it cost?",
         a: [
-          "One subscription, monthly or yearly, and 0% of your sales. The card fee your payment processor charges is paid to them, on your own account, and we never take a cut on top of it.",
+          "One subscription — $29, or $99 on Pro — monthly or yearly, and 0% of your sales. The card fee your payment processor charges is paid to them, on your own account, and we never take a cut on top of it.",
           "The price is published on the home page. If it ever changes, existing subscribers are told before it applies to them.",
         ],
       },
       {
-        q: "Can I switch between monthly and yearly?",
+        q: "Can I switch between monthly and yearly, or between the plans?",
         a: [
+          "Yes to both, from your studio. Moving up to Pro while you pay charges the difference that day, less what is left of what you already paid; going back to $29 keeps what is left of Pro as credit on your account. Inside the trial, neither charges anything.",
           "Yes, from your studio, whenever you like. Monthly to yearly charges the year that day, less what is left of the month you already paid for. Yearly to monthly keeps what is left of your year as credit on your account, and that credit pays your months until it runs out. Inside the trial, switching charges nothing.",
           "On a yearly plan we email you about a month before it renews, with the date, the amount and the link to cancel.",
         ],
@@ -141,7 +142,7 @@ const SECTIONS: Section[] = [
       {
         q: "Can I give someone a discount code?",
         a: [
-          "Yes, and it is in the one price — on Stan the same thing is on their $99 plan, read from their own pricing page on 20 September 2026.",
+          "Yes, and it is on the $29 plan — on Stan the same thing is on their $99 plan, read from their own pricing page on 20 September 2026.",
           "You pick the word, say whether it takes a percentage or an amount off, and cap how many times it can be used if you want to. The buyer types it at checkout and Stripe works out the new total.",
           "The code is a coupon on your own Stripe account, not a record of ours. So the count of how many times it has been used is Stripe\u2019s count, a code you switch off in your own dashboard is off here too, and if you ever leave, your codes leave with you.",
           "One limit, said plainly: a code comes off the payment it is typed into. On a membership that is the first charge, not every renewal for ever.",
@@ -249,7 +250,7 @@ const SECTIONS: Section[] = [
       {
         q: "Can I add my Meta, Google, TikTok or Pinterest pixel?",
         a: [
-          "Yes, on the one plan. Paste the pixel's id in your studio and your store's pages tell that platform about every page view, every checkout started, every lead from a free product, and every purchase with its amount, so your ads can learn who buys.",
+          "Yes, on the $29 plan. Paste the pixel's id in your studio and your store's pages tell that platform about every page view, every checkout started, every lead from a free product, and every purchase with its amount, so your ads can learn who buys.",
           "Those platforms set cookies, so visitors in the EU, the UK, Switzerland and Brazil are asked first, in plain words, and nothing loads unless they say yes. Everywhere else the pixels load unless the visitor's browser sends Global Privacy Control. The ads and what they measure are yours: say in your own privacy notice that you use them.",
         ],
       },
@@ -262,9 +263,17 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can I email the people on my list?",
+        a: [
+          "Yes, on Pro. From your studio you write one-off emails to everyone who agreed to hear from you, or only to those who got one product, and send them now or at a time you choose. Sequences go out by themselves: a welcome when someone joins, a few emails in the days after someone buys. Each person goes through a sequence once.",
+          "Only people who agreed are ever written to: those who ticked the box when they got something free or bought from you, and those you import, where you confirm each time that they agreed. Every email carries a one-click unsubscribe, why the reader is getting it and your postal address, which the law in the United States asks for; anyone who leaves is never written to again, whatever a later import says.",
+          "Emails go out under your name, and replies come to you. Pro sends up to 50,000 a month, one-off and sequences together; during the free trial a store sends up to 1,000, and the full 50,000 opens with the first payment. Your list stays downloadable as a file at any time.",
+        ],
+      },
+      {
         q: "Can I run a community or a webinar?",
         a: [
-          "Not yet. Communities, webinars, email automations and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
+          "Not yet. Communities, webinars and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
         ],
       },
       {
@@ -276,7 +285,7 @@ const SECTIONS: Section[] = [
       {
         q: "Can I use my own domain?",
         a: [
-          "Not yet. It is on the list, and this page will say so on the day it works.",
+          "Not yet. It is next on the list, on Pro, and this page will say so on the day it works.",
         ],
       },
       {

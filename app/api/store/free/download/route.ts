@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { isFree, storeForHandle } from "@/lib/store";
 import { recordLead, spendClaim } from "@/lib/free";
+import { enroll } from "@/lib/flows";
 import { plain, serveFile } from "@/lib/serve-file";
 
 /**
@@ -55,7 +56,10 @@ export async function POST(request: NextRequest) {
     return plain(404, "There is nothing on this yet. Ask the store about it.");
   }
 
-  await recordLead(store, claim, product.title);
+  const listed = await recordLead(store, claim, product.title);
+  // Sequences start only for someone who agreed to hear from the creator,
+  // now or before; enroll checks that.
+  if (listed) await enroll(store, claim.e, { joined: listed.joined, productId: claim.p });
 
   if (product.link) {
     return new Response(null, {

@@ -23,6 +23,7 @@ import { canManage } from "@/lib/membership-manage";
 import { StoreTracking } from "@/components/store-tracking";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { stockLeft } from "@/lib/stock";
+import { canWrite } from "@/lib/mail";
 
 type Params = {
   params: Promise<{ handle: string }>;
@@ -110,6 +111,8 @@ export default async function StorePage({ params, searchParams }: Params) {
   // A member can always find the way out, even when the store cannot sell
   // right now: stopping a charge must never depend on the store being open.
   const manageable = canManage(store);
+  // Buyers are asked whether they want the creator's emails only where the creator can send them.
+  const writes = canWrite(store);
   // What is left of each limited product, counted from real checkouts.
   const left = new Map<string, number>();
   for (const product of store.products) {
@@ -408,6 +411,13 @@ export default async function StorePage({ params, searchParams }: Params) {
                                 ) : null}
                               </span>
                             </span>
+                          </label>
+                        ) : null}
+                        {writes ? (
+                          /* Starts empty, like every box here: buying is not agreeing to more email. */
+                          <label htmlFor={`n-${product.id}`} className="st-muted mb-4 flex cursor-pointer items-start gap-3 text-sm">
+                            <input id={`n-${product.id}`} type="checkbox" name="news" value="yes" className="mt-0.5 h-4 w-4 shrink-0" />
+                            <span>{`Also send me emails from ${store.mail?.fromName || store.name}. I can unsubscribe whenever I like.`}</span>
                           </label>
                         ) : null}
                         <button

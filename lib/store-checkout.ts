@@ -125,6 +125,8 @@ export async function createCheckout(
      * so the course opens straight away in the browser that paid.
      */
     buyerKey?: string;
+    /** The buyer ticked the box to hear from the creator. */
+    news?: boolean;
   } = {},
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
@@ -206,6 +208,7 @@ export async function createCheckout(
   if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
 
   if (extras.buyerKey) body.set("metadata[buyer_key]", extras.buyerKey);
+  if (extras.news) body.set("metadata[news]", "yes");
 
   if (membership) {
     // The subscription is created on the creator's own account, like every
@@ -279,6 +282,8 @@ export type Order =
       plan: { payments: number; interval: "week" | "month" } | null;
       /** For a course: the fingerprint of the paying browser's secret. */
       buyerKey: string | null;
+      /** The buyer ticked the box to hear from the creator. */
+      news: boolean;
     }
   | { state: "unpaid" | "expired" | "invalid" | "unavailable" | "error" };
 
@@ -356,6 +361,7 @@ export async function readOrder(
     created,
     upsellKey: typeof metadata?.upsell_key === "string" ? metadata.upsell_key : null,
     buyerKey: typeof metadata?.buyer_key === "string" ? metadata.buyer_key : null,
+    news: metadata?.news === "yes",
     plan:
       metadata?.kind === "plan" && Number(metadata?.plan_payments) >= 2
         ? { payments: Number(metadata.plan_payments), interval: metadata.plan_interval === "week" ? "week" : "month" }

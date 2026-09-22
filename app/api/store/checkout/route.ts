@@ -8,6 +8,7 @@ import { activePlan, activeUpsell } from "@/lib/product-extras";
 import { rememberPlan } from "@/lib/plans";
 import { UPSELL_COOKIE, newUpsellKey } from "@/lib/upsell";
 import { BUYER_COOKIE, BUYER_COOKIE_SECONDS, newBuyerKey } from "@/lib/learn";
+import { canWrite } from "@/lib/mail";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
   let optionId = "";
   let bump = false;
   let plan = false;
+  let news = false;
   try {
     const form = await request.formData();
     const h = form.get("handle");
@@ -61,6 +63,8 @@ export async function POST(request: NextRequest) {
     bump = form.get("bump") === "yes";
     // Paying in instalments only when the buyer picked it.
     plan = form.get("pay") === "plan";
+    // Only a box the buyer ticked, and only on a store that can write to them.
+    news = form.get("news") === "yes";
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -97,6 +101,7 @@ export async function POST(request: NextRequest) {
         upsellKey: upsell?.fingerprint,
         plan: inPlan,
         buyerKey: buyer?.fingerprint,
+        news: news && canWrite(store),
       }),
     );
     if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);

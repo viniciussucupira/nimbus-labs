@@ -34,9 +34,15 @@ export async function POST(request: NextRequest) {
     const result = await switchPlan(store.subscriptionId, { tier, cycle });
     if (result.kind === "switched") {
       if (result.state.state === "active") {
-        await setSubscription(email, { active: true, tier: result.state.tier, cycle: result.state.cycle });
+        await setSubscription(email, {
+          active: true,
+          tier: result.state.tier,
+          cycle: result.state.cycle,
+          trialEnds: result.state.trialing ? result.state.until : 0,
+        });
       }
-      return away(origin, `/studio?billing=switched-${cycle}`);
+      const moved = result.state.state === "active" && result.state.tier !== store.tier ? `tier-${result.state.tier}` : cycle;
+      return away(origin, `/studio?billing=switched-${moved}`);
     }
     if (result.kind === "confirm") {
       return new Response(null, { status: 303, headers: { Location: result.url } });

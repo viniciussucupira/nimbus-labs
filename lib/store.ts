@@ -194,6 +194,25 @@ export type Product = {
   course: CourseRef | null;
 };
 
+/** What every email to a creator's list carries, as the law asks. */
+export type MailSettings = {
+  /** The name the email is from. */
+  fromName: string;
+  /** A postal address where the creator can be reached. */
+  address: string;
+};
+
+export const MAX_MAIL_NAME = 60;
+export const MAX_MAIL_ADDRESS = 200;
+
+function parseMail(raw: unknown): MailSettings | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const fromName = typeof value.fromName === "string" ? value.fromName.trim().slice(0, MAX_MAIL_NAME) : "";
+  const address = typeof value.address === "string" ? value.address.trim().slice(0, MAX_MAIL_ADDRESS) : "";
+  return fromName && address ? { fromName, address } : null;
+}
+
 /** The part of a course a store record carries. */
 export type CourseRef = { id: string; lessons: number };
 
@@ -248,6 +267,10 @@ export type Store = {
    */
   tier: Tier;
   cycle: Cycle;
+  /** When the free trial ends, in seconds; 0 when not in one. A snapshot too. */
+  trialEnds: number;
+  /** How the creator's emails to their list are signed. Null until set up. */
+  mail: MailSettings | null;
   /** What the store lists, in the order the creator put them in. */
   products: Product[];
   /**
@@ -423,6 +446,8 @@ function parseStore(raw: unknown): Store | null {
       // Every store from before there were two plans is on the one there was.
       tier: parseTier(value.tier) ?? "creator",
       cycle: parseCycle(value.cycle) ?? "month",
+      trialEnds: typeof value.trialEnds === "number" && value.trialEnds > 0 ? value.trialEnds : 0,
+      mail: parseMail(value.mail),
       products: parseProducts(value.products),
       // Stores written before links existed simply have none, which is the
       // same as a store nobody has added one to yet.
@@ -546,6 +571,8 @@ export async function claimHandle(
     subscriptionCheckedAt: "",
     tier: "creator",
     cycle: "month",
+    trialEnds: 0,
+    mail: null,
     products: [],
     links: [],
     hasDiscounts: false,
@@ -675,6 +702,7 @@ export async function setSubscription(
     active: boolean;
     tier?: Tier;
     cycle?: Cycle;
+    trialEnds?: number;
   },
 ): Promise<Store | null> {
   const store = await storeForEmail(email);
@@ -703,6 +731,7 @@ export async function setSubscription(
     subscriptionCheckedAt: new Date().toISOString(),
     tier: fields.tier ?? store.tier,
     cycle: fields.cycle ?? store.cycle,
+    trialEnds: fields.trialEnds ?? store.trialEnds,
   };
   await saveStore(next);
   return next;
@@ -955,6 +984,24 @@ export async function setCourseLessons(email: string, id: string, lessons: numbe
   const products = [...store.products];
   products[at] = { ...products[at], course: { id: products[at].course!.id, lessons } };
   await saveStore({ ...store, products });
+}
+
+/** Saves how the creator's emails are signed. */
+export async function setMailSettings(email: string, mail: MailSettings): Promise<Store | null> {
+  const store = await storeForEmail(email);
+  if (!store) return null;
+  const next: Store = { ...store, mail, listId: store.listId ?? newListId() };
+  await saveStore(next);
+  return next;
+}
+
+/** Gives a store its list, the first time something needs one. */
+export async function ensureListId(email: string): Promise<Store | null> {
+  const store = await storeForEmail(email);
+  if (!store || store.listId) return store;
+  const next: Store = { ...store, listId: newListId() };
+  await saveStore(next);
+  return next;
 }
 
 export type ExtrasResult =

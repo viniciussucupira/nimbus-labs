@@ -17,6 +17,8 @@ import { cookies } from "next/headers";
 import { activeUpsell } from "@/lib/product-extras";
 import { UPSELL_COOKIE, offerOpen, readUpsell, settleUpsell, upsellDelivery } from "@/lib/upsell";
 import { recordEnrollment } from "@/lib/learn";
+import { noteProduct, upsertContact } from "@/lib/contacts";
+import { enroll } from "@/lib/flows";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -101,6 +103,33 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     await recordEnrollment(store, order.email, order.product.id, order.created).catch((error) =>
       console.error("recording a course purchase failed", error),
     );
+  }
+
+  // A buyer who ticked the box joins the creator's list, and any sequence
+  // that starts with joining or with this product starts for them.
+  if (order.state === "paid" && order.news && order.email && store.listId) {
+    try {
+      const added = await upsertContact(store.listId, order.email, {
+        agreed: true,
+        explicit: true,
+        source: "buyer",
+        productId: order.product.id,
+        title: order.product.title,
+      });
+      await enroll(store, order.email, { joined: added.joined, productId: order.product.id });
+    } catch (error) {
+      console.error("adding a buyer to a list failed", error);
+    }
+  } else if (order.state === "paid" && order.email && store.listId) {
+    // Someone already on the list who buys without the box: nobody new is
+    // added, but a sequence about this product starts for them.
+    try {
+      if (await noteProduct(store.listId, order.email, order.product.id, order.product.title)) {
+        await enroll(store, order.email, { joined: false, productId: order.product.id });
+      }
+    } catch (error) {
+      console.error("noting a purchase on a list failed", error);
+    }
   }
 
   // A limited product's unit becomes a sale the moment its buyer is back.

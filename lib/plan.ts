@@ -53,7 +53,15 @@ export const PLAN_NAMES: Record<Tier, string> = {
  * first of those, and not a day before — a plan that costs more and adds
  * nothing yet is not something we will take money for.
  */
-export const PRO_ON_SALE = false;
+export const PRO_ON_SALE = true;
+
+/**
+ * Emails a Pro store may send to its list in a calendar month: one-off
+ * emails and automatic sequences together. Published, like every limit here.
+ */
+export const PRO_MONTHLY_EMAILS = 50_000;
+/** The same, while the free trial runs, so a trial cannot be used to spam. */
+export const TRIAL_MONTHLY_EMAILS = 1_000;
 
 /** What only Pro switches on. */
 export type ProFeature = "email" | "affiliates" | "domain" | "stores" | "api";

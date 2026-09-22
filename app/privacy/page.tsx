@@ -164,6 +164,20 @@ export default function PrivacyPage() {
           address, and of your IP address, for one hour.
         </p>
         <p>
+          <strong className="text-black">Emails from a creator.</strong> A
+          creator on the Pro plan can email the people on their list who agreed
+          to hear from them: those who ticked the box when they got something
+          free or bought, and those the creator imports after confirming that
+          each of them agreed. We send those emails on the creator&apos;s
+          behalf, under the creator&apos;s name, through our email provider.
+          For each one we use your address, the email the creator wrote and a
+          random code for your unsubscribe link. We do not put tracking pixels
+          or tracked links in them. When you unsubscribe — one press, from the
+          link or your mail app&apos;s own button — we record it and when, and
+          you are not written to by that creator again unless you tick their
+          box again yourself.
+        </p>
+        <p>
           <strong className="text-black">Usage and technical data.</strong> We
           may collect information such as IP address, browser type, device
           type, pages visited, referring URL, and approximate location derived
@@ -277,6 +291,12 @@ export default function PrivacyPage() {
             is their store;
           </li>
           <li>
+            <strong className="text-black">Resend</strong>, our email
+            provider, which delivers the emails we send: sign-in links,
+            receipts and the links to what you asked for, and the emails a
+            creator sends to their list;
+          </li>
+          <li>
             <strong className="text-black">
               Hosting, analytics, and infrastructure providers
             </strong>
@@ -346,7 +366,9 @@ export default function PrivacyPage() {
           A creator&apos;s list is kept for as long as their store exists, or
           until the creator, or the person on it, asks us to remove an address.
           A request for a free copy whose link is never used is deleted after
-          7 days.
+          7 days. An address that unsubscribed from a creator stays on that
+          list, marked as unsubscribed, so it is never written to again; if you
+          ask for it to be deleted entirely instead, it is.
         </p>
         <p>
           Creator research answers are kept for up to 24 months from the date

@@ -272,6 +272,7 @@ export type StartedSubscription = {
   active: boolean;
   tier: Tier;
   cycle: Cycle;
+  trialEnds: number;
 };
 
 /**
@@ -316,6 +317,7 @@ export async function readStartedSubscription(
     active: state.state === "active",
     tier: state.state === "active" ? state.tier : "creator",
     cycle: state.state === "active" ? state.cycle : "month",
+    trialEnds: state.state === "active" && state.trialing ? state.until : 0,
   };
 }
 
