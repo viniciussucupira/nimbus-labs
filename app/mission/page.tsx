@@ -66,6 +66,7 @@ const BUILT = [
   "The file you sell, uploaded straight from your browser and kept where only you can reach it",
   "Or a link instead of a file, for what is too big to upload or is not a file at all",
   "Memberships: daily, weekly, monthly or yearly, charged on your own Stripe account",
+  "Members who cancel on their own, in one click on Stripe's own page, without having to write to you",
   "Links to everywhere else you are — the channel, the podcast, the booking page — with no price and no checkout on them",
   "Discount codes a buyer types at checkout, made as coupons on your own Stripe account",
   "Free products given for an email address, each address confirmed by its owner, and the list downloadable from your studio at any time",
@@ -96,7 +97,6 @@ const ORDERS_LINE =
 const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month, free for the first ${TRIAL_DAYS} days, cancelled in one click from your studio`;
 
 const NOT_BUILT = [
-  "Members cancelling on their own, without having to write to you",
   "Visit counts, and pixels for Meta, TikTok and Google",
   "Order bumps and upsells at checkout",
   "PayPal as a second way to be paid — it is Stripe only today",
