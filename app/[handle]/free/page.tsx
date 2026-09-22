@@ -5,6 +5,7 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { linkHost } from "@/lib/product-link";
 import { readClaim } from "@/lib/free";
 import { lookStyle } from "@/lib/store-look";
+import { StoreTracking } from "@/components/store-tracking";
 
 export const metadata: Metadata = {
   title: "Your free copy — Nimbus Labs",
@@ -160,6 +161,10 @@ export default async function FreePage({ params, searchParams }: Params) {
             >
               Back to {store.name}
             </Link>
+            <StoreTracking
+              store={store}
+              event={status === "sent" && asked ? { type: "lead", productId: asked.id } : null}
+            />
           </div>
         </div>
       </main>
