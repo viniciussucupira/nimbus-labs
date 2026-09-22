@@ -20,6 +20,8 @@ import {
 } from "@/lib/product-option";
 import { MAX_LINK_LENGTH } from "@/lib/product-link";
 import { type Recurring, parseRecurring } from "@/lib/product-recurring";
+import { type StoreLook, DEFAULT_LOOK, parseLook } from "@/lib/store-look";
+import { PHOTO_ID_PATTERN } from "@/lib/photo-limits";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
@@ -230,6 +232,17 @@ export type Store = {
    * without being copied. Null until the store first gives something away.
    */
   listId: string | null;
+  /**
+   * The theme and the colour of the public page. Stores written before either
+   * existed read back as the default look, which is the page they had.
+   */
+  look: StoreLook;
+  /**
+   * The creator's photo, when there is one. The picture itself is kept under
+   * this id and served from an address that never changes for it, so a
+   * browser may keep it for good; a new photo gets a new id.
+   */
+  photoId: string | null;
 };
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
@@ -352,6 +365,11 @@ function parseStore(raw: unknown): Store | null {
         typeof value.listId === "string" && LIST_ID_PATTERN.test(value.listId)
           ? value.listId
           : null,
+      look: parseLook(value.look),
+      photoId:
+        typeof value.photoId === "string" && PHOTO_ID_PATTERN.test(value.photoId)
+          ? value.photoId
+          : null,
     };
   } catch {
     return null;
@@ -453,6 +471,8 @@ export async function claimHandle(
     links: [],
     hasDiscounts: false,
     listId: newListId(),
+    look: { ...DEFAULT_LOOK },
+    photoId: null,
   };
 
   try {
@@ -758,6 +778,33 @@ export async function updateDetails(
   };
   await saveStore(next);
   return { ok: true, store: next };
+}
+
+/** Changes the theme and the colour of the public page. */
+export async function updateLook(
+  email: string,
+  look: StoreLook,
+): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const next: Store = { ...store, look: parseLook(look) };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+/**
+ * Points the store at a photo, or at none, and says which one it replaced so
+ * the caller can delete the old picture once nothing refers to it.
+ */
+export async function setPhotoId(
+  email: string,
+  photoId: string | null,
+): Promise<{ ok: true; store: Store; was: string | null } | { ok: false; reason: "none" }> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const next: Store = { ...store, photoId };
+  await saveStore(next);
+  return { ok: true, store: next, was: store.photoId };
 }
 
 export type ProductResult =
