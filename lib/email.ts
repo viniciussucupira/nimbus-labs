@@ -33,6 +33,10 @@ export async function sendEmail(message: {
   to: string;
   subject: string;
   text: string;
+  /** Where replies go, when that is not the sender. */
+  replyTo?: string;
+  /** Files to attach, their content in base64, as Resend's API takes them. */
+  attachments?: { filename: string; content: string }[];
 }): Promise<boolean> {
   const key = getKey();
   if (!key) return false;
@@ -49,6 +53,8 @@ export async function sendEmail(message: {
         to: [message.to],
         subject: message.subject,
         text: message.text,
+        ...(message.attachments?.length ? { attachments: message.attachments } : {}),
+        ...(message.replyTo ? { reply_to: message.replyTo } : {}),
       }),
       cache: "no-store",
     });
