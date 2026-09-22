@@ -12,6 +12,9 @@ import { readableTime, zoneName } from "@/lib/call-setup";
 import { SITE_URL } from "@/lib/site-url";
 import { StoreTracking } from "@/components/store-tracking";
 import { confirmStock } from "@/lib/stock";
+import { cookies } from "next/headers";
+import { activeUpsell } from "@/lib/product-extras";
+import { UPSELL_COOKIE, offerOpen, readUpsell, settleUpsell, upsellDelivery } from "@/lib/upsell";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -88,6 +91,17 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   if (order.state === "paid" && sessionId && order.product.stock !== null) {
     await confirmStock(store, order.product, sessionId).catch((error) => console.error("confirming stock failed", error));
   }
+
+  // The one-click offer: settled first if the bank asked the buyer to confirm
+  // it, then shown only to the browser that paid, within the hour, once.
+  if (order.state === "paid" && sessionId && query.upsell === "back") await settleUpsell(store, sessionId);
+  const upsellOffer = order.state === "paid" ? activeUpsell(store.products, order.product) : null;
+  const upsellRecord = upsellOffer && sessionId ? await readUpsell(sessionId) : null;
+  const upsellSecret = (await cookies()).get(UPSELL_COOKIE)?.value;
+  const showOffer =
+    order.state === "paid" && upsellOffer !== null && upsellRecord === null && offerOpen(order.created, upsellSecret, order.upsellKey ?? undefined);
+  const upsold = order.state === "paid" && sessionId ? await upsellDelivery(store, sessionId) : null;
+  const upsellMissed = upsellRecord !== null && upsellRecord.state !== "paid";
 
   const notice = order.state !== "paid" ? NOTICES[order.state] : null;
   const hours = order.state === "paid" ? Math.floor(order.secondsLeft / 3600) : 0;
@@ -271,6 +285,60 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     </p>
                   )}
                 </div>
+              ) : null}
+              {showOffer && upsellOffer ? (
+                <form
+                  action="/api/store/upsell"
+                  method="post"
+                  className="mt-7 rounded-2xl px-5 py-5"
+                  style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
+                >
+                  <input type="hidden" name="handle" value={store.handle} />
+                  <input type="hidden" name="session_id" value={sessionId ?? ""} />
+                  <p className="st-label">One more thing</p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {`${upsellOffer.target.title} for $${centsToPrice(upsellOffer.bump.priceCents)}`}
+                  </p>
+                  {upsellOffer.bump.pitch ? <p className="mt-1 text-sm">{upsellOffer.bump.pitch}</p> : null}
+                  {upsellOffer.bump.priceCents < upsellOffer.target.priceCents ? (
+                    <p className="st-muted mt-1 text-xs">{`$${centsToPrice(upsellOffer.target.priceCents)} on its own`}</p>
+                  ) : null}
+                  <button type="submit" className="btn st-btn mt-4">
+                    {`Add it for $${centsToPrice(upsellOffer.bump.priceCents)}`}
+                  </button>
+                  <p className="st-muted mt-3 text-xs">
+                    {`One press charges the card you just used, on ${store.name}'s own account. Nothing else is charged, and you can simply leave this page.`}
+                  </p>
+                </form>
+              ) : null}
+              {upsold ? (
+                <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
+                  <p className="st-label">Also yours</p>
+                  <p className="mt-1 font-semibold">{upsold.product.title}</p>
+                  {upsold.link ? (
+                    <>
+                      <a href={upsold.link} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn mt-3">
+                        Open it
+                      </a>
+                      <p className="st-muted mt-3 break-all text-sm">{upsold.link}</p>
+                    </>
+                  ) : upsold.file ? (
+                    <a
+                      href={`/api/store/download?handle=${encodeURIComponent(store.handle)}&session_id=${encodeURIComponent(
+                        sessionId ?? "",
+                      )}&item=upsell`}
+                      className="btn st-btn mt-3"
+                    >
+                      Download it
+                    </a>
+                  ) : null}
+                </div>
+              ) : upsellMissed && upsellOffer ? (
+                <p className="st-note mt-6 text-sm" role="status">
+                  {upsellRecord?.state === "pending"
+                    ? `Your bank has not confirmed ${upsellOffer.target.title}, so it was not charged.`
+                    : `${upsellOffer.target.title} was not charged: your card turned it down. You can still buy it from the store.`}
+                </p>
               ) : null}
               {order.email ? (
                 <p className="st-muted mt-2 text-sm">
