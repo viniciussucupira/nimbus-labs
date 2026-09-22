@@ -16,6 +16,7 @@ import { HandleForm } from "@/components/handle-form";
 import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
 import { DetailsForm } from "@/components/details-form";
+import { LookEditor } from "@/components/look-editor";
 import { ProductEditor } from "@/components/product-editor";
 import { LinkEditor } from "@/components/link-editor";
 import { DiscountEditor } from "@/components/discount-editor";
@@ -276,7 +277,7 @@ export default async function StudioPage({
           {store ? "Your store" : "You are signed in"}
         </h1>
         <p className="mt-3 text-ink-soft">
-          As <strong className="text-ink">{email}</strong>. No password was
+          As <strong className="text-ink [overflow-wrap:anywhere]">{email}</strong>. No password was
           created, and none is stored.
         </p>
 
@@ -318,6 +319,13 @@ export default async function StudioPage({
 
               <OldAddresses handles={store.previousHandles} />
             </div>
+
+            <LookEditor
+              look={store.look}
+              photoId={store.photoId}
+              name={store.name}
+              handle={store.handle}
+            />
 
             <ProductEditor
               products={store.products}
@@ -645,7 +653,7 @@ export default async function StudioPage({
                     <form action="/api/billing/checkout" method="post" className="mt-5">
                       <button
                         type="submit"
-                        className="btn btn-primary"
+                        className="btn btn-primary btn-wrap"
                       >
                         {/* One string, not three. Split across JSX nodes it
                             comes out of the server with markers in the middle,
