@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
-import { PhoneScreens } from "@/components/phone-screens";
+import { BuyerPath } from "@/components/buyer-path";
 import { SiteNav } from "@/components/site-nav";
 import { Icon, type IconName } from "@/components/icons";
 import { DemoWindow, Faq, HeroFlow, Pricing, RevealOnScroll } from "@/components/home-parts";
@@ -38,7 +38,7 @@ const REASONS: { icon: IconName; title: string; body: string; href: string; link
   {
     icon: "bolt",
     title: "Delivered the second it is paid",
-    body: "The file is released when Stripe confirms the payment, with a download link that stays valid for three days.",
+    body: "The file is released when Stripe confirms the payment. If the buyer loses it, a month or a year later, they get it again by email.",
     href: "/platform/instant-delivery",
     link: "How delivery works",
   },
@@ -50,7 +50,7 @@ const REASONS: { icon: IconName; title: string; body: string; href: string; link
  * visitor find the one they came for without reading all of them.
  */
 type Feature = { title: string; body: string; pro?: boolean };
-type Group = { key: string; icon: IconName; title: string; line: string; items: Feature[] };
+type Group = { key: string; icon: IconName; title: string; line: string; href: string; link: string; items: Feature[] };
 
 const DOMAINS = isDomainsConfigured();
 
@@ -60,6 +60,8 @@ const GROUPS: Group[] = [
     icon: "store",
     title: "Sell",
     line: "What you make, at the prices you choose.",
+    href: "/platform#group-sell",
+    link: "Everything you can sell",
     items: [
       { title: "Files and links", body: "PDFs, videos, presets and templates up to 5 GB, or a link to where it lives." },
       { title: "Courses", body: "Modules and lessons that can open over time, with free previews." },
@@ -73,6 +75,8 @@ const GROUPS: Group[] = [
     icon: "bank",
     title: "Get paid",
     line: "On your own Stripe account, never ours.",
+    href: "/platform#group-paid",
+    link: "How you get paid",
     items: [
       { title: "0% of your sales", body: "Stripe's card fee on your account, and nothing on top." },
       { title: "Up to three prices", body: "One week for $27, five weeks for $39, on one product." },
@@ -86,6 +90,8 @@ const GROUPS: Group[] = [
     icon: "bolt",
     title: "Deliver",
     line: "The second Stripe confirms the payment.",
+    href: "/platform/instant-delivery",
+    link: "How delivery works",
     items: [
       { title: "Instant download", body: "On screen the second it is paid. Lost later? The buyer gets it again by email, any time." },
       { title: "Courses without passwords", body: "Students open them with a link to their email." },
@@ -98,6 +104,8 @@ const GROUPS: Group[] = [
     icon: "target",
     title: "Grow",
     line: "Bring people back, and bring new ones in.",
+    href: "/platform#group-grow",
+    link: "Ways to grow",
     items: [
       { title: "Email to your list", body: "One-off emails and sequences, only to people who agreed.", pro: true },
       ...(DOMAINS ? [{ title: "Your own domain", body: "shop.yourname.com opens your store, certificate included.", pro: true }] : []),
@@ -112,6 +120,8 @@ const GROUPS: Group[] = [
     icon: "chart",
     title: "Understand",
     line: "What happened, without cookies or guesswork.",
+    href: "/platform/insights",
+    link: "What your numbers show",
     items: [
       { title: "Your numbers", body: "Visitors, where they came from, checkouts and sales." },
       { title: "Every sale, from Stripe", body: "With the buyer's address, so you can answer them." },
@@ -163,7 +173,7 @@ const CREATORS = [
 const COMPARE = [
   { row: "Where the money from a sale goes", stan: "A Stripe account managed by the platform", nimbus: "Your own Stripe account", key: true },
   { row: "Getting paid out", stan: "Manual cash-out, $10 minimum, payout fee", nimbus: "Your Stripe payout schedule, no minimum from us", key: true },
-  { row: "Cut of each sale", stan: "0%, plus Stripe's own fees", nimbus: "0%, plus Stripe's own fees", key: false },
+  { row: "Cut of each sale", stan: "0%, plus Stripe's own fees", nimbus: "0%, plus Stripe's own fees", key: false, same: true },
   { row: "Several prices for one product", stan: "Not available", nimbus: "Up to three on any product", key: true },
   { row: "Discount codes", stan: "On the $99 Creator Pro plan", nimbus: `Included at $${PRICE} a month`, key: true },
   { row: "Changing your store address", stan: "Old links forwarded on a best effort", nimbus: "Every address you ever used keeps working", key: false },
@@ -234,7 +244,7 @@ export default function Home() {
         </section>
 
         {/* ------------------------------------------------ the buyer's path */}
-        <PhoneScreens />
+        <BuyerPath />
 
         {/* ------------------------------------------------------ why Nimbus */}
         <section className="surface-sand section">
@@ -266,31 +276,48 @@ export default function Home() {
                 <p className="text-sm text-ink-mute">Every line here exists in the code today.</p>
               </div>
               <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {GROUPS.map((g) => (
-                  <section key={g.key} aria-labelledby={`group-${g.key}`} className="card flex flex-col p-6 sm:p-7">
-                    <div className="flex items-center gap-3">
-                      <span className="icon-tile icon-tile-sm">
-                        <Icon name={g.icon} size={18} />
+                {GROUPS.map((g) => {
+                  const shown = g.items.slice(0, 2);
+                  const more = g.items.slice(2);
+                  const item = (f: Feature) => (
+                    <li key={f.title} className="flex gap-3">
+                      <Icon name="check" size={16} strokeWidth={2.4} className="mt-1 shrink-0 text-mint-deep" />
+                      <span className="min-w-0">
+                        <span className="font-semibold text-ink">{f.title}</span>
+                        {f.pro ? <span className="tag tag-brand ml-2 h-5! px-1.5! align-middle text-[0.6875rem]!">Pro</span> : null}
+                        <span className="block text-[0.9375rem] leading-snug text-ink-soft">{f.body}</span>
                       </span>
-                      <h3 id={`group-${g.key}`} className="text-lg font-semibold tracking-[-0.02em] text-ink">
-                        {g.title}
-                      </h3>
-                    </div>
-                    <p className="mt-2 text-[0.9375rem] text-ink-soft">{g.line}</p>
-                    <ul className="mt-5 space-y-3.5 border-t border-line pt-5">
-                      {g.items.map((f) => (
-                        <li key={f.title} className="flex gap-3">
-                          <Icon name="check" size={16} strokeWidth={2.4} className="mt-1 shrink-0 text-mint-brand" />
-                          <span className="min-w-0">
-                            <span className="font-semibold text-ink">{f.title}</span>
-                            {f.pro ? <span className="tag tag-brand ml-2 h-5! px-1.5! align-middle text-[0.6875rem]!">Pro</span> : null}
-                            <span className="block text-[0.9375rem] leading-snug text-ink-soft">{f.body}</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ))}
+                    </li>
+                  );
+                  return (
+                    <section key={g.key} aria-labelledby={`group-${g.key}`} className="card flex flex-col p-6 sm:p-7">
+                      <div className="flex items-center gap-3">
+                        <span className="icon-tile icon-tile-sm">
+                          <Icon name={g.icon} size={18} />
+                        </span>
+                        <h3 id={`group-${g.key}`} className="text-lg font-semibold tracking-[-0.02em] text-ink">
+                          {g.title}
+                        </h3>
+                      </div>
+                      <p className="mt-2 text-[0.9375rem] text-ink-soft">{g.line}</p>
+                      <ul className="mt-5 space-y-3.5 border-t border-line pt-5">{shown.map(item)}</ul>
+                      {more.length > 0 ? (
+                        <details className="group/more mt-3.5">
+                          <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-[8px] text-sm font-semibold text-violet-deep [&::-webkit-details-marker]:hidden">
+                            <Icon name="plus" size={15} className="transition-transform duration-200 group-open/more:rotate-45" />
+                            <span className="group-open/more:hidden">{`${more.length} more`}</span>
+                            <span className="hidden group-open/more:inline">Fewer</span>
+                          </summary>
+                          <ul className="mt-3.5 space-y-3.5">{more.map(item)}</ul>
+                        </details>
+                      ) : null}
+                      <Link href={g.href} className="link-arrow mt-auto pt-6 text-[0.9375rem]">
+                        {g.link}
+                        <Icon name="arrow-right" size={16} className="arrow" />
+                      </Link>
+                    </section>
+                  );
+                })}
                 <div className="card-flat flex flex-col p-6 sm:p-7">
                   <span className="tag tag-next self-start">Next on the list</span>
                   <p className="mt-4 text-[0.9375rem] text-ink-soft">
@@ -331,6 +358,28 @@ export default function Home() {
               <p className="measure mt-4 text-white/70">
                 We make money one way only, a monthly subscription. That is the whole business model, written on one line.
               </p>
+              <ol aria-label="Where the money goes" className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {[
+                  { icon: "user" as IconName, label: "Your buyer" },
+                  { icon: "lock" as IconName, label: "Stripe checkout" },
+                  { icon: "bank" as IconName, label: "Your Stripe account", ours: true },
+                  { icon: "receipt" as IconName, label: "Your bank" },
+                ].map((n, i) => (
+                  <li
+                    key={n.label}
+                    className={`relative flex flex-col gap-2 rounded-[var(--r-md)] px-3.5 py-3 text-sm ${
+                      n.ours ? "bg-white text-ink" : "bg-white/[0.06] text-white/80 ring-1 ring-white/10"
+                    }`}
+                  >
+                    <span className="flex items-center justify-between">
+                      <Icon name={n.icon} size={18} className={n.ours ? "text-violet-deep" : "text-[#b9a8ff]"} />
+                      <span className={`text-[0.75rem] font-semibold ${n.ours ? "text-ink-soft" : "text-white/55"}`}>{i + 1}</span>
+                    </span>
+                    <span className="font-semibold">{n.label}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 text-sm text-white/55">Nimbus is not a step on this path.</p>
               <Link href="/platform/your-stripe" className="btn btn-outline-light mt-8">
                 How the money moves
               </Link>
@@ -427,57 +476,32 @@ export default function Home() {
               <h2 className="t-h2 balance mt-4">How we compare with Stan</h2>
               <p className="mt-5 text-ink-soft">
                 Checked on Stan&apos;s own public pricing, terms and help pages in September 2026, the discount row on
-                22 September. If any of it changes, this table changes.
+                22 September. If any of it changes, this section changes.
               </p>
             </div>
 
-            {/* table from the small tablet up, cards on a phone */}
-            <div className="reveal mt-10 hidden overflow-hidden rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-sm)] md:block">
-              <table className="table-clean text-[0.9375rem]">
-                <thead>
-                  <tr>
-                    <th scope="col" className="w-[34%]">
-                      <span className="sr-only">What we compared</span>
-                    </th>
-                    <th scope="col" className="w-[33%]">Stan</th>
-                    <th scope="col" className="w-[33%] !text-violet-deep">Nimbus Labs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARE.map((r) => (
-                    <tr key={r.row}>
-                      <th scope="row" className="font-semibold text-ink">
-                        {r.row}
-                      </th>
-                      <td className="text-ink-soft">{r.stan}</td>
-                      <td className={r.key ? "bg-lilac/50 font-semibold text-ink" : "text-ink"}>
-                        <span className="flex gap-2">
-                          {r.key && <Icon name="check" size={18} strokeWidth={2.2} className="mt-0.5 shrink-0 text-violet-brand" />}
-                          {r.nimbus}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <ul className="mt-8 grid gap-3 md:hidden">
-              {COMPARE.map((r) => (
-                <li key={r.row} className="card-flat p-5">
-                  <p className="font-semibold text-ink">{r.row}</p>
-                  <dl className="mt-3 grid gap-2 text-[0.9375rem]">
-                    <div className="flex gap-3">
-                      <dt className="w-16 shrink-0 text-ink-mute">Stan</dt>
-                      <dd className="text-ink-soft">{r.stan}</dd>
+            <ul className="reveal mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {COMPARE.map((r) => {
+                const same = "same" in r && r.same === true;
+                return (
+                  <li key={r.row} className={`${same ? "card-flat" : "card"} flex flex-col p-6`}>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-semibold text-ink">{r.row}</p>
+                      {same ? <span className="tag shrink-0">Same on both</span> : null}
                     </div>
-                    <div className="flex gap-3">
-                      <dt className="w-16 shrink-0 font-semibold text-violet-deep">Nimbus</dt>
-                      <dd className="font-medium text-ink">{r.nimbus}</dd>
-                    </div>
-                  </dl>
-                </li>
-              ))}
+                    <dl className="mt-4 grid gap-2.5 text-[0.9375rem]">
+                      <div className="grid grid-cols-[4.25rem_1fr] gap-3">
+                        <dt className="text-ink-mute">Stan</dt>
+                        <dd className="text-ink-soft">{r.stan}</dd>
+                      </div>
+                      <div className={`grid grid-cols-[4.25rem_1fr] gap-3 ${same ? "" : "-mx-3 rounded-[var(--r-sm)] bg-lilac/60 px-3 py-2"}`}>
+                        <dt className="font-semibold text-violet-deep">Nimbus</dt>
+                        <dd className={same ? "text-ink" : "font-semibold text-ink"}>{r.nimbus}</dd>
+                      </div>
+                    </dl>
+                  </li>
+                );
+              })}
             </ul>
 
             <div className="reveal mt-6 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
@@ -581,10 +605,23 @@ export default function Home() {
                 <Icon name="arrow-right" size={18} />
               </Link>
               <Link href="/demo" className="link-arrow on-dark">
-                See the live store
+                See the live demo
                 <Icon name="arrow-right" size={18} className="arrow" />
               </Link>
             </div>
+            <ul className="mx-auto mt-10 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[0.9375rem] text-white/80">
+              {[
+                { icon: "calendar" as IconName, text: `${TRIAL_DAYS} days free` },
+                { icon: "door" as IconName, text: "Cancel in one click" },
+                { icon: "percent" as IconName, text: "0% of your sales" },
+                { icon: "lock" as IconName, text: "Payments by Stripe" },
+              ].map((f) => (
+                <li key={f.text} className="flex items-center gap-2">
+                  <Icon name={f.icon} size={17} className="text-white/70" />
+                  {f.text}
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
       </main>

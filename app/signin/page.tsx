@@ -4,6 +4,7 @@ import { Icon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { SignInForm } from "@/components/signin-form";
 import { isConnectConfigured } from "@/lib/stripe-connect";
+import { TRIAL_DAYS } from "@/lib/plan";
 
 export const metadata: Metadata = {
   title: "Start your store — Nimbus Labs",
@@ -106,22 +107,43 @@ export default async function SignInPage({
             <SignInForm />
           </div>
 
-          <div className="mt-8 flex gap-3 text-[0.9375rem] text-ink-soft">
-            <Icon name="info" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
-            <p>
-              <span className="font-semibold text-ink">
-                {isConnectConfigured() ? "Creator stores are open. " : "Creator stores are not open yet. "}
+          <section aria-labelledby="next-title" className="mt-10">
+            <h2 id="next-title" className="text-[0.8125rem] font-semibold uppercase tracking-[0.14em] text-ink-mute">
+              What happens next
+            </h2>
+            <ol className="mt-4 space-y-4">
+              {[
+                { title: "Open the link we email you", body: "It works once, for 15 minutes. No password to invent, now or later." },
+                { title: "Take your store address", body: "nimbuslabsai.com/@yourname, live the moment you take it." },
+                {
+                  title: "Put up your first product",
+                  body: isConnectConfigured()
+                    ? `Connect your own Stripe when you are ready to take a card. The first ${TRIAL_DAYS} days of the plan are free.`
+                    : "Taking a card is not switched on yet; everything else is.",
+                },
+              ].map((step, i) => (
+                <li key={step.title} className="flex gap-4">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-lilac text-sm font-semibold text-violet-deep">
+                    {i + 1}
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-ink">{step.title}</span>
+                    <span className="mt-0.5 block text-[0.9375rem] text-ink-soft">{step.body}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-6 flex gap-2 text-[0.9375rem] text-ink-soft">
+              <Icon name="mail" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
+              <span>
+                Trouble signing in?{" "}
+                <a href="mailto:viniciussucupira091@gmail.com" className="link">
+                  Write to us
+                </a>{" "}
+                and a person answers.
               </span>
-              Behind this page you take your address, write your products, upload the file each one delivers and connect
-              your own Stripe account.{" "}
-              {isConnectConfigured()
-                ? "Your buyers pay on that account, and the file is handed over the moment Stripe confirms it."
-                : "What is still missing is the checkout itself — the page that charges your buyer on that account."}{" "}
-              <Link href="/mission" className="link">
-                What is built so far
-              </Link>
             </p>
-          </div>
+          </section>
         </div>
 
         <p className="mx-auto mt-12 w-full max-w-md text-sm text-ink-mute">

@@ -1,17 +1,28 @@
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 
-const COLUMNS = [
+const SUPPORT = "mailto:viniciussucupira091@gmail.com";
+
+const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "Product",
     links: [
-      { label: "Live demo store", href: "/demo" },
       { label: "Every feature", href: "/platform" },
+      { label: "Live demo store", href: "/demo" },
       { label: "Courses", href: "/platform/courses" },
       { label: "Memberships", href: "/platform/memberships" },
       { label: "Paid calls", href: "/platform/calls" },
-      { label: "Your own Stripe", href: "/platform/your-stripe" },
       { label: "Pricing", href: "/#pricing" },
+    ],
+  },
+  {
+    title: "Creators",
+    links: [
+      { label: "Coaches", href: "/for/coaches" },
+      { label: "Cooks", href: "/for/cooks" },
+      { label: "Fitness", href: "/for/fitness" },
+      { label: "Designers", href: "/for/designers" },
+      { label: "Tell us what you sell", href: "/creators" },
     ],
   },
   {
@@ -25,13 +36,20 @@ const COLUMNS = [
     ],
   },
   {
+    title: "Resources",
+    links: [
+      { label: "Help centre", href: "/help" },
+      { label: "Blog", href: "/blog" },
+      { label: "Questions", href: "/proof/questions" },
+      { label: "What we never do", href: "/proof/promises" },
+    ],
+  },
+  {
     title: "Company",
     links: [
       { label: "Our mission", href: "/mission" },
-      { label: "What we never do", href: "/proof/promises" },
-      { label: "Blog", href: "/blog" },
-      { label: "Help centre", href: "/help" },
-      { label: "Questions", href: "/proof/questions" },
+      { label: "Write to us", href: SUPPORT },
+      { label: "Sign in", href: "/signin" },
     ],
   },
   {
@@ -47,7 +65,7 @@ const COLUMNS = [
 export function SiteFooter() {
   return (
     <footer className="surface-night on-dark overflow-hidden">
-      <div className="container-page grid gap-12 py-16 lg:grid-cols-[1.2fr_2.8fr] lg:py-20">
+      <div className="container-page grid gap-12 py-16 lg:grid-cols-[15rem_1fr] lg:gap-16 lg:py-20">
         <div className="max-w-xs">
           <Link href="/" className="inline-block rounded-[10px]" aria-label="Nimbus Labs, home">
             <Logo tone="light" />
@@ -61,7 +79,7 @@ export function SiteFooter() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 xl:grid-cols-6">
           {COLUMNS.map((column) => (
             <nav key={column.title} aria-label={column.title}>
               <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.14em] text-white/50">
@@ -70,9 +88,15 @@ export function SiteFooter() {
               <ul className="mt-4 space-y-2.5 text-[0.9375rem]">
                 {column.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-white/75 transition-colors hover:text-white">
-                      {link.label}
-                    </Link>
+                    {link.href.startsWith("mailto:") ? (
+                      <a href={link.href} className="text-white/75 transition-colors hover:text-white">
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link href={link.href} className="text-white/75 transition-colors hover:text-white">
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -82,7 +106,15 @@ export function SiteFooter() {
       </div>
 
       <div className="container-page border-t border-white/10 py-6 text-[0.8125rem] leading-relaxed text-white/55">
-        <p>© 2026 Nimbus Labs. Payments are processed by Stripe on each creator&apos;s own account.</p>
+        <ul className="flex flex-wrap gap-x-5 gap-y-2 text-white/70">
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-mint-brand" aria-hidden="true" />
+            0% of your sales
+          </li>
+          <li>Payments processed by Stripe on each creator&apos;s own account</li>
+          <li>Support by a person, in writing, in English</li>
+        </ul>
+        <p className="mt-3">© 2026 Nimbus Labs.</p>
         <p className="mt-1.5">
           Photographs from Unsplash, used for illustration. The people in them are
           not Nimbus Labs customers, and nothing on this site is a testimonial.

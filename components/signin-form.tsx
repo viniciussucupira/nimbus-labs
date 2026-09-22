@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/icons";
 
 type State =
@@ -18,14 +18,31 @@ const MESSAGES: Record<string, string> = {
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
+/** The shape of an address, checked as the person types; the server checks it again. */
+const LOOKS_LIKE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const RESEND_AFTER_SECONDS = 30;
+
 export function SignInForm() {
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
   const [state, setState] = useState<State>({ kind: "idle" });
+  const [touched, setTouched] = useState(false);
+  const [wait, setWait] = useState(0);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    if (state.kind === "sending") return;
+  // The count before "Send it again" opens, one second at a time.
+  useEffect(() => {
+    if (wait <= 0) return;
+    const t = setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => clearTimeout(t);
+  }, [wait]);
+
+  const trimmed = email.trim();
+  const shapeProblem =
+    touched && trimmed.length > 0 && !LOOKS_LIKE_EMAIL.test(trimmed)
+      ? "Check the address: it needs an @ and a domain, like you@example.com."
+      : null;
+
+  async function send() {
     setState({ kind: "sending" });
 
     try {
@@ -37,6 +54,7 @@ export function SignInForm() {
       const data = (await response.json()) as { ok?: boolean; error?: string };
       if (data.ok) {
         setState({ kind: "sent" });
+        setWait(RESEND_AFTER_SECONDS);
         return;
       }
       setState({
@@ -48,6 +66,17 @@ export function SignInForm() {
     }
   }
 
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (state.kind === "sending") return;
+    setTouched(true);
+    if (!LOOKS_LIKE_EMAIL.test(trimmed)) {
+      setState({ kind: "error", message: trimmed ? "Check the address: it needs an @ and a domain, like you@example.com." : "Type your email first." });
+      return;
+    }
+    await send();
+  }
+
   if (state.kind === "sent") {
     return (
       <div role="status" className="text-center">
@@ -56,12 +85,18 @@ export function SignInForm() {
         </span>
         <p className="mt-4 text-xl font-semibold text-ink">Check that inbox</p>
         <p className="mt-2 text-ink-soft">
-          If <span className="font-medium text-ink">{email}</span> can sign in, the link is on its way. It works once and
-          stops working in 15 minutes.
+          If <span className="font-medium text-ink">{email}</span> can sign in, the link is on its way from Nimbus Labs.
+          It works once and stops working in 15 minutes.
         </p>
-        <button type="button" onClick={() => setState({ kind: "idle" })} className="btn btn-ghost btn-sm mt-5">
-          Use a different email
-        </button>
+        <p className="mt-3 text-sm text-ink-soft">Not there within a minute? Look in spam or promotions.</p>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          <button type="button" onClick={() => void send()} disabled={wait > 0} className="btn btn-secondary btn-sm">
+            {wait > 0 ? `Send it again in ${wait}s` : "Send it again"}
+          </button>
+          <button type="button" onClick={() => setState({ kind: "idle" })} className="btn btn-ghost btn-sm">
+            Use a different email
+          </button>
+        </div>
       </div>
     );
   }
@@ -79,12 +114,21 @@ export function SignInForm() {
           autoComplete="email"
           required
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            if (state.kind === "error") setState({ kind: "idle" });
+          }}
+          onBlur={() => setTouched(true)}
           placeholder="you@example.com"
-          aria-invalid={state.kind === "error" ? true : undefined}
-          aria-describedby={state.kind === "error" ? "signin-error" : undefined}
+          aria-invalid={state.kind === "error" || shapeProblem ? true : undefined}
+          aria-describedby={state.kind === "error" ? "signin-error" : shapeProblem ? "signin-hint" : undefined}
           className="field mt-2"
         />
+        {shapeProblem && state.kind !== "error" ? (
+          <p id="signin-hint" className="mt-2 text-sm text-danger">
+            {shapeProblem}
+          </p>
+        ) : null}
       </div>
 
       {/* Honeypot: hidden from people, irresistible to robots. */}

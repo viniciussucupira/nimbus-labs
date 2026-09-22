@@ -799,6 +799,10 @@ body {
 .nb-fade-up {
   animation: nb-fade-up 700ms var(--ease) both;
 }
+/* A screen that changes: a slow cross-fade with a short rise. */
+.nb-screen-in {
+  animation: nb-fade-up 480ms var(--ease) both;
+}
 .nb-delay-1 {
   animation-delay: 80ms;
 }
