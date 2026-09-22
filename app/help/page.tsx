@@ -210,6 +210,13 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can I offer something extra at checkout, or sell a limited number?",
+        a: [
+          "Both. Under any one-off product you can offer another of your products at a price of your own: the buyer sees a box under the buy button, ticks it if they want it, and the button says the new total. It is never ticked for them. Both are paid in one checkout and both are delivered on the thanks page.",
+          "You can also limit how many of a product can be sold. Your page shows how many are left, counted from real payments, and stops selling at zero. A buyer who is paying right now holds one for up to 30 minutes, so the last one is never sold to two people; if they do not pay, it comes back.",
+        ],
+      },
+      {
         q: "Can I see how my store is doing?",
         a: [
           "Yes. Your studio shows the last 7 or 30 days: visitors, page views, checkouts started, sales, revenue and conversion, where your visitors came from, and each product and link on its own line.",
