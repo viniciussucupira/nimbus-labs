@@ -9,6 +9,7 @@ import { canSellProduct } from "@/lib/store-checkout";
 import { catchUpBookings, isCallProduct, slotsForProduct } from "@/lib/calls";
 import { SITE_URL } from "@/lib/site-url";
 import { SlotPicker } from "@/components/slot-picker";
+import { StoreTracking } from "@/components/store-tracking";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -126,6 +127,7 @@ export default async function BookPage({ params, searchParams }: Params) {
           <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
             {`Back to ${store.name}`}
           </Link>
+          <StoreTracking store={store} />
         </div>
       </main>
     </div>
