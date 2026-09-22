@@ -29,6 +29,7 @@ const MESSAGES: Record<string, string> = {
   recurring: "A membership cannot be a call. Make it a one-off price first.",
   options: "Take the price options off first: a call has one price.",
   delivery: "Take the file or link off first: a call delivers a time in your calendar, not a file.",
+  course: "This is a course. Stop selling it as a course first.",
   unknown: "That product is not there any more. Reload the page.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Sign in again.",
@@ -86,7 +87,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
   const [error, setError] = useState<string | null>(null);
 
   const eligible =
-    product.priceCents > 0 && !product.recurring && product.options.length === 0 && !product.file && !product.link;
+    product.priceCents > 0 && !product.recurring && product.options.length === 0 && !product.file && !product.link && !product.course;
 
   async function send(payload: Record<string, unknown>) {
     setBusy(true);

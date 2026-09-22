@@ -26,6 +26,7 @@ import { type CallSetup, parseSetup } from "@/lib/call-setup";
 import { type Pixels, NO_PIXELS, parsePixels } from "@/lib/pixels";
 import { type TaxSetting, NO_TAX, parseTax } from "@/lib/tax";
 import { type Cycle, type Tier, parseCycle, parseTier } from "@/lib/plan";
+import { COURSE_ID_PATTERN } from "@/lib/course";
 import { type Bump, type Plan, canBeBumped, isOneOff, parseBump, parsePlan, parseStock } from "@/lib/product-extras";
 import {
   MAX_LINK_TITLE_LENGTH,
@@ -186,7 +187,23 @@ export type Product = {
   upsell: Bump | null;
   /** Paying in a fixed number of payments instead of at once. */
   plan: Plan | null;
+  /**
+   * When this is a course: which course record holds its lessons, and how
+   * many lessons it has, kept here so a store page knows without reading it.
+   */
+  course: CourseRef | null;
 };
+
+/** The part of a course a store record carries. */
+export type CourseRef = { id: string; lessons: number };
+
+function parseCourseRef(raw: unknown): CourseRef | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  if (typeof value.id !== "string" || !COURSE_ID_PATTERN.test(value.id)) return null;
+  const lessons = Number(value.lessons);
+  return { id: value.id, lessons: Number.isInteger(lessons) && lessons >= 0 ? lessons : 0 };
+}
 
 export type Store = {
   handle: string;
@@ -362,6 +379,7 @@ function parseProducts(raw: unknown): Product[] {
       bump: parseBump(value.bump),
       upsell: parseBump(value.upsell),
       plan: parsePlan(value.plan),
+      course: parseCourseRef(value.course),
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -851,7 +869,7 @@ export async function updateDetails(
 
 export type CallResult =
   | { ok: true; store: Store }
-  | { ok: false; reason: "none" | "unknown" | "free" | "recurring" | "options" | "delivery" };
+  | { ok: false; reason: "none" | "unknown" | "free" | "recurring" | "options" | "delivery" | "course" };
 
 /**
  * Makes a product a paid call, changes when it can be booked, or turns it
@@ -876,6 +894,7 @@ export async function setProductCall(
     if (product.recurring) return { ok: false, reason: "recurring" };
     if (product.options.length > 0) return { ok: false, reason: "options" };
     if (product.file || product.link) return { ok: false, reason: "delivery" };
+    if (product.course) return { ok: false, reason: "course" };
   }
   const products = [...store.products];
   products[at] = { ...product, call: setup };
@@ -886,6 +905,56 @@ export async function setProductCall(
   };
   await saveStore(next);
   return { ok: true, store: next };
+}
+
+export type CourseResult =
+  | { ok: true; store: Store; product: Product }
+  | { ok: false; reason: "none" | "unknown" | "free" | "options" | "delivery" | "call" | "not_empty" };
+
+/**
+ * Makes a product a course, or turns an empty course back into an ordinary
+ * product.
+ *
+ * Like a call, a course can only be made from a product with nothing else
+ * attached, because it delivers its own lessons. It can only be turned back
+ * once its lessons are gone, so a course full of work is never lost to one
+ * press; the course record itself is the caller's to create and drop.
+ */
+export async function setProductCourse(
+  email: string,
+  id: string,
+  course: CourseRef | null,
+): Promise<CourseResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.products.findIndex((product) => product.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+  const product = store.products[at];
+  if (course) {
+    if (isFree(product)) return { ok: false, reason: "free" };
+    if (product.options.length > 0) return { ok: false, reason: "options" };
+    if (product.file || product.link) return { ok: false, reason: "delivery" };
+    if (product.call) return { ok: false, reason: "call" };
+  } else if (product.course && product.course.lessons > 0) {
+    return { ok: false, reason: "not_empty" };
+  }
+  const products = [...store.products];
+  products[at] = { ...product, course };
+  const next: Store = { ...store, products };
+  await saveStore(next);
+  return { ok: true, store: next, product: products[at] };
+}
+
+/** Keeps the lesson count a store record carries in step with its course. */
+export async function setCourseLessons(email: string, id: string, lessons: number): Promise<void> {
+  const store = await storeForEmail(email);
+  if (!store) return;
+  const at = store.products.findIndex((product) => product.id === id);
+  if (at < 0 || !store.products[at].course) return;
+  if (store.products[at].course?.lessons === lessons) return;
+  const products = [...store.products];
+  products[at] = { ...products[at], course: { id: products[at].course!.id, lessons } };
+  await saveStore({ ...store, products });
 }
 
 export type ExtrasResult =
@@ -1016,7 +1085,7 @@ export type ProductResult =
   | { ok: true; store: Store }
   | {
       ok: false;
-      reason: "none" | "title" | "price" | "free" | "too_many" | "unknown" | "call";
+      reason: "none" | "title" | "price" | "free" | "too_many" | "unknown" | "call" | "course";
       limit?: number;
     };
 
@@ -1093,6 +1162,7 @@ export async function addProduct(
     bump: null,
     upsell: null,
     plan: null,
+    course: null,
   };
 
   const next: Store = {
@@ -1133,6 +1203,10 @@ export async function editProduct(
   // A call is one paid booking. It cannot be given away or charged monthly.
   if (store.products[at].call && (fields.priceCents === 0 || recurring)) {
     return { ok: false, reason: "call" };
+  }
+  // A course is sold. Giving lessons away for an email address is not built.
+  if (store.products[at].course && fields.priceCents === 0) {
+    return { ok: false, reason: "course" };
   }
 
   const products = [...store.products];
@@ -1201,7 +1275,7 @@ export async function moveProduct(
 
 export type FileResult =
   | { ok: true; store: Store; removed: ProductFile | null }
-  | { ok: false; reason: "none" | "unknown" | "invalid" | "call" };
+  | { ok: false; reason: "none" | "unknown" | "invalid" | "call" | "course" };
 
 /** What is handed over when something is paid for. One or the other. */
 export type Delivery = { file: ProductFile | null; link: string | null };
@@ -1287,6 +1361,10 @@ export async function setProductFile(
   if (file && store.products.some((product) => product.id === id && product.call)) {
     return { ok: false, reason: "call" };
   }
+  // A course delivers its lessons, each with files of its own.
+  if (file && store.products.some((product) => product.id === id && product.course)) {
+    return { ok: false, reason: "course" };
+  }
   // A file replaces a link. One thing is delivered, never two.
   const done = rewriteDelivery(store.products, id, (current) => ({
     file,
@@ -1315,6 +1393,9 @@ export async function setProductLink(
   if (!store) return { ok: false, reason: "none" };
   if (link && store.products.some((product) => product.id === id && product.call)) {
     return { ok: false, reason: "call" };
+  }
+  if (link && store.products.some((product) => product.id === id && product.course)) {
+    return { ok: false, reason: "course" };
   }
   const done = rewriteDelivery(store.products, id, (current) => ({
     link,
@@ -1465,7 +1546,7 @@ export type OptionResult =
   | { ok: true; store: Store; removed: ProductFile[] }
   | {
       ok: false;
-      reason: "none" | "label" | "price" | "free" | "too_many" | "unknown" | "call";
+      reason: "none" | "label" | "price" | "free" | "too_many" | "unknown" | "call" | "course";
       limit?: number;
     };
 
@@ -1501,6 +1582,7 @@ export async function addOption(
   // Several prices on something given away would put a price on it.
   if (isFree(store.products[at])) return { ok: false, reason: "free" };
   if (store.products[at].call) return { ok: false, reason: "call" };
+  if (store.products[at].course) return { ok: false, reason: "course" };
   if (store.products[at].options.length >= MAX_OPTIONS) {
     return { ok: false, reason: "too_many", limit: MAX_OPTIONS };
   }

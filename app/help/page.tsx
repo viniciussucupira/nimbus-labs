@@ -254,9 +254,17 @@ const SECTIONS: Section[] = [
         ],
       },
       {
-        q: "Can I sell courses or a community?",
+        q: "Can I sell a course?",
         a: [
-          "Not yet. Lessons with progress, communities, webinars, email automations and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
+          "Yes. Turn any paid product into a course from your studio and add modules and lessons. A lesson can have a video of up to 5 GB, text, up to five downloads and a link, and any lesson can be a free preview on your store. Upright phone videos stay upright.",
+          "A module can open a set number of days after each student joins, and the student gets an email the day it does. Students open the course in the browser they paid in straight away, and on any other device with a link sent to the address they paid with, so nobody makes a password. Your studio shows who opened it and how many lessons each marked done, and you can take a student off the course.",
+          "The course can be sold once, in a payment plan, or as a membership that stays open while the member pays. Videos watched count towards your store's 200 GB a month, the same as downloads.",
+        ],
+      },
+      {
+        q: "Can I run a community or a webinar?",
+        a: [
+          "Not yet. Communities, webinars, email automations and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
         ],
       },
       {

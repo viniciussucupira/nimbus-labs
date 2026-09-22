@@ -15,6 +15,7 @@ import {
 import { MAX_LINK_LENGTH, readLink } from "@/lib/product-link";
 import { readRecurring } from "@/lib/product-recurring";
 import { guardStoreWrite, text } from "@/lib/store-request";
+import { dropCourse, filesInCourse, readCourse } from "@/lib/course";
 
 const ACTIONS = new Set(["add", "edit", "remove", "move", "link", "unlink"]);
 
@@ -30,8 +31,8 @@ const STATUS: Record<string, number> = {
  * with a word the caller has never seen would be worse than "unknown".
  */
 function asProductReason(
-  reason: "none" | "unknown" | "invalid" | "call",
-): "none" | "unknown" | "call" {
+  reason: "none" | "unknown" | "invalid" | "call" | "course",
+): "none" | "unknown" | "call" | "course" {
   return reason === "invalid" ? "unknown" : reason;
 }
 
@@ -72,8 +73,12 @@ export async function POST(request: NextRequest) {
       const store = await storeForEmail(email);
       const going = store?.products.find((product) => product.id === id);
       const had = going ? filesOnProduct(going) : [];
+      // A course takes its lessons with it: their records, and their files.
+      const course = going?.course ? await readCourse(going.course.id) : null;
+      if (course) had.push(...filesInCourse(course));
       result = await removeProduct(email, id);
       if (result.ok) {
+        if (course) await dropCourse(course).catch((error: unknown) => console.error("could not drop a removed course", error));
         for (const file of had) {
           await del(file.pathname).catch((error: unknown) => {
             console.error("could not delete the file of a removed product", error);

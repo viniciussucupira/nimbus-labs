@@ -52,7 +52,6 @@ export const metadata: Metadata = {
 };
 
 const NEXT_WHEN_SELLING = [
-  "Courses with lessons",
   "Email to your list, from your studio",
   "Your own domain",
   "Several stores in one account",
@@ -689,7 +688,7 @@ export default async function StudioPage({
                 <p className="mt-2 text-ink-soft">
                   {`${readableSize(delivery.bytes)} of the ${readableSize(
                     delivery.allowance,
-                  )} your plan covers. Counted when a download starts, including the ones you open yourself to check.`}
+                  )} your plan covers. Counted when a download or a lesson video starts, including the ones you open yourself to check.`}
                 </p>
                 <div
                   className="mt-4 h-2 w-full overflow-hidden rounded-full bg-sand"

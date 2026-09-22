@@ -207,6 +207,14 @@ export default async function StorePage({ params, searchParams }: Params) {
                         {`${product.call.minutes}-minute call, online`}
                       </p>
                     ) : null}
+                    {product.course && product.course.lessons > 0 ? (
+                      <p className="mt-1 text-sm font-semibold">
+                        <span className="st-muted">{`Course · ${product.course.lessons} ${product.course.lessons === 1 ? "lesson" : "lessons"} · `}</span>
+                        <Link href={`/@${store.handle}/course/${product.id}`} className="underline underline-offset-2" style={{ color: "var(--st-text)" }}>
+                          See what is inside
+                        </Link>
+                      </p>
+                    ) : null}
                     {product.summary ? (
                       <p className="st-muted mt-2 leading-relaxed">{product.summary}</p>
                     ) : null}

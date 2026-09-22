@@ -71,6 +71,7 @@ export const ALLOWED_TYPES: Record<string, string> = {
   "audio/mp4": ".m4a",
   "video/mp4": ".mp4",
   "video/quicktime": ".mov",
+  "video/webm": ".webm",
   "text/plain": ".txt",
   "text/csv": ".csv",
   "text/markdown": ".md",

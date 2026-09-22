@@ -16,6 +16,7 @@ import { finishPlan } from "@/lib/plans";
 import { cookies } from "next/headers";
 import { activeUpsell } from "@/lib/product-extras";
 import { UPSELL_COOKIE, offerOpen, readUpsell, settleUpsell, upsellDelivery } from "@/lib/upsell";
+import { recordEnrollment } from "@/lib/learn";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -92,6 +93,14 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   // job does the same for anyone who never came back.
   if (order.state === "paid" && sessionId && order.plan && store.stripeAccountId) {
     await finishPlan(store.stripeAccountId, sessionId).catch((error) => console.error("finishing a plan failed", error));
+  }
+
+  // A course is written down as bought, so the student list and the emails
+  // about modules opening know about this student from today.
+  if (order.state === "paid" && order.product.course && order.email) {
+    await recordEnrollment(store, order.email, order.product.id, order.created).catch((error) =>
+      console.error("recording a course purchase failed", error),
+    );
   }
 
   // A limited product's unit becomes a sale the moment its buyer is back.
@@ -218,6 +227,17 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     {order.email
                       ? ` A confirmation is on its way to ${order.email}; to move or cancel the call, reply to it.`
                       : ""}
+                  </p>
+                </>
+              ) : order.product.course ? (
+                <>
+                  <form action="/api/store/course/start" method="post">
+                    <input type="hidden" name="handle" value={store.handle} />
+                    <input type="hidden" name="session_id" value={sessionId ?? ""} />
+                    <button type="submit" className="btn st-btn btn-lg mt-7">Start the course</button>
+                  </form>
+                  <p className="st-muted mt-5 text-sm">
+                    {`On this device it opens straight away. On any other, open ${store.name}'s store, find the course and ask for a link: it goes to ${order.email ?? "the address you paid with"}. No password to make.`}
                   </p>
                 </>
               ) : order.link ? (

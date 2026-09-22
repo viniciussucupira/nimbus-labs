@@ -585,12 +585,12 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "That is a large product. If you want courses, a community and recurring memberships in one place today, they have all of it and we do not.",
+        text: "That is a large product. If you want a community and live webinars in one place today, they have them and we do not.",
       },
       { type: "h2", text: "What Nimbus is" },
       {
         type: "p",
-        text: "Nimbus is a store page for selling files, plans and calls, and it is early. It does one job: a colourful page, price options on a product, and the file in the buyer's hands the second the payment clears.",
+        text: "Nimbus is a store page for selling files, courses, memberships and calls, and it is early. It does one job: a colourful page, price options on a product, and the file in the buyer's hands the second the payment clears.",
       },
       { type: "h2", text: "The one thing we do differently" },
       {
@@ -605,7 +605,7 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "Range: courses, memberships, communities and webinars. We have none of those yet.",
+          "Range: communities and webinars. We have neither yet.",
           "Years of running: their support library is deep, and ours is a few pages.",
           "An installable creator app: their help centre states their creator app is currently available on iPhone and iPad. We do not have a native app at all — our store installs to the home screen from the browser, on both iPhone and Android, which is a different trade-off, not a better one in every case.",
           "Integrations with third-party tools, which they list on their site and we are still building.",

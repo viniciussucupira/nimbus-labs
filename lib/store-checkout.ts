@@ -83,6 +83,8 @@ export function canSellProduct(store: Store, product: Product): boolean {
   if (!canSell(store)) return false;
   // A call delivers a time, not a file: it is ready once it has hours set.
   if (product.call) return product.options.length === 0 && product.recurring === null;
+  // A course delivers its lessons: it is ready once it has one.
+  if (product.course) return product.options.length === 0 && product.course.lessons > 0;
   if (product.options.length > 0) return sellableOptions(product).length > 0;
   return product.file !== null || product.link !== null;
 }
@@ -118,6 +120,11 @@ export async function createCheckout(
     upsellKey?: string;
     /** The buyer chose to pay in the creator's payment plan. */
     plan?: boolean;
+    /**
+     * For a course: the fingerprint of the secret the buyer's browser keeps,
+     * so the course opens straight away in the browser that paid.
+     */
+    buyerKey?: string;
   } = {},
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
@@ -198,6 +205,8 @@ export async function createCheckout(
   // from a coupon on the creator's own account; no amount is decided here.
   if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
 
+  if (extras.buyerKey) body.set("metadata[buyer_key]", extras.buyerKey);
+
   if (membership) {
     // The subscription is created on the creator's own account, like every
     // other charge here, so the member is their customer and not ours.
@@ -268,6 +277,8 @@ export type Order =
       upsellKey: string | null;
       /** When the buyer chose the payment plan: how many payments, how often. */
       plan: { payments: number; interval: "week" | "month" } | null;
+      /** For a course: the fingerprint of the paying browser's secret. */
+      buyerKey: string | null;
     }
   | { state: "unpaid" | "expired" | "invalid" | "unavailable" | "error" };
 
@@ -344,6 +355,7 @@ export async function readOrder(
     bump,
     created,
     upsellKey: typeof metadata?.upsell_key === "string" ? metadata.upsell_key : null,
+    buyerKey: typeof metadata?.buyer_key === "string" ? metadata.buyer_key : null,
     plan:
       metadata?.kind === "plan" && Number(metadata?.plan_payments) >= 2
         ? { payments: Number(metadata.plan_payments), interval: metadata.plan_interval === "week" ? "week" : "month" }

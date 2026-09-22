@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CallEditor } from "@/components/call-editor";
+import { CourseToggle } from "@/components/course-toggle";
 import { CheckoutExtras } from "@/components/checkout-extras";
 import { uploadPresigned } from "@vercel/blob/client";
 import {
@@ -51,6 +52,7 @@ const MESSAGES: Record<string, string> = {
   free: "Something free is given once, for an email address, so it cannot be a membership or have several prices. Take those off first.",
   unknown: "That is no longer on your store.",
   call: "This is a paid call, so it has one price, charged once, and delivers a time rather than a file. Stop selling it as a call first to change that.",
+  course: "This is a course, so it is sold, and it delivers its lessons rather than one file. Its lessons are changed from its own page.",
   too_big: `That file is over ${maxFileLabel()}, which is the most a store can hold.`,
   wrong_type: "That kind of file is not one a store can sell here.",
   none: "This account has no store yet.",
@@ -1147,9 +1149,10 @@ export function ProductEditor({
                   would be one nobody is ever sent. So the block moves inside
                   the options rather than sitting above them unused.
                 */}
-                <CallEditor product={product} email={email} />
+                {product.course ? null : <CallEditor product={product} email={email} />}
+                {product.call ? null : <CourseToggle product={product} />}
 
-                {product.call ? null : (
+                {product.call || product.course ? null : (
                 <>
                 {product.options.length === 0 ? (
                   <FileBlock

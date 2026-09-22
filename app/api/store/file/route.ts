@@ -11,6 +11,7 @@ import {
   MAX_FILE_BYTES,
   ownsPath,
 } from "@/lib/product-file";
+import { ITEM_ID_PATTERN, findLesson, readCourses } from "@/lib/course";
 
 /** How long the creator has to start the upload after asking for the door. */
 const UPLOAD_WINDOW_MS = 10 * 60 * 1000;
@@ -76,8 +77,14 @@ export async function POST(request: NextRequest) {
           throw new Error("invalid");
         }
         // A price option owns a folder exactly as a product does, and its id
-        // is unique across the store, so one check covers both.
-        if (!ownsDeliveryId(store, productId)) throw new Error("unknown");
+        // is unique across the store, so one check covers both. A lesson of
+        // one of the store's courses owns one too.
+        if (!ownsDeliveryId(store, productId)) {
+          const courseIds = store.products.flatMap((p) => (p.course ? [p.course.id] : []));
+          const courses = ITEM_ID_PATTERN.test(productId) ? await readCourses(courseIds) : new Map();
+          const isLesson = [...courses.values()].some((course) => findLesson(course, productId) !== null);
+          if (!isLesson) throw new Error("unknown");
+        }
 
         const folder = await storeFolder(email);
         if (!ownsPath(pathname, folder, productId)) throw new Error("invalid");

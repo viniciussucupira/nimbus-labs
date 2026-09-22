@@ -365,7 +365,7 @@ export const PAGES: TopicPage[] = [
           ["A line about you on the page", "Their About me, on one theme only", "On every store, under your name"],
           ["Your own domain", "Not available", "Not available"],
           ["Changing your store address", "Any time. Their help centre says old links are forwarded on a best effort, cannot be guaranteed, and advises resending them", "Any time. Every address the store ever used keeps working, for good"],
-          ["Customer area for all purchases", "Courses only", "Not available. A buyer who loses the link gets it sent again, with no account"],
+          ["Customer area for all purchases", "Courses only", "Courses: every course bought from a store opens with one emailed link, no password. A buyer who loses a download link gets it sent again, with no account"],
           ["Several stores in one account", "Not in one account. Several accounts, each with its own email and its own subscription", "Not available. One store per account, the same as theirs"],
         ],
       },
@@ -382,7 +382,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Stan is ahead, and we say so",
-        body: "Stan has years of features we do not have: funnels, affiliates paid automatically, email broadcasts and flows, automated Instagram replies, courses with a proper student area, communities, an app for iPhone and iPad, and a support team with a track record. If you depend on those today, Stan is the better tool today.",
+        body: "Stan has years of features we do not have: funnels, affiliates paid automatically, email broadcasts and flows, automated Instagram replies, communities, an app for iPhone and iPad, and a support team with a track record. If you depend on those today, Stan is the better tool today.",
       },
     ],
   },
@@ -498,7 +498,7 @@ export const PAGES: TopicPage[] = [
           ["What you are buying", "A whole suite: link in bio, websites, media kit, email, an affiliate network, AI tools", "One store page, built to sell a file"],
           ["A free plan", "Yes, and you can sell on it", "None"],
           ["Order bumps and upsells", "Yes", "Yes \u2014 a box the buyer ticks at checkout, and one click after paying on the same card"],
-          ["Memberships and courses", "Yes, from the $30 plan", "Memberships yes. Courses not built yet"],
+          ["Memberships and courses", "Yes, from the $30 plan", "Yes, both, on the one plan"],
         ],
       },
       {
@@ -519,7 +519,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Beacons is ahead of us, and it is not close",
-        body: "For $30 they give you 0% and, with it, websites, a media kit that updates itself, email marketing, an affiliate network of 12,000 brands, order bumps, memberships, courses and a pile of AI tools. We give you one store page. A dollar a month is not a reason to choose us, and we are not going to pretend it is.",
+        body: "For $30 they give you 0% and, with it, websites, a media kit that updates itself, email marketing, an affiliate network of 12,000 brands and a pile of AI tools. We give you a store page with courses, memberships, calls and the checkout tools, and none of those extras. A dollar a month is not a reason to choose us, and we are not going to pretend it is.",
       },
       {
         kind: "note",
@@ -657,7 +657,7 @@ export const PAGES: TopicPage[] = [
           ["Digital downloads", "Yes, up to 5 GB", "Yes, up to 5 GB"],
           ["Selling something bigger", "Their help centre: host it on Google Drive or Dropbox and use Redirect to URL", "Sell it as a link. Same escape hatch, and we say so on the product itself"],
           ["How much your buyers may download", "No figure in their help centre", "200 GB a month, published, and shown in your account as it is used"],
-          ["Courses with drip and analytics", "Yes", "Not available"],
+          ["Courses with drip and analytics", "Yes", "Yes \u2014 modules, videos up to 5 GB that stay upright when filmed upright, text, downloads, free preview lessons, modules that open over time with an email to the student, and each student's progress"],
           ["Memberships and subscriptions", "Yes \u2014 daily, weekly, monthly, annually, and can end after a set number of payments", "Yes \u2014 daily, weekly, monthly, yearly, on your own Stripe, and members cancel on their own in one click. No fixed-term option yet"],
           ["Coaching calls with a calendar", "Yes", "Yes \u2014 your hours in your time zone, times shown to each buyer in theirs, held while they pay, and a calendar file emailed to both of you. It does not read your Google calendar yet"],
           ["Live webinars", "Yes", "Not available"],

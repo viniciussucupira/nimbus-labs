@@ -127,6 +127,20 @@ export default function PrivacyPage() {
           under Stripe&apos;s own privacy policy; we do not keep it.
         </p>
         <p>
+          <strong className="text-black">Courses.</strong>{" "}
+          When someone buys a course, we note the email address they paid with
+          and when, so the course opens for them and modules that open over
+          time open on the right day. The browser that paid keeps a cookie for
+          a day so the course can open straight away, and any browser let into
+          a course keeps a cookie for 90 days so the student does not have to
+          ask again. For each student we keep when they joined, when they last
+          opened the course and which lessons they marked done; the creator
+          sees this in their studio, and we email the student when a module
+          opens for them. A student taken off a course by its creator is kept
+          on a list so the course stays closed to them. To check who bought a
+          course, we ask the creator&apos;s own Stripe account by email address.
+        </p>
+        <p>
           <strong className="text-black">A one-click offer after paying.</strong>{" "}
           When a product is followed by a one-click offer, Stripe keeps the
           buyer&apos;s card on the creator&apos;s account for payments the buyer

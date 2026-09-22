@@ -74,6 +74,7 @@ const BUILT = [
   "Payment plans: two to twelve weekly or monthly payments on your own Stripe account, the product delivered after the first, and the plan given its end so no buyer is charged once more",
   "Sales tax and VAT worked out by Stripe Tax on your own account and added at checkout, switched on once Stripe says your tax setup is complete",
   "Limited quantities: the page shows how many are left, counted from real payments, and a unit someone is paying for is held so the last one is never sold twice",
+  "Courses: modules of lessons with video, text, downloads and a link, free preview lessons, modules that open a set number of days after each student joins with an email the day they do, and each student's progress in your studio — students open them with their email, no password",
   "Paid calls with a calendar: your weekly hours in your time zone, the free times shown to each buyer in theirs, the time held while they pay, and a calendar file emailed to both of you",
   "Links to everywhere else you are — the channel, the podcast, the booking page — with no price and no checkout on them",
   "Discount codes a buyer types at checkout, made as coupons on your own Stripe account",
@@ -106,7 +107,6 @@ const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a mon
 
 const NOT_BUILT = [
   "PayPal as a second way to be paid — it is Stripe only today",
-  "Courses with lessons and progress",
   "Communities and group chat",
   "Reading your Google or Outlook calendar, so a busy day closes by itself",
   "Email marketing and automations",

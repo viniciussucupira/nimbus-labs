@@ -44,6 +44,7 @@ const REASONS: { icon: IconName; title: string; body: string; href: string; link
 ];
 
 const LIVE: { icon: IconName; title: string; body: string }[] = [
+  { icon: "cap", title: "Courses with lessons", body: "Modules, videos, text and downloads. Lessons can open over time or be a free preview, and students need no password." },
   { icon: "calendar", title: "Paid calls with a calendar", body: "Set your hours once. Buyers pick a time in their own time zone, pay, and it lands in both your calendars." },
   { icon: "door", title: "Members cancel on their own", body: "One click on Stripe's own page. Nobody has to write to you, and nobody feels trapped." },
   { icon: "palette", title: "Your photo, your colour", body: "Four themes, ten colours or your own. Every colour is checked so your page stays easy to read." },
@@ -58,10 +59,10 @@ const LIVE: { icon: IconName; title: string; body: string }[] = [
   { icon: "card", title: "Payment plans", body: "Two to twelve weekly or monthly payments. The buyer gets it after the first, and the plan ends by itself." },
   { icon: "receipt", title: "Sales tax by Stripe Tax", body: "Worked out from each buyer's address and added at checkout, on your own Stripe account." },
   { icon: "clock", title: "Limited quantities, counted for real", body: "Your page shows how many are left, from real payments, and stops selling at zero." },
+  { icon: "phone", title: "Installs like an app", body: "Your store goes on the home screen of any iPhone or Android phone, with no app store in between." },
 ];
 
 const NEXT = [
-  "Courses with lessons",
   "Email to your list, from your studio",
   "Your own domain",
   "Several stores in one account",
@@ -440,8 +441,8 @@ export default function Home() {
                 <div>
                   <p className="font-semibold text-ink">Where Stan is ahead today</p>
                   <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                    Stan has a course builder, email broadcasts and automatic Instagram replies. We do not
-                    have those yet, and we say so on every page that could make you think otherwise.
+                    Stan has email broadcasts, automatic Instagram replies and communities. We do not have
+                    those yet, and we say so on every page that could make you think otherwise.
                   </p>
                 </div>
                 <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3">

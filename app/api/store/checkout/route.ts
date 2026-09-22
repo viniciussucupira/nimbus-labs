@@ -7,6 +7,7 @@ import { releaseStockHold, withStockHold } from "@/lib/stock";
 import { activePlan, activeUpsell } from "@/lib/product-extras";
 import { rememberPlan } from "@/lib/plans";
 import { UPSELL_COOKIE, newUpsellKey } from "@/lib/upsell";
+import { BUYER_COOKIE, BUYER_COOKIE_SECONDS, newBuyerKey } from "@/lib/learn";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -87,12 +88,15 @@ export async function POST(request: NextRequest) {
     // fingerprint travels with the charge.
     const inPlan = plan && activePlan(product) !== null;
     const upsell = !inPlan && !store.tax.enabled && activeUpsell(store.products, product) ? newUpsellKey() : null;
+    // A course opens straight away in the browser that paid for it.
+    const buyer = product.course ? newBuyerKey() : null;
     const held = await withStockHold(store, product, (expiresAt) =>
       createCheckout(store, product, origin, optionId, {
         bump,
         expiresAt: expiresAt || undefined,
         upsellKey: upsell?.fingerprint,
         plan: inPlan,
+        buyerKey: buyer?.fingerprint,
       }),
     );
     if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);
@@ -108,6 +112,9 @@ export async function POST(request: NextRequest) {
     }
     if (upsell) {
       headers.append("Set-Cookie", `${UPSELL_COOKIE}=${upsell.secret}; Path=/; Max-Age=7200; HttpOnly; SameSite=Lax${secure}`);
+    }
+    if (buyer) {
+      headers.append("Set-Cookie", `${BUYER_COOKIE}=${buyer.secret}; Path=/api/store/course; Max-Age=${BUYER_COOKIE_SECONDS}; HttpOnly; SameSite=Lax${secure}`);
     }
     return new Response(null, { status: 303, headers });
   } catch (error) {
