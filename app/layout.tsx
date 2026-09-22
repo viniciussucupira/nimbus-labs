@@ -57,7 +57,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/og.png",
+        url: "/og.png?v=2",
         width: 1200,
         height: 630,
         alt: "Nimbus Labs: your store, your Stripe, your money. A paid Stripe checkout and a delivered file, with 0% of the sale taken.",
@@ -68,7 +68,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
-    images: ["/og.png"],
+    images: ["/og.png?v=2"],
   },
 };
 
