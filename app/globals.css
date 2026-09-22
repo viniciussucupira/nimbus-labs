@@ -336,6 +336,18 @@ body {
 .btn-block {
   width: 100%;
 }
+/* On a phone no button may push past the edge of the screen: a label longer
+   than the room it has breaks onto a second line instead. Buttons that fit
+   are unchanged, because text only wraps when it has to. */
+@media (max-width: 479px) {
+  .btn {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    padding-block: 0.55rem;
+  }
+}
 /* A button whose label may be longer than a small phone is wide: it may
    break onto a second line instead of pushing past the edge of its card. */
 .btn-wrap {
@@ -893,4 +905,162 @@ body {
 }
 .btn-danger-solid:hover {
   background-color: #a8271f;
+}
+
+/* ------------------------------------------------------------------------
+   A creator's public page. Every colour comes from custom properties set on
+   .st-page by lib/store-look.ts, which has already moved each one until it
+   passes contrast, so nothing here picks a colour of its own.
+   ------------------------------------------------------------------------ */
+.st-page {
+  background: var(--st-bg);
+  color: var(--st-text);
+}
+.st-band {
+  background:
+    radial-gradient(120% 90% at 85% 0%, rgba(255, 255, 255, 0.22), transparent 60%),
+    linear-gradient(135deg, var(--st-accent) 0%, var(--st-accent-2) 100%);
+}
+.st-band,
+.st-band .st-muted {
+  color: var(--st-on-accent);
+}
+.st-avatar {
+  display: block;
+  width: 6.5rem;
+  height: 6.5rem;
+  margin-inline: auto;
+  border-radius: 999px;
+  object-fit: cover;
+  background: var(--st-item);
+  box-shadow:
+    0 0 0 4px var(--st-card),
+    0 12px 30px -12px rgba(13, 11, 36, 0.45);
+}
+.st-avatar-initial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--st-accent), var(--st-accent-2));
+  color: var(--st-on-accent);
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.st-muted {
+  color: var(--st-muted);
+}
+.st-card {
+  background: var(--st-card);
+  border: 1px solid var(--st-line);
+  border-radius: 1.5rem;
+  box-shadow: 0 1px 2px rgba(13, 11, 36, 0.04), 0 10px 30px -22px rgba(13, 11, 36, 0.35);
+}
+.st-link-card {
+  display: block;
+  transition:
+    transform var(--d-base) var(--ease),
+    border-color var(--d-base) var(--ease);
+}
+.st-link-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--st-accent-text);
+}
+.st-link-card:focus-visible,
+.st-btn:focus-visible,
+.st-option:has(:focus-visible) {
+  outline: 3px solid var(--st-accent-text);
+  outline-offset: 3px;
+}
+.st-price {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  background: var(--st-accent-soft);
+  color: var(--st-text);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.st-btn {
+  background-color: var(--st-accent);
+  color: var(--st-on-accent);
+  box-shadow: 0 10px 24px -14px var(--st-accent);
+}
+.st-btn:hover {
+  filter: brightness(1.07) saturate(1.05);
+}
+.st-option {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--st-line-strong);
+  background: var(--st-item);
+  padding: 0.75rem 1rem;
+  transition:
+    border-color var(--d-base) var(--ease),
+    background-color var(--d-base) var(--ease);
+}
+.st-option:hover {
+  border-color: var(--st-accent-text);
+}
+.st-option:has(:checked) {
+  border-color: var(--st-accent-text);
+  background: var(--st-accent-soft);
+}
+.st-page input[type="radio"],
+.st-page input[type="checkbox"] {
+  accent-color: var(--st-accent-text);
+}
+.st-label {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--st-text);
+}
+.st-field {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--st-line-strong);
+  background: var(--st-field);
+  color: var(--st-text);
+  font-size: 1rem;
+}
+.st-field::placeholder {
+  color: var(--st-muted);
+  opacity: 0.75;
+}
+.st-field:focus {
+  outline: none;
+  border-color: var(--st-accent-text);
+  box-shadow: 0 0 0 3px var(--st-accent-soft);
+}
+.st-note {
+  border-radius: 1.25rem;
+  border: 1px dashed var(--st-line-strong);
+  padding: 1.25rem;
+  color: var(--st-muted);
+}
+.st-note strong {
+  color: var(--st-text);
+}
+.st-footer-link {
+  color: var(--st-muted);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.st-footer-link:hover {
+  color: var(--st-accent-text);
+}
+.st-theme-bold .st-avatar {
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.9),
+    0 16px 36px -14px rgba(13, 11, 36, 0.55);
 }
