@@ -1,6 +1,13 @@
 import Link from "next/link";
+import { Icon } from "./icons";
 import { SiteFooter } from "./site-footer";
 import { SiteNav } from "./site-nav";
+
+const LEGAL_LINKS = [
+  { href: "/terms", label: "Terms of Service" },
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/refunds", label: "Refund Policy" },
+];
 
 export function LegalPage({
   title,
@@ -12,51 +19,46 @@ export function LegalPage({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-white text-ink">
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
       <SiteNav />
 
       <main id="content" className="flex-1">
-        <section className="nb-mesh nb-grain relative overflow-hidden text-white">
-          <div
-            aria-hidden="true"
-            className="nb-blob absolute -left-16 top-0 h-56 w-56 bg-sky-brand/35 blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="nb-blob absolute -right-16 bottom-0 h-56 w-56 bg-amber-brand/30 blur-3xl"
-          />
-          <div className="relative mx-auto max-w-3xl px-4 py-14 sm:py-16">
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold backdrop-blur">
-              <span aria-hidden="true">📄</span> The small print, in plain words
-            </p>
-            <h1 className="font-display mt-5 text-4xl font-black sm:text-5xl">
-              {title}
-            </h1>
-            <p className="mt-3 text-sm text-white/75">
+        <section className="border-b border-line bg-white">
+          <div className="container-narrow py-14 sm:py-20">
+            <p className="eyebrow">The small print, in plain words</p>
+            <h1 className="t-h1 mt-4">{title}</h1>
+            <p className="mt-4 text-[0.9375rem] text-ink-mute">
               Effective date: August 15, 2026
               {lastUpdated ? ` · Last updated: ${lastUpdated}` : ""}
             </p>
+            <nav aria-label="Legal pages" className="mt-8 flex flex-wrap gap-2">
+              {LEGAL_LINKS.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={`tag h-9 px-3 text-[0.875rem] transition-colors hover:bg-sand-deep ${
+                    l.label === title ? "tag-brand" : ""
+                  }`}
+                  aria-current={l.label === title ? "page" : undefined}
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
           </div>
         </section>
 
-        <section className="bg-cream py-14">
-          <div className="mx-auto max-w-3xl px-4">
-            <div className="space-y-10 rounded-3xl border-2 border-ink/10 bg-white p-6 text-[17px] leading-8 text-ink-soft shadow-xl shadow-ink/5 sm:p-10">
-              {children}
-            </div>
+        <section className="py-12 sm:py-16">
+          <div className="container-narrow">
+            <div className="legal-body space-y-10 text-[1.0625rem] leading-[1.8] text-ink-soft">{children}</div>
 
-            <div className="mt-10 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/"
-                className="rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-7 py-3.5 font-bold text-white shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
-              >
+            <div className="mt-14 flex flex-wrap items-center gap-x-6 gap-y-4 border-t border-line pt-8">
+              <Link href="/" className="btn btn-secondary">
                 Back to the home page
               </Link>
-              <Link
-                href="/demo"
-                className="rounded-full border-2 border-ink/15 px-7 py-3.5 font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
-              >
-                See the live demo store
+              <Link href="/help" className="link-arrow">
+                Questions? The help centre
+                <Icon name="arrow-right" size={16} className="arrow" />
               </Link>
             </div>
           </div>
@@ -77,13 +79,7 @@ export function LegalSection({
 }) {
   return (
     <section className="space-y-4">
-      <h2 className="font-display flex items-center gap-3 text-xl font-extrabold text-ink">
-        <span
-          aria-hidden="true"
-          className="h-6 w-1.5 rounded-full bg-gradient-to-b from-violet-brand to-pink-brand"
-        />
-        {title}
-      </h2>
+      <h2 className="text-[1.3rem] font-semibold tracking-[-0.02em] text-ink">{title}</h2>
       {children}
     </section>
   );
