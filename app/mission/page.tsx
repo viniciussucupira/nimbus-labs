@@ -69,6 +69,8 @@ const BUILT = [
   "Members who cancel on their own, in one click on Stripe's own page, without having to write to you",
   "Your numbers: visitors, where they came from, checkouts started and sales for the last week or month — visits counted without cookies, sales read from your own Stripe",
   "Your own Meta, Google, TikTok and Pinterest pixels, told of every page view, checkout, lead and purchase with its amount, and loaded only once a visitor allows it where the law asks for that",
+  "An order bump: another of your products offered in a box the buyer ticks at checkout, at your price, never ticked for them, and delivered with the first",
+  "Limited quantities: the page shows how many are left, counted from real payments, and a unit someone is paying for is held so the last one is never sold twice",
   "Paid calls with a calendar: your weekly hours in your time zone, the free times shown to each buyer in theirs, the time held while they pay, and a calendar file emailed to both of you",
   "Links to everywhere else you are — the channel, the podcast, the booking page — with no price and no checkout on them",
   "Discount codes a buyer types at checkout, made as coupons on your own Stripe account",
@@ -100,7 +102,7 @@ const ORDERS_LINE =
 const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month, free for the first ${TRIAL_DAYS} days, cancelled in one click from your studio`;
 
 const NOT_BUILT = [
-  "Order bumps and upsells at checkout",
+  "One-click upsells after checkout",
   "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
   "Communities and group chat",
