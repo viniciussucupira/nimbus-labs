@@ -1064,3 +1064,8 @@ body {
     0 0 0 4px rgba(255, 255, 255, 0.9),
     0 16px 36px -14px rgba(13, 11, 36, 0.55);
 }
+
+/* An order bump: the buy button says the total once the box is ticked. */
+.bump-on { display: none; }
+form:has(input[name="bump"]:checked) .bump-on { display: inline; }
+form:has(input[name="bump"]:checked) .bump-off { display: none; }
