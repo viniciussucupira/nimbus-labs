@@ -1,5 +1,9 @@
 // Content for every page behind a menu item. One entry per page, so that
 // each menu item opens something different and real.
+import { isDomainsConfigured } from "@/lib/domains";
+
+/** Whether stores can be put on their own domain on this deployment. */
+const DOMAINS = isDomainsConfigured();
 
 export type Block =
   | { kind: "lead"; text: string }
@@ -47,7 +51,7 @@ export const PAGES: TopicPage[] = [
         kind: "cards",
         title: "What the store page carries",
         items: [
-          { emoji: "🔤", title: "Your name at the top", body: "Your name, your address and one line about you. A photo of your own is not built yet, so today the page draws your initial.", tint: "bg-violet-brand/10 text-violet-deep" },
+          { emoji: "🔤", title: "Your name at the top", body: "Your name, your address, one line about you, and your photo when you add one.", tint: "bg-violet-brand/10 text-violet-deep" },
           { emoji: "🔗", title: "Link buttons", body: "The channel, the profile, the booking page — with the site each one leads to printed under it. None of them charges anything.", tint: "bg-sky-brand/15 text-sky-brand" },
           { emoji: "🛍️", title: "Product cards", body: "The title, what is inside, the price, and the button that buys it.", tint: "bg-pink-brand/10 text-pink-brand" },
           { emoji: "🙋", title: "A line about you", body: "Under your name, on every store — not locked behind one theme.", tint: "bg-amber-brand/15 text-amber-brand" },
@@ -56,7 +60,9 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "What is not there yet",
-        body: "A photo of your own and colours of your own: every store draws your initial and wears the same palette today. Categories and search for a store with dozens of products, and your own domain. None of those exists, and none is described above as if it did.",
+        body: DOMAINS
+          ? "Categories and search for a store with dozens of products. It does not exist yet, and nothing above describes it as if it did."
+          : "Categories and search for a store with dozens of products, and your own domain. Neither exists yet, and nothing above describes them as if they did.",
       },
       {
         kind: "quote",
@@ -363,7 +369,7 @@ export const PAGES: TopicPage[] = [
           ["Phone app", "iPhone and iPad, for running your store. Not on Android", "None. The site installs to the home screen on both"],
           ["Several prices for one product", "Listed as a top feature request, not available", "Up to three on any product, each with its own file or link"],
           ["A line about you on the page", "Their About me, on one theme only", "On every store, under your name"],
-          ["Your own domain", "Not available", "Not available"],
+          ["Your own domain", "Not available", DOMAINS ? "Yes, on the $99 Pro plan, with the certificate handled for you" : "Not available"],
           ["Changing your store address", "Any time. Their help centre says old links are forwarded on a best effort, cannot be guaranteed, and advises resending them", "Any time. Every address the store ever used keeps working, for good"],
           ["Customer area for all purchases", "Courses only", "Courses: every course bought from a store opens with one emailed link, no password. A buyer who loses a download link gets it sent again, with no account"],
           ["Several stores in one account", "Not in one account. Several accounts, each with its own email and its own subscription", "Not available. One store per account, the same as theirs"],
@@ -454,7 +460,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Gumroad is ahead of us today",
-        body: "A marketplace that can send you buyers; affiliates; automated email workflows and a newsletter; licence keys; PDF stamping; ratings and reviews; your own domain; Zapier and a public API; purchasing power parity pricing; and a mobile app. We have none of those. They have been doing this since 2011 and it shows.",
+        body: `A marketplace that can send you buyers; affiliates; licence keys; PDF stamping; ratings and reviews;${DOMAINS ? "" : " your own domain;"} Zapier and a public API; purchasing power parity pricing; and a mobile app. We have none of those. Email to your list we have, on our $99 Pro plan, where Gumroad includes it. They have been doing this since 2011 and it shows.`,
       },
     ],
   },
@@ -519,7 +525,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Beacons is ahead of us, and it is not close",
-        body: "For $30 they give you 0% and, with it, websites, a media kit that updates itself, email marketing, an affiliate network of 12,000 brands and a pile of AI tools. We give you a store page with courses, memberships, calls and the checkout tools, and none of those extras. A dollar a month is not a reason to choose us, and we are not going to pretend it is.",
+        body: "For $30 they give you 0% and, with it, websites, a media kit that updates itself, email marketing, an affiliate network of 12,000 brands and a pile of AI tools. We give you a store page with courses, memberships, calls and the checkout tools, and on our $99 Pro plan email to your list, but none of the other extras. A dollar a month is not a reason to choose us, and we are not going to pretend it is.",
       },
       {
         kind: "note",
@@ -643,7 +649,7 @@ export const PAGES: TopicPage[] = [
           ["Themes and colours", "Yes, limited", "Yes \u2014 four themes, ten colours or any colour of your own, and your photo. Every colour is checked for contrast before your page uses it"],
           ["A line about you on the page", "About me, one theme only", "Every store, under your name"],
           ["Several prices in one product", "Not available", "Up to three, each delivering its own thing"],
-          ["Custom domain", "Not available", "Not available"],
+          ["Custom domain", "Not available", DOMAINS ? "Yes, on the $99 Pro plan" : "Not available"],
           ["Custom code on the page", "Explicitly not supported", "Not available"],
           ["Embed the store on your own site", "Not available", "Not available"],
           ["Several stores in one account", "Not in one account. Several accounts, each with its own email and its own subscription", "Not available. One store per account, the same as theirs"],

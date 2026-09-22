@@ -4,6 +4,7 @@ import { Icon, iconFor } from "@/components/icons";
 import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
+import { isDomainsConfigured } from "@/lib/domains";
 
 export const metadata: Metadata = {
   title: "Help centre — Nimbus Labs",
@@ -285,7 +286,11 @@ const SECTIONS: Section[] = [
       {
         q: "Can I use my own domain?",
         a: [
-          "Not yet. It is next on the list, on Pro, and this page will say so on the day it works.",
+          ...(isDomainsConfigured()
+            ? [
+                "Yes, on Pro. In your studio, type the domain you own — shop.yourname.com, or yourname.com — and we show you the one record to add where you bought it. When it shows up, your store opens on that domain, with its certificate handled for you. Your nimbuslabsai.com address keeps working too, and if Pro ends, visitors to the domain are sent there.",
+              ]
+            : ["Not yet. It is next on the list, on Pro, and this page will say so on the day it works."]),
         ],
       },
       {

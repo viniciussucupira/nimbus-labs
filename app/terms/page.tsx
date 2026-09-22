@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
+import { isDomainsConfigured } from "@/lib/domains";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Nimbus Labs",
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default function TermsPage() {
+  const domains = isDomainsConfigured();
   return (
     <LegalPage title="Terms of Service" lastUpdated="September 22, 2026">
       <p>
@@ -183,12 +185,21 @@ export default function TermsPage() {
         <p>
           There are two plans. Nimbus Labs, at $29 a month or $300 a year,
           includes everything to sell. Nimbus Labs Pro, at $99 a month or $948
-          a year, adds email to your list, with up to 50,000 emails a month,
+          a year, adds email to your list{domains ? " and your store on a domain you own" : ""},
+          with up to 50,000 emails a month,
           counted together for one-off emails and sequences; during the free
           trial a store may send up to 1,000 emails a month, and the full
           number opens with the first payment. What is not sent in a month does
           not carry over. Emails a month cannot cover wait for the next one.
         </p>
+        {domains ? (
+          <p>
+            A domain you add stays yours: you keep it where you bought it and
+            keep its settings. While your store is on Pro it opens your store;
+            when Pro ends, its visitors are sent to your nimbuslabsai.com
+            address, and you can take the domain off at any time.
+          </p>
+        ) : null}
         <p>
           You may switch between monthly and yearly billing, and between the
           two plans, from your studio.

@@ -291,6 +291,12 @@ export default function PrivacyPage() {
             is their store;
           </li>
           <li>
+            <strong className="text-black">Vercel</strong>, our host, which
+            serves the site and, when a creator adds their own domain, receives
+            that domain&apos;s name to check its records and issue its
+            certificate;
+          </li>
+          <li>
             <strong className="text-black">Resend</strong>, our email
             provider, which delivers the emails we send: sign-in links,
             receipts and the links to what you asked for, and the emails a

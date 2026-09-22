@@ -7,6 +7,7 @@ import { SiteNav } from "@/components/site-nav";
 import { isBillingConfigured } from "@/lib/billing";
 import { PLAN_PRICES, PRICE_CENTS, TRIAL_DAYS, YEAR_PRICE_CENTS } from "@/lib/plan";
 import { isConnectConfigured } from "@/lib/stripe-connect";
+import { isDomainsConfigured } from "@/lib/domains";
 
 export const metadata: Metadata = {
   title: "Our mission — Nimbus Labs",
@@ -106,11 +107,14 @@ const ORDERS_LINE =
  */
 const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year, or $${PLAN_PRICES.pro.month / 100} and $${PLAN_PRICES.pro.year / 100} on Pro, free for the first ${TRIAL_DAYS} days, with an email a week before the first charge, cancelled in one click from your studio`;
 
+/** The store on its own domain: built, and live where this deployment can add domains. */
+const DOMAIN_LINE =
+  "Your store on your own domain, on Pro: type it in the studio, add the one record we show you, and the certificate is handled for you";
+
 const NOT_BUILT = [
   "PayPal as a second way to be paid — it is Stripe only today",
   "Communities and group chat",
   "Reading your Google or Outlook calendar, so a busy day closes by itself",
-  "Your own domain for your store",
   "Several stores in one account",
   "An affiliate programme",
 ];
@@ -120,12 +124,15 @@ export default function MissionPage() {
   // line belongs in. A feature nobody here can press is not a built feature.
   const ready = isConnectConfigured();
   const billing = isBillingConfigured();
+  const domains = isDomainsConfigured();
   const built = [
     ...BUILT,
+    ...(domains ? [DOMAIN_LINE] : []),
     ...(ready ? [STRIPE_LINE, CHECKOUT_LINE, ORDERS_LINE] : []),
     ...(billing ? [BILLING_LINE] : []),
   ];
   const notBuilt = [
+    ...(domains ? [] : ["Your own domain for your store"]),
     ...(ready ? [] : [STRIPE_LINE, CHECKOUT_LINE, ORDERS_LINE]),
     ...(billing ? [] : [BILLING_LINE]),
     ...NOT_BUILT,

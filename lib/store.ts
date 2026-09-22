@@ -213,6 +213,26 @@ function parseMail(raw: unknown): MailSettings | null {
   return fromName && address ? { fromName, address } : null;
 }
 
+/** The creator's own domain, on Pro. */
+export type StoreDomain = {
+  /** The bare host name, like shop.theirname.com. */
+  name: string;
+  addedAt: string;
+  /** When we last saw it serving the store; empty until then. */
+  liveAt: string;
+};
+
+function parseDomain(raw: unknown): StoreDomain | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  if (typeof value.name !== "string" || !/^[a-z0-9.-]{4,253}$/.test(value.name)) return null;
+  return {
+    name: value.name,
+    addedAt: typeof value.addedAt === "string" ? value.addedAt : "",
+    liveAt: typeof value.liveAt === "string" ? value.liveAt : "",
+  };
+}
+
 /** The part of a course a store record carries. */
 export type CourseRef = { id: string; lessons: number };
 
@@ -271,6 +291,8 @@ export type Store = {
   trialEnds: number;
   /** How the creator's emails to their list are signed. Null until set up. */
   mail: MailSettings | null;
+  /** The creator's own domain for the store, when they added one. */
+  domain: StoreDomain | null;
   /** What the store lists, in the order the creator put them in. */
   products: Product[];
   /**
@@ -448,6 +470,7 @@ function parseStore(raw: unknown): Store | null {
       cycle: parseCycle(value.cycle) ?? "month",
       trialEnds: typeof value.trialEnds === "number" && value.trialEnds > 0 ? value.trialEnds : 0,
       mail: parseMail(value.mail),
+      domain: parseDomain(value.domain),
       products: parseProducts(value.products),
       // Stores written before links existed simply have none, which is the
       // same as a store nobody has added one to yet.
@@ -573,6 +596,7 @@ export async function claimHandle(
     cycle: "month",
     trialEnds: 0,
     mail: null,
+    domain: null,
     products: [],
     links: [],
     hasDiscounts: false,
@@ -653,7 +677,11 @@ export async function renameHandle(
     renamedAt: new Date().toISOString(),
   };
 
-  await redisPipeline([["SET", await ownerKey(email), JSON.stringify(next)]]);
+  await redisPipeline([
+    ["SET", await ownerKey(email), JSON.stringify(next)],
+    // The store's own domain follows it to the new address.
+    ...(next.domain ? [["SET", `nl:domain:${next.domain.name}`, handle]] : []),
+  ]);
   return { ok: true, store: next };
 }
 
@@ -996,6 +1024,15 @@ export async function setMailSettings(email: string, mail: MailSettings): Promis
 }
 
 /** Gives a store its list, the first time something needs one. */
+/** Records the store's own domain, or takes it off (null). */
+export async function setDomain(email: string, domain: StoreDomain | null): Promise<Store | null> {
+  const store = await storeForEmail(email);
+  if (!store) return null;
+  const next: Store = { ...store, domain };
+  await saveStore(next);
+  return next;
+}
+
 export async function ensureListId(email: string): Promise<Store | null> {
   const store = await storeForEmail(email);
   if (!store || store.listId) return store;

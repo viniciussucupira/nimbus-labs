@@ -30,6 +30,8 @@ import { readableTime, zoneName } from "@/lib/call-setup";
 import { ProductEditor } from "@/components/product-editor";
 import { LinkEditor } from "@/components/link-editor";
 import { DiscountEditor } from "@/components/discount-editor";
+import { DomainEditor } from "@/components/domain-editor";
+import { domainStatus, isDomainsConfigured } from "@/lib/domains";
 import {
   COUNTRIES,
   isConnectConfigured,
@@ -52,7 +54,7 @@ export const metadata: Metadata = {
 };
 
 const NEXT_WHEN_SELLING = [
-  "Your own domain, on Pro",
+  ...(isDomainsConfigured() ? [] : ["Your own domain, on Pro"]),
   "Several stores in one account, on Pro",
 ];
 /** Calls that have not ended yet, soonest first. */
@@ -293,6 +295,13 @@ export default async function StudioPage({
   // How this creator is billed, and what the other way would cost them.
   const billedYearly = live?.state === "active" ? live.cycle === "year" : current?.cycle === "year";
   const tier = current?.tier ?? "creator";
+  // The store's own domain: shown where this deployment can add one, and its
+  // records read from Vercel only while it is not yet live.
+  const domainsOn = isDomainsConfigured();
+  const domainNow =
+    domainsOn && store?.domain && !store.domain.liveAt && paid && tier === "pro"
+      ? await domainStatus(store.domain.name).catch(() => null)
+      : null;
   const billedNow =
     live?.state === "active" && live.amountCents > 0
       ? `$${live.amountCents % 100 ? (live.amountCents / 100).toFixed(2) : live.amountCents / 100} a ${live.cycle}`
@@ -558,6 +567,35 @@ export default async function StudioPage({
                     available, and nobody is asked for an address.
                   </p>
                 ) : null}
+              </div>
+            ) : null}
+
+            {domainsOn ? (
+              <div className="card mt-8 p-6 sm:p-8">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-lg font-semibold tracking-[-0.02em] text-ink">Your own domain</p>
+                  <span className="tag tag-brand">Pro</span>
+                </div>
+                {paid && tier === "pro" ? (
+                  <DomainEditor
+                    handle={store.handle}
+                    domain={store.domain?.name ?? null}
+                    live={Boolean(store.domain?.liveAt)}
+                    initial={domainNow}
+                  />
+                ) : (
+                  <>
+                    <p className="mt-2 text-ink-soft">
+                      {`Your store on a domain of your own, like shop.yourname.com, with its certificate handled for you. Part of Pro, at ${priceWords("pro", "month")}.`}
+                    </p>
+                    {store.domain ? (
+                      <p className="mt-3 rounded-2xl bg-sand px-4 py-3 text-sm text-ink-soft">
+                        {`${store.domain.name} is resting while your store is not on Pro: visitors are sent to nimbuslabsai.com/@${store.handle}. It opens your store again the moment Pro is back.`}
+                      </p>
+                    ) : null}
+                    <a href="#billing" className="btn btn-secondary mt-5">See Pro</a>
+                  </>
+                )}
               </div>
             ) : null}
 

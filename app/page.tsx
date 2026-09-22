@@ -6,6 +6,7 @@ import { SiteNav } from "@/components/site-nav";
 import { Icon, type IconName } from "@/components/icons";
 import { DemoWindow, Faq, HeroFlow, Pricing, RevealOnScroll } from "@/components/home-parts";
 import { PLAN_PRICES, PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
+import { isDomainsConfigured } from "@/lib/domains";
 
 export const metadata: Metadata = {
   title: "Nimbus Labs — the link-in-bio store that pays into your own Stripe",
@@ -63,10 +64,17 @@ const LIVE: { icon: IconName; title: string; body: string }[] = [
   { icon: "chat", title: "Email to your list, on Pro", body: "One-off emails, emails for later and sequences that send themselves. Only to people who agreed, with one-click unsubscribe." },
 ];
 
-const NEXT = [
+const NEXT_ALL = [
   "Your own domain, on Pro",
   "Several stores in one account, on Pro",
 ];
+
+/** Built lines move from "next" to "live" on the deployment where they work. */
+const DOMAINS = isDomainsConfigured();
+const NEXT = DOMAINS ? NEXT_ALL.filter((line) => !line.startsWith("Your own domain")) : NEXT_ALL;
+const LIVE_HERE = DOMAINS
+  ? [...LIVE, { icon: "globe" as IconName, title: "Your own domain, on Pro", body: "shop.yourname.com opens your store, with the certificate handled for you. Your nimbuslabsai.com address keeps working too." }]
+  : LIVE;
 
 const CREATORS = [
   {
@@ -207,7 +215,7 @@ export default function Home() {
                   <p className="text-sm text-ink-mute">Every line here exists in the code today.</p>
                 </div>
                 <ul className="mt-6 grid gap-x-8 gap-y-7 sm:grid-cols-2">
-                  {LIVE.map((f) => (
+                  {LIVE_HERE.map((f) => (
                     <li key={f.title} className="flex gap-4">
                       <span className="icon-tile icon-tile-sm bg-white text-violet-deep ring-1 ring-line">
                         <Icon name={f.icon} size={18} />
@@ -471,7 +479,7 @@ export default function Home() {
               </p>
             </div>
             <div className="reveal mx-auto mt-12 max-w-5xl">
-              <Pricing />
+              <Pricing domains={DOMAINS} />
             </div>
           </div>
         </section>

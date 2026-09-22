@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, permanentRedirect } from "next/navigation";
+import { headers } from "next/headers";
+import { notFound, permanentRedirect, redirect } from "next/navigation";
 import {
   centsToPrice,
   isFree,
@@ -24,6 +25,8 @@ import { StoreTracking } from "@/components/store-tracking";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { stockLeft } from "@/lib/stock";
 import { canWrite } from "@/lib/mail";
+import { canUseDomain } from "@/lib/domains";
+import { SITE_URL } from "@/lib/site-url";
 
 type Params = {
   params: Promise<{ handle: string }>;
@@ -64,9 +67,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (!found) return { title: "Not found — Nimbus Labs" };
   const { store } = found;
 
+  // A store on its own live domain names that as its address for search engines.
+  const ownDomain = store.domain?.liveAt && canUseDomain(store) ? `https://${store.domain.name}/` : null;
+
   return {
     title: `${store.name} — Nimbus Labs`,
     description: store.bio || `The store of ${store.name} on Nimbus Labs.`,
+    ...(ownDomain ? { alternates: { canonical: ownDomain } } : {}),
     // An empty store has nothing to offer a search engine yet. One with
     // something on it does, so it stops hiding the moment it has. A page of
     // links alone counts: it is a page somebody may be looking for.
@@ -96,8 +103,18 @@ export default async function StorePage({ params, searchParams }: Params) {
   if (!found) notFound();
   const { store, asked } = found;
 
+  // Reached on the creator's own domain (proxy.ts says which): it serves the
+  // store only while it is this store's and the store is on Pro. Otherwise the
+  // visitor is sent to the address that always works.
+  const reachedOn = (await headers()).get("x-nimbus-domain");
+  if (reachedOn && (store.domain?.name !== reachedOn || !canUseDomain(store))) {
+    redirect(`${SITE_URL}/@${store.handle}`);
+  }
+
   // An old address of this same store: send the visitor to the current one.
-  if (asked !== store.handle) permanentRedirect(`/@${store.handle}`);
+  // On the store's own domain the address in the bar is the domain, so there
+  // is nothing to correct.
+  if (asked !== store.handle && !reachedOn) permanentRedirect(`/@${store.handle}`);
 
   const selling = canSell(store);
   // A buyer standing in front of a checkout deserves to know it is a rehearsal

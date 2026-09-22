@@ -336,12 +336,15 @@ function PlanCard({
   );
 }
 
-export function Pricing() {
+export function Pricing({ domains = false }: { domains?: boolean }) {
+  const proPerks = domains
+    ? [...PRO_INCLUDED.slice(0, 1), "Your store on your own domain, with its certificate handled for you", ...PRO_INCLUDED.slice(1)]
+    : PRO_INCLUDED;
   return (
     <div>
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
         <PlanCard name="Nimbus" tag="Everything to sell" tier="creator" perks={INCLUDED} featured cta="Start your store" />
-        <PlanCard name="Nimbus Pro" tag="With email to your list" tier="pro" perks={PRO_INCLUDED} featured={false} cta="Start on Pro" />
+        <PlanCard name="Nimbus Pro" tag={domains ? "Email and your own domain" : "With email to your list"} tier="pro" perks={proPerks} featured={false} cta="Start on Pro" />
       </div>
       <div className="card-flat mt-6 grid gap-4 p-6 text-sm sm:grid-cols-3 sm:p-7">
         <p className="flex gap-2 text-ink-soft">
