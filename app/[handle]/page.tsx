@@ -21,8 +21,24 @@ import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canManage } from "@/lib/membership-manage";
 import { StoreTracking } from "@/components/store-tracking";
+import { activeBump } from "@/lib/product-extras";
+import { stockLeft } from "@/lib/stock";
 
-type Params = { params: Promise<{ handle: string }> };
+type Params = {
+  params: Promise<{ handle: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+const NOTICES: Record<string, { title: string; body: string }> = {
+  soldout: {
+    title: "That one just sold out",
+    body: "The last one went a moment before you pressed buy. Nothing was charged.",
+  },
+  busy: {
+    title: "Lots of people are buying that right now",
+    body: "Nothing was charged. Press buy again in a moment.",
+  },
+};
 
 /**
  * A creator's public store.
@@ -71,8 +87,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-export default async function StorePage({ params }: Params) {
+export default async function StorePage({ params, searchParams }: Params) {
   const { handle } = await params;
+  const query = searchParams ? await searchParams : {};
+  const notice = NOTICES[typeof query.status === "string" ? query.status : ""] ?? null;
   const found = await load(handle);
   if (!found) notFound();
   const { store, asked } = found;
@@ -92,6 +110,12 @@ export default async function StorePage({ params }: Params) {
   // A member can always find the way out, even when the store cannot sell
   // right now: stopping a charge must never depend on the store being open.
   const manageable = canManage(store);
+  // What is left of each limited product, counted from real checkouts.
+  const left = new Map<string, number>();
+  for (const product of store.products) {
+    const count = await stockLeft(store, product).catch(() => null);
+    if (count !== null) left.set(product.id, count);
+  }
 
   return (
     <div
@@ -130,6 +154,13 @@ export default async function StorePage({ params }: Params) {
         </section>
 
         <div className="mx-auto max-w-xl px-4 pb-16 pt-8">
+          {notice ? (
+            <div className="st-note mb-6" role="alert">
+              <p className="font-bold" style={{ color: "var(--st-text)" }}>{notice.title}</p>
+              <p className="mt-1 text-sm">{notice.body}</p>
+            </div>
+          ) : null}
+
           {store.products.length === 0 && store.links.length === 0 ? (
             <div className="st-note text-center">
               <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing here yet</p>
@@ -149,6 +180,10 @@ export default async function StorePage({ params }: Params) {
                   const every = product.recurring
                     ? ` ${everyLabel(product.recurring.interval)}`
                     : "";
+                  // A count is only worth showing where the product can be bought.
+                  const remaining = left.has(product.id) && canSellProduct(store, product) ? left.get(product.id)! : null;
+                  const soldOut = remaining === 0;
+                  const extra = activeBump(store.products, product);
                   return (
                   <li
                     key={product.id}
@@ -173,6 +208,11 @@ export default async function StorePage({ params }: Params) {
                     ) : null}
                     {product.summary ? (
                       <p className="st-muted mt-2 leading-relaxed">{product.summary}</p>
+                    ) : null}
+                    {remaining !== null ? (
+                      <p className="mt-2 text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>
+                        {soldOut ? "Sold out" : `${remaining.toLocaleString("en-US")} left`}
+                      </p>
                     ) : null}
 
                     {isFree(product) ? (
@@ -254,7 +294,7 @@ export default async function StorePage({ params }: Params) {
                       >
                         {`Pick a time \u2014 $${centsToPrice(product.priceCents)}`}
                       </Link>
-                    ) : canSellProduct(store, product) ? (
+                    ) : soldOut ? null : canSellProduct(store, product) ? (
                       <form
                         action="/api/store/checkout"
                         method="post"
@@ -303,19 +343,63 @@ export default async function StorePage({ params }: Params) {
                             </div>
                           </fieldset>
                         ) : null}
+                        {extra ? (
+                          /*
+                            Never ticked for the buyer. What it costs is the
+                            creator's price for it here, read on the server.
+                          */
+                          <label
+                            htmlFor={`b-${product.id}`}
+                            className="st-option mb-4 !items-start"
+                            style={{ borderStyle: "dashed" }}
+                          >
+                            <span className="flex items-start gap-3">
+                              <input
+                                id={`b-${product.id}`}
+                                type="checkbox"
+                                name="bump"
+                                value="yes"
+                                className="mt-1 h-4 w-4 shrink-0"
+                              />
+                              <span>
+                                <span className="block font-bold">
+                                  {`Add ${extra.target.title} for $${centsToPrice(extra.bump.priceCents)}`}
+                                </span>
+                                {extra.bump.pitch ? (
+                                  <span className="st-muted mt-0.5 block text-sm">{extra.bump.pitch}</span>
+                                ) : null}
+                                {extra.bump.priceCents < extra.target.priceCents ? (
+                                  <span className="st-muted mt-0.5 block text-xs">
+                                    {`$${centsToPrice(extra.target.priceCents)} on its own`}
+                                  </span>
+                                ) : null}
+                              </span>
+                            </span>
+                          </label>
+                        ) : null}
                         <button
                           type="submit"
                           className="btn st-btn btn-block"
                         >
-                          {options.length > 0
-                            ? product.recurring
-                              ? "Subscribe"
-                              : "Buy the one you picked"
-                            : product.recurring
-                              ? `Subscribe \u2014 $${centsToPrice(
-                                  product.priceCents,
-                                )}${every}`
-                              : `Buy for $${centsToPrice(product.priceCents)}`}
+                          <span className="bump-off">
+                            {options.length > 0
+                              ? product.recurring
+                                ? "Subscribe"
+                                : "Buy the one you picked"
+                              : product.recurring
+                                ? `Subscribe \u2014 $${centsToPrice(
+                                    product.priceCents,
+                                  )}${every}`
+                                : `Buy for $${centsToPrice(product.priceCents)}`}
+                          </span>
+                          {/* With the box ticked, the button says the new total. */}
+                          {extra ? (
+                            <span className="bump-on">
+                              {options.length > 0
+                                ? `Buy it with ${extra.target.title}`
+                                : `Buy both for $${centsToPrice(product.priceCents + extra.bump.priceCents)}`}
+                            </span>
+                          ) : null}
                         </button>
                       </form>
                     ) : selling ? (
