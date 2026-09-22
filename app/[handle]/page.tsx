@@ -17,6 +17,8 @@ import { everyLabel } from "@/lib/product-recurring";
 import { linkHost } from "@/lib/product-link";
 import { isConnectInTestMode } from "@/lib/stripe-connect";
 import { canGiveProduct } from "@/lib/free";
+import { lookStyle } from "@/lib/store-look";
+import { photoUrl } from "@/lib/photo-limits";
 
 type Params = { params: Promise<{ handle: string }> };
 
@@ -53,6 +55,17 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       index: store.products.length > 0 || store.links.length > 0,
       follow: true,
     },
+    // A shared link shows the creator's face when they have put one up.
+    ...(store.photoId
+      ? {
+          openGraph: {
+            title: store.name,
+            description: store.bio || `The store of ${store.name} on Nimbus Labs.`,
+            images: [{ url: photoUrl(store.photoId), width: 480, height: 480, alt: store.name }],
+          },
+          twitter: { card: "summary" },
+        }
+      : {}),
   };
 }
 
@@ -73,33 +86,49 @@ export default async function StorePage({ params }: Params) {
   // gives things away has no card to talk about.
   const hasPriced = store.products.some((product) => !isFree(product));
 
+  const bold = store.look.theme === "bold";
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
+    <div
+      className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
+      style={lookStyle(store.look) as React.CSSProperties}
+    >
+      <main id="content" className="relative">
+        <section className={bold ? "st-band" : undefined}>
+          <div className={`mx-auto max-w-xl px-4 text-center ${bold ? "pb-12 pt-14 sm:pt-20" : "pb-2 pt-14 sm:pt-20"}`}>
+            {store.photoId ? (
+              // A plain img: the picture is already cropped and sized, and its
+              // address never changes, so there is nothing for an optimiser to add.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={photoUrl(store.photoId)}
+                alt={store.name}
+                width={104}
+                height={104}
+                className="st-avatar"
+              />
+            ) : (
+              <p aria-hidden="true" className="st-avatar st-avatar-initial">
+                {store.name.slice(0, 1).toUpperCase()}
+              </p>
+            )}
 
-      <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <div className="card p-7 text-center sm:p-10">
-          <p
-            aria-hidden="true"
-            className="font-display mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-violet-brand to-sky-brand text-3xl font-semibold text-white"
-          >
-            {store.name.slice(0, 1).toUpperCase()}
-          </p>
+            <h1 className="font-display mt-6 text-3xl font-semibold leading-tight tracking-[-0.02em] sm:text-4xl">
+              {store.name}
+            </h1>
+            <p className="st-muted mt-1 text-sm font-semibold">@{store.handle}</p>
 
-          <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
-            {store.name}
-          </h1>
-          <p className="mt-1 text-sm font-semibold text-ink-soft">
-            @{store.handle}
-          </p>
+            {store.bio ? (
+              <p className="st-muted mx-auto mt-4 max-w-md text-lg leading-relaxed">{store.bio}</p>
+            ) : null}
+          </div>
+        </section>
 
-          {store.bio ? (
-            <p className="mt-4 text-lg text-ink-soft">{store.bio}</p>
-          ) : null}
-
+        <div className="mx-auto max-w-xl px-4 pb-16 pt-8">
           {store.products.length === 0 && store.links.length === 0 ? (
-            <div className="mt-8 rounded-[var(--r-lg)] border border-dashed border-line-strong p-6">
-              <p className="font-bold text-ink">Nothing here yet</p>
-              <p className="mt-2 text-sm text-ink-soft">
+            <div className="st-note text-center">
+              <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing here yet</p>
+              <p className="mt-2 text-sm">
                 This page is open but empty. When {store.name} adds something,
                 it shows up here.
               </p>
@@ -108,7 +137,7 @@ export default async function StorePage({ params }: Params) {
 
           {store.products.length > 0 ? (
             <>
-              <ul className="mt-8 space-y-4 text-left">
+              <ul className="space-y-4">
                 {store.products.map((product) => {
                   const options = sellableOptions(product);
                   const from = fromPriceCents(product);
@@ -118,13 +147,13 @@ export default async function StorePage({ params }: Params) {
                   return (
                   <li
                     key={product.id}
-                    className="rounded-3xl border border-line bg-paper p-5 sm:p-6"
+                    className="st-card p-5 sm:p-6"
                   >
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <h2 className="font-display text-lg font-semibold text-ink">
+                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+                      <h2 className="font-display min-w-0 text-lg font-semibold leading-snug">
                         {product.title}
                       </h2>
-                      <p className="text-lg font-semibold tabular-nums text-ink">
+                      <p className="st-price text-base">
                         {isFree(product)
                           ? "Free"
                           : `${options.length > 1 ? "from " : ""}$${centsToPrice(
@@ -133,7 +162,7 @@ export default async function StorePage({ params }: Params) {
                       </p>
                     </div>
                     {product.summary ? (
-                      <p className="mt-2 text-ink-soft">{product.summary}</p>
+                      <p className="st-muted mt-2 leading-relaxed">{product.summary}</p>
                     ) : null}
 
                     {isFree(product) ? (
@@ -164,7 +193,7 @@ export default async function StorePage({ params }: Params) {
                           </div>
                           <label
                             htmlFor={`e-${product.id}`}
-                            className="field-label"
+                            className="st-label"
                           >
                             Your email
                           </label>
@@ -176,18 +205,18 @@ export default async function StorePage({ params }: Params) {
                             maxLength={254}
                             autoComplete="email"
                             placeholder="you@example.com"
-                            className="field"
+                            className="st-field"
                           />
                           <label
                             htmlFor={`c-${product.id}`}
-                            className="flex cursor-pointer items-start gap-3 text-sm text-ink-soft"
+                            className="st-muted flex cursor-pointer items-start gap-3 text-sm"
                           >
                             <input
                               id={`c-${product.id}`}
                               type="checkbox"
                               name="consent"
                               value="yes"
-                              className="mt-0.5 h-4 w-4 shrink-0 accent-violet-brand"
+                              className="mt-0.5 h-4 w-4 shrink-0"
                             />
                             <span>
                               {`Also send me emails from ${store.name}. I can unsubscribe whenever I like.`}
@@ -195,16 +224,16 @@ export default async function StorePage({ params }: Params) {
                           </label>
                           <button
                             type="submit"
-                            className="btn btn-primary"
+                            className="btn st-btn btn-block"
                           >
                             Email it to me
                           </button>
-                          <p className="text-xs text-ink-soft">
+                          <p className="st-muted text-xs">
                             {`We email you a link to it. ${store.name} gets your address, marked with whether you ticked the box, and Nimbus uses it for nothing else.`}
                           </p>
                         </form>
                       ) : (
-                        <p className="mt-4 text-sm text-ink-soft">
+                        <p className="st-muted mt-4 text-sm">
                           Not available right now.
                         </p>
                       )
@@ -233,7 +262,7 @@ export default async function StorePage({ params }: Params) {
                                 <label
                                   key={option.id}
                                   htmlFor={`o-${option.id}`}
-                                  className="card flex cursor-pointer items-center justify-between gap-3 px-4 py-3 transition hover:border-violet-brand has-[:checked]:border-violet-brand has-[:checked]:bg-lilac"
+                                  className="st-option"
                                 >
                                   <span className="flex items-center gap-3">
                                     <input
@@ -242,13 +271,13 @@ export default async function StorePage({ params }: Params) {
                                       name="option"
                                       value={option.id}
                                       defaultChecked={index === 0}
-                                      className="h-4 w-4 accent-violet-brand"
+                                      className="h-4 w-4"
                                     />
-                                    <span className="font-bold text-ink">
+                                    <span className="font-bold">
                                       {option.label}
                                     </span>
                                   </span>
-                                  <span className="font-semibold tabular-nums text-ink">
+                                  <span className="font-semibold tabular-nums">
                                     {`$${centsToPrice(option.priceCents)}${every}`}
                                   </span>
                                 </label>
@@ -258,7 +287,7 @@ export default async function StorePage({ params }: Params) {
                         ) : null}
                         <button
                           type="submit"
-                          className="btn btn-primary"
+                          className="btn st-btn btn-block"
                         >
                           {options.length > 0
                             ? product.recurring
@@ -277,7 +306,7 @@ export default async function StorePage({ params }: Params) {
                         hand over. Better to say so than to take the money and
                         work out the delivery afterwards.
                       */
-                      <p className="mt-4 text-sm text-ink-soft">
+                      <p className="st-muted mt-4 text-sm">
                         Not ready to buy yet.
                       </p>
                     ) : null}
@@ -293,8 +322,8 @@ export default async function StorePage({ params }: Params) {
                 says so without promising a date for it.
               */}
               {!hasPriced ? null : rehearsal ? (
-                <p className="mt-6 rounded-[var(--r-lg)] border border-dashed border-line-strong p-5 text-sm text-ink-soft">
-                  <strong className="text-ink">
+                <p className="st-note mt-6 text-sm">
+                  <strong>
                     This checkout is running in Stripe&apos;s test mode.
                   </strong>{" "}
                   No real money moves through it and no real card is charged,
@@ -303,13 +332,13 @@ export default async function StorePage({ params }: Params) {
                   Nimbus never holds the money and takes none of it.
                 </p>
               ) : selling ? (
-                <p className="mt-6 text-sm text-ink-soft">
+                <p className="st-muted mt-6 text-center text-sm">
                   Payment is taken by Stripe on {store.name}&apos;s own account.
                   Nimbus never holds the money and takes none of it.
                 </p>
               ) : (
-                <p className="mt-6 rounded-[var(--r-lg)] border border-dashed border-line-strong p-5 text-sm text-ink-soft">
-                  <strong className="text-ink">
+                <p className="st-note mt-6 text-sm">
+                  <strong>
                     This store cannot take payments yet.
                   </strong>{" "}
                   The prices above are real, and nothing here can charge a card.
@@ -326,19 +355,19 @@ export default async function StorePage({ params }: Params) {
             they are being sent before they go.
           */}
           {store.links.length > 0 ? (
-            <ul className="mt-8 space-y-3 text-left">
+            <ul className="mt-8 space-y-3">
               {store.links.map((link) => (
                 <li key={link.id}>
                   <a
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer nofollow ugc"
-                    className="card block px-5 py-4 transition hover:-translate-y-0.5 hover:border-violet-brand sm:px-6"
+                    className="st-card st-link-card px-5 py-4 text-center sm:px-6"
                   >
-                    <span className="block font-bold text-ink">
+                    <span className="block font-bold">
                       {link.title}
                     </span>
-                    <span className="mt-0.5 block font-mono text-xs text-ink-soft">
+                    <span className="st-muted mt-0.5 block font-mono text-xs">
                       {linkHost(link.url)}
                     </span>
                   </a>
@@ -346,15 +375,12 @@ export default async function StorePage({ params }: Params) {
               ))}
             </ul>
           ) : null}
-        </div>
 
-        <div className="mt-8 text-center">
-          <Link
-            href="/"
-            className="text-sm font-semibold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
-          >
-            Made with Nimbus Labs
-          </Link>
+          <div className="mt-12 text-center">
+            <Link href="/" className="st-footer-link text-sm font-semibold">
+              Made with Nimbus Labs
+            </Link>
+          </div>
         </div>
       </main>
     </div>
