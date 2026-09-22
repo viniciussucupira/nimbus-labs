@@ -245,11 +245,11 @@ export function SiteNav() {
             : "border-transparent bg-paper/80 backdrop-blur-md"
         }`}
       >
-        <div className="container-page flex h-16 items-center justify-between gap-4">
+        <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-4">
           <Link
             href="/"
             onClick={closeAll}
-            className="rounded-[10px] py-1 pr-1"
+            className="shrink-0 rounded-[10px] py-1 pr-1"
             aria-label="Nimbus Labs, home"
           >
             <Logo />
@@ -288,17 +288,21 @@ export function SiteNav() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <Link
               href="/signin"
               className="hidden h-10 items-center rounded-[10px] px-3.5 text-[0.9375rem] font-medium text-ink-soft transition-colors hover:bg-sand hover:text-ink sm:flex"
             >
               Sign in
             </Link>
-            <Link href="/signin" className="btn btn-primary btn-sm">
-              <span className="hidden min-[400px]:inline">Start your store</span>
-              <span className="min-[400px]:hidden">Get started</span>
-            </Link>
+            {/* Under 360px the header has room for the logo and the menu only;
+                the drawer and the hero both carry the same button. */}
+            <span className="hidden min-[360px]:block">
+              <Link href="/signin" className="btn btn-primary btn-sm">
+                <span className="hidden min-[400px]:inline">Start your store</span>
+                <span className="min-[400px]:hidden">Get started</span>
+              </Link>
+            </span>
             <button
               ref={toggleRef}
               type="button"
