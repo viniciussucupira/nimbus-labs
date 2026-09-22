@@ -52,15 +52,17 @@ const LIVE: { icon: IconName; title: string; body: string }[] = [
   { icon: "repeat", title: "Memberships", body: "Charge every week, month or year, on your own Stripe account." },
   { icon: "gift", title: "Free products for an email", body: "Each address confirmed by its owner. Download the list whenever you like." },
   { icon: "mail", title: "No password, ever", body: "Sign in with a link sent to your email. Nothing for us to lose." },
-  { icon: "chart", title: "Your sales, from Stripe", body: "What you sold, read straight from your own Stripe account." },
+  { icon: "chart", title: "Your numbers", body: "Visitors, where they came from, checkouts and sales, counted without cookies." },
+  { icon: "target", title: "Ad pixels, on the one plan", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount. Visitors are asked first where the law says so." },
+  { icon: "list", title: "Links to everywhere else", body: "Your channel, podcast and profile under what you sell, with how often each one is opened." },
   { icon: "phone", title: "On the home screen", body: "Your store installs like an app on iPhone and Android, with nothing to download." },
 ];
 
 const NEXT = [
   "Upsells and limited offers at checkout",
-  "Visit counts, and pixels for Meta, TikTok and Google",
   "Courses with lessons",
   "Email to your list, from your studio",
+  "Your own domain",
 ];
 
 const CREATORS = [
@@ -436,7 +438,7 @@ export default function Home() {
                 <div>
                   <p className="font-semibold text-ink">Where Stan is ahead today</p>
                   <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                    Stan has a course builder, email broadcasts, upsells and tracking pixels. We do not
+                    Stan has a course builder, email broadcasts and upsells. We do not
                     have those yet, and we say so on every page that could make you think otherwise.
                   </p>
                 </div>
