@@ -353,7 +353,7 @@ const QUESTIONS = [
   },
   {
     q: "What does Stan have that Nimbus does not, yet?",
-    a: "Among other things: calendar booking, a course builder, email broadcasts, upsells and tracking pixels. Every one is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
+    a: "Among other things: a course builder, email broadcasts, upsells and tracking pixels. Every one is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
   },
   {
     q: "Who is behind this?",
