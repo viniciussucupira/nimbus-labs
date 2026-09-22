@@ -19,6 +19,7 @@ import { isConnectInTestMode } from "@/lib/stripe-connect";
 import { canGiveProduct } from "@/lib/free";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
+import { canManage } from "@/lib/membership-manage";
 
 type Params = { params: Promise<{ handle: string }> };
 
@@ -87,6 +88,9 @@ export default async function StorePage({ params }: Params) {
   const hasPriced = store.products.some((product) => !isFree(product));
 
   const bold = store.look.theme === "bold";
+  // A member can always find the way out, even when the store cannot sell
+  // right now: stopping a charge must never depend on the store being open.
+  const manageable = canManage(store);
 
   return (
     <div
@@ -308,6 +312,14 @@ export default async function StorePage({ params }: Params) {
                       */
                       <p className="st-muted mt-4 text-sm">
                         Not ready to buy yet.
+                      </p>
+                    ) : null}
+
+                    {product.recurring && manageable ? (
+                      <p className="mt-3 text-center text-sm">
+                        <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">
+                          Already a member? Manage or cancel
+                        </Link>
                       </p>
                     ) : null}
                   </li>
