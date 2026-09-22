@@ -5,6 +5,8 @@ import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
 import { linkHost } from "@/lib/product-link";
 import { everyLabel } from "@/lib/product-recurring";
 import { readOrder } from "@/lib/store-checkout";
+import { lookStyle } from "@/lib/store-look";
+import { canManage } from "@/lib/membership-manage";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -62,21 +64,23 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   const hours = order.state === "paid" ? Math.floor(order.secondsLeft / 3600) : 0;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
-
+    <div
+      className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
+      style={lookStyle(store.look) as React.CSSProperties}
+    >
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <div className="card p-7 sm:p-10">
+        <div className="st-card p-7 sm:p-10">
           {order.state === "paid" ? (
             <>
-              <p className="tag tag-live">
+              <p className="st-price text-sm">
                 Paid
               </p>
               <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
                 Thank you
               </h1>
-              <p className="mt-4 text-lg text-ink-soft">
+              <p className="st-muted mt-4 text-lg">
                 {order.product.recurring ? "You subscribed to " : "You bought "}
-                <strong className="text-ink">
+                <strong style={{ color: "var(--st-text)" }}>
                   {order.option
                     ? `${order.product.title} (${order.option.label})`
                     : order.product.title}
@@ -90,10 +94,23 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 .
               </p>
               {order.product.recurring ? (
-                <p className="mt-3 rounded-2xl bg-lilac px-4 py-3 text-sm text-ink-soft">
-                  {`This renews ${everyLabel(
-                    order.product.recurring.interval,
-                  )} until you cancel it. The charge is made by ${store.name}, on their own account, so they are the one who can stop it: reply to the receipt Stripe emailed you and it reaches them.`}
+                <p
+                  className="mt-3 rounded-2xl px-4 py-3 text-sm"
+                  style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
+                >
+                  {canManage(store) ? (
+                    <>
+                      {`This renews ${everyLabel(order.product.recurring.interval)} until you cancel it, and you can cancel it yourself at any time, without writing to anyone: `}
+                      <Link href={`/@${store.handle}/manage`} className="font-semibold underline underline-offset-4">
+                        manage your membership
+                      </Link>
+                      {" with the email you paid with."}
+                    </>
+                  ) : (
+                    `This renews ${everyLabel(
+                      order.product.recurring.interval,
+                    )} until you cancel it. The charge is made by ${store.name}, on their own account: reply to the receipt Stripe emailed you and it reaches them.`
+                  )}
                 </p>
               ) : null}
 
@@ -106,13 +123,13 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     href={order.link}
                     rel="noopener noreferrer nofollow"
                     target="_blank"
-                    className="btn btn-primary btn-lg mt-7"
+                    className="btn st-btn btn-lg mt-7"
                   >
                     Open what you bought
                   </a>
-                  <p className="mt-5 text-sm text-ink-soft">
+                  <p className="st-muted mt-5 text-sm">
                     {`It is kept on ${linkHost(order.link)} by ${store.name}, not here. Save the address: `}
-                    <span className="break-all font-semibold text-ink">
+                    <span className="break-all font-semibold" style={{ color: "var(--st-text)" }}>
                       {order.link}
                     </span>
                   </p>
@@ -123,12 +140,12 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     href={`/api/store/download?handle=${encodeURIComponent(
                       store.handle,
                     )}&session_id=${encodeURIComponent(sessionId ?? "")}`}
-                    className="btn btn-primary btn-lg mt-7"
+                    className="btn st-btn btn-lg mt-7"
                   >
                     Download it
                   </a>
 
-                  <p className="mt-5 text-sm text-ink-soft">
+                  <p className="st-muted mt-5 text-sm">
                     This link works for about {hours} more{" "}
                     {hours === 1 ? "hour" : "hours"}. Keep the page, or keep the
                     email Stripe sent you — it has the same link.
@@ -150,7 +167,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 </p>
               )}
               {order.email ? (
-                <p className="mt-2 text-sm text-ink-soft">
+                <p className="st-muted mt-2 text-sm">
                   Your receipt went to {order.email}. It comes from {store.name},
                   because the charge was made on their account, not ours.
                 </p>
@@ -161,7 +178,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
               <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">
                 {notice?.title ?? "We could not find this order"}
               </h1>
-              <p className="mt-4 text-lg text-ink-soft">
+              <p className="st-muted mt-4 text-lg">
                 {notice?.body ?? "Check the link you were given."}
               </p>
             </>
@@ -170,7 +187,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
           <div className="mt-8">
             <Link
               href={`/@${store.handle}`}
-              className="text-sm font-semibold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+              className="st-footer-link text-sm font-semibold"
             >
               Back to {store.name}
             </Link>
