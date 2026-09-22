@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function RefundsPage() {
   return (
-    <LegalPage title="Refund Policy" lastUpdated="September 18, 2026">
+    <LegalPage title="Refund Policy" lastUpdated="September 22, 2026">
       <p>
         This Refund Policy applies to what you pay Nimbus Labs, an independent
         software studio, for the creator store at nimbuslabsai.com — including
@@ -37,7 +37,8 @@ export default function RefundsPage() {
         <p>
           If you request a refund within fourteen (14) days of a charge, we
           will refund that charge in full. This applies to the initial
-          subscription payment, to later monthly renewal charges, and to a
+          subscription payment, to later renewal charges, monthly or yearly,
+          to a charge made when you switch between them, and to a
           one-time purchase, provided the request is made within 14 days of the
           specific charge.
         </p>

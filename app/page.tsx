@@ -55,14 +55,16 @@ const LIVE: { icon: IconName; title: string; body: string }[] = [
   { icon: "chart", title: "Your numbers", body: "Visitors, where they came from, checkouts and sales, counted without cookies." },
   { icon: "target", title: "Ad pixels, on the one plan", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount. Visitors are asked first where the law says so." },
   { icon: "plus", title: "Offers before and after paying", body: "A box the buyer ticks at checkout, and one click after paying on the same card. At your price." },
+  { icon: "card", title: "Payment plans", body: "Two to twelve weekly or monthly payments. The buyer gets it after the first, and the plan ends by itself." },
+  { icon: "receipt", title: "Sales tax by Stripe Tax", body: "Worked out from each buyer's address and added at checkout, on your own Stripe account." },
   { icon: "clock", title: "Limited quantities, counted for real", body: "Your page shows how many are left, from real payments, and stops selling at zero." },
 ];
 
 const NEXT = [
-  "Payment plans and sales tax",
   "Courses with lessons",
   "Email to your list, from your studio",
   "Your own domain",
+  "Several stores in one account",
 ];
 
 const CREATORS = [
@@ -438,7 +440,7 @@ export default function Home() {
                 <div>
                   <p className="font-semibold text-ink">Where Stan is ahead today</p>
                   <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                    Stan has a course builder, email broadcasts and payment plans. We do not
+                    Stan has a course builder, email broadcasts and automatic Instagram replies. We do not
                     have those yet, and we say so on every page that could make you think otherwise.
                   </p>
                 </div>

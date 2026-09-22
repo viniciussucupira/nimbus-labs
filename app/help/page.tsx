@@ -58,14 +58,21 @@ const SECTIONS: Section[] = [
         q: "What does it cost to start?",
         a: [
           "Nothing to sign up. Your store address, your page, the editor and connecting Stripe are free and stay free.",
-          "What the $29 monthly subscription switches on is the till: your page taking a card, and handing out what you give away for an email address. The first 14 days of it are free. Stripe takes your card when the trial starts and first charges it when the 14 days end; cancel before then — one click in your studio — and it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.",
+          "What the subscription switches on is the till: your page taking a card, and handing out what you give away for an email address. It is $29 a month, or $300 a year paid once, which is $48 less. The first 14 days are free either way. Stripe takes your card when the trial starts and first charges it when the 14 days end; we email you a week before that charge, and if you cancel before it — one click in your studio — it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.",
         ],
       },
       {
         q: "What will it cost?",
         a: [
-          "One monthly subscription, and 0% of your sales. The card fee your payment processor charges is paid to them, on your own account, and we never take a cut on top of it.",
+          "One subscription, monthly or yearly, and 0% of your sales. The card fee your payment processor charges is paid to them, on your own account, and we never take a cut on top of it.",
           "The price is published on the home page. If it ever changes, existing subscribers are told before it applies to them.",
+        ],
+      },
+      {
+        q: "Can I switch between monthly and yearly?",
+        a: [
+          "Yes, from your studio, whenever you like. Monthly to yearly charges the year that day, less what is left of the month you already paid for. Yearly to monthly keeps what is left of your year as credit on your account, and that credit pays your months until it runs out. Inside the trial, switching charges nothing.",
+          "On a yearly plan we email you about a month before it renews, with the date, the amount and the link to cancel.",
         ],
       },
       {
@@ -215,6 +222,20 @@ const SECTIONS: Section[] = [
           "Both. Under any one-off product you can offer another of your products at a price of your own: the buyer sees a box under the buy button, ticks it if they want it, and the button says the new total. It is never ticked for them. Both are paid in one checkout and both are delivered on the thanks page.",
           "Or offer it right after they pay: the thanks page shows it, and one press charges the card they just used, on your own Stripe account. It only works in the browser that paid, for an hour, and once, so a forwarded link can never charge anyone. If the bank wants the buyer to confirm, they confirm it, and nothing is handed over until the payment is through.",
           "You can also limit how many of a product can be sold. Your page shows how many are left, counted from real payments, and stops selling at zero. A buyer who is paying right now holds one for up to 30 minutes, so the last one is never sold to two people; if they do not pay, it comes back.",
+        ],
+      },
+      {
+        q: "Can buyers pay in instalments?",
+        a: [
+          "Yes. Under any one-off product with one price, offer a payment plan: two to twelve payments, weekly or monthly, of an amount you choose, adding up to at least the full price. The buyer picks between paying in full and the plan, and the button says what is charged today.",
+          "They get the product after the first payment. The rest are charged to the same card on your own Stripe account, and the plan is given its end as soon as the first payment is through \u2014 and checked again every day for anyone who paid and closed the page \u2014 so no buyer is ever charged one payment more than they agreed to. A plan is not a membership, so it is not cancelled from your page; a buyer who needs to change something replies to their receipt, which reaches you.",
+        ],
+      },
+      {
+        q: "Is sales tax or VAT added?",
+        a: [
+          "When you switch it on. Stripe Tax works out sales tax or VAT from each buyer's address and adds it at checkout, on your own Stripe account, for one-off sales, offers at checkout, payment plans, memberships and calls. You choose whether your prices already include it or it is added on top.",
+          "It switches on once Stripe says your tax setup is complete: your head office address, what you sell, and where you are registered, all set in your own Stripe dashboard. You are the seller, so filing and paying the tax stays yours, with Stripe's reports of what was collected. Stripe charges for Stripe Tax on your account at its own published price. While tax is on, the one-click offer after paying is paused, because tax cannot be added to a one-click charge.",
         ],
       },
       {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/icons";
-import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
+import { PRICE_CENTS, TRIAL_DAYS, YEAR_PRICE_CENTS, yearSaving } from "@/lib/plan";
 
 /* Reveals every element with .reveal as it scrolls into view, once. */
 export function RevealOnScroll() {
@@ -269,8 +269,8 @@ export function HeroFlow() {
 /*
  * One plan, and every line under it is something you can open and try today.
  * A price with a feature beside it is a promise; a promise we cannot keep is
- * worse than a shorter list. There is no yearly price here because billing
- * only ever opens a monthly subscription.
+ * worse than a shorter list. The yearly price is the same plan paid once a
+ * year, and the studio opens either.
  */
 const INCLUDED = [
   "Your own store address, live the moment you take it",
@@ -295,8 +295,11 @@ export function Pricing() {
           <span className="text-[3.5rem] font-semibold leading-none tracking-[-0.05em] text-ink">${price}</span>
           <span className="text-ink-mute">per month</span>
         </p>
+        <p className="mt-2 text-ink-soft">
+          {`Or $${YEAR_PRICE_CENTS / 100} a year, paid once \u2014 $${yearSaving("creator") / 100} less than twelve months.`}
+        </p>
         <p className="mt-3 text-ink-soft">
-          {`Free for the first ${TRIAL_DAYS} days. Cancel in one click before they end and your card is never charged.`}
+          {`Free for the first ${TRIAL_DAYS} days, and we email you a week before the first charge. Cancel in one click before it and your card is never charged.`}
         </p>
         <Link href="/signin" className="btn btn-primary btn-lg btn-block mt-7">
           Start your store
@@ -353,7 +356,7 @@ const QUESTIONS = [
   },
   {
     q: "What does Stan have that Nimbus does not, yet?",
-    a: "Among other things: a course builder, email broadcasts and payment plans. Every one is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
+    a: "Among other things: a course builder, email broadcasts and automatic Instagram replies. Every one is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
   },
   {
     q: "Who is behind this?",

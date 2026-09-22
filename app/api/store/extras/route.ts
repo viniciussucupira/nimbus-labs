@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { priceToCents, setProductExtras } from "@/lib/store";
-import { MAX_STOCK, MIN_BUMP_CENTS, parseStock } from "@/lib/product-extras";
+import { MAX_STOCK, MIN_BUMP_CENTS, parsePlan, parseStock } from "@/lib/product-extras";
 import { guardStoreWrite, text } from "@/lib/store-request";
 
 /**
@@ -8,7 +8,8 @@ import { guardStoreWrite, text } from "@/lib/store-request";
  *
  * `{ id, stock: 50 }` or `{ id, stock: null }`;
  * `{ id, bump: { productId, price: "9", pitch } }` or `{ id, bump: null }`;
- * `{ id, upsell: {...} }` or `{ id, upsell: null }`, the same shape.
+ * `{ id, upsell: {...} }` or `{ id, upsell: null }`, the same shape;
+ * `{ id, plan: { payments: 3, interval: "month", price: "110" } }` or `{ id, plan: null }`.
  * The price is read as text, like every other price the studio sends.
  */
 export async function POST(request: NextRequest) {
@@ -51,7 +52,17 @@ export async function POST(request: NextRequest) {
       change.upsell = { productId, priceCents: cents, pitch };
     }
   }
-  if (change.stock === undefined && change.bump === undefined && change.upsell === undefined) {
+  if ("plan" in body) {
+    if (body.plan === null) change.plan = null;
+    else {
+      const raw = body.plan && typeof body.plan === "object" ? (body.plan as Record<string, unknown>) : {};
+      const cents = priceToCents(text(raw.price, 12));
+      const plan = parsePlan({ payments: Number(raw.payments), interval: raw.interval, amountCents: cents ?? NaN });
+      if (!plan) return Response.json({ ok: false, error: "plan" }, { status: 400 });
+      change.plan = plan;
+    }
+  }
+  if (change.stock === undefined && change.bump === undefined && change.upsell === undefined && change.plan === undefined) {
     return Response.json({ ok: false, error: "unknown" }, { status: 400 });
   }
 

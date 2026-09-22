@@ -112,7 +112,8 @@ export async function takeUpsell(input: {
   const found = await paidSession(store, session);
   if (!found) return { kind: "unavailable" };
   const { view, product } = found;
-  const offer = activeUpsell(store.products, product);
+  // A one-click charge cannot carry Stripe Tax, so with tax on there is none.
+  const offer = store.tax.enabled ? null : activeUpsell(store.products, product);
   if (!offer) return { kind: "unavailable" };
   const created = typeof view.created === "number" ? view.created : 0;
   if (!offerOpen(created, secret, view.metadata?.upsell_key)) return { kind: "unavailable" };

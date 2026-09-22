@@ -16,7 +16,8 @@ import {
 } from "@/lib/product-option";
 import { isPaidUp } from "@/lib/billing";
 import { StripeError, onAccount, platformKey } from "@/lib/stripe-account";
-import { activeBump } from "@/lib/product-extras";
+import { activeBump, activePlan, planWords } from "@/lib/product-extras";
+import { applyTax } from "@/lib/tax";
 
 /**
  * How long a paid link keeps working.
@@ -115,6 +116,8 @@ export async function createCheckout(
      * follows: the card is then kept for payments made while they are there.
      */
     upsellKey?: string;
+    /** The buyer chose to pay in the creator's payment plan. */
+    plan?: boolean;
   } = {},
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
@@ -131,11 +134,16 @@ export async function createCheckout(
   }
 
   const membership = product.recurring;
-  const priceCents = chosen ? chosen.priceCents : product.priceCents;
-  const name = chosen ? `${product.title} (${chosen.label})` : product.title;
+  // Paying in instalments is a subscription that ends by itself; paying at
+  // once is a single payment. The amount of each is the creator's, read here.
+  const plan = extras.plan && !membership ? activePlan(product) : null;
+  const recurring = membership !== null || plan !== null;
+  const priceCents = plan ? plan.amountCents : chosen ? chosen.priceCents : product.priceCents;
+  const baseName = chosen ? `${product.title} (${chosen.label})` : product.title;
+  const name = plan ? `${baseName} (${planWords(plan)})` : baseName;
 
   const body = new URLSearchParams({
-    mode: membership ? "subscription" : "payment",
+    mode: recurring ? "subscription" : "payment",
     // In English, like every other page a buyer meets here, rather than in
     // whatever language Stripe guesses from the browser.
     locale: "en",
@@ -167,7 +175,7 @@ export async function createCheckout(
     body.set("line_items[1][price_data][product_data][name]", bump.target.title);
     body.set("metadata[bump]", bump.target.id);
     body.set("metadata[title]", `${name} + ${bump.target.title}`.slice(0, 480));
-    body.set("payment_intent_data[metadata][bump]", bump.target.id);
+    if (!recurring) body.set("payment_intent_data[metadata][bump]", bump.target.id);
   }
 
   // A limited product's unit is held while this checkout is open, so the
@@ -177,7 +185,7 @@ export async function createCheckout(
   // An upsell follows: the buyer becomes a customer of the creator and the
   // card is kept for payments they make while present — the one-click offer
   // on the thanks page — and never for charging them when they are not.
-  if (extras.upsellKey && !membership) {
+  if (extras.upsellKey && !recurring) {
     body.set("customer_creation", "always");
     body.set("payment_intent_data[setup_future_usage]", "on_session");
     body.set("metadata[upsell_key]", extras.upsellKey);
@@ -197,6 +205,19 @@ export async function createCheckout(
     body.set("subscription_data[metadata][store]", store.handle);
     body.set("subscription_data[metadata][product]", product.id);
     if (chosen) body.set("subscription_data[metadata][option]", chosen.id);
+  } else if (plan) {
+    // Charged on the creator's account like everything else, and given its
+    // end as soon as the first payment is through (lib/plans.ts).
+    body.set("line_items[0][price_data][recurring][interval]", plan.interval);
+    body.set("metadata[kind]", "plan");
+    body.set("metadata[plan_payments]", String(plan.payments));
+    body.set("metadata[plan_interval]", plan.interval);
+    body.set("subscription_data[metadata][store]", store.handle);
+    body.set("subscription_data[metadata][product]", product.id);
+    body.set("subscription_data[metadata][kind]", "plan");
+    body.set("subscription_data[metadata][plan_payments]", String(plan.payments));
+    body.set("subscription_data[metadata][plan_interval]", plan.interval);
+    body.set("subscription_data[description]", `${product.title}: ${planWords(plan)}`.slice(0, 500));
   } else {
     body.set("payment_intent_data[metadata][store]", store.handle);
     body.set("payment_intent_data[metadata][product]", product.id);
@@ -206,6 +227,10 @@ export async function createCheckout(
   if (product.summary) {
     body.set("line_items[0][price_data][product_data][description]", product.summary);
   }
+
+  // Sales tax, when the creator has switched it on: worked out by Stripe Tax
+  // from the buyer's address, on the creator's account, for every line.
+  applyTax(store, body);
 
   const session = await onAccount(
     "POST",
@@ -241,6 +266,8 @@ export type Order =
       created: number;
       /** The fingerprint an upsell must be taken with, when one follows. */
       upsellKey: string | null;
+      /** When the buyer chose the payment plan: how many payments, how often. */
+      plan: { payments: number; interval: "week" | "month" } | null;
     }
   | { state: "unpaid" | "expired" | "invalid" | "unavailable" | "error" };
 
@@ -317,6 +344,10 @@ export async function readOrder(
     bump,
     created,
     upsellKey: typeof metadata?.upsell_key === "string" ? metadata.upsell_key : null,
+    plan:
+      metadata?.kind === "plan" && Number(metadata?.plan_payments) >= 2
+        ? { payments: Number(metadata.plan_payments), interval: metadata.plan_interval === "week" ? "week" : "month" }
+        : null,
     product,
     option,
     file: option ? option.file : product.options.length > 0 ? null : product.file,

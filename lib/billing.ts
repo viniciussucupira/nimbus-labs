@@ -1,7 +1,8 @@
 /**
  * The one way Nimbus Labs makes money.
  *
- * A monthly subscription on our own Stripe account, and nothing else. This is
+ * A subscription on our own Stripe account, monthly or yearly, and nothing
+ * else. This is
  * the other half of the promise the home page makes: 0% of the creator's
  * sales, because the creator's sales never touch us, and a single price that
  * is the same whether they sell three files or three thousand.
@@ -12,7 +13,14 @@
  * never be confused: a charge made on the wrong one is either us taking a cut
  * we promised not to take, or us billing ourselves.
  */
-import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
+import {
+  type Cycle,
+  type Tier,
+  PLAN_NAMES,
+  PLAN_PRICES,
+  PRICE_CENTS,
+  TRIAL_DAYS,
+} from "@/lib/plan";
 import {
   CUSTOMER_PATTERN,
   SUBSCRIPTION_PATTERN,
@@ -91,18 +99,126 @@ async function onPlatform(
   return data;
 }
 
+/** Our products at Stripe, one per plan, under names we choose. */
+const PRODUCT_IDS: Record<Tier, string> = {
+  creator: "nimbus_labs_creator",
+  pro: "nimbus_labs_pro",
+};
+const PRODUCT_DESCRIPTIONS: Record<Tier, string> = {
+  creator: "One store, 0% of your sales.",
+  pro: "Everything in Nimbus Labs, and what costs us money to run for you.",
+};
+
+/** The name each price is found by, so there is never a second one. */
+export function lookupKey(tier: Tier, cycle: Cycle): string {
+  return `nimbus_${tier}_${cycle}`;
+}
+
+function planFromLookupKey(key: unknown): { tier: Tier; cycle: Cycle } | null {
+  const match = typeof key === "string" ? /^nimbus_(creator|pro)_(month|year)$/.exec(key) : null;
+  return match ? { tier: match[1] as Tier, cycle: match[2] as Cycle } : null;
+}
+
+async function ensureProduct(tier: Tier): Promise<string> {
+  const id = PRODUCT_IDS[tier];
+  try {
+    const found = await onPlatform("GET", `/products/${id}`);
+    if (found.active === false) {
+      await onPlatform("POST", `/products/${id}`, new URLSearchParams({ active: "true" }));
+    }
+    return id;
+  } catch (error) {
+    if (!(error instanceof BillingError) || error.status !== 404) throw error;
+  }
+  try {
+    await onPlatform(
+      "POST",
+      "/products",
+      new URLSearchParams({ id, name: PLAN_NAMES[tier], description: PRODUCT_DESCRIPTIONS[tier] }),
+    );
+  } catch (error) {
+    // Made a moment ago by another request: that one is ours too.
+    if (!(error instanceof BillingError) || error.code !== "resource_already_exists") throw error;
+  }
+  return id;
+}
+
+const priceIds = new Map<string, string>();
+
+/**
+ * The Stripe price for a plan, made the first time it is needed.
+ *
+ * The amount comes from lib/plan.ts, and a price at Stripe that no longer
+ * matches it is replaced, never used: the number the site shows is the number
+ * that is charged. A subscription has to point at a real price to be moved
+ * from one plan to another, which is why these exist at all.
+ */
+export async function ensurePrice(tier: Tier, cycle: Cycle): Promise<string> {
+  const key = lookupKey(tier, cycle);
+  const amount = PLAN_PRICES[tier][cycle];
+  const cached = priceIds.get(`${key}:${amount}`);
+  if (cached) return cached;
+
+  const listed = await onPlatform(
+    "GET",
+    `/prices?${new URLSearchParams({ "lookup_keys[]": key, active: "true", limit: "1" })}`,
+  );
+  const found = (listed.data as Record<string, unknown>[] | undefined)?.[0];
+  const recurring = found?.recurring as { interval?: unknown } | null | undefined;
+  if (
+    found &&
+    typeof found.id === "string" &&
+    found.unit_amount === amount &&
+    found.currency === "usd" &&
+    recurring?.interval === cycle
+  ) {
+    priceIds.set(`${key}:${amount}`, found.id);
+    return found.id;
+  }
+
+  const product = await ensureProduct(tier);
+  const made = await onPlatform(
+    "POST",
+    "/prices",
+    new URLSearchParams({
+      currency: "usd",
+      unit_amount: String(amount),
+      "recurring[interval]": cycle,
+      product,
+      lookup_key: key,
+      // Takes the name from an old price whose amount no longer matches.
+      transfer_lookup_key: "true",
+      nickname: `${PLAN_NAMES[tier]}, ${cycle === "year" ? "yearly" : "monthly"}`,
+    }),
+  );
+  if (typeof made.id !== "string") throw new Error("Stripe did not return a price");
+  priceIds.set(`${key}:${amount}`, made.id);
+  return made.id;
+}
+
+/** The same price, written out on the checkout itself. */
+function writeInline(body: URLSearchParams, tier: Tier, cycle: Cycle): void {
+  body.set("line_items[0][price_data][currency]", "usd");
+  body.set("line_items[0][price_data][unit_amount]", String(PLAN_PRICES[tier][cycle]));
+  body.set("line_items[0][price_data][recurring][interval]", cycle);
+  body.set("line_items[0][price_data][product_data][name]", PLAN_NAMES[tier]);
+  body.set("line_items[0][price_data][product_data][description]", PRODUCT_DESCRIPTIONS[tier]);
+}
+
 /**
  * Opens the page where a creator starts paying, and returns where to send them.
  *
- * The price is built inline rather than kept as an object in the Stripe
- * dashboard, so there is one place where the number lives — this file — and no
- * way for the site to say $29 while a forgotten dashboard object charges
- * something else.
+ * The amount lives in lib/plan.ts and nowhere else. If the price at Stripe
+ * cannot be read or made just now, the checkout is still opened with the same
+ * amount written out inline, so a creator ready to pay is never turned away
+ * over it.
  */
 export async function createBillingCheckout(
   store: Store,
   origin: string,
+  choice: { tier: Tier; cycle: Cycle } = { tier: "creator", cycle: "month" },
 ): Promise<string> {
+  const { tier, cycle } = choice;
   const body = new URLSearchParams({
     mode: "subscription",
     // English, always. Left to itself Stripe picks the language of the
@@ -110,21 +226,39 @@ export async function createBillingCheckout(
     // payment page in whatever language the last person to test it spoke.
     locale: "en",
     "line_items[0][quantity]": "1",
-    "line_items[0][price_data][currency]": "usd",
-    "line_items[0][price_data][unit_amount]": String(PRICE_CENTS),
-    "line_items[0][price_data][recurring][interval]": "month",
-    "line_items[0][price_data][product_data][name]": "Nimbus Labs",
-    "line_items[0][price_data][product_data][description]":
-      "One store, 0% of your sales.",
     customer_email: store.email,
     "subscription_data[trial_period_days]": String(TRIAL_DAYS),
     "subscription_data[metadata][store]": store.handle,
+    "subscription_data[metadata][tier]": tier,
     "metadata[store]": store.handle,
     success_url: `${origin}/api/billing/return?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/studio?billing=cancelled`,
   });
 
-  const session = await onPlatform("POST", "/checkout/sessions", body);
+  let price: string | null = null;
+  try {
+    price = await ensurePrice(tier, cycle);
+  } catch (error) {
+    console.error("reading our price failed; opening the checkout with it inline", error);
+  }
+  if (price) {
+    body.set("line_items[0][price]", price);
+  } else {
+    writeInline(body, tier, cycle);
+  }
+
+  let session: Record<string, unknown>;
+  try {
+    session = await onPlatform("POST", "/checkout/sessions", body);
+  } catch (error) {
+    // A price archived at Stripe since we last read it: forget it, and open
+    // the checkout with the amount written out instead.
+    if (!price || !(error instanceof BillingError) || error.status !== 400) throw error;
+    priceIds.clear();
+    body.delete("line_items[0][price]");
+    writeInline(body, tier, cycle);
+    session = await onPlatform("POST", "/checkout/sessions", body);
+  }
   if (typeof session.url !== "string" || !session.url) {
     throw new Error("Stripe did not return a checkout URL");
   }
@@ -136,6 +270,8 @@ export type StartedSubscription = {
   customerId: string;
   subscriptionId: string;
   active: boolean;
+  tier: Tier;
+  cycle: Cycle;
 };
 
 /**
@@ -174,7 +310,13 @@ export async function readStartedSubscription(
   if (!SUBSCRIPTION_PATTERN.test(subscriptionId)) return null;
 
   const state = await readSubscription(subscriptionId);
-  return { customerId, subscriptionId, active: state.state === "active" };
+  return {
+    customerId,
+    subscriptionId,
+    active: state.state === "active",
+    tier: state.state === "active" ? state.tier : "creator",
+    cycle: state.state === "active" ? state.cycle : "month",
+  };
 }
 
 export type SubscriptionState =
@@ -186,6 +328,12 @@ export type SubscriptionState =
       until: number;
       /** Set to stop at `until`. Nothing more will be charged after it. */
       cancelsAtEnd: boolean;
+      tier: Tier;
+      cycle: Cycle;
+      /** What each renewal charges, in cents, as Stripe has it. */
+      amountCents: number;
+      /** A change of plan is waiting on a payment the bank has not let through. */
+      changePending: boolean;
     }
   /** Stripe knows it and it is not paying: unpaid, cancelled, incomplete. */
   | { state: "inactive"; reason: string }
@@ -226,6 +374,25 @@ function periodEnd(subscription: Record<string, unknown>, trialing: boolean): nu
   return 0;
 }
 
+/**
+ * Which plan a subscription is on, read from its price: the name we gave the
+ * price when there is one, and the amount and interval otherwise, so a
+ * subscription begun before prices had names is still read right.
+ */
+export function planOf(subscription: Record<string, unknown>): { tier: Tier; cycle: Cycle; amountCents: number } {
+  const items = subscription.items as { data?: { price?: Record<string, unknown> }[] } | undefined;
+  const price = items?.data?.[0]?.price ?? {};
+  const recurring = price.recurring as { interval?: unknown } | null | undefined;
+  const amountCents = typeof price.unit_amount === "number" ? price.unit_amount : 0;
+  const named = planFromLookupKey(price.lookup_key);
+  if (named) return { ...named, amountCents };
+  const cycle: Cycle = recurring?.interval === "year" ? "year" : "month";
+  const meta = subscription.metadata as Record<string, string> | null | undefined;
+  const tier: Tier =
+    meta?.tier === "pro" || (amountCents > 0 && amountCents >= PLAN_PRICES.pro[cycle]) ? "pro" : "creator";
+  return { tier, cycle, amountCents };
+}
+
 /** One reading of a subscription, used for what Stripe sends back either way. */
 function stateOf(subscription: Record<string, unknown>): SubscriptionState {
   const status = typeof subscription.status === "string" ? subscription.status : "";
@@ -241,6 +408,8 @@ function stateOf(subscription: Record<string, unknown>): SubscriptionState {
     trialing,
     until: cancelAt || periodEnd(subscription, trialing),
     cancelsAtEnd: subscription.cancel_at_period_end === true || cancelAt > 0,
+    ...planOf(subscription),
+    changePending: Boolean(subscription.pending_update),
   };
 }
 
@@ -296,6 +465,107 @@ export async function setCancelAtPeriodEnd(
   );
   return stateOf(subscription);
 }
+
+export type SwitchResult =
+  /** Done: the subscription is on the new plan. */
+  | { kind: "switched"; state: SubscriptionState }
+  /** The bank wants the creator to confirm the charge; send them here. */
+  | { kind: "confirm"; url: string }
+  /** Already on that plan. */
+  | { kind: "same" }
+  /** Not now: cancelled, not in good standing, or a change is already waiting. */
+  | { kind: "refused"; reason: "cancelling" | "standing" | "pending" };
+
+const INVOICE_PAGE = /^https:\/\/invoice\.stripe\.com\//;
+const LOCAL_PAGE = /^http:\/\/127\.0\.0\.1:\d+\//;
+
+/**
+ * Moves a subscription to another plan or billing cycle.
+ *
+ * Settled on the spot, and only if it is paid for: a move that costs more is
+ * charged now, less what is left of the period already paid, and if the bank
+ * refuses or asks the creator to confirm, nothing changes until it is paid. A
+ * move that costs less leaves what is left as credit on their account, which
+ * pays the next bills until it runs out. Inside the trial nothing is charged
+ * and the trial keeps its end.
+ */
+export async function switchPlan(
+  subscriptionId: string,
+  choice: { tier: Tier; cycle: Cycle },
+): Promise<SwitchResult> {
+  if (!SUBSCRIPTION_PATTERN.test(subscriptionId)) return { kind: "refused", reason: "standing" };
+  const path = `/subscriptions/${encodeURIComponent(subscriptionId)}`;
+  const subscription = await onPlatform("GET", path);
+  const status = typeof subscription.status === "string" ? subscription.status : "";
+  if (status !== "active" && status !== "trialing") return { kind: "refused", reason: "standing" };
+  if (subscription.cancel_at_period_end === true || (typeof subscription.cancel_at === "number" && subscription.cancel_at > 0)) {
+    return { kind: "refused", reason: "cancelling" };
+  }
+  if (subscription.pending_update) return { kind: "refused", reason: "pending" };
+  const now = planOf(subscription);
+  if (
+    now.tier === choice.tier &&
+    now.cycle === choice.cycle &&
+    now.amountCents === PLAN_PRICES[choice.tier][choice.cycle]
+  ) {
+    return { kind: "same" };
+  }
+
+  const items = subscription.items as { data?: { id?: unknown }[] } | undefined;
+  const itemId = items?.data?.[0]?.id;
+  if (typeof itemId !== "string") throw new Error("The subscription has no item to change");
+  const price = await ensurePrice(choice.tier, choice.cycle);
+
+  const body = new URLSearchParams({
+    "items[0][id]": itemId,
+    "items[0][price]": price,
+    proration_behavior: "always_invoice",
+    payment_behavior: "pending_if_incomplete",
+    "metadata[tier]": choice.tier,
+    "expand[]": "latest_invoice",
+  });
+  if (status === "trialing" && typeof subscription.trial_end === "number") {
+    body.set("trial_end", String(subscription.trial_end));
+  }
+  let updated: Record<string, unknown>;
+  try {
+    updated = await onPlatform("POST", path, body);
+  } catch (error) {
+    // The next attempt reads the price from Stripe again.
+    priceIds.clear();
+    throw error;
+  }
+
+  if (updated.pending_update) {
+    const invoice = updated.latest_invoice as { hosted_invoice_url?: unknown } | null;
+    const url = typeof invoice?.hosted_invoice_url === "string" ? invoice.hosted_invoice_url : "";
+    if (INVOICE_PAGE.test(url) || (LOCAL_PAGE.test(url) && STRIPE_API.startsWith("http://127.0.0.1"))) {
+      return { kind: "confirm", url };
+    }
+    return { kind: "refused", reason: "pending" };
+  }
+  return { kind: "switched", state: stateOf(updated) };
+}
+
+/**
+ * One page of our own subscriptions in a given state, with each customer's
+ * email, for the reminders sent before a charge.
+ */
+export async function listSubscriptions(
+  status: "trialing" | "active",
+  startingAfter?: string,
+): Promise<{ data: Record<string, unknown>[]; hasMore: boolean }> {
+  const query = new URLSearchParams({ status, limit: "100" });
+  query.append("expand[]", "data.customer");
+  if (startingAfter) query.set("starting_after", startingAfter);
+  const page = await onPlatform("GET", `/subscriptions?${query}`);
+  return {
+    data: Array.isArray(page.data) ? (page.data as Record<string, unknown>[]) : [],
+    hasMore: page.has_more === true,
+  };
+}
+
+export { periodEnd };
 
 /**
  * Whether this store is paid up, read from what we wrote down.

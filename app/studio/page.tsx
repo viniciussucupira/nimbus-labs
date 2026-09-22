@@ -23,6 +23,8 @@ import { catchUpBookings, paidCalls } from "@/lib/calls";
 import { readSales, readStats, studioStats } from "@/lib/stats";
 import { StatsPanel } from "@/components/stats-panel";
 import { PixelEditor } from "@/components/pixel-editor";
+import { TaxEditor } from "@/components/tax-editor";
+import { taxStatus } from "@/lib/tax";
 import { SITE_URL } from "@/lib/site-url";
 import { readableTime, zoneName } from "@/lib/call-setup";
 import { ProductEditor } from "@/components/product-editor";
@@ -38,11 +40,11 @@ import { deliveredThisMonth } from "@/lib/delivery";
 import { MAX_LEADS, listSize } from "@/lib/free";
 import { readableSize } from "@/lib/product-file";
 import {
-  PRICE_CENTS,
   TRIAL_DAYS,
   isBillingConfigured,
   readSubscription,
 } from "@/lib/billing";
+import { PLAN_PRICES, priceWords, yearSaving } from "@/lib/plan";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
@@ -50,10 +52,10 @@ export const metadata: Metadata = {
 };
 
 const NEXT_WHEN_SELLING = [
-  "Payment plans and sales tax",
   "Courses with lessons",
   "Email to your list, from your studio",
   "Your own domain",
+  "Several stores in one account",
 ];
 /** Calls that have not ended yet, soonest first. */
 function upcoming<T extends { start: number; end: number }>(list: T[]): T[] {
@@ -143,6 +145,38 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
     title: "That did not finish",
     body: "Stripe has no completed subscription for this store, so nothing was written down. Start it again below.",
   },
+  "switched-year": {
+    title: "You now pay yearly",
+    body: "The change is made at Stripe. The date below is when the next charge is due, and it is the only one for a year.",
+  },
+  "switched-month": {
+    title: "You now pay monthly",
+    body: "The change is made at Stripe. What was left of the year you paid for is kept as credit on your account, and it pays your monthly charges until it runs out.",
+  },
+  same: {
+    title: "Nothing to change",
+    body: "You are already billed that way.",
+  },
+  "switch-cancelling": {
+    title: "Your subscription is set to stop",
+    body: "Keep it first, with the button below, and then choose how often to pay. Nothing was changed.",
+  },
+  "switch-standing": {
+    title: "This subscription cannot be changed right now",
+    body: "Stripe says it is not in good standing, so nothing was changed.",
+  },
+  "switch-pending": {
+    title: "A change is already waiting on your bank",
+    body: "Stripe is waiting for a payment to go through before it switches you. Nothing else was changed.",
+  },
+  "switch-error": {
+    title: "Stripe did not answer",
+    body: "Nothing changed and nothing was charged. Try again in a moment.",
+  },
+  "pro-closed": {
+    title: "That plan is not open yet",
+    body: "Nothing was charged and nothing was changed.",
+  },
   already: {
     title: "You already pay for this store",
     body: "There is nothing to start. One store, one subscription.",
@@ -230,16 +264,31 @@ export default async function StudioPage({
     live && live.state !== "unknown"
       ? live.state === "active"
       : Boolean(store?.subscriptionActive);
-  if (store && live && live.state !== "unknown" && paid !== store.subscriptionActive) {
-    await setSubscription(email, { active: paid });
+  const plan = live?.state === "active" ? { tier: live.tier, cycle: live.cycle } : null;
+  if (
+    store &&
+    live &&
+    live.state !== "unknown" &&
+    (paid !== store.subscriptionActive ||
+      (plan && (plan.tier !== store.tier || plan.cycle !== store.cycle)))
+  ) {
+    await setSubscription(email, { active: paid, ...(plan ?? {}) });
   }
   // Everything below reads this, not the record we loaded, so one page never
   // shows two different answers to the same question.
-  const current = store ? { ...store, subscriptionActive: paid } : null;
+  const current = store ? { ...store, subscriptionActive: paid, ...(plan ?? {}) } : null;
   const trialing = live?.state === "active" && live.trialing;
   // Read from Stripe on this page load. When Stripe could not be asked, the
   // cancel button still shows: the route asks again before it does anything.
   const cancelling = live?.state === "active" && live.cancelsAtEnd;
+  // How this creator is billed, and what the other way would cost them.
+  const billedYearly = live?.state === "active" ? live.cycle === "year" : current?.cycle === "year";
+  const tier = current?.tier ?? "creator";
+  const billedNow =
+    live?.state === "active" && live.amountCents > 0
+      ? `$${live.amountCents % 100 ? (live.amountCents / 100).toFixed(2) : live.amountCents / 100} a ${live.cycle}`
+      : priceWords(tier, billedYearly ? "year" : "month");
+  const changePending = live?.state === "active" && live.changePending;
   const endsOn =
     live?.state === "active" && live.until > 0
       ? new Date(live.until * 1000).toLocaleDateString("en-US", {
@@ -288,6 +337,8 @@ export default async function StudioPage({
     : [null, null];
   const numbers =
     current && visits && salesRead ? studioStats(current, visits, salesRead.value, salesRead.state) : null;
+  // Asked of Stripe each time, because the setup is the creator's and lives there.
+  const tax = current?.stripeAccountId ? await taxStatus(current) : null;
   const connectReady = isConnectConfigured();
   const connectTestMode = isConnectInTestMode();
   const billingReady = isBillingConfigured();
@@ -435,6 +486,8 @@ export default async function StudioPage({
             <DiscountEditor selling={current ? canSell(current) : false} />
 
             <PixelEditor pixels={store.pixels} />
+
+            <TaxEditor tax={store.tax} status={tax ? tax.state : "unknown"} connected={Boolean(current?.stripeAccountId)} />
 
             {list && (givesAway || list.total > 0) ? (
               <div className="card mt-8 p-6 sm:p-8">
@@ -680,12 +733,12 @@ export default async function StudioPage({
             ) : null}
 
             {billingReady ? (
-              <div className="card mt-8 p-6 sm:p-8">
+              <div id="billing" className="card mt-8 scroll-mt-24 p-6 sm:p-8">
                 <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                   What you pay us
                 </p>
                 <p className="mt-2 text-ink-soft">
-                  One price, and nothing on top of it. We take 0% of what you
+                  One plan, and nothing on top of it. We take 0% of what you
                   sell, because what you sell never passes through us — the
                   subscription is our whole income, and it is the same whether
                   you sell three files or three thousand.
@@ -712,9 +765,49 @@ export default async function StudioPage({
                   <>
                     <p className="mt-5 notice notice-success font-semibold">
                       {trialing
-                        ? `You are inside the ${TRIAL_DAYS}-day trial. No card has been charged yet.`
-                        : `Subscribed at $${(PRICE_CENTS / 100).toFixed(0)} a month.`}
+                        ? `You are inside the ${TRIAL_DAYS}-day trial. No card has been charged yet. After it: ${billedNow}${endsOn ? `, first charged on ${endsOn}` : ""}.`
+                        : `Subscribed at ${billedNow}.${endsOn ? ` Next charge on ${endsOn}.` : ""}`}
                     </p>
+                    {changePending ? (
+                      <p className="mt-3 notice notice-warn">
+                        A change of billing is waiting for your bank to let the
+                        payment through. Until it does, nothing has changed.
+                      </p>
+                    ) : billedYearly ? (
+                      <details className="mt-4">
+                        <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
+                          Pay monthly instead
+                        </summary>
+                        <p className="mt-3 text-sm text-ink-soft">
+                          {trialing
+                            ? `Nothing is charged now. When the trial ends you pay ${priceWords(tier, "month")} instead of ${priceWords(tier, "year")}.`
+                            : `From today you pay ${priceWords(tier, "month")}. What is left of the year you paid for is kept as credit on your account and pays the months until it runs out, so nothing is charged until then. Monthly costs $${yearSaving(tier) / 100} more over a year.`}
+                        </p>
+                        <form action="/api/billing/switch" method="post" className="mt-3">
+                          <input type="hidden" name="cycle" value="month" />
+                          <button type="submit" className="btn btn-secondary btn-sm">
+                            Switch to monthly
+                          </button>
+                        </form>
+                      </details>
+                    ) : (
+                      <details className="mt-4">
+                        <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
+                          {`Pay yearly and save $${yearSaving(tier) / 100}`}
+                        </summary>
+                        <p className="mt-3 text-sm text-ink-soft">
+                          {trialing
+                            ? `Nothing is charged now. When the trial ends you pay $${PLAN_PRICES[tier].year / 100} for the year, instead of ${priceWords(tier, "month")} — $${yearSaving(tier) / 100} less over the year.`
+                            : `You are charged $${PLAN_PRICES[tier].year / 100} today, less what is left of the month you already paid for, and the year starts today. That is $${yearSaving(tier) / 100} less than twelve monthly payments. If your bank asks you to confirm, you are sent to confirm it, and nothing changes until it is paid.`}
+                        </p>
+                        <form action="/api/billing/switch" method="post" className="mt-3">
+                          <input type="hidden" name="cycle" value="year" />
+                          <button type="submit" className="btn btn-primary btn-sm">
+                            Switch to yearly
+                          </button>
+                        </form>
+                      </details>
+                    )}
                     <details className="mt-4">
                       <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
                         Cancel the subscription
@@ -748,25 +841,33 @@ export default async function StudioPage({
                       is the till: taking a card for what you sell, and handing
                       out what you give away for an email address.
                     </p>
-                    <form action="/api/billing/checkout" method="post" className="mt-5">
+                    <form action="/api/billing/checkout" method="post" className="mt-5 flex flex-col items-start gap-3">
                       <button
                         type="submit"
+                        name="cycle"
+                        value="month"
                         className="btn btn-primary btn-wrap"
                       >
                         {/* One string, not three. Split across JSX nodes it
                             comes out of the server with markers in the middle,
                             which is invisible to a reader and a lie to anything
                             that searches the page for the sentence. */}
-                        {`Start the ${TRIAL_DAYS}-day trial \u2014 $${(
-                          PRICE_CENTS / 100
-                        ).toFixed(0)} a month after that`}
+                        {`Start the ${TRIAL_DAYS}-day trial \u2014 ${priceWords("creator", "month")} after that`}
+                      </button>
+                      <button
+                        type="submit"
+                        name="cycle"
+                        value="year"
+                        className="btn btn-secondary btn-wrap"
+                      >
+                        {`Or pay yearly: ${priceWords("creator", "year")} after the trial, $${yearSaving("creator") / 100} less`}
                       </button>
                     </form>
                     <p className="mt-3 text-sm text-ink-soft">
                       Nothing is charged today. The card is taken now and first
                       billed in {TRIAL_DAYS} days, so you can open a store, sell
                       something real and decide with an answer instead of a
-                      guess.
+                      guess. We email you a week before that first charge.
                     </p>
                   </>
                 )}

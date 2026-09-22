@@ -12,6 +12,7 @@ import { readableTime, zoneName } from "@/lib/call-setup";
 import { SITE_URL } from "@/lib/site-url";
 import { StoreTracking } from "@/components/store-tracking";
 import { confirmStock } from "@/lib/stock";
+import { finishPlan } from "@/lib/plans";
 import { cookies } from "next/headers";
 import { activeUpsell } from "@/lib/product-extras";
 import { UPSELL_COOKIE, offerOpen, readUpsell, settleUpsell, upsellDelivery } from "@/lib/upsell";
@@ -87,6 +88,12 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     }).catch((error) => console.error("confirming a booking failed", error));
   }
 
+  // A payment plan is given its end the moment its buyer is back; the daily
+  // job does the same for anyone who never came back.
+  if (order.state === "paid" && sessionId && order.plan && store.stripeAccountId) {
+    await finishPlan(store.stripeAccountId, sessionId).catch((error) => console.error("finishing a plan failed", error));
+  }
+
   // A limited product's unit becomes a sale the moment its buyer is back.
   if (order.state === "paid" && sessionId && order.product.stock !== null) {
     await confirmStock(store, order.product, sessionId).catch((error) => console.error("confirming stock failed", error));
@@ -95,7 +102,8 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   // The one-click offer: settled first if the bank asked the buyer to confirm
   // it, then shown only to the browser that paid, within the hour, once.
   if (order.state === "paid" && sessionId && query.upsell === "back") await settleUpsell(store, sessionId);
-  const upsellOffer = order.state === "paid" ? activeUpsell(store.products, order.product) : null;
+  const upsellOffer =
+    order.state === "paid" && !order.plan && !store.tax.enabled ? activeUpsell(store.products, order.product) : null;
   const upsellRecord = upsellOffer && sessionId ? await readUpsell(sessionId) : null;
   const upsellSecret = (await cookies()).get(UPSELL_COOKIE)?.value;
   const showOffer =
@@ -140,9 +148,19 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   ? `$${centsToPrice(order.amount)} ${everyLabel(
                       order.product.recurring.interval,
                     )}`
-                  : `$${centsToPrice(order.amount)}`}
+                  : order.plan
+                    ? `$${centsToPrice(order.amount)} today`
+                    : `$${centsToPrice(order.amount)}`}
                 .
               </p>
+              {order.plan ? (
+                <p
+                  className="mt-3 rounded-2xl px-4 py-3 text-sm"
+                  style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
+                >
+                  {`This is the first of ${order.plan.payments} ${order.plan.interval === "week" ? "weekly" : "monthly"} payments. The other ${order.plan.payments - 1} are charged to the same card on ${store.name}'s own account, and it stops by itself after the last one. To change the card or ask about a payment, reply to the receipt Stripe emailed you.`}
+                </p>
+              ) : null}
               {order.product.recurring ? (
                 <p
                   className="mt-3 rounded-2xl px-4 py-3 text-sm"

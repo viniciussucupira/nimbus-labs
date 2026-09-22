@@ -3,13 +3,22 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Product } from "@/lib/store";
-import { MAX_PITCH_LENGTH, MAX_STOCK, canBeBumped, isOneOff } from "@/lib/product-extras";
+import {
+  MAX_PITCH_LENGTH,
+  MAX_PLAN_PAYMENTS,
+  MAX_STOCK,
+  MIN_PLAN_PAYMENTS,
+  canBeBumped,
+  isOneOff,
+  planWords,
+} from "@/lib/product-extras";
 
 const MESSAGES: Record<string, string> = {
   stock: `Type a whole number from 1 to ${MAX_STOCK.toLocaleString("en-US")}.`,
   target: "Pick another product that has one price and a file or a link on it.",
   price: "Type a price of at least $0.50, and no more than that product costs on its own.",
   kind: "This works on one-off paid products only.",
+  plan: "Pick how many payments, how often, and an amount of at least $0.50 for each.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Sign in again.",
   server_error: "Something went wrong on our side. Try again in a moment.",
@@ -20,7 +29,7 @@ const dollars = (cents: number) => (cents % 100 ? (cents / 100).toFixed(2) : Str
 /** A product's limited quantity and its order bump, in the studio. */
 export function CheckoutExtras({ product, products }: { product: Product; products: Product[] }) {
   const router = useRouter();
-  const [open, setOpen] = useState<"stock" | "bump" | "upsell" | null>(null);
+  const [open, setOpen] = useState<"stock" | "bump" | "upsell" | "plan" | null>(null);
   const [stock, setStock] = useState(product.stock ? String(product.stock) : "");
   const candidates = products.filter((p) => p.id !== product.id && canBeBumped(p));
   const [busy, setBusy] = useState(false);
@@ -107,6 +116,9 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
 
       <OfferBlock kind="bump" product={product} products={products} candidates={candidates} busy={busy} open={open === "bump"} onOpen={() => setOpen("bump")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "bump" ? error : null} />
       <OfferBlock kind="upsell" product={product} products={products} candidates={candidates} busy={busy} open={open === "upsell"} onOpen={() => setOpen("upsell")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "upsell" ? error : null} />
+      {product.options.length === 0 ? (
+        <PlanBlock product={product} busy={busy} open={open === "plan"} onOpen={() => setOpen("plan")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "plan" ? error : null} />
+      ) : null}
       {error && open === null ? <p className="notice notice-error" role="alert">{error}</p> : null}
     </div>
   );
@@ -240,6 +252,113 @@ function OfferBlock({
   return (
     <button type="button" className={`block ${link}`} onClick={onOpen}>
       {text.add}
+    </button>
+  );
+}
+
+function PlanBlock({
+  product,
+  busy,
+  open,
+  onOpen,
+  onClose,
+  onSend,
+  error,
+}: {
+  product: Product;
+  busy: boolean;
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onSend: (payload: Record<string, unknown>) => void;
+  error: string | null;
+}) {
+  const current = product.plan;
+  const [payments, setPayments] = useState(current?.payments ?? 3);
+  const [interval, setEvery] = useState<"week" | "month">(current?.interval ?? "month");
+  const suggested = (n: number) => dollars(Math.ceil(product.priceCents / n / 100) * 100);
+  const [price, setPrice] = useState(current ? dollars(current.amountCents) : suggested(3));
+  const link = "text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep";
+  const id = `plan-${product.id}`;
+
+  if (open) {
+    return (
+      <form
+        className="rounded-[var(--r-sm)] border border-line bg-white p-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSend({ plan: { payments, interval, price: price.trim() } });
+        }}
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="block" htmlFor={`${id}-n`}>
+            <span className="field-label">Payments</span>
+            <select
+              id={`${id}-n`}
+              value={payments}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                setPayments(n);
+                if (!current) setPrice(suggested(n));
+              }}
+              className="field"
+            >
+              {Array.from({ length: MAX_PLAN_PAYMENTS - MIN_PLAN_PAYMENTS + 1 }, (_, i) => i + MIN_PLAN_PAYMENTS).map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block" htmlFor={`${id}-i`}>
+            <span className="field-label">How often</span>
+            <select id={`${id}-i`} value={interval} onChange={(e) => setEvery(e.target.value === "week" ? "week" : "month")} className="field">
+              <option value="month">Every month</option>
+              <option value="week">Every week</option>
+            </select>
+          </label>
+          <label className="block" htmlFor={`${id}-p`}>
+            <span className="field-label">Each payment, in dollars</span>
+            <input
+              id={`${id}-p`}
+              type="text"
+              inputMode="decimal"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              className="field"
+              required
+            />
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-ink-soft">
+          Buyers choose between paying in full and the plan. They get the product after the first payment; the rest are
+          charged to the same card on your own Stripe account, and the plan stops by itself after the last one. The
+          payments add up to at least the full price.
+        </p>
+        {error ? <p className="notice notice-error mt-3" role="alert">{error}</p> : null}
+        <div className="mt-3 flex flex-wrap gap-3">
+          <button type="submit" disabled={busy} className="btn btn-primary btn-sm">
+            {busy ? "Saving\u2026" : "Save the plan"}
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    );
+  }
+  if (current) {
+    return (
+      <p className="text-sm text-ink-soft">
+        <span className="font-semibold text-ink">{`Payment plan: ${planWords(current)}`}</span>
+        {" \u00b7 "}
+        <button type="button" className={link} onClick={onOpen}>Change</button>
+        {" \u00b7 "}
+        <button type="button" className={link} disabled={busy} onClick={() => onSend({ plan: null })}>Stop offering it</button>
+      </p>
+    );
+  }
+  return (
+    <button type="button" className={`block ${link}`} onClick={onOpen}>
+      Offer a payment plan
     </button>
   );
 }

@@ -24,7 +24,9 @@ import { type StoreLook, DEFAULT_LOOK, parseLook } from "@/lib/store-look";
 import { PHOTO_ID_PATTERN } from "@/lib/photo-limits";
 import { type CallSetup, parseSetup } from "@/lib/call-setup";
 import { type Pixels, NO_PIXELS, parsePixels } from "@/lib/pixels";
-import { type Bump, canBeBumped, isOneOff, parseBump, parseStock } from "@/lib/product-extras";
+import { type TaxSetting, NO_TAX, parseTax } from "@/lib/tax";
+import { type Cycle, type Tier, parseCycle, parseTier } from "@/lib/plan";
+import { type Bump, type Plan, canBeBumped, isOneOff, parseBump, parsePlan, parseStock } from "@/lib/product-extras";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
@@ -182,6 +184,8 @@ export type Product = {
   bump: Bump | null;
   /** Another product offered after paying, added in one click. */
   upsell: Bump | null;
+  /** Paying in a fixed number of payments instead of at once. */
+  plan: Plan | null;
 };
 
 export type Store = {
@@ -220,6 +224,13 @@ export type Store = {
   subscriptionId: string | null;
   subscriptionActive: boolean;
   subscriptionCheckedAt: string;
+  /**
+   * Which plan, and how often it is billed, as Stripe last said. A snapshot
+   * like the one above, so a Pro feature can be switched on or off without a
+   * call to Stripe.
+   */
+  tier: Tier;
+  cycle: Cycle;
   /** What the store lists, in the order the creator put them in. */
   products: Product[];
   /**
@@ -271,6 +282,8 @@ export type Store = {
   statsId: string | null;
   /** The creator's own ad pixels, each null until they add it. */
   pixels: Pixels;
+  /** Whether Stripe Tax adds sales tax at checkout, and whether prices include it. */
+  tax: TaxSetting;
 };
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
@@ -348,6 +361,7 @@ function parseProducts(raw: unknown): Product[] {
       stock: parseStock(value.stock),
       bump: parseBump(value.bump),
       upsell: parseBump(value.upsell),
+      plan: parsePlan(value.plan),
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -388,6 +402,9 @@ function parseStore(raw: unknown): Store | null {
           : null,
       subscriptionActive: value.subscriptionActive === true,
       subscriptionCheckedAt: value.subscriptionCheckedAt ?? "",
+      // Every store from before there were two plans is on the one there was.
+      tier: parseTier(value.tier) ?? "creator",
+      cycle: parseCycle(value.cycle) ?? "month",
       products: parseProducts(value.products),
       // Stores written before links existed simply have none, which is the
       // same as a store nobody has added one to yet.
@@ -411,6 +428,7 @@ function parseStore(raw: unknown): Store | null {
           ? value.statsId
           : null,
       pixels: parsePixels(value.pixels),
+      tax: parseTax(value.tax),
     };
   } catch {
     return null;
@@ -508,6 +526,8 @@ export async function claimHandle(
     subscriptionId: null,
     subscriptionActive: false,
     subscriptionCheckedAt: "",
+    tier: "creator",
+    cycle: "month",
     products: [],
     links: [],
     hasDiscounts: false,
@@ -517,6 +537,7 @@ export async function claimHandle(
     callsId: null,
     statsId: newListId(),
     pixels: { ...NO_PIXELS },
+    tax: { ...NO_TAX },
   };
 
   try {
@@ -634,6 +655,8 @@ export async function setSubscription(
     customerId?: string | null;
     subscriptionId?: string | null;
     active: boolean;
+    tier?: Tier;
+    cycle?: Cycle;
   },
 ): Promise<Store | null> {
   const store = await storeForEmail(email);
@@ -660,6 +683,8 @@ export async function setSubscription(
     subscriptionId,
     subscriptionActive: fields.active,
     subscriptionCheckedAt: new Date().toISOString(),
+    tier: fields.tier ?? store.tier,
+    cycle: fields.cycle ?? store.cycle,
   };
   await saveStore(next);
   return next;
@@ -877,7 +902,7 @@ export type ExtrasResult =
 export async function setProductExtras(
   email: string,
   id: string,
-  change: { stock?: number | null; bump?: Bump | null; upsell?: Bump | null },
+  change: { stock?: number | null; bump?: Bump | null; upsell?: Bump | null; plan?: Plan | null },
 ): Promise<ExtrasResult> {
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
@@ -908,12 +933,31 @@ export async function setProductExtras(
     }
     next.upsell = change.upsell;
   }
+  if (change.plan !== undefined) {
+    if (change.plan !== null) {
+      if (!isOneOff(product) || product.options.length > 0) return { ok: false, reason: "kind" };
+      if (change.plan.payments * change.plan.amountCents < product.priceCents) return { ok: false, reason: "price" };
+    }
+    next.plan = change.plan;
+  }
 
   const products = [...store.products];
   products[at] = next;
   const saved: Store = { ...store, products, statsId: store.statsId ?? newListId() };
   await saveStore(saved);
   return { ok: true, store: saved };
+}
+
+/** Switches sales tax on or off for the store's checkouts. */
+export async function setTax(
+  email: string,
+  tax: TaxSetting,
+): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const next: Store = { ...store, tax: parseTax(tax) };
+  await saveStore(next);
+  return { ok: true, store: next };
 }
 
 /** Saves the creator's ad pixels. */
@@ -1048,6 +1092,7 @@ export async function addProduct(
     stock: null,
     bump: null,
     upsell: null,
+    plan: null,
   };
 
   const next: Store = {

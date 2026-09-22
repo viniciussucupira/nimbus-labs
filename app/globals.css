@@ -1069,3 +1069,8 @@ body {
 .bump-on { display: none; }
 form:has(input[name="bump"]:checked) .bump-on { display: inline; }
 form:has(input[name="bump"]:checked) .bump-off { display: none; }
+/* A payment plan picked: the button says what is charged today. */
+.plan-on { display: none; }
+form:has(input[name="pay"][value="plan"]:checked) .plan-on { display: inline; }
+form:has(input[name="pay"][value="plan"]:checked) .bump-on,
+form:has(input[name="pay"][value="plan"]:checked) .bump-off { display: none; }

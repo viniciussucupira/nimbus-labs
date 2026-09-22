@@ -118,6 +118,15 @@ export default function PrivacyPage() {
           they were holding.
         </p>
         <p>
+          <strong className="text-black">Payment plans and sales tax.</strong>{" "}
+          When a buyer chooses a payment plan, Stripe keeps their card on the
+          creator&apos;s account for the remaining payments, and we keep the
+          checkout on a list until the plan has been given its end date, so it
+          stops after the last payment. When a creator switches on sales tax,
+          Stripe asks the buyer for the address it needs to work the tax out,
+          under Stripe&apos;s own privacy policy; we do not keep it.
+        </p>
+        <p>
           <strong className="text-black">A one-click offer after paying.</strong>{" "}
           When a product is followed by a one-click offer, Stripe keeps the
           buyer&apos;s card on the creator&apos;s account for payments the buyer
@@ -186,7 +195,11 @@ export default function PrivacyPage() {
         <p>We use personal information to:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>create and manage your account;</li>
-          <li>process subscriptions, renewals, cancellations, and refunds;</li>
+          <li>
+            process subscriptions, renewals, cancellations, and refunds, and
+            email you before a charge you might not expect: the first one after
+            your free trial, and each renewal of a yearly subscription;
+          </li>
           <li>
             provide the Services: host your store page, keep the files you sell
             where only you can reach them, and hand a file to a buyer who paid

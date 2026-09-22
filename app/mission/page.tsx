@@ -5,7 +5,7 @@ import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { isBillingConfigured } from "@/lib/billing";
-import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
+import { PRICE_CENTS, TRIAL_DAYS, YEAR_PRICE_CENTS } from "@/lib/plan";
 import { isConnectConfigured } from "@/lib/stripe-connect";
 
 export const metadata: Metadata = {
@@ -71,6 +71,8 @@ const BUILT = [
   "Your own Meta, Google, TikTok and Pinterest pixels, told of every page view, checkout, lead and purchase with its amount, and loaded only once a visitor allows it where the law asks for that",
   "An order bump: another of your products offered in a box the buyer ticks at checkout, at your price, never ticked for them, and delivered with the first",
   "A one-click upsell: another product offered on the thanks page, charged in one press to the card just used, only in the browser that paid, within the hour and once",
+  "Payment plans: two to twelve weekly or monthly payments on your own Stripe account, the product delivered after the first, and the plan given its end so no buyer is charged once more",
+  "Sales tax and VAT worked out by Stripe Tax on your own account and added at checkout, switched on once Stripe says your tax setup is complete",
   "Limited quantities: the page shows how many are left, counted from real payments, and a unit someone is paying for is held so the last one is never sold twice",
   "Paid calls with a calendar: your weekly hours in your time zone, the free times shown to each buyer in theirs, the time held while they pay, and a calendar file emailed to both of you",
   "Links to everywhere else you are — the channel, the podcast, the booking page — with no price and no checkout on them",
@@ -100,7 +102,7 @@ const ORDERS_LINE =
  * The line about our own income, which belongs to whether billing can reach
  * Stripe from this deployment rather than to whether we have written the code.
  */
-const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month, free for the first ${TRIAL_DAYS} days, cancelled in one click from your studio`;
+const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year, free for the first ${TRIAL_DAYS} days, with an email a week before the first charge, cancelled in one click from your studio`;
 
 const NOT_BUILT = [
   "PayPal as a second way to be paid — it is Stripe only today",

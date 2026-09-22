@@ -130,6 +130,9 @@ export async function findMember(store: Store, email: string): Promise<string | 
     for (const sub of rows) {
       if (typeof sub.status !== "string" || !LIVE.has(sub.status)) continue;
       if (!handles.has(sub.metadata?.store ?? "")) continue;
+      // A payment plan is paying for something already delivered, not a
+      // membership: it ends by itself and is not cancelled from here.
+      if (sub.metadata?.kind === "plan") continue;
       const at = typeof sub.created === "number" ? sub.created : 0;
       if (!best || at > best.at) best = { id: customer.id, at };
     }

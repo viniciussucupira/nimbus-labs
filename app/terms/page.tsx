@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" lastUpdated="September 18, 2026">
+    <LegalPage title="Terms of Service" lastUpdated="September 22, 2026">
       <p>
         These Terms of Service (“Terms”) govern your access to and use of the
         websites, products, and subscription services operated by Nimbus Labs
@@ -62,9 +62,13 @@ export default function TermsPage() {
           Creator stores are open. Taking a store address, building the page and
           connecting a Stripe account are free. Taking a card on that page
           requires a paid subscription, which begins with a free trial of 14
-          days and then renews monthly at the price shown on the home page until
-          it is cancelled. The price and the payment provider are shown before
-          any card is asked for, and these Terms apply to that subscription.
+          days and then renews every month or every year, whichever you chose,
+          at the price shown on the home page until it is cancelled. The price
+          and the payment provider are shown before any card is asked for, and
+          these Terms apply to that subscription. We email you at least seven
+          days before the first charge after the trial, and, on a yearly
+          subscription, between 15 and 45 days before each renewal, with the
+          date, the amount and how to cancel.
         </p>
         <p>
           We may update, improve, or discontinue features. When practical, we
@@ -163,6 +167,14 @@ export default function TermsPage() {
           We may change subscription prices. If we do, we will provide notice
           before the new price applies to a future billing period. The new
           price will not apply to a period you have already paid for.
+        </p>
+        <p>
+          You may switch between monthly and yearly billing from your studio.
+          A switch that costs more is charged when you make it, less the unused
+          part of the period you already paid for. A switch that costs less
+          leaves the unused part as credit on your account, applied to your
+          next charges until it is used up. Credit is not paid out in cash,
+          except where a refund applies under our Refund Policy.
         </p>
       </LegalSection>
 

@@ -4,7 +4,8 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { canSellProduct, createCheckout } from "@/lib/store-checkout";
 import { countHit } from "@/lib/visit";
 import { releaseStockHold, withStockHold } from "@/lib/stock";
-import { activeUpsell } from "@/lib/product-extras";
+import { activePlan, activeUpsell } from "@/lib/product-extras";
+import { rememberPlan } from "@/lib/plans";
 import { UPSELL_COOKIE, newUpsellKey } from "@/lib/upsell";
 
 /** The checkout this browser last opened for a limited product. */
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
   let productId = "";
   let optionId = "";
   let bump = false;
+  let plan = false;
   try {
     const form = await request.formData();
     const h = form.get("handle");
@@ -56,6 +58,8 @@ export async function POST(request: NextRequest) {
     optionId = typeof o === "string" ? o : "";
     // Only a ticked box counts. What the addition costs is read from the store.
     bump = form.get("bump") === "yes";
+    // Paying in instalments only when the buyer picked it.
+    plan = form.get("pay") === "plan";
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -81,15 +85,20 @@ export async function POST(request: NextRequest) {
 
     // When an upsell follows, this browser gets a secret, and only its
     // fingerprint travels with the charge.
-    const upsell = activeUpsell(store.products, product) ? newUpsellKey() : null;
+    const inPlan = plan && activePlan(product) !== null;
+    const upsell = !inPlan && !store.tax.enabled && activeUpsell(store.products, product) ? newUpsellKey() : null;
     const held = await withStockHold(store, product, (expiresAt) =>
       createCheckout(store, product, origin, optionId, {
         bump,
         expiresAt: expiresAt || undefined,
         upsellKey: upsell?.fingerprint,
+        plan: inPlan,
       }),
     );
     if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);
+    // Written down before the buyer leaves, so the plan is given its end
+    // whether or not they come back from paying.
+    if (inPlan && store.stripeAccountId) await rememberPlan(store.stripeAccountId, held.value.id);
     // Counted once the buyer is on their way, so the count never slows them.
     after(() => countHit(request, store, { kind: "checkout", id: product.id }));
     const headers = new Headers({ Location: held.value.url, "Cache-Control": "no-store" });

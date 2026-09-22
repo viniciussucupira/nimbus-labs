@@ -353,6 +353,7 @@ export const PAGES: TopicPage[] = [
         head: ["", "Stan", "Nimbus Labs"],
         rows: [
           ["Monthly price", "$29 and $99", "$29, free for the first 14 days"],
+          ["Paid yearly", "$300 and $948 a year", "$300 a year, free for the first 14 days"],
           ["Cut of each sale", "0% platform fee", "0% platform fee"],
           ["Signing in", "An account with a password. Their own signup asks for name, email and password", "A link sent to your email. No password to invent, and none kept here to be stolen"],
           ["Ways to be paid", "Stripe or PayPal", "Stripe only — we are behind them here"],
@@ -381,7 +382,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Stan is ahead, and we say so",
-        body: "Stan has years of features we do not have: payment plans, funnels, affiliates paid automatically, email broadcasts and flows, automated Instagram replies, courses with a proper student area, communities, an app for iPhone and iPad, and a support team with a track record. If you depend on those today, Stan is the better tool today.",
+        body: "Stan has years of features we do not have: funnels, affiliates paid automatically, email broadcasts and flows, automated Instagram replies, courses with a proper student area, communities, an app for iPhone and iPad, and a support team with a track record. If you depend on those today, Stan is the better tool today.",
       },
     ],
   },
@@ -425,7 +426,7 @@ export const PAGES: TopicPage[] = [
           ["Instant payout", "United States only, 3% fee, after 60 days", "Not needed — the account is already yours"],
           ["Disputes", "They handle them for you", "Yours, in your own dashboard"],
           ["Who is the seller of record", "Gumroad. They are the merchant of record on every sale", "You are. The charge is on your account, in your name"],
-          ["Sales tax, VAT and GST", "They collect and remit it worldwide, by their own help centre", "Not handled. Being the seller means the tax is yours"],
+          ["Sales tax, VAT and GST", "They collect and remit it worldwide, by their own help centre", "Worked out and collected by Stripe Tax on your own account, when you switch it on. Filing it is yours, because you are the seller"],
           ["A marketplace that sends buyers", "Discover, at 30% of the sale", "None"],
           ["Several prices for one product", "Versions and pay-what-you-want", "Price options, working today"],
         ],
@@ -453,7 +454,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Gumroad is ahead of us today",
-        body: "A marketplace that can send you buyers; affiliates; automated email workflows and a newsletter; licence keys; PDF stamping; installment plans; ratings and reviews; your own domain; Zapier and a public API; purchasing power parity pricing; and a mobile app. We have none of those. They have been doing this since 2011 and it shows.",
+        body: "A marketplace that can send you buyers; affiliates; automated email workflows and a newsletter; licence keys; PDF stamping; ratings and reviews; your own domain; Zapier and a public API; purchasing power parity pricing; and a mobile app. We have none of those. They have been doing this since 2011 and it shows.",
       },
     ],
   },
@@ -679,8 +680,8 @@ export const PAGES: TopicPage[] = [
           ["Discount codes", "Yes, on the $99 plan", "Yes, in the one price \u2014 kept on your own Stripe account"],
           ["Order bumps and upsells", "Yes, on the $99 plan", "Yes, on the one plan: a box the buyer ticks at checkout, and one click after paying, charged to the same card"],
           ["Limited quantity", "Yes", "Yes \u2014 the count shown is the real one, and a unit someone is paying for is held so the last one is never sold twice"],
-          ["Payment plans", "Yes, on the $99 plan", "Not available"],
-          ["Sales tax collection", "Yes", "Not available"],
+          ["Payment plans", "Yes, on the $99 plan", "Yes, on the one plan: two to twelve weekly or monthly payments, ending by themselves after the last"],
+          ["Sales tax collection", "Yes", "Yes \u2014 Stripe Tax on your own account, once your Stripe tax setup is done"],
         ],
       },
       {

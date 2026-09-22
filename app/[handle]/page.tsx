@@ -21,7 +21,7 @@ import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canManage } from "@/lib/membership-manage";
 import { StoreTracking } from "@/components/store-tracking";
-import { activeBump } from "@/lib/product-extras";
+import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { stockLeft } from "@/lib/stock";
 
 type Params = {
@@ -184,6 +184,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                   const remaining = left.has(product.id) && canSellProduct(store, product) ? left.get(product.id)! : null;
                   const soldOut = remaining === 0;
                   const extra = activeBump(store.products, product);
+                  const plan = activePlan(product);
                   return (
                   <li
                     key={product.id}
@@ -208,6 +209,9 @@ export default async function StorePage({ params, searchParams }: Params) {
                     ) : null}
                     {product.summary ? (
                       <p className="st-muted mt-2 leading-relaxed">{product.summary}</p>
+                    ) : null}
+                    {plan && canSellProduct(store, product) ? (
+                      <p className="st-muted mt-1 text-sm font-semibold">{`or ${planWords(plan)}`}</p>
                     ) : null}
                     {remaining !== null ? (
                       <p className="mt-2 text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>
@@ -343,6 +347,27 @@ export default async function StorePage({ params, searchParams }: Params) {
                             </div>
                           </fieldset>
                         ) : null}
+                        {plan ? (
+                          <fieldset className="mb-4">
+                            <legend className="sr-only">{`How to pay for ${product.title}`}</legend>
+                            <div className="space-y-2">
+                              <label htmlFor={`pf-${product.id}`} className="st-option">
+                                <span className="flex items-center gap-3">
+                                  <input id={`pf-${product.id}`} type="radio" name="pay" value="full" defaultChecked className="h-4 w-4" />
+                                  <span className="font-bold">Pay in full</span>
+                                </span>
+                                <span className="font-semibold tabular-nums">{`$${centsToPrice(product.priceCents)}`}</span>
+                              </label>
+                              <label htmlFor={`pp-${product.id}`} className="st-option">
+                                <span className="flex items-center gap-3">
+                                  <input id={`pp-${product.id}`} type="radio" name="pay" value="plan" className="h-4 w-4" />
+                                  <span className="font-bold">{planWords(plan)}</span>
+                                </span>
+                                <span className="font-semibold tabular-nums">{`$${centsToPrice(plan.amountCents)} today`}</span>
+                              </label>
+                            </div>
+                          </fieldset>
+                        ) : null}
                         {extra ? (
                           /*
                             Never ticked for the buyer. What it costs is the
@@ -393,6 +418,9 @@ export default async function StorePage({ params, searchParams }: Params) {
                                 : `Buy for $${centsToPrice(product.priceCents)}`}
                           </span>
                           {/* With the box ticked, the button says the new total. */}
+                          {plan ? (
+                            <span className="plan-on">{`Start the plan: $${centsToPrice(plan.amountCents)} today`}</span>
+                          ) : null}
                           {extra ? (
                             <span className="bump-on">
                               {options.length > 0

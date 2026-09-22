@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
       customerId: started.customerId,
       subscriptionId: started.subscriptionId,
       active: started.active,
+      tier: started.tier,
+      cycle: started.cycle,
     });
     if (!saved) return away(origin, "/studio?billing=error");
 
