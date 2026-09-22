@@ -79,6 +79,8 @@ export function canSellProduct(store: Store, product: Product): boolean {
   // nothing would be a card form that cannot work.
   if (product.priceCents === 0) return false;
   if (!canSell(store)) return false;
+  // A call delivers a time, not a file: it is ready once it has hours set.
+  if (product.call) return product.options.length === 0 && product.recurring === null;
   if (product.options.length > 0) return sellableOptions(product).length > 0;
   return product.file !== null || product.link !== null;
 }
@@ -104,6 +106,8 @@ export async function createCheckout(
   optionId?: string,
 ): Promise<string> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
+  // A call is booked for a time, through its own door, never bought blind.
+  if (product.call) throw new Error("A call is booked, not bought directly");
 
   const offered = sellableOptions(product);
   let chosen: ProductOption | null = null;
@@ -191,6 +195,8 @@ export type Order =
       email: string | null;
       /** How long this download still has, in seconds. */
       secondsLeft: number;
+      /** For a paid call: the time booked, and the buyer's own time zone. */
+      call: { start: number; end: number; buyerTz: string } | null;
     }
   | { state: "unpaid" | "expired" | "invalid" | "unavailable" | "error" };
 
@@ -249,8 +255,16 @@ export async function readOrder(
   const email =
     typeof details?.email === "string" && details.email ? details.email : null;
 
+  const start = Number(metadata?.start);
+  const end = Number(metadata?.end);
+  const call =
+    metadata?.kind === "call" && Number.isFinite(start) && Number.isFinite(end) && end > start
+      ? { start, end, buyerTz: typeof metadata?.tz === "string" ? metadata.tz : "UTC" }
+      : null;
+
   return {
     state: "paid",
+    call,
     product,
     option,
     file: option ? option.file : product.options.length > 0 ? null : product.file,
@@ -274,6 +288,8 @@ export type Sale = {
   paidAt: number;
   /** Whether the buyer's own download link still opens. */
   stillDownloadable: boolean;
+  /** A booked call delivers a time, not a download. */
+  isCall: boolean;
 };
 
 // Each state is its own member so a check on one narrows the rest away;
@@ -346,6 +362,7 @@ export async function listSales(store: Store): Promise<SaleList> {
         email: typeof email === "string" && email ? email : null,
         paidAt,
         stillDownloadable: now - paidAt <= DOWNLOAD_WINDOW_SECONDS,
+        isCall: row.metadata?.kind === "call",
       };
     })
     .filter((sale) => sale.reference !== "");
