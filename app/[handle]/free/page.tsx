@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { linkHost } from "@/lib/product-link";
 import { readClaim } from "@/lib/free";
+import { lookStyle } from "@/lib/store-look";
 
 export const metadata: Metadata = {
   title: "Your free copy — Nimbus Labs",
@@ -67,20 +68,22 @@ export default async function FreePage({ params, searchParams }: Params) {
   const stillFree = claimed !== null && claimed.priceCents === 0;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
-
+    <div
+      className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
+      style={lookStyle(store.look) as React.CSSProperties}
+    >
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <div className="card p-7 sm:p-10">
+        <div className="st-card p-7 sm:p-10">
           {token ? (
             claimed && stillFree ? (
               <>
-                <p className="tag tag-live">
+                <p className="st-price text-sm">
                   Free
                 </p>
                 <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
                   {claimed.title}
                 </h1>
-                <p className="mt-4 text-lg text-ink-soft">
+                <p className="st-muted mt-4 text-lg">
                   From {store.name}. Press the button and it is yours.
                 </p>
                 <form
@@ -91,17 +94,17 @@ export default async function FreePage({ params, searchParams }: Params) {
                   <input type="hidden" name="token" value={token} />
                   <button
                     type="submit"
-                    className="btn btn-primary btn-lg"
+                    className="btn st-btn btn-lg"
                   >
                     {claimed.link ? "Open it" : "Download it"}
                   </button>
                 </form>
                 {claimed.link ? (
-                  <p className="mt-5 text-sm text-ink-soft">
+                  <p className="st-muted mt-5 text-sm">
                     {`It is kept on ${linkHost(claimed.link)} by ${store.name}, not here, so the button takes you there.`}
                   </p>
                 ) : (
-                  <p className="mt-5 text-sm text-ink-soft">
+                  <p className="st-muted mt-5 text-sm">
                     The link in your email works for 7 days, so you can come
                     back for it on another device.
                   </p>
@@ -112,7 +115,7 @@ export default async function FreePage({ params, searchParams }: Params) {
                 <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">
                   {claimed ? "This is no longer free" : "This link has expired"}
                 </h1>
-                <p className="mt-4 text-lg text-ink-soft">
+                <p className="st-muted mt-4 text-lg">
                   {claimed
                     ? `${store.name} has changed it since the email was sent, so it is not handed out from this link.`
                     : "A free copy's link works for 7 days. Ask the store for a new one — it takes a few seconds."}
@@ -121,20 +124,20 @@ export default async function FreePage({ params, searchParams }: Params) {
             )
           ) : status === "sent" ? (
             <>
-              <p className="tag tag-brand">
+              <p className="st-price text-sm">
                 Sent
               </p>
               <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
                 Check your inbox
               </h1>
-              <p className="mt-4 text-lg text-ink-soft">
+              <p className="st-muted mt-4 text-lg">
                 {asked
                   ? `We emailed you a link to ${asked.title}.`
                   : "We emailed you a link."}{" "}
                 It comes from {store.name} via Nimbus Labs and usually arrives
                 within a minute. If it is not there, look in spam.
               </p>
-              <p className="mt-4 text-sm text-ink-soft">
+              <p className="st-muted mt-4 text-sm">
                 Your address joins {store.name}&apos;s list only once you use
                 that link, so a mistyped address never ends up on it.
               </p>
@@ -144,7 +147,7 @@ export default async function FreePage({ params, searchParams }: Params) {
               <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">
                 {(NOTICES[status] ?? NOTICES.error).title}
               </h1>
-              <p className="mt-4 text-lg text-ink-soft">
+              <p className="st-muted mt-4 text-lg">
                 {(NOTICES[status] ?? NOTICES.error).body}
               </p>
             </>
@@ -153,7 +156,7 @@ export default async function FreePage({ params, searchParams }: Params) {
           <div className="mt-8">
             <Link
               href={`/@${store.handle}`}
-              className="text-sm font-semibold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+              className="st-footer-link text-sm font-semibold"
             >
               Back to {store.name}
             </Link>
