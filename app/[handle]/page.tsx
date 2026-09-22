@@ -74,26 +74,18 @@ export default async function StorePage({ params }: Params) {
   const hasPriced = store.products.some((product) => !isFree(product));
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -left-16 top-0 h-56 w-56 bg-violet-brand/20 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -right-20 bottom-0 h-64 w-64 bg-mint-brand/20 blur-3xl"
-      />
+    <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
 
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <div className="rounded-[2rem] border-2 border-ink/5 bg-white p-7 text-center shadow-xl shadow-ink/5 sm:p-10">
+        <div className="card p-7 text-center sm:p-10">
           <p
             aria-hidden="true"
-            className="font-display mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-violet-brand to-pink-brand text-3xl font-black text-white"
+            className="font-display mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-violet-brand to-sky-brand text-3xl font-semibold text-white"
           >
             {store.name.slice(0, 1).toUpperCase()}
           </p>
 
-          <h1 className="font-display mt-5 text-3xl font-black leading-tight sm:text-4xl">
+          <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
             {store.name}
           </h1>
           <p className="mt-1 text-sm font-semibold text-ink-soft">
@@ -105,7 +97,7 @@ export default async function StorePage({ params }: Params) {
           ) : null}
 
           {store.products.length === 0 && store.links.length === 0 ? (
-            <div className="mt-8 rounded-3xl border-2 border-dashed border-ink/15 p-6">
+            <div className="mt-8 rounded-[var(--r-lg)] border border-dashed border-line-strong p-6">
               <p className="font-bold text-ink">Nothing here yet</p>
               <p className="mt-2 text-sm text-ink-soft">
                 This page is open but empty. When {store.name} adds something,
@@ -126,13 +118,13 @@ export default async function StorePage({ params }: Params) {
                   return (
                   <li
                     key={product.id}
-                    className="rounded-3xl border-2 border-ink/5 bg-cream p-5 sm:p-6"
+                    className="rounded-3xl border border-line bg-paper p-5 sm:p-6"
                   >
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <h2 className="font-display text-lg font-black text-ink">
+                      <h2 className="font-display text-lg font-semibold text-ink">
                         {product.title}
                       </h2>
-                      <p className="font-mono text-lg font-bold text-violet-deep">
+                      <p className="text-lg font-semibold tabular-nums text-ink">
                         {isFree(product)
                           ? "Free"
                           : `${options.length > 1 ? "from " : ""}$${centsToPrice(
@@ -172,7 +164,7 @@ export default async function StorePage({ params }: Params) {
                           </div>
                           <label
                             htmlFor={`e-${product.id}`}
-                            className="block text-sm font-bold text-ink"
+                            className="field-label"
                           >
                             Your email
                           </label>
@@ -184,7 +176,7 @@ export default async function StorePage({ params }: Params) {
                             maxLength={254}
                             autoComplete="email"
                             placeholder="you@example.com"
-                            className="w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand placeholder:text-ink-soft/50"
+                            className="field"
                           />
                           <label
                             htmlFor={`c-${product.id}`}
@@ -203,7 +195,7 @@ export default async function StorePage({ params }: Params) {
                           </label>
                           <button
                             type="submit"
-                            className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                            className="btn btn-primary"
                           >
                             Email it to me
                           </button>
@@ -241,7 +233,7 @@ export default async function StorePage({ params }: Params) {
                                 <label
                                   key={option.id}
                                   htmlFor={`o-${option.id}`}
-                                  className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 transition hover:border-violet-brand has-[:checked]:border-violet-brand has-[:checked]:bg-lilac"
+                                  className="card flex cursor-pointer items-center justify-between gap-3 px-4 py-3 transition hover:border-violet-brand has-[:checked]:border-violet-brand has-[:checked]:bg-lilac"
                                 >
                                   <span className="flex items-center gap-3">
                                     <input
@@ -256,7 +248,7 @@ export default async function StorePage({ params }: Params) {
                                       {option.label}
                                     </span>
                                   </span>
-                                  <span className="font-mono font-bold text-violet-deep">
+                                  <span className="font-semibold tabular-nums text-ink">
                                     {`$${centsToPrice(option.priceCents)}${every}`}
                                   </span>
                                 </label>
@@ -266,7 +258,7 @@ export default async function StorePage({ params }: Params) {
                         ) : null}
                         <button
                           type="submit"
-                          className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                          className="btn btn-primary"
                         >
                           {options.length > 0
                             ? product.recurring
@@ -301,7 +293,7 @@ export default async function StorePage({ params }: Params) {
                 says so without promising a date for it.
               */}
               {!hasPriced ? null : rehearsal ? (
-                <p className="mt-6 rounded-3xl border-2 border-dashed border-ink/15 p-5 text-sm text-ink-soft">
+                <p className="mt-6 rounded-[var(--r-lg)] border border-dashed border-line-strong p-5 text-sm text-ink-soft">
                   <strong className="text-ink">
                     This checkout is running in Stripe&apos;s test mode.
                   </strong>{" "}
@@ -316,7 +308,7 @@ export default async function StorePage({ params }: Params) {
                   Nimbus never holds the money and takes none of it.
                 </p>
               ) : (
-                <p className="mt-6 rounded-3xl border-2 border-dashed border-ink/15 p-5 text-sm text-ink-soft">
+                <p className="mt-6 rounded-[var(--r-lg)] border border-dashed border-line-strong p-5 text-sm text-ink-soft">
                   <strong className="text-ink">
                     This store cannot take payments yet.
                   </strong>{" "}
@@ -341,7 +333,7 @@ export default async function StorePage({ params }: Params) {
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer nofollow ugc"
-                    className="block rounded-3xl border-2 border-ink/10 bg-white px-5 py-4 transition hover:-translate-y-0.5 hover:border-violet-brand sm:px-6"
+                    className="card block px-5 py-4 transition hover:-translate-y-0.5 hover:border-violet-brand sm:px-6"
                   >
                     <span className="block font-bold text-ink">
                       {link.title}
