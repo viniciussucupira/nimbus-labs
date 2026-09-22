@@ -91,7 +91,7 @@ export function SlotPicker({
   }
 
   return (
-    <form action="/api/store/book" method="post" className="mt-6">
+    <form action="/api/store/book" method="post" className="mt-6" data-checkout="">
       <input type="hidden" name="handle" value={handle} />
       <input type="hidden" name="product" value={productId} />
       <input type="hidden" name="tz" value={tz} />
