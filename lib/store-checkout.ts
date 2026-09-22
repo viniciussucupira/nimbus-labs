@@ -18,7 +18,7 @@ import { isPaidUp } from "@/lib/billing";
 import { StripeError, onAccount, platformKey } from "@/lib/stripe-account";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { applyTax } from "@/lib/tax";
-import { onlyInstantMethods } from "@/lib/instant-pay";
+import { inTheCurrencyShown, onlyInstantMethods } from "@/lib/instant-pay";
 
 /**
  * How long a paid link keeps working.
@@ -245,6 +245,7 @@ export async function createCheckout(
   // from the buyer's address, on the creator's account, for every line.
   applyTax(store, body);
   onlyInstantMethods(body);
+  inTheCurrencyShown(body);
 
   const session = await onAccount(
     "POST",

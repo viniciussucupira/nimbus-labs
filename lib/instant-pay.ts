@@ -28,3 +28,17 @@ export const DELAYED_METHODS = [
 export function onlyInstantMethods(body: URLSearchParams): void {
   DELAYED_METHODS.forEach((type, i) => body.set(`excluded_payment_method_types[${i}]`, type));
 }
+
+/**
+ * Charges the amount the page showed, in the currency it was written in.
+ *
+ * Stripe can convert a price into the currency of whoever is looking at it.
+ * It reads well until you follow the money: the buyer of a $39 plan meets a
+ * total in their own currency, carrying a conversion fee of two to four per
+ * cent that Stripe adds to the exchange rate, and the creator never chose
+ * either number. Our own page promises that what is charged is what was
+ * saved, so the conversion is turned off and the price stands as written.
+ */
+export function inTheCurrencyShown(body: URLSearchParams): void {
+  body.set("adaptive_pricing[enabled]", "false");
+}

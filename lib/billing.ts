@@ -21,6 +21,7 @@ import {
   PRICE_CENTS,
   TRIAL_DAYS,
 } from "@/lib/plan";
+import { inTheCurrencyShown } from "@/lib/instant-pay";
 import {
   CUSTOMER_PATTERN,
   SUBSCRIPTION_PATTERN,
@@ -234,6 +235,7 @@ export async function createBillingCheckout(
     success_url: `${origin}/api/billing/return?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/studio?billing=cancelled`,
   });
+  inTheCurrencyShown(body);
 
   let price: string | null = null;
   try {
@@ -533,9 +535,14 @@ export async function switchPlan(
   try {
     updated = await onPlatform("POST", path, body);
   } catch (error) {
-    // The next attempt reads the price from Stripe again.
+    // A price archived at Stripe since we last read it. The creator asked to
+    // change plan once; they should not have to ask twice because of our own
+    // stale note of a price id. Forget it, make the price again, and retry —
+    // the same recovery the first checkout has had all along.
+    if (!(error instanceof BillingError) || error.status !== 400) throw error;
     priceIds.clear();
-    throw error;
+    body.set("items[0][price]", await ensurePrice(choice.tier, choice.cycle));
+    updated = await onPlatform("POST", path, body);
   }
 
   if (updated.pending_update) {

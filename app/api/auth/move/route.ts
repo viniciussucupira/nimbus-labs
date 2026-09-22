@@ -5,7 +5,7 @@ import {
   SESSION_COOKIE_OPTIONS,
   endAllSessions,
   openSession,
-  useMoveLink,
+  spendMoveLink,
 } from "@/lib/auth";
 import { moveAccount } from "@/lib/store";
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   let moved: { from: string; to: string } | null = null;
   try {
-    moved = await useMoveLink(token);
+    moved = await spendMoveLink(token);
   } catch (error) {
     console.error("address move failed", error);
   }

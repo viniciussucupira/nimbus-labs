@@ -64,7 +64,6 @@ const whenLabel = (seconds: number) =>
  */
 export function DiscountEditor({ selling }: { selling: boolean }) {
   const [codes, setCodes] = useState<DiscountCode[] | null>(null);
-  const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,15 +74,18 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
   const [amount, setAmount] = useState("10");
   const [uses, setUses] = useState("");
 
+  // Nothing has come back from Stripe yet, and nothing went wrong: that is
+  // what waiting looks like, so it is read from the two states that already
+  // exist rather than kept as a third one an effect has to set on first paint.
+  const loading = selling && codes === null && error === null;
+
   useEffect(() => {
     if (!selling) return;
     let alive = true;
-    setLoading(true);
     send({ action: "list" }).then((answer) => {
       if (!alive) return;
-      setLoading(false);
       if (answer.codes) setCodes(answer.codes);
-      else setError(answer.problem ?? null);
+      else setError(answer.problem ?? MESSAGES.server_error);
     });
     return () => {
       alive = false;

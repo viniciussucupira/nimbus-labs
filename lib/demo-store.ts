@@ -1,7 +1,7 @@
 // Demo creator store: proves that a buyer can pay a creator directly and get
 // the file right after Stripe confirms the payment. Test mode only.
 import type { DemoFileName } from "@/lib/demo-file";
-import { onlyInstantMethods } from "@/lib/instant-pay";
+import { inTheCurrencyShown, onlyInstantMethods } from "@/lib/instant-pay";
 
 export type DemoOption = {
   id: string;
@@ -143,6 +143,7 @@ export async function createDemoCheckout(
     cancel_url: `${origin}/demo`,
   });
   onlyInstantMethods(body);
+  inTheCurrencyShown(body);
 
   const session = await stripeRequest("POST", "/checkout/sessions", body);
   if (typeof session.url !== "string") {

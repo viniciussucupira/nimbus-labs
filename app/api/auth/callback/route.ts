@@ -3,7 +3,7 @@ import { originFrom } from "@/lib/request-origin";
 import {
   SESSION_COOKIE,
   SESSION_COOKIE_OPTIONS,
-  useSignInLink,
+  spendSignInLink,
 } from "@/lib/auth";
 
 /**
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
   let sessionId: string | null = null;
   try {
-    sessionId = await useSignInLink(token);
+    sessionId = await spendSignInLink(token);
   } catch (error) {
     console.error("sign-in callback failed", error);
   }

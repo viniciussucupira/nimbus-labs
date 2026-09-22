@@ -18,6 +18,35 @@ const nextConfig: NextConfig = {
      */
     inlineCss: true,
   },
+
+  /**
+   * Headers every response carries, marketing pages included.
+   *
+   * Set here rather than in proxy.ts on purpose: a page Next has prerendered
+   * is served straight from Vercel's edge cache without the proxy running, so
+   * headers added there reach the studio and the store pages and quietly miss
+   * the home page. This list reaches all of them.
+   *
+   * frame-ancestors is the one that matters. Without it anyone can put the
+   * studio inside an invisible frame on their own site and collect a signed-in
+   * creator's clicks on buttons they never meant to press. 'self' is used
+   * rather than 'none' because the home page shows the demo store in a frame
+   * of its own, and that has to keep working.
+   */
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Strict-Transport-Security", value: "max-age=63072000" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/icons";
 
 type InstallEvent = Event & {
@@ -8,10 +8,42 @@ type InstallEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
+/**
+ * Two facts that belong to the browser, not to React: whether this is an
+ * iPhone, and whether the page is already running as an installed app.
+ *
+ * They are read with useSyncExternalStore rather than written into state from
+ * an effect. Setting state inside an effect makes React render the component
+ * twice on every visit for something that was knowable the first time, and on
+ * the home page this component sits below the buyer path, where a second
+ * render costs a frame for nothing.
+ */
+const NEVER_CHANGES = () => () => {};
+const STANDALONE = "(display-mode: standalone)";
+
+const subscribeToDisplayMode = (notify: () => void) => {
+  const query = window.matchMedia(STANDALONE);
+  query.addEventListener("change", notify);
+  return () => query.removeEventListener("change", notify);
+};
+
+const onServer = () => false;
+
 export function InstallApp() {
   const [deferred, setDeferred] = useState<InstallEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
-  const [isIos, setIsIos] = useState(false);
+  const [justInstalled, setJustInstalled] = useState(false);
+
+  const isIos = useSyncExternalStore(
+    NEVER_CHANGES,
+    () => /iPad|iPhone|iPod/.test(window.navigator.userAgent) && !("MSStream" in window),
+    onServer,
+  );
+  const standalone = useSyncExternalStore(
+    subscribeToDisplayMode,
+    () => window.matchMedia(STANDALONE).matches,
+    onServer,
+  );
+  const installed = standalone || justInstalled;
 
   useEffect(() => {
     // Register the service worker: this is what makes the site installable.
@@ -24,16 +56,12 @@ export function InstallApp() {
       setDeferred(e as InstallEvent);
     };
     const onInstalled = () => {
-      setInstalled(true);
+      setJustInstalled(true);
       setDeferred(null);
     };
 
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
-
-    const ua = window.navigator.userAgent;
-    setIsIos(/iPad|iPhone|iPod/.test(ua) && !("MSStream" in window));
-    if (window.matchMedia("(display-mode: standalone)").matches) setInstalled(true);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onPrompt);

@@ -32,8 +32,13 @@ export async function generateMetadata({
   // the address with it, while `twitter` quietly keeps inheriting the home
   // page's title — so an article used to share as the whole site. The picture
   // itself comes from opengraph-image.tsx beside this file.
+  //
+  // The section name is added only while the whole line still fits what a
+  // search result shows. Past that, search engines cut the title mid-word,
+  // and the reader loses the end of the headline to keep our own byline.
+  const withSection = `${post.title} — The Nimbus Journal`;
   return {
-    title: `${post.title} — The Nimbus Journal`,
+    title: withSection.length <= 60 ? withSection : post.title,
     description: post.excerpt,
     alternates: { canonical: `/blog/${post.slug}` },
     openGraph: {

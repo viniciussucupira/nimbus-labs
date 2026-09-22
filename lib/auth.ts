@@ -148,7 +148,7 @@ export async function sendMoveLink(
 }
 
 /** Spends a move link and says which address is moving where. */
-export async function useMoveLink(
+export async function spendMoveLink(
   token: string,
 ): Promise<{ from: string; to: string } | null> {
   if (!isRedisConfigured()) return null;
@@ -235,7 +235,7 @@ export async function sendSignInLink(
  * Spends a sign-in link and opens a session. The link is deleted first, so a
  * link that leaks after the fact is already worthless.
  */
-export async function useSignInLink(token: string): Promise<string | null> {
+export async function spendSignInLink(token: string): Promise<string | null> {
   if (!isRedisConfigured()) return null;
   if (!/^[0-9a-f]{64}$/.test(token)) return null;
 
