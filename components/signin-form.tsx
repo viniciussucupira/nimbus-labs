@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/icons";
 
 type State =
   | { kind: "idle" }
@@ -49,17 +50,18 @@ export function SignInForm() {
 
   if (state.kind === "sent") {
     return (
-      <div
-        className="rounded-3xl border-2 border-mint-brand/40 bg-mint-brand/10 p-6"
-        role="status"
-      >
-        <p className="font-display text-xl font-black text-ink">
-          Check that inbox
-        </p>
-        <p className="mt-3 text-ink-soft">
-          If that address can sign in, the link is on its way. It works once and
+      <div role="status" className="text-center">
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-mint-soft text-mint-deep">
+          <Icon name="mail" size={24} />
+        </span>
+        <p className="mt-4 text-xl font-semibold text-ink">Check that inbox</p>
+        <p className="mt-2 text-ink-soft">
+          If <span className="font-medium text-ink">{email}</span> can sign in, the link is on its way. It works once and
           stops working in 15 minutes.
         </p>
+        <button type="button" onClick={() => setState({ kind: "idle" })} className="btn btn-ghost btn-sm mt-5">
+          Use a different email
+        </button>
       </div>
     );
   }
@@ -67,10 +69,7 @@ export function SignInForm() {
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
       <div>
-        <label
-          htmlFor="signin-email"
-          className="block text-sm font-bold text-ink"
-        >
+        <label htmlFor="signin-email" className="field-label">
           Your email
         </label>
         <input
@@ -82,7 +81,9 @@ export function SignInForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@example.com"
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-soft/60 focus:border-violet-brand"
+          aria-invalid={state.kind === "error" ? true : undefined}
+          aria-describedby={state.kind === "error" ? "signin-error" : undefined}
+          className="field mt-2"
         />
       </div>
 
@@ -101,10 +102,7 @@ export function SignInForm() {
       </div>
 
       {state.kind === "error" ? (
-        <p
-          className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
-          role="alert"
-        >
+        <p id="signin-error" className="notice notice-error" role="alert">
           {state.message}
         </p>
       ) : null}
@@ -112,12 +110,18 @@ export function SignInForm() {
       <button
         type="submit"
         disabled={state.kind === "sending"}
-        className="w-full rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-7 py-3.5 font-bold text-white shadow-lg transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+        className="btn btn-primary btn-lg btn-block"
       >
-        {state.kind === "sending" ? "Sending…" : "Email me a link"}
+        {state.kind === "sending" ? (
+          <>
+            <span className="spinner" aria-hidden="true" /> Sending
+          </>
+        ) : (
+          "Email me a link"
+        )}
       </button>
 
-      <p className="text-sm text-ink-soft">
+      <p className="text-sm text-ink-mute">
         No password. We send a link that works once, and we answer the same way
         whether or not that address has an account.
       </p>
