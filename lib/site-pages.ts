@@ -639,7 +639,7 @@ export const PAGES: TopicPage[] = [
         head: ["", "Stan", "Nimbus Labs"],
         rows: [
           ["Store page on a phone", "Yes", "Yes, and faster (97\u2013100 against 57\u201358 on PageSpeed)"],
-          ["Themes and colours", "Yes, limited", "Not available. One look, the same on every store"],
+          ["Themes and colours", "Yes, limited", "Yes \u2014 four themes, ten colours or any colour of your own, and your photo. Every colour is checked for contrast before your page uses it"],
           ["A line about you on the page", "About me, one theme only", "Every store, under your name"],
           ["Several prices in one product", "Not available", "Up to three, each delivering its own thing"],
           ["Custom domain", "Not available", "Not available"],
@@ -726,7 +726,7 @@ export const PAGES: TopicPage[] = [
           { title: "Who holds the money from my sales?", body: "You do, in your own Stripe account. We take 0% of your sales and charge only a monthly subscription." },
           { title: "What happens if Nimbus Labs closes?", body: "Your Stripe account, your customers and your files were never ours. Your list downloads from your studio at any time, and a shutdown comes with notice in writing." },
           { title: "Who is behind this?", body: "Vinicius Sucupira, an independent builder working in public. Support is in English, in writing." },
-          { title: "Why is the demo store so plain?", body: "It is a working proof, not a portfolio piece, and your own store looks the same: one design for every store, built to load fast on a phone. Your own photo and colours are not built yet." },
+          { title: "Can my store look like mine?", body: "Yes. Put up your photo, pick one of four themes and a colour \u2014 one of ten, or your own \u2014 and the studio shows the page before you save it. Every colour is checked so the words on your page stay easy to read." },
           { title: "What do I do if something breaks?", body: "You write to support and a person answers. If a sale is affected, you have the Stripe dashboard as the source of truth, independently of us." },
         ],
       },
