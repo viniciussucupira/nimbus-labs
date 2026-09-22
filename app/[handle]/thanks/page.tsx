@@ -7,6 +7,9 @@ import { everyLabel } from "@/lib/product-recurring";
 import { readOrder } from "@/lib/store-checkout";
 import { lookStyle } from "@/lib/store-look";
 import { canManage } from "@/lib/membership-manage";
+import { confirmBooking } from "@/lib/calls";
+import { readableTime, zoneName } from "@/lib/call-setup";
+import { SITE_URL } from "@/lib/site-url";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -60,6 +63,25 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     typeof query.session_id === "string" ? query.session_id : undefined;
   const order = await readOrder(store, sessionId);
 
+  // A paid call: the time is written down and the two emails go out, once,
+  // however many times this page is opened.
+  const booked =
+    order.state === "paid" && order.call && order.product.call
+      ? { ...order.call, setup: order.product.call }
+      : null;
+  if (booked && sessionId && order.state === "paid" && order.product.call) {
+    await confirmBooking({
+      store,
+      product: { ...order.product, call: order.product.call },
+      session: sessionId,
+      start: booked.start,
+      end: booked.end,
+      buyerEmail: order.email,
+      buyerTz: booked.buyerTz,
+      origin: SITE_URL,
+    }).catch((error) => console.error("confirming a booking failed", error));
+  }
+
   const notice = order.state !== "paid" ? NOTICES[order.state] : null;
   const hours = order.state === "paid" ? Math.floor(order.secondsLeft / 3600) : 0;
 
@@ -76,10 +98,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 Paid
               </p>
               <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
-                Thank you
+                {booked ? "You are booked" : "Thank you"}
               </h1>
               <p className="st-muted mt-4 text-lg">
-                {order.product.recurring ? "You subscribed to " : "You bought "}
+                {order.product.recurring ? "You subscribed to " : booked ? "You booked " : "You bought "}
                 <strong style={{ color: "var(--st-text)" }}>
                   {order.option
                     ? `${order.product.title} (${order.option.label})`
@@ -114,7 +136,45 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 </p>
               ) : null}
 
-              {order.link ? (
+              {booked ? (
+                <>
+                  <div
+                    className="mt-6 rounded-2xl px-5 py-4"
+                    style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
+                  >
+                    <p className="text-lg font-semibold">{readableTime(booked.start, booked.buyerTz)}</p>
+                    <p className="mt-1 text-sm">
+                      {`${zoneName(booked.start, booked.buyerTz)} \u00b7 ${booked.setup.minutes} minutes`}
+                    </p>
+                  </div>
+                  <div className="mt-6 flex flex-wrap items-center gap-3">
+                    {booked.setup.room ? (
+                      <a
+                        href={booked.setup.room}
+                        rel="noopener noreferrer nofollow"
+                        target="_blank"
+                        className="btn st-btn"
+                      >
+                        The link to join
+                      </a>
+                    ) : null}
+                    <a
+                      href={`/api/store/ics?handle=${encodeURIComponent(store.handle)}&session_id=${encodeURIComponent(sessionId ?? "")}`}
+                      className="btn btn-secondary"
+                    >
+                      Add to your calendar
+                    </a>
+                  </div>
+                  <p className="st-muted mt-5 text-sm">
+                    {booked.setup.room
+                      ? `Join at that time with the link above. It is also in your confirmation email, with a calendar file.`
+                      : `${store.name} will send you the link to join before the call.`}
+                    {order.email
+                      ? ` A confirmation is on its way to ${order.email}; to move or cancel the call, reply to it.`
+                      : ""}
+                  </p>
+                </>
+              ) : order.link ? (
                 <>
                   {/* Shown rather than followed. A buyer who has paid should
                       see where they are about to go before they go there, and
