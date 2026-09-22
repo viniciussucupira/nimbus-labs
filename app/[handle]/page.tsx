@@ -20,6 +20,7 @@ import { canGiveProduct } from "@/lib/free";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canManage } from "@/lib/membership-manage";
+import { StoreTracking } from "@/components/store-tracking";
 
 type Params = { params: Promise<{ handle: string }> };
 
@@ -258,6 +259,7 @@ export default async function StorePage({ params }: Params) {
                         action="/api/store/checkout"
                         method="post"
                         className="mt-4"
+                        data-checkout=""
                       >
                         <input type="hidden" name="handle" value={store.handle} />
                         <input type="hidden" name="product" value={product.id} />
@@ -384,6 +386,7 @@ export default async function StorePage({ params }: Params) {
                 <li key={link.id}>
                   <a
                     href={link.url}
+                    data-link={link.id}
                     target="_blank"
                     rel="noopener noreferrer nofollow ugc"
                     className="st-card st-link-card px-5 py-4 text-center sm:px-6"
@@ -404,6 +407,7 @@ export default async function StorePage({ params }: Params) {
             <Link href="/" className="st-footer-link text-sm font-semibold">
               Made with Nimbus Labs
             </Link>
+            <StoreTracking store={store} countVisit />
           </div>
         </div>
       </main>
