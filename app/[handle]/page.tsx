@@ -165,6 +165,11 @@ export default async function StorePage({ params }: Params) {
                             )}${every}`}
                       </p>
                     </div>
+                    {product.call ? (
+                      <p className="st-muted mt-1 text-sm font-semibold">
+                        {`${product.call.minutes}-minute call, online`}
+                      </p>
+                    ) : null}
                     {product.summary ? (
                       <p className="st-muted mt-2 leading-relaxed">{product.summary}</p>
                     ) : null}
@@ -241,6 +246,13 @@ export default async function StorePage({ params }: Params) {
                           Not available right now.
                         </p>
                       )
+                    ) : product.call && canSellProduct(store, product) ? (
+                      <Link
+                        href={`/@${store.handle}/book/${product.id}`}
+                        className="btn st-btn btn-block mt-4"
+                      >
+                        {`Pick a time \u2014 $${centsToPrice(product.priceCents)}`}
+                      </Link>
                     ) : canSellProduct(store, product) ? (
                       <form
                         action="/api/store/checkout"
