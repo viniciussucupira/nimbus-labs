@@ -110,6 +110,11 @@ export async function createCheckout(
     bump?: boolean;
     /** When the checkout closes, for a product whose units are held. */
     expiresAt?: number;
+    /**
+     * The fingerprint of the secret the buyer's browser keeps, when an upsell
+     * follows: the card is then kept for payments made while they are there.
+     */
+    upsellKey?: string;
   } = {},
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
@@ -169,6 +174,15 @@ export async function createCheckout(
   // checkout closes when the hold does.
   if (extras.expiresAt) body.set("expires_at", String(extras.expiresAt));
 
+  // An upsell follows: the buyer becomes a customer of the creator and the
+  // card is kept for payments they make while present — the one-click offer
+  // on the thanks page — and never for charging them when they are not.
+  if (extras.upsellKey && !membership) {
+    body.set("customer_creation", "always");
+    body.set("payment_intent_data[setup_future_usage]", "on_session");
+    body.set("metadata[upsell_key]", extras.upsellKey);
+  }
+
   // The box a buyer types a discount code into, shown only by a store that has
   // one. An empty box on every checkout is an invitation to go and look for a
   // code that does not exist, and a buyer who leaves to search for one is a
@@ -223,6 +237,10 @@ export type Order =
       call: { start: number; end: number; buyerTz: string } | null;
       /** The product the buyer added at checkout, with what it delivers. */
       bump: { product: Product; file: ProductFile | null; link: string | null } | null;
+      /** When it was paid, in seconds since the epoch. */
+      created: number;
+      /** The fingerprint an upsell must be taken with, when one follows. */
+      upsellKey: string | null;
     }
   | { state: "unpaid" | "expired" | "invalid" | "unavailable" | "error" };
 
@@ -297,6 +315,8 @@ export async function readOrder(
     state: "paid",
     call,
     bump,
+    created,
+    upsellKey: typeof metadata?.upsell_key === "string" ? metadata.upsell_key : null,
     product,
     option,
     file: option ? option.file : product.options.length > 0 ? null : product.file,
@@ -399,5 +419,40 @@ export async function listSales(store: Store): Promise<SaleList> {
     })
     .filter((sale) => sale.reference !== "");
 
-  return { state: "ok", sales };
+  // Products taken in one click after paying are their own charges, not
+  // checkouts, so they are read from the payments on the same account.
+  let added: Sale[] = [];
+  try {
+    const intents = await onAccount(
+      "GET",
+      store.stripeAccountId as string,
+      `/payment_intents?limit=${ORDERS_PAGE_SIZE}`,
+    );
+    const list = Array.isArray(intents.data) ? (intents.data as Record<string, unknown>[]) : [];
+    added = list
+      .filter((pi) => {
+        const meta = pi.metadata as Record<string, string> | null;
+        return meta?.kind === "upsell" && meta?.store === store.handle && pi.status === "succeeded";
+      })
+      .map((pi): Sale => {
+        const meta = pi.metadata as Record<string, string>;
+        const paidAt = typeof pi.created === "number" ? pi.created : 0;
+        return {
+          reference: typeof pi.id === "string" ? pi.id : "",
+          title: `${meta.title || "A product that is no longer listed"} (added after paying)`,
+          amount: typeof pi.amount === "number" ? pi.amount : 0,
+          email: typeof pi.receipt_email === "string" && pi.receipt_email ? pi.receipt_email : null,
+          paidAt,
+          stillDownloadable: now - paidAt <= DOWNLOAD_WINDOW_SECONDS,
+          isCall: false,
+        };
+      })
+      .filter((sale) => sale.reference !== "");
+  } catch (error) {
+    // The checkouts are still the whole of the list; this part is extra.
+    console.error("listing upsells failed", error);
+  }
+
+  const all = [...sales, ...added].sort((a, b) => b.paidAt - a.paidAt).slice(0, ORDERS_PAGE_SIZE);
+  return { state: "ok", sales: all };
 }
