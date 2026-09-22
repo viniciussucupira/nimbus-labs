@@ -31,6 +31,7 @@ import { ProductEditor } from "@/components/product-editor";
 import { LinkEditor } from "@/components/link-editor";
 import { DiscountEditor } from "@/components/discount-editor";
 import { DomainEditor } from "@/components/domain-editor";
+import { StudioNav, StudioStart, type StartStep } from "@/components/studio-start";
 import { domainStatus, isDomainsConfigured } from "@/lib/domains";
 import {
   COUNTRIES,
@@ -358,6 +359,23 @@ export default async function StudioPage({
   // Asked of Stripe each time, because the setup is the creator's and lives there.
   const tax = current?.stripeAccountId ? await taxStatus(current) : null;
   const connectReady = isConnectConfigured();
+  const billingReadyForSteps = isBillingConfigured();
+  // The first steps of a store, each ticked from what the store really has.
+  const startSteps: StartStep[] = store
+    ? [
+        { key: "address", title: "Your address", hint: `nimbuslabsai.com/@${store.handle} is yours.`, done: true, href: "#details" },
+        { key: "details", title: "Say what your store is", hint: "One line under your name tells a visitor why they are here.", done: Boolean(store.bio), href: "#details" },
+        { key: "look", title: "Add your photo and colour", hint: "A face and a colour make the page yours.", done: Boolean(store.photoId), href: "#look" },
+        { key: "product", title: "Put up the first thing to sell", hint: "A file, a course, a call, a membership, or something free for an email.", done: store.products.length > 0, href: "#products" },
+        ...(connectReady
+          ? [{ key: "stripe", title: "Connect your Stripe account", hint: "Where your buyers' money goes: yours, not ours.", done: store.stripeChargesEnabled, href: "#stripe" }]
+          : []),
+        ...(billingReadyForSteps
+          ? [{ key: "plan", title: "Switch on the till", hint: `Free for ${TRIAL_DAYS} days, and nothing is charged today.`, done: paid, href: "#billing" }]
+          : []),
+        { key: "share", title: "Share your address", hint: "Put it in your bio. This ticks itself when your first visitor arrives.", done: (numbers?.totals.d30.visitors ?? 0) > 0, href: "#details" },
+      ]
+    : [];
   const connectTestMode = isConnectInTestMode();
   const billingReady = isBillingConfigured();
   const NEXT = connectReady ? NEXT_WHEN_SELLING : NEXT_WHEN_NOT;
@@ -401,9 +419,22 @@ export default async function StudioPage({
 
         {store ? (
           <>
+            <StudioNav
+              items={[
+                { href: "#details", label: "Store" },
+                ...(numbers ? [{ href: "#numbers", label: "Numbers" }] : []),
+                { href: "#look", label: "Look" },
+                { href: "#products", label: "Products" },
+                { href: "#stripe", label: "Payments" },
+                ...(billingReady ? [{ href: "#billing", label: "Plan" }] : []),
+                ...(PRO_ON_SALE ? [{ href: "/studio/email", label: "Email" }] : []),
+                { href: "#account", label: "Account" },
+              ]}
+            />
+            <StudioStart steps={startSteps} />
             <div className="grid items-start gap-x-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             <div className="min-w-0">
-            <div className="card mt-8 p-6 sm:p-8">
+            <div id="details" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
               <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                 {store.name}
               </p>
@@ -431,22 +462,30 @@ export default async function StudioPage({
               <OldAddresses handles={store.previousHandles} />
             </div>
 
-            {numbers ? <StatsPanel data={numbers} /> : null}
+            {numbers ? (
+              <div id="numbers" className="scroll-mt-32">
+                <StatsPanel data={numbers} />
+              </div>
+            ) : null}
 
-            <LookEditor
-              look={store.look}
-              photoId={store.photoId}
-              name={store.name}
-              handle={store.handle}
-            />
+            <div id="look" className="scroll-mt-32">
+              <LookEditor
+                look={store.look}
+                photoId={store.photoId}
+                name={store.name}
+                handle={store.handle}
+              />
+            </div>
 
-            <ProductEditor
-              products={store.products}
-              folder={folder}
-              selling={current ? canSell(current) : false}
-              testMode={isConnectInTestMode()}
-              email={email}
-            />
+            <div id="products" className="scroll-mt-32">
+              <ProductEditor
+                products={store.products}
+                folder={folder}
+                selling={current ? canSell(current) : false}
+                testMode={isConnectInTestMode()}
+                email={email}
+              />
+            </div>
 
             {callProducts.length > 0 ? (
               <section className="card mt-8 p-6 sm:p-8" aria-labelledby="calls-title">
@@ -618,7 +657,7 @@ export default async function StudioPage({
 
             </div>
             <div className="min-w-0">
-            <div className="card mt-8 p-6 sm:p-8">
+            <div id="stripe" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
               <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                 Where the money goes
               </p>
@@ -797,7 +836,7 @@ export default async function StudioPage({
             ) : null}
 
             {billingReady ? (
-              <div id="billing" className="card mt-8 scroll-mt-24 p-6 sm:p-8">
+              <div id="billing" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
                 <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                   What you pay us
                 </p>
@@ -1077,7 +1116,7 @@ export default async function StudioPage({
               </div>
             ) : null}
 
-            <div className="card mt-8 p-6 sm:p-8">
+            <div id="account" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
               <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                 The email that signs you in
               </p>

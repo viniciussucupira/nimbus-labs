@@ -5,6 +5,12 @@ import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { isDomainsConfigured } from "@/lib/domains";
+import { HelpSearch } from "@/components/help-search";
+
+/** An anchor for one answer, from its question. */
+function answerId(q: string): string {
+  return q.toLowerCase().replace(/[’']/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
 
 export const metadata: Metadata = {
   title: "Help centre — Nimbus Labs",
@@ -376,6 +382,7 @@ export default function HelpPage() {
               Every answer here is about the product as it is today. Where the answer is &ldquo;not yet&rdquo;, it says
               not yet.
             </p>
+            <HelpSearch />
           </div>
         </section>
 
@@ -399,7 +406,7 @@ export default function HelpPage() {
 
           <div className="min-w-0 space-y-16">
             {SECTIONS.map((section) => (
-              <section key={section.id} id={section.id} className="reveal scroll-mt-24">
+              <section key={section.id} id={section.id} data-help-section className="reveal scroll-mt-24">
                 <div className="flex items-start gap-4">
                   <span className="icon-tile">
                     <Icon name={iconFor(section.emoji)} size={22} />
@@ -412,7 +419,7 @@ export default function HelpPage() {
 
                 <div className="mt-6 divide-y divide-line overflow-hidden rounded-[var(--r-lg)] border border-line bg-white">
                   {section.items.map((item) => (
-                    <details key={item.q} className="group">
+                    <details key={item.q} id={answerId(item.q)} data-help-item className="group scroll-mt-24">
                       <summary className="flex cursor-pointer list-none items-center justify-between gap-6 px-5 py-5 font-semibold text-ink transition-colors hover:bg-paper sm:px-6 [&::-webkit-details-marker]:hidden">
                         {item.q}
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line text-ink-soft transition-transform duration-300 group-open:rotate-45 group-open:border-violet-brand group-open:text-violet-deep">

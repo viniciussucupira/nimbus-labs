@@ -346,6 +346,7 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
         <PlanCard name="Nimbus" tag="Everything to sell" tier="creator" perks={INCLUDED} featured cta="Start your store" />
         <PlanCard name="Nimbus Pro" tag={domains ? "Email and your own domain" : "With email to your list"} tier="pro" perks={proPerks} featured={false} cta="Start on Pro" />
       </div>
+      <CostAtVolume />
       <div className="card-flat mt-6 grid gap-4 p-6 text-sm sm:grid-cols-3 sm:p-7">
         <p className="flex gap-2 text-ink-soft">
           <Icon name="clock" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
@@ -369,6 +370,60 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
           </span>
         </p>
       </div>
+    </div>
+  );
+}
+
+/*
+ * What the platform takes as sales grow, worked out from published prices.
+ * Card processing is left out because every option pays it, to Stripe.
+ */
+const AVERAGE_PRICE = 27;
+const SALES_LEVELS = [20, 75, 370];
+const GUMROAD_RATE = 0.1;
+const GUMROAD_PER_SALE = 0.5;
+
+function money(value: number): string {
+  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
+function CostAtVolume() {
+  const flat = PLAN_PRICES.creator.month / 100;
+  return (
+    <div className="card-flat mt-6 p-6 sm:p-7">
+      <p className="font-semibold text-ink">What you pay as your sales grow</p>
+      <p className="mt-1 text-sm text-ink-soft">{`Each month, at a $${AVERAGE_PRICE} average price. Card processing is not included: every option pays it, to Stripe.`}</p>
+      <table className="mt-4 w-full text-left text-sm tabular-nums">
+        <caption className="sr-only">What each platform takes each month at three levels of sales</caption>
+        <thead>
+          <tr className="text-ink-mute">
+            <th scope="col" className="py-2 pr-2 font-semibold">Your sales</th>
+            <th scope="col" className="px-2 py-2 font-semibold text-violet-deep">Nimbus</th>
+            <th scope="col" className="px-2 py-2 font-semibold">Stan Creator</th>
+            <th scope="col" className="py-2 pl-2 font-semibold">Gumroad</th>
+          </tr>
+        </thead>
+        <tbody>
+          {SALES_LEVELS.map((n) => {
+            const revenue = n * AVERAGE_PRICE;
+            const gumroad = revenue * GUMROAD_RATE + n * GUMROAD_PER_SALE;
+            return (
+              <tr key={n} className="border-t border-line">
+                <th scope="row" className="py-2.5 pr-2 font-normal text-ink">
+                  <span className="font-semibold">{money(revenue)}</span>
+                  <span className="block text-xs text-ink-mute">{`${n} sales`}</span>
+                </th>
+                <td className="px-2 py-2.5 font-semibold text-violet-deep">{money(flat)}</td>
+                <td className="px-2 py-2.5 text-ink">{money(flat)}</td>
+                <td className="py-2.5 pl-2 text-ink">{money(gumroad)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="mt-3 text-xs text-ink-mute">
+        {`Nimbus and Stan's Creator plan are both $${flat} a month with 0% of sales; Pro and Stan's Creator Pro are both $${PLAN_PRICES.pro.month / 100}. Gumroad takes 10% plus 50 cents on a sale you bring yourself and has no monthly fee, so under about nine sales a month it costs less. Prices read on each company's own pricing page on 20 September 2026.`}
+      </p>
     </div>
   );
 }

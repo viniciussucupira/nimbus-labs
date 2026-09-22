@@ -11,7 +11,7 @@ import { isDomainsConfigured } from "@/lib/domains";
 export const metadata: Metadata = {
   title: "Nimbus Labs — the link-in-bio store that pays into your own Stripe",
   description:
-    "A fast store page for creators who sell files and memberships. Buyers pay into your own Stripe account, the file is delivered the second the payment clears, and Nimbus takes 0% of your sales.",
+    "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is delivered the second the payment clears, and Nimbus takes 0% of your sales.",
 };
 
 const PHOTO = (id: string, w = 400, h = 400) =>
@@ -44,24 +44,80 @@ const REASONS: { icon: IconName; title: string; body: string; href: string; link
   },
 ];
 
-const LIVE: { icon: IconName; title: string; body: string }[] = [
-  { icon: "cap", title: "Courses with lessons", body: "Modules, videos, text and downloads. Lessons can open over time or be a free preview, and students need no password." },
-  { icon: "calendar", title: "Paid calls with a calendar", body: "Set your hours once. Buyers pick a time in their own time zone, pay, and it lands in both your calendars." },
-  { icon: "door", title: "Members cancel on their own", body: "One click on Stripe's own page. Nobody has to write to you, and nobody feels trapped." },
-  { icon: "palette", title: "Your photo, your colour", body: "Four themes, ten colours or your own. Every colour is checked so your page stays easy to read." },
-  { icon: "link", title: "Your own address", body: "Change it whenever you like. Every address you ever used keeps working." },
-  { icon: "percent", title: "Discount codes", body: `Included at $${PRICE} a month, not kept for a more expensive plan.` },
-  { icon: "repeat", title: "Memberships", body: "Charge every week, month or year, on your own Stripe account." },
-  { icon: "gift", title: "Free products for an email", body: "Each address confirmed by its owner. Download the list whenever you like." },
-  { icon: "mail", title: "No password, ever", body: "Sign in with a link sent to your email. Nothing for us to lose." },
-  { icon: "chart", title: "Your numbers", body: "Visitors, where they came from, checkouts and sales, counted without cookies." },
-  { icon: "target", title: `Ad pixels, at $${PRICE}`, body: "Meta, Google, TikTok and Pinterest see each purchase and its amount. Visitors are asked first where the law says so." },
-  { icon: "plus", title: "Offers before and after paying", body: "A box the buyer ticks at checkout, and one click after paying on the same card. At your price." },
-  { icon: "card", title: "Payment plans", body: "Two to twelve weekly or monthly payments. The buyer gets it after the first, and the plan ends by itself." },
-  { icon: "receipt", title: "Sales tax by Stripe Tax", body: "Worked out from each buyer's address and added at checkout, on your own Stripe account." },
-  { icon: "clock", title: "Limited quantities, counted for real", body: "Your page shows how many are left, from real payments, and stops selling at zero." },
-  { icon: "phone", title: "Installs like an app", body: "Your store goes on the home screen of any iPhone or Android phone, with no app store in between." },
-  { icon: "chat", title: "Email to your list, on Pro", body: "One-off emails, emails for later and sequences that send themselves. Only to people who agreed, with one-click unsubscribe." },
+/*
+ * What is live, in the five things a creator does with a store. Each line is
+ * something that can be opened and tried today; the grouping is what lets a
+ * visitor find the one they came for without reading all of them.
+ */
+type Feature = { title: string; body: string; pro?: boolean };
+type Group = { key: string; icon: IconName; title: string; line: string; items: Feature[] };
+
+const DOMAINS = isDomainsConfigured();
+
+const GROUPS: Group[] = [
+  {
+    key: "sell",
+    icon: "store",
+    title: "Sell",
+    line: "What you make, at the prices you choose.",
+    items: [
+      { title: "Files and links", body: "PDFs, videos, presets and templates up to 5 GB, or a link to where it lives." },
+      { title: "Courses", body: "Modules and lessons that can open over time, with free previews." },
+      { title: "Paid calls", body: "Your hours once; buyers pick a time in their own time zone." },
+      { title: "Memberships", body: "Weekly, monthly or yearly, and members cancel in one click." },
+      { title: "Free products", body: "Given for an email address, each one confirmed by its owner." },
+    ],
+  },
+  {
+    key: "paid",
+    icon: "bank",
+    title: "Get paid",
+    line: "On your own Stripe account, never ours.",
+    items: [
+      { title: "0% of your sales", body: "Stripe's card fee on your account, and nothing on top." },
+      { title: "Up to three prices", body: "One week for $27, five weeks for $39, on one product." },
+      { title: "Payment plans", body: "Two to twelve payments that end by themselves after the last." },
+      { title: "Offers before and after paying", body: "A box at checkout, one click after, on the same card." },
+      { title: "Discount codes and sales tax", body: "Codes and Stripe Tax, both on your own account." },
+    ],
+  },
+  {
+    key: "deliver",
+    icon: "bolt",
+    title: "Deliver",
+    line: "The second Stripe confirms the payment.",
+    items: [
+      { title: "Instant download", body: "A link that works for three days, and is sent again if it gets lost." },
+      { title: "Courses without passwords", body: "Students open them with a link to their email." },
+      { title: "Calendar invites", body: "A booked call lands in both calendars." },
+      { title: "Limited quantities", body: "Counted from real payments, and selling stops at zero." },
+    ],
+  },
+  {
+    key: "grow",
+    icon: "target",
+    title: "Grow",
+    line: "Bring people back, and bring new ones in.",
+    items: [
+      { title: "Email to your list", body: "One-off emails and sequences, only to people who agreed.", pro: true },
+      ...(DOMAINS ? [{ title: "Your own domain", body: "shop.yourname.com opens your store, certificate included.", pro: true }] : []),
+      { title: "Ad pixels", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount." },
+      { title: "Your photo, your colour", body: "Four themes, ten colours or your own, each checked for contrast." },
+      { title: "An address that never breaks", body: "Change it any time; every old link keeps working." },
+      { title: "Installs like an app", body: "Your store on the home screen of any iPhone or Android phone." },
+    ],
+  },
+  {
+    key: "know",
+    icon: "chart",
+    title: "Understand",
+    line: "What happened, without cookies or guesswork.",
+    items: [
+      { title: "Your numbers", body: "Visitors, where they came from, checkouts and sales." },
+      { title: "Every sale, from Stripe", body: "With the buyer's address, so you can answer them." },
+      { title: "No password, ever", body: "Sign in with a link sent to your email. Nothing for us to lose." },
+    ],
+  },
 ];
 
 const NEXT_ALL = [
@@ -70,11 +126,7 @@ const NEXT_ALL = [
 ];
 
 /** Built lines move from "next" to "live" on the deployment where they work. */
-const DOMAINS = isDomainsConfigured();
 const NEXT = DOMAINS ? NEXT_ALL.filter((line) => !line.startsWith("Your own domain")) : NEXT_ALL;
-const LIVE_HERE = DOMAINS
-  ? [...LIVE, { icon: "globe" as IconName, title: "Your own domain, on Pro", body: "shop.yourname.com opens your store, with the certificate handled for you. Your nimbuslabsai.com address keeps working too." }]
-  : LIVE;
 
 const CREATORS = [
   {
@@ -144,8 +196,8 @@ export default function Home() {
                 Your money.
               </h1>
               <p className="t-lead measure mt-7 text-white/75">
-                Sell files and memberships from the link in your bio. Buyers pay straight into your own Stripe account,
-                the file arrives a second later, and Nimbus takes{" "}
+                Sell files, courses, calls and memberships from the link in your bio. Buyers pay straight into your own
+                Stripe account, what they bought arrives a second later, and Nimbus takes{" "}
                 <strong className="font-semibold text-white">0% of your sales</strong>.
               </p>
               <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-4">
@@ -208,45 +260,57 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="reveal mt-16 grid gap-10 lg:grid-cols-[1.6fr_1fr]">
-              <div>
-                <div className="flex items-center gap-3">
-                  <span className="tag tag-live">Live now</span>
-                  <p className="text-sm text-ink-mute">Every line here exists in the code today.</p>
-                </div>
-                <ul className="mt-6 grid gap-x-8 gap-y-7 sm:grid-cols-2">
-                  {LIVE_HERE.map((f) => (
-                    <li key={f.title} className="flex gap-4">
-                      <span className="icon-tile icon-tile-sm bg-white text-violet-deep ring-1 ring-line">
-                        <Icon name={f.icon} size={18} />
-                      </span>
-                      <span>
-                        <span className="block font-semibold text-ink">{f.title}</span>
-                        <span className="mt-1 block text-[0.9375rem] text-ink-soft">{f.body}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+            <div className="reveal mt-16">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="tag tag-live">Live now</span>
+                <p className="text-sm text-ink-mute">Every line here exists in the code today.</p>
               </div>
-              <div className="card-flat p-7">
-                <span className="tag tag-next">Next on the list</span>
-                <p className="mt-4 text-[0.9375rem] text-ink-soft">
-                  Not built yet, so not sold yet. This is the order we are building them in.
-                </p>
-                <ol className="mt-5 space-y-3">
-                  {NEXT.map((n, i) => (
-                    <li key={n} className="flex gap-3 text-ink">
-                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sand text-[0.75rem] font-semibold text-ink-soft">
-                        {i + 1}
+              <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {GROUPS.map((g) => (
+                  <section key={g.key} aria-labelledby={`group-${g.key}`} className="card flex flex-col p-6 sm:p-7">
+                    <div className="flex items-center gap-3">
+                      <span className="icon-tile icon-tile-sm">
+                        <Icon name={g.icon} size={18} />
                       </span>
-                      <span className="text-[0.9375rem]">{n}</span>
-                    </li>
-                  ))}
-                </ol>
-                <Link href="/mission" className="link-arrow mt-6 text-[0.9375rem]">
-                  The whole plan
-                  <Icon name="arrow-right" size={16} className="arrow" />
-                </Link>
+                      <h3 id={`group-${g.key}`} className="text-lg font-semibold tracking-[-0.02em] text-ink">
+                        {g.title}
+                      </h3>
+                    </div>
+                    <p className="mt-2 text-[0.9375rem] text-ink-soft">{g.line}</p>
+                    <ul className="mt-5 space-y-3.5 border-t border-line pt-5">
+                      {g.items.map((f) => (
+                        <li key={f.title} className="flex gap-3">
+                          <Icon name="check" size={16} strokeWidth={2.4} className="mt-1 shrink-0 text-mint-brand" />
+                          <span className="min-w-0">
+                            <span className="font-semibold text-ink">{f.title}</span>
+                            {f.pro ? <span className="tag tag-brand ml-2 h-5! px-1.5! align-middle text-[0.6875rem]!">Pro</span> : null}
+                            <span className="block text-[0.9375rem] leading-snug text-ink-soft">{f.body}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+                <div className="card-flat flex flex-col p-6 sm:p-7">
+                  <span className="tag tag-next self-start">Next on the list</span>
+                  <p className="mt-4 text-[0.9375rem] text-ink-soft">
+                    Not built yet, so not sold yet. This is the order we are building them in.
+                  </p>
+                  <ol className="mt-5 space-y-3">
+                    {NEXT.map((n, i) => (
+                      <li key={n} className="flex gap-3 text-ink">
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sand text-[0.75rem] font-semibold text-ink-soft">
+                          {i + 1}
+                        </span>
+                        <span className="text-[0.9375rem]">{n}</span>
+                      </li>
+                    ))}
+                  </ol>
+                  <Link href="/mission" className="link-arrow mt-auto pt-6 text-[0.9375rem]">
+                    The whole plan
+                    <Icon name="arrow-right" size={16} className="arrow" />
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
