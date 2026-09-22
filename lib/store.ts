@@ -22,6 +22,7 @@ import { MAX_LINK_LENGTH } from "@/lib/product-link";
 import { type Recurring, parseRecurring } from "@/lib/product-recurring";
 import { type StoreLook, DEFAULT_LOOK, parseLook } from "@/lib/store-look";
 import { PHOTO_ID_PATTERN } from "@/lib/photo-limits";
+import { type CallSetup, parseSetup } from "@/lib/call-setup";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
@@ -167,6 +168,12 @@ export type Product = {
    * handed over — the option the buyer picked is.
    */
   options: ProductOption[];
+  /**
+   * When this is a paid call rather than a thing: how long it lasts and when
+   * it can be booked. A call delivers a time in the creator's calendar, so it
+   * carries no file, no link, no options and no schedule of payments.
+   */
+  call: CallSetup | null;
 };
 
 export type Store = {
@@ -243,6 +250,12 @@ export type Store = {
    * browser may keep it for good; a new photo gets a new id.
    */
   photoId: string | null;
+  /**
+   * Where this store's booked and held call times are kept. An id of its own,
+   * made the first time a call is set up, so neither a new address nor a new
+   * sign-in email moves anybody's booking.
+   */
+  callsId: string | null;
 };
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
@@ -316,6 +329,7 @@ function parseProducts(raw: unknown): Product[] {
           : null,
       recurring: parseRecurring(value.recurring),
       options: parseOptions(value.options),
+      call: parseSetup(value.call),
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -369,6 +383,10 @@ function parseStore(raw: unknown): Store | null {
       photoId:
         typeof value.photoId === "string" && PHOTO_ID_PATTERN.test(value.photoId)
           ? value.photoId
+          : null,
+      callsId:
+        typeof value.callsId === "string" && LIST_ID_PATTERN.test(value.callsId)
+          ? value.callsId
           : null,
     };
   } catch {
@@ -473,6 +491,7 @@ export async function claimHandle(
     listId: newListId(),
     look: { ...DEFAULT_LOOK },
     photoId: null,
+    callsId: null,
   };
 
   try {
@@ -780,6 +799,45 @@ export async function updateDetails(
   return { ok: true, store: next };
 }
 
+export type CallResult =
+  | { ok: true; store: Store }
+  | { ok: false; reason: "none" | "unknown" | "free" | "recurring" | "options" | "delivery" };
+
+/**
+ * Makes a product a paid call, changes when it can be booked, or turns it
+ * back into an ordinary product.
+ *
+ * A product can become a call only when nothing else is attached to it: no
+ * file, no link, no price options and no schedule of payments. Those would
+ * all be things the buyer is promised and never sent.
+ */
+export async function setProductCall(
+  email: string,
+  id: string,
+  setup: CallSetup | null,
+): Promise<CallResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.products.findIndex((product) => product.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+  const product = store.products[at];
+  if (setup) {
+    if (isFree(product)) return { ok: false, reason: "free" };
+    if (product.recurring) return { ok: false, reason: "recurring" };
+    if (product.options.length > 0) return { ok: false, reason: "options" };
+    if (product.file || product.link) return { ok: false, reason: "delivery" };
+  }
+  const products = [...store.products];
+  products[at] = { ...product, call: setup };
+  const next: Store = {
+    ...store,
+    products,
+    callsId: store.callsId ?? (setup ? newListId() : null),
+  };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
 /** Changes the theme and the colour of the public page. */
 export async function updateLook(
   email: string,
@@ -811,7 +869,7 @@ export type ProductResult =
   | { ok: true; store: Store }
   | {
       ok: false;
-      reason: "none" | "title" | "price" | "free" | "too_many" | "unknown";
+      reason: "none" | "title" | "price" | "free" | "too_many" | "unknown" | "call";
       limit?: number;
     };
 
@@ -883,6 +941,7 @@ export async function addProduct(
     link: null,
     recurring,
     options: [],
+    call: null,
   };
 
   const next: Store = {
@@ -919,6 +978,10 @@ export async function editProduct(
   // off first, and the choice is the creator's rather than ours.
   if (fields.priceCents === 0 && store.products[at].options.length > 0) {
     return { ok: false, reason: "free" };
+  }
+  // A call is one paid booking. It cannot be given away or charged monthly.
+  if (store.products[at].call && (fields.priceCents === 0 || recurring)) {
+    return { ok: false, reason: "call" };
   }
 
   const products = [...store.products];
@@ -987,7 +1050,7 @@ export async function moveProduct(
 
 export type FileResult =
   | { ok: true; store: Store; removed: ProductFile | null }
-  | { ok: false; reason: "none" | "unknown" | "invalid" };
+  | { ok: false; reason: "none" | "unknown" | "invalid" | "call" };
 
 /** What is handed over when something is paid for. One or the other. */
 export type Delivery = { file: ProductFile | null; link: string | null };
@@ -1069,6 +1132,10 @@ export async function setProductFile(
 ): Promise<FileResult> {
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
+  // A call delivers a booking, not a file.
+  if (file && store.products.some((product) => product.id === id && product.call)) {
+    return { ok: false, reason: "call" };
+  }
   // A file replaces a link. One thing is delivered, never two.
   const done = rewriteDelivery(store.products, id, (current) => ({
     file,
@@ -1095,6 +1162,9 @@ export async function setProductLink(
 ): Promise<FileResult> {
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
+  if (link && store.products.some((product) => product.id === id && product.call)) {
+    return { ok: false, reason: "call" };
+  }
   const done = rewriteDelivery(store.products, id, (current) => ({
     link,
     file: link ? null : current.file,
@@ -1244,7 +1314,7 @@ export type OptionResult =
   | { ok: true; store: Store; removed: ProductFile[] }
   | {
       ok: false;
-      reason: "none" | "label" | "price" | "free" | "too_many" | "unknown";
+      reason: "none" | "label" | "price" | "free" | "too_many" | "unknown" | "call";
       limit?: number;
     };
 
@@ -1279,6 +1349,7 @@ export async function addOption(
   if (at < 0) return { ok: false, reason: "unknown" };
   // Several prices on something given away would put a price on it.
   if (isFree(store.products[at])) return { ok: false, reason: "free" };
+  if (store.products[at].call) return { ok: false, reason: "call" };
   if (store.products[at].options.length >= MAX_OPTIONS) {
     return { ok: false, reason: "too_many", limit: MAX_OPTIONS };
   }
