@@ -44,6 +44,7 @@ const REASONS: { icon: IconName; title: string; body: string; href: string; link
 ];
 
 const LIVE: { icon: IconName; title: string; body: string }[] = [
+  { icon: "palette", title: "Your photo, your colour", body: "Four themes, ten colours or your own. Every colour is checked so your page stays easy to read." },
   { icon: "link", title: "Your own address", body: "Change it whenever you like. Every address you ever used keeps working." },
   { icon: "percent", title: "Discount codes", body: "Included on the one plan, not kept for a more expensive one." },
   { icon: "repeat", title: "Memberships", body: "Charge every week, month or year, on your own Stripe account." },
