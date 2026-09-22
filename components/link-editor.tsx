@@ -78,7 +78,7 @@ function LinkForm({
       className="space-y-4 rounded-2xl border-2 border-violet-brand/30 bg-white p-4"
     >
       <div>
-        <label htmlFor="link-title" className="block text-sm font-bold text-ink">
+        <label htmlFor="link-title" className="field-label">
           What the button says
         </label>
         <input
@@ -90,12 +90,12 @@ function LinkForm({
           value={draft.title}
           onChange={(event) => setDraft({ ...draft, title: event.target.value })}
           placeholder="Watch on YouTube"
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+          className="field mt-2"
         />
       </div>
 
       <div>
-        <label htmlFor="link-url" className="block text-sm font-bold text-ink">
+        <label htmlFor="link-url" className="field-label">
           Where it goes
         </label>
         <input
@@ -106,7 +106,7 @@ function LinkForm({
           value={draft.url}
           onChange={(event) => setDraft({ ...draft, url: event.target.value })}
           placeholder="https://"
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+          className="field mt-2"
         />
         <p className="mt-1 text-sm text-ink-soft">
           Anything of yours that already lives somewhere else. Nothing is sold
@@ -117,7 +117,7 @@ function LinkForm({
       {error ? (
         <p
           role="alert"
-          className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-ink"
+          className="rounded-2xl bg-danger-soft px-4 py-3 text-sm font-semibold text-ink"
         >
           {error}
         </p>
@@ -127,14 +127,14 @@ function LinkForm({
         <button
           type="submit"
           disabled={busy}
-          className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+          className="btn btn-primary"
         >
           {busy ? "Saving…" : submitLabel}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full border-2 border-ink/15 px-6 py-3 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+          className="btn btn-secondary"
         >
           Cancel
         </button>
@@ -188,9 +188,9 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
   }
 
   return (
-    <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+    <div className="card mt-8 p-6 sm:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <p className="font-display text-xl font-black text-ink">
+        <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
           Your links
         </p>
         <p className="text-sm text-ink-soft">
@@ -210,7 +210,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
         {links.map((link, index) => (
           <li
             key={link.id}
-            className="rounded-2xl border-2 border-ink/5 bg-cream p-4"
+            className="rounded-2xl border border-line bg-paper p-4"
           >
             {editingId === link.id ? (
               <LinkForm
@@ -288,7 +288,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
                         setRemovingId(link.id);
                         setError(null);
                       }}
-                      className="text-ink-soft underline underline-offset-4 transition hover:text-pink-brand"
+                      className="text-ink-soft underline underline-offset-4 transition hover:text-danger"
                     >
                       Remove
                     </button>
@@ -312,14 +312,14 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
                             setRemovingId(null),
                           )
                         }
-                        className="rounded-full bg-pink-brand px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+                        className="btn btn-danger-solid btn-sm"
                       >
                         {busy ? "Removing…" : "Remove it"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setRemovingId(null)}
-                        className="rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+                        className="btn btn-secondary btn-sm"
                       >
                         Keep it
                       </button>
@@ -327,7 +327,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
                     {error ? (
                       <p
                         role="alert"
-                        className="mt-3 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-ink"
+                        className="mt-3 rounded-2xl bg-danger-soft px-4 py-3 text-sm font-semibold text-ink"
                       >
                         {error}
                       </p>
@@ -368,7 +368,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
         <button
           type="button"
           onClick={startAdding}
-          className="mt-5 rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+          className="btn btn-primary mt-5"
         >
           Add a link
         </button>
