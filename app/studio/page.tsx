@@ -50,10 +50,10 @@ export const metadata: Metadata = {
 };
 
 const NEXT_WHEN_SELLING = [
-  "One-click upsells after checkout",
   "Payment plans and sales tax",
   "Courses with lessons",
   "Email to your list, from your studio",
+  "Your own domain",
 ];
 /** Calls that have not ended yet, soonest first. */
 function upcoming<T extends { start: number; end: number }>(list: T[]): T[] {
