@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="September 21, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="September 22, 2026">
       <p>
         Nimbus Labs (“Nimbus Labs,” “we,” “us,” or “our”) is an independent
         software studio. This Privacy Policy explains how we collect, use,
@@ -50,9 +50,12 @@ export default function PrivacyPage() {
         <p>
           <strong className="text-black">What a creator puts in a store.</strong>{" "}
           If you run a Nimbus store, we host what you put in it: your store
-          name and description, your product titles, prices and descriptions,
-          the links you put on the page, and the files you upload for delivery
-          to your buyers.
+          name and description, your photo if you add one, the theme and colour
+          you choose, your product titles, prices and descriptions, the links
+          you put on the page, and the files you upload for delivery to your
+          buyers. Your photo is shrunk on your own device before it is sent, is
+          shown publicly on your store page and in previews of links to it, and
+          is deleted from our storage when you remove or replace it.
         </p>
         <p>
           <strong className="text-black">Buyer information.</strong> When
