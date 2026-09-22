@@ -657,7 +657,7 @@ export const PAGES: TopicPage[] = [
           ["Selling something bigger", "Their help centre: host it on Google Drive or Dropbox and use Redirect to URL", "Sell it as a link. Same escape hatch, and we say so on the product itself"],
           ["How much your buyers may download", "No figure in their help centre", "200 GB a month, published, and shown in your account as it is used"],
           ["Courses with drip and analytics", "Yes", "Not available"],
-          ["Memberships and subscriptions", "Yes \u2014 daily, weekly, monthly, annually, and can end after a set number of payments", "Yes \u2014 daily, weekly, monthly, yearly, on your own Stripe. No fixed-term option yet"],
+          ["Memberships and subscriptions", "Yes \u2014 daily, weekly, monthly, annually, and can end after a set number of payments", "Yes \u2014 daily, weekly, monthly, yearly, on your own Stripe, and members cancel on their own in one click. No fixed-term option yet"],
           ["Coaching calls with a calendar", "Yes", "Not available"],
           ["Live webinars", "Yes", "Not available"],
           ["Lead magnets", "Yes", "Yes \u2014 anything priced at 0 is given for an email address, each address confirmed by its owner, and the list downloads as a CSV at any time"],
