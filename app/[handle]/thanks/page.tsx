@@ -10,6 +10,7 @@ import { canManage } from "@/lib/membership-manage";
 import { confirmBooking } from "@/lib/calls";
 import { readableTime, zoneName } from "@/lib/call-setup";
 import { SITE_URL } from "@/lib/site-url";
+import { StoreTracking } from "@/components/store-tracking";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -251,6 +252,20 @@ export default async function ThanksPage({ params, searchParams }: Params) {
             >
               Back to {store.name}
             </Link>
+            <StoreTracking
+              store={store}
+              event={
+                order.state === "paid" && sessionId
+                  ? {
+                      type: "purchase",
+                      id: sessionId,
+                      value: order.amount / 100,
+                      productId: order.product.id,
+                      title: order.product.title,
+                    }
+                  : null
+              }
+            />
           </div>
         </div>
       </main>
