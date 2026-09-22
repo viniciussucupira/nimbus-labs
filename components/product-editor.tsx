@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CallEditor } from "@/components/call-editor";
+import { CheckoutExtras } from "@/components/checkout-extras";
 import { uploadPresigned } from "@vercel/blob/client";
 import {
   MAX_PRODUCTS,
@@ -1182,6 +1183,8 @@ export function ProductEditor({
                 )}
                 </>
                 )}
+
+                <CheckoutExtras product={product} products={products} />
 
                 {removingId === product.id ? (
                   <div className="mt-3 rounded-2xl border-2 border-pink-brand/30 bg-white p-4">
