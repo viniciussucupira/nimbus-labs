@@ -112,7 +112,10 @@ export default function PrivacyPage() {
           address replies go to, and the creator&apos;s has the buyer&apos;s.
           While they pay, a cookie in the buyer&apos;s browser names the
           checkout they opened, for 31 minutes, so that going back to pick
-          another time lets go of the first one.
+          another time lets go of the first one. The same kind of cookie, for
+          the same 31 minutes, is set when someone starts to buy a product sold
+          in a limited number, so that pressing buy again hands back the one
+          they were holding.
         </p>
         <p>
           <strong className="text-black">
