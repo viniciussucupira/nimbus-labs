@@ -1,30 +1,32 @@
 import type { Metadata, Viewport } from "next";
-import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
+import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { SITE_URL } from "@/lib/site-url";
 
-/* Both faces are served from our own domain, as one variable file each, so
-   the browser never stops to ask fonts.googleapis.com for a stylesheet
-   before it can paint the page. */
-const outfit = Outfit({
-  variable: "--font-display",
+/* Two faces, both served from our own domain so the page never waits on
+   fonts.googleapis.com: Geist for everything a person reads or clicks, and an
+   italic serif kept for one or two words in a headline. */
+const geist = Geist({
+  variable: "--font-body",
   subsets: ["latin"],
   display: "swap",
 });
 
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-body",
+const accent = Instrument_Serif({
+  variable: "--font-accent",
   subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
   display: "swap",
 });
 
 const SITE_TITLE =
   "Nimbus Labs — the link-in-bio store that pays into your own Stripe";
 const SITE_DESCRIPTION =
-  "A colourful, fast store page for creators who sell files, plans and calls. Buyers pay into your own Stripe account, the file is delivered the second the payment clears, and Nimbus takes 0% of your sales.";
+  "A fast store page for creators who sell files and memberships. Buyers pay into your own Stripe account, the file is delivered the second the payment clears, and Nimbus takes 0% of your sales.";
 
 export const viewport: Viewport = {
-  themeColor: "#150f42",
+  themeColor: "#0d0b24",
 };
 
 export const metadata: Metadata = {
@@ -58,7 +60,7 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "A Nimbus Labs creator store on a phone, next to the words: the store for your bio that pays into your own Stripe.",
+        alt: "Nimbus Labs: your store, your Stripe, your money. A paid Stripe checkout and a delivered file, with 0% of the sale taken.",
       },
     ],
   },
@@ -74,7 +76,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${outfit.variable} ${jakarta.variable} h-full antialiased`}
+      className={`${geist.variable} ${accent.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
