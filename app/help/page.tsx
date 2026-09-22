@@ -180,7 +180,7 @@ const SECTIONS: Section[] = [
       {
         q: "What can I sell?",
         a: [
-          "Digital files, and memberships that charge on a schedule. What is too big to upload, or is not a file at all, is sold as a link to where it already lives. And anything can be given away for free, in exchange for an email address.",
+          "Digital files, paid calls with a calendar, and memberships that charge on a schedule. What is too big to upload, or is not a file at all, is sold as a link to where it already lives. And anything can be given away for free, in exchange for an email address.",
           "One product can carry up to three prices — one week and five weeks, personal and commercial — and each one hands over its own file or its own link. The buyer picks on the card, and what they are charged is read from what you saved rather than from the page they are looking at.",
           "Your page also holds links that are not for sale, with no price and no checkout on them: the channel, the podcast, the profile, the booking page you already pay someone else for.",
         ],
@@ -202,9 +202,17 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can I sell paid calls?",
+        a: [
+          "Yes. Any one-off product with a price can be sold as a call. You pick how long it lasts, your time zone and the hours you take calls on each day of the week, with up to two stretches a day. You also choose how much notice you need, how far ahead people can book, a gap between calls, and the meeting link you already use.",
+          "The buyer sees the free times in their own time zone, picks one and pays on your own Stripe account. The time is held for them for 30 minutes while they pay, so two people can never pay for the same time. Once it is paid, you both get an email with a calendar file, the call appears in your studio under Upcoming calls, and the buyer's thanks page has the link to join.",
+          "Two things it does not do yet, said plainly. It does not read your Google or Outlook calendar, so the hours you set are the hours offered: to take a day off, change them. And there is no reschedule button: to move or cancel, the buyer replies to their confirmation email, which reaches you, and a refund is made from your own Stripe dashboard.",
+        ],
+      },
+      {
         q: "Can I sell courses or a community?",
         a: [
-          "Not yet. Lessons with progress, communities, scheduled calls, webinars, email automations and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
+          "Not yet. Lessons with progress, communities, webinars, email automations and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
         ],
       },
       {
