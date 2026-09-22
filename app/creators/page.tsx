@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon, iconFor } from "@/components/icons";
 import { CreatorResearchForm } from "@/components/creator-research-form";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
@@ -40,90 +41,68 @@ const PROMISES = [
 
 export default function CreatorsPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-white text-ink">
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
       <SiteNav />
 
       <main id="content" className="flex-1">
-        <section className="nb-mesh nb-grain relative overflow-hidden text-white">
-          <div
-            aria-hidden="true"
-            className="nb-blob absolute -left-20 top-0 h-64 w-64 bg-pink-brand/40 blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="nb-blob absolute -right-16 bottom-0 h-72 w-72 bg-sky-brand/30 blur-3xl"
-          />
-          <div className="relative mx-auto max-w-3xl px-4 py-16 sm:py-20">
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold backdrop-blur">
-              <span aria-hidden="true">🎤</span> Creator research
-            </p>
-            <h1 className="font-display mt-5 text-4xl font-black leading-[1.08] sm:text-5xl">
+        <section className="surface-night nb-grid-lines on-dark overflow-hidden">
+          <div className="container-narrow py-16 sm:py-24">
+            <p className="eyebrow">Creator research</p>
+            <h1 className="t-h1 balance mt-5 text-white">
               Selling digital products?{" "}
-              <span className="nb-gradient-text">Tell me what&apos;s broken.</span>
+              <span className="serif font-normal text-[#cfc4ff]">Tell me what&apos;s broken.</span>
             </h1>
-            <div className="mt-6 space-y-4 text-lg text-white/85">
+            <div className="t-lead mt-6 max-w-2xl space-y-4 text-white/75">
               <p>
-                I&apos;m Vinicius, the founder of Nimbus Labs. Before we build
-                our next tool, I&apos;m talking to creators who sell guides,
-                courses, templates and paid calls from their link in bio.
+                I&apos;m Vinicius, the founder of Nimbus Labs. Before we build our next tool, I&apos;m talking to creators
+                who sell guides, courses, templates and paid calls from their link in bio.
               </p>
               <p>
-                This is not a sales page. There is nothing to buy. I want to
-                know what is hard about selling online today, in your own words.
+                This is not a sales page. There is nothing to buy. I want to know what is hard about selling online today,
+                in your own words.
               </p>
             </div>
-            <p className="mt-8 inline-flex items-center gap-2 rounded-full bg-white/12 px-4 py-2 text-sm font-semibold backdrop-blur">
-              <span aria-hidden="true">⏱️</span> Two minutes, eight questions,
-              four of them optional
+            <p className="mt-8 flex items-center gap-2 text-[0.9375rem] text-white/70">
+              <Icon name="clock" size={18} className="text-[#b9a8ff]" />
+              Two minutes, eight questions, four of them optional
             </p>
           </div>
         </section>
 
-        <section className="bg-cream py-14">
-          <div className="mx-auto max-w-3xl px-4">
-            <div className="rounded-3xl border-2 border-ink/10 bg-white p-6 shadow-xl shadow-ink/5 sm:p-10">
+        <section className="py-12 sm:py-16">
+          <div className="container-narrow">
+            <div className="card p-6 sm:p-10">
               <CreatorResearchForm />
             </div>
           </div>
         </section>
 
-        <section className="mx-auto max-w-5xl px-4 py-16">
-          <h2 className="font-display text-center text-3xl font-black">
-            What happens with your answers
-          </h2>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2">
-            {PROMISES.map((item) => (
-              <article
-                key={item.title}
-                className="nb-lift rounded-3xl border-2 border-ink/10 bg-white p-6 shadow-lg shadow-ink/5"
-              >
-                <span
-                  aria-hidden="true"
-                  className={`grid h-12 w-12 place-items-center rounded-2xl text-xl ${item.tint}`}
-                >
-                  {item.emoji}
-                </span>
-                <h3 className="font-display mt-4 text-lg font-extrabold">
-                  {item.title}
-                </h3>
-                <p className="mt-1 break-words text-ink-soft">{item.body}</p>
-              </article>
-            ))}
-          </div>
+        <section className="surface-sand section-tight">
+          <div className="container-page">
+            <h2 className="t-h2 text-center">What happens with your answers</h2>
+            <div className="mx-auto mt-10 grid max-w-4xl gap-4 sm:grid-cols-2">
+              {PROMISES.map((item) => (
+                <article key={item.title} className="card-flat flex gap-4 p-6">
+                  <span className="icon-tile">
+                    <Icon name={iconFor(item.emoji)} size={22} />
+                  </span>
+                  <span className="min-w-0">
+                    <h3 className="font-semibold text-ink">{item.title}</h3>
+                    <p className="mt-1 [overflow-wrap:anywhere] text-[0.9375rem] text-ink-soft">{item.body}</p>
+                  </span>
+                </article>
+              ))}
+            </div>
 
-          <div className="mt-12 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/demo"
-              className="rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-7 py-3.5 font-bold text-white shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
-            >
-              See the live demo store
-            </Link>
-            <Link
-              href="/"
-              className="rounded-full border-2 border-ink/15 px-7 py-3.5 font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
-            >
-              Back to the home page
-            </Link>
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
+              <Link href="/demo" className="btn btn-primary btn-lg">
+                See the live demo store
+              </Link>
+              <Link href="/" className="link-arrow">
+                Back to the home page
+                <Icon name="arrow-right" size={16} className="arrow" />
+              </Link>
+            </div>
           </div>
         </section>
       </main>
