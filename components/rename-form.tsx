@@ -76,10 +76,10 @@ export function RenameForm({ current }: { current: string }) {
 
   return (
     <form onSubmit={submit} className="mt-5 space-y-3" noValidate>
-      <label htmlFor="new-handle" className="block text-sm font-bold text-ink">
+      <label htmlFor="new-handle" className="field-label">
         New address
       </label>
-      <div className="flex items-center rounded-2xl border-2 border-ink/10 bg-white pl-4 transition focus-within:border-violet-brand">
+      <div className="card flex items-center pl-4 transition focus-within:border-violet-brand">
         <span className="text-ink-soft">nimbuslabsai.com/@</span>
         <input
           id="new-handle"
@@ -104,7 +104,7 @@ export function RenameForm({ current }: { current: string }) {
 
       {state.kind === "error" ? (
         <p
-          className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          className="notice notice-error "
           role="alert"
         >
           {state.message}
@@ -115,14 +115,14 @@ export function RenameForm({ current }: { current: string }) {
         <button
           type="submit"
           disabled={state.kind === "saving"}
-          className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+          className="btn btn-primary"
         >
           {state.kind === "saving" ? "Changing…" : "Change it"}
         </button>
         <button
           type="button"
           onClick={() => setState({ kind: "closed" })}
-          className="rounded-full px-5 py-3 text-sm font-bold text-ink-soft transition hover:text-violet-deep"
+          className="btn btn-ghost"
         >
           Cancel
         </button>
