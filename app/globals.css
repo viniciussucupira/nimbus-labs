@@ -336,6 +336,15 @@ body {
 .btn-block {
   width: 100%;
 }
+/* A button whose label may be longer than a small phone is wide: it may
+   break onto a second line instead of pushing past the edge of its card. */
+.btn-wrap {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  padding-block: 0.6rem;
+}
 .btn-primary {
   background-color: var(--violet);
   color: #fff;
