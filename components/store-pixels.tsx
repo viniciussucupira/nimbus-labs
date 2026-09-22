@@ -1,0 +1,316 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import type { Pixels } from "@/lib/pixels";
+
+/**
+ * The creator's own ad pixels, on their store's pages.
+ *
+ * Nothing loads until it is allowed. A visitor from a country whose rules ask
+ * for consent first is asked, in plain words, and nothing runs unless they
+ * say yes. Everywhere else the pixels run unless the browser sends Global
+ * Privacy Control, which is a no given in advance. Either way the choice can
+ * be changed from the link at the foot of the page, and it is kept for this
+ * store only, on this device.
+ *
+ * The scripts are each platform's own standard snippet, loaded from the
+ * platform, with the creator's id — which was checked against the platform's
+ * exact format before it was saved, so it cannot carry anything else.
+ */
+
+type Fn = ((...args: unknown[]) => void) & Record<string, unknown>;
+
+type PixelWindow = Window & {
+  fbq?: Fn;
+  _fbq?: Fn;
+  gtag?: (...args: unknown[]) => void;
+  dataLayer?: unknown[];
+  ttq?: unknown[] & Record<string, unknown>;
+  TiktokAnalyticsObject?: string;
+  pintrk?: Fn;
+};
+
+export type PixelEvent =
+  | { type: "purchase"; id: string; value: number; productId: string; title: string }
+  | { type: "lead"; productId: string }
+  | null;
+
+// Each pixel starts once per page, however often the page redraws.
+const started = new Set<string>();
+
+const consentKey = (handle: string) => `nl_px_consent:${handle}`;
+
+function readChoice(handle: string): "yes" | "no" | null {
+  try {
+    const value = localStorage.getItem(consentKey(handle));
+    return value === "yes" || value === "no" ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeChoice(handle: string, value: "yes" | "no" | null) {
+  try {
+    if (value) localStorage.setItem(consentKey(handle), value);
+    else localStorage.removeItem(consentKey(handle));
+  } catch {
+    // A browser that keeps nothing asks again next time; nothing breaks.
+  }
+}
+
+function once(key: string): boolean {
+  try {
+    if (localStorage.getItem(key)) return false;
+    localStorage.setItem(key, "1");
+  } catch {
+    // Without storage the event may be sent twice on a reload, never not at all.
+  }
+  return true;
+}
+
+function script(src: string) {
+  const tag = document.createElement("script");
+  tag.async = true;
+  tag.src = src;
+  document.head.appendChild(tag);
+}
+
+function startMeta(w: PixelWindow, id: string) {
+  if (!w.fbq) {
+    const n = function (...args: unknown[]) {
+      if (typeof n.callMethod === "function") (n.callMethod as (...a: unknown[]) => void)(...args);
+      else (n.queue as unknown[]).push(args);
+    } as Fn;
+    n.push = n;
+    n.loaded = true;
+    n.version = "2.0";
+    n.queue = [];
+    w.fbq = n;
+    if (!w._fbq) w._fbq = n;
+    script("https://connect.facebook.net/en_US/fbevents.js");
+  }
+  w.fbq("init", id);
+  w.fbq("track", "PageView");
+}
+
+function startGoogle(w: PixelWindow, id: string) {
+  if (!w.gtag) {
+    w.dataLayer = w.dataLayer || [];
+    // gtag.js reads an arguments object, not an array, so this is written
+    // exactly as Google's snippet writes it.
+    w.gtag = function () {
+      // eslint-disable-next-line prefer-rest-params
+      w.dataLayer!.push(arguments);
+    };
+    w.gtag("js", new Date());
+    script(`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`);
+  }
+  w.gtag("config", id);
+}
+
+function startTikTok(w: PixelWindow, id: string) {
+  // TikTok's own loader, written out: a queue that takes calls until the
+  // library arrives, and the library itself, fetched with the creator's id.
+  const name = "ttq";
+  w.TiktokAnalyticsObject = name;
+  type Queue = unknown[] & Record<string, unknown>;
+  const ttq = (w.ttq = w.ttq || ([] as unknown as Queue)) as Queue;
+  const methods = ["page", "track", "identify", "instances", "debug", "on", "off", "once", "ready", "alias", "group", "enableCookie", "disableCookie", "holdConsent", "revokeConsent", "grantConsent"];
+  const setAndDefer = (target: Queue, method: string) => {
+    target[method] = (...args: unknown[]) => target.push([method, ...args]);
+  };
+  ttq.methods = methods;
+  ttq.setAndDefer = setAndDefer;
+  for (const method of methods) setAndDefer(ttq, method);
+  ttq.instance = (key: string) => {
+    const table = (ttq._i as Record<string, Queue> | undefined) ?? {};
+    const one = table[key] || ([] as unknown as Queue);
+    for (const method of methods) setAndDefer(one, method);
+    return one;
+  };
+  ttq.load = (key: string, options?: Record<string, unknown>) => {
+    const src = "https://analytics.tiktok.com/i18n/pixel/events.js";
+    const table = ((ttq._i as Record<string, Queue> | undefined) ??= {} as Record<string, Queue>);
+    ttq._i = table;
+    const one = [] as unknown as Queue;
+    one._u = src;
+    table[key] = one;
+    ttq._t = { ...((ttq._t as Record<string, number>) ?? {}), [key]: Date.now() };
+    ttq._o = { ...((ttq._o as Record<string, unknown>) ?? {}), [key]: options || {} };
+    script(`${src}?sdkid=${encodeURIComponent(key)}&lib=${name}`);
+  };
+  (ttq.load as (key: string) => void)(id);
+  (ttq.page as () => void)();
+}
+
+function startPinterest(w: PixelWindow, id: string) {
+  if (!w.pintrk) {
+    const n = function (...args: unknown[]) {
+      (n.queue as unknown[]).push(args);
+    } as Fn;
+    n.queue = [];
+    n.version = "3.0";
+    w.pintrk = n;
+    script("https://s.pinimg.com/ct/core.js");
+  }
+  w.pintrk("load", id);
+  w.pintrk("page");
+}
+
+function track(w: PixelWindow, pixels: Pixels, event: Exclude<PixelEvent, null> | { type: "checkout" }) {
+  const ttq = w.ttq as (Record<string, (...args: unknown[]) => void>) | undefined;
+  if (event.type === "purchase") {
+    const money = { value: event.value, currency: "USD" };
+    if (pixels.meta && w.fbq) w.fbq("track", "Purchase", { ...money, content_ids: [event.productId], content_type: "product" }, { eventID: event.id });
+    if (pixels.google && w.gtag) w.gtag("event", "purchase", { ...money, transaction_id: event.id, items: [{ item_id: event.productId, item_name: event.title }] });
+    if (pixels.tiktok && ttq) ttq.track("CompletePayment", { ...money, contents: [{ content_id: event.productId, content_name: event.title }], content_type: "product" });
+    if (pixels.pinterest && w.pintrk) w.pintrk("track", "checkout", { ...money, order_id: event.id, order_quantity: 1 });
+  } else if (event.type === "lead") {
+    if (pixels.meta && w.fbq) w.fbq("track", "Lead", { content_ids: [event.productId] });
+    if (pixels.google && w.gtag) w.gtag("event", "generate_lead");
+    if (pixels.tiktok && ttq) ttq.track("SubmitForm");
+    if (pixels.pinterest && w.pintrk) w.pintrk("track", "lead");
+  } else {
+    if (pixels.meta && w.fbq) w.fbq("track", "InitiateCheckout");
+    if (pixels.google && w.gtag) w.gtag("event", "begin_checkout");
+    if (pixels.tiktok && ttq) ttq.track("InitiateCheckout");
+  }
+}
+
+export function StorePixels({
+  handle,
+  storeName,
+  pixels,
+  names,
+  askFirst,
+  event = null,
+}: {
+  handle: string;
+  storeName: string;
+  pixels: Pixels;
+  /** "Meta and Google", said to the visitor. */
+  names: string;
+  /** True where the visitor has to say yes before anything loads. */
+  askFirst: boolean;
+  event?: PixelEvent;
+}) {
+  // "unknown" until the browser has been asked, so the server's page and the
+  // browser's first paint agree.
+  const [state, setState] = useState<"unknown" | "ask" | "on" | "off">("unknown");
+
+  useEffect(() => {
+    const choice = readChoice(handle);
+    const gpc = (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true;
+    const next = choice === "yes" ? "on" : choice === "no" ? "off" : gpc ? "off" : askFirst ? "ask" : "on";
+    // Read from this browser's storage, which only exists after the page is in it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState(next);
+  }, [handle, askFirst]);
+
+  useEffect(() => {
+    if (state !== "on") return;
+    const w = window as PixelWindow;
+    const start = (kind: string, id: string | null, run: (w: PixelWindow, id: string) => void) => {
+      if (!id || started.has(`${kind}:${id}`)) return;
+      started.add(`${kind}:${id}`);
+      run(w, id);
+    };
+    start("meta", pixels.meta, startMeta);
+    start("google", pixels.google, startGoogle);
+    start("tiktok", pixels.tiktok, startTikTok);
+    start("pinterest", pixels.pinterest, startPinterest);
+
+    if (event?.type === "purchase" && once(`nl_px_sent:${event.id}`)) track(w, pixels, event);
+    if (event?.type === "lead" && !started.has(`lead:${event.productId}`)) {
+      started.add(`lead:${event.productId}`);
+      track(w, pixels, event);
+    }
+
+    // A buy button leaves the page for Stripe at once. The event is sent
+    // first, and the form goes on its way a moment later, exactly as pressed.
+    const onSubmit = (e: SubmitEvent) => {
+      const form = e.target instanceof HTMLFormElement ? e.target : null;
+      if (!form || !form.hasAttribute("data-checkout") || form.dataset.sent === "1") return;
+      if (typeof form.requestSubmit !== "function") {
+        track(w, pixels, { type: "checkout" });
+        return;
+      }
+      e.preventDefault();
+      form.dataset.sent = "1";
+      track(w, pixels, { type: "checkout" });
+      const submitter = e.submitter instanceof HTMLElement ? e.submitter : undefined;
+      window.setTimeout(() => {
+        form.requestSubmit(submitter as HTMLButtonElement | undefined);
+        // Coming back to this page, the button works again.
+        window.setTimeout(() => delete form.dataset.sent, 1000);
+      }, 300);
+    };
+    document.addEventListener("submit", onSubmit, true);
+    return () => document.removeEventListener("submit", onSubmit, true);
+  }, [state, pixels, event]);
+
+  if (state === "unknown") return null;
+
+  if (state === "ask") {
+    return (
+      <section
+        aria-label="Ad measurement"
+        className="st-card fixed inset-x-3 bottom-3 z-50 mx-auto max-w-xl p-5 text-left sm:inset-x-6 sm:bottom-6"
+        style={{ boxShadow: "0 18px 50px -18px rgba(0,0,0,.45)" }}
+      >
+        <p className="font-bold">{`${storeName} measures its ads`}</p>
+        <p className="st-muted mt-1 text-sm leading-relaxed">
+          {`With your permission, this page loads ad measurement from ${names}, which sets cookies so ${storeName} can tell which of its ads bring people here. If you say no, nothing loads and the page works just the same.`}{" "}
+          <Link href="/privacy#ads" className="st-footer-link font-semibold">
+            More about this
+          </Link>
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn st-btn"
+            onClick={() => {
+              writeChoice(handle, "yes");
+              setState("on");
+            }}
+          >
+            Allow
+          </button>
+          <button
+            type="button"
+            className="btn st-option !w-auto !py-2.5 font-semibold"
+            onClick={() => {
+              writeChoice(handle, "no");
+              setState("off");
+            }}
+          >
+            No thanks
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <p className="mt-3 text-center">
+      <button
+        type="button"
+        className="st-footer-link text-xs font-semibold"
+        onClick={() => {
+          if (state === "on") {
+            writeChoice(handle, "no");
+            // Scripts already loaded cannot be unloaded from a page; the next
+            // page this store opens loads none.
+            window.location.reload();
+          } else {
+            writeChoice(handle, null);
+            setState("ask");
+          }
+        }}
+      >
+        {state === "on" ? "Turn off ad measurement" : "Ad measurement settings"}
+      </button>
+    </p>
+  );
+}
