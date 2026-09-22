@@ -76,6 +76,18 @@ export default function PrivacyPage() {
           whether or not a membership was found.
         </p>
         <p>
+          <strong className="text-black">Booking a call.</strong> When someone
+          books a paid call, we use the time they picked, their time zone and
+          the email address on their Stripe receipt to hold that time while they
+          pay, to write the booking down, and to send one confirmation to them
+          and one to the creator. So that each can answer the other, the
+          buyer&apos;s confirmation has the creator&apos;s email address as the
+          address replies go to, and the creator&apos;s has the buyer&apos;s.
+          While they pay, a cookie in the buyer&apos;s browser names the
+          checkout they opened, for 31 minutes, so that going back to pick
+          another time lets go of the first one.
+        </p>
+        <p>
           <strong className="text-black">
             Free copies, and a creator&apos;s list.
           </strong>{" "}
