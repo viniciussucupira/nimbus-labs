@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CallEditor } from "@/components/call-editor";
 import { uploadPresigned } from "@vercel/blob/client";
 import {
   MAX_PRODUCTS,
@@ -48,6 +49,7 @@ const MESSAGES: Record<string, string> = {
   price: "Type 0 to give it away, or an amount between 1 and 5000, like 27 or 27.50.",
   free: "Something free is given once, for an email address, so it cannot be a membership or have several prices. Take those off first.",
   unknown: "That is no longer on your store.",
+  call: "This is a paid call, so it has one price, charged once, and delivers a time rather than a file. Stop selling it as a call first to change that.",
   too_big: `That file is over ${maxFileLabel()}, which is the most a store can hold.`,
   wrong_type: "That kind of file is not one a store can sell here.",
   none: "This account has no store yet.",
@@ -859,9 +861,12 @@ export function ProductEditor({
   folder,
   selling,
   testMode,
+  email,
 }: {
   products: Product[];
   folder: string;
+  /** The creator's sign-in address, which booking replies go to. */
+  email: string;
   /** Whether this store can actually take a card right now. */
   selling: boolean;
   /** Whether the platform is pointed at Stripe's test mode. */
@@ -1141,6 +1146,10 @@ export function ProductEditor({
                   would be one nobody is ever sent. So the block moves inside
                   the options rather than sitting above them unused.
                 */}
+                <CallEditor product={product} email={email} />
+
+                {product.call ? null : (
+                <>
                 {product.options.length === 0 ? (
                   <FileBlock
                     target={product}
@@ -1170,6 +1179,8 @@ export function ProductEditor({
                   onLink={linkTo}
                   onUnlink={unlink}
                 />
+                )}
+                </>
                 )}
 
                 {removingId === product.id ? (
