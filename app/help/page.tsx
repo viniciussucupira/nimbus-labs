@@ -210,6 +210,21 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can I see how my store is doing?",
+        a: [
+          "Yes. Your studio shows the last 7 or 30 days: visitors, page views, checkouts started, sales, revenue and conversion, where your visitors came from, and each product and link on its own line.",
+          "Visits are counted without cookies. A visitor is one person on one device on one day, told apart by a one-way fingerprint that is never stored, and your own visits while signed in are not counted. Instagram and TikTok open links in their own browsers, which hide where a visit came from, so we read the app's name instead. To follow a link of your own, add ?utm_source= and a word to it, and its visits are counted under that word.",
+          "Sales are read from your own Stripe account, not counted by us: new purchases and new members, before Stripe's fee and any refund. Renewals are in your Stripe dashboard.",
+        ],
+      },
+      {
+        q: "Can I add my Meta, Google, TikTok or Pinterest pixel?",
+        a: [
+          "Yes, on the one plan. Paste the pixel's id in your studio and your store's pages tell that platform about every page view, every checkout started, every lead from a free product, and every purchase with its amount, so your ads can learn who buys.",
+          "Those platforms set cookies, so visitors in the EU, the UK, Switzerland and Brazil are asked first, in plain words, and nothing loads unless they say yes. Everywhere else the pixels load unless the visitor's browser sends Global Privacy Control. The ads and what they measure are yours: say in your own privacy notice that you use them.",
+        ],
+      },
+      {
         q: "Can I sell courses or a community?",
         a: [
           "Not yet. Lessons with progress, communities, webinars, email automations and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
