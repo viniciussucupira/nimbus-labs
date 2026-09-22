@@ -180,6 +180,8 @@ export type Product = {
   stock: number | null;
   /** Another product offered in a box at checkout, at a price of its own. */
   bump: Bump | null;
+  /** Another product offered after paying, added in one click. */
+  upsell: Bump | null;
 };
 
 export type Store = {
@@ -345,6 +347,7 @@ function parseProducts(raw: unknown): Product[] {
       call: parseSetup(value.call),
       stock: parseStock(value.stock),
       bump: parseBump(value.bump),
+      upsell: parseBump(value.upsell),
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -874,7 +877,7 @@ export type ExtrasResult =
 export async function setProductExtras(
   email: string,
   id: string,
-  change: { stock?: number | null; bump?: Bump | null },
+  change: { stock?: number | null; bump?: Bump | null; upsell?: Bump | null },
 ): Promise<ExtrasResult> {
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
@@ -895,6 +898,15 @@ export async function setProductExtras(
       if (change.bump.priceCents > target.priceCents) return { ok: false, reason: "price" };
     }
     next.bump = change.bump;
+  }
+  if (change.upsell !== undefined) {
+    if (change.upsell !== null) {
+      if (!isOneOff(product)) return { ok: false, reason: "kind" };
+      const target = store.products.find((p) => p.id === change.upsell!.productId);
+      if (!target || target.id === product.id || !canBeBumped(target)) return { ok: false, reason: "target" };
+      if (change.upsell.priceCents > target.priceCents) return { ok: false, reason: "price" };
+    }
+    next.upsell = change.upsell;
   }
 
   const products = [...store.products];
@@ -1035,6 +1047,7 @@ export async function addProduct(
     call: null,
     stock: null,
     bump: null,
+    upsell: null,
   };
 
   const next: Store = {
