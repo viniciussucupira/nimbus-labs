@@ -16,6 +16,7 @@ import {
 } from "@/lib/product-option";
 import { isPaidUp } from "@/lib/billing";
 import { StripeError, onAccount, platformKey } from "@/lib/stripe-account";
+import { activeBump } from "@/lib/product-extras";
 
 /**
  * How long a paid link keeps working.
@@ -104,7 +105,13 @@ export async function createCheckout(
   product: Product,
   origin: string,
   optionId?: string,
-): Promise<string> {
+  extras: {
+    /** The buyer ticked the box for the product offered alongside. */
+    bump?: boolean;
+    /** When the checkout closes, for a product whose units are held. */
+    expiresAt?: number;
+  } = {},
+): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
   // A call is booked for a time, through its own door, never bought blind.
   if (product.call) throw new Error("A call is booked, not bought directly");
@@ -145,6 +152,23 @@ export async function createCheckout(
   // travels with the charge rather than being worked out again afterwards.
   if (chosen) body.set("metadata[option]", chosen.id);
 
+  // The product the buyer chose to add, at the price the creator set for it
+  // here — read from the store's record, never from the form.
+  const bump = extras.bump && !membership ? activeBump(store.products, product) : null;
+  if (bump) {
+    body.set("line_items[1][quantity]", "1");
+    body.set("line_items[1][price_data][currency]", "usd");
+    body.set("line_items[1][price_data][unit_amount]", String(bump.bump.priceCents));
+    body.set("line_items[1][price_data][product_data][name]", bump.target.title);
+    body.set("metadata[bump]", bump.target.id);
+    body.set("metadata[title]", `${name} + ${bump.target.title}`.slice(0, 480));
+    body.set("payment_intent_data[metadata][bump]", bump.target.id);
+  }
+
+  // A limited product's unit is held while this checkout is open, so the
+  // checkout closes when the hold does.
+  if (extras.expiresAt) body.set("expires_at", String(extras.expiresAt));
+
   // The box a buyer types a discount code into, shown only by a store that has
   // one. An empty box on every checkout is an invitation to go and look for a
   // code that does not exist, and a buyer who leaves to search for one is a
@@ -175,10 +199,10 @@ export async function createCheckout(
     "/checkout/sessions",
     body,
   );
-  if (typeof session.url !== "string" || !session.url) {
+  if (typeof session.url !== "string" || !session.url || typeof session.id !== "string") {
     throw new Error("Stripe did not return a checkout URL");
   }
-  return session.url;
+  return { url: session.url, id: session.id };
 }
 
 export type Order =
@@ -197,6 +221,8 @@ export type Order =
       secondsLeft: number;
       /** For a paid call: the time booked, and the buyer's own time zone. */
       call: { start: number; end: number; buyerTz: string } | null;
+      /** The product the buyer added at checkout, with what it delivers. */
+      bump: { product: Product; file: ProductFile | null; link: string | null } | null;
     }
   | { state: "unpaid" | "expired" | "invalid" | "unavailable" | "error" };
 
@@ -262,9 +288,15 @@ export async function readOrder(
       ? { start, end, buyerTz: typeof metadata?.tz === "string" ? metadata.tz : "UTC" }
       : null;
 
+  // Delivered as it is now, like the product itself: the offer may since have
+  // changed, but what was paid for was this product.
+  const added = metadata?.bump ? store.products.find((p) => p.id === metadata.bump) ?? null : null;
+  const bump = added ? { product: added, file: added.file, link: added.link } : null;
+
   return {
     state: "paid",
     call,
+    bump,
     product,
     option,
     file: option ? option.file : product.options.length > 0 ? null : product.file,
