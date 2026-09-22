@@ -373,6 +373,17 @@ export default async function StudioPage({
         ...(billingReadyForSteps
           ? [{ key: "plan", title: "Switch on the till", hint: `Free for ${TRIAL_DAYS} days, and nothing is charged today.`, done: paid, href: "#billing" }]
           : []),
+        ...(connectReady && store.stripeChargesEnabled
+          ? [
+              {
+                key: "test",
+                title: "Buy it once yourself",
+                hint: "One purchase on your own page proves the whole path: the card, your Stripe account and the file.",
+                done: sold?.state === "ok" && sold.sales.length > 0,
+                href: `/@${store.handle}`,
+              },
+            ]
+          : []),
         { key: "share", title: "Share your address", hint: "Put it in your bio. This ticks itself when your first visitor arrives.", done: (numbers?.totals.d30.visitors ?? 0) > 0, href: "#details" },
       ]
     : [];

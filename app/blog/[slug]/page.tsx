@@ -5,6 +5,8 @@ import { BlogCard } from "@/components/blog-browser";
 import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
+import { ShareRow } from "@/components/share-row";
+import { SITE_URL } from "@/lib/site-url";
 import {
   BLOG_POSTS,
   type BlogBlock,
@@ -50,10 +52,23 @@ export async function generateMetadata({
   };
 }
 
+/** An id for a heading, so the index beside the article can link to it. */
+function headingId(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+}
+
 function Block({ block }: { block: BlogBlock }) {
   switch (block.type) {
     case "h2":
-      return <h2>{block.text}</h2>;
+      return (
+        <h2 id={headingId(block.text)} className="scroll-mt-24">
+          {block.text}
+        </h2>
+      );
 
     case "p":
       return <p>{block.text}</p>;
@@ -103,6 +118,10 @@ export default async function BlogPostPage({
   const post = postBySlug(slug);
   if (!post) notFound();
 
+  const headings = post.body
+    .filter((block): block is Extract<BlogBlock, { type: "h2" }> => block.type === "h2")
+    .map((block) => ({ id: headingId(block.text), text: block.text }));
+
   const more = postsSorted()
     .filter((other) => other.slug !== post.slug)
     .slice(0, 3);
@@ -136,12 +155,32 @@ export default async function BlogPostPage({
           </div>
         </header>
 
-        <article className="container-narrow py-12 sm:py-16">
+        <div className="container-page py-12 sm:py-16 lg:grid lg:grid-cols-[15rem_minmax(0,46rem)] lg:justify-center lg:gap-14">
+          {headings.length > 2 ? (
+            <nav aria-labelledby="toc-title" className="mb-10 lg:sticky lg:top-24 lg:mb-0 lg:self-start">
+              <p id="toc-title" className="text-[0.8125rem] font-semibold uppercase tracking-[0.14em] text-ink-mute">
+                On this page
+              </p>
+              <ul className="mt-4 space-y-2.5 border-l border-line pl-4 text-[0.9375rem]">
+                {headings.map((h) => (
+                  <li key={h.id}>
+                    <a href={`#${h.id}`} className="text-ink-soft underline-offset-4 transition-colors hover:text-violet-deep hover:underline">
+                      {h.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ) : null}
+
+          <article className="min-w-0">
           <div className="prose-nb">
             {post.body.map((block, index) => (
               <Block key={index} block={block} />
             ))}
           </div>
+
+          <ShareRow url={`${SITE_URL}/blog/${post.slug}`} title={post.title} />
 
           <aside className="surface-night on-dark mt-16 overflow-hidden rounded-[var(--r-xl)] p-8 sm:p-10">
             <h2 className="t-h3 text-[1.6rem] text-white">See it working before you believe us</h2>
@@ -160,7 +199,8 @@ export default async function BlogPostPage({
               </Link>
             </div>
           </aside>
-        </article>
+          </article>
+        </div>
 
         {more.length > 0 ? (
           <section className="surface-sand">

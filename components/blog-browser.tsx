@@ -40,7 +40,7 @@ export function BlogBrowser({
   return (
     <div>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Filter articles by category">
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible lg:min-w-0 lg:flex-1" role="group" aria-label="Filter articles by category">
           {options.map((option) => {
             const active = option === category;
             return (
@@ -59,7 +59,7 @@ export function BlogBrowser({
           })}
         </div>
 
-        <label className="relative block w-full lg:w-72">
+        <label className="relative block w-full shrink-0 lg:w-72">
           <span className="sr-only">Search the articles</span>
           <input
             type="search"
