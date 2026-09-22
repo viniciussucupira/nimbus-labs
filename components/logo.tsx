@@ -26,7 +26,7 @@ export function Logo({
     <span className="inline-flex items-center gap-2.5">
       <LogoMark size={size} />
       <span
-        className={`text-[1.125rem] font-semibold tracking-[-0.03em] ${
+        className={`whitespace-nowrap text-[1.125rem] font-semibold tracking-[-0.03em] ${
           tone === "light" ? "text-white" : "text-ink"
         }`}
       >
