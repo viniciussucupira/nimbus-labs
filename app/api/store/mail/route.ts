@@ -75,7 +75,8 @@ export async function POST(request: NextRequest) {
       const content = text(body.body, MAX_MAIL_BODY * 2).trim().slice(0, MAX_MAIL_BODY);
       if (!subject) return fail("subject");
       if (!content) return fail("body");
-      if (!(await reserve(store, 1))) return fail("allowance");
+      const reserved = await reserve(store, 1);
+      if (reserved !== "ok") return fail(reserved === "month" ? "allowance" : "day");
       const r = render(store, `[Test] ${subject}`, content, null);
       const outcome = await sendBatch(
         [{ from: fromLine(store), to: store.email, subject: r.subject, text: r.text, html: r.html, replyTo: store.email }],

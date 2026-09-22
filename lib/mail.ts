@@ -63,23 +63,65 @@ export async function usedThisMonth(listId: string | null): Promise<number> {
   return Number(raw) || 0;
 }
 
-/** Takes `n` from the month, or nothing when that would pass the allowance. */
-export async function reserve(store: Store, n: number): Promise<boolean> {
-  if (!store.listId || n <= 0) return n <= 0;
+/**
+ * How many list emails the whole company sends in one UTC day.
+ *
+ * The sender's plan has a daily ceiling shared with sign-in links and
+ * receipts, and those must always get through. Until the sender's plan is
+ * raised, list email keeps to a small share of that ceiling; the number is
+ * set in MARKETING_DAILY_CAP, and 0 there means no daily ceiling of ours.
+ */
+const DEFAULT_DAILY_CAP = 50;
+function dailyCap(): number {
+  const raw = process.env.MARKETING_DAILY_CAP?.trim();
+  if (!raw) return DEFAULT_DAILY_CAP;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : DEFAULT_DAILY_CAP;
+}
+const dayKey = (now = new Date()) => `nl:mail:day:${now.toISOString().slice(0, 10)}`;
+
+/** How many more list emails the company may send today. */
+async function dailyRoom(): Promise<number> {
+  const cap = dailyCap();
+  if (cap === 0) return Number.POSITIVE_INFINITY;
+  const [used] = await redisPipeline([["GET", dayKey()]]);
+  return Math.max(0, cap - (Number(used) || 0));
+}
+
+export type Reserved = "ok" | "month" | "day";
+
+/** Takes `n` from the month (and the company's day), or nothing when that would pass either. */
+export async function reserve(store: Store, n: number): Promise<Reserved> {
+  if (n <= 0) return "ok";
+  if (!store.listId) return "month";
   const allowance = monthlyAllowance(store);
   const key = usedKey(store.listId);
-  const [total] = await redisPipeline([
+  const cap = dailyCap();
+  const day = dayKey();
+  const [total, , today] = await redisPipeline([
     ["INCRBY", key, n],
     ["EXPIRE", key, 70 * 86_400],
+    ["INCRBY", day, n],
+    ["EXPIRE", day, 3 * 86_400],
   ]);
-  if (Number(total) <= allowance) return true;
-  await redisPipeline([["DECRBY", key, n]]);
-  return false;
+  const overMonth = Number(total) > allowance;
+  const overDay = cap > 0 && Number(today) > cap;
+  if (!overMonth && !overDay) return "ok";
+  await redisPipeline([
+    ["DECRBY", key, n],
+    ["DECRBY", day, n],
+  ]);
+  return overMonth ? "month" : "day";
 }
 
 /** Gives back what was taken for a batch that was not sent. */
 export async function release(store: Store, n: number): Promise<void> {
-  if (store.listId && n > 0) await redisPipeline([["DECRBY", usedKey(store.listId), n]]);
+  if (store.listId && n > 0) {
+    await redisPipeline([
+      ["DECRBY", usedKey(store.listId), n],
+      ["DECRBY", dayKey(), n],
+    ]);
+  }
 }
 
 function escape(text: string): string {
@@ -184,7 +226,7 @@ export type SendOutcome = {
   done: string[];
   /** Addresses not tried, because the send stopped before them. */
   rest: string[];
-  stopped: "allowance" | "retry" | "refused" | null;
+  stopped: "allowance" | "day" | "retry" | "refused" | null;
 };
 
 /**
@@ -200,9 +242,12 @@ export async function sendTo(
   keyBase: string,
 ): Promise<SendOutcome> {
   const done: string[] = [];
-  for (let i = 0; i < emails.length; i += BATCH_SIZE) {
-    const chunk = emails.slice(i, i + BATCH_SIZE);
-    if (!(await reserve(store, chunk.length))) return { done, rest: emails.slice(i), stopped: "allowance" };
+  for (let i = 0; i < emails.length; ) {
+    const room = await dailyRoom();
+    if (room <= 0) return { done, rest: emails.slice(i), stopped: "day" };
+    const chunk = emails.slice(i, i + Math.min(BATCH_SIZE, room));
+    const reserved = await reserve(store, chunk.length);
+    if (reserved !== "ok") return { done, rest: emails.slice(i), stopped: reserved === "month" ? "allowance" : "day" };
     const tokens = await tokensFor(store.listId as string, chunk, store.handle);
     const messages: BatchMessage[] = chunk
       .filter((email) => tokens.has(email))
@@ -211,13 +256,14 @@ export async function sendTo(
         return { from: fromLine(store), to: email, subject: r.subject, text: r.text, html: r.html, replyTo: store.email, headers: r.headers };
       });
     if (messages.length) await paced();
-    const outcome = await sendBatch(messages, `${keyBase}:${i}`);
+    const outcome = await sendBatch(messages, `${keyBase}:${i}:${chunk.length}`);
     if (outcome !== "sent") {
       await release(store, chunk.length);
       return { done, rest: emails.slice(i), stopped: outcome };
     }
     if (messages.length < chunk.length) await release(store, chunk.length - messages.length);
     for (const m of messages) done.push(m.to);
+    i += chunk.length;
   }
   return { done, rest: [], stopped: null };
 }

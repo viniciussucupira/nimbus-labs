@@ -17,6 +17,7 @@ const MESSAGES: Record<string, string> = {
   product: "That product is not in your store any more.",
   empty: "Nobody on your list matches, so there is nobody to send it to yet.",
   allowance: "This goes to more people than this month's emails have left. Send it to a smaller group, or next month.",
+  day: "Today's sending is full. A test can go out again tomorrow.",
   setup: "Save the name and postal address your emails carry first, at the top of this page.",
   plan: "Email to your list is part of Pro.",
   name: "Give the sequence a name.",

@@ -232,7 +232,7 @@ export async function sendDueSteps(
         if (result.stopped === "refused") counts.dropped += result.rest.length;
         else {
           // Tried again later rather than lost: next month, or once the sender takes it.
-          const later = result.stopped === "allowance" ? 6 * 3600 : 600;
+          const later = result.stopped === "allowance" || result.stopped === "day" ? 6 * 3600 : 600;
           await redisPipeline(result.rest.map((email) => ["ZADD", QUEUE, now + later, `${group}|${email}`]));
           counts.later += result.rest.length;
         }

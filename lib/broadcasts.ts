@@ -196,8 +196,15 @@ export async function advanceBroadcast(
       const emails = Array.isArray(chunk) ? (chunk as string[]) : [];
       if (!emails.length) break;
       const result = await sendTo(store, emails, b.subject, b.body, `bc:${id}:${b.sent}`);
+      // Whatever went before a stop counts, so the next run starts after it.
+      const processed = emails.length - result.rest.length;
+      if (processed > 0) b = { ...b, sent: b.sent + processed };
       if (result.stopped === "allowance") {
         b = { ...b, status: "waiting", note: "This month's emails ran out. The rest go out when the month turns." };
+        break;
+      }
+      if (result.stopped === "day") {
+        b = { ...b, status: "waiting", note: "Going out in daily portions: the rest continue tomorrow, by themselves." };
         break;
       }
       if (result.stopped) {
@@ -207,7 +214,7 @@ export async function advanceBroadcast(
           : { ...b, status: "sending", failures, note: "Paused for a moment: the email service asked us to slow down." };
         break;
       }
-      b = { ...b, sent: b.sent + emails.length, failures: 0, note: "" };
+      b = { ...b, failures: 0, note: "" };
       await save(b);
     }
     if (b.status === "sending" && b.sent >= b.total) {
