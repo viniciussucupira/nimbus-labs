@@ -67,6 +67,15 @@ export default function PrivacyPage() {
           creator, not to us, and section 4 explains what that means.
         </p>
         <p>
+          <strong className="text-black">Managing a membership.</strong> When
+          a member asks for a link to manage or cancel their membership, we use
+          the email address they type to look for their membership on the
+          creator&apos;s own Stripe account and, if there is one, to email them
+          the link. We keep a record that ties that link to their Stripe
+          customer for one hour, and nothing else; the page says the same thing
+          whether or not a membership was found.
+        </p>
+        <p>
           <strong className="text-black">
             Free copies, and a creator&apos;s list.
           </strong>{" "}
