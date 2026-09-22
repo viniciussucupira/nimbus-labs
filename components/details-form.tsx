@@ -78,7 +78,7 @@ export function DetailsForm({
       <div>
         <label
           htmlFor="store-name"
-          className="block text-sm font-bold text-ink"
+          className="field-label"
         >
           Store name
         </label>
@@ -90,12 +90,12 @@ export function DetailsForm({
           maxLength={MAX_NAME_LENGTH}
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+          className="field mt-2"
         />
       </div>
 
       <div>
-        <label htmlFor="store-bio" className="block text-sm font-bold text-ink">
+        <label htmlFor="store-bio" className="field-label">
           One line about it
         </label>
         <textarea
@@ -105,7 +105,7 @@ export function DetailsForm({
           maxLength={MAX_BIO_LENGTH}
           value={bio}
           onChange={(event) => setBio(event.target.value)}
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+          className="field mt-2"
         />
         <p className="mt-1 text-sm text-ink-soft">
           {MAX_BIO_LENGTH - bio.length} characters left. It sits under the name
@@ -115,7 +115,7 @@ export function DetailsForm({
 
       {state.kind === "error" ? (
         <p
-          className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          className="notice notice-error "
           role="alert"
         >
           {state.message}
@@ -126,14 +126,14 @@ export function DetailsForm({
         <button
           type="submit"
           disabled={state.kind === "saving"}
-          className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+          className="btn btn-primary"
         >
           {state.kind === "saving" ? "Saving…" : "Save"}
         </button>
         <button
           type="button"
           onClick={() => setState({ kind: "closed" })}
-          className="rounded-full px-5 py-3 text-sm font-bold text-ink-soft transition hover:text-violet-deep"
+          className="btn btn-ghost"
         >
           Cancel
         </button>

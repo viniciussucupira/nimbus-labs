@@ -56,10 +56,10 @@ export function HandleForm() {
   return (
     <form onSubmit={submit} className="space-y-5" noValidate>
       <div>
-        <label htmlFor="store-handle" className="block text-sm font-bold text-ink">
+        <label htmlFor="store-handle" className="field-label">
           Your address
         </label>
-        <div className="mt-2 flex items-center rounded-2xl border-2 border-ink/10 bg-white pl-4 transition focus-within:border-violet-brand">
+        <div className="card mt-2 flex items-center pl-4 transition focus-within:border-violet-brand">
           <span className="text-ink-soft">nimbuslabsai.com/@</span>
           <input
             id="store-handle"
@@ -83,7 +83,7 @@ export function HandleForm() {
       </div>
 
       <div>
-        <label htmlFor="store-name" className="block text-sm font-bold text-ink">
+        <label htmlFor="store-name" className="field-label">
           Store name
         </label>
         <input
@@ -95,12 +95,12 @@ export function HandleForm() {
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="What people should see at the top"
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-soft/60 focus:border-violet-brand"
+          className="field mt-2"
         />
       </div>
 
       <div>
-        <label htmlFor="store-bio" className="block text-sm font-bold text-ink">
+        <label htmlFor="store-bio" className="field-label">
           One line about it <span className="font-semibold text-ink-soft">(optional)</span>
         </label>
         <input
@@ -111,13 +111,13 @@ export function HandleForm() {
           value={bio}
           onChange={(event) => setBio(event.target.value)}
           placeholder="Who it is for, in one sentence"
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3.5 text-ink outline-none transition placeholder:text-ink-soft/60 focus:border-violet-brand"
+          className="field mt-2"
         />
       </div>
 
       {state.kind === "error" ? (
         <p
-          className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          className="notice notice-error "
           role="alert"
         >
           {state.message}
@@ -127,7 +127,7 @@ export function HandleForm() {
       <button
         type="submit"
         disabled={state.kind === "saving"}
-        className="w-full rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-7 py-3.5 font-bold text-white shadow-lg transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+        className="btn btn-primary btn-lg btn-block"
       >
         {state.kind === "saving" ? "Creating…" : "Create my store"}
       </button>

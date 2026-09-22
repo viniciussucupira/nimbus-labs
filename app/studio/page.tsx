@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Logo } from "@/components/logo";
+import { Icon } from "@/components/icons";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
@@ -249,27 +251,36 @@ export default async function StudioPage({
   const NEXT = connectReady ? NEXT_WHEN_SELLING : NEXT_WHEN_NOT;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -right-20 top-0 h-64 w-64 bg-violet-brand/20 blur-3xl"
-      />
+    <div className="min-h-screen bg-paper text-ink">
+      <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
+        <div className="container-page flex h-16 items-center justify-between gap-3">
+          <Link href="/" className="rounded-[10px]" aria-label="Nimbus Labs, home">
+            <Logo />
+          </Link>
+          <div className="flex items-center gap-3">
+            <span className="hidden max-w-[16rem] truncate text-sm text-ink-mute md:inline">{email}</span>
+            {store ? (
+              <Link href={`/@${store.handle}`} className="btn btn-secondary btn-sm">
+                View my store
+                <Icon name="arrow-up-right" size={16} />
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </header>
 
-      <main id="content" className="relative mx-auto max-w-2xl px-4 py-16">
-        <p className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-ink-soft shadow-sm">
-          <span aria-hidden="true">☁️</span> Nimbus Labs
-        </p>
-
-        <h1 className="font-display mt-5 text-4xl font-black leading-tight sm:text-5xl">
+      <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
+        <p className="eyebrow">Studio</p>
+        <h1 className="t-h2 mt-3">
           {store ? "Your store" : "You are signed in"}
         </h1>
-        <p className="mt-4 text-lg text-ink-soft">
+        <p className="mt-3 text-ink-soft">
           As <strong className="text-ink">{email}</strong>. No password was
           created, and none is stored.
         </p>
 
         {notice ? (
-          <div className="mt-6 rounded-3xl border-2 border-amber-brand/40 bg-amber-brand/10 p-5">
+          <div className="notice notice-warn mt-6">
             <p className="font-bold text-ink">{notice.title}</p>
             <p className="mt-1 text-sm text-ink-soft">{notice.body}</p>
           </div>
@@ -277,8 +288,10 @@ export default async function StudioPage({
 
         {store ? (
           <>
-            <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-              <p className="font-display text-xl font-black text-ink">
+            <div className="grid items-start gap-x-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <div className="min-w-0">
+            <div className="card mt-8 p-6 sm:p-8">
+              <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                 {store.name}
               </p>
               {store.bio ? (
@@ -289,13 +302,13 @@ export default async function StudioPage({
               </div>
 
               <p className="mt-5 text-sm font-bold text-ink">Your address</p>
-              <p className="mt-1 break-all font-mono text-lg text-violet-deep">
+              <p className="mt-1 break-all rounded-[8px] bg-paper px-3 py-2 font-mono text-[0.9375rem] text-violet-deep ring-1 ring-line">
                 nimbuslabsai.com/@{store.handle}
               </p>
               <div className="mt-5 flex flex-wrap items-center gap-4">
                 <Link
                   href={`/@${store.handle}`}
-                  className="inline-block rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                  className="btn btn-primary"
                 >
                   Open my store
                 </Link>
@@ -317,8 +330,8 @@ export default async function StudioPage({
             <DiscountEditor selling={current ? canSell(current) : false} />
 
             {list && (givesAway || list.total > 0) ? (
-              <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-                <p className="font-display text-xl font-black text-ink">
+              <div className="card mt-8 p-6 sm:p-8">
+                <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                   Your list
                 </p>
                 <p className="mt-2 text-ink-soft">
@@ -340,7 +353,7 @@ export default async function StudioPage({
                     <input type="hidden" name="who" value="agreed" />
                     <button
                       type="submit"
-                      className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                      className="btn btn-primary"
                     >
                       Download the ones who agreed
                     </button>
@@ -349,7 +362,7 @@ export default async function StudioPage({
                     <input type="hidden" name="who" value="everyone" />
                     <button
                       type="submit"
-                      className="rounded-full border-2 border-ink/15 px-6 py-3 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+                      className="btn btn-secondary"
                     >
                       Download everyone
                     </button>
@@ -365,12 +378,12 @@ export default async function StudioPage({
                   nothing to ask for, and it goes with you if you leave.
                 </p>
                 {list.full ? (
-                  <p className="mt-4 rounded-2xl bg-amber-brand/15 px-4 py-3 text-sm text-ink">
+                  <p className="mt-4 notice notice-warn">
                     {`Your list has reached ${MAX_LEADS.toLocaleString("en-US")} addresses, which is as many as one store holds. New people still get what they ask for; their addresses are not added. Download the list and write to us.`}
                   </p>
                 ) : null}
                 {givesAway && !paid ? (
-                  <p className="mt-4 rounded-2xl bg-cream px-4 py-3 text-sm text-ink-soft">
+                  <p className="mt-4 rounded-2xl bg-sand px-4 py-3 text-sm text-ink-soft">
                     Free products are handed out while your subscription or
                     trial is on. Until then your page shows them as not
                     available, and nobody is asked for an address.
@@ -379,8 +392,10 @@ export default async function StudioPage({
               </div>
             ) : null}
 
-            <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-              <p className="font-display text-xl font-black text-ink">
+            </div>
+            <div className="min-w-0">
+            <div className="card mt-8 p-6 sm:p-8">
+              <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                 Where the money goes
               </p>
               <p className="mt-2 text-ink-soft">
@@ -392,7 +407,7 @@ export default async function StudioPage({
               </p>
 
               {!connectReady ? (
-                <p className="mt-5 rounded-3xl bg-cream p-5 text-sm text-ink-soft">
+                <p className="mt-5 rounded-[var(--r-md)] bg-sand p-5 text-sm text-ink-soft">
                   Connecting is not switched on yet on our side, so there is
                   nothing here to press. This says so instead of showing you a
                   button that would do nothing.
@@ -402,7 +417,7 @@ export default async function StudioPage({
                   <form action="/api/stripe/connect" method="post" className="mt-5">
                     <label
                       htmlFor="stripe-country"
-                      className="block text-sm font-bold text-ink"
+                      className="field-label"
                     >
                       Which country is your bank account in?
                     </label>
@@ -411,7 +426,7 @@ export default async function StudioPage({
                       name="country"
                       required
                       defaultValue=""
-                      className="mt-2 w-full max-w-xs rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-sm font-semibold text-ink"
+                      className="field mt-2 max-w-xs"
                     >
                       <option value="" disabled>
                         Choose a country
@@ -429,7 +444,7 @@ export default async function StudioPage({
                     </p>
                     <button
                       type="submit"
-                      className="mt-4 rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                      className="btn btn-primary mt-4"
                     >
                       Connect your Stripe account
                     </button>
@@ -472,7 +487,7 @@ export default async function StudioPage({
                       <form action="/api/stripe/connect" method="post">
                         <button
                           type="submit"
-                          className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                          className="btn btn-primary"
                         >
                           Finish it in Stripe
                         </button>
@@ -481,7 +496,7 @@ export default async function StudioPage({
                     <form action="/api/stripe/check" method="post">
                       <button
                         type="submit"
-                        className="rounded-full border-2 border-ink/15 px-6 py-3 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+                        className="btn btn-secondary"
                       >
                         Ask Stripe again
                       </button>
@@ -489,7 +504,7 @@ export default async function StudioPage({
                     <form action="/api/stripe/disconnect" method="post">
                       <button
                         type="submit"
-                        className="rounded-full px-5 py-3 text-sm font-bold text-ink-soft underline underline-offset-2 transition hover:text-violet-deep"
+                        className="btn btn-ghost"
                       >
                         Forget it here
                       </button>
@@ -507,8 +522,8 @@ export default async function StudioPage({
             </div>
 
             {delivery ? (
-              <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-                <p className="font-display text-xl font-black text-ink">
+              <div className="card mt-8 p-6 sm:p-8">
+                <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                   What you have sent out this month
                 </p>
                 <p className="mt-2 text-ink-soft">
@@ -517,7 +532,7 @@ export default async function StudioPage({
                   )} your plan covers. Counted when a download starts, including the ones you open yourself to check.`}
                 </p>
                 <div
-                  className="mt-4 h-2 w-full overflow-hidden rounded-full bg-cream"
+                  className="mt-4 h-2 w-full overflow-hidden rounded-full bg-sand"
                   role="progressbar"
                   aria-valuenow={Math.min(
                     100,
@@ -531,7 +546,7 @@ export default async function StudioPage({
                     className={`h-full rounded-full ${
                       delivery.over
                         ? "bg-amber-brand"
-                        : "bg-gradient-to-r from-mint-brand to-sky-brand"
+                        : "bg-gradient-to-r from-violet-brand to-sky-brand"
                     }`}
                     style={{
                       width: `${Math.min(
@@ -547,7 +562,7 @@ export default async function StudioPage({
                   />
                 </div>
                 {delivery.over ? (
-                  <p className="mt-4 rounded-2xl bg-amber-brand/15 px-4 py-3 text-sm text-ink">
+                  <p className="mt-4 notice notice-warn">
                     You are past what the plan covers this month.{" "}
                     <strong>Nothing has been cut off and nothing will be.</strong>{" "}
                     A buyer who paid always gets what they paid for. We will
@@ -558,8 +573,8 @@ export default async function StudioPage({
             ) : null}
 
             {billingReady ? (
-              <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-                <p className="font-display text-xl font-black text-ink">
+              <div className="card mt-8 p-6 sm:p-8">
+                <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                   What you pay us
                 </p>
                 <p className="mt-2 text-ink-soft">
@@ -571,7 +586,7 @@ export default async function StudioPage({
 
                 {paid && cancelling ? (
                   <>
-                    <p className="mt-5 rounded-2xl bg-amber-brand/15 px-4 py-3 text-sm font-semibold text-ink">
+                    <p className="mt-5 notice notice-warn font-semibold">
                       {trialing
                         ? `Cancelled inside the trial. Your card will not be charged, and your store keeps taking payments until ${endsOn ?? "the trial ends"}.`
                         : `Cancelled. Nothing more will be charged, and your store keeps taking payments until ${endsOn ?? "the end of the period you paid for"}.`}
@@ -580,7 +595,7 @@ export default async function StudioPage({
                       <input type="hidden" name="intent" value="resume" />
                       <button
                         type="submit"
-                        className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                        className="btn btn-primary"
                       >
                         Keep my subscription
                       </button>
@@ -588,7 +603,7 @@ export default async function StudioPage({
                   </>
                 ) : paid ? (
                   <>
-                    <p className="mt-5 rounded-2xl bg-mint-brand/12 px-4 py-3 text-sm font-semibold text-mint-deep">
+                    <p className="mt-5 notice notice-success font-semibold">
                       {trialing
                         ? `You are inside the ${TRIAL_DAYS}-day trial. No card has been charged yet.`
                         : `Subscribed at $${(PRICE_CENTS / 100).toFixed(0)} a month.`}
@@ -606,7 +621,7 @@ export default async function StudioPage({
                         <input type="hidden" name="intent" value="cancel" />
                         <button
                           type="submit"
-                          className="rounded-full border-2 border-ink px-5 py-2.5 text-sm font-bold text-ink transition hover:-translate-y-0.5"
+                          className="btn btn-secondary btn-sm"
                         >
                           Yes, cancel it
                         </button>
@@ -629,7 +644,7 @@ export default async function StudioPage({
                     <form action="/api/billing/checkout" method="post" className="mt-5">
                       <button
                         type="submit"
-                        className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                        className="btn btn-primary"
                       >
                         {/* One string, not three. Split across JSX nodes it
                             comes out of the server with markers in the middle,
@@ -652,8 +667,8 @@ export default async function StudioPage({
             ) : null}
 
             {sold ? (
-              <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-                <p className="font-display text-xl font-black text-ink">
+              <div className="card mt-8 p-6 sm:p-8">
+                <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                   What you have sold
                 </p>
                 <p className="mt-2 text-ink-soft">
@@ -663,19 +678,19 @@ export default async function StudioPage({
                 </p>
 
                 {sold.state === "error" ? (
-                  <p className="mt-5 rounded-3xl bg-amber-brand/10 p-5 text-sm text-ink-soft">
+                  <p className="mt-5 notice notice-warn">
                     Stripe did not answer just now, so this list is not showing.
                     Nothing is lost — your sales are on your Stripe account
                     whether this page can reach it or not.
                   </p>
                 ) : sold.state === "unavailable" ? (
-                  <p className="mt-5 rounded-3xl bg-cream p-5 text-sm text-ink-soft">
+                  <p className="mt-5 rounded-[var(--r-md)] bg-sand p-5 text-sm text-ink-soft">
                     Nothing can have sold yet, because Stripe has not cleared
                     your account to take payments. Finish what it asks for
                     above, and your sales will appear here.
                   </p>
                 ) : sold.sales.length === 0 ? (
-                  <p className="mt-5 rounded-3xl bg-cream p-5 text-sm text-ink-soft">
+                  <p className="mt-5 rounded-[var(--r-md)] bg-sand p-5 text-sm text-ink-soft">
                     Nothing sold yet. When someone buys, the sale shows up here
                     with who bought it, so you can answer them.
                   </p>
@@ -685,11 +700,11 @@ export default async function StudioPage({
                       {sold.sales.map((sale) => (
                         <li
                           key={sale.reference}
-                          className="rounded-3xl bg-cream p-5"
+                          className="rounded-[var(--r-md)] bg-sand p-5"
                         >
                           <div className="flex flex-wrap items-baseline justify-between gap-2">
                             <p className="font-bold text-ink">{sale.title}</p>
-                            <p className="font-display font-black text-ink">
+                            <p className="font-display font-semibold text-ink">
                               ${centsToPrice(sale.amount)}
                             </p>
                           </div>
@@ -732,8 +747,8 @@ export default async function StudioPage({
               </div>
             ) : null}
 
-            <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-              <p className="font-display text-xl font-black text-ink">
+            <div className="card mt-8 p-6 sm:p-8">
+              <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                 The email that signs you in
               </p>
               <p className="mt-2 text-ink-soft">
@@ -754,12 +769,12 @@ export default async function StudioPage({
                     required
                     maxLength={254}
                     placeholder="you@somewhere-else.com"
-                    className="mt-1 w-full rounded-full border-2 border-ink/10 px-5 py-3 text-base font-normal text-ink outline-none transition focus:border-violet-brand"
+                    className="field mt-1"
                   />
                 </label>
                 <button
                   type="submit"
-                  className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                  className="btn btn-primary"
                 >
                   Send the link there
                 </button>
@@ -771,10 +786,12 @@ export default async function StudioPage({
                 still yours.
               </p>
             </div>
+            </div>
+            </div>
           </>
         ) : (
-          <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-            <p className="font-display text-xl font-black text-ink">
+          <div className="card mt-8 p-6 sm:p-8">
+            <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
               Take your address
             </p>
             <p className="mt-2 mb-6 text-ink-soft">
@@ -786,8 +803,8 @@ export default async function StudioPage({
           </div>
         )}
 
-        <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-          <p className="font-display text-xl font-black text-ink">
+        <div className="card mt-8 p-6 sm:p-8">
+          <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
             What is not here yet
           </p>
           <p className="mt-2 text-ink-soft">
@@ -799,7 +816,7 @@ export default async function StudioPage({
               <li key={item} className="flex gap-3 text-ink-soft">
                 <span
                   aria-hidden="true"
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-lilac text-xs font-black text-violet-deep"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-lilac text-xs font-semibold text-violet-deep"
                 >
                   {index + 1}
                 </span>
@@ -816,20 +833,20 @@ export default async function StudioPage({
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link
             href="/demo"
-            className="rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5"
+            className="btn btn-primary"
           >
             Open the demo store
           </Link>
           <Link
             href="/mission"
-            className="rounded-full border-2 border-ink/15 px-6 py-3 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+            className="btn btn-secondary"
           >
             What is built so far
           </Link>
           <form action="/api/auth/signout" method="post" className="ml-auto">
             <button
               type="submit"
-              className="rounded-full px-5 py-3 text-sm font-bold text-ink-soft underline underline-offset-2 transition hover:text-violet-deep"
+              className="btn btn-ghost"
             >
               Sign out
             </button>
@@ -837,7 +854,7 @@ export default async function StudioPage({
           <form action="/api/auth/signout-all" method="post">
             <button
               type="submit"
-              className="rounded-full px-5 py-3 text-sm font-bold text-ink-soft underline underline-offset-2 transition hover:text-violet-deep"
+              className="btn btn-ghost"
             >
               Sign out everywhere
             </button>

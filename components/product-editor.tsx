@@ -131,7 +131,7 @@ function ProductForm({
       <div>
         <label
           htmlFor="product-title"
-          className="block text-sm font-bold text-ink"
+          className="field-label"
         >
           What are you selling
         </label>
@@ -146,14 +146,14 @@ function ProductForm({
             setDraft({ ...draft, title: event.target.value })
           }
           placeholder="The Weeknight Recipe Pack"
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand placeholder:text-ink-soft/50"
+          className="field mt-2"
         />
       </div>
 
       <div>
         <label
           htmlFor="product-summary"
-          className="block text-sm font-bold text-ink"
+          className="field-label"
         >
           What the buyer gets
         </label>
@@ -167,7 +167,7 @@ function ProductForm({
             setDraft({ ...draft, summary: event.target.value })
           }
           placeholder="Forty recipes, each one on a single page, as a PDF."
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand placeholder:text-ink-soft/50"
+          className="field mt-2"
         />
         <p className="mt-1 text-sm text-ink-soft">
           {MAX_SUMMARY_LENGTH - draft.summary.length} characters left.
@@ -177,11 +177,11 @@ function ProductForm({
       <div>
         <label
           htmlFor="product-price"
-          className="block text-sm font-bold text-ink"
+          className="field-label"
         >
           Price
         </label>
-        <div className="mt-2 flex items-center rounded-2xl border-2 border-ink/10 bg-white pl-4 transition focus-within:border-violet-brand">
+        <div className="card mt-2 flex items-center pl-4 transition focus-within:border-violet-brand">
           <span className="text-ink-soft">USD $</span>
           <input
             id="product-price"
@@ -214,7 +214,7 @@ function ProductForm({
       <div>
         <label
           htmlFor="product-every"
-          className="block text-sm font-bold text-ink"
+          className="field-label"
         >
           How often it charges
         </label>
@@ -225,7 +225,7 @@ function ProductForm({
           onChange={(event) =>
             setDraft({ ...draft, every: event.target.value as "" | Interval })
           }
-          className="mt-2 w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+          className="field mt-2"
         >
           <option value="">Once — a single sale</option>
           {INTERVALS.map((interval) => (
@@ -246,7 +246,7 @@ function ProductForm({
 
       {error ? (
         <p
-          className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          className="notice notice-error "
           role="alert"
         >
           {error}
@@ -257,14 +257,14 @@ function ProductForm({
         <button
           type="submit"
           disabled={busy}
-          className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+          className="btn btn-primary"
         >
           {busy ? "Saving…" : submitLabel}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full px-5 py-3 text-sm font-bold text-ink-soft transition hover:text-violet-deep"
+          className="btn btn-ghost"
         >
           Cancel
         </button>
@@ -356,7 +356,7 @@ function OptionsBlock({
         <div className="min-w-[10rem] flex-1">
           <label
             htmlFor={`option-label-${product.id}`}
-            className="block text-sm font-bold text-ink"
+            className="field-label"
           >
             What this one is
           </label>
@@ -368,13 +368,13 @@ function OptionsBlock({
             value={label}
             onChange={(event) => setLabel(event.target.value)}
             placeholder="5 weeks"
-            className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-2.5 text-sm outline-none focus:border-violet-brand"
+            className="field mt-1"
           />
         </div>
         <div className="w-28">
           <label
             htmlFor={`option-price-${product.id}`}
-            className="block text-sm font-bold text-ink"
+            className="field-label"
           >
             Price
           </label>
@@ -386,7 +386,7 @@ function OptionsBlock({
             value={price}
             onChange={(event) => setPrice(event.target.value)}
             placeholder="39"
-            className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-2.5 text-sm outline-none focus:border-violet-brand"
+            className="field mt-1"
           />
         </div>
       </div>
@@ -394,7 +394,7 @@ function OptionsBlock({
       {error ? (
         <p
           role="alert"
-          className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-ink"
+          className="rounded-2xl bg-danger-soft px-4 py-3 text-sm font-semibold text-ink"
         >
           {error}
         </p>
@@ -404,14 +404,14 @@ function OptionsBlock({
         <button
           type="submit"
           disabled={busy}
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+          className="btn btn-primary btn-sm"
         >
           {busy ? "Saving…" : submitLabel}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+          className="btn btn-secondary btn-sm"
         >
           Cancel
         </button>
@@ -449,7 +449,7 @@ function OptionsBlock({
 
       <ul className="mt-3 space-y-2">
         {product.options.map((option, index) => (
-          <li key={option.id} className="rounded-2xl bg-cream p-3">
+          <li key={option.id} className="rounded-2xl bg-sand p-3">
             {editingId === option.id ? (
               form(
                 "Save",
@@ -466,7 +466,7 @@ function OptionsBlock({
               <>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-bold text-ink">{option.label}</p>
-                  <p className="font-mono font-bold text-violet-deep">
+                  <p className="font-semibold tabular-nums text-ink">
                     {`$${centsToPrice(option.priceCents)}`}
                   </p>
                 </div>
@@ -477,7 +477,7 @@ function OptionsBlock({
                     nothing behind it is left off the store page entirely, and
                     the creator is the one who can fix that.
                   */
-                  <p className="mt-1 text-sm font-semibold text-pink-brand">
+                  <p className="mt-1 text-sm font-semibold text-danger">
                     Nothing to hand over yet, so this one is hidden from your
                     page.
                   </p>
@@ -527,7 +527,7 @@ function OptionsBlock({
                         setRemovingId(option.id);
                         setError(null);
                       }}
-                      className="text-ink-soft underline underline-offset-4 transition hover:text-pink-brand"
+                      className="text-ink-soft underline underline-offset-4 transition hover:text-danger"
                     >
                       Remove
                     </button>
@@ -566,14 +566,14 @@ function OptionsBlock({
                             setRemovingId(null),
                           )
                         }
-                        className="rounded-full bg-pink-brand px-5 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+                        className="btn btn-danger-solid btn-sm"
                       >
                         {busy ? "Removing…" : "Remove it"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setRemovingId(null)}
-                        className="rounded-full border-2 border-ink/15 px-5 py-2 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+                        className="btn btn-secondary btn-sm"
                       >
                         Keep it
                       </button>
@@ -610,7 +610,7 @@ function OptionsBlock({
                 setEditingId(null);
                 setAdding(true);
               }}
-              className="mt-2 rounded-full border-2 border-ink/15 px-5 py-2 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+              className="btn btn-secondary btn-sm mt-2"
             >
               {product.options.length === 0
                 ? "Sell it at several prices"
@@ -621,7 +621,7 @@ function OptionsBlock({
       {error && !adding && !editingId ? (
         <p
           role="alert"
-          className="mt-2 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-ink"
+          className="mt-2 rounded-2xl bg-danger-soft px-4 py-3 text-sm font-semibold text-ink"
         >
           {error}
         </p>
@@ -686,14 +686,14 @@ function FileBlock({
         <div>
           <p className="text-sm font-bold text-ink">Sending the file…</p>
           <div
-            className="mt-2 h-2 w-full overflow-hidden rounded-full bg-cream"
+            className="mt-2 h-2 w-full overflow-hidden rounded-full bg-sand"
             role="progressbar"
             aria-valuenow={percent}
             aria-valuemin={0}
             aria-valuemax={100}
           >
             <div
-              className="h-full rounded-full bg-gradient-to-r from-violet-brand to-pink-brand transition-all"
+              className="h-full rounded-full bg-gradient-to-r from-violet-brand to-sky-brand transition-all"
               style={{ width: `${percent}%` }}
             />
           </div>
@@ -724,7 +724,7 @@ function FileBlock({
             <button
               type="button"
               onClick={onDetach}
-              className="text-ink-soft underline underline-offset-4 transition hover:text-pink-brand"
+              className="text-ink-soft underline underline-offset-4 transition hover:text-danger"
             >
               Take it off
             </button>
@@ -762,7 +762,7 @@ function FileBlock({
             <button
               type="button"
               onClick={onUnlink}
-              className="text-ink-soft underline underline-offset-4 transition hover:text-pink-brand"
+              className="text-ink-soft underline underline-offset-4 transition hover:text-danger"
             >
               Take it off
             </button>
@@ -780,14 +780,14 @@ function FileBlock({
             <button
               type="button"
               onClick={() => input.current?.click()}
-              className="rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+              className="btn btn-secondary btn-sm"
             >
               Choose the file
             </button>
             <button
               type="button"
               onClick={() => setTyping(true)}
-              className="rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+              className="btn btn-secondary btn-sm"
             >
               Use a link instead
             </button>
@@ -806,7 +806,7 @@ function FileBlock({
         >
           <label
             htmlFor={`link-${target.id}`}
-            className="block text-sm font-bold text-ink"
+            className="field-label"
           >
             Where the buyer should be sent
           </label>
@@ -817,7 +817,7 @@ function FileBlock({
             autoFocus
             onChange={(event) => setUrl(event.target.value)}
             placeholder="https://"
-            className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-2.5 text-sm outline-none focus:border-violet-brand"
+            className="field mt-1"
           />
           <p className="mt-1 text-sm text-ink-soft">
             A Google Drive folder, a private video page, a Notion page — anything
@@ -826,14 +826,14 @@ function FileBlock({
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="submit"
-              className="rounded-full bg-ink px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5"
+              className="btn btn-primary btn-sm"
             >
               Save the link
             </button>
             <button
               type="button"
               onClick={() => setTyping(false)}
-              className="rounded-full border-2 border-ink/15 px-5 py-2.5 text-sm font-bold text-ink transition hover:border-ink/30"
+              className="btn btn-secondary btn-sm"
             >
               Cancel
             </button>
@@ -843,7 +843,7 @@ function FileBlock({
 
       {error ? (
         <p
-          className="mt-2 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          className="notice notice-error mt-2"
           role="alert"
         >
           {error}
@@ -1019,9 +1019,9 @@ export function ProductEditor({
   }
 
   return (
-    <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+    <div className="card mt-8 p-6 sm:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <p className="font-display text-xl font-black text-ink">
+        <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
           What you are selling
         </p>
         <p className="text-sm text-ink-soft">
@@ -1040,7 +1040,7 @@ export function ProductEditor({
         {products.map((product, index) => (
           <li
             key={product.id}
-            className="rounded-2xl border-2 border-ink/5 bg-cream p-4"
+            className="rounded-2xl border border-line bg-paper p-4"
           >
             {editingId === product.id ? (
               <ProductForm
@@ -1071,7 +1071,7 @@ export function ProductEditor({
               <>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-bold text-ink">{product.title}</p>
-                  <p className="font-mono font-bold text-violet-deep">
+                  <p className="font-semibold tabular-nums text-ink">
                     {isFree(product)
                       ? "Free"
                       : product.recurring
@@ -1128,7 +1128,7 @@ export function ProductEditor({
                         setRemovingId(product.id);
                         setError(null);
                       }}
-                      className="text-ink-soft underline underline-offset-4 transition hover:text-pink-brand"
+                      className="text-ink-soft underline underline-offset-4 transition hover:text-danger"
                     >
                       Remove
                     </button>
@@ -1189,14 +1189,14 @@ export function ProductEditor({
                             setRemovingId(null),
                           )
                         }
-                        className="rounded-full bg-pink-brand px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+                        className="btn btn-danger-solid btn-sm"
                       >
                         {busy ? "Removing…" : "Yes, remove it"}
                       </button>
                       <button
                         type="button"
                         onClick={() => setRemovingId(null)}
-                        className="rounded-full px-4 py-2.5 text-sm font-bold text-ink-soft transition hover:text-violet-deep"
+                        className="btn btn-ghost btn-sm"
                       >
                         Keep it
                       </button>
@@ -1243,7 +1243,7 @@ export function ProductEditor({
           type="button"
           disabled={full}
           onClick={startAdding}
-          className="mt-5 rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50"
+          className="btn btn-primary mt-5"
         >
           Add something to sell
         </button>
@@ -1257,7 +1257,7 @@ export function ProductEditor({
 
       {error && !adding && editingId === null && removingId === null ? (
         <p
-          className="mt-3 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          className="notice notice-error mt-3"
           role="alert"
         >
           {error}
@@ -1271,7 +1271,7 @@ export function ProductEditor({
         hard-coded to "you can be paid" is worse, because somebody sets a
         price on it.
       */}
-      <p className="mt-5 rounded-2xl bg-cream px-4 py-3 text-sm text-ink-soft">
+      <p className="mt-5 rounded-2xl bg-sand px-4 py-3 text-sm text-ink-soft">
         {!selling ? (
           <>
             <strong className="text-ink">Nobody can pay you yet.</strong> What

@@ -2,165 +2,164 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Icon, type IconName } from "@/components/icons";
+import { Logo } from "@/components/logo";
 
 type MenuItem = {
   label: string;
   description: string;
   href: string;
-  emoji: string;
-  tint: string;
+  icon: IconName;
 };
 
 type Menu = {
   id: string;
   label: string;
   blurb: string;
+  feature: { title: string; body: string; href: string; cta: string };
   items: MenuItem[];
 };
 
 export const MENUS: Menu[] = [
   {
-    id: "platform",
-    label: "Platform",
-    blurb: "Everything a link-in-bio store needs, one page at a time.",
+    id: "product",
+    label: "Product",
+    blurb: "Everything a link-in-bio store needs, and nothing it does not.",
+    feature: {
+      title: "The live demo store",
+      body: "Pick a plan, pay with a Stripe test card, get the file. The same path your buyer takes.",
+      href: "/demo",
+      cta: "Open the demo",
+    },
     items: [
       {
         label: "Store page",
-        description: "Your links, your products, your name. One address.",
+        description: "Your name, your links, your products. One address.",
         href: "/platform/store-page",
-        emoji: "🏪",
-        tint: "bg-violet-brand/10 text-violet-deep",
+        icon: "store",
       },
       {
         label: "Price options",
-        description: "One product, several prices. Live in the demo store.",
+        description: "One product, up to three prices. The buyer picks.",
         href: "/platform/price-options",
-        emoji: "🏷️",
-        tint: "bg-pink-brand/10 text-pink-brand",
+        icon: "tag",
       },
       {
         label: "Instant delivery",
         description: "The file is released the second Stripe confirms.",
         href: "/platform/instant-delivery",
-        emoji: "⚡",
-        tint: "bg-amber-brand/15 text-amber-brand",
+        icon: "bolt",
       },
       {
         label: "Your own Stripe",
         description: "The money lands in your account, not in ours.",
         href: "/platform/your-stripe",
-        emoji: "🏦",
-        tint: "bg-mint-brand/15 text-mint-deep",
+        icon: "bank",
       },
     ],
   },
   {
     id: "creators",
-    label: "For creators",
-    blurb: "Built for people who sell what they know.",
+    label: "Creators",
+    blurb: "For people who sell what they know.",
+    feature: {
+      title: "Tell us what you sell",
+      body: "Eight questions, two minutes. We read every answer and build from them.",
+      href: "/creators",
+      cta: "Answer the questions",
+    },
     items: [
       {
         label: "Coaches and teachers",
         description: "Worksheets, programmes, paid calls.",
         href: "/for/coaches",
-        emoji: "🎓",
-        tint: "bg-sky-brand/15 text-sky-brand",
+        icon: "cap",
       },
       {
         label: "Cooks and nutritionists",
         description: "Meal plans, grocery lists, recipe packs.",
         href: "/for/cooks",
-        emoji: "🥗",
-        tint: "bg-mint-brand/15 text-mint-deep",
+        icon: "utensils",
       },
       {
         label: "Fitness creators",
         description: "Programmes, challenges, form checks.",
         href: "/for/fitness",
-        emoji: "🏋️",
-        tint: "bg-pink-brand/10 text-pink-brand",
+        icon: "dumbbell",
       },
       {
         label: "Designers and photographers",
         description: "Presets, templates, brush packs.",
         href: "/for/designers",
-        emoji: "🎨",
-        tint: "bg-violet-brand/10 text-violet-deep",
+        icon: "palette",
       },
     ],
   },
   {
-    id: "proof",
-    label: "Proof",
-    blurb: "See it working before you believe a word of it.",
+    id: "why",
+    label: "Why Nimbus",
+    blurb: "See it working, and see the numbers, before you believe a word.",
+    feature: {
+      title: "Compared with Stan",
+      body: "Side by side, row by row, with the date each row was checked.",
+      href: "/proof/compare",
+      cta: "See the comparison",
+    },
     items: [
       {
-        label: "Live demo store",
-        description: "Buy with a test card and get the file.",
-        href: "/demo",
-        emoji: "🧪",
-        tint: "bg-amber-brand/15 text-amber-brand",
-      },
-      {
-        label: "Compared with Stan",
-        description: "Side by side, with the date we checked.",
-        href: "/proof/compare",
-        emoji: "📊",
-        tint: "bg-violet-brand/10 text-violet-deep",
+        label: "Feature by feature",
+        description: "Everything Stan has, and where we stand on each.",
+        href: "/proof/everything",
+        icon: "list",
       },
       {
         label: "Compared with Gumroad",
-        description: "What 10% of every sale costs you over a year.",
+        description: "What 10% of every sale costs over a year.",
         href: "/proof/gumroad",
-        emoji: "🧮",
-        tint: "bg-mint-brand/15 text-mint-deep",
+        icon: "calculator",
       },
       {
         label: "Compared with Beacons",
         description: "What their 9% costs, and when they win.",
         href: "/proof/beacons",
-        emoji: "⚖️",
-        tint: "bg-sky-brand/15 text-sky-brand",
+        icon: "scale",
       },
       {
         label: "Speed test",
         description: "Why a slow store costs you sales.",
         href: "/proof/speed",
-        emoji: "🚀",
-        tint: "bg-sky-brand/15 text-sky-brand",
+        icon: "gauge",
       },
       {
         label: "What we never do",
         description: "Our answer to what creators complain about.",
         href: "/proof/promises",
-        emoji: "🤝",
-        tint: "bg-mint-brand/15 text-mint-deep",
+        icon: "handshake",
       },
       {
-        label: "Feature by feature",
-        description: "Everything Stan has, and where we stand on each.",
-        href: "/proof/everything",
-        emoji: "🧾",
-        tint: "bg-violet-brand/10 text-violet-deep",
-      },
-      {
-        label: "Questions",
-        description: "Straight answers, including the awkward ones.",
-        href: "/proof/questions",
-        emoji: "💬",
-        tint: "bg-pink-brand/10 text-pink-brand",
+        label: "Our mission",
+        description: "Who builds this, and what is still missing.",
+        href: "/mission",
+        icon: "target",
       },
     ],
   },
 ];
 
+const PLAIN_LINKS = [
+  { href: "/#pricing", label: "Pricing" },
+  { href: "/blog", label: "Blog" },
+];
+
 export function SiteNav() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [openSection, setOpenSection] = useState<string | null>("platform");
   const [scrolled, setScrolled] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openedByClick = useRef(false);
 
   const closeAll = useCallback(() => {
     setOpenMenu(null);
@@ -169,12 +168,15 @@ export function SiteNav() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeAll();
+      if (e.key === "Escape") {
+        if (drawerOpen) toggleRef.current?.focus();
+        closeAll();
+      }
     };
     const onClick = (e: MouseEvent) => {
       if (!headerRef.current?.contains(e.target as Node)) setOpenMenu(null);
     };
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onScroll = () => setScrolled(window.scrollY > 8);
     window.addEventListener("keydown", onKey);
     window.addEventListener("click", onClick);
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -184,16 +186,15 @@ export function SiteNav() {
       window.removeEventListener("click", onClick);
       window.removeEventListener("scroll", onScroll);
     };
-  }, [closeAll]);
+  }, [closeAll, drawerOpen]);
 
   useEffect(() => {
     document.body.style.overflow = drawerOpen ? "hidden" : "";
+    if (drawerOpen) drawerRef.current?.querySelector<HTMLElement>("a,button")?.focus();
     return () => {
       document.body.style.overflow = "";
     };
   }, [drawerOpen]);
-
-  const openedByClick = useRef(false);
 
   const hoverOpen = (id: string) => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -215,9 +216,14 @@ export function SiteNav() {
       return id;
     });
   };
+
   const hoverClose = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setOpenMenu(null), 160);
+    closeTimer.current = setTimeout(() => setOpenMenu(null), 180);
+  };
+
+  const keepOpen = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
   };
 
   return (
@@ -225,59 +231,31 @@ export function SiteNav() {
       {/* A keyboard user can jump the whole menu in one key press. */}
       <a
         href="#content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-[60] focus:rounded-full focus:bg-white focus:px-5 focus:py-2.5 focus:font-bold focus:text-violet-deep focus:shadow-lg focus:outline-3 focus:outline-offset-2 focus:outline-violet-brand"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-[60] focus:rounded-[10px] focus:bg-white focus:px-4 focus:py-2.5 focus:font-semibold focus:text-violet-deep focus:shadow-lg"
       >
         Skip to the page content
       </a>
-      <div className="nb-mesh relative overflow-hidden text-white">
-        <p className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-4 py-2 text-center text-[13px] font-medium">
-          <span aria-hidden="true">✨</span>
-          <span>
-            Built in the open.{" "}
-            <Link
-              href="/demo"
-              className="underline decoration-white/50 underline-offset-2 hover:decoration-white"
-            >
-              Try the live demo store
-            </Link>{" "}
-            — real Stripe checkout, test card, instant file.
-          </span>
-        </p>
-      </div>
 
       <div
         ref={headerRef}
-        className={`relative border-b transition-colors duration-300 ${
-          scrolled
-            ? "border-ink/10 bg-white/90 backdrop-blur-xl"
-            : "border-transparent bg-white/70 backdrop-blur-md"
-        }`}
         onMouseLeave={hoverClose}
+        className={`relative border-b transition-[background-color,border-color,box-shadow] duration-300 ${
+          scrolled || drawerOpen
+            ? "border-line bg-white/92 shadow-[0_1px_0_rgba(21,17,46,0.02),0_8px_24px_-18px_rgba(21,17,46,0.25)] backdrop-blur-xl"
+            : "border-transparent bg-paper/80 backdrop-blur-md"
+        }`}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
+        <div className="container-page flex h-16 items-center justify-between gap-4">
           <Link
             href="/"
-            className="flex items-center gap-2 rounded-2xl px-1 py-1 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
             onClick={closeAll}
+            className="rounded-[10px] py-1 pr-1"
+            aria-label="Nimbus Labs, home"
           >
-            <span
-              aria-hidden="true"
-              className="grid h-9 w-9 place-items-center rounded-2xl bg-gradient-to-br from-violet-brand via-pink-brand to-amber-brand text-lg shadow-lg shadow-violet-brand/30"
-            >
-              <span className="nb-float block">☁️</span>
-            </span>
-            <span className="font-display text-xl font-extrabold text-ink">
-              Nimbus
-            </span>
+            <Logo />
           </Link>
 
-          <nav
-            aria-label="Main"
-            className="hidden items-center gap-1 lg:flex"
-            onMouseEnter={() => {
-              if (closeTimer.current) clearTimeout(closeTimer.current);
-            }}
-          >
+          <nav aria-label="Main" className="hidden items-center gap-0.5 lg:flex" onMouseEnter={keepOpen}>
             {MENUS.map((menu) => (
               <button
                 key={menu.id}
@@ -286,118 +264,93 @@ export function SiteNav() {
                 aria-controls={`menu-${menu.id}`}
                 onMouseEnter={() => hoverOpen(menu.id)}
                 onClick={() => clickMenu(menu.id)}
-                className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand ${
-                  openMenu === menu.id
-                    ? "bg-lilac text-violet-deep"
-                    : "text-ink-soft hover:bg-lilac hover:text-violet-deep"
+                className={`flex h-10 items-center gap-1 rounded-[10px] px-3.5 text-[0.9375rem] font-medium transition-colors ${
+                  openMenu === menu.id ? "bg-sand text-ink" : "text-ink-soft hover:bg-sand hover:text-ink"
                 }`}
               >
                 {menu.label}
-                <span
-                  aria-hidden="true"
-                  className={`text-[10px] transition-transform ${
-                    openMenu === menu.id ? "rotate-180" : ""
-                  }`}
-                >
-                  ▼
-                </span>
+                <Icon
+                  name="chevron-down"
+                  size={16}
+                  className={`transition-transform duration-200 ${openMenu === menu.id ? "rotate-180" : ""}`}
+                />
               </button>
             ))}
-            <a
-              href="#pricing"
-              className="rounded-full px-4 py-2 text-sm font-semibold text-ink-soft transition hover:bg-lilac hover:text-violet-deep focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
-            >
-              Pricing
-            </a>
-            <Link
-              href="/blog"
-              className="rounded-full px-4 py-2 text-sm font-semibold text-ink-soft transition hover:bg-lilac hover:text-violet-deep focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
-            >
-              Blog
-            </Link>
-            <Link
-              href="/mission"
-              className="rounded-full px-4 py-2 text-sm font-semibold text-ink-soft transition hover:bg-lilac hover:text-violet-deep focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
-            >
-              Mission
-            </Link>
+            {PLAIN_LINKS.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                onMouseEnter={() => setOpenMenu(null)}
+                className="flex h-10 items-center rounded-[10px] px-3.5 text-[0.9375rem] font-medium text-ink-soft transition-colors hover:bg-sand hover:text-ink"
+              >
+                {l.label}
+              </Link>
+            ))}
           </nav>
 
           <div className="flex items-center gap-2">
             <Link
-              href="/demo"
-              className="hidden rounded-full border-2 border-ink/10 px-4 py-2 text-sm font-semibold text-ink transition hover:border-violet-brand hover:text-violet-deep sm:inline-block focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
-            >
-              Live demo
-            </Link>
-            <Link
               href="/signin"
-              className="hidden rounded-full px-3 py-2 text-sm font-semibold text-ink-soft transition hover:text-violet-deep lg:inline-block focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+              className="hidden h-10 items-center rounded-[10px] px-3.5 text-[0.9375rem] font-medium text-ink-soft transition-colors hover:bg-sand hover:text-ink sm:flex"
             >
               Sign in
             </Link>
-            <Link
-              href="/signin"
-              className="rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-4 py-2.5 text-[13px] font-bold text-white shadow-lg shadow-violet-brand/30 transition hover:shadow-xl hover:shadow-pink-brand/30 sm:px-5 sm:text-sm focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
-            >
-              <span className="sm:hidden">Start store</span>
-              <span className="hidden sm:inline">Start your store</span>
+            <Link href="/signin" className="btn btn-primary btn-sm">
+              <span className="hidden min-[400px]:inline">Start your store</span>
+              <span className="min-[400px]:hidden">Get started</span>
             </Link>
             <button
+              ref={toggleRef}
               type="button"
               onClick={() => setDrawerOpen((v) => !v)}
               aria-expanded={drawerOpen}
               aria-controls="mobile-drawer"
-              className="grid h-10 w-10 place-items-center rounded-2xl border-2 border-ink/10 text-ink lg:hidden focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+              className="grid h-11 w-11 place-items-center rounded-[10px] text-ink transition-colors hover:bg-sand lg:hidden"
             >
-              <span className="sr-only">Menu</span>
-              <span aria-hidden="true" className="text-lg">
-                {drawerOpen ? "✕" : "☰"}
-              </span>
+              <span className="sr-only">{drawerOpen ? "Close the menu" : "Open the menu"}</span>
+              <Icon name={drawerOpen ? "close" : "menu"} size={22} />
             </button>
           </div>
         </div>
 
-        {/* Desktop mega menu: anchored to the header box, so it can never
-            fall outside the screen, however narrow the window is. */}
+        {/* Desktop panel: sits under the header, as wide as the content. */}
         {MENUS.filter((menu) => openMenu === menu.id).map((menu) => (
           <div
             key={menu.id}
             id={`menu-${menu.id}`}
-            onMouseEnter={() => {
-              if (closeTimer.current) clearTimeout(closeTimer.current);
-            }}
-            className="absolute inset-x-0 top-full hidden px-4 lg:block"
+            onMouseEnter={keepOpen}
+            className="absolute inset-x-0 top-full hidden lg:block"
           >
-            <div className="nb-pop mx-auto max-w-6xl overflow-hidden rounded-3xl border border-ink/10 bg-white shadow-2xl shadow-ink/10">
-              <div className="grid gap-6 p-6 md:grid-cols-[1fr_2fr]">
-                <div className="rounded-2xl bg-lilac p-5">
-                  <p className="font-display text-lg font-extrabold text-ink">
-                    {menu.label}
-                  </p>
-                  <p className="mt-2 text-sm text-ink-soft">{menu.blurb}</p>
+            <div className="container-page">
+              <div className="nb-pop mx-auto mt-2 grid max-w-4xl grid-cols-[17rem_1fr] overflow-hidden rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-lg)]">
+                <div className="surface-night on-dark flex flex-col justify-between p-6">
+                  <div>
+                    <p className="eyebrow">{menu.label}</p>
+                    <p className="mt-3 text-[0.9375rem] leading-relaxed text-white/75">{menu.blurb}</p>
+                  </div>
+                  <Link href={menu.feature.href} onClick={closeAll} className="group mt-6 block rounded-[var(--r-md)] border border-white/12 bg-white/[0.06] p-4 transition-colors hover:bg-white/[0.1]">
+                    <span className="block font-semibold text-white">{menu.feature.title}</span>
+                    <span className="mt-1 block text-sm leading-relaxed text-white/70">{menu.feature.body}</span>
+                    <span className="link-arrow on-dark mt-3 text-sm">
+                      {menu.feature.cta}
+                      <Icon name="arrow-right" size={16} className="arrow" />
+                    </span>
+                  </Link>
                 </div>
-                <ul className="grid gap-2 sm:grid-cols-2">
+                <ul className="grid content-start gap-1 p-3 sm:grid-cols-2">
                   {menu.items.map((item) => (
-                    <li key={item.label}>
+                    <li key={item.href}>
                       <Link
                         href={item.href}
                         onClick={closeAll}
-                        className="flex h-full gap-3 rounded-2xl p-3 transition hover:bg-lilac focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+                        className="flex h-full gap-3 rounded-[var(--r-md)] p-3 transition-colors hover:bg-paper"
                       >
-                        <span
-                          aria-hidden="true"
-                          className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg ${item.tint}`}
-                        >
-                          {item.emoji}
+                        <span className="icon-tile icon-tile-sm">
+                          <Icon name={item.icon} size={18} />
                         </span>
                         <span>
-                          <span className="block font-semibold text-ink">
-                            {item.label}
-                          </span>
-                          <span className="block text-sm text-ink-soft">
-                            {item.description}
-                          </span>
+                          <span className="block font-semibold text-ink">{item.label}</span>
+                          <span className="mt-0.5 block text-sm leading-snug text-ink-mute">{item.description}</span>
                         </span>
                       </Link>
                     </li>
@@ -409,105 +362,54 @@ export function SiteNav() {
         ))}
       </div>
 
-      {/* Mobile drawer */}
+      {/* Mobile menu: its own layout, not the desktop one squeezed. */}
       <div
         id="mobile-drawer"
-        className={`fixed inset-x-0 bottom-0 top-[104px] z-50 overflow-y-auto bg-white px-4 pb-10 pt-4 lg:hidden ${
-          drawerOpen ? "" : "hidden"
-        }`}
+        ref={drawerRef}
+        className={`fixed inset-x-0 bottom-0 top-16 z-50 flex flex-col bg-white lg:hidden ${drawerOpen ? "" : "hidden"}`}
       >
-        <ul className="space-y-3">
+        <nav aria-label="Mobile" className="flex-1 overflow-y-auto overscroll-contain px-4 pb-6 pt-2">
           {MENUS.map((menu) => (
-            <li
-              key={menu.id}
-              className="overflow-hidden rounded-3xl border-2 border-ink/10"
-            >
-              <button
-                type="button"
-                onClick={() =>
-                  setOpenSection((cur) => (cur === menu.id ? null : menu.id))
-                }
-                aria-expanded={openSection === menu.id}
-                className="flex w-full items-center justify-between gap-3 bg-lilac px-5 py-4 text-left font-display text-lg font-extrabold text-ink"
-              >
+            <section key={menu.id} className="border-b border-line py-4">
+              <p className="px-2 text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-ink-mute">
                 {menu.label}
-                <span aria-hidden="true">
-                  {openSection === menu.id ? "−" : "+"}
-                </span>
-              </button>
-              {openSection === menu.id && (
-                <ul className="divide-y divide-ink/5 p-2">
-                  {menu.items.map((item) => (
-                    <li key={item.label}>
-                      <Link
-                        href={item.href}
-                        onClick={closeAll}
-                        className="flex gap-3 rounded-2xl p-3"
-                      >
-                        <span
-                          aria-hidden="true"
-                          className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg ${item.tint}`}
-                        >
-                          {item.emoji}
-                        </span>
-                        <span>
-                          <span className="block font-semibold text-ink">
-                            {item.label}
-                          </span>
-                          <span className="block text-sm text-ink-soft">
-                            {item.description}
-                          </span>
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
+              </p>
+              <ul className="mt-2">
+                {[{ label: menu.feature.title, description: menu.feature.body, href: menu.feature.href, icon: "sparkle" as IconName }, ...menu.items].map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={closeAll}
+                      className="flex min-h-[52px] items-center gap-3 rounded-[var(--r-md)] px-2 py-2 active:bg-sand"
+                    >
+                      <span className="icon-tile icon-tile-sm">
+                        <Icon name={item.icon} size={18} />
+                      </span>
+                      <span className="font-medium text-ink">{item.label}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-          <li>
-            <a
-              href="#pricing"
-              onClick={closeAll}
-              className="block rounded-3xl border-2 border-ink/10 px-5 py-4 font-display text-lg font-extrabold text-ink"
-            >
-              Pricing
-            </a>
-          </li>
-          {[
-            { href: "/blog", label: "Blog" },
-            { href: "/mission", label: "Our mission" },
-            { href: "/help", label: "Help centre" },
-          ].map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                onClick={closeAll}
-                className="block rounded-3xl border-2 border-ink/10 px-5 py-4 font-display text-lg font-extrabold text-ink"
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
-          <li>
-            <Link
-              href="/signin"
-              onClick={closeAll}
-              className="block rounded-3xl border-2 border-ink/10 px-5 py-4 font-display text-lg font-extrabold text-ink"
-            >
-              Sign in
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/signin"
-              onClick={closeAll}
-              className="block rounded-3xl bg-gradient-to-r from-violet-brand to-pink-brand px-5 py-4 text-center font-bold text-white"
-            >
-              Start your store
-            </Link>
-          </li>
-        </ul>
+          <ul className="py-3">
+            {[...PLAIN_LINKS, { href: "/help", label: "Help centre" }].map((l) => (
+              <li key={l.href}>
+                <Link href={l.href} onClick={closeAll} className="flex min-h-[52px] items-center rounded-[var(--r-md)] px-2 font-medium text-ink active:bg-sand">
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="grid gap-2 border-t border-line bg-paper p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <Link href="/signin" onClick={closeAll} className="btn btn-primary btn-lg btn-block">
+            Start your store
+          </Link>
+          <Link href="/signin" onClick={closeAll} className="btn btn-ghost btn-block">
+            Sign in
+          </Link>
+        </div>
       </div>
     </div>
   );

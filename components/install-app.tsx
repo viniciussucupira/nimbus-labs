@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Icon } from "@/components/icons";
 
 type InstallEvent = Event & {
   prompt: () => Promise<void>;
@@ -48,44 +49,34 @@ export function InstallApp() {
   };
 
   return (
-    <div className="reveal rounded-3xl border-2 border-white/20 bg-white/10 p-6 backdrop-blur">
-      <p className="font-display text-xl font-extrabold">
-        Install it like an app — on Android and on iPhone
-      </p>
-      <p className="mt-2 text-white/80">
-        Your store works as an installable app on both, with its own icon on the
-        home screen and no app store in the way. Stan&apos;s creator app is on
-        the iPhone only: their own help centre says it is{" "}
-        <span className="font-semibold text-white">
-          &ldquo;currently only available on iPhone and iPad&rdquo;
+    <div className="reveal mt-4 flex flex-col gap-5 rounded-[var(--r-lg)] border border-line bg-paper p-6 sm:flex-row sm:items-center sm:justify-between sm:p-7">
+      <div className="flex gap-4">
+        <span className="icon-tile">
+          <Icon name="phone" size={22} />
         </span>
-        .
-      </p>
-
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        {installed ? (
-          <p className="rounded-full bg-mint-brand px-5 py-2.5 font-bold text-ink">
-            Installed on this device ✓
+        <div className="max-w-2xl">
+          <p className="font-semibold text-ink">Install it like an app, on Android and on iPhone</p>
+          <p className="mt-1.5 text-[0.9375rem] text-ink-soft">
+            Your store installs with its own icon on the home screen, with no app store in the way. Stan&apos;s creator
+            app is on Apple devices only: their help centre says it is &ldquo;currently only available on iPhone and
+            iPad&rdquo;. Native apps are on our list, and this line will say so the day they exist.
           </p>
+        </div>
+      </div>
+      <div className="shrink-0">
+        {installed ? (
+          <p className="tag tag-live h-9 px-3 text-sm">Installed on this device</p>
         ) : deferred ? (
-          <button
-            type="button"
-            onClick={install}
-            className="rounded-full bg-white px-6 py-3 font-bold text-violet-deep shadow-lg transition hover:-translate-y-0.5 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
+          <button type="button" onClick={install} className="btn btn-primary">
             Install the app
           </button>
         ) : (
-          <p className="rounded-full bg-white/15 px-5 py-2.5 text-sm font-semibold">
+          <p className="max-w-[16rem] text-sm text-ink-mute">
             {isIos
               ? "On iPhone: tap Share, then “Add to Home Screen”."
-              : "On Android: open the browser menu and tap “Install app” or “Add to home screen”."}
+              : "On Android: open the browser menu and tap “Install app”."}
           </p>
         )}
-        <p className="text-sm text-white/60">
-          Native apps in the App Store and Google Play are on the roadmap, and
-          this page will say so the day they exist — not before.
-        </p>
       </div>
     </div>
   );

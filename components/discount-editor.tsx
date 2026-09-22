@@ -107,8 +107,8 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
   const past = (codes ?? []).filter((entry) => !entry.active);
 
   return (
-    <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
-      <p className="font-display text-xl font-black text-ink">Discount codes</p>
+    <div className="card mt-8 p-6 sm:p-8">
+      <p className="text-lg font-semibold tracking-[-0.02em] text-ink">Discount codes</p>
 
       {!selling ? (
         <p className="mt-2 text-ink-soft">
@@ -133,10 +133,10 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
               {live.map((entry) => (
                 <li
                   key={entry.id}
-                  className="rounded-2xl border-2 border-ink/5 bg-cream p-4"
+                  className="rounded-2xl border border-line bg-paper p-4"
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-mono text-lg font-black text-ink">
+                    <p className="font-mono text-lg font-semibold text-ink">
                       {entry.code}
                     </p>
                     <p className="font-bold text-violet-deep">
@@ -159,7 +159,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                     type="button"
                     disabled={busy}
                     onClick={() => run({ action: "stop", id: entry.id }, () => {})}
-                    className="mt-2 text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-pink-brand disabled:no-underline disabled:opacity-40"
+                    className="mt-2 text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-danger disabled:no-underline disabled:opacity-40"
                   >
                     Switch it off
                   </button>
@@ -208,7 +208,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
               <div>
                 <label
                   htmlFor="discount-code"
-                  className="block text-sm font-bold text-ink"
+                  className="field-label"
                 >
                   The code
                 </label>
@@ -222,7 +222,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                     setCode(event.target.value.toUpperCase())
                   }
                   placeholder="LAUNCH20"
-                  className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-3 font-mono text-ink outline-none transition focus:border-violet-brand"
+                  className="field mt-1"
                 />
                 <p className="mt-1 text-sm text-ink-soft">
                   Letters, numbers and dashes. A buyer can type it in any case.
@@ -233,7 +233,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                 <div>
                   <label
                     htmlFor="discount-kind"
-                    className="block text-sm font-bold text-ink"
+                    className="field-label"
                   >
                     What it takes off
                   </label>
@@ -243,7 +243,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                     onChange={(event) =>
                       setKind(event.target.value === "amount" ? "amount" : "percent")
                     }
-                    className="mt-1 rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+                    className="field mt-1"
                   >
                     <option value="percent">A percentage</option>
                     <option value="amount">An amount</option>
@@ -252,7 +252,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                 <div className="w-28">
                   <label
                     htmlFor="discount-value"
-                    className="block text-sm font-bold text-ink"
+                    className="field-label"
                   >
                     {kind === "percent" ? "Percent" : "Dollars"}
                   </label>
@@ -267,13 +267,13 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                         ? setPercent(event.target.value)
                         : setAmount(event.target.value)
                     }
-                    className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+                    className="field mt-1"
                   />
                 </div>
                 <div className="w-36">
                   <label
                     htmlFor="discount-uses"
-                    className="block text-sm font-bold text-ink"
+                    className="field-label"
                   >
                     Uses, at most
                   </label>
@@ -284,7 +284,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                     value={uses}
                     onChange={(event) => setUses(event.target.value)}
                     placeholder="No limit"
-                    className="mt-1 w-full rounded-2xl border-2 border-ink/10 px-4 py-3 text-ink outline-none transition focus:border-violet-brand"
+                    className="field mt-1"
                   />
                 </div>
               </div>
@@ -297,7 +297,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
               {error ? (
                 <p
                   role="alert"
-                  className="rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-ink"
+                  className="rounded-2xl bg-danger-soft px-4 py-3 text-sm font-semibold text-ink"
                 >
                   {error}
                 </p>
@@ -307,7 +307,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+                  className="btn btn-primary"
                 >
                   {busy ? "Making it…" : "Make the code"}
                 </button>
@@ -317,7 +317,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                     setAdding(false);
                     setError(null);
                   }}
-                  className="rounded-full border-2 border-ink/15 px-6 py-3 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
@@ -331,14 +331,14 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                   setAdding(true);
                   setError(null);
                 }}
-                className="mt-5 rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+                className="btn btn-primary mt-5"
               >
                 Make a code
               </button>
               {error ? (
                 <p
                   role="alert"
-                  className="mt-3 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-ink"
+                  className="mt-3 rounded-2xl bg-danger-soft px-4 py-3 text-sm font-semibold text-ink"
                 >
                   {error}
                 </p>

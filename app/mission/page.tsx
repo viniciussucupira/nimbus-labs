@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon, iconFor } from "@/components/icons";
 import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
@@ -95,6 +96,9 @@ const ORDERS_LINE =
 const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month, free for the first ${TRIAL_DAYS} days, cancelled in one click from your studio`;
 
 const NOT_BUILT = [
+  "Members cancelling on their own, without having to write to you",
+  "Visit counts, and pixels for Meta, TikTok and Google",
+  "Order bumps and upsells at checkout",
   "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
   "Communities and group chat",
@@ -119,199 +123,147 @@ export default function MissionPage() {
     ...NOT_BUILT,
   ];
   return (
-    <div className="flex min-h-screen flex-col bg-white text-ink">
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
       <RevealOnScroll />
       <SiteNav />
 
       <main id="content" className="flex-1">
-        {/* ---------------- hero ---------------- */}
-        <section className="nb-mesh nb-grain relative overflow-hidden text-white">
-          <div
-            aria-hidden="true"
-            className="nb-blob absolute -left-24 top-0 h-72 w-72 bg-violet-brand/40 blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="nb-blob absolute -right-16 bottom-0 h-72 w-72 bg-amber-brand/25 blur-3xl"
-          />
-          <div className="relative mx-auto max-w-4xl px-4 py-16 text-center sm:py-24">
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold backdrop-blur">
-              <span aria-hidden="true">🎯</span> Our mission
-            </p>
-            <h1 className="font-display mt-6 text-4xl font-black leading-[1.05] sm:text-6xl">
+        <section className="surface-night nb-grid-lines on-dark overflow-hidden">
+          <div className="container-narrow py-16 sm:py-24">
+            <p className="eyebrow">Our mission</p>
+            <h1 className="t-h1 balance mt-5 text-white">
               Nobody should need a platform&apos;s permission{" "}
-              <span className="nb-gradient-text">to be paid for their work</span>
+              <span className="serif font-normal text-[#cfc4ff]">to be paid for their work</span>
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-white/85">
-              Selling something you made should cost you the card fee and
-              nothing more. That is the whole idea, and everything we build is
-              judged against it.
+            <p className="t-lead mt-6 max-w-2xl text-white/75">
+              Selling something you made should cost you the card fee and nothing more. That is the whole idea, and
+              everything we build is judged against it.
             </p>
           </div>
         </section>
 
-        {/* ---------------- why ---------------- */}
-        <section className="mx-auto max-w-3xl px-4 py-16">
-          <h2 className="font-display text-3xl font-black sm:text-4xl">
-            Why Nimbus exists
-          </h2>
-          <p className="mt-5 text-lg leading-relaxed text-ink-soft">
-            A creator with an audience and a file to sell has never had more
-            tools and never had less control. The common arrangement is this:
-            the buyer pays the platform, the platform keeps a percentage, the
-            platform holds the balance, and the platform decides when the money
-            moves and under what rules.
-          </p>
-          <p className="mt-5 text-lg leading-relaxed text-ink-soft">
-            Each of those is a small thing on one sale. Together they decide
-            whether the work you did is a business you own or an account
-            somebody else can close.
-          </p>
-          <p className="mt-5 text-lg leading-relaxed text-ink-soft">
-            Nimbus is built the other way around. The buyer&apos;s card is
-            charged on your Stripe account. The receipt carries your name. The
-            payout schedule is yours. We take 0% of your sales and make money
-            one way only — a monthly subscription, the same price whether you
-            sell three files or three thousand.
-          </p>
-
-          <div className="mt-10 rounded-3xl border-l-8 border-violet-brand bg-lilac p-7">
-            <p className="font-display text-xl font-black text-ink">
-              A note on how we write
+        <section className="container-narrow py-16 sm:py-24">
+          <h2 className="t-h2">Why Nimbus exists</h2>
+          <div className="prose-nb mt-6">
+            <p>
+              A creator with an audience and a file to sell has never had more tools and never had less control. The
+              common arrangement is this: the buyer pays the platform, the platform keeps a percentage, the platform holds
+              the balance, and the platform decides when the money moves and under what rules.
             </p>
-            <p className="mt-3 text-ink-soft">
-              We do not publish invented reviews, invented customers or
-              screenshots of money we never made. If a page shows a person, they
-              are a stock photograph and the page says so. When we compare
-              ourselves with anyone, we link to their own site so you can check
-              it. It is a slower way to sell, and it is the only one we are
-              willing to run.
+            <p>
+              Each of those is a small thing on one sale. Together they decide whether the work you did is a business you
+              own or an account somebody else can close.
             </p>
-            <p className="mt-4 text-sm font-semibold text-ink">
-              Vinicius Sucupira · Founder, Nimbus Labs
+            <p>
+              Nimbus is built the other way around. The buyer&apos;s card is charged on your Stripe account. The receipt
+              carries your name. The payout schedule is yours. We take 0% of your sales and make money one way only — a
+              monthly subscription, the same price whether you sell three files or three thousand.
             </p>
           </div>
+
+          <figure className="mt-12 rounded-[var(--r-lg)] border border-line bg-white p-7 sm:p-8">
+            <p className="font-semibold text-ink">A note on how we write</p>
+            <blockquote className="mt-3 text-ink-soft">
+              We do not publish invented reviews, invented customers or screenshots of money we never made. If a page shows
+              a person, they are a stock photograph and the page says so. When we compare ourselves with anyone, we link to
+              their own site so you can check it. It is a slower way to sell, and it is the only one we are willing to run.
+            </blockquote>
+            <figcaption className="mt-5 flex items-center gap-3 border-t border-line pt-5 text-sm">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-lilac font-semibold text-violet-deep">VS</span>
+              <span>
+                <span className="block font-semibold text-ink">Vinicius Sucupira</span>
+                <span className="text-ink-mute">Founder, Nimbus Labs</span>
+              </span>
+            </figcaption>
+          </figure>
         </section>
 
-        {/* ---------------- values ---------------- */}
-        <section className="bg-lilac/40 px-4 py-16">
-          <div className="mx-auto max-w-6xl">
-            <h2 className="font-display text-center text-3xl font-black sm:text-4xl">
-              What we hold ourselves to
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-center text-ink-soft">
-              Six rules. Every one of them is something you can check on the
-              site or in the product.
-            </p>
-
-            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {VALUES.map((value) => (
-                <div
-                  key={value.title}
-                  className={`reveal rounded-3xl ${value.tone} p-7 shadow-[0_14px_36px_rgba(20,15,61,0.07)]`}
-                >
-                  <p className="text-3xl" aria-hidden="true">
-                    {value.emoji}
-                  </p>
-                  <h3 className="font-display mt-4 text-lg font-black leading-snug text-ink">
-                    {value.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                    {value.text}
-                  </p>
-                </div>
+        <section className="surface-sand section">
+          <div className="container-page">
+            <div className="max-w-2xl">
+              <p className="eyebrow">What we hold ourselves to</p>
+              <h2 className="t-h2 mt-4">Six rules you can check</h2>
+              <p className="mt-4 text-ink-soft">Every one of them is something you can verify on the site or in the product.</p>
+            </div>
+            <ol className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {VALUES.map((value, i) => (
+                <li key={value.title} className="card reveal p-7">
+                  <div className="flex items-center justify-between">
+                    <span className="icon-tile">
+                      <Icon name={iconFor(value.emoji)} size={22} />
+                    </span>
+                    <span className="text-sm font-semibold tabular-nums text-ink-mute">{String(i + 1).padStart(2, "0")}</span>
+                  </div>
+                  <h3 className="mt-6 text-[1.0625rem] font-semibold leading-snug text-ink">{value.title}</h3>
+                  <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink-soft">{value.text}</p>
+                </li>
               ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="section">
+          <div className="container-page">
+            <div className="max-w-2xl">
+              <p className="eyebrow">Where the product is today</p>
+              <h2 className="t-h2 mt-4">Both columns, in full</h2>
+              <p className="mt-4 text-ink-soft">
+                What works today and what does not exist yet, so nobody signs up expecting the second list.
+              </p>
+            </div>
+
+            <div className="mt-12 grid gap-6 lg:grid-cols-2">
+              <div className="card reveal p-7 sm:p-8">
+                <span className="tag tag-live">Built and working</span>
+                <ul className="mt-6 space-y-3">
+                  {built.map((item) => (
+                    <li key={item} className="flex gap-3 text-[0.9375rem] text-ink-soft">
+                      <Icon name="check" size={18} strokeWidth={2.2} className="mt-0.5 shrink-0 text-mint-brand" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/demo" className="btn btn-primary mt-8">
+                  Try it in the demo store
+                </Link>
+              </div>
+
+              <div className="card-flat reveal self-start p-7 sm:p-8">
+                <span className="tag tag-next">Not built yet</span>
+                <ul className="mt-6 space-y-3">
+                  {notBuilt.map((item) => (
+                    <li key={item} className="flex gap-3 text-[0.9375rem] text-ink-soft">
+                      <Icon name="minus" size={18} className="mt-0.5 shrink-0 text-ink-mute" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-7 border-t border-line pt-5 text-sm text-ink-soft">
+                  Other platforms have these today. If you need them now, they are the better choice now, and{" "}
+                  <Link href="/proof/compare" className="link">
+                    our comparison page
+                  </Link>{" "}
+                  says so in writing.
+                </p>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* ---------------- honest status ---------------- */}
-        <section className="mx-auto max-w-6xl px-4 py-16">
-          <h2 className="font-display text-3xl font-black sm:text-4xl">
-            Where the product actually is today
-          </h2>
-          <p className="mt-4 max-w-2xl text-ink-soft">
-            Nimbus is early. Here is the whole picture, both columns, so nobody
-            signs up expecting the second one.
-          </p>
-
-          <div className="mt-10 grid gap-7 lg:grid-cols-2">
-            <div className="reveal rounded-3xl border-2 border-mint-brand/30 bg-mint-brand/8 p-8">
-              <p className="inline-flex rounded-full bg-mint-brand px-4 py-1.5 text-sm font-black text-mint-deep">
-                Built and working
-              </p>
-              <ul className="mt-6 space-y-3">
-                {built.map((item) => (
-                  <li key={item} className="flex gap-3 text-ink-soft">
-                    <span
-                      aria-hidden="true"
-                      className="font-black text-mint-deep"
-                    >
-                      ✓
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/demo"
-                className="mt-7 inline-block rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
-              >
-                Try it in the demo store
-              </Link>
-            </div>
-
-            <div className="reveal rounded-3xl border-2 border-ink/10 bg-white p-8">
-              <p className="inline-flex rounded-full bg-ink/10 px-4 py-1.5 text-sm font-black text-ink">
-                Not built yet
-              </p>
-              <ul className="mt-6 space-y-3">
-                {notBuilt.map((item) => (
-                  <li key={item} className="flex gap-3 text-ink-soft">
-                    <span aria-hidden="true" className="font-black text-ink/30">
-                      —
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-7 text-sm text-ink-soft">
-                Other platforms have these today. If you need them now, they are
-                the better choice now, and{" "}
-                <Link
-                  href="/proof/compare"
-                  className="font-bold text-violet-deep underline underline-offset-4"
-                >
-                  our comparison page
-                </Link>{" "}
-                says so in writing.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* ---------------- cta ---------------- */}
-        <section className="px-4 pb-20">
-          <div className="reveal mx-auto max-w-4xl rounded-[2rem] bg-gradient-to-br from-violet-brand via-pink-brand to-amber-brand p-10 text-center text-white shadow-xl">
-            <h2 className="font-display text-3xl font-black sm:text-4xl">
-              Help decide what gets built next
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-white/90">
-              Tell us what you sell and what breaks today. It takes two minutes,
-              there is nothing to buy, and it is what the roadmap is made of.
+        <section className="surface-signature on-dark overflow-hidden">
+          <div className="container-narrow py-20 text-center sm:py-24">
+            <h2 className="t-h2 balance text-white">Help decide what gets built next</h2>
+            <p className="mx-auto mt-5 max-w-xl text-white/80">
+              Tell us what you sell and what breaks today. It takes two minutes, there is nothing to buy, and it is what the
+              roadmap is made of.
             </p>
-            <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/signin"
-                className="rounded-full bg-white px-7 py-3.5 font-bold text-violet-deep shadow-lg transition hover:-translate-y-0.5"
-              >
-                Start your store
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
+              <Link href="/creators" className="btn btn-light btn-lg">
+                Answer eight questions
               </Link>
-              <Link
-                href="/blog"
-                className="rounded-full border-2 border-white/70 px-7 py-3.5 font-bold text-white transition hover:bg-white hover:text-violet-deep"
-              >
-                Read the journal
+              <Link href="/signin" className="link-arrow on-dark">
+                Start your store
+                <Icon name="arrow-right" size={18} className="arrow" />
               </Link>
             </div>
           </div>

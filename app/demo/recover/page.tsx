@@ -11,22 +11,14 @@ export const metadata: Metadata = {
 
 export default function DemoRecoverPage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -left-16 top-0 h-56 w-56 bg-violet-brand/25 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -right-20 bottom-0 h-64 w-64 bg-amber-brand/25 blur-3xl"
-      />
+    <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
 
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <p className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-ink-soft shadow-sm">
-          <span aria-hidden="true">📩</span> Harbor Kitchen
+        <p className="tag">
+          Harbor Kitchen
         </p>
 
-        <h1 className="font-display mt-5 text-4xl font-black leading-tight sm:text-5xl">
+        <h1 className="t-h1 mt-6">
           Lost your download?
         </h1>
         <p className="mt-4 text-lg text-ink-soft">
@@ -34,7 +26,7 @@ export default function DemoRecoverPage() {
           the link there again — no account to create, no password to invent.
         </p>
 
-        <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+        <div className="card mt-8 p-6 sm:p-8">
           <RecoverForm />
         </div>
 
@@ -51,13 +43,13 @@ export default function DemoRecoverPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/demo"
-            className="rounded-full bg-ink px-6 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5"
+            className="btn btn-primary"
           >
             Back to the store
           </Link>
           <Link
             href="/help"
-            className="rounded-full border-2 border-ink/15 px-6 py-3 text-sm font-bold text-ink transition hover:border-violet-brand hover:text-violet-deep"
+            className="btn btn-secondary"
           >
             Help centre
           </Link>

@@ -67,25 +67,17 @@ export default async function FreePage({ params, searchParams }: Params) {
   const stillFree = claimed !== null && claimed.priceCents === 0;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -left-16 top-0 h-56 w-56 bg-mint-brand/25 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -right-20 bottom-0 h-64 w-64 bg-sky-brand/20 blur-3xl"
-      />
+    <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
 
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <div className="rounded-[2rem] border-2 border-ink/5 bg-white p-7 shadow-xl shadow-ink/5 sm:p-10">
+        <div className="card p-7 sm:p-10">
           {token ? (
             claimed && stillFree ? (
               <>
-                <p className="inline-flex items-center gap-2 rounded-full bg-mint-brand px-4 py-1.5 text-sm font-black text-mint-deep">
-                  <span aria-hidden="true">✓</span> Free
+                <p className="tag tag-live">
+                  Free
                 </p>
-                <h1 className="font-display mt-5 text-3xl font-black leading-tight sm:text-4xl">
+                <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
                   {claimed.title}
                 </h1>
                 <p className="mt-4 text-lg text-ink-soft">
@@ -99,7 +91,7 @@ export default async function FreePage({ params, searchParams }: Params) {
                   <input type="hidden" name="token" value={token} />
                   <button
                     type="submit"
-                    className="rounded-full bg-ink px-7 py-4 text-base font-bold text-white transition hover:-translate-y-0.5"
+                    className="btn btn-primary btn-lg"
                   >
                     {claimed.link ? "Open it" : "Download it"}
                   </button>
@@ -117,7 +109,7 @@ export default async function FreePage({ params, searchParams }: Params) {
               </>
             ) : (
               <>
-                <h1 className="font-display text-3xl font-black leading-tight sm:text-4xl">
+                <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">
                   {claimed ? "This is no longer free" : "This link has expired"}
                 </h1>
                 <p className="mt-4 text-lg text-ink-soft">
@@ -129,10 +121,10 @@ export default async function FreePage({ params, searchParams }: Params) {
             )
           ) : status === "sent" ? (
             <>
-              <p className="inline-flex items-center gap-2 rounded-full bg-sky-brand/20 px-4 py-1.5 text-sm font-black text-ink">
-                <span aria-hidden="true">✉</span> Sent
+              <p className="tag tag-brand">
+                Sent
               </p>
-              <h1 className="font-display mt-5 text-3xl font-black leading-tight sm:text-4xl">
+              <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
                 Check your inbox
               </h1>
               <p className="mt-4 text-lg text-ink-soft">
@@ -149,7 +141,7 @@ export default async function FreePage({ params, searchParams }: Params) {
             </>
           ) : (
             <>
-              <h1 className="font-display text-3xl font-black leading-tight sm:text-4xl">
+              <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">
                 {(NOTICES[status] ?? NOTICES.error).title}
               </h1>
               <p className="mt-4 text-lg text-ink-soft">

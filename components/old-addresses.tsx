@@ -44,7 +44,7 @@ export function OldAddresses({ handles }: { handles: string[] }) {
   if (handles.length === 0) return null;
 
   return (
-    <div className="mt-5 rounded-2xl bg-cream p-4">
+    <div className="mt-5 rounded-2xl bg-sand p-4">
       <p className="text-sm font-bold text-ink">
         Your older addresses still work
       </p>
@@ -63,7 +63,7 @@ export function OldAddresses({ handles }: { handles: string[] }) {
                     setAsking(handle);
                     setError(null);
                   }}
-                  className="text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-pink-brand"
+                  className="text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-danger"
                 >
                   Let it go
                 </button>
@@ -83,14 +83,14 @@ export function OldAddresses({ handles }: { handles: string[] }) {
                     type="button"
                     disabled={busy === handle}
                     onClick={() => release(handle)}
-                    className="rounded-full bg-pink-brand px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+                    className="btn btn-danger-solid btn-sm"
                   >
                     {busy === handle ? "Letting go…" : "Yes, let it go"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setAsking(null)}
-                    className="rounded-full px-4 py-2.5 text-sm font-bold text-ink-soft transition hover:text-violet-deep"
+                    className="btn btn-ghost btn-sm"
                   >
                     Keep it
                   </button>
@@ -103,7 +103,7 @@ export function OldAddresses({ handles }: { handles: string[] }) {
 
       {error ? (
         <p
-          className="mt-3 rounded-2xl bg-pink-brand/10 px-4 py-3 text-sm font-semibold text-pink-brand"
+          className="notice notice-error mt-3"
           role="alert"
         >
           {error}

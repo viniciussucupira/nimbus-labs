@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/components/icons";
+
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import {
@@ -26,11 +28,10 @@ const FIELD_MESSAGES: Record<string, string> = {
   consentResearch: "Please tick the first box so we can store your answers.",
 };
 
-const inputClass =
-  "w-full rounded-2xl border-2 border-ink/10 bg-white px-4 py-3 text-[16px] text-ink transition placeholder:text-ink-soft/50 focus:border-violet-brand focus:outline-none focus:ring-4 focus:ring-violet-brand/15";
-const fieldClass = `${inputClass} h-12`;
-const labelClass = "mb-2 block text-sm font-bold text-ink";
-const hintClass = "font-normal text-ink-soft";
+const inputClass = "field";
+const fieldClass = inputClass;
+const labelClass = "field-label mb-2";
+const hintClass = "font-normal text-ink-mute";
 
 export function CreatorResearchForm() {
   const [status, setStatus] = useState<Status>("idle");
@@ -107,23 +108,12 @@ export function CreatorResearchForm() {
 
   if (status === "sent") {
     return (
-      <div
-        role="status"
-        className="nb-pop relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-brand via-pink-brand to-amber-brand px-7 py-10 text-white shadow-2xl"
-      >
-        <div
-          aria-hidden="true"
-          className="nb-blob absolute -right-10 -top-10 h-40 w-40 bg-white/25 blur-2xl"
-        />
-        <p aria-hidden="true" className="nb-float text-4xl">
-          🎉
-        </p>
-        <p className="font-display mt-3 text-2xl font-black">
-          Thank you. Your answers were saved.
-        </p>
-        <p className="mt-2 text-white/90">
-          I read every answer myself. {emailNote}
-        </p>
+      <div role="status" className="nb-pop py-6 text-center">
+        <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-mint-soft text-mint-deep">
+          <Icon name="check" size={28} strokeWidth={2.2} />
+        </span>
+        <p className="mt-5 text-2xl font-semibold tracking-[-0.03em] text-ink">Thank you. Your answers were saved.</p>
+        <p className="mx-auto mt-2 max-w-md text-ink-soft">I read every answer myself. {emailNote}</p>
       </div>
     );
   }
@@ -271,8 +261,8 @@ export function CreatorResearchForm() {
         />
       </div>
 
-      <div className="space-y-3 rounded-3xl bg-lilac p-5">
-        <label className="flex cursor-pointer gap-3 rounded-2xl p-2 text-[15px] leading-6 text-ink transition hover:bg-white">
+      <div className="space-y-1 rounded-[var(--r-md)] border border-line bg-paper p-3">
+        <label className="flex cursor-pointer gap-3 rounded-[10px] p-2.5 text-[15px] leading-6 text-ink transition-colors hover:bg-white">
           <input
             name="consentResearch"
             type="checkbox"
@@ -281,7 +271,7 @@ export function CreatorResearchForm() {
           />
           <span>{CONSENT_RESEARCH_TEXT}</span>
         </label>
-        <label className="flex cursor-pointer gap-3 rounded-2xl p-2 text-[15px] leading-6 text-ink transition hover:bg-white">
+        <label className="flex cursor-pointer gap-3 rounded-[10px] p-2.5 text-[15px] leading-6 text-ink transition-colors hover:bg-white">
           <input
             name="consentFollowUp"
             type="checkbox"
@@ -292,7 +282,7 @@ export function CreatorResearchForm() {
             <span className={hintClass}>(optional)</span>
           </span>
         </label>
-        <label className="flex cursor-pointer gap-3 rounded-2xl p-2 text-[15px] leading-6 text-ink transition hover:bg-white">
+        <label className="flex cursor-pointer gap-3 rounded-[10px] p-2.5 text-[15px] leading-6 text-ink transition-colors hover:bg-white">
           <input
             name="consentUpdates"
             type="checkbox"
@@ -308,7 +298,7 @@ export function CreatorResearchForm() {
       {status === "error" && (
         <p
           role="alert"
-          className="rounded-2xl border-2 border-pink-brand/40 bg-pink-brand/10 px-5 py-4 text-sm font-semibold text-pink-brand"
+          className="notice notice-error "
         >
           {message}
         </p>
@@ -318,7 +308,7 @@ export function CreatorResearchForm() {
         <button
           type="submit"
           disabled={status === "sending"}
-          className="inline-block rounded-full bg-gradient-to-r from-violet-brand to-pink-brand px-8 py-4 text-lg font-bold text-white shadow-lg shadow-violet-brand/30 transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-wait disabled:opacity-60 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-violet-brand"
+          className="btn btn-primary btn-lg"
         >
           {status === "sending" ? "Sending…" : "Send my answers"}
         </button>
@@ -326,7 +316,7 @@ export function CreatorResearchForm() {
           We never sell your answers.{" "}
           <Link
             href="/privacy"
-            className="font-semibold text-violet-deep underline underline-offset-2 hover:no-underline"
+            className="link"
           >
             Privacy Policy
           </Link>

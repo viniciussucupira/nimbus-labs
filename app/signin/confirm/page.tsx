@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Logo } from "@/components/logo";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -26,34 +28,26 @@ export default async function ConfirmPage({
   if (!/^[0-9a-f]{64}$/.test(token)) redirect("/signin?status=expired");
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-cream text-ink">
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -left-16 top-0 h-56 w-56 bg-violet-brand/25 blur-3xl"
-      />
-      <div
-        aria-hidden="true"
-        className="nb-blob absolute -right-20 bottom-0 h-64 w-64 bg-mint-brand/25 blur-3xl"
-      />
+    <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
 
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <p className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-ink-soft shadow-sm">
-          <span aria-hidden="true">☁️</span> Nimbus Labs
-        </p>
+        <Link href="/" className="inline-block w-fit rounded-[10px]" aria-label="Nimbus Labs, home">
+          <Logo />
+        </Link>
 
-        <h1 className="font-display mt-5 text-4xl font-black leading-tight sm:text-5xl">
+        <h1 className="t-h1 mt-6">
           One tap and you are in
         </h1>
         <p className="mt-4 text-lg text-ink-soft">
           Your link is good. Tap the button and the session opens.
         </p>
 
-        <div className="mt-8 rounded-[2rem] border-2 border-ink/5 bg-white p-6 shadow-xl shadow-ink/5 sm:p-8">
+        <div className="card mt-8 p-6 sm:p-8">
           <form method="post" action="/api/auth/callback">
             <input type="hidden" name="token" value={token} />
             <button
               type="submit"
-              className="w-full rounded-full bg-ink px-6 py-4 text-base font-bold text-white transition hover:-translate-y-0.5"
+              className="btn btn-primary btn-lg btn-block"
             >
               Sign me in
             </button>

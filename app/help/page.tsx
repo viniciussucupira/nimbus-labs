@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Icon, iconFor } from "@/components/icons";
 import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
@@ -285,132 +286,107 @@ const SECTIONS: Section[] = [
 
 export default function HelpPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-white text-ink">
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
       <RevealOnScroll />
       <SiteNav />
 
       <main id="content" className="flex-1">
-        {/* ---------------- hero ---------------- */}
-        <section className="nb-mesh nb-grain relative overflow-hidden text-white">
-          <div
-            aria-hidden="true"
-            className="nb-blob absolute -left-20 top-0 h-72 w-72 bg-mint-brand/30 blur-3xl"
-          />
-          <div
-            aria-hidden="true"
-            className="nb-blob absolute -right-20 bottom-0 h-72 w-72 bg-violet-brand/35 blur-3xl"
-          />
-          <div className="relative mx-auto max-w-4xl px-4 py-16 text-center sm:py-20">
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold backdrop-blur">
-              <span aria-hidden="true">💬</span> Help centre
-            </p>
-            <h1 className="font-display mt-5 text-4xl font-black leading-[1.05] sm:text-6xl">
-              How can we <span className="nb-gradient-text">help you?</span>
+        <section className="surface-night nb-grid-lines on-dark overflow-hidden">
+          <div className="container-narrow py-16 sm:py-24">
+            <p className="eyebrow">Help centre</p>
+            <h1 className="t-h1 mt-5 text-white">
+              How can we <span className="serif font-normal text-[#cfc4ff]">help?</span>
             </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg text-white/85">
-              Every answer here is about the product as it is today. Where the
-              answer is &ldquo;not yet&rdquo;, it says not yet.
+            <p className="t-lead mt-6 max-w-2xl text-white/75">
+              Every answer here is about the product as it is today. Where the answer is &ldquo;not yet&rdquo;, it says
+              not yet.
             </p>
+          </div>
+        </section>
 
-            <nav
-              aria-label="Help sections"
-              className="mt-9 flex flex-wrap justify-center gap-2"
-            >
+        <div className="container-page grid gap-10 py-14 sm:py-20 lg:grid-cols-[15rem_1fr] lg:gap-16">
+          <nav aria-label="Help sections" className="min-w-0 lg:sticky lg:top-24 lg:self-start">
+            <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.14em] text-ink-mute">Sections</p>
+            <ul className="mt-3 flex gap-2 overflow-x-auto pb-2 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
               {SECTIONS.map((section) => (
-                <a
-                  key={section.id}
-                  href={`#${section.id}`}
-                  className="rounded-full bg-white/15 px-4 py-2 text-sm font-bold backdrop-blur transition hover:bg-white hover:text-violet-deep"
-                >
-                  <span aria-hidden="true">{section.emoji}</span>{" "}
-                  {section.title}
-                </a>
-              ))}
-            </nav>
-          </div>
-        </section>
-
-        {/* ---------------- sections ---------------- */}
-        <div className="mx-auto max-w-4xl space-y-14 px-4 py-16">
-          {SECTIONS.map((section) => (
-            <section
-              key={section.id}
-              id={section.id}
-              className="reveal scroll-mt-28"
-            >
-              <div
-                className={`rounded-3xl ${section.tone} px-7 py-6 shadow-[0_14px_36px_rgba(20,15,61,0.06)]`}
-              >
-                <h2 className="font-display flex items-center gap-3 text-2xl font-black text-ink sm:text-3xl">
-                  <span aria-hidden="true">{section.emoji}</span>
-                  {section.title}
-                </h2>
-                <p className="mt-2 text-ink-soft">{section.blurb}</p>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {section.items.map((item) => (
-                  <details
-                    key={item.q}
-                    className="group rounded-2xl border-2 border-ink/8 bg-white px-6 py-5 shadow-sm transition open:border-violet-brand/40 open:shadow-md"
+                <li key={section.id} className="shrink-0">
+                  <a
+                    href={`#${section.id}`}
+                    className="flex min-h-[44px] items-center gap-2.5 rounded-[var(--r-md)] border border-line bg-white px-3 text-[0.9375rem] font-medium text-ink-soft transition-colors hover:border-line-strong hover:text-ink lg:border-transparent lg:bg-transparent lg:hover:bg-white"
                   >
-                    <summary className="font-display flex cursor-pointer list-none items-center justify-between gap-4 text-lg font-black text-ink marker:content-none">
-                      {item.q}
-                      <span
-                        aria-hidden="true"
-                        className="shrink-0 text-2xl font-black text-violet-brand transition group-open:rotate-45"
-                      >
-                        +
-                      </span>
-                    </summary>
-                    {item.a.map((paragraph) => (
-                      <p
-                        key={paragraph}
-                        className="mt-4 leading-relaxed text-ink-soft"
-                      >
-                        {paragraph}
-                      </p>
-                    ))}
-                  </details>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+                    <Icon name={iconFor(section.emoji)} size={18} className="text-violet-deep" />
+                    {section.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        {/* ---------------- contact ---------------- */}
-        <section className="px-4 pb-20">
-          <div className="reveal mx-auto max-w-4xl rounded-[2rem] bg-ink p-10 text-center text-white">
-            <h2 className="font-display text-3xl font-black sm:text-4xl">
-              Still stuck?
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-white/80">
-              Write to us. A person reads it, and you will get an answer even if
-              the answer is that we have not built that part yet.
-            </p>
-            <a
-              href="mailto:viniciussucupira091@gmail.com"
-              className="mt-7 inline-block rounded-full bg-white px-7 py-3.5 font-bold text-violet-deep shadow-lg transition hover:-translate-y-0.5"
-            >
-              viniciussucupira091@gmail.com
-            </a>
-            <p className="mt-6 text-sm text-white/60">
-              Looking for the rules instead?{" "}
-              <Link href="/terms" className="underline underline-offset-4">
-                Terms
-              </Link>
-              ,{" "}
-              <Link href="/privacy" className="underline underline-offset-4">
-                Privacy
-              </Link>{" "}
-              and{" "}
-              <Link href="/refunds" className="underline underline-offset-4">
-                Refunds
-              </Link>
-              .
-            </p>
+          <div className="min-w-0 space-y-16">
+            {SECTIONS.map((section) => (
+              <section key={section.id} id={section.id} className="reveal scroll-mt-24">
+                <div className="flex items-start gap-4">
+                  <span className="icon-tile">
+                    <Icon name={iconFor(section.emoji)} size={22} />
+                  </span>
+                  <div>
+                    <h2 className="t-h3 text-[1.6rem]">{section.title}</h2>
+                    <p className="mt-1 text-ink-soft">{section.blurb}</p>
+                  </div>
+                </div>
+
+                <div className="mt-6 divide-y divide-line overflow-hidden rounded-[var(--r-lg)] border border-line bg-white">
+                  {section.items.map((item) => (
+                    <details key={item.q} className="group">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-6 px-5 py-5 font-semibold text-ink transition-colors hover:bg-paper sm:px-6 [&::-webkit-details-marker]:hidden">
+                        {item.q}
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line text-ink-soft transition-transform duration-300 group-open:rotate-45 group-open:border-violet-brand group-open:text-violet-deep">
+                          <Icon name="plus" size={16} />
+                        </span>
+                      </summary>
+                      <div className="space-y-3 px-5 pb-6 sm:px-6">
+                        {item.a.map((paragraph) => (
+                          <p key={paragraph} className="leading-relaxed text-ink-soft">
+                            {paragraph}
+                          </p>
+                        ))}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </section>
+            ))}
+
+            <section className="reveal card flex flex-col gap-6 p-7 sm:flex-row sm:items-center sm:justify-between sm:p-9">
+              <div>
+                <h2 className="t-h3 text-[1.6rem]">Still stuck?</h2>
+                <p className="mt-2 max-w-md text-ink-soft">
+                  Write to us. A person reads it, and you will get an answer even if the answer is that we have not built
+                  that part yet.
+                </p>
+                <p className="mt-4 text-sm text-ink-mute">
+                  Looking for the rules instead?{" "}
+                  <Link href="/terms" className="link font-medium">
+                    Terms
+                  </Link>
+                  ,{" "}
+                  <Link href="/privacy" className="link font-medium">
+                    Privacy
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="/refunds" className="link font-medium">
+                    Refunds
+                  </Link>
+                  .
+                </p>
+              </div>
+              <a href="mailto:viniciussucupira091@gmail.com" className="btn btn-primary shrink-0">
+                <Icon name="mail" size={18} />
+                Email support
+              </a>
+            </section>
           </div>
-        </section>
+        </div>
       </main>
 
       <SiteFooter />
