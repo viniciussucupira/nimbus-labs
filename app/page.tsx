@@ -44,6 +44,7 @@ const REASONS: { icon: IconName; title: string; body: string; href: string; link
 ];
 
 const LIVE: { icon: IconName; title: string; body: string }[] = [
+  { icon: "door", title: "Members cancel on their own", body: "One click on Stripe's own page. Nobody has to write to you, and nobody feels trapped." },
   { icon: "palette", title: "Your photo, your colour", body: "Four themes, ten colours or your own. Every colour is checked so your page stays easy to read." },
   { icon: "link", title: "Your own address", body: "Change it whenever you like. Every address you ever used keeps working." },
   { icon: "percent", title: "Discount codes", body: "Included on the one plan, not kept for a more expensive one." },
@@ -54,7 +55,7 @@ const LIVE: { icon: IconName; title: string; body: string }[] = [
 ];
 
 const NEXT = [
-  "Members cancelling on their own",
+  "Upsells and limited offers at checkout",
   "Visit counts, and pixels for Meta, TikTok and Google",
   "Scheduled calls with a calendar",
   "Courses with lessons",
