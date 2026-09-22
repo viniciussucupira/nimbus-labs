@@ -3,8 +3,9 @@ import { RevealOnScroll } from "@/components/home-parts";
 import { Icon, iconFor } from "@/components/icons";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
-import type { Block, TopicPage } from "@/lib/site-pages";
-import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
+import { FeatureVisual } from "@/components/feature-visuals";
+import { PAGES, type Block, type TopicPage } from "@/lib/site-pages";
+import { PLAN_PRICES, TRIAL_DAYS } from "@/lib/plan";
 
 const PHOTO = (id: string) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=160&h=160&q=72`;
@@ -15,6 +16,63 @@ const BADGE_CLASS = {
   proof: "tag tag-brand",
 } as const;
 
+const dollars = (cents: number) => `$${cents / 100}`;
+
+const PLAN_LINE = {
+  creator: `On the ${dollars(PLAN_PRICES.creator.month)} plan, and on Pro`,
+  pro: `On the ${dollars(PLAN_PRICES.pro.month)} Pro plan`,
+} as const;
+
+/** A heading id from its words, so a section can be linked to. */
+function sectionId(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+}
+
+function StoreCard({ block, hero = false }: { block: Extract<Block, { kind: "storecard" }>; hero?: boolean }) {
+  return (
+    <div className="overflow-hidden rounded-[var(--r-xl)] border border-line bg-white text-ink shadow-[var(--shadow-md)]">
+      <div className="flex items-center gap-4 border-b border-line bg-paper p-5 sm:p-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={PHOTO(block.photo)}
+          alt={block.alt}
+          width={64}
+          height={64}
+          loading={hero ? "eager" : "lazy"}
+          className="h-16 w-16 rounded-full bg-sand-deep object-cover"
+        />
+        <div className="min-w-0">
+          <p className="text-lg font-semibold text-ink">{block.creator}</p>
+          <p className="text-ink-soft">{block.tagline}</p>
+        </div>
+      </div>
+      <ul className="divide-y divide-line">
+        {block.items.map((item) => (
+          <li key={item.label} className="flex items-center justify-between gap-4 px-5 py-3.5 sm:px-6">
+            <span className="min-w-0">
+              <span className="block font-medium text-ink">{item.label}</span>
+              <span className="block text-sm text-ink-soft">{item.detail}</span>
+            </span>
+            <span className="shrink-0 rounded-[8px] bg-lilac px-2.5 py-1 text-sm font-semibold text-violet-deep">{item.price}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="flex items-start gap-2 border-t border-line bg-paper px-5 py-3 text-sm text-ink-soft sm:px-6">
+        <Icon name="info" size={16} className="mt-0.5 shrink-0" />
+        <span>
+          {block.creator === "Harbor Kitchen"
+            ? "The live demo store. Jenny is a fictional cook; the checkout and the files are real."
+            : `An example: ${block.creator} is an invented creator, and every product type shown works today.`}
+        </span>
+      </p>
+    </div>
+  );
+}
+
 function BlockView({ block }: { block: Block }) {
   switch (block.kind) {
     case "lead":
@@ -22,8 +80,8 @@ function BlockView({ block }: { block: Block }) {
 
     case "cards":
       return (
-        <section className="reveal">
-          <h2 className="t-h3 text-[1.5rem]">{block.title}</h2>
+        <section className="reveal" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {block.items.map((item) => (
               <article key={item.title} className="card p-6">
@@ -38,10 +96,147 @@ function BlockView({ block }: { block: Block }) {
         </section>
       );
 
+    case "how":
+      return (
+        <section className="reveal" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <ol className="mt-6 grid gap-4 md:grid-cols-3">
+            {block.items.map((item, i) => (
+              <li key={item.title} className="card-flat relative p-6">
+                <span className="grid h-9 w-9 place-items-center rounded-full bg-violet-brand text-sm font-semibold text-white">
+                  {i + 1}
+                </span>
+                <h3 className="mt-4 font-semibold text-ink">{item.title}</h3>
+                <p className="mt-1.5 text-[0.9375rem] text-ink-soft">{item.body}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      );
+
+    case "features":
+      return (
+        <section className="reveal" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          {block.intro ? <p className="mt-3 max-w-2xl text-ink-soft">{block.intro}</p> : null}
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+            {block.items.map((item) => {
+              const inner = (
+                <>
+                  <span className="icon-tile icon-tile-sm">
+                    <Icon name={item.icon} size={18} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="flex items-center gap-1.5 font-semibold text-ink">
+                      {item.title}
+                      {item.href ? <Icon name="arrow-right" size={15} className="arrow text-violet-deep" /> : null}
+                    </span>
+                    <span className="mt-1 block text-[0.9375rem] text-ink-soft [overflow-wrap:anywhere]">{item.body}</span>
+                  </span>
+                </>
+              );
+              return (
+                <li key={item.title}>
+                  {item.href ? (
+                    <Link href={item.href} className="card flex h-full gap-4 p-5 transition-shadow hover:shadow-[var(--shadow-md)]">
+                      {inner}
+                    </Link>
+                  ) : (
+                    <div className="card flex h-full gap-4 p-5">{inner}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      );
+
+    case "uses":
+      return (
+        <section className="reveal" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <ul className="mt-6 grid gap-4 md:grid-cols-3">
+            {block.items.map((item) => (
+              <li key={item.who} className="rounded-[var(--r-lg)] bg-sand p-6">
+                <Icon name={item.icon} size={22} className="text-violet-deep" />
+                <h3 className="mt-3 font-semibold text-ink">{item.who}</h3>
+                <p className="mt-1.5 text-[0.9375rem] text-ink-soft">{item.what}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+
+    case "limits":
+      return (
+        <section className="reveal rounded-[var(--r-lg)] border border-line bg-white p-6 sm:p-8" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="flex items-center gap-2 text-[1.25rem] font-semibold tracking-[-0.02em] text-ink">
+            <Icon name="info" size={20} className="text-violet-deep" />
+            {block.title}
+          </h2>
+          {block.intro ? <p className="mt-2 text-ink-soft">{block.intro}</p> : null}
+          <ul className="mt-5 grid gap-3">
+            {block.items.map((item) => (
+              <li key={item} className="flex gap-3 text-[0.9375rem] text-ink-soft [overflow-wrap:anywhere]">
+                <span className="mt-[0.55rem] h-1.5 w-1.5 shrink-0 rounded-full bg-ink-mute" aria-hidden="true" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+
+    case "faq":
+      return (
+        <section className="reveal" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <div className="mt-6 divide-y divide-line overflow-hidden rounded-[var(--r-lg)] border border-line bg-white">
+            {block.items.map((item) => (
+              <details key={item.q} className="group">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 font-semibold text-ink sm:px-6 [&::-webkit-details-marker]:hidden">
+                  {item.q}
+                  <Icon name="plus" size={18} className="shrink-0 text-violet-deep transition-transform duration-200 group-open:rotate-45" />
+                </summary>
+                <p className="px-5 pb-5 text-[0.9375rem] text-ink-soft sm:px-6">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      );
+
+    case "ladder":
+      return (
+        <section className="reveal" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          {block.intro ? <p className="mt-3 max-w-2xl text-ink-soft">{block.intro}</p> : null}
+          <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {block.items.map((item) => (
+              <li key={item.title}>
+                <Link href={item.href} className="card group flex h-full flex-col p-5 transition-shadow hover:shadow-[var(--shadow-md)]">
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="text-[0.8125rem] font-semibold uppercase tracking-[0.12em] text-ink-mute">{`Step ${item.step}`}</span>
+                    <span className="icon-tile icon-tile-sm">
+                      <Icon name={item.icon} size={18} />
+                    </span>
+                  </span>
+                  <span className="mt-4 block font-semibold text-ink">{item.title}</span>
+                  <span className="mt-1 block text-[1.25rem] font-semibold tracking-[-0.02em] text-violet-deep">{item.price}</span>
+                  <span className="mt-2 block flex-1 text-[0.9375rem] text-ink-soft">{item.body}</span>
+                  <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-violet-deep">
+                    How it works
+                    <Icon name="arrow-right" size={15} className="transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </section>
+      );
+
     case "steps":
       return (
-        <section className="reveal">
-          <h2 className="t-h3 text-[1.5rem]">{block.title}</h2>
+        <section className="reveal" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
           <ol className="mt-6 grid gap-3">
             {block.items.map((item, i) => (
               <li key={item.title} className="card-flat flex gap-4 p-5 sm:p-6">
@@ -60,8 +255,8 @@ function BlockView({ block }: { block: Block }) {
 
     case "facts":
       return (
-        <section className="reveal">
-          <h2 className="t-h3 text-[1.5rem]">{block.title}</h2>
+        <section className="reveal" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {block.items.map((item, i) => (
               <div key={item.label} className={i === 0 ? "rounded-[var(--r-lg)] bg-night p-6 text-white" : "card-flat p-6"}>
@@ -77,8 +272,8 @@ function BlockView({ block }: { block: Block }) {
 
     case "table":
       return (
-        <section className="reveal">
-          <h2 className="t-h3 text-[1.5rem]">{block.title}</h2>
+        <section className="reveal" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
           <div className="mt-6 hidden overflow-hidden rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-sm)] sm:block">
             <table className="table-clean text-[0.9375rem]">
               <thead>
@@ -147,86 +342,152 @@ function BlockView({ block }: { block: Block }) {
 
     case "storecard":
       return (
-        <section className="reveal">
-          <h2 className="t-h3 text-[1.5rem]">{block.title}</h2>
-          <div className="mt-6 overflow-hidden rounded-[var(--r-xl)] border border-line bg-white shadow-[var(--shadow-md)]">
-            <div className="flex items-center gap-4 border-b border-line bg-paper p-6">
-              <img
-                src={PHOTO(block.photo)}
-                alt={block.alt}
-                width={64}
-                height={64}
-                loading="lazy"
-                className="h-16 w-16 rounded-full bg-sand-deep object-cover"
-              />
-              <div className="min-w-0">
-                <p className="text-lg font-semibold text-ink">{block.creator}</p>
-                <p className="text-ink-soft">{block.tagline}</p>
-              </div>
-            </div>
-            <ul className="divide-y divide-line">
-              {block.items.map((item) => (
-                <li key={item.label} className="flex items-center justify-between gap-4 px-6 py-4">
-                  <span>
-                    <span className="block font-medium text-ink">{item.label}</span>
-                    <span className="block text-sm text-ink-mute">{item.detail}</span>
-                  </span>
-                  <span className="rounded-[8px] bg-lilac px-2.5 py-1 font-semibold text-violet-deep">{item.price}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="flex items-center gap-2 border-t border-line bg-paper px-6 py-3 text-sm text-ink-mute">
-              <Icon name="info" size={16} />
-              Example layout.{" "}
-              {block.creator === "Harbor Kitchen"
-                ? "Harbor Kitchen is the live demo store and Jenny is a fictional cook."
-                : `${block.creator} is an invented creator, used to show the shape of the page.`}
-            </p>
+        <section className="reveal" aria-labelledby={sectionId(block.title)}>
+          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <div className="mt-6">
+            <StoreCard block={block} />
           </div>
         </section>
       );
   }
 }
 
+/** The questions on a page, in the form search engines read. */
+function FaqData({ blocks }: { blocks: Block[] }) {
+  const items = blocks.flatMap((b) => (b.kind === "faq" ? b.items : []));
+  if (items.length === 0) return null;
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  };
+  return (
+    <script
+      type="application/ld+json"
+      // The content is our own, written above; nothing a visitor typed.
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
+    />
+  );
+}
+
+function Related({ slugs }: { slugs: string[] }) {
+  const pages = slugs
+    .map((slug) => PAGES.find((p) => p.section === "platform" && p.slug === slug))
+    .filter((p): p is TopicPage => Boolean(p && p.menu));
+  if (pages.length === 0) return null;
+  return (
+    <section aria-labelledby="related-title" className="border-t border-line bg-white">
+      <div className="container-page max-w-[64rem]! py-14 sm:py-16">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 id="related-title" className="t-h3 text-[1.5rem]">Works well with</h2>
+          <Link href="/platform" className="link-arrow text-sm">
+            Every feature
+            <Icon name="arrow-right" size={16} className="arrow" />
+          </Link>
+        </div>
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+          {pages.map((p) => (
+            <li key={p.slug}>
+              <Link href={`/platform/${p.slug}`} className="flex h-full items-start gap-3 rounded-[var(--r-md)] border border-line p-4 transition-colors hover:bg-paper">
+                <span className="icon-tile icon-tile-sm">
+                  <Icon name={p.menu!.icon} size={18} />
+                </span>
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-2 font-semibold text-ink">
+                    {p.menu!.label}
+                    {p.plan === "pro" ? <span className="tag tag-brand">Pro</span> : null}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-ink-soft">{p.menu!.description}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
 export function TopicPageView({ page }: { page: TopicPage }) {
+  // A creator page shows its example store beside the heading, where a
+  // feature page shows the drawing of its screen.
+  const heroStore = page.section === "for" && page.blocks[0]?.kind === "storecard" ? page.blocks[0] : null;
+  const blocks = heroStore ? page.blocks.slice(1) : page.blocks;
+  const wide = Boolean(page.visual || heroStore);
+  const pro = page.plan === "pro";
+
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
       <RevealOnScroll />
       <SiteNav />
 
       <main id="content" className="flex-1">
-        <section className="surface-night nb-grid-lines on-dark overflow-hidden">
-          <div className="container-narrow py-16 sm:py-24">
-            <p className="eyebrow nb-fade-up">{page.eyebrow}</p>
-            <h1 className="t-h1 balance nb-fade-up nb-delay-1 mt-5 text-white">
-              {page.title} <span className="serif font-normal text-[#cfc4ff]">{page.highlight}</span>
-            </h1>
-            <p className="t-lead nb-fade-up nb-delay-2 mt-6 max-w-2xl text-white/75">{page.intro}</p>
-            <p className="nb-fade-up nb-delay-3 mt-7">
-              <span className={BADGE_CLASS[page.badge.tone]}>{page.badge.label}</span>
-            </p>
+        <section className="surface-night nb-grid-lines overflow-hidden">
+          <div
+            className={`${wide ? "container-page grid items-center gap-12 py-14 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16" : "container-narrow py-16 sm:py-24"}`}
+          >
+            <div className="on-dark">
+              <p className="eyebrow nb-fade-up">{page.eyebrow}</p>
+              <h1 className="t-h1 balance nb-fade-up nb-delay-1 mt-5 text-white">
+                {page.title} <span className="serif font-normal text-[#cfc4ff]">{page.highlight}</span>
+              </h1>
+              <p className="t-lead nb-fade-up nb-delay-2 mt-6 max-w-2xl text-white/75">{page.intro}</p>
+              <p className="nb-fade-up nb-delay-3 mt-7 flex flex-wrap items-center gap-2">
+                <span className={BADGE_CLASS[page.badge.tone]}>{page.badge.label}</span>
+                {page.plan ? <span className="tag">{PLAN_LINE[page.plan]}</span> : null}
+              </p>
+              {page.section !== "proof" ? (
+                <div className="nb-fade-up nb-delay-3 mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+                  <Link href="/signin" className="btn btn-light btn-lg">
+                    {`Try it free for ${TRIAL_DAYS} days`}
+                    <Icon name="arrow-right" size={18} />
+                  </Link>
+                  <Link href={pro ? "/#pricing" : "/demo"} className="link-arrow">
+                    {pro ? "Compare the plans" : "Open the live demo store"}
+                    <Icon name="arrow-right" size={18} className="arrow" />
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+            {page.visual ? (
+              <div className="nb-fade-up nb-delay-2 flex justify-center lg:justify-end">
+                <FeatureVisual visual={page.visual} />
+              </div>
+            ) : heroStore ? (
+              <div className="nb-fade-up nb-delay-2 mx-auto w-full max-w-[28rem] lg:mr-0">
+                <StoreCard block={heroStore} hero />
+              </div>
+            ) : null}
           </div>
         </section>
 
-        <div className="container-narrow space-y-14 py-16 sm:py-20">
-          {page.blocks.map((block, i) => (
+        <div className={`${wide ? "container-page max-w-[64rem]!" : "container-narrow"} space-y-14 py-16 sm:space-y-16 sm:py-20`}>
+          {blocks.map((block, i) => (
             <BlockView key={i} block={block} />
           ))}
         </div>
 
+        {page.related ? <Related slugs={page.related} /> : null}
+
         <section className="surface-sand">
           <div className="container-narrow py-16 text-center sm:py-20">
-            <h2 className="t-h2 balance">Want this on your own store?</h2>
+            <h2 className="t-h2 balance">{pro ? "Pro, when you are ready for it" : "Want this on your own store?"}</h2>
             <p className="mx-auto mt-4 max-w-xl text-ink-soft">
-              {`Take your address, connect your own Stripe account and put your first product up. $${PRICE_CENTS / 100} a month, with ${TRIAL_DAYS} days to try it.`}
+              {pro
+                ? `Pro is ${dollars(PLAN_PRICES.pro.month)} a month, or ${dollars(PLAN_PRICES.pro.year)} a year, with everything on the ${dollars(PLAN_PRICES.creator.month)} plan. Start on either, try it free for ${TRIAL_DAYS} days, and switch from your studio whenever you like.`
+                : `Take your address, connect your own Stripe account and put your first product up. ${dollars(PLAN_PRICES.creator.month)} a month and 0% of your sales, free for the first ${TRIAL_DAYS} days.`}
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
               <Link href="/signin" className="btn btn-primary btn-lg">
                 Start your store
                 <Icon name="arrow-right" size={18} />
               </Link>
-              <Link href="/demo" className="link-arrow">
-                Open the live demo store
+              <Link href={pro ? "/#pricing" : "/demo"} className="link-arrow">
+                {pro ? "See both plans" : "Open the live demo store"}
                 <Icon name="arrow-right" size={18} className="arrow" />
               </Link>
             </div>
@@ -234,6 +495,7 @@ export function TopicPageView({ page }: { page: TopicPage }) {
         </section>
       </main>
 
+      <FaqData blocks={blocks} />
       <SiteFooter />
     </div>
   );

@@ -19,6 +19,7 @@ import { UPSELL_COOKIE, offerOpen, readUpsell, settleUpsell, upsellDelivery } fr
 import { recordEnrollment } from "@/lib/learn";
 import { noteProduct, upsertContact } from "@/lib/contacts";
 import { enroll } from "@/lib/flows";
+import { canRecover } from "@/lib/buyer-orders";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -35,9 +36,13 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     title: "This order has not been paid",
     body: "If you closed the card page before finishing, nothing was charged. You can start again from the store.",
   },
+  processing: {
+    title: "Your payment is on its way",
+    body: "Your bank is still confirming it, which can take a few days. Nothing more is needed from you: when it clears, open this page again, or choose \u201cGet it again\u201d at the foot of the store with the address you paid with.",
+  },
   expired: {
     title: "This link has expired",
-    body: "A download link works for three days. Write to the store and they can sort it out with you.",
+    body: "A download link works for three days. You have not lost what you bought: type the address you paid with on the next page, and a link to all of it is emailed to you.",
   },
   invalid: {
     title: "We could not find this order",
@@ -302,8 +307,9 @@ export default async function ThanksPage({ params, searchParams }: Params) {
 
                   <p className="st-muted mt-5 text-sm">
                     This link works for about {hours} more{" "}
-                    {hours === 1 ? "hour" : "hours"}. Keep the page, or keep the
-                    email Stripe sent you — it has the same link.
+                    {hours === 1 ? "hour" : "hours"}. After that it is not lost:
+                    choose &ldquo;Get it again&rdquo; at the foot of {store.name}&rsquo;s
+                    page, type the address you paid with, and a new link is emailed to you.
                   </p>
                 </>
               ) : (
@@ -422,6 +428,11 @@ export default async function ThanksPage({ params, searchParams }: Params) {
               <p className="st-muted mt-4 text-lg">
                 {notice?.body ?? "Check the link you were given."}
               </p>
+              {order.state === "expired" && canRecover(store) ? (
+                <Link href={`/@${store.handle}/orders`} className="btn st-btn btn-lg mt-7">
+                  Get what you bought again
+                </Link>
+              ) : null}
             </>
           )}
 

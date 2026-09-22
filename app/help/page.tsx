@@ -326,13 +326,14 @@ const SECTIONS: Section[] = [
         q: "Does the download link expire?",
         a: [
           "Yes. The link works for a limited window and is tied to that order, so a link that leaks does not turn into a free copy for everyone.",
-          "A buyer who loses it does not lose what they paid for: they type the address they paid with and the link is sent there again. No account, no password. It is working on the demo store today, at nimbuslabsai.com/demo/recover.",
+          "A buyer who loses it does not lose what they paid for, a week or a year later. At the foot of every store page there is \u201cBought something here? Get it again\u201d: they type the address they paid with, and we email it a link to a page with everything that address bought from that store \u2014 downloads, links and courses \u2014 ready to open again. No account, no password.",
+          "The list is read from your own Stripe account each time it opens, so a sale you refunded, or a membership that has ended, is not on it. The page answers the same whether or not the address bought anything, so nobody can use it to find out who your customers are.",
         ],
       },
       {
         q: "A buyer says the file never arrived. What now?",
         a: [
-          "Send them to the page that sends the link again — they type the address they paid with and it arrives in their inbox. That answers most of these without you doing anything.",
+          "Send them to \u201cGet it again\u201d at the foot of your store page, at your store address followed by /orders \u2014 they type the address they paid with and a link to everything they bought arrives in their inbox. That answers most of these without you doing anything.",
           "If it still does not appear, check the payment in your own Stripe dashboard: a payment that did not complete is the most common cause. If Stripe shows the payment succeeded and the file still did not arrive, email us with the order details and we will look at it with you.",
         ],
       },

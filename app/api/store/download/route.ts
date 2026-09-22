@@ -3,6 +3,7 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { readOrder } from "@/lib/store-checkout";
 import { plain, serveFile } from "@/lib/serve-file";
 import { upsellDelivery } from "@/lib/upsell";
+import { findPurchase } from "@/lib/buyer-orders";
 
 /**
  * Hands the buyer the file they paid for.
@@ -14,6 +15,7 @@ import { upsellDelivery } from "@/lib/upsell";
  */
 const MESSAGES = {
   unpaid: [402, "This order has not been paid."],
+  processing: [402, "This payment is still being confirmed by the bank. Try again once it clears."],
   expired: [410, "This download link has expired."],
   invalid: [404, "We could not find this order."],
   unavailable: [503, "This store cannot take payments yet."],
@@ -28,6 +30,28 @@ export async function GET(request: NextRequest) {
 
   const store = await storeForHandle(handle);
   if (!store) return plain(404, "We could not find this store.");
+
+  // Asked for again from the emailed list of purchases: the link's address
+  // must still have paid for this one, by Stripe's account of it right now.
+  const token = request.nextUrl.searchParams.get("token");
+  if (token) {
+    let purchase;
+    try {
+      purchase = await findPurchase(store, token, request.nextUrl.searchParams.get("ref") ?? "");
+    } catch (error) {
+      console.error("looking up a purchase failed", error);
+      return plain(502, "We could not check this purchase right now. Please try again.");
+    }
+    if (!purchase) {
+      return plain(410, "This link has expired, or this purchase is not on it. Ask the store for a new link to your purchases.");
+    }
+    const delivery = request.nextUrl.searchParams.get("item") === "bump" ? purchase.bump : purchase.main;
+    if (!delivery) return plain(404, "There is nothing to download on this one.");
+    if (!delivery.file) {
+      return plain(409, "This one is not a download. Open your purchases again and use the link on it.");
+    }
+    return serveFile(delivery.file);
+  }
 
   const order = await readOrder(
     store,

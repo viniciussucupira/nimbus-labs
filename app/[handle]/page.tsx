@@ -21,6 +21,7 @@ import { canGiveProduct } from "@/lib/free";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canManage } from "@/lib/membership-manage";
+import { canRecover, sellsDeliverables } from "@/lib/buyer-orders";
 import { StoreTracking } from "@/components/store-tracking";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { stockLeft } from "@/lib/stock";
@@ -456,6 +457,11 @@ export default async function StorePage({ params, searchParams }: Params) {
                           {plan ? (
                             <span className="plan-on">{`Start the plan: $${centsToPrice(plan.amountCents)} today`}</span>
                           ) : null}
+                          {plan && extra ? (
+                            <span className="plan-bump-on">
+                              {`Start the plan with ${extra.target.title}: $${centsToPrice(plan.amountCents + extra.bump.priceCents)} today`}
+                            </span>
+                          ) : null}
                           {extra ? (
                             <span className="bump-on">
                               {options.length > 0
@@ -551,6 +557,13 @@ export default async function StorePage({ params, searchParams }: Params) {
           ) : null}
 
           <div className="mt-12 text-center">
+            {canRecover(store) && sellsDeliverables(store) ? (
+              <p className="mb-4">
+                <Link href={`/@${store.handle}/orders`} className="st-footer-link text-sm font-semibold">
+                  Bought something here? Get it again
+                </Link>
+              </p>
+            ) : null}
             <Link href="/" className="st-footer-link text-sm font-semibold">
               Made with Nimbus Labs
             </Link>

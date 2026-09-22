@@ -18,45 +18,55 @@ type Menu = {
   blurb: string;
   feature: { title: string; body: string; href: string; cta: string };
   items: MenuItem[];
+  /** A long menu, shown in labelled columns. Its items are the groups' items. */
+  groups?: { label: string; items: MenuItem[] }[];
 };
+
+const item = (label: string, description: string, href: string, icon: IconName): MenuItem => ({ label, description, href, icon });
+
+/* The feature pages, in the groups the features page uses. */
+const PRODUCT_GROUPS: { label: string; items: MenuItem[] }[] = [
+  {
+    label: "Sell",
+    items: [
+      item("Store page", "Your photo, links and products at one address.", "/platform/store-page", "store"),
+      item("Price options", "Up to three prices on one product.", "/platform/price-options", "tag"),
+      item("Courses", "Video lessons that open over time.", "/platform/courses", "book"),
+      item("Memberships", "Paid every week, month or year.", "/platform/memberships", "repeat"),
+      item("Paid calls", "Booked in their time zone, paid first.", "/platform/calls", "calendar"),
+    ],
+  },
+  {
+    label: "Get paid",
+    items: [
+      item("Your own Stripe", "The money lands in your account.", "/platform/your-stripe", "bank"),
+      item("Checkout tools", "Codes, add-ons, instalments, tax.", "/platform/checkout", "percent"),
+    ],
+  },
+  {
+    label: "Deliver and grow",
+    items: [
+      item("Instant delivery", "On screen when paid, back by email.", "/platform/instant-delivery", "bolt"),
+      item("Numbers and pixels", "Visits, sources, sales, ad pixels.", "/platform/insights", "chart"),
+      item("Email to your list", "Broadcasts and sequences. Pro.", "/platform/email", "mail"),
+      item("Your own domain", "shop.yourname.com. Pro.", "/platform/domain", "globe"),
+    ],
+  },
+];
 
 export const MENUS: Menu[] = [
   {
     id: "product",
     label: "Product",
-    blurb: "Everything a link-in-bio store needs, and nothing it does not.",
+    blurb: "Everything a link-in-bio store needs, each with its own page and its honest limits.",
     feature: {
       title: "The live demo store",
       body: "Pick a plan, pay with a Stripe test card, get the file. The same path your buyer takes.",
       href: "/demo",
       cta: "Open the demo",
     },
-    items: [
-      {
-        label: "Store page",
-        description: "Your name, your links, your products. One address.",
-        href: "/platform/store-page",
-        icon: "store",
-      },
-      {
-        label: "Price options",
-        description: "One product, up to three prices. The buyer picks.",
-        href: "/platform/price-options",
-        icon: "tag",
-      },
-      {
-        label: "Instant delivery",
-        description: "The file is released the second Stripe confirms.",
-        href: "/platform/instant-delivery",
-        icon: "bolt",
-      },
-      {
-        label: "Your own Stripe",
-        description: "The money lands in your account, not in ours.",
-        href: "/platform/your-stripe",
-        icon: "bank",
-      },
-    ],
+    items: PRODUCT_GROUPS.flatMap((g) => g.items),
+    groups: PRODUCT_GROUPS,
   },
   {
     id: "creators",
@@ -326,7 +336,9 @@ export function SiteNav() {
             className="absolute inset-x-0 top-full hidden lg:block"
           >
             <div className="container-page">
-              <div className="nb-pop mx-auto mt-2 grid max-w-4xl grid-cols-[17rem_1fr] overflow-hidden rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-lg)]">
+              <div
+                className={`nb-pop mx-auto mt-2 grid ${menu.groups ? "max-w-6xl grid-cols-[15rem_1fr]" : "max-w-4xl grid-cols-[17rem_1fr]"} overflow-hidden rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-lg)]`}
+              >
                 <div className="surface-night on-dark flex flex-col justify-between p-6">
                   <div>
                     <p className="eyebrow">{menu.label}</p>
@@ -341,6 +353,44 @@ export function SiteNav() {
                     </span>
                   </Link>
                 </div>
+                {menu.groups ? (
+                  <div className="p-3">
+                    <div className="grid grid-cols-3 gap-2">
+                      {menu.groups.map((group) => (
+                        <div key={group.label}>
+                          <p className="px-3 pb-1 pt-2 text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-ink-mute">{group.label}</p>
+                          <ul className="grid gap-0.5">
+                            {group.items.map((entry) => (
+                              <li key={entry.href}>
+                                <Link
+                                  href={entry.href}
+                                  onClick={closeAll}
+                                  className="flex gap-3 rounded-[var(--r-md)] px-3 py-2.5 transition-colors hover:bg-paper"
+                                >
+                                  <span className="icon-tile icon-tile-sm">
+                                    <Icon name={entry.icon} size={18} />
+                                  </span>
+                                  <span>
+                                    <span className="block font-semibold text-ink">{entry.label}</span>
+                                    <span className="mt-0.5 block text-sm leading-snug text-ink-mute">{entry.description}</span>
+                                  </span>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                    <Link
+                      href="/platform"
+                      onClick={closeAll}
+                      className="mx-3 mb-1 mt-2 flex items-center justify-between rounded-[var(--r-md)] bg-paper px-4 py-3 text-sm font-semibold text-ink transition-colors hover:bg-sand"
+                    >
+                      Every feature on one page, with the plan each is on
+                      <Icon name="arrow-right" size={16} className="text-violet-deep" />
+                    </Link>
+                  </div>
+                ) : (
                 <ul className="grid content-start gap-1 p-3 sm:grid-cols-2">
                   {menu.items.map((item) => (
                     <li key={item.href}>
@@ -360,6 +410,7 @@ export function SiteNav() {
                     </li>
                   ))}
                 </ul>
+                )}
               </div>
             </div>
           </div>
@@ -379,7 +430,11 @@ export function SiteNav() {
                 {menu.label}
               </p>
               <ul className="mt-2">
-                {[{ label: menu.feature.title, description: menu.feature.body, href: menu.feature.href, icon: "sparkle" as IconName }, ...menu.items].map((item) => (
+                {[
+                  { label: menu.feature.title, description: menu.feature.body, href: menu.feature.href, icon: "sparkle" as IconName },
+                  ...(menu.groups ? [{ label: "Every feature", description: "", href: "/platform", icon: "list" as IconName }] : []),
+                  ...menu.items,
+                ].map((item) => (
                   <li key={item.href}>
                     <Link
                       href={item.href}

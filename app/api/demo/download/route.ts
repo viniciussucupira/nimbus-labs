@@ -4,6 +4,7 @@ import { getDemoOrder } from "@/lib/demo-store";
 
 const MESSAGES = {
   unpaid: [402, "This order has not been paid yet."],
+  processing: [402, "This payment is still being confirmed by the bank. Try again once it clears."],
   expired: [410, "This download link has expired."],
   invalid: [404, "We could not find this order."],
   unavailable: [503, "The demo store is not set up yet."],

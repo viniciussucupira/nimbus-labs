@@ -6,9 +6,10 @@ const COLUMNS = [
     title: "Product",
     links: [
       { label: "Live demo store", href: "/demo" },
-      { label: "Store page", href: "/platform/store-page" },
-      { label: "Price options", href: "/platform/price-options" },
-      { label: "Instant delivery", href: "/platform/instant-delivery" },
+      { label: "Every feature", href: "/platform" },
+      { label: "Courses", href: "/platform/courses" },
+      { label: "Memberships", href: "/platform/memberships" },
+      { label: "Paid calls", href: "/platform/calls" },
       { label: "Your own Stripe", href: "/platform/your-stripe" },
       { label: "Pricing", href: "/#pricing" },
     ],

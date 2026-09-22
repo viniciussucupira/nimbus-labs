@@ -20,6 +20,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { onAccount } from "@/lib/stripe-account";
 import { applyTax } from "@/lib/tax";
+import { onlyInstantMethods } from "@/lib/instant-pay";
 import type { Product, Store } from "@/lib/store";
 import {
   type Busy,
@@ -292,6 +293,7 @@ export async function holdAndCheckout(input: {
     if (product.summary) body.set("line_items[0][price_data][product_data][description]", product.summary);
     if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
     applyTax(store, body);
+    onlyInstantMethods(body);
 
     const session = await onAccount("POST", store.stripeAccountId, "/checkout/sessions", body);
     if (typeof session.url !== "string" || !session.url || typeof session.id !== "string") {

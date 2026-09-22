@@ -16,7 +16,7 @@ import { SITE_URL } from "@/lib/site-url";
  */
 const PLATFORM = new URL(SITE_URL).hostname;
 const DOMAIN_HEADER = "x-nimbus-domain";
-const STORE_PATHS = /^\/(thanks|free|manage|course|book)(\/|$)/;
+const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book)(\/|$)/;
 
 function isPlatformHost(host: string): boolean {
   return (

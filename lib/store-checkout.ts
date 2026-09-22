@@ -18,6 +18,7 @@ import { isPaidUp } from "@/lib/billing";
 import { StripeError, onAccount, platformKey } from "@/lib/stripe-account";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { applyTax } from "@/lib/tax";
+import { onlyInstantMethods } from "@/lib/instant-pay";
 
 /**
  * How long a paid link keeps working.
@@ -243,6 +244,7 @@ export async function createCheckout(
   // Sales tax, when the creator has switched it on: worked out by Stripe Tax
   // from the buyer's address, on the creator's account, for every line.
   applyTax(store, body);
+  onlyInstantMethods(body);
 
   const session = await onAccount(
     "POST",
@@ -285,7 +287,7 @@ export type Order =
       /** The buyer ticked the box to hear from the creator. */
       news: boolean;
     }
-  | { state: "unpaid" | "expired" | "invalid" | "unavailable" | "error" };
+  | { state: "unpaid" | "processing" | "expired" | "invalid" | "unavailable" | "error" };
 
 /**
  * Decides whether this buyer may have the file.
@@ -330,6 +332,11 @@ export async function readOrder(
   const option =
     product.options.find((entry) => entry.id === metadata?.option) ?? null;
 
+  // Paid by a method that settles later: the checkout is done, the money is
+  // not. Said as such, rather than telling the buyer nothing was paid.
+  if (session.status === "complete" && session.payment_status === "unpaid") {
+    return { state: "processing" };
+  }
   if (session.status !== "complete" || session.payment_status !== "paid") {
     return { state: "unpaid" };
   }

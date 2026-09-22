@@ -22,6 +22,10 @@ const NOT_PAID: Record<
     title: "Payment not confirmed yet",
     body: "Stripe has not confirmed this payment, so the file is not available. If you just paid, refresh this page in a moment.",
   },
+  processing: {
+    title: "Your payment is on its way",
+    body: "Your bank is still confirming it. When it clears, open this page again and the file is here.",
+  },
   expired: {
     title: "This download link has expired",
     body: "Download links work for 3 days after checkout.",

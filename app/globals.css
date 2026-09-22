@@ -1074,3 +1074,7 @@ form:has(input[name="bump"]:checked) .bump-off { display: none; }
 form:has(input[name="pay"][value="plan"]:checked) .plan-on { display: inline; }
 form:has(input[name="pay"][value="plan"]:checked) .bump-on,
 form:has(input[name="pay"][value="plan"]:checked) .bump-off { display: none; }
+/* Both: the first payment carries the added product too, and says so. */
+.plan-bump-on { display: none; }
+form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked) .plan-bump-on { display: inline; }
+form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked) .plan-on { display: none; }

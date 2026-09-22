@@ -1,6 +1,9 @@
 // Content for every page behind a menu item. One entry per page, so that
 // each menu item opens something different and real.
 import { isDomainsConfigured } from "@/lib/domains";
+import type { IconName } from "@/components/icons";
+import type { VisualKey } from "@/components/feature-visuals";
+import { CREATOR_PAGES, FEATURE_PAGES } from "@/lib/feature-pages";
 
 /** Whether stores can be put on their own domain on this deployment. */
 const DOMAINS = isDomainsConfigured();
@@ -13,7 +16,18 @@ export type Block =
   | { kind: "table"; title: string; note?: string; head: [string, string, string]; rows: [string, string, string][] }
   | { kind: "quote"; text: string; source: string }
   | { kind: "note"; title: string; body: string }
-  | { kind: "storecard"; title: string; creator: string; tagline: string; photo: string; alt: string; items: { label: string; detail: string; price: string }[] };
+  | { kind: "storecard"; title: string; creator: string; tagline: string; photo: string; alt: string; items: { label: string; detail: string; price: string }[] }
+  /** Three numbered steps side by side: how the thing works, start to end. */
+  | { kind: "how"; title: string; items: { title: string; body: string }[] }
+  /** What it does, one card each, optionally leading to its own page. */
+  | { kind: "features"; title: string; intro?: string; items: { icon: IconName; title: string; body: string; href?: string }[] }
+  /** Who it is for, in their own situation. */
+  | { kind: "uses"; title: string; items: { icon: IconName; who: string; what: string }[] }
+  /** What it does not do, said before anyone has to find out. */
+  | { kind: "limits"; title: string; intro?: string; items: string[] }
+  | { kind: "faq"; title: string; items: { q: string; a: string }[] }
+  /** From the first free thing to the biggest sale, for one kind of creator. */
+  | { kind: "ladder"; title: string; intro?: string; items: { step: string; title: string; price: string; body: string; href: string; icon: IconName }[] };
 
 export type TopicPage = {
   slug: string;
@@ -25,320 +39,23 @@ export type TopicPage = {
   badge: { label: string; tone: "live" | "building" | "proof" };
   accent: string;
   blocks: Block[];
+  /** The drawing of the real screen shown beside the heading. */
+  visual?: VisualKey;
+  /** The plan it comes with: on $29 (and so on Pro too), or on Pro only. */
+  plan?: "creator" | "pro";
+  /** Where a feature sits in the menu and on the features page. */
+  group?: "sell" | "paid" | "deliver" | "grow";
+  /** How the menu and the features page name it. */
+  menu?: { label: string; description: string; icon: IconName };
+  /** Other feature pages worth reading next. */
+  related?: string[];
 };
 
-const LIVE = { label: "Live in the demo store today", tone: "live" as const };
 const PROOF = { label: "Checked and dated", tone: "proof" as const };
 
 export const PAGES: TopicPage[] = [
-  /* ------------------------------------------------ platform ---------- */
-  {
-    slug: "store-page",
-    section: "platform",
-    eyebrow: "Platform",
-    title: "A store page that looks like",
-    highlight: "you, not like a template",
-    intro:
-      "One address with your name, your line, your links and your products. The page is built to be read on a phone in a few seconds, because that is where your buyer opens it.",
-    badge: LIVE,
-    accent: "from-violet-brand to-sky-brand",
-    blocks: [
-      {
-        kind: "lead",
-        text: "The most common thing creators say about the big link-in-bio platforms is that every store ends up looking the same. That is a design decision, not a technical limit, and it is one we are not copying.",
-      },
-      {
-        kind: "cards",
-        title: "What the store page carries",
-        items: [
-          { emoji: "🔤", title: "Your name at the top", body: "Your name, your address, one line about you, and your photo when you add one.", tint: "bg-violet-brand/10 text-violet-deep" },
-          { emoji: "🔗", title: "Link buttons", body: "The channel, the profile, the booking page — with the site each one leads to printed under it. None of them charges anything.", tint: "bg-sky-brand/15 text-sky-brand" },
-          { emoji: "🛍️", title: "Product cards", body: "The title, what is inside, the price, and the button that buys it.", tint: "bg-pink-brand/10 text-pink-brand" },
-          { emoji: "🙋", title: "A line about you", body: "Under your name, on every store — not locked behind one theme.", tint: "bg-amber-brand/15 text-amber-brand" },
-        ],
-      },
-      {
-        kind: "note",
-        title: "What is not there yet",
-        body: DOMAINS
-          ? "Categories and search for a store with dozens of products. It does not exist yet, and nothing above describes it as if it did."
-          : "Categories and search for a store with dozens of products, and your own domain. Neither exists yet, and nothing above describes them as if they did.",
-      },
-      {
-        kind: "quote",
-        text: "The store page you can open right now is the Harbor Kitchen demo. It is a fictional cook, but the page, the checkout and the file delivery are real.",
-        source: "Open /demo and try it with a Stripe test card",
-      },
-    ],
-  },
-  {
-    slug: "price-options",
-    section: "platform",
-    eyebrow: "Platform",
-    title: "One product,",
-    highlight: "several prices",
-    intro:
-      "A one-week plan for $27 and a five-week plan for $39, from the same product card. The buyer picks, and each option delivers its own file.",
-    badge: { label: "Live in your own store today", tone: "live" as const },
-    accent: "from-pink-brand to-amber-brand",
-    blocks: [
-      {
-        kind: "lead",
-        text: "Stan's own help centre lists pricing tiers among its most requested features and states plainly that there is no native way to offer them under one product. Here it is in your own editor: put up to three prices on any product, give each one its own file or its own link, and the buyer picks on the card. The amount charged is read from what you saved, never from the page.",
-      },
-      {
-        kind: "steps",
-        title: "How it works",
-        items: [
-          { title: "You define the options", body: "A name the buyer reads, a price, and the file or the link that option hands over." },
-          { title: "The buyer chooses one", body: "Radio cards on the product, no extra page, no JavaScript needed to see the prices." },
-          { title: "The server sets the price", body: "The price comes from the option identifier, never from the form, so nobody can send their own price." },
-          { title: "The right file is delivered", body: "The chosen option is stored with the payment and decides which file the download gives back." },
-        ],
-      },
-      {
-        kind: "facts",
-        title: "Measured on 17 September 2026",
-        items: [
-          { value: "$39", label: "Test purchase of the five-week option, in production", tone: "bg-violet-brand text-white" },
-          { value: "8,929", label: "Bytes delivered — identical to the original file", tone: "bg-mint-brand text-ink" },
-          { value: "54", label: "Automated checks passing on the store", tone: "bg-amber-brand text-ink" },
-        ],
-      },
-      {
-        kind: "note",
-        title: "Why it matters for your money",
-        body: "A second price is the cheapest upsell there is: the same product, a bigger version, no new sales page and no new file to market.",
-      },
-    ],
-  },
-  {
-    slug: "instant-delivery",
-    section: "platform",
-    eyebrow: "Platform",
-    title: "The file lands",
-    highlight: "the second the payment clears",
-    intro:
-      "No manual sending, no “check your e-mail in a few minutes”, no support ticket at midnight. Stripe confirms, and the download link appears.",
-    badge: LIVE,
-    accent: "from-mint-brand to-sky-brand",
-    blocks: [
-      {
-        kind: "lead",
-        text: "Delivery breaking silently is one of the worst complaints a creator can get, because the buyer blames the creator, not the platform. It is documented at more than one competitor: files that stopped being attached, and buyers who received empty downloads after paying.",
-      },
-      {
-        kind: "steps",
-        title: "How the delivery is protected",
-        items: [
-          { title: "Nothing is released before Stripe says paid", body: "An unpaid or unfinished session gets a clear refusal, not a file." },
-          { title: "The file travels with the code", body: "It is not a public address someone can guess or share by accident." },
-          { title: "The link expires in three days", body: "Long enough for a real buyer, short enough to limit passing it around." },
-          { title: "Every case is tested", body: "Invalid link, expired link, someone else's order, live-mode key, Stripe down — all covered by automated checks." },
-        ],
-      },
-      {
-        kind: "facts",
-        title: "What the tests cover",
-        items: [
-          { value: "402", label: "Refused when the payment is not confirmed", tone: "bg-pink-brand text-white" },
-          { value: "410", label: "Refused after the three-day window", tone: "bg-amber-brand text-ink" },
-          { value: "502", label: "Honest error when Stripe is unreachable", tone: "bg-sky-brand text-ink" },
-        ],
-      },
-    ],
-  },
-  {
-    slug: "your-stripe",
-    section: "platform",
-    eyebrow: "Platform",
-    title: "The money goes to",
-    highlight: "your own Stripe account",
-    intro:
-      "Direct charges on your account. We never hold your sales, so there is no balance for us to freeze, delay or lose.",
-    badge: LIVE,
-    accent: "from-violet-brand to-pink-brand",
-    blocks: [
-      {
-        kind: "lead",
-        text: "Held money is the loudest complaint in this whole market. Creators write about payout buttons that stay grey for weeks, balances marked “available soon” for months, minimum payout thresholds changed without notice, and accounts suspended the day before a payout. The structure we chose makes most of that impossible for us to do to you.",
-      },
-      {
-        kind: "table",
-        title: "Where the money sits",
-        note: "Stan's structure checked on its own help centre and terms in September 2026.",
-        head: ["", "Platform-held model", "Nimbus Labs"],
-        rows: [
-          ["Whose Stripe account", "One the platform manages for you", "Yours, the one you already own"],
-          ["Who can pause the money", "The platform, by policy", "Your bank and Stripe's own rules"],
-          ["Getting paid", "Manual cash-out, minimums, payout fees", "Your Stripe payout schedule"],
-          ["If you leave", "You migrate customers and payouts", "Nothing to migrate — the account was always yours"],
-        ],
-      },
-      {
-        kind: "note",
-        title: "What we charge",
-        body: "A monthly subscription, and 0% of your sales. Stripe's own fees are charged by Stripe on your account, where you can read them line by line.",
-      },
-      {
-        kind: "note",
-        title: "The honest limit",
-        body: "Because we never touch your money, we also cannot advance it, split it with an affiliate automatically, or refund a buyer on your behalf. Those happen in your Stripe dashboard.",
-      },
-    ],
-  },
-
-  /* ------------------------------------------------ for creators ------ */
-  {
-    slug: "coaches",
-    section: "for",
-    eyebrow: "For creators",
-    title: "For coaches",
-    highlight: "and teachers",
-    intro:
-      "Sell the worksheet, the programme and the hour of your time from the same page, with a price for each level of commitment.",
-    badge: LIVE,
-    accent: "from-sky-brand to-violet-brand",
-    blocks: [
-      {
-        kind: "storecard",
-        title: "What a coaching store looks like",
-        creator: "Maya Ruiz",
-        tagline: "Career coaching for first-time managers",
-        photo: "photo-1616065298043-67646192dcb5",
-        alt: "A woman with blonde hair and red lipstick, smiling",
-        items: [
-          { label: "Interview workbook", detail: "PDF, 18 pages", price: "$19" },
-          { label: "Six-week programme", detail: "PDF plus weekly checklists", price: "$89" },
-          { label: "One hour with Maya", detail: "Video call, booked after payment", price: "$180" },
-        ],
-      },
-      {
-        kind: "cards",
-        title: "What this solves",
-        items: [
-          { emoji: "🪜", title: "A price ladder, not one price", body: "The same subject at $19, $89 and $180 lets the buyer choose the level.", tint: "bg-violet-brand/10 text-violet-deep" },
-          { emoji: "⏱️", title: "No manual sending", body: "The workbook is delivered while you are asleep, in the middle of a session or on a plane.", tint: "bg-mint-brand/15 text-mint-deep" },
-          { emoji: "🧾", title: "Receipts your buyer can keep", body: "Stripe sends the receipt from your own account.", tint: "bg-amber-brand/15 text-amber-brand" },
-        ],
-      },
-      {
-        kind: "note",
-        title: "How a paid call works here",
-        body: "You set your hours once, in your own time zone. The buyer sees the free times in theirs, picks one and pays on your Stripe account; the time is held while they pay, so nobody else can take it. Then you both get an email with a calendar file and your meeting link. It does not read your Google calendar yet, so a day off is closed by changing your hours.",
-      },
-    ],
-  },
-  {
-    slug: "cooks",
-    section: "for",
-    eyebrow: "For creators",
-    title: "For cooks and",
-    highlight: "nutritionists",
-    intro:
-      "Meal plans, grocery lists and recipe packs, sold by the week. This is exactly the store you can open and buy from right now.",
-    badge: LIVE,
-    accent: "from-mint-brand to-amber-brand",
-    blocks: [
-      {
-        kind: "storecard",
-        title: "The live demo store",
-        creator: "Harbor Kitchen",
-        tagline: "Simple family meals by Jenny",
-        photo: "photo-1543871595-e11129e271cc",
-        alt: "A woman with long dark hair, smiling",
-        items: [
-          { label: "Weekly meal planner, 1 week", detail: "PDF, 1 page", price: "$27" },
-          { label: "Weekly meal planner, 5 weeks", detail: "PDF, 5 pages", price: "$39" },
-          { label: "Free recipe of the week", detail: "On the page, no payment", price: "Free" },
-        ],
-      },
-      {
-        kind: "cards",
-        title: "Why this shape works for food creators",
-        items: [
-          { emoji: "🗓️", title: "Sell the week, then the season", body: "One week to try, five weeks for the person who already trusts you.", tint: "bg-mint-brand/15 text-mint-deep" },
-          { emoji: "🧺", title: "The grocery list is the hook", body: "The part people share is the part that brings the next buyer.", tint: "bg-amber-brand/15 text-amber-brand" },
-          { emoji: "📱", title: "Opened on a phone, in a kitchen", body: "The page is built to load fast on a slow connection.", tint: "bg-sky-brand/15 text-sky-brand" },
-        ],
-      },
-    ],
-  },
-  {
-    slug: "fitness",
-    section: "for",
-    eyebrow: "For creators",
-    title: "For fitness",
-    highlight: "creators",
-    intro:
-      "Programmes, challenges and form checks, with a plan for the beginner and a plan for the person who has already done it twice.",
-    badge: LIVE,
-    accent: "from-pink-brand to-violet-brand",
-    blocks: [
-      {
-        kind: "storecard",
-        title: "What a fitness store looks like",
-        creator: "Dani Cole",
-        tagline: "Strength for people with desk jobs",
-        photo: "photo-1617748142090-06eeb8fd1119",
-        alt: "A woman in a yellow dress, smiling outdoors",
-        items: [
-          { label: "4-week starter block", detail: "PDF plus video links", price: "$29" },
-          { label: "12-week programme", detail: "PDF plus weekly tracker", price: "$79" },
-          { label: "Form check", detail: "You send a video, Dani replies", price: "$45" },
-        ],
-      },
-      {
-        kind: "cards",
-        title: "What this solves",
-        items: [
-          { emoji: "🔁", title: "The repeat buyer", body: "The 4-week block is the sample; the 12-week programme is the sale.", tint: "bg-pink-brand/10 text-pink-brand" },
-          { emoji: "📹", title: "Video without a video platform", body: "Your programme links to where your videos already live.", tint: "bg-violet-brand/10 text-violet-deep" },
-          { emoji: "💬", title: "Selling your attention", body: "A form check is a product with a price, not a free DM that eats your evening.", tint: "bg-sky-brand/15 text-sky-brand" },
-        ],
-      },
-    ],
-  },
-  {
-    slug: "designers",
-    section: "for",
-    eyebrow: "For creators",
-    title: "For designers and",
-    highlight: "photographers",
-    intro:
-      "Presets, templates and brush packs — files that sell while you work on something else, delivered the second the payment clears.",
-    badge: LIVE,
-    accent: "from-amber-brand to-pink-brand",
-    blocks: [
-      {
-        kind: "storecard",
-        title: "What a design store looks like",
-        creator: "Tess Lang",
-        tagline: "Film-look presets and Lightroom recipes",
-        photo: "photo-1746790335260-4577f9953b11",
-        alt: "A woman in a green dress, smiling",
-        items: [
-          { label: "Starter pack", detail: "6 presets, ZIP", price: "$15" },
-          { label: "Full collection", detail: "28 presets plus a guide", price: "$49" },
-          { label: "Studio licence", detail: "Team use, invoice on request", price: "$149" },
-        ],
-      },
-      {
-        kind: "cards",
-        title: "What this solves",
-        items: [
-          { emoji: "⚡", title: "Delivery that does not fail", body: "The most damaging bug in this market is the file that silently stops being sent.", tint: "bg-amber-brand/15 text-amber-brand" },
-          { emoji: "🧮", title: "Three prices, one product", body: "Personal, full and studio, from the same card.", tint: "bg-violet-brand/10 text-violet-deep" },
-          { emoji: "🎨", title: "A page that does not fight your work", body: "Your covers and colours, not a template everybody recognises.", tint: "bg-pink-brand/10 text-pink-brand" },
-        ],
-      },
-      {
-        kind: "note",
-        title: "Honest about file size",
-        body: "We host up to 5 GB per file, which is what Stan says it supports, so this is not a reason to choose between us. Heavier than that, or not a file at all \u2014 a workspace, a private feed, a folder that keeps growing \u2014 and you sell it as a link instead: it stays where you already keep it and the buyer is sent straight there the moment they pay.",
-      },
-    ],
-  },
+  ...FEATURE_PAGES,
+  ...CREATOR_PAGES,
 
   /* ------------------------------------------------ proof ------------- */
   {
@@ -371,7 +88,7 @@ export const PAGES: TopicPage[] = [
           ["A line about you on the page", "Their About me, on one theme only", "On every store, under your name"],
           ["Your own domain", "Not available", DOMAINS ? "Yes, on the $99 Pro plan, with the certificate handled for you" : "Not available"],
           ["Changing your store address", "Any time. Their help centre says old links are forwarded on a best effort, cannot be guaranteed, and advises resending them", "Any time. Every address the store ever used keeps working, for good"],
-          ["Customer area for all purchases", "Courses only", "Courses: every course bought from a store opens with one emailed link, no password. A buyer who loses a download link gets it sent again, with no account"],
+          ["Customer area for all purchases", "Courses only", "Everything bought from a store, listed on one page the buyer reaches with an emailed link: downloads, links and courses. No account and no password"],
           ["Several stores in one account", "Not in one account. Several accounts, each with its own email and its own subscription", "Not available. One store per account, the same as theirs"],
         ],
       },

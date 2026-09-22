@@ -27,6 +27,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const fixed: { path: string; priority: number }[] = [
     { path: "/", priority: 1 },
     { path: "/blog", priority: 0.8 },
+    { path: "/platform", priority: 0.8 },
     { path: "/mission", priority: 0.6 },
     { path: "/help", priority: 0.6 },
     { path: "/creators", priority: 0.5 },

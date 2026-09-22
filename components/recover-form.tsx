@@ -69,7 +69,7 @@ export function RecoverForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4" noValidate>
+    <form method="post" onSubmit={submit} className="space-y-4" noValidate>
       <div>
         <label
           htmlFor="recover-email"

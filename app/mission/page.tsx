@@ -59,7 +59,7 @@ const BUILT = [
   "Price options on one product — one week, five weeks, the season — up to three, each handing over its own file or link",
   "A Stripe checkout that charges the creator account directly, with nothing taken on top — running in test mode on the demo store",
   "The file delivered the second the payment clears, with a link that expires",
-  "A buyer who loses that link gets it sent again — no account, no password",
+  "A buyer who loses that link gets everything they bought from the store again, by email, at any time — no account, no password",
   "A creator account you sign in to with an emailed link, and no password at all",
   "Your own store address, live the moment you take it",
   "A change of address that never breaks the link already in your bio",

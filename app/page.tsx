@@ -87,7 +87,7 @@ const GROUPS: Group[] = [
     title: "Deliver",
     line: "The second Stripe confirms the payment.",
     items: [
-      { title: "Instant download", body: "A link that works for three days, and is sent again if it gets lost." },
+      { title: "Instant download", body: "On screen the second it is paid. Lost later? The buyer gets it again by email, any time." },
       { title: "Courses without passwords", body: "Students open them with a link to their email." },
       { title: "Calendar invites", body: "A booked call lands in both calendars." },
       { title: "Limited quantities", body: "Counted from real payments, and selling stops at zero." },

@@ -1,6 +1,7 @@
 // Demo creator store: proves that a buyer can pay a creator directly and get
 // the file right after Stripe confirms the payment. Test mode only.
 import type { DemoFileName } from "@/lib/demo-file";
+import { onlyInstantMethods } from "@/lib/instant-pay";
 
 export type DemoOption = {
   id: string;
@@ -141,6 +142,7 @@ export async function createDemoCheckout(
     success_url: `${origin}/demo/thanks?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/demo`,
   });
+  onlyInstantMethods(body);
 
   const session = await stripeRequest("POST", "/checkout/sessions", body);
   if (typeof session.url !== "string") {
@@ -159,7 +161,7 @@ export type DemoOrder =
       /** How long this download still has, in seconds. */
       secondsLeft: number;
     }
-  | { state: "unpaid" | "expired" | "invalid" | "unavailable" | "error" };
+  | { state: "unpaid" | "processing" | "expired" | "invalid" | "unavailable" | "error" };
 
 // Looks up a Checkout Session and decides whether the buyer may download.
 // The file is released only when Stripe reports the session as paid.
@@ -193,6 +195,9 @@ export async function getDemoOrder(
     !option
   ) {
     return { state: "invalid" };
+  }
+  if (session.status === "complete" && session.payment_status === "unpaid") {
+    return { state: "processing" };
   }
   if (session.status !== "complete" || session.payment_status !== "paid") {
     return { state: "unpaid" };

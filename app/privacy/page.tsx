@@ -76,6 +76,16 @@ export default function PrivacyPage() {
           whether or not a membership was found.
         </p>
         <p>
+          <strong className="text-black">Getting a purchase again.</strong>{" "}
+          When a buyer asks a store for what they bought, we use the email
+          address they type to look for their paid purchases on the
+          creator&apos;s own Stripe account and, if there are any, to email them
+          a link to a page that lists them. We keep a record that ties that link
+          to the address for 24 hours, and nothing else; the list itself is read
+          from Stripe each time the page opens, and the page says the same thing
+          whether or not a purchase was found.
+        </p>
+        <p>
           <strong className="text-black">Counting visits to a store.</strong>{" "}
           When a creator&apos;s store page is opened, the page tells us so,
           with the site that sent the visitor or the campaign word in the link.
