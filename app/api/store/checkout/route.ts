@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
   // Refused here rather than at Stripe, so a buyer never reaches a card form
   // for something that could not have been delivered anyway.
   if (!canSellProduct(store, product)) return away(`/@${store.handle}`);
+  // A call is booked for a time on its own page, never bought without one.
+  if (product.call) return away(`/@${store.handle}/book/${product.id}`);
 
   try {
     const url = await createCheckout(store, product, origin, optionId);
