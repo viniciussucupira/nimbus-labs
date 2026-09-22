@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { readOrder } from "@/lib/store-checkout";
 import { plain, serveFile } from "@/lib/serve-file";
+import { upsellDelivery } from "@/lib/upsell";
 
 /**
  * Hands the buyer the file they paid for.
@@ -35,6 +36,16 @@ export async function GET(request: NextRequest) {
   if (order.state !== "paid") {
     const [status, message] = MESSAGES[order.state];
     return plain(status, message);
+  }
+
+  // The product taken in one click after paying: only once Stripe said so.
+  if (request.nextUrl.searchParams.get("item") === "upsell") {
+    const added = await upsellDelivery(store, request.nextUrl.searchParams.get("session_id") ?? "");
+    if (!added) return plain(404, "This order has nothing added to it.");
+    if (!added.file) {
+      return plain(added.link ? 409 : 404, added.link ? "This one is not a download. Open the order page again and use the link on it." : "There is no file on this product.");
+    }
+    return serveFile(added.file);
   }
 
   // The product added at checkout has its own file, asked for by name.
