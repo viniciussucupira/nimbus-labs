@@ -24,6 +24,7 @@ import { type StoreLook, DEFAULT_LOOK, parseLook } from "@/lib/store-look";
 import { PHOTO_ID_PATTERN } from "@/lib/photo-limits";
 import { type CallSetup, parseSetup } from "@/lib/call-setup";
 import { type Pixels, NO_PIXELS, parsePixels } from "@/lib/pixels";
+import { type Bump, canBeBumped, isOneOff, parseBump, parseStock } from "@/lib/product-extras";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
@@ -175,6 +176,10 @@ export type Product = {
    * carries no file, no link, no options and no schedule of payments.
    */
   call: CallSetup | null;
+  /** How many can ever be sold, when the creator limits it. Null is no limit. */
+  stock: number | null;
+  /** Another product offered in a box at checkout, at a price of its own. */
+  bump: Bump | null;
 };
 
 export type Store = {
@@ -338,6 +343,8 @@ function parseProducts(raw: unknown): Product[] {
       recurring: parseRecurring(value.recurring),
       options: parseOptions(value.options),
       call: parseSetup(value.call),
+      stock: parseStock(value.stock),
+      bump: parseBump(value.bump),
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -853,6 +860,50 @@ export async function setProductCall(
   return { ok: true, store: next };
 }
 
+export type ExtrasResult =
+  | { ok: true; store: Store }
+  | { ok: false; reason: "none" | "unknown" | "kind" | "target" | "price" };
+
+/**
+ * Sets or clears a product's limited quantity and its order bump.
+ *
+ * Both apply to one-off paid products only. The product offered in the box
+ * must be another one-off of the same store with one price and one delivery,
+ * and it can never cost more that way than on its own.
+ */
+export async function setProductExtras(
+  email: string,
+  id: string,
+  change: { stock?: number | null; bump?: Bump | null },
+): Promise<ExtrasResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.products.findIndex((product) => product.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+  const product = store.products[at];
+  const next: Product = { ...product };
+
+  if (change.stock !== undefined) {
+    if (change.stock !== null && !isOneOff(product)) return { ok: false, reason: "kind" };
+    next.stock = change.stock;
+  }
+  if (change.bump !== undefined) {
+    if (change.bump !== null) {
+      if (!isOneOff(product)) return { ok: false, reason: "kind" };
+      const target = store.products.find((p) => p.id === change.bump!.productId);
+      if (!target || target.id === product.id || !canBeBumped(target)) return { ok: false, reason: "target" };
+      if (change.bump.priceCents > target.priceCents) return { ok: false, reason: "price" };
+    }
+    next.bump = change.bump;
+  }
+
+  const products = [...store.products];
+  products[at] = next;
+  const saved: Store = { ...store, products, statsId: store.statsId ?? newListId() };
+  await saveStore(saved);
+  return { ok: true, store: saved };
+}
+
 /** Saves the creator's ad pixels. */
 export async function setPixels(
   email: string,
@@ -982,6 +1033,8 @@ export async function addProduct(
     recurring,
     options: [],
     call: null,
+    stock: null,
+    bump: null,
   };
 
   const next: Store = {
