@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Icon, iconFor } from "@/components/icons";
+import { Icon, iconFor, type IconName } from "@/components/icons";
 import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
@@ -117,6 +117,26 @@ const NOT_BUILT = [
   "Reading your Google or Outlook calendar, so a busy day closes by itself",
   "Several stores in one account",
   "An affiliate programme",
+];
+
+/* What shipped, and when: read from the site's own history, not written for effect. */
+const RELEASES: { date: string; items: string }[] = [
+  { date: "17 September 2026", items: "The live demo store: a Stripe checkout charged on a creator's own account, and the file handed over the moment Stripe confirms it." },
+  { date: "18 September 2026", items: "Signing in with a link sent to your email, and no password anywhere." },
+  { date: "19 September 2026", items: "Creator stores: an @address of your own, products and prices, the file each one delivers, and your own Stripe account connected." },
+  { date: "20 September 2026", items: "Memberships, discount codes, and several prices on one product in every store." },
+  { date: "21 September 2026", items: "Free products for an email address, members who cancel on their own, and cancelling the Nimbus plan in one click." },
+  { date: "22 September 2026", items: "Paid calls, courses, numbers and ad pixels, offers before and after paying, payment plans, sales tax, yearly plans, email to your list and your own domain on Pro, and buyers getting any purchase again by email." },
+];
+
+/* Facts a creator can check before trusting us with a store. */
+const TRUST: { icon: IconName; title: string; body: string; href: string; link: string }[] = [
+  { icon: "user", title: "Who builds it", body: "Vinicius Sucupira, the founder, who writes the code and answers the email.", href: "/proof/questions", link: "The awkward questions" },
+  { icon: "mail", title: "How to reach us", body: "By email. A person reads every message and answers in writing, in English.", href: "mailto:viniciussucupira091@gmail.com", link: "Write to us" },
+  { icon: "bank", title: "Where the money is", body: "Every sale is processed by Stripe on the creator's own account. We never hold a balance of yours.", href: "/platform/your-stripe", link: "How the money moves" },
+  { icon: "shield", title: "What we keep about you", body: "What the service needs to run, listed in plain words, with who processes it for us. Nothing is sold.", href: "/privacy", link: "Privacy policy" },
+  { icon: "receipt", title: "The rules, in writing", body: "The terms of the service, and a full refund of any charge from us you ask for within 14 days.", href: "/terms", link: "Terms and refunds" },
+  { icon: "door", title: "Leaving is free", body: "Your Stripe account, customers and payouts were always yours, and your list downloads as a file at any time.", href: "/proof/promises", link: "What we never do" },
 ];
 
 export default function MissionPage() {
@@ -262,6 +282,55 @@ export default function MissionPage() {
                 </p>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section className="surface-sand section" aria-labelledby="trust-title">
+          <div className="container-page">
+            <div className="max-w-2xl">
+              <p className="eyebrow">Before you trust us with a store</p>
+              <h2 id="trust-title" className="t-h2 mt-4">Things you can check</h2>
+              <p className="mt-4 text-ink-soft">No badges, no borrowed logos. Each of these leads to the page that proves it.</p>
+            </div>
+            <ul className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {TRUST.map((t) => (
+                <li key={t.title} className="card reveal flex flex-col p-7">
+                  <span className="icon-tile">
+                    <Icon name={t.icon} size={22} />
+                  </span>
+                  <h3 className="mt-6 text-[1.0625rem] font-semibold text-ink">{t.title}</h3>
+                  <p className="mt-2 flex-1 text-[0.9375rem] leading-relaxed text-ink-soft">{t.body}</p>
+                  {t.href.startsWith("mailto:") ? (
+                    <a href={t.href} className="link-arrow mt-5 text-[0.9375rem]">
+                      {t.link}
+                      <Icon name="arrow-right" size={16} className="arrow" />
+                    </a>
+                  ) : (
+                    <Link href={t.href} className="link-arrow mt-5 text-[0.9375rem]">
+                      {t.link}
+                      <Icon name="arrow-right" size={16} className="arrow" />
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section className="section" aria-labelledby="history-title">
+          <div className="container-narrow">
+            <p className="eyebrow">Built in public</p>
+            <h2 id="history-title" className="t-h2 mt-4">What shipped, and when</h2>
+            <p className="mt-4 text-ink-soft">Each line went live on the day it says, and is listed as built above.</p>
+            <ol className="relative mt-10 space-y-8 border-l border-line pl-8">
+              {RELEASES.map((r) => (
+                <li key={r.date} className="reveal relative">
+                  <span className="absolute -left-[2.3rem] top-1.5 h-3 w-3 rounded-full border-2 border-paper bg-violet-brand" aria-hidden="true" />
+                  <p className="text-sm font-semibold text-violet-deep">{r.date}</p>
+                  <p className="mt-1.5 leading-relaxed text-ink-soft">{r.items}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         </section>
 

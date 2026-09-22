@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { isDomainsConfigured } from "@/lib/domains";
 import { HelpSearch } from "@/components/help-search";
+import { CopyLink } from "@/components/copy-link";
 
 /** An anchor for one answer, from its question. */
 function answerId(q: string): string {
@@ -383,6 +384,7 @@ export default function HelpPage() {
               Every answer here is about the product as it is today. Where the answer is &ldquo;not yet&rdquo;, it says
               not yet.
             </p>
+            <p className="mt-3 text-sm text-white/60">Checked against the product on 22 September 2026.</p>
             <HelpSearch />
           </div>
         </section>
@@ -433,6 +435,7 @@ export default function HelpPage() {
                             {paragraph}
                           </p>
                         ))}
+                        <CopyLink id={answerId(item.q)} />
                       </div>
                     </details>
                   ))}

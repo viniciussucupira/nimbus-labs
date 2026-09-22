@@ -70,6 +70,17 @@ export const PAGES: TopicPage[] = [
     accent: "from-violet-brand to-pink-brand",
     blocks: [
       {
+        kind: "features",
+        title: "The short version",
+        intro: "Four lines before the long table. Every one of them is backed by a row below, with its source.",
+        items: [
+          { icon: "bank", title: "Where we are ahead: the money", body: "Sales land in a full Stripe account in your own name, with its own login and payout schedule. Stan's creators get an account Stan manages, and cash out inside Stan." },
+          { icon: "tag", title: "Where we are ahead: the $29 plan", body: "Several prices on one product, discount codes, offers before and after paying, payment plans and ad pixels, where Stan keeps most of those for $99." },
+          { icon: "scale", title: "Where we are the same", body: "0% of each sale, and the same $29 and $99 a month, or $300 and $948 a year." },
+          { icon: "info", title: "Where Stan is ahead", body: "PayPal, funnels, affiliates paid automatically, automated Instagram replies, communities and an iPhone app. If you need those today, Stan is the better tool today." },
+        ],
+      },
+      {
         kind: "table",
         title: "The part that decides",
         note: "Sources: Stan's help centre articles 'Creator vs. Creator Pro', 'How to Connect Stan with Stripe', 'How to Cash Out Inside Stan', 'Experiment: How to Connect an Existing Stripe Account' and 'How to Subscribe on the Stan Mobile App', read on 18 September 2026; 'Can I Create More Than One Stan Store?' and 'How to Change Your Stan Username or Email', read on 19 September 2026.",
