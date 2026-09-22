@@ -67,6 +67,7 @@ const BUILT = [
   "Or a link instead of a file, for what is too big to upload or is not a file at all",
   "Memberships: daily, weekly, monthly or yearly, charged on your own Stripe account",
   "Members who cancel on their own, in one click on Stripe's own page, without having to write to you",
+  "Paid calls with a calendar: your weekly hours in your time zone, the free times shown to each buyer in theirs, the time held while they pay, and a calendar file emailed to both of you",
   "Links to everywhere else you are — the channel, the podcast, the booking page — with no price and no checkout on them",
   "Discount codes a buyer types at checkout, made as coupons on your own Stripe account",
   "Free products given for an email address, each address confirmed by its owner, and the list downloadable from your studio at any time",
@@ -102,7 +103,7 @@ const NOT_BUILT = [
   "PayPal as a second way to be paid — it is Stripe only today",
   "Courses with lessons and progress",
   "Communities and group chat",
-  "Scheduled calls with a calendar",
+  "Reading your Google or Outlook calendar, so a busy day closes by itself",
   "Email marketing and automations",
   "An affiliate programme",
 ];
