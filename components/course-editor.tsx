@@ -123,7 +123,7 @@ export function CourseEditor({ productId, initial, folder }: { productId: string
             value={newModule}
             onChange={(event) => setNewModule(event.target.value)}
           />
-          <button type="submit" disabled={busy} className="btn btn-secondary">Add module</button>
+          <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-secondary">Add module</button>
         </div>
       </form>
 
@@ -134,7 +134,7 @@ export function CourseEditor({ productId, initial, folder }: { productId: string
           </p>
           <button
             type="button"
-            disabled={busy}
+            aria-busy={busy} disabled={busy}
             className="btn btn-secondary btn-sm mt-3"
             onClick={async () => {
               const answer = await run({ action: "disable" });
@@ -222,7 +222,7 @@ function ModuleCard({
           Move module down
         </button>
         {unit.lessons.length === 0 ? (
-          <button type="button" className={small} disabled={busy} onClick={() => run({ action: "edit", op: "module-remove", moduleId: unit.id })}>
+          <button type="button" className={small} aria-busy={busy} disabled={busy} onClick={() => run({ action: "edit", op: "module-remove", moduleId: unit.id })}>
             Remove module
           </button>
         ) : null}
@@ -249,10 +249,10 @@ function ModuleCard({
               <button type="button" className={small} onClick={() => setOpenLesson(openLesson === lesson.id ? null : lesson.id)} aria-expanded={openLesson === lesson.id}>
                 {openLesson === lesson.id ? "Close" : "Edit lesson"}
               </button>
-              <button type="button" className={small} disabled={busy} onClick={() => run({ action: "edit", op: "lesson-move", lessonId: lesson.id, direction: "up" })}>
+              <button type="button" className={small} aria-busy={busy} disabled={busy} onClick={() => run({ action: "edit", op: "lesson-move", lessonId: lesson.id, direction: "up" })}>
                 Up
               </button>
-              <button type="button" className={small} disabled={busy} onClick={() => run({ action: "edit", op: "lesson-move", lessonId: lesson.id, direction: "down" })}>
+              <button type="button" className={small} aria-busy={busy} disabled={busy} onClick={() => run({ action: "edit", op: "lesson-move", lessonId: lesson.id, direction: "down" })}>
                 Down
               </button>
             </div>
@@ -289,7 +289,7 @@ function ModuleCard({
           value={newLesson}
           onChange={(e) => setNewLesson(e.target.value)}
         />
-        <button type="submit" disabled={busy} className="btn btn-primary">Add lesson</button>
+        <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-primary">Add lesson</button>
       </form>
     </section>
   );
@@ -383,7 +383,7 @@ function LessonEditor({
           <span>Free preview: anyone can open this lesson from your store before buying.</span>
         </label>
         <div className="flex flex-wrap items-center gap-3">
-          <button type="submit" disabled={busy} className="btn btn-secondary btn-sm">Save lesson</button>
+          <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-secondary btn-sm">Save lesson</button>
           {saved ? <span className="text-sm text-ink-soft" role="status">{saved}</span> : null}
         </div>
       </form>
@@ -447,7 +447,7 @@ function LessonEditor({
             <p className="mt-1 text-sm text-ink-mute">
               {`Blank lines make paragraphs, lines starting with "- " make a list, and web addresses become links. ${MAX_BODY_LENGTH - text.length} characters left.`}
             </p>
-            <button type="submit" disabled={busy} className="btn btn-secondary btn-sm mt-2">Save text</button>
+            <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-secondary btn-sm mt-2">Save text</button>
           </form>
         )}
       </div>
@@ -459,7 +459,7 @@ function LessonEditor({
             {lesson.files.map((file) => (
               <li key={file.pathname} className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span className="min-w-0 break-all text-ink">{`${file.name} · ${readableSize(file.bytes)}`}</span>
-                <button type="button" className={`${small} font-bold`} disabled={busy} onClick={() => run({ action: "edit", op: "media-remove", lessonId: lesson.id, pathname: file.pathname })}>
+                <button type="button" className={`${small} font-bold`} aria-busy={busy} disabled={busy} onClick={() => run({ action: "edit", op: "media-remove", lessonId: lesson.id, pathname: file.pathname })}>
                   Remove
                 </button>
               </li>
@@ -495,7 +495,7 @@ function LessonEditor({
             <span className="text-ink-soft">Remove this lesson with its video, text and downloads?</span>
             <button
               type="button"
-              disabled={busy}
+              aria-busy={busy} disabled={busy}
               className="btn btn-secondary btn-sm"
               onClick={async () => {
                 const answer = await run({ action: "edit", op: "lesson-remove", lessonId: lesson.id });
@@ -523,7 +523,7 @@ export function StudentAccess({ productId, email, blocked }: { productId: string
   return (
     <button
       type="button"
-      disabled={busy}
+      aria-busy={busy} disabled={busy}
       className="whitespace-nowrap text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep disabled:opacity-40"
       onClick={async () => {
         setBusy(true);

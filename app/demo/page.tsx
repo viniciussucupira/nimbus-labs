@@ -15,11 +15,18 @@ export const metadata: Metadata = {
 
 const UNSPLASH = "https://images.unsplash.com/";
 
+/*
+ * Pages lifted straight out of the PDF a buyer receives.
+ *
+ * They are the only proof on this page that the file is a real file, so they
+ * are shown large enough to read a heading off, with the page named under
+ * each one. A thumbnail too small to make out proves nothing.
+ */
 const PREVIEWS = [
-  { src: "/demo/week1-1.webp", alt: "Page one: the weekly table and the grocery list" },
-  { src: "/demo/five-1.webp", alt: "Week one of the five-week planner" },
-  { src: "/demo/five-2.webp", alt: "Week two of the five-week planner" },
-  { src: "/demo/five-3.webp", alt: "Week three of the five-week planner" },
+  { src: "/demo/week1-1.webp", label: "1 week — the plan", alt: "Page one: the weekly table and the grocery list" },
+  { src: "/demo/five-1.webp", label: "5 weeks — week one", alt: "Week one of the five-week planner" },
+  { src: "/demo/five-2.webp", label: "5 weeks — week two", alt: "Week two of the five-week planner" },
+  { src: "/demo/five-3.webp", label: "5 weeks — week three", alt: "Week three of the five-week planner" },
 ];
 
 const LINKS = [
@@ -214,21 +221,25 @@ export default function DemoStorePage() {
           >
             What is inside
           </h2>
-          <p className="mt-2 text-sm text-ink-soft">
-            Real pages from the file you receive, not a mock-up.
+          <p className="mt-2 flex items-center justify-between gap-3 text-sm text-ink-soft">
+            <span>Real pages from the file you receive, not a mock-up.</span>
+            <span className="shrink-0 text-ink-mute">{`Swipe · ${PREVIEWS.length} pages`}</span>
           </p>
-          <ul tabIndex={0} aria-label="Pages from the file" className="nb-no-scrollbar -mx-2 mt-4 flex snap-x gap-3 overflow-x-auto px-2 pb-1">
+          <ul tabIndex={0} aria-label="Pages from the file" className="nb-no-scrollbar -mx-2 mt-4 flex snap-x gap-4 overflow-x-auto px-2 pb-1">
             {PREVIEWS.map((preview) => (
               <li key={preview.src} className="shrink-0 snap-start">
-                <img
-                  src={preview.src}
-                  alt={preview.alt}
-                  width={420}
-                  height={544}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-44 w-auto rounded-[10px] border border-line shadow-[var(--shadow-xs)]"
-                />
+                <figure className="m-0">
+                  <img
+                    src={preview.src}
+                    alt={preview.alt}
+                    width={420}
+                    height={544}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-64 w-auto rounded-[10px] border border-line bg-white shadow-[var(--shadow-sm)] sm:h-72"
+                  />
+                  <figcaption className="mt-2 text-[0.8125rem] text-ink-mute">{preview.label}</figcaption>
+                </figure>
               </li>
             ))}
           </ul>

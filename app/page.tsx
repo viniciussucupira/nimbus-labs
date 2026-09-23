@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { BuyerPath } from "@/components/buyer-path";
 import { SiteNav } from "@/components/site-nav";
 import { Icon, type IconName } from "@/components/icons";
+import { FeatureVisual, type VisualKey } from "@/components/feature-visuals";
 import { DemoWindow, Faq, HeroFlow, Pricing, RevealOnScroll } from "@/components/home-parts";
 import { PLAN_PRICES, PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 import { isDomainsConfigured } from "@/lib/domains";
@@ -19,12 +20,30 @@ const PHOTO = (id: string, w = 400, h = 400) =>
 
 const PRICE = PRICE_CENTS / 100;
 
-/* The three things that make a sale on Nimbus different. */
-const REASONS: { icon: IconName; title: string; body: string; href: string; link: string }[] = [
+/*
+ * The three things that make a sale on Nimbus different.
+ *
+ * Each one is shown, not described: beside the words is the drawing of the
+ * screen it happens on, taken from the page that explains it in full. A claim
+ * about where money goes is worth more with the path drawn next to it, and
+ * two of these three drawings are the real thing and can be clicked.
+ */
+const REASONS: {
+  icon: IconName;
+  title: string;
+  body: string;
+  example: string;
+  visual: VisualKey;
+  href: string;
+  link: string;
+}[] = [
   {
     icon: "bank",
     title: "The money lands in your Stripe",
     body: "Every sale is a direct charge on your own Stripe account. Payouts follow your schedule, and refunds and disputes live in your own dashboard.",
+    example:
+      "If you ever leave us, nothing moves: the account, the customers and the payout history were yours the whole time.",
+    visual: "stripe",
     href: "/platform/your-stripe",
     link: "How the money moves",
   },
@@ -32,6 +51,9 @@ const REASONS: { icon: IconName; title: string; body: string; href: string; link
     icon: "tag",
     title: "Several prices for one product",
     body: "One week for $27, five weeks for $39. Up to three options on any product, and each option delivers its own file.",
+    example:
+      "Stan's own help centre lists this among its most requested features and says there is no native way to do it — read on 18 September 2026.",
+    visual: "options",
     href: "/platform/price-options",
     link: "See price options",
   },
@@ -39,6 +61,9 @@ const REASONS: { icon: IconName; title: string; body: string; href: string; link
     icon: "bolt",
     title: "Delivered the second it is paid",
     body: "The file is released when Stripe confirms the payment. If the buyer loses it, a month or a year later, they get it again by email.",
+    example:
+      "A buyer on a new phone types the address they paid with, and every purchase from that store comes back to them.",
+    visual: "delivery",
     href: "/platform/instant-delivery",
     link: "How delivery works",
   },
@@ -291,18 +316,34 @@ export default function Home() {
               <h2 className="t-h2 balance mt-4">Built around the one thing that is yours: the money</h2>
             </div>
 
-            <div className="mt-12 grid gap-5 md:grid-cols-3">
-              {REASONS.map((r) => (
-                <article key={r.title} className="card card-hover reveal flex flex-col p-7">
-                  <span className="icon-tile">
-                    <Icon name={r.icon} size={22} />
-                  </span>
-                  <h3 className="t-h3 mt-6">{r.title}</h3>
-                  <p className="mt-3 flex-1 text-ink-soft">{r.body}</p>
-                  <Link href={r.href} className="link-arrow mt-6 text-[0.9375rem]">
-                    {r.link}
-                    <Icon name="arrow-right" size={16} className="arrow" />
-                  </Link>
+            <div className="mt-14 space-y-16 sm:mt-16 sm:space-y-20">
+              {REASONS.map((r, i) => (
+                <article key={r.title} className="reveal grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+                  <div className={i % 2 === 1 ? "lg:order-2" : ""}>
+                    <span className="icon-tile">
+                      <Icon name={r.icon} size={22} />
+                    </span>
+                    <h3 className="t-h3 mt-6">{r.title}</h3>
+                    <p className="measure mt-3 text-ink-soft">{r.body}</p>
+                    <p className="measure mt-5 flex gap-2.5 rounded-[var(--r-md)] bg-white p-4 text-[0.9375rem] text-ink-soft ring-1 ring-line">
+                      <Icon name="check" size={16} strokeWidth={2.4} className="mt-0.5 shrink-0 text-mint-deep" />
+                      <span>{r.example}</span>
+                    </p>
+                    <Link href={r.href} className="link-arrow mt-6 text-[0.9375rem]">
+                      {r.link}
+                      <Icon name="arrow-right" size={16} className="arrow" />
+                    </Link>
+                  </div>
+                  {/*
+                    min-w-0 is not decoration. A grid item will not shrink
+                    below the widest thing inside it unless you say so, and
+                    these drawings are full of rows that would rather stay
+                    wide, so without it the whole page grows a sideways
+                    scrollbar on a phone.
+                  */}
+                  <div className={`flex min-w-0 justify-center ${i % 2 === 1 ? "lg:order-1 lg:justify-start" : "lg:justify-end"}`}>
+                    <FeatureVisual visual={r.visual} tone="light" />
+                  </div>
                 </article>
               ))}
             </div>

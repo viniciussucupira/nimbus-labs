@@ -345,7 +345,20 @@ body {
     transform var(--d-fast) var(--ease);
 }
 .btn:active {
-  transform: translateY(1px) scale(0.99);
+  transform: translateY(var(--press)) scale(0.99);
+}
+/*
+ * Working, not just unavailable.
+ *
+ * A button mid-request keeps its own label — every one of them says what it
+ * is doing, "Saving…" rather than nothing — and the cursor and the dimming
+ * carry the rest. aria-busy is what a screen reader reads; this is what
+ * everybody else sees.
+ */
+.btn[aria-busy="true"] {
+  cursor: progress;
+  opacity: 0.75;
+  transform: none;
 }
 .btn:disabled,
 .btn[aria-disabled="true"] {
@@ -512,7 +525,7 @@ body {
 .card-hover:hover {
   box-shadow: var(--shadow-md);
   border-color: var(--line-strong);
-  transform: translateY(-2px);
+  transform: translateY(var(--lift));
 }
 .panel-dark {
   background: rgba(255, 255, 255, 0.04);

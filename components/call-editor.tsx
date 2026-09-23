@@ -167,7 +167,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
           </button>
           <button
             type="button"
-            disabled={busy}
+            aria-busy={busy} disabled={busy}
             onClick={() => send({ id: product.id, remove: true })}
             className="text-ink-soft underline underline-offset-4 transition hover:text-danger"
           >
@@ -348,7 +348,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
       {error ? <p className="notice notice-error" role="alert">{error}</p> : null}
 
       <div className="flex flex-wrap gap-2">
-        <button type="submit" disabled={busy} className="btn btn-primary">
+        <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-primary">
           {busy ? "Saving…" : product.call ? "Save the hours" : "Sell it as a call"}
         </button>
         <button type="button" onClick={() => { setOpen(false); setError(null); }} className="btn btn-ghost">

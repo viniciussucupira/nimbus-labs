@@ -155,7 +155,7 @@ export function DomainEditor({
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           type="button"
-          disabled={busy}
+          aria-busy={busy} disabled={busy}
           className="btn btn-secondary"
           onClick={async () => {
             if (await act({ action: "check" })) {
@@ -170,7 +170,7 @@ export function DomainEditor({
           <>
             <button
               type="button"
-              disabled={busy}
+              aria-busy={busy} disabled={busy}
               className="btn btn-secondary"
               onClick={async () => {
                 if (await act({ action: "remove" })) {

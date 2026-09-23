@@ -120,7 +120,7 @@ export function PixelEditor({ pixels }: { pixels: Pixels }) {
 
           {error ? <p className="notice notice-error" role="alert">{error}</p> : null}
           <div className="flex flex-wrap gap-3">
-            <button type="submit" disabled={busy} className="btn btn-primary">
+            <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-primary">
               {busy ? "Saving…" : "Save pixels"}
             </button>
             <button

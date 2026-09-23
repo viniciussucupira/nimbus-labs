@@ -159,7 +159,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                   </p>
                   <button
                     type="button"
-                    disabled={busy}
+                    aria-busy={busy} disabled={busy}
                     onClick={() => run({ action: "stop", id: entry.id }, () => {})}
                     className="mt-2 text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-danger disabled:no-underline disabled:opacity-40"
                   >
@@ -308,7 +308,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="submit"
-                  disabled={busy}
+                  aria-busy={busy} disabled={busy}
                   className="btn btn-primary"
                 >
                   {busy ? "Making it…" : "Make the code"}

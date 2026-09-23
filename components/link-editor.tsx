@@ -126,7 +126,7 @@ function LinkForm({
       <div className="flex flex-wrap gap-2">
         <button
           type="submit"
-          disabled={busy}
+          aria-busy={busy} disabled={busy}
           className="btn btn-primary"
         >
           {busy ? "Saving…" : submitLabel}
@@ -306,7 +306,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         type="button"
-                        disabled={busy}
+                        aria-busy={busy} disabled={busy}
                         onClick={() =>
                           run({ action: "remove", id: link.id }, () =>
                             setRemovingId(null),

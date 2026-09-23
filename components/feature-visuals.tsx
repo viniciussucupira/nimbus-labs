@@ -383,7 +383,12 @@ const CAPTIONS: Record<VisualKey, string> = {
   insights: "The numbers screen in the studio. The bars are an example, not our figures.",
 };
 
-export function FeatureVisual({ visual }: { visual: VisualKey }) {
+/**
+ * @param tone Which surface it is standing on. The drawings themselves are
+ *   white either way; only the hairline around them and the caption under
+ *   them change, because a caption in white on sand is a caption nobody reads.
+ */
+export function FeatureVisual({ visual, tone = "dark" }: { visual: VisualKey; tone?: "dark" | "light" }) {
   const body = {
     store: <StoreVisual />,
     options: <OptionsDemo />,
@@ -399,9 +404,11 @@ export function FeatureVisual({ visual }: { visual: VisualKey }) {
   }[visual];
   const interactive = visual === "options" || visual === "checkout";
   return (
-    <figure className="w-full max-w-[26rem]">
+    <figure className="w-full min-w-0 max-w-[26rem]">
       {interactive ? body : <div aria-hidden="true">{body}</div>}
-      <figcaption className="mt-3 text-center text-sm text-white/70">{CAPTIONS[visual]}</figcaption>
+      <figcaption className={`mt-3 text-center text-sm ${tone === "light" ? "text-ink-mute" : "text-white/70"}`}>
+        {CAPTIONS[visual]}
+      </figcaption>
     </figure>
   );
 }

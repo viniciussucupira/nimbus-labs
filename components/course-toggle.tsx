@@ -41,7 +41,7 @@ export function CourseToggle({ product }: { product: Product }) {
     <div className="mt-3">
       <button
         type="button"
-        disabled={busy}
+        aria-busy={busy} disabled={busy}
         onClick={async () => {
           setBusy(true);
           setError(null);

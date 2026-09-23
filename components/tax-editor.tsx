@@ -122,7 +122,7 @@ export function TaxEditor({
 
           {error ? <p className="notice notice-error" role="alert">{error}</p> : null}
           {saved && !error ? <p className="text-sm font-semibold text-ink" role="status">Saved.</p> : null}
-          <button type="submit" disabled={busy} className="btn btn-primary">
+          <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-primary">
             {busy ? "Saving…" : "Save"}
           </button>
         </form>

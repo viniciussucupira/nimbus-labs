@@ -168,7 +168,7 @@ function Settings({ name, mail }: { name: string; mail: MailSettings | null }) {
         Replies go to the address you sign in with. The postal address is required by the CAN-SPAM Act for emails
         like these; a PO box or a mail service address counts.
       </p>
-      <button type="submit" disabled={busy} className="btn btn-secondary">Save</button>
+      <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-secondary">Save</button>
       <Feedback error={error} done={done} />
     </form>
   );
@@ -326,7 +326,7 @@ function Compose(props: {
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            disabled={busy}
+            aria-busy={busy} disabled={busy}
             className="btn btn-secondary"
             onClick={() => send({ action: "test", subject, body }, `A test went to ${props.email}.`)}
           >
@@ -336,7 +336,7 @@ function Compose(props: {
             <>
               <button
                 type="button"
-                disabled={busy}
+                aria-busy={busy} disabled={busy}
                 className="btn btn-primary"
                 onClick={async () => {
                   const sendAt = later && at ? new Date(at).getTime() : undefined;
@@ -420,7 +420,7 @@ function History({ broadcasts, products }: { broadcasts: BroadcastRow[]; product
             {b.status === "scheduled" ? (
               <button
                 type="button"
-                disabled={busy}
+                aria-busy={busy} disabled={busy}
                 className="mt-2 text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
                 onClick={async () => {
                   setBusy(true);
@@ -532,7 +532,7 @@ function Flows({ flows, products }: { flows: FlowRow[]; products: { id: string; 
                 </button>
                 <button
                   type="button"
-                  disabled={busy}
+                  aria-busy={busy} disabled={busy}
                   className="text-ink-soft underline underline-offset-4 hover:text-danger"
                   onClick={async () => {
                     setBusy(true);
@@ -638,7 +638,7 @@ function Flows({ flows, products }: { flows: FlowRow[]; products: { id: string; 
             <span>On. Switched off, nobody new starts it, and those already in it get none of its emails that are still to come.</span>
           </label>
           <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" disabled={busy} className="btn btn-primary">Save the sequence</button>
+            <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-primary">Save the sequence</button>
             <button type="button" className="text-sm font-bold text-ink-soft underline underline-offset-4" onClick={() => setDraft(null)}>
               Close
             </button>

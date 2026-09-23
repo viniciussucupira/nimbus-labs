@@ -92,7 +92,7 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
           </p>
           {error ? <p className="notice notice-error mt-3" role="alert">{error}</p> : null}
           <div className="mt-3 flex flex-wrap gap-3">
-            <button type="submit" disabled={busy} className="btn btn-primary btn-sm">
+            <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-primary btn-sm">
               {busy ? "Saving…" : "Save the limit"}
             </button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setOpen(null); setError(null); }}>
@@ -106,7 +106,7 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
           {" · "}
           <button type="button" className={link} onClick={() => setOpen("stock")}>Change</button>
           {" · "}
-          <button type="button" className={link} disabled={busy} onClick={() => send({ stock: null })}>No limit</button>
+          <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => send({ stock: null })}>No limit</button>
         </p>
       ) : (
         <button type="button" className={link} onClick={() => setOpen("stock")}>
@@ -227,7 +227,7 @@ function OfferBlock({
         {error ? <p className="notice notice-error mt-3" role="alert">{error}</p> : null}
         <div className="mt-3 flex flex-wrap gap-3">
           {candidates.length ? (
-            <button type="submit" disabled={busy} className="btn btn-primary btn-sm">
+            <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-primary btn-sm">
               {busy ? "Saving\u2026" : text.save}
             </button>
           ) : null}
@@ -245,7 +245,7 @@ function OfferBlock({
         {" \u00b7 "}
         <button type="button" className={link} onClick={onOpen}>Change</button>
         {" \u00b7 "}
-        <button type="button" className={link} disabled={busy} onClick={() => onSend({ [kind]: null })}>{text.stop}</button>
+        <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => onSend({ [kind]: null })}>{text.stop}</button>
       </p>
     );
   }
@@ -335,7 +335,7 @@ function PlanBlock({
         </p>
         {error ? <p className="notice notice-error mt-3" role="alert">{error}</p> : null}
         <div className="mt-3 flex flex-wrap gap-3">
-          <button type="submit" disabled={busy} className="btn btn-primary btn-sm">
+          <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-primary btn-sm">
             {busy ? "Saving\u2026" : "Save the plan"}
           </button>
           <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
@@ -352,7 +352,7 @@ function PlanBlock({
         {" \u00b7 "}
         <button type="button" className={link} onClick={onOpen}>Change</button>
         {" \u00b7 "}
-        <button type="button" className={link} disabled={busy} onClick={() => onSend({ plan: null })}>Stop offering it</button>
+        <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => onSend({ plan: null })}>Stop offering it</button>
       </p>
     );
   }
