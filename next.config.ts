@@ -20,6 +20,58 @@ const nextConfig: NextConfig = {
   },
 
   /**
+   * The addresses people type, pointed at the page they meant.
+   *
+   * Someone who has heard of us types nimbuslabsai.com/pricing, because that
+   * is where pricing lives on every other site they have used. Until now all
+   * of these answered with the not-found page, which is the worst possible
+   * answer: the page exists, it is one scroll down the home page, and we sent
+   * them away instead. Each entry below is a name a visitor, a link in someone
+   * else's post, or an old bookmark might use, sent to the page that actually
+   * answers it.
+   *
+   * These are permanent on purpose. They are aliases, not a temporary state,
+   * so a search engine should fold them into the real address rather than
+   * index a second copy of the same page.
+   *
+   * None of this can shadow a creator's store: a store lives at /@name, and
+   * every address here is a plain word with no @ in front of it.
+   */
+  async redirects() {
+    const to = (destination: string, ...sources: string[]) =>
+      sources.map((source) => ({ source, destination, permanent: true }));
+
+    return [
+      ...to("/#pricing", "/pricing", "/price", "/prices", "/plans"),
+      ...to("/#compare", "/compare", "/comparison"),
+      ...to("/proof/compare", "/vs-stan", "/stan", "/stan-store", "/alternatives"),
+      ...to("/platform", "/features", "/feature", "/product", "/products"),
+      ...to("/mission", "/about", "/about-us", "/founder", "/company"),
+      ...to("/help", "/support", "/contact", "/docs", "/help-center", "/faq"),
+      ...to(
+        "/signin",
+        "/login",
+        "/log-in",
+        "/sign-in",
+        "/signup",
+        "/sign-up",
+        "/register",
+        "/start",
+        "/get-started",
+        "/join",
+      ),
+      ...to("/studio", "/app", "/dashboard", "/account", "/settings"),
+      ...to("/blog", "/journal", "/articles", "/posts", "/news"),
+      ...to("/creators", "/creator"),
+      ...to("/demo", "/demo-store", "/example", "/preview"),
+      ...to("/terms", "/terms-of-service", "/tos"),
+      ...to("/privacy", "/privacy-policy"),
+      ...to("/refunds", "/refund", "/refund-policy"),
+      ...to("/", "/home", "/index"),
+    ];
+  },
+
+  /**
    * Headers every response carries, marketing pages included.
    *
    * Set here rather than in proxy.ts on purpose: a page Next has prerendered

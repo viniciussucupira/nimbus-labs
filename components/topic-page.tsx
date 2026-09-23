@@ -4,6 +4,7 @@ import { Icon, iconFor } from "@/components/icons";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { FeatureVisual } from "@/components/feature-visuals";
+import { JsonLd } from "@/components/structured-data";
 import { PAGES, type Block, type TopicPage } from "@/lib/site-pages";
 import { PLAN_PRICES, TRIAL_DAYS } from "@/lib/plan";
 
@@ -369,13 +370,7 @@ function FaqData({ blocks }: { blocks: Block[] }) {
       acceptedAnswer: { "@type": "Answer", text: item.a },
     })),
   };
-  return (
-    <script
-      type="application/ld+json"
-      // The content is our own, written above; nothing a visitor typed.
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
-    />
-  );
+  return <JsonLd data={data} />;
 }
 
 function Related({ slugs }: { slugs: string[] }) {

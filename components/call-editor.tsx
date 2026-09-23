@@ -240,8 +240,14 @@ export function CallEditor({ product, email }: { product: Product; email: string
                 </label>
                 {on ? (
                   <div className="flex flex-wrap items-center gap-2">
+                    {/*
+                      Each pair of clocks wraps on a narrow phone: two time
+                      fields, the word between them and the row's own padding
+                      do not fit across 320px, and a clock the creator cannot
+                      reach is worse than one that takes a second line.
+                    */}
                     {ranges.map((range, index) => (
-                      <span key={index} className="flex items-center gap-1.5 text-sm text-ink-soft">
+                      <span key={index} className="flex flex-wrap items-center gap-1.5 text-sm text-ink-soft">
                         <input
                           type="time"
                           step={300}

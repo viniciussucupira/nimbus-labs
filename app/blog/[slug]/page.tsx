@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { PostCover } from "@/components/post-cover";
 import { ShareRow } from "@/components/share-row";
+import { ArticleData } from "@/components/structured-data";
 import { SITE_URL } from "@/lib/site-url";
 import {
   BLOG_POSTS,
@@ -228,6 +229,7 @@ export default async function BlogPostPage({
       </main>
 
       <SiteFooter />
+      <ArticleData post={post} />
     </div>
   );
 }

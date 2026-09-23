@@ -6,6 +6,8 @@ import { SiteNav } from "@/components/site-nav";
 import { Icon, type IconName } from "@/components/icons";
 import { FeatureVisual, type VisualKey } from "@/components/feature-visuals";
 import { DemoWindow, Faq, HeroFlow, Pricing, RevealOnScroll } from "@/components/home-parts";
+import { HomeData } from "@/components/structured-data";
+import { HOME_QUESTIONS } from "@/lib/home-faq";
 import { PLAN_PRICES, PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 import { isDomainsConfigured } from "@/lib/domains";
 
@@ -724,6 +726,7 @@ export default function Home() {
       </main>
 
       <SiteFooter />
+      <HomeData questions={HOME_QUESTIONS} />
     </div>
   );
 }

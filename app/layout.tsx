@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+import { SiteData } from "@/components/structured-data";
 import { SITE_URL } from "@/lib/site-url";
 
 /* Two faces, both served from our own domain so the page never waits on
@@ -78,7 +79,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geist.variable} ${accent.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      {/*
+        The photographs come from one other host, and a browser cannot start
+        fetching from it until it has looked the name up, opened a connection
+        and agreed a certificate — three round trips that only begin when the
+        first <img> is read, deep into the page. Saying the name here starts
+        that handshake while the HTML is still arriving, so the first picture
+        lands sooner on the connection where it matters, which is a phone on
+        mobile data. React lifts this into the head itself.
+      */}
+      <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
+      <body className="min-h-full flex flex-col">
+        {children}
+        <SiteData />
+      </body>
     </html>
   );
 }
