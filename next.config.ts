@@ -45,6 +45,19 @@ const nextConfig: NextConfig = {
           { key: "Strict-Transport-Security", value: "max-age=63072000" },
         ],
       },
+      /*
+       * A creator's uploaded photograph keeps its own, much stricter policy.
+       *
+       * The route already sets this on the response, but a header named here
+       * is applied by the routing layer and wins, so the list above would
+       * quietly replace "this file may do nothing at all" with a rule about
+       * framing. It is written again here, last, because a header set in two
+       * places is decided by the one that comes last.
+       */
+      {
+        source: "/api/photo/:id*",
+        headers: [{ key: "Content-Security-Policy", value: "default-src 'none'; sandbox; frame-ancestors 'none'" }],
+      },
     ];
   },
 };

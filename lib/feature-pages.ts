@@ -733,19 +733,20 @@ export const CREATOR_PAGES: TopicPage[] = [
     badge: WORKING,
     accent: "from-sky-brand to-violet-brand",
     related: ["calls", "courses", "checkout", "email"],
+    photo: { id: "photo-1758599880979-f6a64947b541", alt: "A woman sitting on the floor of her living room, talking through a lesson to a camera" },
     blocks: [
       {
         kind: "storecard",
         title: "What a coaching store looks like",
-        creator: "Maya Ruiz",
+        creator: "Marcus Reid",
         tagline: "Career coaching for first-time managers",
-        photo: "photo-1616065298043-67646192dcb5",
-        alt: "A woman with blonde hair and red lipstick, smiling",
+        photo: "photo-1775196610640-5e70ef38f846",
+        alt: "A man with a short beard, photographed outdoors",
         items: [
           { label: "The first-week checklist", detail: "Free, for an email address", price: "Free" },
           { label: "Interview workbook", detail: "PDF, 18 pages", price: "$19" },
           { label: "Six-week programme", detail: "A course, one module a week, or 3 payments of $30", price: "$89" },
-          { label: "One hour with Maya", detail: "A call, booked in your time zone", price: "$180" },
+          { label: "One hour with Marcus", detail: "A call, booked in your time zone", price: "$180" },
         ],
       },
       {
@@ -800,6 +801,7 @@ export const CREATOR_PAGES: TopicPage[] = [
     badge: WORKING,
     accent: "from-mint-brand to-amber-brand",
     related: ["price-options", "memberships", "checkout", "email"],
+    photo: { id: "photo-1780277993159-b4ca60e8922d", alt: "A cook in an apron plating a dish in a bright kitchen" },
     blocks: [
       {
         kind: "storecard",
@@ -866,14 +868,15 @@ export const CREATOR_PAGES: TopicPage[] = [
     badge: WORKING,
     accent: "from-pink-brand to-violet-brand",
     related: ["courses", "calls", "memberships", "checkout"],
+    photo: { id: "photo-1787647090008-4b88ffc977b7", alt: "A movement teacher showing a stretch to someone in a light studio" },
     blocks: [
       {
         kind: "storecard",
         title: "What a fitness store looks like",
         creator: "Dani Cole",
         tagline: "Strength for people with desk jobs",
-        photo: "photo-1617748142090-06eeb8fd1119",
-        alt: "A woman in a yellow dress, smiling outdoors",
+        photo: "photo-1770393391946-7d9b658deec3",
+        alt: "A woman with natural hair, photographed against a dark green wall",
         items: [
           { label: "4-week starter block", detail: "PDF with video links", price: "$29" },
           { label: "12-week programme", detail: "A course, a module a week, or 3 payments of $27", price: "$79" },
@@ -931,14 +934,15 @@ export const CREATOR_PAGES: TopicPage[] = [
     badge: WORKING,
     accent: "from-amber-brand to-pink-brand",
     related: ["price-options", "instant-delivery", "checkout", "insights"],
+    photo: { id: "photo-1765429158141-b283bbe7d0e4", alt: "A photographer holding a camera among tall trees" },
     blocks: [
       {
         kind: "storecard",
         title: "What a design store looks like",
-        creator: "Tess Lang",
+        creator: "Theo Lang",
         tagline: "Film-look presets and Lightroom recipes",
-        photo: "photo-1746790335260-4577f9953b11",
-        alt: "A woman in a green dress, smiling",
+        photo: "photo-1780585328302-747a6eee7694",
+        alt: "A man in a dark shirt, photographed against a plain wall",
         items: [
           { label: "Starter pack", detail: "6 presets, ZIP", price: "$15" },
           { label: "Full collection", detail: "Personal, commercial or studio licence", price: "from $49" },

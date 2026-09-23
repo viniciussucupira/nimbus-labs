@@ -143,6 +143,21 @@ export default async function SignInPage({
                 and a person answers.
               </span>
             </p>
+            {/*
+              On a phone the panel with the demo link is not on the page at
+              all, and somebody who is not ready to hand over an email should
+              still be one tap from seeing the thing working.
+            */}
+            <p className="mt-4 flex gap-2 text-[0.9375rem] text-ink-soft lg:hidden">
+              <Icon name="store" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
+              <span>
+                Not ready yet?{" "}
+                <Link href="/demo" className="link">
+                  Open the live demo store
+                </Link>{" "}
+                and buy something with a test card.
+              </span>
+            </p>
           </section>
         </div>
 

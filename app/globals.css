@@ -67,6 +67,25 @@
   --d-base: 240ms;
   --d-slow: 480ms;
 
+  /*
+   * Rhythm. Every vertical gap on the site is one of these, so sections a
+   * year apart in the codebase still breathe at the same rate.
+   */
+  --gap-2xs: 0.375rem;
+  --gap-xs: 0.625rem;
+  --gap-sm: 1rem;
+  --gap-md: 1.5rem;
+  --gap-lg: 2.5rem;
+  --gap-xl: 4rem;
+  --gap-2xl: 6rem;
+
+  /* interaction — the same lift and the same ring everywhere */
+  --lift: -2px;
+  --lift-strong: -3px;
+  --press: 1px;
+  --ring: 0 0 0 3px rgba(90, 54, 238, 0.28);
+  --ring-light: 0 0 0 3px rgba(255, 255, 255, 0.34);
+
   --focus: #5a36ee;
 }
 
@@ -248,23 +267,34 @@ body {
 
 /* ------------------------------------------------------------ surfaces */
 
+/*
+ * The dark surface.
+ *
+ * Three wide, low-opacity lights over a near-black blue, rather than one broad
+ * sheet of violet. Saturated violet across a whole screen reads as a template;
+ * the same colour at a third of the strength, falling off slowly, reads as
+ * depth. The percentages are deliberate: the violet never exceeds a third
+ * opacity, and the warm light is a tenth, just enough to stop the blue going
+ * cold.
+ */
 .surface-night {
   position: relative;
   isolation: isolate;
   background-color: var(--night);
   background-image:
-    radial-gradient(60rem 36rem at 78% 18%, rgba(90, 54, 238, 0.42), transparent 62%),
-    radial-gradient(44rem 30rem at 12% 92%, rgba(47, 116, 245, 0.26), transparent 60%),
-    radial-gradient(22rem 16rem at 92% 88%, rgba(255, 122, 89, 0.12), transparent 70%);
+    radial-gradient(68rem 40rem at 78% 14%, rgba(90, 54, 238, 0.32), transparent 66%),
+    radial-gradient(50rem 34rem at 10% 94%, rgba(47, 116, 245, 0.2), transparent 64%),
+    radial-gradient(26rem 18rem at 94% 90%, rgba(255, 122, 89, 0.1), transparent 72%),
+    linear-gradient(180deg, rgba(13, 11, 36, 0) 55%, rgba(8, 7, 24, 0.55) 100%);
   color: #fff;
 }
 .surface-signature {
   position: relative;
   isolation: isolate;
-  background-color: #3a22b8;
+  background-color: #33209f;
   background-image:
-    radial-gradient(40rem 26rem at 85% 0%, rgba(255, 255, 255, 0.14), transparent 60%),
-    radial-gradient(30rem 22rem at 0% 100%, rgba(255, 122, 89, 0.16), transparent 65%),
+    radial-gradient(46rem 28rem at 85% -5%, rgba(255, 255, 255, 0.12), transparent 62%),
+    radial-gradient(34rem 24rem at -5% 105%, rgba(255, 122, 89, 0.13), transparent 66%),
     var(--signature);
   color: #fff;
 }

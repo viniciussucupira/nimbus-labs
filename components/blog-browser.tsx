@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { PostCover } from "@/components/post-cover";
 import type { BlogPost } from "@/lib/blog";
 import { formatPostDate } from "@/lib/blog";
 
@@ -66,7 +67,10 @@ export function BlogBrowser({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search the articles"
-            className="field pl-10"
+            // The bang is load-bearing: .field sets its own padding and is
+            // unlayered, so a plain pl-10 loses and the magnifier ends up
+            // sitting on top of the placeholder.
+            className="field pl-10!"
           />
           <svg
             aria-hidden="true"
@@ -87,6 +91,13 @@ export function BlogBrowser({
         {shown.length === posts.length ? `${posts.length} articles` : `${shown.length} of ${posts.length} articles`}
       </p>
 
+      {/*
+        The first article in an unfiltered list is given more room than the
+        rest. A grid where every card weighs the same asks the reader to
+        compare nine things at once; one card carrying more weight tells them
+        where to start, and the moment they search or pick a category that
+        ranking is no longer ours to make, so it goes away.
+      */}
       {shown.length === 0 ? (
         <div className="mt-8 rounded-[var(--r-lg)] border border-dashed border-line-strong bg-white p-10 text-center">
           <p className="font-semibold text-ink">Nothing matches that yet.</p>
@@ -104,8 +115,8 @@ export function BlogBrowser({
         </div>
       ) : (
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {shown.map((post) => (
-            <BlogCard key={post.slug} post={post} />
+          {shown.map((post, i) => (
+            <BlogCard key={post.slug} post={post} lead={i === 0 && !query.trim() && category === "All articles"} />
           ))}
         </div>
       )}
@@ -113,19 +124,31 @@ export function BlogBrowser({
   );
 }
 
-export function BlogCard({ post }: { post: BlogPost }) {
+export function BlogCard({ post, lead = false }: { post: BlogPost; lead?: boolean }) {
   return (
-    <article className="card card-hover group relative flex h-full flex-col p-6">
+    <article
+      className={`card card-hover group relative flex h-full flex-col overflow-hidden ${
+        lead ? "sm:col-span-2 lg:col-span-2" : ""
+      }`}
+    >
+      <PostCover post={post} size={lead ? "lg" : "sm"} />
+      <div className={`flex flex-1 flex-col p-6 ${lead ? "sm:p-7" : ""}`}>
       <p className="flex items-center justify-between gap-3 text-[0.8125rem]">
         <span className="tag tag-brand">{post.category}</span>
         <span className="text-ink-mute">{post.readMinutes} min read</span>
       </p>
-      <h3 className="mt-5 text-[1.2rem] font-semibold leading-snug tracking-[-0.02em] text-ink">
+      <h3
+        className={`mt-4 font-semibold leading-snug tracking-[-0.02em] text-ink ${
+          lead ? "text-[1.45rem] sm:text-[1.6rem]" : "text-[1.2rem]"
+        }`}
+      >
         <Link href={`/blog/${post.slug}`} className="after:absolute after:inset-0 after:rounded-[var(--r-lg)]">
           {post.title}
         </Link>
       </h3>
-      <p className="mt-3 flex-1 text-[0.9375rem] leading-relaxed text-ink-soft">{post.excerpt}</p>
+      <p className={`mt-3 flex-1 leading-relaxed text-ink-soft ${lead ? "text-base" : "text-[0.9375rem]"}`}>
+        {post.excerpt}
+      </p>
       <p className="mt-6 flex items-center justify-between border-t border-line pt-4 text-sm">
         <span className="text-ink-mute">{formatPostDate(post.date)}</span>
         <span className="flex items-center gap-1 font-semibold text-violet-deep">
@@ -135,6 +158,7 @@ export function BlogCard({ post }: { post: BlogPost }) {
           </span>
         </span>
       </p>
+      </div>
     </article>
   );
 }

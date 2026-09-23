@@ -138,34 +138,42 @@ const NEXT_ALL = [
 /** Built lines move from "next" to "live" on the deployment where they work. */
 const NEXT = DOMAINS ? NEXT_ALL.filter((line) => !line.startsWith("Your own domain")) : NEXT_ALL;
 
+/*
+ * Four kinds of creator, each shown at work rather than posed.
+ *
+ * The photographs are licensed stock, and the card says so on its face: the
+ * people in them are not our customers, and we will not pretend they are. What
+ * they are for is recognition — a visitor should see the thing they do all day
+ * before they read a word of ours.
+ */
 const CREATORS = [
   {
     href: "/for/coaches",
     label: "Coaches and teachers",
     sells: "Workbooks, programmes, paid calls",
-    photo: "photo-1616065298043-67646192dcb5",
-    alt: "A woman with blonde hair and red lipstick, smiling",
+    photo: "photo-1758599880979-f6a64947b541",
+    alt: "A woman sitting on the floor of her living room, talking through a lesson to a camera",
   },
   {
     href: "/for/cooks",
     label: "Cooks and nutritionists",
     sells: "Meal plans, grocery lists, recipe packs",
-    photo: "photo-1543871595-e11129e271cc",
-    alt: "A woman with long dark hair, smiling",
+    photo: "photo-1780277993159-b4ca60e8922d",
+    alt: "A cook in an apron plating a dish in a bright kitchen",
   },
   {
     href: "/for/fitness",
     label: "Fitness creators",
     sells: "Training programmes and challenges",
-    photo: "photo-1617748142090-06eeb8fd1119",
-    alt: "A woman in a yellow dress, smiling outdoors",
+    photo: "photo-1787647090008-4b88ffc977b7",
+    alt: "A movement teacher showing a stretch to someone in a light studio",
   },
   {
     href: "/for/designers",
     label: "Designers and photographers",
     sells: "Presets, templates, brush packs",
-    photo: "photo-1746790335260-4577f9953b11",
-    alt: "A woman in a green dress, smiling",
+    photo: "photo-1765429158141-b283bbe7d0e4",
+    alt: "A photographer holding a camera among tall trees",
   },
 ];
 
@@ -227,16 +235,45 @@ export default function Home() {
             </div>
           </div>
 
+          {/*
+            The four promises, directly under the hero.
+
+            Each one is a fact a visitor can check on this site in under a
+            minute, not a slogan: the price page, the money section, the demo
+            store and the speed measurement all back one of these lines.
+          */}
           <div className="border-t border-white/10">
-            <ul className="container-page grid gap-x-8 gap-y-3 py-6 text-[0.9375rem] text-white/75 sm:grid-cols-3">
+            <ul className="container-page grid gap-x-8 gap-y-7 py-8 sm:grid-cols-2 sm:py-9 lg:grid-cols-4">
               {[
-                { icon: "percent" as IconName, text: "0% of your sales" },
-                { icon: "bank" as IconName, text: "Payouts on your own Stripe schedule" },
-                { icon: "gauge" as IconName, text: "Stores that load fast on a phone" },
+                {
+                  icon: "percent" as IconName,
+                  title: "0% of your sales",
+                  body: "One monthly price. We never take a share of what you sell.",
+                },
+                {
+                  icon: "bank" as IconName,
+                  title: "Paid into your own Stripe",
+                  body: "A direct charge on your account, on your payout schedule.",
+                },
+                {
+                  icon: "bolt" as IconName,
+                  title: "Delivered on the spot",
+                  body: "On the buyer's screen the second Stripe confirms the payment.",
+                },
+                {
+                  icon: "gauge" as IconName,
+                  title: "Built for a phone first",
+                  body: "97–100 on Google PageSpeed, measured on the demo store.",
+                },
               ].map((f) => (
-                <li key={f.text} className="flex items-center gap-3">
-                  <Icon name={f.icon} size={18} className="shrink-0 text-[#b9a8ff]" />
-                  {f.text}
+                <li key={f.title} className="flex gap-3.5">
+                  <span className="icon-tile icon-tile-sm">
+                    <Icon name={f.icon} size={18} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-white">{f.title}</span>
+                    <span className="mt-1 block text-[0.875rem] leading-snug text-white/60">{f.body}</span>
+                  </span>
                 </li>
               ))}
             </ul>
@@ -444,15 +481,16 @@ export default function Home() {
                     <div className="relative aspect-[4/5] overflow-hidden bg-sand-deep">
                       <img
                         src={PHOTO(c.photo, 560, 700)}
+                        srcSet={`${PHOTO(c.photo, 400, 500)} 400w, ${PHOTO(c.photo, 560, 700)} 560w, ${PHOTO(c.photo, 840, 1050)} 840w`}
+                        sizes="(min-width: 1024px) 22vw, (min-width: 640px) 44vw, 46vw"
                         alt={c.alt}
                         width={560}
                         height={700}
                         loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover transition-transform duration-700 [transition-timing-function:var(--ease)] group-hover:scale-[1.03]"
                       />
-                      <span className="absolute left-2.5 top-2.5 rounded-[6px] bg-white/90 px-2 py-1 text-[0.6875rem] font-medium text-ink-soft backdrop-blur sm:left-3 sm:top-3 sm:text-[0.75rem]">
-                        Example store
-                      </span>
+                      <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/35 to-transparent" />
                     </div>
                     <div className="p-4 sm:p-5">
                       <p className="flex items-center justify-between gap-2 text-[0.9375rem] font-semibold leading-snug text-ink sm:text-base">
@@ -465,6 +503,24 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+
+            {/*
+              Said plainly, under the photographs themselves. We have no
+              customers to show yet, and a stock photograph presented as one
+              would be the first lie on a site whose whole argument is that we
+              do not tell them.
+            */}
+            <p className="reveal mt-6 flex items-start gap-2.5 text-[0.875rem] text-ink-mute">
+              <Icon name="info" size={16} className="mt-0.5 shrink-0" />
+              <span className="measure-wide">
+                Licensed photographs of people at work, not customers of ours. Every store behind these links is an
+                example we built, and the one store here you can buy from is the{" "}
+                <Link href="/demo" className="link">
+                  live demo
+                </Link>
+                .
+              </span>
+            </p>
           </div>
         </section>
 

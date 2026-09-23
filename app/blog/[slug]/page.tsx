@@ -5,6 +5,7 @@ import { BlogCard } from "@/components/blog-browser";
 import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
+import { PostCover } from "@/components/post-cover";
 import { ShareRow } from "@/components/share-row";
 import { SITE_URL } from "@/lib/site-url";
 import {
@@ -159,6 +160,11 @@ export default async function BlogPostPage({
             </p>
           </div>
         </header>
+
+        {/* The article's own colours, carried over from the card that led here. */}
+        <div className="container-page -mt-8 sm:-mt-10">
+          <PostCover post={post} size="md" className="rounded-[var(--r-xl)] shadow-[var(--shadow-md)]" />
+        </div>
 
         <div className="container-page py-12 sm:py-16 lg:grid lg:grid-cols-[15rem_minmax(0,46rem)] lg:justify-center lg:gap-14">
           {headings.length > 2 ? (

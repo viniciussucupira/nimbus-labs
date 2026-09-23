@@ -224,7 +224,7 @@ function CallsVisual() {
   const days = ["Mon 6", "Tue 7", "Wed 8", "Thu 9", "Fri 10"];
   const times = ["9:00", "9:45", "10:30", "14:00", "14:45", "15:30"];
   return (
-    <Window bar="One hour with Maya">
+    <Window bar="One hour with Marcus">
       <div className="p-5">
         <p className="text-[12px] font-semibold text-ink-soft">Pick a day, then a time</p>
         <div className="mt-3 grid grid-cols-5 gap-1.5">

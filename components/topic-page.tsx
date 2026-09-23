@@ -10,6 +10,10 @@ import { PLAN_PRICES, TRIAL_DAYS } from "@/lib/plan";
 const PHOTO = (id: string) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=160&h=160&q=72`;
 
+/** The same source, cropped to a landscape frame rather than to a face. */
+const PHOTO_WIDE = (id: string, w: number, h: number) =>
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${w}&h=${h}&q=72`;
+
 const BADGE_CLASS = {
   live: "tag tag-live",
   building: "tag tag-next",
@@ -432,8 +436,18 @@ export function TopicPageView({ page }: { page: TopicPage }) {
           >
             <div className="on-dark">
               <p className="eyebrow nb-fade-up">{page.eyebrow}</p>
+              {/*
+                The expressive face carries a few words, never a clause. Set a
+                long phrase in italic serif at heading size and it stops being
+                emphasis: it becomes a second, harder-to-read heading. Past a
+                short phrase the highlight keeps the heading's own face and is
+                separated by colour alone.
+              */}
               <h1 className="t-h1 balance nb-fade-up nb-delay-1 mt-5 text-white">
-                {page.title} <span className="serif font-normal text-[#cfc4ff]">{page.highlight}</span>
+                {page.title}{" "}
+                <span className={page.highlight.length <= 26 ? "serif font-normal text-[#cfc4ff]" : "text-[#cfc4ff]"}>
+                  {page.highlight}
+                </span>
               </h1>
               <p className="t-lead nb-fade-up nb-delay-2 mt-6 max-w-2xl text-white/75">{page.intro}</p>
               <p className="nb-fade-up nb-delay-3 mt-7 flex flex-wrap items-center gap-2">
@@ -458,8 +472,35 @@ export function TopicPageView({ page }: { page: TopicPage }) {
                 <FeatureVisual visual={page.visual} />
               </div>
             ) : heroStore ? (
+              /*
+               * A photograph of the work, with the example store laid over its
+               * bottom edge. The picture is there so a visitor recognises
+               * themselves before they read anything; the card is there so
+               * they see what the page is actually selling. Neither pretends
+               * to be the other, and the line underneath says which is which.
+               */
               <div className="nb-fade-up nb-delay-2 mx-auto w-full max-w-[28rem] lg:mr-0">
-                <StoreCard block={heroStore} hero />
+                {page.photo ? (
+                  <img
+                    src={PHOTO_WIDE(page.photo.id, 720, 540)}
+                    srcSet={`${PHOTO_WIDE(page.photo.id, 560, 420)} 560w, ${PHOTO_WIDE(page.photo.id, 720, 540)} 720w, ${PHOTO_WIDE(page.photo.id, 1080, 810)} 1080w`}
+                    sizes="(min-width: 1024px) 28rem, 92vw"
+                    alt={page.photo.alt}
+                    width={720}
+                    height={540}
+                    loading="eager"
+                    decoding="async"
+                    className="aspect-[4/3] w-full rounded-[var(--r-xl)] bg-white/10 object-cover shadow-[var(--shadow-device)]"
+                  />
+                ) : null}
+                <div className={page.photo ? "-mt-12 px-3 sm:-mt-14 sm:px-6" : ""}>
+                  <StoreCard block={heroStore} hero />
+                </div>
+                {page.photo ? (
+                  <p className="mt-4 text-[0.8125rem] leading-relaxed text-white/45">
+                    A licensed photograph of somebody at work, not a customer of ours.
+                  </p>
+                ) : null}
               </div>
             ) : null}
           </div>

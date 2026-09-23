@@ -49,6 +49,12 @@ export type TopicPage = {
   menu?: { label: string; description: string; icon: IconName };
   /** Other feature pages worth reading next. */
   related?: string[];
+  /**
+   * A photograph of the work this page is about, shown behind the example
+   * store in the heading. Licensed stock, and the page says so beside it:
+   * nobody in these pictures is a customer of ours.
+   */
+  photo?: { id: string; alt: string };
 };
 
 const PROOF = { label: "Checked and dated", tone: "proof" as const };
