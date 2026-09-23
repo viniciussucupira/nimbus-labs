@@ -493,7 +493,14 @@ export function TopicPageView({ page }: { page: TopicPage }) {
                     className="aspect-[4/3] w-full rounded-[var(--r-xl)] bg-white/10 object-cover shadow-[var(--shadow-device)]"
                   />
                 ) : null}
-                <div className={page.photo ? "-mt-12 px-3 sm:-mt-14 sm:px-6" : ""}>
+                {/*
+                  `relative` is doing real work here. The card is pulled up
+                  over the photograph, and without a stacking context of its
+                  own the browser paints a replaced element — the image — after
+                  the backgrounds of later blocks, so the picture landed on top
+                  of the card and cut the creator's name in half.
+                */}
+                <div className={page.photo ? "relative z-10 -mt-12 px-3 sm:-mt-14 sm:px-6" : ""}>
                   <StoreCard block={heroStore} hero />
                 </div>
                 {page.photo ? (
