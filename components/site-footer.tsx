@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/logo";
+import MoreFromUs from "@/components/MoreFromUs";
 
 const SUPPORT = "mailto:support@nimbuslabsai.com";
 
@@ -48,6 +49,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     title: "Company",
     links: [
       { label: "Our mission", href: "/mission" },
+      { label: "Our products", href: "/products" },
       { label: "Write to us", href: SUPPORT },
       { label: "Sign in", href: "/signin" },
     ],
@@ -105,6 +107,7 @@ export function SiteFooter() {
         </div>
       </div>
 
+      <div className="container-page text-white/80"><MoreFromUs /></div>
       <div className="container-page border-t border-white/12 py-7 text-[0.8125rem] leading-relaxed text-white/70">
         <ul className="flex flex-wrap gap-x-5 gap-y-2">
           <li className="flex items-center gap-2">

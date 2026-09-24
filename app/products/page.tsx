@@ -1,0 +1,80 @@
+import type { Metadata } from "next";
+import { SiteNav } from "@/components/site-nav";
+import { SiteFooter } from "@/components/site-footer";
+
+const title = "Our products — Nimbus Labs";
+const description = "Meet NativeApply, NativeReply, Retone, Kudobox, and the Nimbus Labs creator store. Find the right tool for your writing or business.";
+export const metadata: Metadata = {
+  title, description,
+  alternates: { canonical: "/products" },
+  openGraph: { title, description, url: "/products", images: [] },
+  twitter: { card: "summary", title, description, images: [] },
+};
+
+const groups = [
+  {
+    title: "Find the right words",
+    description: "Choose a writing tool for the work in front of you.",
+    products: [
+      { name: "NativeApply", initials: "NA", category: "For your next job", href: "https://nativeapply.net/", domain: "nativeapply.net", color: "#1749a3", background: "#edf3ff", description: "Rewrite resumes, cover letters, and recruiter messages in clear, natural English.", action: "Explore NativeApply" },
+      { name: "NativeReply", initials: "NR", category: "For customer-facing teams", href: "https://nativereply.net/", domain: "nativereply.net", color: "#116558", background: "#eaf7f2", description: "Help support and sales teams write clearer customer replies, with shared style notes and team access.", action: "Explore NativeReply" },
+      { name: "Retone", initials: "R", category: "For everyday work writing", href: "https://retoneai.net/", domain: "retoneai.net", color: "#744027", background: "#fff1e6", description: "Polish emails and messages, choosing the tone that fits what you want to say.", action: "Explore Retone" },
+    ],
+  },
+  {
+    title: "Build your business",
+    description: "Sell what you create and share what your customers say.",
+    products: [
+      { name: "Nimbus Labs", initials: "N", category: "Your creator store", href: "https://nimbuslabsai.com/", domain: "nimbuslabsai.com", color: "#643caf", background: "#f2edff", description: "Create a store for digital products, courses, calls, and memberships. Buyers pay into your own Stripe account.", action: "Explore the creator store" },
+      { name: "Kudobox", initials: "K", category: "Customer testimonials", href: "https://getkudobox.com/", domain: "getkudobox.com", color: "#486139", background: "#f0f5e9", description: "Collect testimonials with permission, review them, and display the ones you approve on your website.", action: "Explore Kudobox" },
+    ],
+  },
+];
+
+export default function ProductsPage() {
+  return (
+    <div className="flex min-h-screen flex-col bg-paper text-ink">
+      <SiteNav />
+      <main id="content" className="flex-1">
+        <section className="surface-dawn border-b border-line">
+          <div className="container-page py-14 sm:py-20">
+            <p className="eyebrow">The Nimbus Labs family</p>
+            <h1 className="t-h1 mt-4 max-w-3xl">Different tools.<br /><span className="serif font-normal text-violet-deep">One independent studio.</span></h1>
+            <p className="t-lead mt-6 max-w-2xl text-ink-soft">Tools for clearer writing, selling your work, and sharing customer experiences. Find the one that fits what you need today.</p>
+            <p className="mt-5 max-w-2xl text-sm leading-6 text-ink-soft">Nimbus Labs is the independent software studio run by Vinicius Sucupira. It is also the name of our creator-store product. These five products are part of the same studio.</p>
+            <nav aria-label="Product categories" className="mt-7 flex flex-wrap gap-3">
+              <a href="#writing" className="btn btn-secondary">Writing tools</a>
+              <a href="#business" className="btn btn-secondary">Business tools</a>
+            </nav>
+          </div>
+        </section>
+        <div className="container-page space-y-14 py-12 sm:py-16">
+          {groups.map((group, index) => (
+            <section key={group.title} id={index === 0 ? "writing" : "business"} className="scroll-mt-28" aria-labelledby={`group-${index}`}>
+              <h2 id={`group-${index}`} className="text-2xl font-semibold tracking-tight">{group.title}</h2>
+              <p className="mt-2 text-ink-soft">{group.description}</p>
+              <div className={`mt-6 grid gap-5 md:grid-cols-2 ${index === 0 ? "xl:grid-cols-3" : ""}`}>
+                {group.products.map(product => (
+                  <article key={product.name} className="flex flex-col rounded-3xl border border-line bg-white p-6 sm:p-7">
+                    <div aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-2xl text-lg font-semibold" style={{ color: product.color, background: product.background }}>{product.initials}</div>
+                    <p className="mt-5 text-xs font-semibold uppercase tracking-wide text-ink-soft">{product.category}</p>
+                    <h3 className="mt-2 text-2xl font-semibold">{product.name}</h3>
+                    <p className="mt-3 flex-1 text-base leading-7 text-ink-soft">{product.description}</p>
+                    <a href={product.href} className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-sm font-semibold text-violet-deep underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4">{product.action}<span aria-hidden="true">↗</span></a>
+                    <p className="mt-1 text-xs text-ink-soft">{product.domain}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
+          <aside className="rounded-2xl border border-line bg-white p-6 sm:p-8" aria-labelledby="separate-products">
+            <h2 id="separate-products" className="text-lg font-semibold">Same studio. Separate products.</h2>
+            <p className="mt-3 max-w-3xl leading-7 text-ink-soft">Each product has its own pricing, access, and terms. A subscription to one does not include the others. Visit the product&apos;s own site for its current plans and support options.</p>
+            <a href="mailto:support@nimbuslabsai.com" className="mt-4 inline-flex min-h-11 items-center font-semibold text-violet-deep underline underline-offset-4">Contact our studio</a>
+          </aside>
+        </div>
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}

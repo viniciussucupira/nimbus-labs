@@ -45,7 +45,7 @@ const nextConfig: NextConfig = {
       ...to("/#pricing", "/pricing", "/price", "/prices", "/plans"),
       ...to("/#compare", "/compare", "/comparison"),
       ...to("/proof/compare", "/vs-stan", "/stan", "/stan-store", "/alternatives"),
-      ...to("/platform", "/features", "/feature", "/product", "/products"),
+      ...to("/platform", "/features", "/feature", "/product"),
       ...to("/mission", "/about", "/about-us", "/founder", "/company"),
       ...to("/help", "/support", "/contact", "/docs", "/help-center", "/faq"),
       ...to(
