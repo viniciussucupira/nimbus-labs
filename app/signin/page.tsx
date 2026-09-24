@@ -63,7 +63,7 @@ export default async function SignInPage({
           <p className="t-h2 balance text-white">
             Your store. Your <span className="serif font-normal text-[#cfc4ff]">Stripe.</span> Your money.
           </p>
-          <ul className="mt-10 space-y-5 text-white/75">
+          <ul className="mt-10 space-y-5 text-white/80">
             {[
               { icon: "mail" as const, text: "No password. A link sent to your email signs you in." },
               { icon: "bank" as const, text: "Your buyers pay into your own Stripe account." },

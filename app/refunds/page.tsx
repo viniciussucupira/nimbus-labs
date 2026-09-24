@@ -48,10 +48,10 @@ export default function RefundsPage() {
         <p>
           Email{" "}
           <a
-            href="mailto:viniciussucupira091@gmail.com"
+            href="mailto:support@nimbuslabsai.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            viniciussucupira091@gmail.com
+            support@nimbuslabsai.com
           </a>{" "}
           from the email address associated with your account. Please include:
         </p>
@@ -94,10 +94,10 @@ export default function RefundsPage() {
         <p>
           If you cannot reach them, write to us at{" "}
           <a
-            href="mailto:viniciussucupira091@gmail.com"
+            href="mailto:support@nimbuslabsai.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            viniciussucupira091@gmail.com
+            support@nimbuslabsai.com
           </a>{" "}
           with your receipt. We cannot move money we never held, but we can
           pass your message to the creator and tell you what we did.
@@ -118,10 +118,10 @@ export default function RefundsPage() {
           <br />
           Email:{" "}
           <a
-            href="mailto:viniciussucupira091@gmail.com"
+            href="mailto:support@nimbuslabsai.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            viniciussucupira091@gmail.com
+            support@nimbuslabsai.com
           </a>
           <br />
           Website:{" "}

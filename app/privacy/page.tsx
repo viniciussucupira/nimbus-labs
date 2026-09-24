@@ -22,10 +22,10 @@ export default function PrivacyPage() {
         If you have questions about this policy or about your personal data,
         contact us at{" "}
         <a
-          href="mailto:viniciussucupira091@gmail.com"
+          href="mailto:support@nimbuslabsai.com"
           className="text-black underline underline-offset-2 hover:no-underline"
         >
-          viniciussucupira091@gmail.com
+          support@nimbuslabsai.com
         </a>
         .
       </p>
@@ -427,10 +427,10 @@ export default function PrivacyPage() {
           Data Protection Regulation (GDPR) — you may exercise these rights by
           emailing{" "}
           <a
-            href="mailto:viniciussucupira091@gmail.com"
+            href="mailto:support@nimbuslabsai.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            viniciussucupira091@gmail.com
+            support@nimbuslabsai.com
           </a>
           . We will respond within the time required by applicable law,
           typically one month under the GDPR. You also have the right to lodge
@@ -481,10 +481,10 @@ export default function PrivacyPage() {
           <br />
           Email:{" "}
           <a
-            href="mailto:viniciussucupira091@gmail.com"
+            href="mailto:support@nimbuslabsai.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            viniciussucupira091@gmail.com
+            support@nimbuslabsai.com
           </a>
           <br />
           Website:{" "}

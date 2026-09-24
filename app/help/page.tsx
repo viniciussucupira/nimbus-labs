@@ -374,17 +374,25 @@ export default function HelpPage() {
       <SiteNav />
 
       <main id="content" className="flex-1">
-        <section className="surface-night nb-grid-lines on-dark overflow-hidden">
-          <div className="container-narrow py-16 sm:py-24">
+        {/*
+          A help centre opens in daylight. Somebody who is here is stuck, and
+          a dark, ceremonial banner is the wrong greeting for that; the search
+          field is what they need, so it is the largest thing on the screen.
+        */}
+        <section className="surface-dawn border-b border-line">
+          <div className="container-page py-14 sm:py-18">
             <p className="eyebrow">Help centre</p>
-            <h1 className="t-h1 mt-5 text-white">
-              How can we <span className="serif font-normal text-[#cfc4ff]">help?</span>
+            <h1 className="t-h1 mt-4">
+              How can we <span className="serif font-normal text-violet-deep">help?</span>
             </h1>
-            <p className="t-lead mt-6 max-w-2xl text-white/75">
+            <p className="t-lead mt-5 max-w-2xl text-ink-soft">
               Every answer here is about the product as it is today. Where the answer is &ldquo;not yet&rdquo;, it says
               not yet.
             </p>
-            <p className="mt-3 text-sm text-white/60">Checked against the product on 22 September 2026.</p>
+            <p className="mt-3 flex items-center gap-2 text-sm text-ink-mute">
+              <Icon name="check" size={15} className="text-mint-deep" />
+              Checked against the product on 22 September 2026.
+            </p>
             <HelpSearch />
           </div>
         </section>

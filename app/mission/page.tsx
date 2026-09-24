@@ -164,16 +164,43 @@ export default function MissionPage() {
 
       <main id="content" className="flex-1">
         <section className="surface-night nb-grid-lines on-dark overflow-hidden">
-          <div className="container-narrow py-16 sm:py-24">
-            <p className="eyebrow">Our mission</p>
-            <h1 className="t-h1 balance mt-5 text-white">
-              Nobody should need a platform&apos;s permission{" "}
-              <span className="serif font-normal text-[#cfc4ff]">to be paid for their work</span>
-            </h1>
-            <p className="t-lead mt-6 max-w-2xl text-white/75">
-              Selling something you made should cost you the card fee and nothing more. That is the whole idea, and
-              everything we build is judged against it.
-            </p>
+          <div className="container-page grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16">
+            <div>
+              <p className="eyebrow">Our mission</p>
+              <h1 className="t-h1 balance mt-5 text-white">
+                Nobody should need a platform&apos;s permission{" "}
+                <span className="serif font-normal text-[#cfc4ff]">to be paid for their work</span>
+              </h1>
+              <p className="t-lead mt-6 max-w-2xl text-white/80">
+                Selling something you made should cost you the card fee and nothing more. That is the whole idea, and
+                everything we build is judged against it.
+              </p>
+            </div>
+            {/*
+              The state of the product, in three figures, at the top of the
+              page that claims to be honest about it. A mission statement
+              beside a count of what is still missing is a harder thing to
+              write than a mission statement on its own, which is the point.
+            */}
+            <dl className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              {[
+                { value: String(built.length), label: "features built and working", tone: "mint" },
+                { value: String(notBuilt.length), label: "named, and not built yet", tone: "plain" },
+                { value: "0%", label: "of your sales, on every plan", tone: "plain" },
+              ].map((s) => (
+                <div
+                  key={s.label}
+                  className="flex items-baseline gap-4 rounded-[var(--r-lg)] border border-white/14 bg-white/[0.05] px-5 py-4 backdrop-blur-sm"
+                >
+                  <dd
+                    className={`figure-big ${s.tone === "mint" ? "text-[#6fe3ba]" : "text-white"}`}
+                  >
+                    {s.value}
+                  </dd>
+                  <dt className="text-[0.9375rem] leading-snug text-white/80">{s.label}</dt>
+                </div>
+              ))}
+            </dl>
           </div>
         </section>
 
@@ -248,23 +275,51 @@ export default function MissionPage() {
             </div>
 
             <div className="mt-12 grid gap-6 lg:grid-cols-2">
+              {/*
+                Thirty true lines in one column is a wall, and a wall gets
+                skipped — which loses the argument the list was written to
+                win. The first ten carry it; the rest are one press away, and
+                the press says how many are behind it, so nothing is hidden,
+                only folded.
+              */}
               <div className="card reveal p-7 sm:p-8">
-                <span className="tag tag-live">Built and working</span>
+                <span className="tag tag-live">{`Built and working · ${built.length}`}</span>
                 <ul className="mt-6 space-y-3">
-                  {built.map((item) => (
+                  {built.slice(0, 10).map((item) => (
                     <li key={item} className="flex gap-3 text-[0.9375rem] text-ink-soft">
                       <Icon name="check" size={18} strokeWidth={2.2} className="mt-0.5 shrink-0 text-mint-brand" />
                       <span>{item}</span>
                     </li>
                   ))}
                 </ul>
+                {built.length > 10 ? (
+                  <details className="group/all mt-4 border-t border-line pt-4">
+                    <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-[8px] font-semibold text-violet-deep [&::-webkit-details-marker]:hidden">
+                      <Icon
+                        name="plus"
+                        size={16}
+                        className="transition-transform duration-200 group-open/all:rotate-45"
+                      />
+                      <span className="group-open/all:hidden">{`The other ${built.length - 10}`}</span>
+                      <span className="hidden group-open/all:inline">Show fewer</span>
+                    </summary>
+                    <ul className="mt-4 space-y-3">
+                      {built.slice(10).map((item) => (
+                        <li key={item} className="flex gap-3 text-[0.9375rem] text-ink-soft">
+                          <Icon name="check" size={18} strokeWidth={2.2} className="mt-0.5 shrink-0 text-mint-brand" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
                 <Link href="/demo" className="btn btn-primary mt-8">
                   Try it in the demo store
                 </Link>
               </div>
 
               <div className="card-flat reveal self-start p-7 sm:p-8">
-                <span className="tag tag-next">Not built yet</span>
+                <span className="tag tag-next">{`Not built yet · ${notBuilt.length}`}</span>
                 <ul className="mt-6 space-y-3">
                   {notBuilt.map((item) => (
                     <li key={item} className="flex gap-3 text-[0.9375rem] text-ink-soft">

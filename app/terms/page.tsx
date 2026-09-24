@@ -37,10 +37,10 @@ export default function TermsPage() {
           keeping your login credentials confidential. You are also responsible
           for all activity that occurs under your account. Notify us promptly at{" "}
           <a
-            href="mailto:viniciussucupira091@gmail.com"
+            href="mailto:support@nimbuslabsai.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            viniciussucupira091@gmail.com
+            support@nimbuslabsai.com
           </a>{" "}
           if you believe your account has been compromised.
         </p>
@@ -338,10 +338,10 @@ export default function TermsPage() {
           <br />
           Email:{" "}
           <a
-            href="mailto:viniciussucupira091@gmail.com"
+            href="mailto:support@nimbuslabsai.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            viniciussucupira091@gmail.com
+            support@nimbuslabsai.com
           </a>
           <br />
           Website:{" "}

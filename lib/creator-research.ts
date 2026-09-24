@@ -25,7 +25,7 @@ export const LIMITS = {
 
 export const PROBLEM_MIN_LENGTH = 10;
 
-export const SUPPORT_EMAIL = "viniciussucupira091@gmail.com";
+export const SUPPORT_EMAIL = "support@nimbuslabsai.com";
 
 // Stored with every answer as proof of what the person agreed to.
 export const CONSENT_VERSION = "2026-09-16-2";
