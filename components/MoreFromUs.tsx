@@ -12,7 +12,9 @@ const products = [
     "Retone",
     "https://retoneai.net/",
     "Polish your professional emails and messages."
-  ]
+  ],
+  ["NativeReply","https://nativereply.net/","Help your team write clear customer replies."],
+  ["NativeApply","https://nativeapply.net/","Polish resumes, cover letters, and job-search messages."]
 ];
 
 export default function MoreFromUs() {
@@ -26,7 +28,7 @@ export default function MoreFromUs() {
         <h2 style={{ fontSize: 13, fontWeight: 600 }}>More from us</h2>
         <a href="https://nimbuslabsai.com/products" className="hover:underline focus-visible:outline-2 focus-visible:outline-offset-4" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontSize: 13, textDecoration: "underline", textUnderlineOffset: 4 }}>Explore all our products <span aria-hidden="true" style={{ marginLeft: 6 }}>→</span></a>
       </div>
-      <ul style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 16rem), 1fr))", gap: "8px 28px", listStyle: "none", padding: 0, margin: 0 }}>
+      <ul className="grid grid-cols-1 gap-x-7 gap-y-2 sm:grid-cols-2 lg:grid-cols-4" style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {products.map(([name, href, description]) => (
           <li key={href}>
             <a href={href} className="hover:underline focus-visible:outline-2 focus-visible:outline-offset-4" style={{ display: "block", minHeight: 44, padding: "6px 0", fontSize: 13, lineHeight: 1.6 }}>
@@ -39,4 +41,3 @@ export default function MoreFromUs() {
     </nav>
   );
 }
-
