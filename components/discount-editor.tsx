@@ -49,7 +49,7 @@ async function send(payload: Record<string, unknown>): Promise<Answer> {
 }
 
 const whenLabel = (seconds: number) =>
-  new Date(seconds * 1000).toLocaleDateString(undefined, {
+  new Date(seconds * 1000).toLocaleDateString("en-US", {
     day: "numeric",
     month: "short",
     year: "numeric",
