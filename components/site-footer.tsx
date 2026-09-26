@@ -2,9 +2,12 @@ import Link from "next/link";
 import { Logo } from "@/components/logo";
 import MoreFromUs from "@/components/MoreFromUs";
 
-const SUPPORT = "mailto:support@nimbuslabsai.com";
+const SUPPORT_EMAIL = "support@nimbuslabsai.com";
+const SUPPORT = `mailto:${SUPPORT_EMAIL}`;
 
-const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
+type FooterLink = { label: string; href: string };
+
+const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Product",
     links: [
@@ -13,7 +16,6 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "Courses", href: "/platform/courses" },
       { label: "Memberships", href: "/platform/memberships" },
       { label: "Paid calls", href: "/platform/calls" },
-      { label: "Pricing", href: "/#pricing" },
     ],
   },
   {
@@ -50,21 +52,68 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     links: [
       { label: "Our mission", href: "/mission" },
       { label: "Our products", href: "/products" },
-      { label: "Write to us", href: SUPPORT },
-      { label: "Log in", href: "/signin" },
     ],
   },
   {
-    title: "Legal",
+    // The same last column, with the same five links, on every Nimbus Labs product.
+    title: "Account & billing",
     links: [
-      { label: "Terms", href: "/terms" },
-      { label: "Privacy", href: "/privacy" },
-      { label: "Refunds", href: "/refunds" },
+      { label: "Log in", href: "/signin" },
+      { label: "Pricing", href: "/#pricing" },
+      // Section 3 of the Refund Policy is the one that says how to cancel.
+      { label: "Cancel subscription", href: "/refunds#cancel" },
+      { label: "Request a refund", href: "/refunds" },
+      { label: "Contact support", href: SUPPORT },
     ],
   },
 ];
 
-export function SiteFooter() {
+const LEGAL_LINKS: FooterLink[] = [
+  { label: "Terms of Service", href: "/terms" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Refund Policy", href: "/refunds" },
+];
+
+function FooterAnchor({ link, className }: { link: FooterLink; className: string }) {
+  return link.href.startsWith("mailto:") ? (
+    <a href={link.href} className={className}>
+      {link.label}
+    </a>
+  ) : (
+    <Link href={link.href} className={className}>
+      {link.label}
+    </Link>
+  );
+}
+
+/**
+ * The site footer. `full` on marketing and content pages; `slim` on pages
+ * where the person is in the middle of a task (logging in), so nothing pulls
+ * them away from it.
+ */
+export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) {
+  const year = new Date().getFullYear();
+
+  if (variant === "slim") {
+    return (
+      <footer className="border-t border-line bg-paper text-ink-mute">
+        <div className="container-page flex flex-col gap-2 py-5 text-[0.8125rem] leading-relaxed sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <p>{`© ${year} Nimbus Labs.`}</p>
+          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {[...LEGAL_LINKS, { label: "Support", href: SUPPORT }].map((link) => (
+              <li key={link.label}>
+                <FooterAnchor
+                  link={link}
+                  className="inline-flex min-h-6 items-center transition-colors hover:text-ink"
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="surface-night on-dark overflow-hidden">
       <div className="container-page grid gap-12 py-16 lg:grid-cols-[15rem_1fr] lg:gap-16 lg:py-20">
@@ -76,29 +125,30 @@ export function SiteFooter() {
             A store page for creators, built in public by Vinicius Sucupira. Your
             buyers pay into your own Stripe account.
           </p>
+          <p className="mt-3 text-[0.9375rem] leading-relaxed text-white/70">
+            Written support, in English, from{" "}
+            <a href={SUPPORT} className="font-medium text-white underline underline-offset-4">
+              {SUPPORT_EMAIL}
+            </a>
+          </p>
           <Link href="/signin" className="btn btn-light btn-sm mt-6">
             Start your store
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 xl:grid-cols-[repeat(6,auto)] xl:justify-between">
           {COLUMNS.map((column) => (
             <nav key={column.title} aria-label={column.title}>
-              <p className="text-[0.8125rem] font-semibold uppercase tracking-[0.14em] text-white/70">
+              <p className="whitespace-nowrap text-[0.8125rem] font-semibold uppercase tracking-[0.14em] text-white/70">
                 {column.title}
               </p>
-              <ul className="mt-4 space-y-2.5 text-[0.9375rem]">
+              <ul className="mt-4 space-y-1.5 text-[0.9375rem]">
                 {column.links.map((link) => (
-                  <li key={link.href}>
-                    {link.href.startsWith("mailto:") ? (
-                      <a href={link.href} className="text-white/80 transition-colors hover:text-white">
-                        {link.label}
-                      </a>
-                    ) : (
-                      <Link href={link.href} className="text-white/80 transition-colors hover:text-white">
-                        {link.label}
-                      </Link>
-                    )}
+                  <li key={link.label}>
+                    <FooterAnchor
+                      link={link}
+                      className="inline-flex min-h-6 items-center text-white/80 transition-colors hover:text-white"
+                    />
                   </li>
                 ))}
               </ul>
@@ -109,27 +159,33 @@ export function SiteFooter() {
 
       <div className="container-page text-white/80"><MoreFromUs /></div>
       <div className="container-page border-t border-white/12 py-7 text-[0.8125rem] leading-relaxed text-white/70">
-        <ul className="flex flex-wrap gap-x-5 gap-y-2">
-          <li className="flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-mint-brand" aria-hidden="true" />
-            0% of your sales
-          </li>
-          <li>Payments processed by Stripe on each creator&apos;s own account</li>
-          <li>
-            Written support, in English, from{" "}
-            <a href={SUPPORT} className="font-medium text-white underline underline-offset-4">
-              support@nimbuslabsai.com
-            </a>
-          </li>
-        </ul>
-        <div className="mt-4 flex flex-col gap-1.5 border-t border-white/10 pt-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
           <p>
-            © 2026 Nimbus Labs — an independent software studio run by Vinicius Sucupira.
+            {`© ${year} Nimbus Labs — an independent software studio run by Vinicius Sucupira.`}
           </p>
-          <p className="sm:max-w-md sm:text-right">
-            Photographs from Unsplash, used for illustration. The people in them are not Nimbus Labs
-            customers, and nothing on this site is a testimonial.
-          </p>
+          <ul className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1">
+            {LEGAL_LINKS.map((link) => (
+              <li key={link.href}>
+                <FooterAnchor
+                  link={link}
+                  className="inline-flex min-h-6 items-center text-white/80 transition-colors hover:text-white"
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+          <p>Payments processed by Stripe, on each creator&apos;s own account.</p>
+          <div className="space-y-1.5 sm:max-w-md sm:text-right">
+            <p className="flex items-center gap-2 sm:justify-end">
+              <span className="h-1.5 w-1.5 rounded-full bg-mint-brand" aria-hidden="true" />
+              0% of your sales
+            </p>
+            <p>
+              Photographs from Unsplash, used for illustration. The people in them are not Nimbus Labs
+              customers, and nothing on this site is a testimonial.
+            </p>
+          </div>
         </div>
       </div>
     </footer>

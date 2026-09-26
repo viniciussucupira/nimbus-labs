@@ -43,15 +43,16 @@ export function LegalPage({
   // that is not there.
   const sections = Children.toArray(children)
     .filter((child) => isValidElement(child) && child.type === LegalSection)
-    .map((child) => (child as React.ReactElement<{ title: string }>).props.title);
+    .map((child) => (child as React.ReactElement<{ title: string; id?: string }>).props)
+    .map(({ title, id }) => ({ title, id: id ?? sectionId(title) }));
 
   const index =
     sections.length > 2 ? (
       <ol className="grid gap-0.5">
         {sections.map((t) => (
-          <li key={t}>
-            <a href={`#${sectionId(t)}`} className="toc-link">
-              {t}
+          <li key={t.id}>
+            <a href={`#${t.id}`} className="toc-link">
+              {t.title}
             </a>
           </li>
         ))}
@@ -163,13 +164,16 @@ export function LegalPage({
 
 export function LegalSection({
   title,
+  id,
   children,
 }: {
   title: string;
+  /** A fixed anchor for links from elsewhere; by default it comes from the title. */
+  id?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section id={sectionId(title)} className="scroll-mt-24 space-y-4">
+    <section id={id ?? sectionId(title)} className="scroll-mt-24 space-y-4">
       <h2 className="text-[1.3rem] font-semibold tracking-[-0.02em] text-ink">{title}</h2>
       {children}
     </section>

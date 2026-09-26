@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function RefundsPage() {
   return (
-    <LegalPage title="Refund Policy" lastUpdated="September 22, 2026">
+    <LegalPage title="Refund Policy" lastUpdated="September 26, 2026">
       <p>
         This Refund Policy applies to what you pay Nimbus Labs, an independent
         software studio, for the creator store at nimbuslabsai.com — including
@@ -23,13 +23,18 @@ export default function RefundsPage() {
         says what to do.
       </p>
 
-      <LegalSection title="1. Cancel anytime">
+      <LegalSection id="cancel" title="1. Cancel anytime">
         <p>
           You may cancel your subscription at any time, for any reason, with no
           questions asked. After you cancel, you will not be charged for future
           billing periods. You will keep access until the end of the period you
           have already paid for, unless you also request a refund as described
           below.
+        </p>
+        <p>
+          To cancel, open your studio and choose &ldquo;Cancel the
+          subscription&rdquo; under Plan. You can also
+          ask us by email, as described in section 3.
         </p>
       </LegalSection>
 
