@@ -95,7 +95,7 @@ export const PAGES: TopicPage[] = [
           ["Monthly price", "$29 and $99", "$29 and $99, free for the first 14 days"],
           ["Paid yearly", "$300 and $948 a year", "$300 and $948 a year, free for the first 14 days"],
           ["Cut of each sale", "0% platform fee", "0% platform fee"],
-          ["Signing in", "An account with a password. Their own signup asks for name, email and password", "A link sent to your email. No password to invent, and none kept here to be stolen"],
+          ["Logging in", "An account with a password. Their own signup asks for name, email and password", "A link sent to your email. No password to invent, and none kept here to be stolen"],
           ["Ways to be paid", "Stripe or PayPal", "Stripe only — we are behind them here"],
           ["Whose Stripe account", "One they manage. Their own help centre: you cannot connect an existing Stripe account", "Your own. You connect it from your account page and it stays yours"],
           ["Getting paid", "Cash out inside Stan, $10 minimum, whole balance only", "Your own Stripe payout schedule"],

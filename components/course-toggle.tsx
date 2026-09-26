@@ -10,7 +10,7 @@ const MESSAGES: Record<string, string> = {
   options: "Take the price options off first: a course has one price.",
   delivery: "Take the file or link off first: a course delivers its lessons.",
   call: "Stop selling it as a call first.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 

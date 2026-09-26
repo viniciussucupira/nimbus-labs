@@ -6,7 +6,7 @@ import { PIXEL_INFO, PIXEL_KINDS, type PixelKind, type Pixels, hasPixels, readPi
 
 const MESSAGES: Record<string, string> = {
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };

@@ -126,7 +126,7 @@ export async function sendMoveLink(
       "",
       "If that was you, finish it from the link sent to that address.",
       "",
-      "If it was not you, log in here and sign out on all devices. Nothing has",
+      "If it was not you, log in here and log out of all devices. Nothing has",
       "moved yet, and nothing moves until someone opens the link sent to that",
       "other address.",
     ].join("\n"),

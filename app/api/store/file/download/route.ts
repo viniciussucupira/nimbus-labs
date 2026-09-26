@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
   const email = await emailForSession(
     request.cookies.get(SESSION_COOKIE)?.value,
   );
-  if (!email) return new Response("Sign in first.", { status: 401 });
+  if (!email) return new Response("Log in first.", { status: 401 });
 
   if (!isRedisConfigured()) {
     return new Response("Stores are not switched on yet.", { status: 503 });

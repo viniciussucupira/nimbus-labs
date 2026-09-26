@@ -18,7 +18,7 @@ const MESSAGES: Record<string, string> = {
   theme: "Pick one of the themes before saving.",
   accent: "That colour could not be read. Pick one of the swatches or your own.",
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   too_big: "That picture is still too big after shrinking. Try another one.",
   type: "That picture could not be read. Try a JPEG, PNG or WebP.",

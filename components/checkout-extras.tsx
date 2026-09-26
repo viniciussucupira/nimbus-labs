@@ -20,7 +20,7 @@ const MESSAGES: Record<string, string> = {
   kind: "This works on one-off paid products only.",
   plan: "Pick how many payments, how often, and an amount of at least $0.50 for each.",
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 

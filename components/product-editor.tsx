@@ -42,7 +42,7 @@ const OPTION_MESSAGES: Record<string, string> = {
   free: "This one is free, so it has no prices to add. Give it a price first.",
   unknown: "That price is no longer on this product.",
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
 };
 
@@ -56,7 +56,7 @@ const MESSAGES: Record<string, string> = {
   too_big: `That file is over ${maxFileLabel()}, which is the most a store can hold.`,
   wrong_type: "That kind of file is not one a store can sell here.",
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };

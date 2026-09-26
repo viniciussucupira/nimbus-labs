@@ -13,7 +13,7 @@ const MESSAGES: Record<string, string> = {
   title: "Give the button a name before saving.",
   unknown: "That is no longer on your page.",
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };

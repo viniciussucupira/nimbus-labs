@@ -8,7 +8,7 @@ const MESSAGES: Record<string, string> = {
   setup: "Stripe says your tax setup is not finished yet. Finish it in your Stripe dashboard, then switch this on.",
   stripe: "Connect your Stripe account first.",
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   server_error: "Stripe could not be asked just now. Nothing was changed; try again in a moment.",
 };
 

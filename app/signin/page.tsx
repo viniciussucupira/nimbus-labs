@@ -19,7 +19,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     body: "A login link works once and lasts 15 minutes. Ask for a fresh one below.",
   },
   out: {
-    title: "You are signed out",
+    title: "You are logged out",
     body: "Your session is closed on this device.",
   },
   "move-none": {
@@ -39,7 +39,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     body: "Nothing was changed. Log in and try again.",
   },
   "out-everywhere": {
-    title: "You are signed out on all devices",
+    title: "You are logged out of all devices",
     body: "Every session you had open is closed, on every device. A fresh link logs you back in.",
   },
 };

@@ -14,7 +14,7 @@ const MESSAGES: Record<string, string> = {
     "Codes come off a charge, so they need your Stripe account connected and your subscription running.",
   taken: "You already have a live code with that word. Pick another.",
   stripe: "Stripe did not answer just now. Try again in a moment.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };

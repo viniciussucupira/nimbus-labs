@@ -209,7 +209,7 @@ export function StatsPanel({ data }: { data: StatsData }) {
       ) : null}
 
       <p className="mt-6 text-xs leading-relaxed text-ink-soft">
-        Counted without cookies, and your own visits while signed in are not counted. A visitor is one person on one
+        Counted without cookies, and your own visits while logged in are not counted. A visitor is one person on one
         device on one day. Days run midnight to midnight UTC. Sales are read from your own Stripe account: new
         purchases and new members, before Stripe&apos;s fee and any refund; renewals are in your Stripe dashboard.
         {data.partial ? " This month had more sales than one reading covers, so the oldest are left out of these totals." : ""}

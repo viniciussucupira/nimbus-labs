@@ -32,7 +32,7 @@ const MESSAGES: Record<string, string> = {
   course: "This is a course. Stop selling it as a course first.",
   unknown: "That product is not there any more. Reload the page.",
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };

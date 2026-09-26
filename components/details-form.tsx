@@ -7,7 +7,7 @@ import { MAX_BIO_LENGTH, MAX_NAME_LENGTH } from "@/lib/store";
 const MESSAGES: Record<string, string> = {
   name: "Give the store a name before saving.",
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };

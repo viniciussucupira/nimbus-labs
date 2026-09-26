@@ -122,7 +122,7 @@ const NOT_BUILT = [
 /* What shipped, and when: read from the site's own history, not written for effect. */
 const RELEASES: { date: string; items: string }[] = [
   { date: "17 September 2026", items: "The live demo store: a Stripe checkout charged on a creator's own account, and the file handed over the moment Stripe confirms it." },
-  { date: "18 September 2026", items: "Signing in with a link sent to your email, and no password anywhere." },
+  { date: "18 September 2026", items: "Logging in with a link sent to your email, and no password anywhere." },
   { date: "19 September 2026", items: "Creator stores: an @address of your own, products and prices, the file each one delivers, and your own Stripe account connected." },
   { date: "20 September 2026", items: "Memberships, discount codes, and several prices on one product in every store." },
   { date: "21 September 2026", items: "Free products for an email address, members who cancel on their own, and cancelling the Nimbus plan in one click." },

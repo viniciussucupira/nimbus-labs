@@ -14,7 +14,7 @@ const MESSAGES: Record<string, string> = {
   plan: "Your own domain is part of Pro.",
   unavailable: "Domains are not answering just now. Nothing was changed; try again in a moment.",
   none: "There is no domain on your store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 

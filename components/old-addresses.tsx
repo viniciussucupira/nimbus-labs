@@ -7,7 +7,7 @@ const MESSAGES: Record<string, string> = {
   current: "That is the address your store uses now.",
   unknown: "That address does not belong to this store.",
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing changed.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };

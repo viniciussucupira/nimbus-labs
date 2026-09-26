@@ -350,7 +350,7 @@ const SECTIONS: Section[] = [
       {
         q: "What do you store about me?",
         a: [
-          "For your store: the email address that signs you in, the store you build, and the Stripe account id you connect. If you ask a store for something free: your email address, what you asked for, and whether you ticked the box to hear from that store \u2014 kept for that store and nobody else. For the research form: what you typed in it and, if you ticked the box, your email address. The privacy page lists it in full.",
+          "For your store: the email address that logs you in, the store you build, and the Stripe account id you connect. If you ask a store for something free: your email address, what you asked for, and whether you ticked the box to hear from that store \u2014 kept for that store and nobody else. For the research form: what you typed in it and, if you ticked the box, your email address. The privacy page lists it in full.",
         ],
       },
       {

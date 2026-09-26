@@ -207,7 +207,7 @@ const ADDRESS_NOTICES: Record<string, { title: string; body: string }> = {
   },
   moved: {
     title: "Your account moved",
-    body: "This address signs you in from now on. Every session the old one had open is closed.",
+    body: "This address logs you in from now on. Every session the old one had open is closed.",
   },
   same: {
     title: "That is the address you already use",
@@ -725,7 +725,7 @@ export default async function StudioPage({
                   </form>
                   <p className="mt-4 text-sm text-ink-soft">
                     Stripe will ask for the details it needs to pay you. If you
-                    already have a Stripe account, you can sign into it there
+                    already have a Stripe account, you can log in to it there
                     instead of opening a new one.
                   </p>
                 </>
@@ -1129,7 +1129,7 @@ export default async function StudioPage({
 
             <div id="account" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
               <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
-                The email that signs you in
+                The email that logs you in
               </p>
               <p className="mt-2 text-ink-soft">
                 Your store lives behind this address, so losing the inbox would
@@ -1228,7 +1228,7 @@ export default async function StudioPage({
               type="submit"
               className="btn btn-ghost"
             >
-              Sign out
+              Log out
             </button>
           </form>
           <form action="/api/auth/signout-all" method="post">
@@ -1236,7 +1236,7 @@ export default async function StudioPage({
               type="submit"
               className="btn btn-ghost"
             >
-              Sign out on all devices
+              Log out of all devices
             </button>
           </form>
         </div>

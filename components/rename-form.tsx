@@ -16,7 +16,7 @@ const MESSAGES: Record<string, string> = {
   taken: "Someone already has that address. Pick another one.",
   same: "That is already your address.",
   none: "This account has no store yet.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
