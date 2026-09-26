@@ -48,7 +48,8 @@ const SECTIONS: Section[] = [
         q: "Can I put my own products on my store?",
         a: [
           "Yes. On your account page you write the name of the store, the line under it, and each thing you sell with what the buyer gets and the price. It is on your page the moment you save it, and you can reorder or remove any of it.",
-          "A store holds up to twenty things, priced in US dollars — one price each, or up to three if you want the buyer to choose. You can also put the file itself on each one, and open it again to check it is the right one.",
+          "A store holds up to 200 things and up to 100 links, priced in US dollars — one price each, up to three if you want the buyer to choose, or a price the buyer chooses above your minimum. You can also put the file itself on each one, and open it again to check it is the right one.",
+          "Each product can have a picture, shown on its card in one of three ways, and a page of its own at your store address followed by /p/ and the product, with a long description of up to 5,000 characters. That page has its own title and preview card, so a link to one product shared anywhere unfolds into that product.",
           "Your page can take a card as soon as two things are true: Stripe has cleared your connected account, and your subscription is running — the trial counts. Until then the page says so plainly, to you and to anyone who opens it.",
         ],
       },
@@ -161,7 +162,7 @@ const SECTIONS: Section[] = [
         a: [
           "No. Nimbus runs on Stripe and only Stripe. Stan and Beacons both let you take PayPal as well, and on this one we are behind them.",
           "The reason is not laziness. Stripe's own documentation says PayPal through Stripe is not available to platforms that onboard other businesses to accept payments directly, which is exactly what we are. The other road is a second, separate integration with PayPal, and a second integration means a second checkout, a second refund path and a second dispute queue to keep working. We would rather have one that never breaks than two that sometimes do.",
-          "Two things follow from that, and you should know them before you sign up. You need a Stripe account, in a country Stripe operates in — which covers the United States, Canada, the United Kingdom and the European Union, but not everywhere. And a buyer who has only a PayPal balance and no card cannot buy from you here.",
+          "Two things follow from that, and you should know them before you sign up. You need a Stripe account in one of the 43 countries the studio offers \u2014 the United States, Canada, the United Kingdom, Australia, Japan, Singapore, Mexico and most of Europe among them, but not everywhere. And a buyer who has only a PayPal balance and no card cannot buy from you here.",
         ],
       },
       {
@@ -196,7 +197,7 @@ const SECTIONS: Section[] = [
       {
         q: "What can I sell?",
         a: [
-          "Digital files, paid calls with a calendar, and memberships that charge on a schedule. What is too big to upload, or is not a file at all, is sold as a link to where it already lives. And anything can be given away for free, in exchange for an email address.",
+          "Digital files, courses, memberships that charge on a schedule, paid calls one to one or in groups of up to 50, and live sessions on dates you set. What is too big to upload, or is not a file at all, is sold as a link to where it already lives. And anything can be given away for free, in exchange for an email address.",
           "One product can carry up to three prices — one week and five weeks, personal and commercial — and each one hands over its own file or its own link. The buyer picks on the card, and what they are charged is read from what you saved rather than from the page they are looking at.",
           "Your page also holds links that are not for sale, with no price and no checkout on them: the channel, the podcast, the profile, the booking page you already pay someone else for.",
         ],
@@ -214,15 +215,18 @@ const SECTIONS: Section[] = [
         a: [
           "Yes. Any product can charge on a schedule instead of once: daily, weekly, monthly or yearly. The subscription is created on your own Stripe account, like every other charge here, so the member is your customer, in your dashboard, and the renewals are 0% to us as well.",
           "Members cancel on their own. Under every membership on your page there is a link: the member types the email they pay with, we send them a link, and it opens Stripe's own page for their membership, where cancelling is one click. It ends at the end of the period they have paid for, and nobody has to write to you or wait for you. They can change their card and see their receipts there too.",
-          "Two things it does not do yet, said plainly. A membership runs until the member cancels \u2014 you cannot set it to stop after six payments. And it does not take access back when somebody stops paying: if what you deliver is a link, that link keeps working, so remove them wherever you actually keep the thing. Your Stripe dashboard is where you see who is still paying.",
+          "A membership can start with a free trial of 1 to 90 days: the card is taken when they join, nothing is charged until the trial ends, and your page and the buyer's confirmation say so. It can also run for a set number of payments, 2 to 36, and then end by itself; the member can still cancel before that.",
+          "One thing it does not do yet, said plainly. It does not take access back when somebody stops paying: if what you deliver is a link, that link keeps working, so remove them wherever you actually keep the thing. Courses close by themselves. Your Stripe dashboard is where you see who is still paying.",
         ],
       },
       {
         q: "Can I sell paid calls?",
         a: [
           "Yes. Any one-off product with a price can be sold as a call. You pick how long it lasts, your time zone and the hours you take calls on each day of the week, with up to two stretches a day. You also choose how much notice you need, how far ahead people can book, a gap between calls, and the meeting link you already use.",
+          "A call can take one person at each time, or a group of up to 50. Or sell live sessions on dates you set instead of weekly hours: up to 50 dates on one product, each with 1 to 500 seats, its own length and its own link, with sales closing when you say, up to 72 hours before. Buyers see how many seats are left.",
           "The buyer sees the free times in their own time zone, picks one and pays on your own Stripe account. The time is held for them for 30 minutes while they pay, so two people can never pay for the same time. Once it is paid, you both get an email with a calendar file, the call appears in your studio under Upcoming calls, and the buyer's thanks page has the link to join.",
-          "Two things it does not do yet, said plainly. It does not read your Google or Outlook calendar, so the hours you set are the hours offered: to take a day off, change them. And there is no reschedule button: to move or cancel, the buyer replies to their confirmation email, which reaches you, and a refund is made from your own Stripe dashboard.",
+          "Every buyer gets a reminder a day before and an hour before, in their time zone, with the link to join; you get one for each time, listing everyone booked. A buyer can move their booking to another open time themselves, up to twice, from the link in their email, until the notice you set before the call.",
+          "Two things it does not do yet, said plainly. It does not read your Google or Outlook calendar, so the hours you set are the hours offered: to take a day off, change them. And a buyer cannot cancel on their own: they reply to their confirmation email, which reaches you, and a refund is made from your own Stripe dashboard. The call itself happens on the service whose link you give; nothing is streamed or recorded here.",
         ],
       },
       {
@@ -238,6 +242,27 @@ const SECTIONS: Section[] = [
         a: [
           "Yes. Under any one-off product with one price, offer a payment plan: two to twelve payments, weekly or monthly, of an amount you choose, adding up to at least the full price. The buyer picks between paying in full and the plan, and the button says what is charged today.",
           "They get the product after the first payment. The rest are charged to the same card on your own Stripe account, and the plan is given its end as soon as the first payment is through \u2014 and checked again every day for anyone who paid and closed the page \u2014 so no buyer is ever charged one payment more than they agreed to. A plan is not a membership, so it is not cancelled from your page; a buyer who needs to change something replies to their receipt, which reaches you.",
+        ],
+      },
+      {
+        q: "Can the buyer choose the price?",
+        a: [
+          "Yes, on a product with one price, sold once. Your price becomes the minimum \u2014 at least $1 \u2014 and you add a suggested price, which is already in the box on Stripe's page. The buyer types what they want to pay, and Stripe refuses anything under the minimum.",
+          "It does not mix with a membership, price options, a payment plan, the box at checkout, a call or discount codes: the buyer already names the price. A one-click offer after paying, a limited quantity, sales tax and a course all work with it.",
+        ],
+      },
+      {
+        q: "Can I ask buyers something before they pay?",
+        a: [
+          "Yes. Up to three questions on any paid product, shown on Stripe's page under the card: a short answer, a number, or a list to choose from. Each can be required or optional. The answers are in your list of sales and in your Stripe dashboard, and for a call they are in your booking email too.",
+          "There is no phone-number or checkbox question, and nothing is asked for a free product, which never reaches Stripe.",
+        ],
+      },
+      {
+        q: "Does a buyer who leaves the checkout get a reminder?",
+        a: [
+          "If you switch it on, and only if they agreed. Stripe's checkout asks the buyer whether they want to hear from you; a buyer who said yes and left without paying gets one email about an hour later with a link back to the product. One per checkout, at most one per buyer and product in a week, and none to anyone who has paid for it since.",
+          "It is off until you switch it on, needs your postal address, and needs a Stripe account in the United States, because Stripe asks for that consent only on checkouts of US businesses. While it is on, a checkout left open closes after an hour instead of Stripe's usual day. It is not sent for calls or live sessions.",
         ],
       },
       {
@@ -281,13 +306,13 @@ const SECTIONS: Section[] = [
       {
         q: "Can I run a community or a webinar?",
         a: [
-          "Not yet. Communities, webinars and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
+          "A webinar, yes: sell it as a live session on the dates you set, with up to 500 seats each, held on the meeting service whose link you give. A community, not yet: communities and an affiliate programme are not built. Platforms that have them today are the better choice if you need them today, and our comparison page says so.",
         ],
       },
       {
         q: "Does it work on a phone?",
         a: [
-          "That is the case it is designed for. The store installs to the home screen with its own icon on both iPhone and Android, straight from the browser, with no app to download — for you or for your buyers.",
+          "That is the case it is designed for. Your store installs to the home screen on both iPhone and Android as an app of its own, with its name, its icon and its colour, straight from the browser, with no app store in between. It opens on your store, not on ours.",
         ],
       },
       {
@@ -321,6 +346,7 @@ const SECTIONS: Section[] = [
         q: "How does the buyer get the file?",
         a: [
           "On the screen, immediately after Stripe confirms the payment. There is no waiting for an email to arrive before they can open what they bought.",
+          "An email follows anyway: every buyer gets a confirmation from your store's name, with what they bought, what they paid and the way back to it, and replies reach you. It goes out once, even if the buyer closed the page before it loaded. A booked call gets its own confirmation instead, with the time and a calendar file.",
         ],
       },
       {
@@ -391,7 +417,7 @@ export default function HelpPage() {
             </p>
             <p className="mt-3 flex items-center gap-2 text-sm text-ink-mute">
               <Icon name="check" size={15} className="text-mint-deep" />
-              Checked against the product on 22 September 2026.
+              Checked against the product on 26 September 2026.
             </p>
             <HelpSearch />
           </div>

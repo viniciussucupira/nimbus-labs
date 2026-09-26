@@ -2,29 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import {
-  centsToPrice,
-  isFree,
-  normaliseHandle,
-  storeForHandle,
-} from "@/lib/store";
-import {
-  canSell,
-  canSellProduct,
-  fromPriceCents,
-  sellableOptions,
-} from "@/lib/store-checkout";
-import { everyLabel } from "@/lib/product-recurring";
+import { isFree, normaliseHandle, storeForHandle } from "@/lib/store";
+import { canSell, canSellProduct } from "@/lib/store-checkout";
 import { linkHost } from "@/lib/product-link";
 import { isConnectInTestMode } from "@/lib/stripe-connect";
-import { canGiveProduct } from "@/lib/free";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canManage } from "@/lib/membership-manage";
 import { canRecover, sellsDeliverables } from "@/lib/buyer-orders";
 import { StoreTracking } from "@/components/store-tracking";
-import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { stockLeft } from "@/lib/stock";
+import { ProductCard } from "@/components/store-product";
 import { canWrite } from "@/lib/mail";
 import { canUseDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
@@ -131,12 +119,15 @@ export default async function StorePage({ params, searchParams }: Params) {
   const manageable = canManage(store);
   // Buyers are asked whether they want the creator's emails only where the creator can send them.
   const writes = canWrite(store);
-  // What is left of each limited product, counted from real checkouts.
+  // What is left of each limited product, counted from real checkouts. Asked
+  // side by side, so a long store does not wait on its products one by one;
+  // a product without a limit is answered without asking anything.
+  const counts = await Promise.all(store.products.map((product) => stockLeft(store, product).catch(() => null)));
   const left = new Map<string, number>();
-  for (const product of store.products) {
-    const count = await stockLeft(store, product).catch(() => null);
+  store.products.forEach((product, i) => {
+    const count = counts[i];
     if (count !== null) left.set(product.id, count);
-  }
+  });
 
   return (
     <div
@@ -195,303 +186,19 @@ export default async function StorePage({ params, searchParams }: Params) {
           {store.products.length > 0 ? (
             <>
               <ul className="space-y-4">
-                {store.products.map((product) => {
-                  const options = sellableOptions(product);
-                  const from = fromPriceCents(product);
-                  const every = product.recurring
-                    ? ` ${everyLabel(product.recurring.interval)}`
-                    : "";
-                  // A count is only worth showing where the product can be bought.
-                  const remaining = left.has(product.id) && canSellProduct(store, product) ? left.get(product.id)! : null;
-                  const soldOut = remaining === 0;
-                  const extra = activeBump(store.products, product);
-                  const plan = activePlan(product);
-                  return (
-                  <li
+                {store.products.map((product, index) => (
+                  <ProductCard
+                    eager={index < 3}
                     key={product.id}
-                    className="st-card p-5 sm:p-6"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-                      <h2 className="font-display min-w-0 text-lg font-semibold leading-snug">
-                        {product.title}
-                      </h2>
-                      <p className="st-price text-base">
-                        {isFree(product)
-                          ? "Free"
-                          : `${options.length > 1 ? "from " : ""}$${centsToPrice(
-                              from,
-                            )}${every}`}
-                      </p>
-                    </div>
-                    {product.call ? (
-                      <p className="st-muted mt-1 text-sm font-semibold">
-                        {`${product.call.minutes}-minute call, online`}
-                      </p>
-                    ) : null}
-                    {product.course && product.course.lessons > 0 ? (
-                      <p className="mt-1 text-sm font-semibold">
-                        <span className="st-muted">{`Course · ${product.course.lessons} ${product.course.lessons === 1 ? "lesson" : "lessons"} · `}</span>
-                        <Link href={`/@${store.handle}/course/${product.id}`} className="underline underline-offset-2" style={{ color: "var(--st-text)" }}>
-                          See what is inside
-                        </Link>
-                      </p>
-                    ) : null}
-                    {product.summary ? (
-                      <p className="st-muted mt-2 leading-relaxed">{product.summary}</p>
-                    ) : null}
-                    {plan && canSellProduct(store, product) ? (
-                      <p className="st-muted mt-1 text-sm font-semibold">{`or ${planWords(plan)}`}</p>
-                    ) : null}
-                    {remaining !== null ? (
-                      <p className="mt-2 text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>
-                        {soldOut ? "Sold out" : `${remaining.toLocaleString("en-US")} left`}
-                      </p>
-                    ) : null}
-
-                    {isFree(product) ? (
-                      canGiveProduct(store, product) ? (
-                        /*
-                          Given away for an address, and the address is only
-                          kept once its owner uses the link we email. The box
-                          starts empty and stays the visitor's to tick:
-                          wanting the file is not agreeing to more email.
-                        */
-                        <form
-                          action="/api/store/free"
-                          method="post"
-                          className="mt-4 space-y-3"
-                        >
-                          <input type="hidden" name="handle" value={store.handle} />
-                          <input type="hidden" name="product" value={product.id} />
-                          <div aria-hidden="true" className="hidden">
-                            <label>
-                              Leave this empty
-                              <input
-                                type="text"
-                                name="website"
-                                tabIndex={-1}
-                                autoComplete="off"
-                              />
-                            </label>
-                          </div>
-                          <label
-                            htmlFor={`e-${product.id}`}
-                            className="st-label"
-                          >
-                            Your email
-                          </label>
-                          <input
-                            id={`e-${product.id}`}
-                            type="email"
-                            name="email"
-                            required
-                            maxLength={254}
-                            autoComplete="email"
-                            placeholder="you@example.com"
-                            className="st-field"
-                          />
-                          <label
-                            htmlFor={`c-${product.id}`}
-                            className="st-muted flex cursor-pointer items-start gap-3 text-sm"
-                          >
-                            <input
-                              id={`c-${product.id}`}
-                              type="checkbox"
-                              name="consent"
-                              value="yes"
-                              className="mt-0.5 h-4 w-4 shrink-0"
-                            />
-                            <span>
-                              {`Also send me emails from ${store.name}. I can unsubscribe whenever I like.`}
-                            </span>
-                          </label>
-                          <button
-                            type="submit"
-                            className="btn st-btn btn-block"
-                          >
-                            Email it to me
-                          </button>
-                          <p className="st-muted text-xs">
-                            {`We email you a link to it. ${store.name} gets your address, marked with whether you ticked the box, and Nimbus uses it for nothing else.`}
-                          </p>
-                        </form>
-                      ) : (
-                        <p className="st-muted mt-4 text-sm">
-                          Not available right now.
-                        </p>
-                      )
-                    ) : product.call && canSellProduct(store, product) ? (
-                      <Link
-                        href={`/@${store.handle}/book/${product.id}`}
-                        className="btn st-btn btn-block mt-4"
-                      >
-                        {`Pick a time \u2014 $${centsToPrice(product.priceCents)}`}
-                      </Link>
-                    ) : soldOut ? null : canSellProduct(store, product) ? (
-                      <form
-                        action="/api/store/checkout"
-                        method="post"
-                        className="mt-4"
-                        data-checkout=""
-                      >
-                        <input type="hidden" name="handle" value={store.handle} />
-                        <input type="hidden" name="product" value={product.id} />
-                        {/*
-                          Radio cards, and nothing else. The form sends the id
-                          of the option the buyer picked; what it costs is read
-                          from the creator's own record on the server, so the
-                          price cannot be sent from here. Plain radios also
-                          mean the choice works with JavaScript turned off.
-                        */}
-                        {options.length > 0 ? (
-                          <fieldset className="mb-4">
-                            <legend className="sr-only">
-                              {`Choose an option for ${product.title}`}
-                            </legend>
-                            <div className="space-y-2">
-                              {options.map((option, index) => (
-                                <label
-                                  key={option.id}
-                                  htmlFor={`o-${option.id}`}
-                                  className="st-option"
-                                >
-                                  <span className="flex items-center gap-3">
-                                    <input
-                                      id={`o-${option.id}`}
-                                      type="radio"
-                                      name="option"
-                                      value={option.id}
-                                      defaultChecked={index === 0}
-                                      className="h-4 w-4"
-                                    />
-                                    <span className="font-bold">
-                                      {option.label}
-                                    </span>
-                                  </span>
-                                  <span className="font-semibold tabular-nums">
-                                    {`$${centsToPrice(option.priceCents)}${every}`}
-                                  </span>
-                                </label>
-                              ))}
-                            </div>
-                          </fieldset>
-                        ) : null}
-                        {plan ? (
-                          <fieldset className="mb-4">
-                            <legend className="sr-only">{`How to pay for ${product.title}`}</legend>
-                            <div className="space-y-2">
-                              <label htmlFor={`pf-${product.id}`} className="st-option">
-                                <span className="flex items-center gap-3">
-                                  <input id={`pf-${product.id}`} type="radio" name="pay" value="full" defaultChecked className="h-4 w-4" />
-                                  <span className="font-bold">Pay in full</span>
-                                </span>
-                                <span className="font-semibold tabular-nums">{`$${centsToPrice(product.priceCents)}`}</span>
-                              </label>
-                              <label htmlFor={`pp-${product.id}`} className="st-option">
-                                <span className="flex items-center gap-3">
-                                  <input id={`pp-${product.id}`} type="radio" name="pay" value="plan" className="h-4 w-4" />
-                                  <span className="font-bold">{planWords(plan)}</span>
-                                </span>
-                                <span className="font-semibold tabular-nums">{`$${centsToPrice(plan.amountCents)} today`}</span>
-                              </label>
-                            </div>
-                          </fieldset>
-                        ) : null}
-                        {extra ? (
-                          /*
-                            Never ticked for the buyer. What it costs is the
-                            creator's price for it here, read on the server.
-                          */
-                          <label
-                            htmlFor={`b-${product.id}`}
-                            className="st-option mb-4 !items-start"
-                            style={{ borderStyle: "dashed" }}
-                          >
-                            <span className="flex items-start gap-3">
-                              <input
-                                id={`b-${product.id}`}
-                                type="checkbox"
-                                name="bump"
-                                value="yes"
-                                className="mt-1 h-4 w-4 shrink-0"
-                              />
-                              <span>
-                                <span className="block font-bold">
-                                  {`Add ${extra.target.title} for $${centsToPrice(extra.bump.priceCents)}`}
-                                </span>
-                                {extra.bump.pitch ? (
-                                  <span className="st-muted mt-0.5 block text-sm">{extra.bump.pitch}</span>
-                                ) : null}
-                                {extra.bump.priceCents < extra.target.priceCents ? (
-                                  <span className="st-muted mt-0.5 block text-xs">
-                                    {`$${centsToPrice(extra.target.priceCents)} on its own`}
-                                  </span>
-                                ) : null}
-                              </span>
-                            </span>
-                          </label>
-                        ) : null}
-                        {writes ? (
-                          /* Starts empty, like every box here: buying is not agreeing to more email. */
-                          <label htmlFor={`n-${product.id}`} className="st-muted mb-4 flex cursor-pointer items-start gap-3 text-sm">
-                            <input id={`n-${product.id}`} type="checkbox" name="news" value="yes" className="mt-0.5 h-4 w-4 shrink-0" />
-                            <span>{`Also send me emails from ${store.mail?.fromName || store.name}. I can unsubscribe whenever I like.`}</span>
-                          </label>
-                        ) : null}
-                        <button
-                          type="submit"
-                          className="btn st-btn btn-block"
-                        >
-                          <span className="bump-off">
-                            {options.length > 0
-                              ? product.recurring
-                                ? "Subscribe"
-                                : "Buy the one you picked"
-                              : product.recurring
-                                ? `Subscribe \u2014 $${centsToPrice(
-                                    product.priceCents,
-                                  )}${every}`
-                                : `Buy for $${centsToPrice(product.priceCents)}`}
-                          </span>
-                          {/* With the box ticked, the button says the new total. */}
-                          {plan ? (
-                            <span className="plan-on">{`Start the plan: $${centsToPrice(plan.amountCents)} today`}</span>
-                          ) : null}
-                          {plan && extra ? (
-                            <span className="plan-bump-on">
-                              {`Start the plan with ${extra.target.title}: $${centsToPrice(plan.amountCents + extra.bump.priceCents)} today`}
-                            </span>
-                          ) : null}
-                          {extra ? (
-                            <span className="bump-on">
-                              {options.length > 0
-                                ? `Buy it with ${extra.target.title}`
-                                : `Buy both for $${centsToPrice(product.priceCents + extra.bump.priceCents)}`}
-                            </span>
-                          ) : null}
-                        </button>
-                      </form>
-                    ) : selling ? (
-                      /*
-                        Sellable store, but this one has nothing attached to
-                        hand over. Better to say so than to take the money and
-                        work out the delivery afterwards.
-                      */
-                      <p className="st-muted mt-4 text-sm">
-                        Not ready to buy yet.
-                      </p>
-                    ) : null}
-
-                    {product.recurring && manageable ? (
-                      <p className="mt-3 text-center text-sm">
-                        <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">
-                          Already a member? Manage or cancel
-                        </Link>
-                      </p>
-                    ) : null}
-                  </li>
-                  );
-                })}
+                    store={store}
+                    product={product}
+                    // A count is only worth showing where the product can be bought.
+                    remaining={left.has(product.id) && canSellProduct(store, product) ? left.get(product.id)! : null}
+                    writes={writes}
+                    selling={selling}
+                    manageable={manageable}
+                  />
+                ))}
               </ul>
 
               {/*

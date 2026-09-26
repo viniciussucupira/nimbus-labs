@@ -19,8 +19,13 @@
  * machine.
  */
 
-/** How many a store may list. The same ceiling products have. */
-export const MAX_STORE_LINKS = 20;
+/**
+ * How many a store may list: a hundred, which is more places than anybody is
+ * found in. Each one is small — a title and an address — so a full list is a
+ * fraction of what the store's record is allowed to weigh (MAX_STORE_BYTES in
+ * lib/store.ts), and the page still reads as a page rather than a directory.
+ */
+export const MAX_STORE_LINKS = 100;
 
 /** Long enough for "Book a call with me", short enough to read as a button. */
 export const MAX_LINK_TITLE_LENGTH = 60;

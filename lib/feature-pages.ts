@@ -36,7 +36,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "Live in three steps",
         items: [
           { title: "Take your address", body: "nimbuslabsai.com/@yourname is yours the moment you take it, and the page is up straight away." },
-          { title: "Put up what you sell", body: "Its name, what is inside and the price. Files, courses, memberships, calls, free things for an email, and plain links." },
+          { title: "Put up what you sell", body: "Its name, what is inside, the price and a picture. Files, courses, memberships, calls and live sessions, free things for an email, and plain links." },
           { title: "Make it look like you", body: "Your photo, one of four themes, and one of ten colours or your own. The studio shows the page before you save." },
         ],
       },
@@ -45,11 +45,13 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What the page carries",
         items: [
           { icon: "user", title: "You, at the top", body: "Your photo, your name and a line about you, on every theme — not locked behind one." },
-          { icon: "file", title: "Up to twenty products", body: "Each with its price, what the buyer gets and the button that buys it, in the order you choose." },
+          { icon: "file", title: "Up to 200 products", body: "Each with its price, what the buyer gets and the button that buys it, in the order you choose, and up to 100 links beside them." },
+          { icon: "camera", title: "A picture on each product", body: "Shown three ways, product by product: small beside the title, beside the title and the summary, or across the top of the card." },
+          { icon: "eye", title: "A page for each product", body: "At /@you/p/<product>: the picture, a long description of up to 5,000 characters, and a title and preview card of its own for search engines and shared links." },
           { icon: "gift", title: "Free things, for an email", body: "Price something at 0 and it is handed out for a confirmed email address that joins your list." },
           { icon: "link", title: "Links with no price", body: "Your channel, your podcast, your booking page — with the site each one leads to printed under it." },
           { icon: "palette", title: "Colours that stay readable", body: "Every colour is checked for contrast before your page uses it, so your words never disappear into it." },
-          { icon: "phone", title: "Installs to the home screen", body: "On iPhone and Android, straight from the browser, for you and for your buyers. No app to download." },
+          { icon: "phone", title: "Your store, as an app", body: "On iPhone and Android, straight from the browser, your store installs to the home screen as an app of its own, with its name, its icon and its colour. No app store." },
           { icon: "refresh", title: "Change your address freely", body: "Every address your store has used keeps working and leads to the new one, so the link in your bio never breaks." },
           { icon: "gauge", title: "Fast on a phone", body: "The demo store scored 97 to 100 for performance on Google PageSpeed, on a simulated phone, on 17 September 2026." },
         ],
@@ -69,7 +71,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         intro: "Said here so nobody signs up expecting it.",
         items: [
           "There is one layout: you choose the theme, the colour and the order, not the arrangement of blocks on the page.",
-          "Twenty products and twenty links per store. There are no categories or search for a big catalogue.",
+          "200 products and 100 links per store. There are no categories or search for a big catalogue.",
           "No custom code on the page, and the store cannot be embedded in another website.",
           "Buyers pay by card through Stripe. PayPal is not offered.",
         ],
@@ -139,7 +141,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           "Three options per product at most.",
           "A payment plan is offered on products with one price, so a product with options is paid at once — or as a membership.",
-          "Pay-what-you-want is not offered.",
+          "A product with options has fixed prices: pay what you want is for products with one price.",
         ],
       },
       {
@@ -254,6 +256,8 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "door", title: "Cancelling is one click", body: "On Stripe's page, at the end of the period already paid for. Nobody has to write to you and wait." },
           { icon: "card", title: "Card changes without you", body: "The member changes their card and sees their receipts on the same page." },
           { icon: "book", title: "A course that stays open", body: "A course sold as a membership is open while the member pays, and closes when it ends." },
+          { icon: "gift", title: "A free trial, said plainly", body: "1 to 90 days. The card is taken at the start and nothing is charged until the trial ends. The page and the button say so, and the confirmation email gives the date of the first payment." },
+          { icon: "calendar", title: "Or a set number of payments", body: "2 to 36 payments, and then it ends by itself. The member can still cancel before that." },
         ],
       },
       {
@@ -269,8 +273,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do yet",
         items: [
-          "A membership runs until the member cancels. You cannot set it to stop after six payments.",
-          "No free trial period for members.",
+          "A free trial is a number of free days, the same for every member of that product. There is no first month at a lower price.",
+          "A membership is charged at its set price: it cannot be pay what you want.",
           "When somebody stops paying, a link they were given keeps working: remove them wherever you keep the thing itself. Courses close by themselves.",
           "No community space for members.",
         ],
@@ -293,7 +297,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Sell your time,",
     highlight: "booked and paid in one go",
     intro:
-      "Set your hours once, in your time zone. Buyers see the free times in theirs, pick one and pay on your Stripe account, and you both get the invitation.",
+      "One person at a time, a group of up to 50, or live sessions on dates you set. Buyers see the free times in their own time zone, pick one and pay on your Stripe account, and you both get the invitation.",
     badge: WORKING,
     accent: "from-mint-brand to-sky-brand",
     visual: "calls",
@@ -320,7 +324,11 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "calendar", title: "How far ahead", body: "From a week to three months of free times on show." },
           { icon: "minus", title: "A gap between calls", body: "Up to an hour between one call and the next." },
           { icon: "video", title: "Your meeting link", body: "Zoom, Google Meet, Whereby — the link you already use goes into every invitation." },
-          { icon: "shield", title: "Never booked twice", body: "A time being paid for is held, so two people can never pay for the same hour." },
+          { icon: "shield", title: "Never booked twice", body: "A time being paid for is held, so two people can never pay for the same hour, or the last seat." },
+          { icon: "users", title: "Group calls", body: "Up to 50 people at each time. Buyers see how many seats are left." },
+          { icon: "video", title: "Live sessions on dates", body: "Up to 50 dates per product, each with 1 to 500 seats, its own length and its own link. Sales close when you say, up to 72 hours before." },
+          { icon: "mail", title: "Reminders", body: "A day and an hour before, to every buyer in their time zone, with the link to join. You get one per time, listing everyone booked." },
+          { icon: "refresh", title: "Buyers move their own booking", body: "Up to twice, from the link in their email, until the notice you set before the call. Nothing is charged or refunded." },
         ],
       },
       {
@@ -337,9 +345,9 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do yet",
         items: [
           "It does not read your Google or Outlook calendar. The hours you set are the hours offered: to take a day off, change them.",
-          "There is no reschedule button. To move or cancel, the buyer replies to their confirmation email, which reaches you; a refund is made from your Stripe dashboard.",
-          "One person per call. Group calls and webinars are not built.",
-          "The video call itself happens on the service whose link you give.",
+          "Buyers move a booking themselves, but cancelling is a reply to their confirmation email, which reaches you; a refund is made from your Stripe dashboard.",
+          "The call or the session itself happens on the service whose link you give. Nothing is streamed or recorded here.",
+          "No reminder is sent to a buyer who left the checkout of a call without paying.",
         ],
       },
       {
@@ -360,7 +368,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Earn more from every buyer,",
     highlight: "on the $29 plan",
     intro:
-      "Discount codes, a product added at checkout, a one-click offer after paying, payment plans, limited quantities and sales tax. On Stan the first four are on the $99 plan.",
+      "Discount codes, a product added at checkout, a one-click offer after paying, payment plans, pay what you want, questions at checkout, limited quantities and sales tax. On Stan the first four are on the $99 plan.",
     badge: WORKING,
     accent: "from-amber-brand to-pink-brand",
     visual: "checkout",
@@ -371,7 +379,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     blocks: [
       {
         kind: "features",
-        title: "Six tools, all charged on your own account",
+        title: "Every tool on your own account",
         intro: "Stan's pricing page, read on 20 September 2026, puts discount codes, order bumps, upsells and payment plans on its $99 plan.",
         items: [
           { icon: "percent", title: "Discount codes", body: "A word you choose, a percentage or an amount off, and a cap on uses if you want one. Up to twenty codes, kept as coupons on your own Stripe." },
@@ -380,6 +388,9 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "calendar", title: "Payment plans", body: "Two to twelve weekly or monthly payments. The buyer gets it after the first, and it ends by itself after the last." },
           { icon: "list", title: "Limited quantity", body: "Sell fifty and stop. The count shown is the real one, and a unit being paid for is held so the last one is never sold twice." },
           { icon: "receipt", title: "Sales tax and VAT", body: "Stripe Tax works it out from each buyer's address, on your account, once your Stripe tax setup is complete." },
+          { icon: "tag", title: "Pay what you want", body: "Your price becomes the minimum, at least $1, with a suggested price already in the box. Stripe refuses anything under the minimum." },
+          { icon: "type", title: "Questions at checkout", body: "Up to three, on Stripe's page before paying: a short answer, a number or a list to choose from. The answers are in your list of sales." },
+          { icon: "mail", title: "One reminder after a checkout left unpaid", body: "Only to a buyer who agreed on Stripe's page, about an hour later, once. Off until you switch it on." },
         ],
       },
       {
@@ -399,6 +410,9 @@ export const FEATURE_PAGES: TopicPage[] = [
           "One product can be offered in the box, and one after paying, per product.",
           "While sales tax is on, the one-click offer after paying is paused, because tax cannot be added to a one-click charge.",
           "A payment plan cannot be cancelled from your page; a buyer who needs to change something replies to their receipt, which reaches you.",
+          "Pay what you want is for a product with one price, sold once: not with memberships, price options, payment plans, the box at checkout, calls or discount codes.",
+          "Questions are short answers, numbers or lists: no phone-number or checkbox question, and none on free products.",
+          "The reminder after an unpaid checkout needs a Stripe account in the United States, because Stripe asks buyers for that consent only on checkouts of US businesses. It is not sent for calls or live sessions.",
         ],
       },
       {
@@ -463,7 +477,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "The honest limits",
         items: [
           "Stripe only. PayPal is not offered: Stripe does not make it available to platforms like ours, and a second, separate integration means a second checkout to keep working.",
-          "You need a Stripe account in a country Stripe operates in — the United States, Canada, the United Kingdom and the European Union among them, but not everywhere.",
+          "You need a Stripe account in one of the 43 countries the studio offers — the United States, Canada, the United Kingdom, Australia, Japan, Singapore, Mexico and most of Europe among them, but not everywhere.",
           "Because we never touch your money, we cannot advance it, split it with an affiliate automatically, or refund a buyer for you.",
         ],
       },
@@ -511,6 +525,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "link", title: "Or a link", body: "Too big, or not a file at all — a Drive folder, a Notion page, a private video — and the buyer is sent there the moment they pay." },
           { icon: "download", title: "200 GB of downloads a month", body: "Published, and shown in your studio as it is used. Going over never cuts a buyer off; we write to you instead." },
           { icon: "shield", title: "Nothing that runs", body: "Programs, installers and scripts are refused, so a taken-over account cannot hand out malware." },
+          { icon: "mail", title: "A confirmation email", body: "Every buyer gets one from your store's name: what they bought, what they paid and the way back to it. Replies reach you." },
         ],
       },
       {
@@ -775,8 +790,8 @@ export const CREATOR_PAGES: TopicPage[] = [
         title: "Where it falls short for coaches today",
         items: [
           "Calls do not read your Google or Outlook calendar: to block a day, change your hours.",
-          "No reschedule button: a client who needs to move replies to the confirmation email.",
-          "No group calls, webinars or community space.",
+          "Clients move their own booking up to twice, but cancelling is a reply to the confirmation email, and a refund is yours to make in Stripe.",
+          "No community space. Group calls and live sessions happen on the meeting service whose link you give.",
         ],
       },
       {

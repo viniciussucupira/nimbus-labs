@@ -7,7 +7,8 @@ import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canSellProduct } from "@/lib/store-checkout";
-import { everyLabel } from "@/lib/product-recurring";
+import { membershipPrice } from "@/lib/product-recurring";
+import { activePwyw } from "@/lib/pay-what-you-want";
 import { isOpen, lessonCount, lessonsInOrder, readCourse } from "@/lib/course";
 import { courseAccess, doneLessons, touchStudent } from "@/lib/learn";
 import { CourseOutline } from "@/components/course-outline";
@@ -68,9 +69,13 @@ export default async function CoursePage({ params, searchParams }: Params) {
   const preview = all.find(({ lesson }) => lesson.preview);
   const base = `/@${store.handle}/course/${product.id}`;
   const selling = canSellProduct(store, product);
+  // Said with every term the checkout will apply: a trial, a set number of
+  // payments, a price the buyer chooses.
   const price = product.recurring
-    ? `$${centsToPrice(product.priceCents)} ${everyLabel(product.recurring.interval)}`
-    : `$${centsToPrice(product.priceCents)}`;
+    ? membershipPrice(product.recurring, `$${centsToPrice(product.priceCents)}`)
+    : activePwyw(product)
+      ? `$${centsToPrice(product.priceCents)} or more, you choose`
+      : `$${centsToPrice(product.priceCents)}`;
 
   return (
     <div

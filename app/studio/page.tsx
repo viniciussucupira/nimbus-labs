@@ -10,23 +10,26 @@ import {
   centsToPrice,
   isFree,
   ensureStatsId,
+  imageFolder,
   setSubscription,
   storeForEmail,
   storeFolder,
+  type Product,
 } from "@/lib/store";
 import { HandleForm } from "@/components/handle-form";
 import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
 import { DetailsForm } from "@/components/details-form";
 import { LookEditor } from "@/components/look-editor";
-import { catchUpBookings, paidCalls } from "@/lib/calls";
+import { type PaidCall, catchUpBookings, paidCalls } from "@/lib/calls";
 import { readSales, readStats, studioStats } from "@/lib/stats";
 import { StatsPanel } from "@/components/stats-panel";
 import { PixelEditor } from "@/components/pixel-editor";
 import { TaxEditor } from "@/components/tax-editor";
+import { RecoveryEditor } from "@/components/recovery-editor";
 import { taxStatus } from "@/lib/tax";
 import { SITE_URL } from "@/lib/site-url";
-import { readableTime, zoneName } from "@/lib/call-setup";
+import { readableTime, roomFor, seatsAt, zoneName } from "@/lib/call-setup";
 import { ProductEditor } from "@/components/product-editor";
 import { LinkEditor } from "@/components/link-editor";
 import { DiscountEditor } from "@/components/discount-editor";
@@ -59,10 +62,34 @@ const NEXT_WHEN_SELLING = [
   ...(isDomainsConfigured() ? [] : ["Your own domain, on Pro"]),
   "Several stores in one account, on Pro",
 ];
-/** Calls that have not ended yet, soonest first. */
-function upcoming<T extends { start: number; end: number }>(list: T[]): T[] {
+/** One time on the creator's calendar, with everyone booked into it. */
+type CallSlot = { key: string; product: Product | undefined; start: number; people: PaidCall[] };
+
+/**
+ * Calls that have not ended yet, soonest first, one row per time: a group
+ * call or a live session shows everyone booked into it together, and a
+ * dated session nobody has booked yet is listed too, at nought seats.
+ */
+function upcoming(list: PaidCall[], products: Product[]): CallSlot[] {
   const now = Date.now();
-  return list.filter((call) => call.end > now).sort((a, b) => a.start - b.start);
+  const slots = new Map<string, CallSlot>();
+  for (const call of list) {
+    if (call.end <= now) continue;
+    const key = `${call.product}|${call.start}`;
+    const slot = slots.get(key) ?? { key, product: products.find((p) => p.id === call.product), start: call.start, people: [] };
+    slot.people.push(call);
+    slots.set(key, slot);
+  }
+  for (const product of products) {
+    if (!product.call || product.call.kind !== "live") continue;
+    for (const session of product.call.sessions) {
+      const key = `${product.id}|${session.start}`;
+      if (session.start + session.minutes * 60_000 > now && !slots.has(key)) {
+        slots.set(key, { key, product, start: session.start, people: [] });
+      }
+    }
+  }
+  return [...slots.values()].sort((a, b) => a.start - b.start);
 }
 
 const NEXT_WHEN_NOT = [
@@ -258,6 +285,7 @@ export default async function StudioPage({
   // its owner opens the studio.
   const store = loaded && !loaded.statsId ? ((await ensureStatsId(email)) ?? loaded) : loaded;
   const folder = store ? await storeFolder(email) : "";
+  const pictures = store ? await imageFolder(email) : "";
   const params = await searchParams;
   const notice =
     ADDRESS_NOTICES[typeof params.address === "string" ? params.address : ""] ??
@@ -346,7 +374,7 @@ export default async function StudioPage({
     current && current.stripeAccountId && callProducts.length > 0
       ? await paidCalls(current).catch(() => null)
       : null;
-  const calls = paidList ? upcoming(paidList) : null;
+  const calls = paidList && store ? upcoming(paidList, store.products) : null;
   // A buyer who paid and never came back from Stripe still gets their email,
   // and so does the creator, the next time the creator looks.
   if (current && paidList && paidList.length) after(() => catchUpBookings(current, paidList, SITE_URL));
@@ -500,6 +528,8 @@ export default async function StudioPage({
               <ProductEditor
                 products={store.products}
                 folder={folder}
+                imageFolder={pictures}
+                handle={store.handle}
                 selling={current ? canSell(current) : false}
                 testMode={isConnectInTestMode()}
                 email={email}
@@ -521,33 +551,71 @@ export default async function StudioPage({
                   </p>
                 ) : calls.length === 0 ? (
                   <p className="mt-2 text-ink-soft">
-                    Nothing booked yet. When someone books, it shows up here, and you both get an email with a calendar file.
+                    Nothing booked yet. When someone books, it shows up here, and you both get an email with a calendar file, then a reminder a day and an hour before.
                   </p>
                 ) : (
                   <ul className="mt-4 divide-y divide-line">
-                    {calls.map((call) => {
-                      const product = store.products.find((p) => p.id === call.product);
-                      const tz = product?.call?.tz ?? callProducts[0].call?.tz ?? "UTC";
+                    {calls.map((slot) => {
+                      const product = slot.product;
+                      const setup = product?.call ?? null;
+                      const tz = setup?.tz ?? callProducts[0].call?.tz ?? "UTC";
+                      const room = setup ? roomFor(setup, slot.start) : null;
+                      const seats = setup ? seatsAt(setup, slot.start) : 1;
+                      const group = setup !== null && (setup.kind === "live" || seats > 1);
+                      const emails = slot.people.map((c) => c.email).filter((e): e is string => Boolean(e));
                       return (
-                        <li key={call.session} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-3">
-                          <span className="min-w-0">
-                            <span className="block font-semibold text-ink">
-                              {`${readableTime(call.start, tz)} ${zoneName(call.start, tz)}`}
+                        <li key={slot.key} className="py-3">
+                          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                            <span className="min-w-0">
+                              <span className="block font-semibold text-ink">
+                                {`${readableTime(slot.start, tz)} ${zoneName(slot.start, tz)}`}
+                              </span>
+                              <span className="block text-sm text-ink-soft">
+                                {product ? product.title : "A call that is no longer listed"}
+                                {group ? (
+                                  <>
+                                    {" \u00b7 "}
+                                    <span className="font-semibold text-ink">{`${slot.people.length} of ${seats} ${seats === 1 ? "seat" : "seats"} booked`}</span>
+                                  </>
+                                ) : slot.people[0]?.email ? (
+                                  <>
+                                    {" \u00b7 "}
+                                    <a href={`mailto:${slot.people[0].email}`} className="link break-all">{slot.people[0].email}</a>
+                                  </>
+                                ) : null}
+                              </span>
                             </span>
-                            <span className="block text-sm text-ink-soft">
-                              {product ? product.title : "A call that is no longer listed"}
-                              {call.email ? (
-                                <>
-                                  {" \u00b7 "}
-                                  <a href={`mailto:${call.email}`} className="link break-all">{call.email}</a>
-                                </>
+                            {room ? (
+                              <a href={room} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4">
+                                Join
+                              </a>
+                            ) : null}
+                          </div>
+                          {group && slot.people.length > 0 ? (
+                            <details className="group mt-2 rounded-[10px] bg-paper px-3 py-2">
+                              <summary className="cursor-pointer text-sm font-semibold text-ink-soft transition hover:text-violet-deep">
+                                {`Who is booked (${slot.people.length})`}
+                              </summary>
+                              <ul className="mt-2 space-y-1 text-sm">
+                                {slot.people.map((person) => (
+                                  <li key={person.session} className="break-all">
+                                    {person.email ? (
+                                      <a href={`mailto:${person.email}`} className="link">{person.email}</a>
+                                    ) : (
+                                      <span className="text-ink-mute">A buyer who gave no address</span>
+                                    )}
+                                  </li>
+                                ))}
+                              </ul>
+                              {emails.length > 1 ? (
+                                <a
+                                  href={`mailto:?bcc=${emails.map(encodeURIComponent).join(",")}`}
+                                  className="mt-2 inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4"
+                                >
+                                  Email everyone (in blind copy)
+                                </a>
                               ) : null}
-                            </span>
-                          </span>
-                          {product?.call?.room ? (
-                            <a href={product.call.room} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-violet-deep underline underline-offset-4">
-                              Join
-                            </a>
+                            </details>
                           ) : null}
                         </li>
                       );
@@ -564,6 +632,12 @@ export default async function StudioPage({
             <PixelEditor pixels={store.pixels} />
 
             <TaxEditor tax={store.tax} status={tax ? tax.state : "unknown"} connected={Boolean(current?.stripeAccountId)} />
+
+            <RecoveryEditor
+              recovery={store.recovery}
+              suggestedAddress={store.mail?.address ?? ""}
+              connected={Boolean(current?.stripeAccountId)}
+            />
 
             {list && (givesAway || list.total > 0) ? (
               <div className="card mt-8 p-6 sm:p-8">
@@ -713,11 +787,20 @@ export default async function StudioPage({
                       <option value="" disabled>
                         Choose a country
                       </option>
-                      {COUNTRIES.map((country) => (
-                        <option key={country.code} value={country.code}>
-                          {country.name}
-                        </option>
-                      ))}
+                      <optgroup label="Most chosen">
+                        {COUNTRIES.filter((country) => country.top).map((country) => (
+                          <option key={country.code} value={country.code}>
+                            {country.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="More countries, A to Z">
+                        {COUNTRIES.filter((country) => !country.top).map((country) => (
+                          <option key={country.code} value={country.code}>
+                            {country.name}
+                          </option>
+                        ))}
+                      </optgroup>
                     </select>
                     <p className="mt-2 max-w-md text-sm text-ink-soft">
                       Stripe fixes this when the account is opened and it cannot
@@ -1129,6 +1212,22 @@ export default async function StudioPage({
                               { day: "numeric", month: "long", year: "numeric" },
                             )}
                           </p>
+                          {sale.answers.length > 0 ? (
+                            <dl className="mt-3 space-y-2 rounded-xl bg-white px-4 py-3 text-sm">
+                              {sale.answers.map((answer) => (
+                                <div key={answer.label}>
+                                  <dt className="text-xs font-semibold text-ink-soft">{answer.label}</dt>
+                                  <dd className="mt-0.5 break-words font-semibold text-ink">{answer.value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          ) : null}
+                          {sale.trial ? (
+                            <p className="mt-2 text-sm text-ink-soft">
+                              Started with a free trial, so nothing was charged at checkout. The first payment shows up in
+                              your Stripe dashboard when the trial ends.
+                            </p>
+                          ) : null}
                           <p className="mt-1 text-xs text-ink-soft">
                             {sale.isCall
                               ? "A booked call: the time is in both your calendars."
@@ -1227,10 +1326,12 @@ export default async function StudioPage({
               </li>
             ))}
           </ol>
-          <p className="mt-5 text-sm text-ink-soft">
-            Until selling works, the working proof is the demo store, and it is
-            open to anyone.
-          </p>
+          {current && canSell(current) ? null : (
+            <p className="mt-5 text-sm text-ink-soft">
+              Until selling works, the working proof is the demo store, and it is
+              open to anyone.
+            </p>
+          )}
         </div>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">

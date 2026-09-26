@@ -9,6 +9,7 @@ import {
 import { MAX_LINK_LENGTH, readLink } from "@/lib/product-link";
 import { MAX_LINK_TITLE_LENGTH } from "@/lib/store-link";
 import { guardStoreWrite, text } from "@/lib/store-request";
+import { StoreFullError } from "@/lib/store";
 
 const ACTIONS = new Set(["add", "edit", "remove", "move"]);
 
@@ -74,6 +75,9 @@ export async function POST(request: NextRequest) {
     }
     return Response.json({ ok: true, links: result.store.links });
   } catch (error) {
+    if (error instanceof StoreFullError) {
+      return Response.json({ ok: false, error: "store_full" }, { status: 409 });
+    }
     console.error("changing a link failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });
   }

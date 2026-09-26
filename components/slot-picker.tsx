@@ -42,6 +42,9 @@ function zoneLabel(ms: number, tz: string): string {
  * The times are radio buttons inside a plain form, so the first day's times
  * can still be booked with JavaScript turned off, in the creator's zone and
  * said so.
+ *
+ * The same picker moves a booking: given `move`, the form goes to the move
+ * route with the checkout session, and says nothing about paying.
  */
 export function SlotPicker({
   starts,
@@ -50,6 +53,8 @@ export function SlotPicker({
   productId,
   minutes,
   price,
+  left,
+  move,
 }: {
   starts: number[];
   creatorTz: string;
@@ -57,6 +62,10 @@ export function SlotPicker({
   productId: string;
   minutes: number;
   price: string;
+  /** For a group call: seats left at each time, by start. */
+  left?: Record<string, number>;
+  /** The checkout session of a booking being moved. */
+  move?: string;
 }) {
   const tz = useSyncExternalStore(
     noop,
@@ -84,15 +93,20 @@ export function SlotPicker({
   if (days.length === 0) {
     return (
       <div className="st-note mt-6 text-center">
-        <p className="font-bold" style={{ color: "var(--st-text)" }}>No free times right now</p>
-        <p className="mt-1 text-sm">Every time that can be booked is taken. Come back in a day or two: new times open as the days go by.</p>
+        <p className="font-bold" style={{ color: "var(--st-text)" }}>{move ? "No other times are free right now" : "No free times right now"}</p>
+        <p className="mt-1 text-sm">
+          {move
+            ? "Your booking stays as it is. Come back in a day or two: new times open as the days go by."
+            : "Every time that can be booked is taken. Come back in a day or two: new times open as the days go by."}
+        </p>
       </div>
     );
   }
 
   return (
-    <form action="/api/store/book" method="post" className="mt-6" data-checkout="">
+    <form action={move ? "/api/store/book/move" : "/api/store/book"} method="post" className="mt-6" {...(move ? {} : { "data-checkout": "" })}>
       <input type="hidden" name="handle" value={handle} />
+      {move ? <input type="hidden" name="session" value={move} /> : null}
       <input type="hidden" name="product" value={productId} />
       <input type="hidden" name="tz" value={tz} />
 
@@ -128,20 +142,29 @@ export function SlotPicker({
       <fieldset className="mt-5 min-w-0">
         <legend className="st-label">Pick a time</legend>
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {day.starts.map((start) => (
-            <label key={start} className="st-option cursor-pointer justify-center !px-2 !py-2.5 text-center font-semibold tabular-nums">
-              <input
-                type="radio"
-                name="start"
-                value={start}
-                required
-                className="sr-only"
-                checked={chosen === start}
-                onChange={() => setChosen(start)}
-              />
-              {timeLabel(start, tz)}
-            </label>
-          ))}
+          {day.starts.map((start) => {
+            const seats = left?.[String(start)];
+            return (
+              <label
+                key={start}
+                className="st-option cursor-pointer flex-col justify-center !gap-0 !px-2 !py-2.5 text-center font-semibold tabular-nums"
+              >
+                <input
+                  type="radio"
+                  name="start"
+                  value={start}
+                  required
+                  className="sr-only"
+                  checked={chosen === start}
+                  onChange={() => setChosen(start)}
+                />
+                {timeLabel(start, tz)}
+                {seats !== undefined ? (
+                  <span className="st-muted text-xs font-normal">{`${seats} ${seats === 1 ? "seat" : "seats"} left`}</span>
+                ) : null}
+              </label>
+            );
+          })}
         </div>
         <p className="st-muted mt-3 text-sm">
           {`Times are in ${local ? "your" : "the creator's"} time zone, ${zoneLabel(day.starts[0], tz)}.`}
@@ -156,10 +179,12 @@ export function SlotPicker({
           </p>
         ) : null}
         <button type="submit" className="btn st-btn btn-lg btn-block">
-          {`Continue to payment — $${price}`}
+          {move ? "Move my booking to this time" : `Continue to payment — $${price}`}
         </button>
         <p className="st-muted mt-3 text-center text-xs">
-          The time is kept for you for 30 minutes while you pay.
+          {move
+            ? "Nothing is charged. Your old time is freed for somebody else."
+            : "The time is kept for you for 30 minutes while you pay."}
         </p>
       </div>
     </form>

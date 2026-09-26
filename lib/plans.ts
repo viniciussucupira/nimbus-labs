@@ -11,9 +11,16 @@
  * goes over every plan opened since, so a buyer who paid and closed the tab is
  * never charged one payment too many. Long before the second payment is due,
  * the plan knows when to stop.
+ *
+ * A membership the creator set to end after a number of payments ("12
+ * monthly payments") goes through exactly the same door. The only difference
+ * is where its count starts: after a free trial, the first payment is the one
+ * at the trial's end, and that is where Stripe anchors the subscription, so
+ * the arithmetic below is the same for both.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { StripeError, onAccount } from "@/lib/stripe-account";
+import { type Interval, isInterval } from "@/lib/product-recurring";
 
 const PENDING = "nl:plans:pending";
 const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
@@ -30,11 +37,13 @@ export async function rememberPlan(account: string, session: string): Promise<vo
  * later is the same day of the month, or the last day when the month is
  * shorter, at the same time of day.
  */
-export function addPeriods(anchorSeconds: number, interval: "week" | "month", n: number): number {
+export function addPeriods(anchorSeconds: number, interval: Interval, n: number): number {
+  if (interval === "day") return anchorSeconds + n * 86400;
   if (interval === "week") return anchorSeconds + n * 7 * 86400;
+  const months = interval === "year" ? n * 12 : n;
   const start = new Date(anchorSeconds * 1000);
   const day = start.getUTCDate();
-  const target = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + n, 1, start.getUTCHours(), start.getUTCMinutes(), start.getUTCSeconds()));
+  const target = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + months, 1, start.getUTCHours(), start.getUTCMinutes(), start.getUTCSeconds()));
   const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
   target.setUTCDate(Math.min(day, lastDay));
   return Math.floor(target.getTime() / 1000);
@@ -43,8 +52,9 @@ export function addPeriods(anchorSeconds: number, interval: "week" | "month", n:
 export type PlanState = "done" | "open" | "gone";
 
 /**
- * Gives a paid plan its end. "open" means the checkout can still be paid;
- * "gone" means it never will be, or is not a plan at all.
+ * Gives a paid plan, or a membership that ends by itself, its end. "open"
+ * means the checkout can still be paid; "gone" means it never will be, or is
+ * neither.
  */
 export async function finishPlan(account: string, session: string): Promise<PlanState> {
   if (!ACCOUNT_ID.test(account) || !SESSION_ID.test(session)) return "gone";
@@ -56,16 +66,23 @@ export async function finishPlan(account: string, session: string): Promise<Plan
     throw error;
   }
   const meta = (view.metadata ?? {}) as Record<string, string>;
-  if (meta.kind !== "plan") return "gone";
+  const isPlan = meta.kind === "plan";
+  if (!isPlan && !meta.ends_after) return "gone";
   if (view.status === "open") return "open";
   if (view.status !== "complete" || typeof view.subscription !== "string") return "gone";
 
   const subscription = await onAccount("GET", account, `/subscriptions/${encodeURIComponent(view.subscription)}`);
   if (typeof subscription.cancel_at === "number" && subscription.cancel_at > 0) return "done";
   if (subscription.status === "canceled") return "done";
-  const payments = Number(meta.plan_payments);
-  const interval = meta.plan_interval === "week" ? "week" : "month";
-  const anchor = typeof subscription.billing_cycle_anchor === "number" ? subscription.billing_cycle_anchor : 0;
+  const payments = Number(isPlan ? meta.plan_payments : meta.ends_after);
+  const named = isPlan ? meta.plan_interval : meta.ends_interval;
+  const interval: Interval = isPlan ? (named === "week" ? "week" : "month") : isInterval(named) ? named : "month";
+  // After a free trial the first payment is taken when it ends. Stripe anchors
+  // the cycle there; the trial's end is read too, so the count can never
+  // start before the first payment whichever way Stripe reports it.
+  const cycle = typeof subscription.billing_cycle_anchor === "number" ? subscription.billing_cycle_anchor : 0;
+  const trialEnd = typeof subscription.trial_end === "number" ? subscription.trial_end : 0;
+  const anchor = Math.max(cycle, trialEnd);
   if (!Number.isInteger(payments) || payments < 2 || !anchor) return "gone";
 
   await onAccount(

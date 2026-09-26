@@ -38,6 +38,13 @@ export async function sendEmail(message: {
   replyTo?: string;
   /** Files to attach, their content in base64, as Resend's API takes them. */
   attachments?: { filename: string; content: string }[];
+  /** Extra headers, such as the one that lets a mail app offer unsubscribe. */
+  headers?: Record<string, string>;
+  /**
+   * For a message that must go out once: the sender answers a repeat of the
+   * same key, within a day, without sending it again.
+   */
+  idempotencyKey?: string;
 }): Promise<boolean> {
   const key = getKey();
   if (!key) return false;
@@ -49,6 +56,7 @@ export async function sendEmail(message: {
     text: message.text,
     ...(message.attachments?.length ? { attachments: message.attachments } : {}),
     ...(message.replyTo ? { reply_to: message.replyTo } : {}),
+    ...(message.headers ? { headers: message.headers } : {}),
   });
   // A sign-in link or a receipt must not be lost because the sender was busy
   // with a creator's newsletter a second earlier: asked to slow down, it
@@ -60,6 +68,7 @@ export async function sendEmail(message: {
         headers: {
           Authorization: `Bearer ${key}`,
           "Content-Type": "application/json",
+          ...(message.idempotencyKey ? { "Idempotency-Key": message.idempotencyKey.slice(0, 256) } : {}),
         },
         body: payload,
         cache: "no-store",

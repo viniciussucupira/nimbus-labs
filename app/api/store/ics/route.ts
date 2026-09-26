@@ -2,12 +2,15 @@ import type { NextRequest } from "next/server";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { readOrder } from "@/lib/store-checkout";
 import { callInvite } from "@/lib/calls";
+import { roomFor } from "@/lib/call-setup";
 
 /**
  * The calendar file for a booked call, for the "Add to your calendar" button.
  *
  * The session id is the key, exactly as on the thanks page, and it is checked
- * against Stripe before anything is handed over.
+ * against Stripe before anything is handed over. It is also linked from the
+ * reminder emails, so it answers until the call is over, at the time the
+ * booking has now if its buyer moved it.
  */
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -20,8 +23,9 @@ export async function GET(request: NextRequest) {
   if (order.state !== "paid" || !order.call || !order.product.call) {
     return new Response("Not found.", { status: 404, headers: { "Cache-Control": "no-store" } });
   }
-  const room = order.product.call.room;
+  const room = roomFor(order.product.call, order.call.start);
   const ics = callInvite({
+    sequence: order.call.moves,
     uid: sessionId,
     start: order.call.start,
     end: order.call.end,

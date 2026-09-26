@@ -5,6 +5,20 @@
  * the browser that the server enforces, and the booking page can show exactly
  * the times the server will accept.
  *
+ * A call is sold in one of two ways, and both are the same product underneath:
+ *
+ *   - weekly hours ("weekly"): the creator says when they are free each week
+ *     and buyers pick a time inside it. Each time has a number of seats — one
+ *     for a one-to-one call, up to MAX_SEATS for a group call — and stays open
+ *     until every seat is taken;
+ *   - dated live sessions ("live"): a webinar or workshop the creator puts on
+ *     particular days. Each session has its own date, time, length, seats (up
+ *     to MAX_SESSION_SEATS) and meeting link, and buyers pick one.
+ *
+ * Either way one payment buys one seat at one start time, so the rest of the
+ * booking machinery — holds, the lock, Stripe as the ledger, the emails — has
+ * only one thing to count: seats taken at a start time, per product.
+ *
  * Time is the hard part, and it is done without a library. The creator's
  * week is written in their own time zone — "Mondays from 9 to 12" — and every
  * slot is turned into one exact instant, in UTC, using the time zone database
@@ -29,13 +43,52 @@ export const HORIZON_CHOICES = [7, 14, 21, 30, 60, 90] as const;
 /** Up to two stretches of time on any one day, e.g. a morning and an evening. */
 export const MAX_RANGES_PER_DAY = 2;
 
+/** Seats in one weekly time: 1 is a one-to-one call, more a group call. */
+export const MAX_SEATS = 50;
+
+/** Seats in one dated live session. */
+export const MAX_SESSION_SEATS = 500;
+
+/** Dated sessions one product may list at once, past ones included. */
+export const MAX_SESSIONS = 50;
+
+/** Lengths a dated session may have, in minutes. */
+export const SESSION_LENGTHS = [15, 20, 30, 45, 60, 90, 120, 180, 240] as const;
+
+/**
+ * How soon before a dated session sales close. 0 keeps it on sale until it
+ * starts, which weekly calls do not offer: a creator who put a session on a
+ * date is there anyway, while a weekly time needs warning to be kept free.
+ */
+export const SESSION_NOTICE_CHOICES = [0, 1, 2, 4, 12, 24, 48, 72] as const;
+
+/** How many times a buyer may move one booking to another time themselves. */
+export const MAX_MOVES = 2;
+
+/** Dated sessions that ended longer ago than this are let go when saved. */
+export const KEEP_PAST_SESSION_DAYS = 30;
+
 export const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 
 /** Minutes from midnight, [start, end). */
 export type Range = [number, number];
 
+/** One dated live session, fixed by the creator. */
+export type LiveSession = {
+  /** Its own id, so the studio can tell rows apart while they are edited. */
+  id: string;
+  /** When it starts, in milliseconds since the epoch. */
+  start: number;
+  minutes: number;
+  /** How many buyers it takes. */
+  seats: number;
+  room: string | null;
+};
+
 export type CallSetup = {
-  /** How long one call lasts. */
+  /** Weekly hours with seats per time, or sessions on fixed dates. */
+  kind: "weekly" | "live";
+  /** How long one call lasts. For dated sessions each has its own. */
   minutes: number;
   /** The creator's time zone, as the time zone database names it. */
   tz: string;
@@ -46,6 +99,10 @@ export type CallSetup = {
   bufferMinutes: number;
   /** Where the call happens: a meeting link the creator already has. */
   room: string | null;
+  /** Buyers per weekly time: 1 for a one-to-one call, up to MAX_SEATS. */
+  seats: number;
+  /** The dated sessions, soonest first. Empty for weekly hours. */
+  sessions: LiveSession[];
 };
 
 export const MAX_ROOM_LENGTH = 500;
@@ -75,12 +132,98 @@ export function cleanRoom(raw: unknown): string | null | "bad" {
   }
 }
 
-export type SetupProblem = "minutes" | "tz" | "weekly" | "notice" | "horizon" | "buffer" | "room";
+export type SetupProblem =
+  | "minutes"
+  | "tz"
+  | "weekly"
+  | "notice"
+  | "horizon"
+  | "buffer"
+  | "room"
+  | "seats"
+  | "sessions"
+  | "session_time"
+  | "session_seats"
+  | "session_room";
+
+const SESSION_ID = /^[a-z0-9]{8,16}$/;
+
+export function newSessionId(): string {
+  const bytes = new Uint8Array(6);
+  globalThis.crypto.getRandomValues(bytes);
+  return [...bytes].map((b) => b.toString(36).padStart(2, "0")).join("").slice(0, 12);
+}
+
+/**
+ * Reads one dated session. The studio sends a date and a clock time, read in
+ * the creator's zone here, so the instant is worked out once, on the server,
+ * with the same daylight-saving rules as everything else; storage sends the
+ * instant itself.
+ */
+function readSession(raw: unknown, tz: string): LiveSession | SetupProblem {
+  if (!raw || typeof raw !== "object") return "sessions";
+  const value = raw as Record<string, unknown>;
+  let start: number | null = null;
+  if (typeof value.date === "string" || typeof value.time === "string") {
+    const date = /^(\d{4})-(\d{2})-(\d{2})$/.exec(typeof value.date === "string" ? value.date.trim() : "");
+    const time = fromClock(typeof value.time === "string" ? value.time : "");
+    if (!date || time === null || time >= 24 * 60) return "session_time";
+    start = zonedToUtc(Number(date[1]), Number(date[2]), Number(date[3]), time, tz);
+    if (start === null) return "session_time";
+  } else {
+    const read = Number(value.start);
+    if (!Number.isInteger(read) || read <= 0 || read % 60_000 !== 0) return "session_time";
+    start = read;
+  }
+  const minutes = Number(value.minutes);
+  if (!(SESSION_LENGTHS as readonly number[]).includes(minutes)) return "session_time";
+  const seats = Number(value.seats);
+  if (!Number.isInteger(seats) || seats < 1 || seats > MAX_SESSION_SEATS) return "session_seats";
+  const room = cleanRoom(value.room);
+  if (room === "bad") return "session_room";
+  const id = typeof value.id === "string" && SESSION_ID.test(value.id) ? value.id : newSessionId();
+  return { id, start, minutes, seats, room };
+}
 
 /** Reads a setup sent from the studio, or says which part is wrong. */
 export function readSetup(raw: unknown): CallSetup | SetupProblem {
   if (!raw || typeof raw !== "object") return "minutes";
   const value = raw as Record<string, unknown>;
+
+  if (value.kind === "live") {
+    if (!isTimeZone(value.tz)) return "tz";
+    const noticeHours = Number(value.noticeHours ?? 0);
+    if (!(SESSION_NOTICE_CHOICES as readonly number[]).includes(noticeHours)) return "notice";
+    if (!Array.isArray(value.sessions) || value.sessions.length === 0 || value.sessions.length > MAX_SESSIONS) {
+      return "sessions";
+    }
+    const sessions: LiveSession[] = [];
+    for (const item of value.sessions) {
+      const read = readSession(item, value.tz as string);
+      if (typeof read === "string") return read;
+      sessions.push(read);
+    }
+    sessions.sort((a, b) => a.start - b.start);
+    // A session is known to buyers and bookings by its start, so two at the
+    // same moment would be one session sold twice.
+    for (let i = 1; i < sessions.length; i += 1) {
+      if (sessions[i].start === sessions[i - 1].start) return "sessions";
+    }
+    const ids = new Set(sessions.map((s) => s.id));
+    if (ids.size !== sessions.length) return "sessions";
+    return {
+      kind: "live",
+      minutes: sessions[0].minutes,
+      tz: value.tz as string,
+      weekly: [[], [], [], [], [], [], []],
+      noticeHours,
+      horizonDays: 30,
+      bufferMinutes: 0,
+      room: null,
+      seats: 1,
+      sessions,
+    };
+  }
 
   const minutes = Number(value.minutes);
   if (!(CALL_LENGTHS as readonly number[]).includes(minutes)) return "minutes";
@@ -117,7 +260,11 @@ export function readSetup(raw: unknown): CallSetup | SetupProblem {
   const room = cleanRoom(value.room);
   if (room === "bad") return "room";
 
-  return { minutes, tz: value.tz as string, weekly, noticeHours, horizonDays, bufferMinutes, room };
+  // A setup saved before group calls existed is a one-to-one call.
+  const seats = Number(value.seats ?? 1);
+  if (!Number.isInteger(seats) || seats < 1 || seats > MAX_SEATS) return "seats";
+
+  return { kind: "weekly", minutes, tz: value.tz as string, weekly, noticeHours, horizonDays, bufferMinutes, room, seats, sessions: [] };
 }
 
 /** Whatever came back from storage, made safe to use, or null. */
@@ -181,7 +328,48 @@ export function zonedToUtc(year: number, month: number, day: number, minuteOfDay
   return guess;
 }
 
-export type Busy = { start: number; end: number };
+/**
+ * One seat taken, or one stretch of the creator's time spoken for.
+ *
+ * `product` and `session` are known for every booking and hold made since
+ * group calls: the product says whose seat it is, the checkout session makes
+ * the same booking counted once when it is seen both here and at Stripe.
+ */
+export type Busy = { start: number; end: number; product?: string; session?: string };
+
+/** The dated session that starts at this instant, if there is one. */
+export function sessionAt(setup: CallSetup, start: number): LiveSession | null {
+  if (setup.kind !== "live") return null;
+  return setup.sessions.find((s) => s.start === start) ?? null;
+}
+
+/** The meeting link for a booking at this start. */
+export function roomFor(setup: CallSetup, start: number): string | null {
+  return setup.kind === "live" ? sessionAt(setup, start)?.room ?? null : setup.room;
+}
+
+/** Seats at this start: the weekly number, or the session's own. */
+export function seatsAt(setup: CallSetup, start: number): number {
+  return setup.kind === "live" ? sessionAt(setup, start)?.seats ?? 0 : setup.seats;
+}
+
+/** Whether this is a call several buyers share. */
+export function isGroup(setup: CallSetup): boolean {
+  return setup.kind === "live" || setup.seats > 1;
+}
+
+/** Seats of this product already taken, or held, at this start. */
+export function seatsTaken(busy: Busy[], productId: string, start: number): number {
+  return busy.filter((b) => b.product === productId && b.start === start).length;
+}
+
+/**
+ * The last moment a booking at `start` may be moved by its buyer: the
+ * creator's notice, and never within the hour before it starts.
+ */
+export function movableUntil(setup: CallSetup, start: number): number {
+  return start - Math.max(setup.noticeHours, 1) * 3600_000;
+}
 
 export type Day = {
   /** The date on the creator's calendar, YYYY-MM-DD. */
@@ -195,9 +383,12 @@ export type Day = {
  *
  * A slot is offered when it starts after the notice period, begins within
  * the horizon, fits inside one of the creator's stretches for that weekday,
- * and does not come within the buffer of anything already booked or held.
+ * has a seat left, and does not come within the buffer of anything else
+ * already booked or held — anything, that is, but the other seats of this
+ * same time, which is what makes a group call.
  */
-export function openSlots(setup: CallSetup, now: number, busy: Busy[]): Day[] {
+export function openSlots(setup: CallSetup, now: number, busy: Busy[], productId?: string): Day[] {
+  if (setup.kind !== "weekly") return [];
   const earliest = now + setup.noticeHours * 3600_000;
   const latest = now + setup.horizonDays * 86400_000;
   const length = setup.minutes * 60_000;
@@ -219,7 +410,9 @@ export function openSlots(setup: CallSetup, now: number, busy: Busy[]): Day[] {
         if (start === null) continue;
         if (start < earliest || start > latest) continue;
         const end = start + length;
-        const clash = busy.some((b) => start < b.end + gap && end + gap > b.start);
+        const mine = (b: Busy) => productId !== undefined && b.product === productId && b.start === start;
+        if (productId !== undefined && seatsTaken(busy, productId, start) >= setup.seats) continue;
+        const clash = busy.some((b) => !mine(b) && start < b.end + gap && end + gap > b.start);
         if (!clash) starts.push(start);
       }
     }
@@ -231,8 +424,50 @@ export function openSlots(setup: CallSetup, now: number, busy: Busy[]): Day[] {
 }
 
 /** Whether one exact instant is a slot a buyer may book right now. */
-export function isOpenSlot(setup: CallSetup, now: number, busy: Busy[], start: number): boolean {
-  return openSlots(setup, now, busy).some((day) => day.starts.includes(start));
+export function isOpenSlot(setup: CallSetup, now: number, busy: Busy[], start: number, productId?: string): boolean {
+  return openSlots(setup, now, busy, productId).some((day) => day.starts.includes(start));
+}
+
+export type OpenSession = { start: number; end: number; minutes: number; seats: number; left: number };
+
+/**
+ * The dated sessions a buyer may book right now, soonest first: not started,
+ * not past the creator's cut-off, and with a seat left. A session is not
+ * blocked by the creator's other bookings: they put it on that date
+ * themselves.
+ */
+export function openSessions(setup: CallSetup, now: number, busy: Busy[], productId: string): OpenSession[] {
+  if (setup.kind !== "live") return [];
+  const closes = setup.noticeHours * 3600_000;
+  const open: OpenSession[] = [];
+  for (const session of setup.sessions) {
+    if (session.start - closes <= now) continue;
+    const left = session.seats - seatsTaken(busy, productId, session.start);
+    if (left <= 0) continue;
+    open.push({
+      start: session.start,
+      end: session.start + session.minutes * 60_000,
+      minutes: session.minutes,
+      seats: session.seats,
+      left,
+    });
+  }
+  return open;
+}
+
+/** Whether a buyer may take a seat at this start right now, for either kind. */
+export function isBookable(setup: CallSetup, now: number, busy: Busy[], start: number, productId: string): boolean {
+  if (setup.kind === "live") return openSessions(setup, now, busy, productId).some((s) => s.start === start);
+  return isOpenSlot(setup, now, busy, start, productId);
+}
+
+/** How long a booking at `start` lasts, in milliseconds, for either kind. */
+export function lengthAt(setup: CallSetup, start: number): number | null {
+  if (setup.kind === "live") {
+    const session = sessionAt(setup, start);
+    return session ? session.minutes * 60_000 : null;
+  }
+  return setup.minutes * 60_000;
 }
 
 /** A time as a person reads it, in a given zone: "Tuesday, October 6, 9:30 AM". */

@@ -122,33 +122,62 @@ async function stripeRequest(
 /**
  * The countries a creator can pick from.
  *
+ * Every country where Stripe opens accounts for businesses in general — the
+ * list it publishes as "Stripe-supported countries" — except the ones it
+ * offers only by invitation or in preview, and except Brazil, which this
+ * company does not sell into. The six most creators choose come first; the
+ * rest follow in alphabetical order.
+ *
  * One list, used both to draw the menu and to check what comes back, so the
  * form can never accept something it did not offer. Stripe may still refuse a
  * country on this list — its rules change and they depend on where our own
  * account is registered — and that refusal is reported as itself rather than
  * as a generic failure.
  */
-export const COUNTRIES: { code: string; name: string }[] = [
-  { code: "us", name: "United States" },
-  { code: "gb", name: "United Kingdom" },
-  { code: "ca", name: "Canada" },
-  { code: "au", name: "Australia" },
-  { code: "ie", name: "Ireland" },
-  { code: "nz", name: "New Zealand" },
-  { code: "de", name: "Germany" },
-  { code: "fr", name: "France" },
-  { code: "es", name: "Spain" },
-  { code: "it", name: "Italy" },
-  { code: "nl", name: "Netherlands" },
-  { code: "pt", name: "Portugal" },
-  { code: "be", name: "Belgium" },
+export const COUNTRIES: { code: string; name: string; top?: true }[] = [
+  { code: "us", name: "United States", top: true },
+  { code: "gb", name: "United Kingdom", top: true },
+  { code: "ca", name: "Canada", top: true },
+  { code: "au", name: "Australia", top: true },
+  { code: "ie", name: "Ireland", top: true },
+  { code: "nz", name: "New Zealand", top: true },
   { code: "at", name: "Austria" },
-  { code: "se", name: "Sweden" },
+  { code: "be", name: "Belgium" },
+  { code: "bg", name: "Bulgaria" },
+  { code: "hr", name: "Croatia" },
+  { code: "cy", name: "Cyprus" },
+  { code: "cz", name: "Czech Republic" },
   { code: "dk", name: "Denmark" },
-  { code: "no", name: "Norway" },
+  { code: "ee", name: "Estonia" },
   { code: "fi", name: "Finland" },
+  { code: "fr", name: "France" },
+  { code: "de", name: "Germany" },
+  { code: "gi", name: "Gibraltar" },
+  { code: "gr", name: "Greece" },
+  { code: "hk", name: "Hong Kong" },
+  { code: "hu", name: "Hungary" },
+  { code: "it", name: "Italy" },
+  { code: "jp", name: "Japan" },
+  { code: "lv", name: "Latvia" },
+  { code: "li", name: "Liechtenstein" },
+  { code: "lt", name: "Lithuania" },
+  { code: "lu", name: "Luxembourg" },
+  { code: "my", name: "Malaysia" },
+  { code: "mt", name: "Malta" },
+  { code: "mx", name: "Mexico" },
+  { code: "nl", name: "Netherlands" },
+  { code: "no", name: "Norway" },
   { code: "pl", name: "Poland" },
+  { code: "pt", name: "Portugal" },
+  { code: "ro", name: "Romania" },
+  { code: "sg", name: "Singapore" },
+  { code: "sk", name: "Slovakia" },
+  { code: "si", name: "Slovenia" },
+  { code: "es", name: "Spain" },
+  { code: "se", name: "Sweden" },
   { code: "ch", name: "Switzerland" },
+  { code: "th", name: "Thailand" },
+  { code: "ae", name: "United Arab Emirates" },
 ];
 
 const OFFERED = new Set(COUNTRIES.map((country) => country.code));

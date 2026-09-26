@@ -116,9 +116,10 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
         </button>
       )}
 
-      <OfferBlock kind="bump" product={product} products={products} candidates={candidates} busy={busy} open={open === "bump"} onOpen={() => setOpen("bump")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "bump" ? error : null} />
+      {/* A chosen amount has to be the only thing in its checkout. */}
+      {product.pwyw ? null : <OfferBlock kind="bump" product={product} products={products} candidates={candidates} busy={busy} open={open === "bump"} onOpen={() => setOpen("bump")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "bump" ? error : null} />}
       <OfferBlock kind="upsell" product={product} products={products} candidates={candidates} busy={busy} open={open === "upsell"} onOpen={() => setOpen("upsell")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "upsell" ? error : null} />
-      {product.options.length === 0 ? (
+      {product.options.length === 0 && !product.pwyw ? (
         <PlanBlock product={product} busy={busy} open={open === "plan"} onOpen={() => setOpen("plan")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "plan" ? error : null} />
       ) : null}
       {error && open === null ? <p className="notice notice-error" role="alert">{error}</p> : null}

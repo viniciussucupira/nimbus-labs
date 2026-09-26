@@ -585,7 +585,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "That is a large product. If you want a community and live webinars in one place today, they have them and we do not.",
+        text: "That is a large product. If you want a community in the same place as your store today, they have one and we do not.",
       },
       { type: "h2", text: "What Nimbus is" },
       {
@@ -605,7 +605,7 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "Range: communities and webinars. We have neither yet.",
+          "Range: communities, funnels, automated Instagram replies and affiliates. We have none of those yet. Webinars we now sell as live sessions on dates you set, held on the meeting service whose link you give.",
           "Years of running: their support library is deep, and ours is a few pages.",
           "An installable creator app: their help centre states their creator app is currently available on iPhone and iPad. We do not have a native app at all — our store installs to the home screen from the browser, on both iPhone and Android, which is a different trade-off, not a better one in every case.",
           "Integrations with third-party tools, which they list on their site and we are still building.",

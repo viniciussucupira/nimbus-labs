@@ -349,8 +349,8 @@ export function HeroFlow() {
 const INCLUDED = [
   "Your own store address, live the moment you take it",
   "Buyers pay into your own Stripe account",
-  "Files, courses, paid calls and memberships",
-  "Up to three prices on any product, discount codes and payment plans",
+  "Files, courses, memberships, paid calls and live sessions",
+  "Up to three prices on any product, pay what you want, discount codes and payment plans",
   "Offers before and after paying, one click on the same card",
   "Ad pixels, and your own numbers counted without cookies",
   "Free products that build an email list you can download",

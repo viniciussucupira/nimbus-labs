@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { priceToCents, setProductExtras } from "@/lib/store";
 import { MAX_STOCK, MIN_BUMP_CENTS, parsePlan, parseStock } from "@/lib/product-extras";
 import { guardStoreWrite, text } from "@/lib/store-request";
+import { StoreFullError } from "@/lib/store";
 
 /**
  * Sets or clears a product's limited quantity or its order bump.
@@ -71,6 +72,9 @@ export async function POST(request: NextRequest) {
     if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
     return Response.json({ ok: true, products: result.store.products });
   } catch (error) {
+    if (error instanceof StoreFullError) {
+      return Response.json({ ok: false, error: "store_full" }, { status: 409 });
+    }
     console.error("saving product extras failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });
   }

@@ -3,17 +3,22 @@ import { del } from "@vercel/blob";
 import {
   MAX_SUMMARY_LENGTH,
   MAX_TITLE_LENGTH,
+  StoreFullError,
   addProduct,
   editProduct,
   filesOnProduct,
   moveProduct,
+  priceToCents,
   removeProduct,
+  setProductAbout,
   setProductLink,
   storeForEmail,
   type ProductResult,
 } from "@/lib/store";
 import { MAX_LINK_LENGTH, readLink } from "@/lib/product-link";
 import { readRecurring } from "@/lib/product-recurring";
+import { MAX_ABOUT_LENGTH, cleanAbout, dropAbout, readAbout, writeAbout } from "@/lib/product-about";
+import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { dropCourse, filesInCourse, readCourse } from "@/lib/course";
 
@@ -36,9 +41,30 @@ function asProductReason(
   return reason === "invalid" ? "unknown" : reason;
 }
 
+/**
+ * The long description of one of the signed-in creator's products, read when
+ * they open it to edit. `?about=<product id>`.
+ */
+export async function GET(request: NextRequest) {
+  const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
+  if (!email) return Response.json({ ok: false, error: "signed_out" }, { status: 401 });
+  const id = request.nextUrl.searchParams.get("about") ?? "";
+  try {
+    const store = await storeForEmail(email);
+    const product = store?.products.find((p) => p.id === id);
+    if (!store || !product) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
+    const about = product.about ? await readAbout(store.statsId, product.id) : "";
+    return Response.json({ ok: true, about }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) {
+    console.error("reading a description failed", error);
+    return Response.json({ ok: false, error: "server_error" }, { status: 500 });
+  }
+}
+
 /** Adds, changes, reorders or removes one thing on the creator's store. */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  // Room for the long description, which is the one big thing sent here.
+  const guarded = await guardStoreWrite(request, 40_000);
   if (!guarded.ok) return guarded.response;
 
   const { email, body } = guarded;
@@ -53,8 +79,23 @@ export async function POST(request: NextRequest) {
   const price = text(body.price, 20);
   const link = text(body.link, MAX_LINK_LENGTH);
   // Absent or unrecognised means a single sale, which is what a product is
-  // unless the creator says otherwise.
-  const recurring = readRecurring(text(body.every, 10));
+  // unless the creator says otherwise. A trial or a payment count that was
+  // typed and is not a whole number in range is said, not dropped.
+  const recurring = readRecurring(text(body.every, 10), body.trial, body.payments);
+  if (recurring === "trial" || recurring === "payments") {
+    return Response.json({ ok: false, error: recurring }, { status: 400 });
+  }
+  // The suggested price, when the buyer chooses what to pay. Absent means the
+  // price is the price.
+  let pwywCents: number | null = null;
+  if (body.pwyw !== undefined && body.pwyw !== null && body.pwyw !== false) {
+    pwywCents = priceToCents(text(body.pwyw, 20));
+    if (pwywCents === null) {
+      return Response.json({ ok: false, error: "pwyw", pwyw: "suggested" }, { status: 400 });
+    }
+  }
+  // Only written when it was sent, so an older screen never wipes it.
+  const about = typeof body.about === "string" ? cleanAbout(body.about.slice(0, MAX_ABOUT_LENGTH * 2)) : null;
 
   if (action !== "add" && !id) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
@@ -62,22 +103,36 @@ export async function POST(request: NextRequest) {
 
   try {
     let result: ProductResult;
-    if (action === "add") {
-      result = await addProduct(email, title, summary, price, recurring);
-    } else if (action === "edit") {
-      result = await editProduct(email, id, title, summary, price, recurring);
+    if (action === "add" || action === "edit") {
+      result =
+        action === "add"
+          ? await addProduct(email, title, summary, price, recurring, pwywCents)
+          : await editProduct(email, id, title, summary, price, recurring, pwywCents);
+      if (result.ok && about !== null) {
+        const saved = action === "add" ? result.store.products[result.store.products.length - 1] : result.store.products.find((p) => p.id === id);
+        if (saved && (about !== "" || saved.about)) {
+          const marked = await setProductAbout(email, saved.id, about !== "");
+          if (marked.ok && marked.store.statsId) {
+            await writeAbout(marked.store.statsId, saved.id, about);
+            result = { ok: true, store: marked.store };
+          }
+        }
+      }
     } else if (action === "remove") {
       // Read the files before the product is gone, so the storage they used
       // can be released once the removal is safely written. A product with
       // price options holds one file per option as well as its own.
       const store = await storeForEmail(email);
       const going = store?.products.find((product) => product.id === id);
-      const had = going ? filesOnProduct(going) : [];
+      const had: { pathname: string }[] = going ? filesOnProduct(going) : [];
+      // Its picture goes with it, and so does its long description.
+      if (going?.image) had.push({ pathname: going.image.path });
       // A course takes its lessons with it: their records, and their files.
       const course = going?.course ? await readCourse(going.course.id) : null;
       if (course) had.push(...filesInCourse(course));
       result = await removeProduct(email, id);
       if (result.ok) {
+        if (going?.about) await dropAbout(store?.statsId ?? null, id).catch(() => {});
         if (course) await dropCourse(course).catch((error: unknown) => console.error("could not drop a removed course", error));
         for (const file of had) {
           await del(file.pathname).catch((error: unknown) => {
@@ -112,18 +167,22 @@ export async function POST(request: NextRequest) {
         ? { ok: true, store: cleared.store }
         : { ok: false, reason: asProductReason(cleared.reason) };
     } else {
-      const direction = body.direction === "up" ? "up" : "down";
+      const direction =
+        body.direction === "up" || body.direction === "top" || body.direction === "bottom" ? body.direction : "down";
       result = await moveProduct(email, id, direction);
     }
 
     if (!result.ok) {
       return Response.json(
-        { ok: false, error: result.reason, limit: result.limit },
+        { ok: false, error: result.reason, limit: result.limit, pwyw: result.pwyw },
         { status: STATUS[result.reason] ?? 400 },
       );
     }
     return Response.json({ ok: true, products: result.store.products });
   } catch (error) {
+    if (error instanceof StoreFullError) {
+      return Response.json({ ok: false, error: "store_full" }, { status: 409 });
+    }
     console.error("changing a product failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });
   }

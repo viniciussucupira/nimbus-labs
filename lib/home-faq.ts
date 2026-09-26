@@ -22,7 +22,7 @@ export const HOME_QUESTIONS = [
   },
   {
     q: "What does Stan have that Nimbus does not, yet?",
-    a: "Among other things: automatic Instagram replies, communities, funnels and paying affiliates. Every one is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
+    a: "Among other things: automatic Instagram replies, communities, funnels, paying affiliates, PayPal, Google Calendar and stores with no limit on products, where ours hold 200. Every one is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
   },
   {
     q: "Who is behind this?",

@@ -7,16 +7,16 @@ import { SITE_URL } from "@/lib/site-url";
  *
  * On nimbuslabsai.com (and the deployment's own addresses) nothing happens
  * here. On a creator's domain, the root is their store page, the store's own
- * pages keep their short paths (/thanks, /course/…), and anything that belongs
- * to the site itself — signing in, the studio, the help pages — is sent to
- * nimbuslabsai.com, where the session lives.
+ * pages keep their short paths (/thanks, /course/…, /p/<product>), and
+ * anything that belongs to the site itself — signing in, the studio, the help
+ * pages — is sent to nimbuslabsai.com, where the session lives.
  *
  * The store page is told which domain it was reached on, so it can send a
  * visitor back to nimbuslabsai.com if the store is no longer on Pro.
  */
 const PLATFORM = new URL(SITE_URL).hostname;
 const DOMAIN_HEADER = "x-nimbus-domain";
-const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book)(\/|$)/;
+const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|p)(\/|$)/;
 
 function isPlatformHost(host: string): boolean {
   return (

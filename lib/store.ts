@@ -25,9 +25,18 @@ import { PHOTO_ID_PATTERN } from "@/lib/photo-limits";
 import { type CallSetup, parseSetup } from "@/lib/call-setup";
 import { type Pixels, NO_PIXELS, parsePixels } from "@/lib/pixels";
 import { type TaxSetting, NO_TAX, parseTax } from "@/lib/tax";
+import { type RecoverySetting, NO_RECOVERY, parseRecovery } from "@/lib/recovery-setting";
 import { type Cycle, type Tier, parseCycle, parseTier } from "@/lib/plan";
 import { COURSE_ID_PATTERN } from "@/lib/course";
 import { type Bump, type Plan, canBeBumped, isOneOff, parseBump, parsePlan, parseStock } from "@/lib/product-extras";
+import { type PayWhatYouWant, type PwywProblem, parsePwyw, pwywProblem } from "@/lib/pay-what-you-want";
+import { type CheckoutField, parseFields } from "@/lib/checkout-fields";
+import {
+  type DisplayStyle,
+  type ProductImage,
+  parseDisplay,
+  parseProductImage,
+} from "@/lib/product-image";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
@@ -109,8 +118,19 @@ export const RELEASE_QUARANTINE_DAYS = 30;
 /** Marks a name that was let go and is not owned by anyone yet. */
 const RELEASED_PREFIX = "released:";
 
-/** How many things one store may list. */
-export const MAX_PRODUCTS = 20;
+/**
+ * How many things one store may list.
+ *
+ * Two hundred, which no creator selling to their own audience comes near —
+ * Stan says unlimited, and in practice this is the same promise — while the
+ * store stays one small record. That record is read whole on every visit to
+ * the page, so its size is a cost every visitor pays. A product with a
+ * picture, three prices, three questions and every offer switched on is
+ * about three kilobytes, so two hundred of them are well under the ceiling
+ * below; the long descriptions live in records of their own
+ * (lib/product-about.ts) for the same reason.
+ */
+export const MAX_PRODUCTS = 200;
 export const MAX_TITLE_LENGTH = 80;
 export const MAX_SUMMARY_LENGTH = 300;
 
@@ -140,6 +160,25 @@ export const LIST_ID_PATTERN = /^[0-9a-f]{32}$/;
 /** A fresh, unguessable id for a store's list of addresses. */
 export function newListId(): string {
   return crypto.randomUUID().replace(/-/g, "");
+}
+
+/**
+ * The most one store's record may weigh, in bytes.
+ *
+ * Every limit above keeps a store far under this, but they multiply: two
+ * hundred products, each with the longest lists of choices Stripe allows in
+ * its questions, would not be. This is the backstop for that one case. A
+ * change that would take the record past it, and make it bigger than it was,
+ * is refused with a sentence the creator can act on; a change that makes it
+ * smaller is never refused, so a full store can always be tidied.
+ */
+export const MAX_STORE_BYTES = 1_000_000;
+
+/** Thrown by a write that would take a store past MAX_STORE_BYTES. */
+export class StoreFullError extends Error {
+  constructor() {
+    super("store_full");
+  }
 }
 
 /** One thing a store offers. */
@@ -192,6 +231,19 @@ export type Product = {
    * many lessons it has, kept here so a store page knows without reading it.
    */
   course: CourseRef | null;
+  /** The product's picture, shown on the store page and its own page. */
+  image: ProductImage | null;
+  /** How its card is drawn on the store page. */
+  display: DisplayStyle;
+  /** Questions asked on Stripe's checkout, answered before paying. */
+  fields: CheckoutField[];
+  /**
+   * The buyer chooses the price, from the product's own price up. Null is the
+   * ordinary case: the price is the price.
+   */
+  pwyw: PayWhatYouWant | null;
+  /** Whether it has a long description, kept in a record of its own. */
+  about: boolean;
 };
 
 /** What every email to a creator's list carries, as the law asks. */
@@ -346,6 +398,12 @@ export type Store = {
   pixels: Pixels;
   /** Whether Stripe Tax adds sales tax at checkout, and whether prices include it. */
   tax: TaxSetting;
+  /**
+   * Whether a buyer who agreed at checkout to hear from the creator, and then
+   * left without paying, gets one reminder (lib/checkout-recovery.ts). Off
+   * for every store until its creator switches it on.
+   */
+  recovery: RecoverySetting;
 };
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
@@ -391,6 +449,17 @@ export async function storeFolder(email: string): Promise<string> {
   return (await sha256Hex(`nimbus-files:${email.toLowerCase()}`)).slice(0, 32);
 }
 
+/**
+ * The folder a store's product pictures live in.
+ *
+ * Salted differently again from the folder its paid files live in, because a
+ * picture's address is public and must say nothing about where the files
+ * that are paid for are kept.
+ */
+export async function imageFolder(email: string): Promise<string> {
+  return (await sha256Hex(`nimbus-images:${email.toLowerCase()}`)).slice(0, 24);
+}
+
 function parseProducts(raw: unknown): Product[] {
   if (!Array.isArray(raw)) return [];
   const products: Product[] = [];
@@ -425,6 +494,11 @@ function parseProducts(raw: unknown): Product[] {
       upsell: parseBump(value.upsell),
       plan: parsePlan(value.plan),
       course: parseCourseRef(value.course),
+      image: parseProductImage(value.image),
+      display: parseDisplay(value.display),
+      fields: parseFields(value.fields),
+      pwyw: parsePwyw(value.pwyw),
+      about: value.about === true,
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -495,6 +569,9 @@ function parseStore(raw: unknown): Store | null {
           : null,
       pixels: parsePixels(value.pixels),
       tax: parseTax(value.tax),
+      // Stores written before reminders existed have them off, as every
+      // store does until its creator says otherwise.
+      recovery: parseRecovery(value.recovery),
     };
   } catch {
     return null;
@@ -625,6 +702,7 @@ export async function claimHandle(
     statsId: newListId(),
     pixels: { ...NO_PIXELS },
     tax: { ...NO_TAX },
+    recovery: { ...NO_RECOVERY },
   };
 
   try {
@@ -906,10 +984,18 @@ export async function releaseHandle(
  * meet that case; if stores ever gain collaborators, this is the line that has
  * to change first.
  */
-async function saveStore(store: Store): Promise<void> {
-  await redisPipeline([
-    ["SET", await ownerKey(store.email), JSON.stringify(store)],
-  ]);
+async function saveStore(store: Store, before?: Store): Promise<void> {
+  const json = JSON.stringify(store);
+  // Only a write that makes the record bigger is weighed, so a store at the
+  // ceiling can always remove, shorten and reorder.
+  if (before && byteLength(json) > MAX_STORE_BYTES && byteLength(json) > byteLength(JSON.stringify(before))) {
+    throw new StoreFullError();
+  }
+  await redisPipeline([["SET", await ownerKey(store.email), json]]);
+}
+
+function byteLength(text: string): number {
+  return new TextEncoder().encode(text).length;
 }
 
 export type DetailsResult =
@@ -944,7 +1030,7 @@ export async function updateDetails(
 
 export type CallResult =
   | { ok: true; store: Store }
-  | { ok: false; reason: "none" | "unknown" | "free" | "recurring" | "options" | "delivery" | "course" };
+  | { ok: false; reason: "none" | "unknown" | "free" | "recurring" | "options" | "delivery" | "course" | "pwyw" };
 
 /**
  * Makes a product a paid call, changes when it can be booked, or turns it
@@ -970,6 +1056,7 @@ export async function setProductCall(
     if (product.options.length > 0) return { ok: false, reason: "options" };
     if (product.file || product.link) return { ok: false, reason: "delivery" };
     if (product.course) return { ok: false, reason: "course" };
+    if (product.pwyw) return { ok: false, reason: "pwyw" };
   }
   const products = [...store.products];
   products[at] = { ...product, call: setup };
@@ -1088,7 +1175,8 @@ export async function setProductExtras(
   }
   if (change.bump !== undefined) {
     if (change.bump !== null) {
-      if (!isOneOff(product)) return { ok: false, reason: "kind" };
+      // The amount a buyer chooses has to be the checkout's only line.
+      if (!isOneOff(product) || product.pwyw) return { ok: false, reason: "kind" };
       const target = store.products.find((p) => p.id === change.bump!.productId);
       if (!target || target.id === product.id || !canBeBumped(target)) return { ok: false, reason: "target" };
       if (change.bump.priceCents > target.priceCents) return { ok: false, reason: "price" };
@@ -1106,7 +1194,7 @@ export async function setProductExtras(
   }
   if (change.plan !== undefined) {
     if (change.plan !== null) {
-      if (!isOneOff(product) || product.options.length > 0) return { ok: false, reason: "kind" };
+      if (!isOneOff(product) || product.options.length > 0 || product.pwyw) return { ok: false, reason: "kind" };
       if (change.plan.payments * change.plan.amountCents < product.priceCents) return { ok: false, reason: "price" };
     }
     next.plan = change.plan;
@@ -1115,7 +1203,7 @@ export async function setProductExtras(
   const products = [...store.products];
   products[at] = next;
   const saved: Store = { ...store, products, statsId: store.statsId ?? newListId() };
-  await saveStore(saved);
+  await saveStore(saved, store);
   return { ok: true, store: saved };
 }
 
@@ -1127,6 +1215,21 @@ export async function setTax(
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
   const next: Store = { ...store, tax: parseTax(tax) };
+  await saveStore(next);
+  return { ok: true, store: next };
+}
+
+/**
+ * Switches the abandoned-checkout reminder on or off. The store is also given
+ * the id its reminders are counted and stopped under, if it has none yet.
+ */
+export async function setRecovery(
+  email: string,
+  recovery: RecoverySetting,
+): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const next: Store = { ...store, recovery: parseRecovery(recovery), statsId: store.statsId ?? newListId() };
   await saveStore(next);
   return { ok: true, store: next };
 }
@@ -1187,8 +1290,10 @@ export type ProductResult =
   | { ok: true; store: Store }
   | {
       ok: false;
-      reason: "none" | "title" | "price" | "free" | "too_many" | "unknown" | "call" | "course";
+      reason: "none" | "title" | "price" | "free" | "too_many" | "unknown" | "call" | "course" | "pwyw";
       limit?: number;
+      /** When the choose-your-price setting was refused: why. */
+      pwyw?: PwywProblem;
     };
 
 /** An id nothing else in this store is using. */
@@ -1236,6 +1341,8 @@ export async function addProduct(
   rawSummary: string,
   rawPrice: string,
   recurring: Recurring | null = null,
+  /** The suggested price, when the buyer chooses what to pay. */
+  pwywCents: number | null = null,
 ): Promise<ProductResult> {
   const fields = readFields(rawTitle, rawPrice);
   if (typeof fields === "string") return { ok: false, reason: fields };
@@ -1265,7 +1372,17 @@ export async function addProduct(
     upsell: null,
     plan: null,
     course: null,
+    image: null,
+    display: "button",
+    fields: [],
+    pwyw: null,
+    about: false,
   };
+  if (pwywCents !== null) {
+    const problem = pwywProblem(product, pwywCents);
+    if (problem) return { ok: false, reason: "pwyw", pwyw: problem };
+    product.pwyw = { suggestedCents: pwywCents };
+  }
 
   const next: Store = {
     ...store,
@@ -1275,7 +1392,7 @@ export async function addProduct(
     // visitor's request ever has to write the store record.
     listId: store.listId ?? (fields.priceCents === 0 ? newListId() : null),
   };
-  await saveStore(next);
+  await saveStore(next, store);
   return { ok: true, store: next };
 }
 
@@ -1287,6 +1404,7 @@ export async function editProduct(
   rawSummary: string,
   rawPrice: string,
   recurring: Recurring | null = null,
+  pwywCents: number | null = null,
 ): Promise<ProductResult> {
   const fields = readFields(rawTitle, rawPrice);
   if (typeof fields === "string") return { ok: false, reason: fields };
@@ -1318,14 +1436,20 @@ export async function editProduct(
     summary: rawSummary.trim().slice(0, MAX_SUMMARY_LENGTH),
     priceCents: fields.priceCents,
     recurring,
+    pwyw: null,
   };
+  if (pwywCents !== null) {
+    const problem = pwywProblem(products[at], pwywCents);
+    if (problem) return { ok: false, reason: "pwyw", pwyw: problem };
+    products[at].pwyw = { suggestedCents: pwywCents };
+  }
 
   const next: Store = {
     ...store,
     products,
     listId: store.listId ?? (fields.priceCents === 0 ? newListId() : null),
   };
-  await saveStore(next);
+  await saveStore(next, store);
   return { ok: true, store: next };
 }
 
@@ -1349,7 +1473,7 @@ export async function removeProduct(
 }
 
 /**
- * Moves something one place up or down.
+ * Moves something one place up or down, or straight to the top or the end.
  *
  * The order is the creator's, not ours: the first thing on the page is the
  * thing they want read first, so nothing here sorts by price or by date.
@@ -1357,18 +1481,22 @@ export async function removeProduct(
 export async function moveProduct(
   email: string,
   id: string,
-  direction: "up" | "down",
+  direction: "up" | "down" | "top" | "bottom",
 ): Promise<ProductResult> {
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
   const at = store.products.findIndex((product) => product.id === id);
   if (at < 0) return { ok: false, reason: "unknown" };
 
-  const to = direction === "up" ? at - 1 : at + 1;
-  if (to < 0 || to >= store.products.length) return { ok: true, store };
+  // With a long list, one place at a time is a lot of presses to reach the
+  // top, so the two ends are one press each.
+  const to =
+    direction === "top" ? 0 : direction === "bottom" ? store.products.length - 1 : direction === "up" ? at - 1 : at + 1;
+  if (to < 0 || to >= store.products.length || to === at) return { ok: true, store };
 
   const products = [...store.products];
-  [products[at], products[to]] = [products[to], products[at]];
+  const [moving] = products.splice(at, 1);
+  products.splice(to, 0, moving);
 
   const next: Store = { ...store, products };
   await saveStore(next);
@@ -1576,7 +1704,7 @@ export async function addStoreLink(
   };
 
   const next: Store = { ...store, links: [...store.links, link] };
-  await saveStore(next);
+  await saveStore(next, store);
   return { ok: true, store: next };
 }
 
@@ -1599,7 +1727,7 @@ export async function editStoreLink(
   links[at] = { ...links[at], title, url };
 
   const next: Store = { ...store, links };
-  await saveStore(next);
+  await saveStore(next, store);
   return { ok: true, store: next };
 }
 
@@ -1648,7 +1776,7 @@ export type OptionResult =
   | { ok: true; store: Store; removed: ProductFile[] }
   | {
       ok: false;
-      reason: "none" | "label" | "price" | "free" | "too_many" | "unknown" | "call" | "course";
+      reason: "none" | "label" | "price" | "free" | "too_many" | "unknown" | "call" | "course" | "pwyw";
       limit?: number;
     };
 
@@ -1685,6 +1813,8 @@ export async function addOption(
   if (isFree(store.products[at])) return { ok: false, reason: "free" };
   if (store.products[at].call) return { ok: false, reason: "call" };
   if (store.products[at].course) return { ok: false, reason: "course" };
+  // The buyer would be choosing a price twice.
+  if (store.products[at].pwyw) return { ok: false, reason: "pwyw" };
   if (store.products[at].options.length >= MAX_OPTIONS) {
     return { ok: false, reason: "too_many", limit: MAX_OPTIONS };
   }
@@ -1704,7 +1834,7 @@ export async function addOption(
   };
 
   const next: Store = { ...store, products };
-  await saveStore(next);
+  await saveStore(next, store);
   return { ok: true, store: next, removed: [] };
 }
 
@@ -1817,4 +1947,83 @@ export async function setHasDiscounts(
   const next: Store = { ...store, hasDiscounts };
   await saveStore(next);
   return next;
+}
+
+export type ProductPartResult =
+  | { ok: true; store: Store; product: Product }
+  | { ok: false; reason: "none" | "unknown" };
+
+/** Changes one product in place with `change`, and saves the store. */
+async function changeProduct(
+  email: string,
+  id: string,
+  change: (product: Product) => Product,
+  extra: (store: Store) => Partial<Store> = () => ({}),
+): Promise<ProductPartResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.products.findIndex((product) => product.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+  const products = [...store.products];
+  products[at] = change(products[at]);
+  const next: Store = { ...store, ...extra(store), products };
+  await saveStore(next, store);
+  return { ok: true, store: next, product: products[at] };
+}
+
+/**
+ * Puts a picture on a product, or takes it off. Returns the picture it
+ * replaced, so the caller can delete it from the file store once the record
+ * that pointed at it is safely written.
+ */
+export async function setProductImage(
+  email: string,
+  id: string,
+  image: ProductImage | null,
+): Promise<{ ok: true; store: Store; removed: ProductImage | null } | { ok: false; reason: "none" | "unknown" }> {
+  let removed: ProductImage | null = null;
+  const done = await changeProduct(email, id, (product) => {
+    removed = product.image;
+    return {
+      ...product,
+      image,
+      // A picture added to a product still drawn as a plain card shows as a
+      // callout, which is where a picture earns its place. Taking the picture
+      // off puts the plain card back.
+      display: image && !product.image && product.display === "button" ? "callout" : image ? product.display : "button",
+    };
+  });
+  if (!done.ok) return done;
+  return { ok: true, store: done.store, removed };
+}
+
+/** Changes the words a screen reader says instead of the picture. */
+export async function setImageAlt(email: string, id: string, alt: string): Promise<ProductPartResult> {
+  return changeProduct(email, id, (product) =>
+    product.image ? { ...product, image: { ...product.image, alt } } : product,
+  );
+}
+
+/** Changes how the product's card is drawn on the store page. */
+export async function setProductDisplay(email: string, id: string, display: DisplayStyle): Promise<ProductPartResult> {
+  return changeProduct(email, id, (product) => ({ ...product, display }));
+}
+
+/** Replaces the questions asked at checkout. An empty list asks none. */
+export async function setProductFields(email: string, id: string, fields: CheckoutField[]): Promise<ProductPartResult> {
+  return changeProduct(email, id, (product) => ({ ...product, fields }));
+}
+
+/**
+ * Marks whether a product has a long description. The text itself is written
+ * by lib/product-about.ts under the store's statsId, which is made here for a
+ * store written before it had one.
+ */
+export async function setProductAbout(email: string, id: string, has: boolean): Promise<ProductPartResult> {
+  return changeProduct(
+    email,
+    id,
+    (product) => ({ ...product, about: has }),
+    (store) => ({ statsId: store.statsId ?? newListId() }),
+  );
 }

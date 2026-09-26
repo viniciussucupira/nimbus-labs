@@ -9,6 +9,7 @@ import {
 } from "@/lib/store";
 import { MAX_OPTION_LABEL_LENGTH } from "@/lib/product-option";
 import { guardStoreWrite, text } from "@/lib/store-request";
+import { StoreFullError } from "@/lib/store";
 
 const ACTIONS = new Set(["add", "edit", "remove", "move"]);
 
@@ -76,6 +77,9 @@ export async function POST(request: NextRequest) {
 
     return Response.json({ ok: true, products: result.store.products });
   } catch (error) {
+    if (error instanceof StoreFullError) {
+      return Response.json({ ok: false, error: "store_full" }, { status: 409 });
+    }
     console.error("changing a price option failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });
   }

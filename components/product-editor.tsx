@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { CallEditor } from "@/components/call-editor";
 import { CourseToggle } from "@/components/course-toggle";
 import { CheckoutExtras } from "@/components/checkout-extras";
+import { CheckoutFieldsEditor } from "@/components/checkout-fields-editor";
+import { ProductImageEditor } from "@/components/product-image-editor";
 import { toast } from "@/components/toast";
 import { uploadPresigned } from "@vercel/blob/client";
 import {
@@ -33,9 +35,17 @@ import { LINK_PROBLEMS, type LinkProblem, linkHost } from "@/lib/product-link";
 import {
   INTERVALS,
   type Interval,
+  MAX_MEMBER_PAYMENTS,
+  MAX_TRIAL_DAYS,
+  MIN_MEMBER_PAYMENTS,
+  MIN_TRIAL_DAYS,
   everyLabel,
+  intervalAdjective,
   intervalName,
+  membershipPrice,
 } from "@/lib/product-recurring";
+import { MAX_ABOUT_LENGTH } from "@/lib/product-about";
+import { imageUrl } from "@/lib/product-image";
 
 /** What to say when a price option is refused, over and above the shared set. */
 const OPTION_MESSAGES: Record<string, string> = {
@@ -47,8 +57,22 @@ const OPTION_MESSAGES: Record<string, string> = {
   unavailable: "Stores are not switched on yet, so nothing was saved.",
 };
 
+/** Why a price the buyer chooses was refused, in words the creator can act on. */
+const PWYW_MESSAGES: Record<string, string> = {
+  free: "Something free has no price to choose. Give it a lowest price of at least $1.",
+  recurring: "A membership charges the same amount each time, so its buyers cannot choose it. Stripe lets a buyer choose the amount of a one-off payment only.",
+  options: "This product has several prices already. Take them off first: the buyer would be choosing twice.",
+  call: "A paid call is booked for a time at a set price, so it cannot be pay what you want.",
+  plan: "This product offers a payment plan. Stop offering it first: a plan needs a set total to divide.",
+  bump: "This product offers another one at checkout. Stop offering it first: Stripe lets a chosen amount be the only thing in its checkout.",
+  suggested: "Type a suggested price between the lowest price and 5000, like 15 or 15.50.",
+};
+
 const MESSAGES: Record<string, string> = {
   title: "Give it a name before saving.",
+  trial: `Type a free trial of ${MIN_TRIAL_DAYS} to ${MAX_TRIAL_DAYS} days, or leave it empty for none.`,
+  payments: `Type ${MIN_MEMBER_PAYMENTS} to ${MAX_MEMBER_PAYMENTS} payments, or leave it empty for a membership that runs until it is cancelled.`,
+  store_full: "Your store has reached the most it can hold. Remove something, or shorten a long list of choices, to make room.",
   price: "Type 0 to give it away, or an amount between 1 and 5000, like 27 or 27.50.",
   free: "Something free is given once, for an email address, so it cannot be a membership or have several prices. Take those off first.",
   unknown: "That is no longer on your store.",
@@ -68,9 +92,43 @@ type Draft = {
   price: string;
   /** "" means a single sale. Anything else is how often it charges. */
   every: "" | Interval;
+  /** Days free before a membership's first payment. "" is none. */
+  trial: string;
+  /** Payments before a membership ends by itself. "" is until cancelled. */
+  payments: string;
+  /** Whether the buyer chooses the price, from `price` up. */
+  pwyw: boolean;
+  /** The amount suggested to a buyer who chooses. */
+  suggested: string;
+  /** The long description, on the product's own page. */
+  about: string;
 };
 
-const EMPTY: Draft = { title: "", summary: "", price: "", every: "" };
+const EMPTY: Draft = {
+  title: "",
+  summary: "",
+  price: "",
+  every: "",
+  trial: "",
+  payments: "",
+  pwyw: false,
+  suggested: "",
+  about: "",
+};
+
+/** What the form sends for a draft, add or edit alike. */
+function payloadOf(draft: Draft): Record<string, unknown> {
+  return {
+    title: draft.title,
+    summary: draft.summary,
+    price: draft.price,
+    every: draft.every,
+    trial: draft.every ? draft.trial.trim() : "",
+    payments: draft.every ? draft.payments.trim() : "",
+    pwyw: draft.pwyw && !draft.every ? draft.suggested.trim() || draft.price.trim() : null,
+    about: draft.about,
+  };
+}
 
 /** Whether what was typed in the price field means free. */
 function typedFree(price: string): boolean {
@@ -101,6 +159,9 @@ async function send(payload: Record<string, unknown>): Promise<string | null> {
     if (data.error === "too_many") {
       return `A store lists up to ${data.limit ?? MAX_PRODUCTS} things, and yours is full. Remove one to add another.`;
     }
+    if (data.error === "pwyw") {
+      return PWYW_MESSAGES[(data as { pwyw?: string }).pwyw ?? ""] ?? PWYW_MESSAGES.suggested;
+    }
     return MESSAGES[data.error ?? ""] ?? MESSAGES.server_error;
   } catch {
     return MESSAGES.server_error;
@@ -116,6 +177,8 @@ function ProductForm({
   submitLabel,
   onSubmit,
   onCancel,
+  product,
+  loadingAbout = false,
 }: {
   draft: Draft;
   setDraft: (draft: Draft) => void;
@@ -124,7 +187,26 @@ function ProductForm({
   submitLabel: string;
   onSubmit: () => void;
   onCancel: () => void;
+  /** The product being changed; absent when adding one. */
+  product?: Product;
+  /** Whether the long description is still being read. */
+  loadingAbout?: boolean;
 }) {
+  const id = product?.id ?? "new";
+  const free = typedFree(draft.price);
+  // Said before the box is ticked rather than after saving: what else on the
+  // product would stop a buyer from choosing the price.
+  const pwywBlocked = product
+    ? product.options.length > 0
+      ? PWYW_MESSAGES.options
+      : product.call
+        ? PWYW_MESSAGES.call
+        : product.plan
+          ? PWYW_MESSAGES.plan
+          : product.bump
+            ? PWYW_MESSAGES.bump
+            : null
+    : null;
   return (
     <form
       noValidate
@@ -136,13 +218,13 @@ function ProductForm({
     >
       <div>
         <label
-          htmlFor="product-title"
+          htmlFor={`product-title-${id}`}
           className="field-label"
         >
           What are you selling
         </label>
         <input
-          id="product-title"
+          id={`product-title-${id}`}
           name="title"
           type="text"
           required
@@ -158,13 +240,13 @@ function ProductForm({
 
       <div>
         <label
-          htmlFor="product-summary"
+          htmlFor={`product-summary-${id}`}
           className="field-label"
         >
-          What the buyer gets
+          What the buyer gets, in short
         </label>
         <textarea
-          id="product-summary"
+          id={`product-summary-${id}`}
           name="summary"
           rows={3}
           maxLength={MAX_SUMMARY_LENGTH}
@@ -176,21 +258,44 @@ function ProductForm({
           className="field mt-2"
         />
         <p className="mt-1 text-sm text-ink-soft">
-          {MAX_SUMMARY_LENGTH - draft.summary.length} characters left.
+          {`On the card on your page. ${MAX_SUMMARY_LENGTH - draft.summary.length} characters left.`}
+        </p>
+      </div>
+
+      <div>
+        <label htmlFor={`product-about-${id}`} className="field-label">
+          The full description <span className="font-normal text-ink-soft">(optional)</span>
+        </label>
+        <textarea
+          id={`product-about-${id}`}
+          name="about"
+          rows={7}
+          maxLength={MAX_ABOUT_LENGTH}
+          value={draft.about}
+          disabled={loadingAbout}
+          aria-busy={loadingAbout}
+          onChange={(event) => setDraft({ ...draft, about: event.target.value })}
+          placeholder={"What is inside, who it is for, and what happens after they buy.\n\n- One point per line, starting with a dash, makes a list.\n- Web addresses become links."}
+          className="field mt-2"
+        />
+        <p className="mt-1 text-sm text-ink-soft">
+          {loadingAbout
+            ? "Reading what you wrote…"
+            : `On this product's own page, which the card links to. A blank line starts a new paragraph. ${(MAX_ABOUT_LENGTH - draft.about.length).toLocaleString("en-US")} characters left.`}
         </p>
       </div>
 
       <div>
         <label
-          htmlFor="product-price"
+          htmlFor={`product-price-${id}`}
           className="field-label"
         >
-          Price
+          {draft.pwyw && !draft.every && !free ? "Lowest price" : "Price"}
         </label>
         <div className="card mt-2 flex items-center pl-4 transition focus-within:border-violet-brand">
-          <span className="text-ink-soft">USD $</span>
+          <span className="whitespace-nowrap text-ink-soft">USD $</span>
           <input
-            id="product-price"
+            id={`product-price-${id}`}
             name="price"
             type="text"
             inputMode="decimal"
@@ -203,6 +308,7 @@ function ProductForm({
                 // Free is given once, so a schedule would be left behind
                 // pointing at nothing. It goes when the price goes to zero.
                 every: typedFree(event.target.value) ? "" : draft.every,
+                pwyw: typedFree(event.target.value) ? false : draft.pwyw,
               })
             }
             placeholder="27"
@@ -216,20 +322,79 @@ function ProductForm({
         </p>
       </div>
 
+      {free || draft.every ? null : (
+        <div className="rounded-2xl border border-line bg-paper p-4">
+          <label htmlFor={`product-pwyw-${id}`} className="flex min-h-[24px] cursor-pointer items-start gap-3">
+            <input
+              id={`product-pwyw-${id}`}
+              type="checkbox"
+              checked={draft.pwyw}
+              disabled={Boolean(pwywBlocked) && !draft.pwyw}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  pwyw: event.target.checked,
+                  suggested: draft.suggested || draft.price,
+                })
+              }
+              className="mt-1 h-4 w-4 shrink-0 accent-[var(--violet)]"
+            />
+            <span>
+              <span className="block font-semibold text-ink">Let buyers pay what they want</span>
+              <span className="mt-0.5 block text-sm text-ink-soft">
+                {pwywBlocked && !draft.pwyw
+                  ? pwywBlocked
+                  : "The price above becomes the lowest they can pay. They type the amount on Stripe's payment page."}
+              </span>
+            </span>
+          </label>
+          {draft.pwyw ? (
+            <div className="mt-3 pl-7">
+              <label htmlFor={`product-suggested-${id}`} className="field-label">
+                Suggested price
+              </label>
+              <div className="card mt-2 flex max-w-[14rem] items-center pl-4 transition focus-within:border-violet-brand">
+                <span className="whitespace-nowrap text-ink-soft">USD $</span>
+                <input
+                  id={`product-suggested-${id}`}
+                  type="text"
+                  inputMode="decimal"
+                  value={draft.suggested}
+                  onChange={(event) => setDraft({ ...draft, suggested: event.target.value })}
+                  placeholder="15"
+                  className="w-full rounded-r-2xl bg-transparent px-2 py-3 text-ink outline-none placeholder:text-ink-soft/50"
+                />
+              </div>
+              <p className="mt-2 text-sm text-ink-soft">
+                What the amount box starts at. Buyers can pay up to $5,000. Discount codes are not offered on it, and it
+                cannot have several prices, a payment plan or a product offered at checkout: Stripe lets a buyer choose
+                the amount of one item, paid once. A limited quantity, an offer after paying, sales tax and questions at
+                checkout all work with it.
+              </p>
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {typedFree(draft.price) ? null : (
       <div>
         <label
-          htmlFor="product-every"
+          htmlFor={`product-every-${id}`}
           className="field-label"
         >
           How often it charges
         </label>
         <select
-          id="product-every"
+          id={`product-every-${id}`}
           name="every"
           value={draft.every}
           onChange={(event) =>
-            setDraft({ ...draft, every: event.target.value as "" | Interval })
+            setDraft({
+              ...draft,
+              every: event.target.value as "" | Interval,
+              // A membership charges a set amount, so nobody chooses it.
+              pwyw: event.target.value ? false : draft.pwyw,
+            })
           }
           className="field mt-2"
         >
@@ -247,6 +412,62 @@ function ProductForm({
               )} on your own Stripe account until it is cancelled. A member who wants to stop writes to you — a reply to the receipt Stripe sends them reaches you — and you cancel it in your Stripe dashboard. Taking access back when somebody stops paying is yours to do, wherever you keep the thing.`
             : "Most things are sold once. Pick a schedule to make this a membership instead."}
         </p>
+        {draft.every ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor={`product-trial-${id}`} className="field-label">
+                Free trial, in days <span className="font-normal text-ink-soft">(optional)</span>
+              </label>
+              <input
+                id={`product-trial-${id}`}
+                type="number"
+                inputMode="numeric"
+                min={MIN_TRIAL_DAYS}
+                max={MAX_TRIAL_DAYS}
+                step={1}
+                value={draft.trial}
+                onChange={(event) => setDraft({ ...draft, trial: event.target.value })}
+                placeholder="None"
+                className="field mt-2"
+              />
+              <p className="mt-1 text-sm text-ink-soft">
+                {`${MIN_TRIAL_DAYS} to ${MAX_TRIAL_DAYS}. The card is asked for at the start and nothing is charged until the trial ends.`}
+              </p>
+            </div>
+            <div>
+              <label htmlFor={`product-payments-${id}`} className="field-label">
+                Ends after, in payments <span className="font-normal text-ink-soft">(optional)</span>
+              </label>
+              <input
+                id={`product-payments-${id}`}
+                type="number"
+                inputMode="numeric"
+                min={MIN_MEMBER_PAYMENTS}
+                max={MAX_MEMBER_PAYMENTS}
+                step={1}
+                value={draft.payments}
+                onChange={(event) => setDraft({ ...draft, payments: event.target.value })}
+                placeholder="Until cancelled"
+                className="field mt-2"
+              />
+              <p className="mt-1 text-sm text-ink-soft">
+                {`${MIN_MEMBER_PAYMENTS} to ${MAX_MEMBER_PAYMENTS}. After the last one it stops by itself; members can still cancel sooner.`}
+              </p>
+            </div>
+            {/^\d+$/.test(draft.trial.trim()) || /^\d+$/.test(draft.payments.trim()) ? (
+              <p className="rounded-xl bg-sand px-3 py-2 text-sm text-ink sm:col-span-2">
+                {`Your page will say: ${membershipPrice(
+                  {
+                    interval: draft.every,
+                    trialDays: Number(draft.trial.trim()) || 0,
+                    payments: Number(draft.payments.trim()) || 0,
+                  },
+                  `$${draft.price.trim() || "0"}`,
+                )}.`}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       )}
 
@@ -866,16 +1087,48 @@ function FileBlock({
   );
 }
 
+/** Above this many products, each opens on its own rather than all at once. */
+const COLLAPSE_ABOVE = 3;
+/** Above this many, the list gets a box to find one by name. */
+const SEARCH_ABOVE = 6;
+
+/** The few words that say what a closed row holds, so it need not be opened. */
+function badges(product: Product): string[] {
+  const out: string[] = [];
+  if (product.call) out.push("Call");
+  if (product.course) out.push("Course");
+  if (product.recurring) {
+    out.push("Membership");
+    if (product.recurring.trialDays) out.push(`${product.recurring.trialDays}-day trial`);
+    if (product.recurring.payments) out.push(`${product.recurring.payments} ${intervalAdjective(product.recurring.interval)} payments`);
+  }
+  if (product.pwyw) out.push("Pay what you want");
+  if (product.options.length) out.push(`${product.options.length} prices`);
+  if (!isFree(product) && !product.call && !product.course && !product.file && !product.link && !product.options.some((o) => o.file || o.link)) {
+    out.push("Nothing to hand over yet");
+  }
+  if (product.image) out.push(product.display === "preview" ? "Preview" : product.display === "callout" ? "Callout" : "Button");
+  if (product.fields.length) out.push(`${product.fields.length} ${product.fields.length === 1 ? "question" : "questions"}`);
+  if (product.stock !== null) out.push(`Limited to ${product.stock.toLocaleString("en-US")}`);
+  return out;
+}
+
 /** The list of what the store offers, and every way to change it. */
 export function ProductEditor({
   products,
   folder,
+  imageFolder,
+  handle,
   selling,
   testMode,
   email,
 }: {
   products: Product[];
   folder: string;
+  /** The store's own folder for product pictures (lib/store.ts imageFolder). */
+  imageFolder: string;
+  /** The store's address, for the link to each product's own page. */
+  handle: string;
   /** The creator's sign-in address, which booking replies go to. */
   email: string;
   /** Whether this store can actually take a card right now. */
@@ -897,6 +1150,26 @@ export function ProductEditor({
   );
 
   const full = products.length >= MAX_PRODUCTS;
+  // A short list is shown open, as it always was. A long one is shown as rows
+  // that open one at a time, so two hundred products stay a page and not a
+  // scroll through two hundred forms.
+  const [openIds, setOpenIds] = useState<Set<string>>(
+    () => new Set(products.length <= COLLAPSE_ABOVE ? products.map((product) => product.id) : []),
+  );
+  const [query, setQuery] = useState("");
+  const [loadingAbout, setLoadingAbout] = useState(false);
+  const shown = query.trim()
+    ? products.filter((product) => product.title.toLowerCase().includes(query.trim().toLowerCase()))
+    : products;
+
+  function toggle(id: string, open?: boolean) {
+    setOpenIds((current) => {
+      const next = new Set(current);
+      if (open ?? !next.has(id)) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
 
   /** Tells the store which file a product delivers, once it is really there. */
   async function attach(payload: Record<string, unknown>): Promise<string | null> {
@@ -1023,17 +1296,43 @@ export function ProductEditor({
     setAdding(true);
   }
 
-  function startEditing(product: Product) {
+  async function startEditing(product: Product) {
     setDraft({
       title: product.title,
       summary: product.summary,
       price: centsToPrice(product.priceCents),
       every: product.recurring ? product.recurring.interval : "",
+      trial: product.recurring?.trialDays ? String(product.recurring.trialDays) : "",
+      payments: product.recurring?.payments ? String(product.recurring.payments) : "",
+      pwyw: product.pwyw !== null,
+      suggested: product.pwyw ? centsToPrice(product.pwyw.suggestedCents) : "",
+      about: "",
     });
     setError(null);
     setAdding(false);
     setEditingId(product.id);
+    toggle(product.id, true);
+    if (!product.about) return;
+    // The long description lives in a record of its own; it is read when the
+    // form opens, and the box waits for it so nothing is saved over it.
+    setLoadingAbout(true);
+    try {
+      const response = await fetch(`/api/store/product?about=${encodeURIComponent(product.id)}`);
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; about?: string };
+      if (data.ok && typeof data.about === "string") {
+        const about = data.about;
+        setDraft((current) => ({ ...current, about }));
+      } else {
+        setError("Your description could not be read just now, so it is not shown. Close this and open it again before saving.");
+      }
+    } catch {
+      setError("Your description could not be read just now, so it is not shown. Close this and open it again before saving.");
+    } finally {
+      setLoadingAbout(false);
+    }
   }
+
+  const quiet = "text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40";
 
   return (
     <div className="card mt-8 p-6 sm:p-8">
@@ -1042,7 +1341,7 @@ export function ProductEditor({
           What you are selling
         </p>
         <p className="text-sm text-ink-soft">
-          {products.length} of {MAX_PRODUCTS}
+          {products.length === 1 ? "1 product" : `${products.length} products`}
         </p>
       </div>
 
@@ -1053,8 +1352,44 @@ export function ProductEditor({
         </p>
       ) : null}
 
+      {products.length > SEARCH_ABOVE ? (
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <label htmlFor="product-search" className="sr-only">
+            Find a product by its name
+          </label>
+          <input
+            id="product-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Find a product by its name"
+            className="field field-search min-w-[12rem] flex-1"
+          />
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() =>
+              setOpenIds(openIds.size > 0 ? new Set() : new Set(products.map((product) => product.id)))
+            }
+          >
+            {openIds.size > 0 ? "Close all" : "Open all"}
+          </button>
+        </div>
+      ) : null}
+      {query.trim() ? (
+        <p className="mt-2 text-sm text-ink-soft" role="status">
+          {shown.length === 0
+            ? "Nothing on your store has that in its name."
+            : `${shown.length} of ${products.length} shown. Moving one moves it in the whole list.`}
+        </p>
+      ) : null}
+
       <ul className="mt-5 space-y-3">
-        {products.map((product, index) => (
+        {shown.map((product) => {
+          const index = products.indexOf(product);
+          const open = openIds.has(product.id) || editingId === product.id;
+          const panel = `product-panel-${product.id}`;
+          return (
           <li
             key={product.id}
             className="rounded-2xl border border-line bg-paper p-4"
@@ -1066,20 +1401,16 @@ export function ProductEditor({
                 busy={busy}
                 error={error}
                 submitLabel="Save"
-                onSubmit={() =>
+                product={product}
+                loadingAbout={loadingAbout}
+                onSubmit={() => {
+                  if (loadingAbout) return;
                   run(
-                    {
-                      action: "edit",
-                      id: product.id,
-                      title: draft.title,
-                      summary: draft.summary,
-                      price: draft.price,
-                      every: draft.every,
-                    },
+                    { action: "edit", id: product.id, ...payloadOf(draft) },
                     () => setEditingId(null),
                     "Product saved.",
-                  )
-                }
+                  );
+                }}
                 onCancel={() => {
                   setEditingId(null);
                   setError(null);
@@ -1087,20 +1418,56 @@ export function ProductEditor({
               />
             ) : (
               <>
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-bold text-ink">{product.title}</p>
-                  <p className="font-semibold tabular-nums text-ink">
-                    {isFree(product)
-                      ? "Free"
-                      : product.recurring
-                        ? `$${centsToPrice(product.priceCents)} ${everyLabel(
-                            product.recurring.interval,
-                          )}`
-                        : `$${centsToPrice(product.priceCents)}`}
-                  </p>
+                <div className="flex items-start gap-3">
+                  {product.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imageUrl(product.image)}
+                      alt=""
+                      width={product.image.width}
+                      height={product.image.height}
+                      className="mt-0.5 h-11 w-11 shrink-0 rounded-lg object-cover ring-1 ring-line"
+                    />
+                  ) : null}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggle(product.id)}
+                        aria-expanded={open}
+                        aria-controls={panel}
+                        className="group -m-1 flex min-h-[24px] min-w-0 items-baseline gap-2 rounded-lg p-1 text-left font-bold text-ink focus-visible:outline-2 focus-visible:outline-violet-brand"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`inline-block text-ink-soft transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`}
+                        >
+                          ›
+                        </span>
+                        <span className="min-w-0 group-hover:underline group-hover:underline-offset-4">{product.title}</span>
+                      </button>
+                      <p className="font-semibold tabular-nums text-ink">
+                        {isFree(product)
+                          ? "Free"
+                          : product.recurring
+                            ? `$${centsToPrice(product.priceCents)} ${everyLabel(product.recurring.interval)}`
+                            : product.pwyw
+                              ? `$${centsToPrice(product.priceCents)}+`
+                              : `$${centsToPrice(product.priceCents)}`}
+                      </p>
+                    </div>
+                    <p className="mt-1 flex flex-wrap gap-1.5 text-xs font-semibold text-ink-soft">
+                      {badges(product).map((badge) => (
+                        <span key={badge} className="rounded-full bg-sand px-2 py-0.5">
+                          {badge}
+                        </span>
+                      ))}
+                    </p>
+                  </div>
                 </div>
-                {product.summary ? (
-                  <p className="mt-1 text-sm text-ink-soft">
+
+                {open && product.summary ? (
+                  <p className="mt-2 text-sm text-ink-soft">
                     {product.summary}
                   </p>
                 ) : null}
@@ -1109,10 +1476,13 @@ export function ProductEditor({
                   <button
                     type="button"
                     onClick={() => startEditing(product)}
-                    className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+                    className={quiet}
                   >
                     Edit
                   </button>
+                  <a href={`/@${handle}/p/${product.id}`} target="_blank" rel="noopener noreferrer" className={quiet}>
+                    Its page
+                  </a>
                   <button
                     type="button"
                     disabled={busy || index === 0}
@@ -1122,7 +1492,7 @@ export function ProductEditor({
                         () => {},
                       )
                     }
-                    className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40"
+                    className={quiet}
                   >
                     Move up
                   </button>
@@ -1135,10 +1505,30 @@ export function ProductEditor({
                         () => {},
                       )
                     }
-                    className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40"
+                    className={quiet}
                   >
                     Move down
                   </button>
+                  {products.length > 3 ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy || index === 0}
+                        onClick={() => run({ action: "move", id: product.id, direction: "top" }, () => {}, "Moved to the top.")}
+                        className={quiet}
+                      >
+                        To the top
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || index === products.length - 1}
+                        onClick={() => run({ action: "move", id: product.id, direction: "bottom" }, () => {}, "Moved to the end.")}
+                        className={quiet}
+                      >
+                        To the end
+                      </button>
+                    </>
+                  ) : null}
                   {removingId === product.id ? null : (
                     <button
                       type="button"
@@ -1152,6 +1542,44 @@ export function ProductEditor({
                     </button>
                   )}
                 </div>
+
+                {removingId === product.id ? (
+                  <div className="mt-3 rounded-2xl border-2 border-pink-brand/30 bg-white p-4">
+                    <p className="text-sm text-ink-soft">
+                      Remove{" "}
+                      <strong className="text-ink">{product.title}</strong> from
+                      your page. Its picture and description go with it; nothing
+                      else changes, and you can add it again later.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        aria-busy={busy} disabled={busy}
+                        onClick={() =>
+                          run(
+                            { action: "remove", id: product.id },
+                            () => setRemovingId(null),
+                            "Product removed.",
+                          )
+                        }
+                        className="btn btn-danger-solid btn-sm"
+                      >
+                        {busy ? "Removing…" : "Yes, remove it"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRemovingId(null)}
+                        className="btn btn-ghost btn-sm"
+                      >
+                        Keep it
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {open ? (
+                <div id={panel}>
+                <ProductImageEditor product={product} folder={imageFolder} />
 
                 {/*
                   With price options there is nothing to attach to the product
@@ -1181,8 +1609,8 @@ export function ProductEditor({
                   />
                 ) : null}
 
-                {/* Several prices would put a price on something free. */}
-                {isFree(product) && product.options.length === 0 ? null : (
+                {/* Several prices would put a price on something free, and a chosen price is chosen once. */}
+                {(isFree(product) || product.pwyw) && product.options.length === 0 ? null : (
                 <OptionsBlock
                   product={product}
                   fileBusyId={fileBusyId}
@@ -1198,44 +1626,16 @@ export function ProductEditor({
                 )}
 
                 <CheckoutExtras product={product} products={products} />
-
-                {removingId === product.id ? (
-                  <div className="mt-3 rounded-2xl border-2 border-pink-brand/30 bg-white p-4">
-                    <p className="text-sm text-ink-soft">
-                      Remove{" "}
-                      <strong className="text-ink">{product.title}</strong> from
-                      your page. Nothing else changes, and you can add it again
-                      later.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        aria-busy={busy} disabled={busy}
-                        onClick={() =>
-                          run(
-                            { action: "remove", id: product.id },
-                            () => setRemovingId(null),
-                            "Product removed.",
-                          )
-                        }
-                        className="btn btn-danger-solid btn-sm"
-                      >
-                        {busy ? "Removing…" : "Yes, remove it"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRemovingId(null)}
-                        className="btn btn-ghost btn-sm"
-                      >
-                        Keep it
-                      </button>
-                    </div>
-                  </div>
+                <div className="mt-2">
+                  <CheckoutFieldsEditor product={product} />
+                </div>
+                </div>
                 ) : null}
               </>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {adding ? (
@@ -1248,13 +1648,7 @@ export function ProductEditor({
             submitLabel="Add it"
             onSubmit={() =>
               run(
-                {
-                  action: "add",
-                  title: draft.title,
-                  summary: draft.summary,
-                  price: draft.price,
-                  every: draft.every,
-                },
+                { action: "add", ...payloadOf(draft) },
                 () => {
                   setAdding(false);
                   setDraft(EMPTY);
@@ -1281,7 +1675,7 @@ export function ProductEditor({
 
       {full && !adding ? (
         <p className="mt-3 text-sm text-ink-soft">
-          Your store is holding the most it can. Remove one to add another.
+          {`Your store is holding ${MAX_PRODUCTS} products, the most it can list. Remove one to add another.`}
         </p>
       ) : null}
 

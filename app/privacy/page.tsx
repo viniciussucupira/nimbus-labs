@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="September 22, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="September 26, 2026">
       <p>
         Nimbus Labs (“Nimbus Labs,” “we,” “us,” or “our”) is an independent
         software studio. This Privacy Policy explains how we collect, use,
@@ -65,6 +65,32 @@ export default function PrivacyPage() {
           completed and the creator can see it. The card details are handled by
           Stripe and never reach us. That buyer information belongs to the
           creator, not to us, and section 4 explains what that means.
+        </p>
+        <p>
+          <strong className="text-black">A confirmation of each purchase.</strong>{" "}
+          After a buyer pays, we email them one confirmation on the
+          creator&apos;s behalf, under the store&apos;s name, with what they
+          bought and how to get back to it; replies go to the creator. What it
+          says is read from the payment on the creator&apos;s Stripe account.
+          We keep only a mark that it was sent, tied to that checkout, for 40
+          days, so it is never sent twice. If a creator asks buyers questions
+          at checkout, the answers are kept with the payment on the
+          creator&apos;s own Stripe account, shown to the creator, and for a
+          booked call included in the creator&apos;s booking email.
+        </p>
+        <p>
+          <strong className="text-black">A reminder after an unpaid checkout.</strong>{" "}
+          Only on stores whose creator switched it on, and only for a buyer who
+          agreed on Stripe&apos;s own checkout page to hear from that creator:
+          if they leave without paying, we email them once, on the
+          creator&apos;s behalf, with a link back to the product. Stripe keeps
+          the address and the answer on the creator&apos;s account. We keep a
+          mark that the reminder for that checkout was handled, for two weeks;
+          a one-way hash of the address and the product for a week, so nobody
+          gets two reminders about the same thing; and the link in the reminder
+          that stops them, tied to the address and the store, for 400 days.
+          Pressing it keeps a one-way hash of the address for that store for
+          good, so that store never sends them a reminder again.
         </p>
         <p>
           <strong className="text-black">Managing a membership.</strong> When
@@ -122,7 +148,12 @@ export default function PrivacyPage() {
           address replies go to, and the creator&apos;s has the buyer&apos;s.
           While they pay, a cookie in the buyer&apos;s browser names the
           checkout they opened, for 31 minutes, so that going back to pick
-          another time lets go of the first one. The same kind of cookie, for
+          another time lets go of the first one. Each booking is reminded to
+          the buyer, and to the creator, a day and an hour before, from a queue
+          that names the booking and its time. If the buyer moves the booking
+          to another time from the link in their email, we keep the new time
+          and how many times it was moved, tied to that checkout, for 200
+          days. The same kind of cookie, for
           the same 31 minutes, is set when someone starts to buy a product sold
           in a limited number, so that pressing buy again hands back the one
           they were holding.

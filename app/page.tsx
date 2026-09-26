@@ -92,8 +92,8 @@ const GROUPS: Group[] = [
     items: [
       { title: "Files and links", body: "PDFs, videos, presets and templates up to 5 GB, or a link to where it lives." },
       { title: "Courses", body: "Modules and lessons that can open over time, with free previews." },
-      { title: "Paid calls", body: "Your hours once; buyers pick a time in their own time zone." },
-      { title: "Memberships", body: "Weekly, monthly or yearly, and members cancel in one click." },
+      { title: "Paid calls", body: "One to one, groups of up to 50, or live sessions on dates you set." },
+      { title: "Memberships", body: "Weekly, monthly or yearly, with a free trial if you want one." },
       { title: "Free products", body: "Given for an email address, each one confirmed by its owner." },
     ],
   },
@@ -107,6 +107,7 @@ const GROUPS: Group[] = [
     items: [
       { title: "0% of your sales", body: "Stripe's card fee on your account, and nothing on top." },
       { title: "Up to three prices", body: "One week for $27, five weeks for $39, on one product." },
+      { title: "Pay what you want", body: "Your price as the minimum, a suggested price, and the buyer chooses." },
       { title: "Payment plans", body: "Two to twelve payments that end by themselves after the last." },
       { title: "Offers before and after paying", body: "A box at checkout, one click after, on the same card." },
       { title: "Discount codes and sales tax", body: "Codes and Stripe Tax, both on your own account." },
@@ -122,7 +123,8 @@ const GROUPS: Group[] = [
     items: [
       { title: "Instant download", body: "On screen the second it is paid. Lost later? The buyer gets it again by email, any time." },
       { title: "Courses without passwords", body: "Students open them with a link to their email." },
-      { title: "Calendar invites", body: "A booked call lands in both calendars." },
+      { title: "Calendar invites", body: "A booked call lands in both calendars, with reminders before it." },
+      { title: "A confirmation for every buyer", body: "From your store's name, with the way back to what they bought." },
       { title: "Limited quantities", body: "Counted from real payments, and selling stops at zero." },
     ],
   },
@@ -139,7 +141,7 @@ const GROUPS: Group[] = [
       { title: "Ad pixels", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount." },
       { title: "Your photo, your colour", body: "Four themes, ten colours or your own, each checked for contrast." },
       { title: "An address that never breaks", body: "Change it any time; every old link keeps working." },
-      { title: "Installs like an app", body: "Your store on the home screen of any iPhone or Android phone." },
+      { title: "Installs like an app", body: "Your store on any phone's home screen, with its own name and icon." },
     ],
   },
   {
@@ -211,6 +213,7 @@ const COMPARE = [
   { row: "Cut of each sale", stan: "0%, plus Stripe's own fees", nimbus: "0%, plus Stripe's own fees", key: false, same: true },
   { row: "Several prices for one product", stan: "Not available", nimbus: "Up to three on any product", key: true },
   { row: "Discount codes", stan: "On the $99 Creator Pro plan", nimbus: `Included at $${PRICE} a month`, key: true },
+  { row: "Pay what you want", stan: "Not in their help centre", nimbus: "A minimum and a suggested price", key: false },
   { row: "Changing your store address", stan: "Old links forwarded on a best effort", nimbus: "Every address you ever used keeps working", key: false },
 ];
 

@@ -48,10 +48,12 @@ export const PLAN_NAMES: Record<Tier, string> = {
 /**
  * Whether Pro can be bought.
  *
- * Pro is what costs us money to run for a creator: email to their list, their
- * own domain, several stores, affiliates and the API. It goes on sale with the
- * first of those, and not a day before — a plan that costs more and adds
- * nothing yet is not something we will take money for.
+ * Pro is what costs us money to run for a creator. Two things are built and
+ * in it today: email to their list, and their own domain. Nothing else is
+ * part of it until it exists in the code — several stores, affiliates and an
+ * API are not built, and are not sold. It went on sale with the first of
+ * those two, and not a day before: a plan that costs more and adds nothing
+ * yet is not something we will take money for.
  */
 export const PRO_ON_SALE = true;
 
@@ -63,7 +65,10 @@ export const PRO_MONTHLY_EMAILS = 50_000;
 /** The same, while the free trial runs, so a trial cannot be used to spam. */
 export const TRIAL_MONTHLY_EMAILS = 1_000;
 
-/** What only Pro switches on. */
+/**
+ * What only Pro switches on. "email" and "domain" are the ones built; the
+ * others are names kept for when they are, and nothing reads them yet.
+ */
 export type ProFeature = "email" | "affiliates" | "domain" | "stores" | "api";
 
 /**

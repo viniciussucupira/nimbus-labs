@@ -106,9 +106,11 @@ export async function POST(request: NextRequest) {
       }),
     );
     if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);
-    // Written down before the buyer leaves, so the plan is given its end
-    // whether or not they come back from paying.
-    if (inPlan && store.stripeAccountId) await rememberPlan(store.stripeAccountId, held.value.id);
+    // Written down before the buyer leaves, so the plan — or a membership that
+    // ends after a set number of payments — is given its end whether or not
+    // they come back from paying.
+    const ends = inPlan || (product.recurring !== null && product.recurring.payments > 0);
+    if (ends && store.stripeAccountId) await rememberPlan(store.stripeAccountId, held.value.id);
     // Counted once the buyer is on their way, so the count never slows them.
     after(() => countHit(request, store, { kind: "checkout", id: product.id }));
     const headers = new Headers({ Location: held.value.url, "Cache-Control": "no-store" });

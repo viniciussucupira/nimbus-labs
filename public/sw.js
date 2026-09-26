@@ -1,11 +1,18 @@
-// Minimal service worker: it makes the site installable on Android and keeps
-// the shell usable when the connection drops. It never caches a payment page.
-const CACHE = "nimbus-v1";
+// Minimal service worker: it makes the site, and each creator's store, installable
+// on Android, and keeps a page usable when the connection drops. It never caches a
+// payment page, a download, a signed-in page, or a page opened with a private link.
+const CACHE = "nimbus-v2";
 const SHELL = ["/", "/demo", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
+  // One by one, and none of them required: on a creator's own domain "/" is
+  // their store and the site's other pages live elsewhere, and a shell entry
+  // that cannot be fetched must not stop the worker from installing.
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()),
+    caches
+      .open(CACHE)
+      .then((cache) => Promise.allSettled(SHELL.map((path) => cache.add(path))))
+      .then(() => self.skipWaiting()),
   );
 });
 
@@ -18,6 +25,12 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// A store's own pages that show an order, a membership or a course, on either
+// address a store has (/@name/thanks here, /thanks on its own domain), and the
+// site's signed-in pages.
+const PRIVATE = /^\/(?:@[^/]+\/)?(?:thanks|orders|manage|course|book)(?:\/|$)|^\/(?:studio|signin|unsubscribe|demo\/thanks)(?:\/|$)/;
+const PRIVATE_QUERY = /[?&](?:session_id|token|t|r)=/;
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -27,7 +40,8 @@ self.addEventListener("fetch", (event) => {
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
     url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/demo/thanks")
+    PRIVATE.test(url.pathname) ||
+    PRIVATE_QUERY.test(url.search)
   ) {
     return;
   }
@@ -35,10 +49,20 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
+        if (response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => {});
+        }
         return response;
       })
-      .catch(() => caches.match(request).then((hit) => hit || caches.match("/"))),
+      .catch(() =>
+        caches.match(request).then((hit) => {
+          if (hit) return hit;
+          // Offline inside an installed store: its own front page, if it was
+          // opened before, rather than the Nimbus home page.
+          const store = url.pathname.match(/^\/@[^/]+/);
+          return (store ? caches.match(store[0]) : Promise.resolve(undefined)).then((page) => page || caches.match("/"));
+        }),
+      ),
   );
 });

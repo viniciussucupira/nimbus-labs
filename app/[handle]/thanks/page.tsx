@@ -4,11 +4,11 @@ import { notFound } from "next/navigation";
 import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
 import { linkHost } from "@/lib/product-link";
 import { everyLabel } from "@/lib/product-recurring";
-import { readOrder } from "@/lib/store-checkout";
+import { DOWNLOAD_WINDOW_SECONDS, readOrder } from "@/lib/store-checkout";
 import { lookStyle } from "@/lib/store-look";
 import { canManage } from "@/lib/membership-manage";
-import { confirmBooking } from "@/lib/calls";
-import { readableTime, zoneName } from "@/lib/call-setup";
+import { canMove, confirmBooking, moveLink } from "@/lib/calls";
+import { readableTime, roomFor, zoneName } from "@/lib/call-setup";
 import { SITE_URL } from "@/lib/site-url";
 import { StoreTracking } from "@/components/store-tracking";
 import { confirmStock } from "@/lib/stock";
@@ -20,6 +20,8 @@ import { recordEnrollment } from "@/lib/learn";
 import { noteProduct, upsertContact } from "@/lib/contacts";
 import { enroll } from "@/lib/flows";
 import { canRecover } from "@/lib/buyer-orders";
+import { after } from "next/server";
+import { CONFIRM_WITHIN_SECONDS, canConfirm, confirmPurchase } from "@/lib/purchase-email";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -81,7 +83,12 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   // however many times this page is opened.
   const booked =
     order.state === "paid" && order.call && order.product.call
-      ? { ...order.call, setup: order.product.call }
+      ? {
+          ...order.call,
+          setup: order.product.call,
+          room: roomFor(order.product.call, order.call.start),
+          minutes: Math.round((order.call.end - order.call.start) / 60_000),
+        }
       : null;
   if (booked && sessionId && order.state === "paid" && order.product.call) {
     await confirmBooking({
@@ -92,13 +99,16 @@ export default async function ThanksPage({ params, searchParams }: Params) {
       end: booked.end,
       buyerEmail: order.email,
       buyerTz: booked.buyerTz,
+      moves: booked.moves,
+      answers: order.answers,
       origin: SITE_URL,
     }).catch((error) => console.error("confirming a booking failed", error));
   }
 
-  // A payment plan is given its end the moment its buyer is back; the daily
-  // job does the same for anyone who never came back.
-  if (order.state === "paid" && sessionId && order.plan && store.stripeAccountId) {
+  // A payment plan, or a membership with a set number of payments, is given
+  // its end the moment its buyer is back; the daily job does the same for
+  // anyone who never came back.
+  if (order.state === "paid" && sessionId && (order.plan || order.endsAfter > 0) && store.stripeAccountId) {
     await finishPlan(store.stripeAccountId, sessionId).catch((error) => console.error("finishing a plan failed", error));
   }
 
@@ -135,6 +145,22 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     } catch (error) {
       console.error("noting a purchase on a list failed", error);
     }
+  }
+
+  // The buyer's confirmation email, sent once whichever of this page and the
+  // five-minute job gets there first (lib/purchase-email.ts). After the page
+  // is on its way, so it never waits on the sender. A booked call has its own.
+  const confirming =
+    order.state === "paid" &&
+    !booked &&
+    canConfirm(store) &&
+    Boolean(order.email) &&
+    // How old the order is, from what readOrder already worked out.
+    DOWNLOAD_WINDOW_SECONDS - order.secondsLeft <= CONFIRM_WITHIN_SECONDS;
+  if (confirming && sessionId) {
+    after(() =>
+      confirmPurchase(store, sessionId).catch((error) => console.error("sending a purchase confirmation failed", error)),
+    );
   }
 
   // A limited product's unit becomes a sale the moment its buyer is back.
@@ -179,7 +205,13 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 {booked ? "You are booked" : "Thank you"}
               </h1>
               <p className="st-muted mt-4 text-lg">
-                {order.product.recurring ? "You subscribed to " : booked ? "You booked " : "You bought "}
+                {order.product.recurring
+                  ? order.trialDays > 0
+                    ? "You started a free trial of "
+                    : "You subscribed to "
+                  : booked
+                    ? "You booked "
+                    : "You bought "}
                 <strong style={{ color: "var(--st-text)" }}>
                   {order.option
                     ? `${order.product.title} (${order.option.label})`
@@ -192,16 +224,26 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   </>
                 ) : null}{" "}
                 from{" "}
-                {store.name} for{" "}
-                {order.product.recurring
-                  ? `$${centsToPrice(order.amount)} ${everyLabel(
-                      order.product.recurring.interval,
-                    )}`
-                  : order.plan
-                    ? `$${centsToPrice(order.amount)} today`
-                    : `$${centsToPrice(order.amount)}`}
+                {store.name}
+                {order.product.recurring && order.trialDays > 0
+                  ? ". Nothing was charged today"
+                  : ` for ${
+                      order.product.recurring
+                        ? `$${centsToPrice(order.amount)} ${everyLabel(order.product.recurring.interval)}`
+                        : order.plan
+                          ? `$${centsToPrice(order.amount)} today`
+                          : `$${centsToPrice(order.amount)}`
+                    }`}
                 .
               </p>
+              {order.product.recurring && order.trialDays > 0 ? (
+                <p
+                  className="mt-3 rounded-2xl px-4 py-3 text-sm"
+                  style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
+                >
+                  {`Your first payment of $${centsToPrice(order.option ? order.option.priceCents : order.product.priceCents)}${store.tax.enabled && !store.tax.included ? " plus any sales tax" : ""} is taken when the ${order.trialDays}-day trial ends, on ${new Date((order.created + order.trialDays * 86400) * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}, from the card you gave. Cancel before then and you are not charged at all.`}
+                </p>
+              ) : null}
               {order.plan ? (
                 <p
                   className="mt-3 rounded-2xl px-4 py-3 text-sm"
@@ -217,16 +259,18 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 >
                   {canManage(store) ? (
                     <>
-                      {`This renews ${everyLabel(order.product.recurring.interval)} until you cancel it, and you can cancel it yourself at any time, without writing to anyone: `}
+                      {order.endsAfter > 0
+                        ? `This renews ${everyLabel(order.product.recurring.interval)} for ${order.endsAfter} payments in all and then ends by itself. You can cancel it yourself before that, without writing to anyone: `
+                        : `This renews ${everyLabel(order.product.recurring.interval)} until you cancel it, and you can cancel it yourself at any time, without writing to anyone: `}
                       <Link href={`/@${store.handle}/manage`} className="font-semibold underline underline-offset-4">
                         manage your membership
                       </Link>
                       {" with the email you paid with."}
                     </>
                   ) : (
-                    `This renews ${everyLabel(
-                      order.product.recurring.interval,
-                    )} until you cancel it. The charge is made by ${store.name}, on their own account: reply to the receipt Stripe emailed you and it reaches them.`
+                    `This renews ${everyLabel(order.product.recurring.interval)} ${
+                      order.endsAfter > 0 ? `for ${order.endsAfter} payments in all and then ends by itself, unless you cancel it first` : "until you cancel it"
+                    }. The charge is made by ${store.name}, on their own account: reply to the receipt Stripe emailed you and it reaches them.`
                   )}
                 </p>
               ) : null}
@@ -239,13 +283,13 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   >
                     <p className="text-lg font-semibold">{readableTime(booked.start, booked.buyerTz)}</p>
                     <p className="mt-1 text-sm">
-                      {`${zoneName(booked.start, booked.buyerTz)} \u00b7 ${booked.setup.minutes} minutes`}
+                      {`${zoneName(booked.start, booked.buyerTz)} \u00b7 ${booked.minutes} minutes`}
                     </p>
                   </div>
                   <div className="mt-6 flex flex-wrap items-center gap-3">
-                    {booked.setup.room ? (
+                    {booked.room ? (
                       <a
-                        href={booked.setup.room}
+                        href={booked.room}
                         rel="noopener noreferrer nofollow"
                         target="_blank"
                         className="btn st-btn"
@@ -261,13 +305,26 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     </a>
                   </div>
                   <p className="st-muted mt-5 text-sm">
-                    {booked.setup.room
+                    {booked.room
                       ? `Join at that time with the link above. It is also in your confirmation email, with a calendar file.`
                       : `${store.name} will send you the link to join before the call.`}
                     {order.email
-                      ? ` A confirmation is on its way to ${order.email}; to move or cancel the call, reply to it.`
+                      ? ` A confirmation is on its way to ${order.email}, and a reminder follows a day and an hour before; to cancel, reply to it.`
                       : ""}
                   </p>
+                  {sessionId && canMove(booked.setup, booked.start, booked.moves) ? (
+                    <p className="st-muted mt-3 text-sm">
+                      {"Need another time? "}
+                      <a
+                        href={moveLink("", store, order.product.id, sessionId)}
+                        className="font-semibold underline underline-offset-4"
+                        style={{ color: "var(--st-text)" }}
+                      >
+                        Move your booking
+                      </a>
+                      {`, up to ${Math.max(booked.setup.noticeHours, 1)} ${Math.max(booked.setup.noticeHours, 1) === 1 ? "hour" : "hours"} before it starts.`}
+                    </p>
+                  ) : null}
                 </>
               ) : order.product.course ? (
                 <>
@@ -421,10 +478,13 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     : `${upsellOffer.target.title} was not charged: your card turned it down. You can still buy it from the store.`}
                 </p>
               ) : null}
-              {order.email ? (
+              {confirming && order.email ? (
                 <p className="st-muted mt-2 text-sm">
-                  Your receipt went to {order.email}. It comes from {store.name},
-                  because the charge was made on their account, not ours.
+                  {`A confirmation from ${store.name} is on its way to ${order.email}, with how to get back to this later. The charge was made on ${store.name}'s own Stripe account, not ours.`}
+                </p>
+              ) : order.email ? (
+                <p className="st-muted mt-2 text-sm">
+                  {`You paid with ${order.email}. The charge was made on ${store.name}'s own Stripe account, not ours, so any receipt comes from them.`}
                 </p>
               ) : null}
             </>

@@ -59,15 +59,22 @@ export function isOneOff(product: Product): boolean {
 
 /**
  * Whether a product can be the thing added: something with one price and one
- * delivery, so the buyer who ticks the box gets exactly one clear thing.
+ * delivery, so the buyer who ticks the box gets exactly one clear thing. A
+ * product whose buyers choose the price has no one price to offer it at.
  */
 export function canBeBumped(product: Product): boolean {
-  return isOneOff(product) && product.options.length === 0 && (product.file !== null || product.link !== null);
+  return (
+    isOneOff(product) &&
+    product.options.length === 0 &&
+    !product.pwyw &&
+    (product.file !== null || product.link !== null)
+  );
 }
 
 /** The bump a buyer may be offered on this product right now, or null. */
 export function activeBump(products: Product[], product: Product): { bump: Bump; target: Product } | null {
-  if (!product.bump || !isOneOff(product)) return null;
+  // Stripe lets a chosen amount be the only line of its checkout.
+  if (!product.bump || !isOneOff(product) || product.pwyw) return null;
   const target = products.find((p) => p.id === product.bump!.productId);
   if (!target || target.id === product.id || !canBeBumped(target)) return null;
   // Never dearer than buying it on its own.
@@ -117,7 +124,7 @@ export function parsePlan(raw: unknown): Plan | null {
  */
 export function activePlan(product: Product): Plan | null {
   const plan = product.plan;
-  if (!plan || !isOneOff(product) || product.options.length > 0) return null;
+  if (!plan || !isOneOff(product) || product.options.length > 0 || product.pwyw) return null;
   if (plan.payments * plan.amountCents < product.priceCents) return null;
   return plan;
 }

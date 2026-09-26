@@ -19,6 +19,11 @@ import { StripeError, checkoutClosesAt, onAccount, platformKey } from "@/lib/str
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { applyTax } from "@/lib/tax";
 import { inTheCurrencyShown, isSettled, onlyInstantMethods } from "@/lib/instant-pay";
+import { activePwyw, pwywPriceId } from "@/lib/pay-what-you-want";
+import { type Answer, applyCheckoutFields, readAnswers } from "@/lib/checkout-fields";
+import { imageUrl } from "@/lib/product-image";
+import { readMoves } from "@/lib/call-records";
+import { applyRecovery, recoveryOn, refusedRecovery, withoutRecovery } from "@/lib/recovery-setting";
 
 /**
  * How long a paid link keeps working.
@@ -151,6 +156,9 @@ export async function createCheckout(
   const priceCents = plan ? plan.amountCents : chosen ? chosen.priceCents : product.priceCents;
   const baseName = chosen ? `${product.title} (${chosen.label})` : product.title;
   const name = plan ? `${baseName} (${planWords(plan)})` : baseName;
+  // The buyer names the amount on Stripe's page, from the creator's floor up.
+  // Only a single one-off line can carry that, which activePwyw has checked.
+  const pwyw = !chosen && !plan && !membership ? activePwyw(product) : null;
 
   const body = new URLSearchParams({
     mode: recurring ? "subscription" : "payment",
@@ -175,9 +183,15 @@ export async function createCheckout(
   // travels with the charge rather than being worked out again afterwards.
   if (chosen) body.set("metadata[option]", chosen.id);
 
+  // Stripe's page shows the product's picture beside its name, when there is
+  // one and it can be fetched from a public https address.
+  if (product.image && origin.startsWith("https://")) {
+    body.set("line_items[0][price_data][product_data][images][0]", `${origin}${imageUrl(product.image)}`);
+  }
+
   // The product the buyer chose to add, at the price the creator set for it
   // here — read from the store's record, never from the form.
-  const bump = extras.bump && !membership ? activeBump(store.products, product) : null;
+  const bump = extras.bump && !membership && !pwyw ? activeBump(store.products, product) : null;
   if (bump) {
     body.set("line_items[1][quantity]", "1");
     body.set("line_items[1][price_data][currency]", "usd");
@@ -206,7 +220,8 @@ export async function createCheckout(
   // code that does not exist, and a buyer who leaves to search for one is a
   // buyer who may not come back. What a code takes off is worked out by Stripe
   // from a coupon on the creator's own account; no amount is decided here.
-  if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
+  // Not where the buyer chooses the price: they already name the amount.
+  if (store.hasDiscounts && !pwyw) body.set("allow_promotion_codes", "true");
 
   if (extras.buyerKey) body.set("metadata[buyer_key]", extras.buyerKey);
   if (extras.news) body.set("metadata[news]", "yes");
@@ -218,6 +233,20 @@ export async function createCheckout(
     body.set("subscription_data[metadata][store]", store.handle);
     body.set("subscription_data[metadata][product]", product.id);
     if (chosen) body.set("subscription_data[metadata][option]", chosen.id);
+    // Days free before the first payment. The card is taken now, as the store
+    // page says, and nothing is charged until the trial is over.
+    if (membership.trialDays > 0) {
+      body.set("subscription_data[trial_period_days]", String(membership.trialDays));
+      body.set("metadata[trial_days]", String(membership.trialDays));
+    }
+    // A membership that ends by itself after so many payments is given its
+    // end once it has begun, exactly as a payment plan is (lib/plans.ts).
+    if (membership.payments > 0) {
+      body.set("metadata[ends_after]", String(membership.payments));
+      body.set("metadata[ends_interval]", membership.interval);
+      body.set("subscription_data[metadata][ends_after]", String(membership.payments));
+      body.set("subscription_data[metadata][ends_interval]", membership.interval);
+    }
   } else if (plan) {
     // Charged on the creator's account like everything else, and given its
     // end as soon as the first payment is through (lib/plans.ts).
@@ -241,19 +270,66 @@ export async function createCheckout(
     body.set("line_items[0][price_data][product_data][description]", product.summary);
   }
 
+  // The creator's questions, answered on Stripe's page before paying.
+  applyCheckoutFields(body, product.fields);
+
   // Sales tax, when the creator has switched it on: worked out by Stripe Tax
   // from the buyer's address, on the creator's account, for every line.
   applyTax(store, body);
   onlyInstantMethods(body);
   inTheCurrencyShown(body);
-  if (extras.held) body.set("expires_at", String(checkoutClosesAt()));
+  // A store with reminders on: Stripe asks the buyer whether they want to
+  // hear from the creator, and keeps their answer and their address if they
+  // leave without paying (lib/checkout-recovery.ts). Set before the closing
+  // time below, so a held unit's shorter time still wins.
+  const recovering = recoveryOn(store);
+  if (recovering) applyRecovery(body);
 
-  const session = await onAccount(
-    "POST",
-    store.stripeAccountId,
-    "/checkout/sessions",
-    body,
-  );
+  const open = async (fresh: boolean) => {
+    if (pwyw) {
+      // The line becomes the creator's choose-your-price Price instead of an
+      // amount of ours. Its name, floor, suggestion and tax setting are baked
+      // into that Price, so the inline fields go.
+      for (const key of [...body.keys()]) {
+        if (key.startsWith("line_items[0][price_data]")) body.delete(key);
+      }
+      body.set("line_items[0][price]", await pwywPriceId(store, product, pwyw, fresh));
+      body.set("metadata[pwyw]", "yes");
+    }
+    // Set just before the request, because Stripe counts its minimum from then.
+    if (extras.held) body.set("expires_at", String(checkoutClosesAt()));
+    return onAccount("POST", store.stripeAccountId as string, "/checkout/sessions", body);
+  };
+
+  // Each of the two things Stripe may refuse is put right once, whichever it
+  // refuses first, so a store with both — reminders Stripe will not ask for,
+  // and a kept Price that was archived — still opens its checkout.
+  let session: Record<string, unknown> | null = null;
+  let asking = recovering;
+  let fresh = false;
+  while (session === null) {
+    try {
+      session = await open(fresh);
+    } catch (error) {
+      if (asking && refusedRecovery(error)) {
+        // Stripe decides which accounts it will ask for consent on behalf of.
+        // One it refuses still sells: the checkout is opened again without
+        // asking, and that buyer is simply never reminded.
+        console.error("checkout refused the reminder fields; opened without them", error);
+        withoutRecovery(body);
+        asking = false;
+        continue;
+      }
+      // The kept Price was archived or deleted in the creator's dashboard: make
+      // a new one and try once more, rather than leave the product unsellable.
+      const aboutThePrice =
+        error instanceof StripeError &&
+        error.status < 500 &&
+        (error.code === "resource_missing" || /price/i.test(error.message));
+      if (!pwyw || fresh || !aboutThePrice) throw error;
+      fresh = true;
+    }
+  }
   if (typeof session.url !== "string" || !session.url || typeof session.id !== "string") {
     throw new Error("Stripe did not return a checkout URL");
   }
@@ -274,8 +350,11 @@ export type Order =
       email: string | null;
       /** How long this download still has, in seconds. */
       secondsLeft: number;
-      /** For a paid call: the time booked, and the buyer's own time zone. */
-      call: { start: number; end: number; buyerTz: string } | null;
+      /**
+       * For a paid call: the time booked — where its buyer moved it, if they
+       * did — the buyer's own time zone, and how many times it was moved.
+       */
+      call: { start: number; end: number; buyerTz: string; moves: number } | null;
       /** The product the buyer added at checkout, with what it delivers. */
       bump: { product: Product; file: ProductFile | null; link: string | null } | null;
       /** When it was paid, in seconds since the epoch. */
@@ -288,6 +367,12 @@ export type Order =
       buyerKey: string | null;
       /** The buyer ticked the box to hear from the creator. */
       news: boolean;
+      /** For a membership: the days free before the first payment, 0 for none. */
+      trialDays: number;
+      /** For a membership that ends by itself: after how many payments. */
+      endsAfter: number;
+      /** What the buyer answered at checkout. */
+      answers: Answer[];
     }
   | { state: "unpaid" | "processing" | "expired" | "invalid" | "unavailable" | "error" };
 
@@ -350,20 +435,32 @@ export async function readOrder(
     return { state: "unpaid" };
   }
 
+  const start = Number(metadata?.start);
+  const end = Number(metadata?.end);
+  let call =
+    metadata?.kind === "call" && Number.isFinite(start) && Number.isFinite(end) && end > start
+      ? { start, end, buyerTz: typeof metadata?.tz === "string" ? metadata.tz : "UTC", moves: 0 }
+      : null;
+  // A booking its buyer moved is at its new time everywhere it is shown.
+  if (call) {
+    try {
+      const move = (await readMoves([sessionId])).get(sessionId);
+      if (move) call = { ...call, start: move.s, end: move.e, moves: move.n };
+    } catch (error) {
+      console.error("reading a moved booking failed", error);
+      return { state: "error" };
+    }
+  }
+
+  // A download link lasts three days; a booked call is shown, with its
+  // calendar file, until it is over, because the reminder emails link here.
   const created = typeof session.created === "number" ? session.created : 0;
   const age = Date.now() / 1000 - created;
-  if (age > DOWNLOAD_WINDOW_SECONDS) return { state: "expired" };
+  if (age > DOWNLOAD_WINDOW_SECONDS && !(call && call.end > Date.now())) return { state: "expired" };
 
   const details = session.customer_details as { email?: unknown } | null;
   const email =
     typeof details?.email === "string" && details.email ? details.email : null;
-
-  const start = Number(metadata?.start);
-  const end = Number(metadata?.end);
-  const call =
-    metadata?.kind === "call" && Number.isFinite(start) && Number.isFinite(end) && end > start
-      ? { start, end, buyerTz: typeof metadata?.tz === "string" ? metadata.tz : "UTC" }
-      : null;
 
   // Delivered as it is now, like the product itself: the offer may since have
   // changed, but what was paid for was this product.
@@ -378,6 +475,9 @@ export async function readOrder(
     upsellKey: typeof metadata?.upsell_key === "string" ? metadata.upsell_key : null,
     buyerKey: typeof metadata?.buyer_key === "string" ? metadata.buyer_key : null,
     news: metadata?.news === "yes",
+    trialDays: Number.isInteger(Number(metadata?.trial_days)) ? Math.max(0, Number(metadata?.trial_days)) : 0,
+    endsAfter: Number.isInteger(Number(metadata?.ends_after)) ? Math.max(0, Number(metadata?.ends_after)) : 0,
+    answers: readAnswers(session),
     plan:
       metadata?.kind === "plan" && Number(metadata?.plan_payments) >= 2
         ? { payments: Number(metadata.plan_payments), interval: metadata.plan_interval === "week" ? "week" : "month" }
@@ -407,6 +507,10 @@ export type Sale = {
   stillDownloadable: boolean;
   /** A booked call delivers a time, not a download. */
   isCall: boolean;
+  /** What the buyer answered at checkout, question by question. */
+  answers: Answer[];
+  /** A membership that began with a free trial, so nothing was charged yet. */
+  trial: boolean;
 };
 
 // Each state is its own member so a check on one narrows the rest away;
@@ -424,6 +528,7 @@ type SessionRecord = {
   amount_total?: unknown;
   metadata?: Record<string, string> | null;
   customer_details?: { email?: unknown } | null;
+  custom_fields?: unknown;
 };
 
 /**
@@ -479,6 +584,8 @@ export async function listSales(store: Store): Promise<SaleList> {
         paidAt,
         stillDownloadable: now - paidAt <= DOWNLOAD_WINDOW_SECONDS,
         isCall: row.metadata?.kind === "call",
+        answers: readAnswers(row),
+        trial: Number(row.metadata?.trial_days) > 0,
       };
     })
     .filter((sale) => sale.reference !== "");
@@ -509,6 +616,8 @@ export async function listSales(store: Store): Promise<SaleList> {
           paidAt,
           stillDownloadable: now - paidAt <= DOWNLOAD_WINDOW_SECONDS,
           isCall: false,
+          answers: [],
+          trial: false,
         };
       })
       .filter((sale) => sale.reference !== "");

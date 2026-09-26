@@ -55,7 +55,8 @@ const VALUES = [
 ];
 
 const BUILT = [
-  "A store page with your photo, your links and your products, in one of four themes and the colour you choose",
+  "A store page with your photo, up to 100 links and up to 200 products, in one of four themes and the colour you choose",
+  "A picture on each product, shown on its card in one of three styles, and a page of its own for each product with a long description and its own title and preview card for search engines and shared links",
   "Price options on one product — one week, five weeks, the season — up to three, each handing over its own file or link",
   "A Stripe checkout that charges the creator account directly, with nothing taken on top — running in test mode on the demo store",
   "The file delivered the second the payment clears, with a link that expires",
@@ -66,7 +67,7 @@ const BUILT = [
   "An editor for your own store: the name, the description, and what you sell with its price",
   "The file you sell, uploaded straight from your browser and kept where only you can reach it",
   "Or a link instead of a file, for what is too big to upload or is not a file at all",
-  "Memberships: daily, weekly, monthly or yearly, charged on your own Stripe account",
+  "Memberships: daily, weekly, monthly or yearly, charged on your own Stripe account, with a free trial of 1 to 90 days or a set number of payments, 2 to 36, after which they end by themselves",
   "Members who cancel on their own, in one click on Stripe's own page, without having to write to you",
   "Your numbers: visitors, where they came from, checkouts started and sales for the last week or month — visits counted without cookies, sales read from your own Stripe",
   "Your own Meta, Google, TikTok and Pinterest pixels, told of every page view, checkout, lead and purchase with its amount, and loaded only once a visitor allows it where the law asks for that",
@@ -77,11 +78,17 @@ const BUILT = [
   "Limited quantities: the page shows how many are left, counted from real payments, and a unit someone is paying for is held so the last one is never sold twice",
   "Courses: modules of lessons with video, text, downloads and a link, free preview lessons, modules that open a set number of days after each student joins with an email the day they do, and each student's progress in your studio — students open them with their email, no password",
   "Paid calls with a calendar: your weekly hours in your time zone, the free times shown to each buyer in theirs, the time held while they pay, and a calendar file emailed to both of you",
+  "Group calls of up to 50 people, and live sessions on dates you set with up to 500 seats each, held on the meeting service whose link you give",
+  "Reminders before every booking, a day and an hour before, and buyers who move their own booking up to twice",
+  "Pay what you want: your price as the minimum, a suggested price in the box, and Stripe refusing anything under it",
+  "Up to three questions at checkout — a short answer, a number or a list — with the answers in your list of sales",
+  "A confirmation email to every buyer, from your store's name, with the way back to what they bought",
+  "One reminder after a checkout left unpaid, only to buyers who agreed on Stripe's page, for Stripe accounts in the United States",
   "Links to everywhere else you are — the channel, the podcast, the booking page — with no price and no checkout on them",
   "Discount codes a buyer types at checkout, made as coupons on your own Stripe account",
   "Free products given for an email address, each address confirmed by its owner, and the list downloadable from your studio at any time",
   "Email to your list, on Pro: one-off emails now or at a time you choose, and sequences that send themselves after someone joins or buys — only to people who agreed, with a one-click unsubscribe in every one",
-  "A store that installs to the home screen on iPhone and Android",
+  "Every store installs to the home screen on iPhone and Android as an app of its own, with its name, its icon and its colour",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
 
@@ -93,7 +100,7 @@ const BUILT = [
  * than claiming a button that would do nothing.
  */
 const STRIPE_LINE =
-  "Connecting your own Stripe account from the studio, so charges are made on it and not on ours";
+  "Connecting your own Stripe account from the studio, in any of 43 countries, so charges are made on it and not on ours";
 
 const CHECKOUT_LINE =
   "Selling: the buyer pays on your account and the file is handed over the moment Stripe confirms it";
@@ -117,6 +124,9 @@ const NOT_BUILT = [
   "Reading your Google or Outlook calendar, so a busy day closes by itself",
   "Several stores in one account",
   "An affiliate programme",
+  "More than 200 products in one store",
+  "Phone-number and checkbox questions at checkout",
+  "Streaming or recording live sessions here, rather than on the service whose link you give",
 ];
 
 /* What shipped, and when: read from the site's own history, not written for effect. */
@@ -127,6 +137,7 @@ const RELEASES: { date: string; items: string }[] = [
   { date: "20 September 2026", items: "Memberships, discount codes, and several prices on one product in every store." },
   { date: "21 September 2026", items: "Free products for an email address, members who cancel on their own, and cancelling the Nimbus plan in one click." },
   { date: "22 September 2026", items: "Paid calls, courses, numbers and ad pixels, offers before and after paying, payment plans, sales tax, yearly plans, email to your list and your own domain on Pro, and buyers getting any purchase again by email." },
+  { date: "26 September 2026", items: "Up to 200 products with pictures and pages of their own, questions at checkout, pay what you want, free trials and fixed-length memberships, group calls and live sessions with reminders and self-serve moves, a confirmation email for every purchase, every store installable as its own app, 43 Stripe countries, and one reminder after an unpaid checkout." },
 ];
 
 /* Facts a creator can check before trusting us with a store. */

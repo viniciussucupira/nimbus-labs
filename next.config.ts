@@ -17,6 +17,17 @@ const nextConfig: NextConfig = {
      * show up. It is measured in production.
      */
     inlineCss: true,
+    /**
+     * Off: guessing a link's route from links already prefetched.
+     *
+     * With it on (Next 16's default), a store page with three or more product
+     * pages linked predicted the third one's route, asked the server for its
+     * head alone, and never accepted the answer: the browser repeated that one
+     * request hundreds of times a second for as long as the store page stayed
+     * open. Each link now has its route asked for once, as before, which on a
+     * store page costs one small request per product and settles.
+     */
+    optimisticRouting: false,
   },
 
   /**
