@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CallEditor } from "@/components/call-editor";
 import { CourseToggle } from "@/components/course-toggle";
 import { CheckoutExtras } from "@/components/checkout-extras";
+import { toast } from "@/components/toast";
 import { uploadPresigned } from "@vercel/blob/client";
 import {
   MAX_PRODUCTS,
@@ -315,7 +316,7 @@ function OptionsBlock({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(payload: Record<string, unknown>, done: () => void) {
+  async function run(payload: Record<string, unknown>, done: () => void, confirmation?: string) {
     setBusy(true);
     setError(null);
     try {
@@ -340,6 +341,7 @@ function OptionsBlock({
         return;
       }
       done();
+      if (confirmation) toast(confirmation);
       router.refresh();
     } catch {
       setError(MESSAGES.server_error);
@@ -459,8 +461,10 @@ function OptionsBlock({
               form(
                 "Save",
                 () =>
-                  run({ action: "edit", id: option.id, label, price }, () =>
-                    setEditingId(null),
+                  run(
+                    { action: "edit", id: option.id, label, price },
+                    () => setEditingId(null),
+                    "Price saved.",
                   ),
                 () => {
                   setEditingId(null);
@@ -567,8 +571,10 @@ function OptionsBlock({
                         type="button"
                         aria-busy={busy} disabled={busy}
                         onClick={() =>
-                          run({ action: "remove", id: option.id }, () =>
-                            setRemovingId(null),
+                          run(
+                            { action: "remove", id: option.id },
+                            () => setRemovingId(null),
+                            "Price removed.",
                           )
                         }
                         className="btn btn-danger-solid btn-sm"
@@ -595,8 +601,10 @@ function OptionsBlock({
         ? form(
             "Add this price",
             () =>
-              run({ action: "add", id: product.id, label, price }, () =>
-                setAdding(false),
+              run(
+                { action: "add", id: product.id, label, price },
+                () => setAdding(false),
+                "Price added.",
               ),
             () => {
               setAdding(false);
@@ -994,7 +1002,7 @@ export function ProductEditor({
     router.refresh();
   }
 
-  async function run(payload: Record<string, unknown>, done: () => void) {
+  async function run(payload: Record<string, unknown>, done: () => void, confirmation?: string) {
     setBusy(true);
     setError(null);
     const problem = await send(payload);
@@ -1004,6 +1012,7 @@ export function ProductEditor({
       return;
     }
     done();
+    if (confirmation) toast(confirmation);
     router.refresh();
   }
 
@@ -1068,6 +1077,7 @@ export function ProductEditor({
                       every: draft.every,
                     },
                     () => setEditingId(null),
+                    "Product saved.",
                   )
                 }
                 onCancel={() => {
@@ -1202,8 +1212,10 @@ export function ProductEditor({
                         type="button"
                         aria-busy={busy} disabled={busy}
                         onClick={() =>
-                          run({ action: "remove", id: product.id }, () =>
-                            setRemovingId(null),
+                          run(
+                            { action: "remove", id: product.id },
+                            () => setRemovingId(null),
+                            "Product removed.",
                           )
                         }
                         className="btn btn-danger-solid btn-sm"
@@ -1247,6 +1259,7 @@ export function ProductEditor({
                   setAdding(false);
                   setDraft(EMPTY);
                 },
+                "Product added.",
               )
             }
             onCancel={() => {

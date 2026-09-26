@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 import type { TaxSetting } from "@/lib/tax";
 
 const MESSAGES: Record<string, string> = {
@@ -30,13 +31,11 @@ export function TaxEditor({
   const [included, setIncluded] = useState(tax.included);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError(null);
-    setSaved(false);
     try {
       const response = await fetch("/api/store/tax", {
         method: "POST",
@@ -45,7 +44,7 @@ export function TaxEditor({
       });
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (data.ok) {
-        setSaved(true);
+        toast("Sales tax settings saved.");
         router.refresh();
         return;
       }
@@ -121,7 +120,6 @@ export function TaxEditor({
           ) : null}
 
           {error ? <p className="notice notice-error" role="alert">{error}</p> : null}
-          {saved && !error ? <p className="text-sm font-semibold text-ink" role="status">Saved.</p> : null}
           <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-primary">
             {busy ? "Saving…" : "Save"}
           </button>

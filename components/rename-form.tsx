@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 
 type State =
   | { kind: "closed" }
@@ -47,6 +48,7 @@ export function RenameForm({ current }: { current: string }) {
       if (data.ok) {
         setState({ kind: "closed" });
         setHandle("");
+        toast("Address changed.");
         router.refresh();
         return;
       }

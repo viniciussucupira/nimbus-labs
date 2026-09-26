@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadPresigned } from "@vercel/blob/client";
+import { toast } from "@/components/toast";
 import {
   type Course,
   type CourseModule,
@@ -138,7 +139,10 @@ export function CourseEditor({ productId, initial, folder }: { productId: string
             className="btn btn-secondary btn-sm mt-3"
             onClick={async () => {
               const answer = await run({ action: "disable" });
-              if (answer.ok) router.push("/studio");
+              if (answer.ok) {
+                toast("It's an ordinary product again.");
+                router.push("/studio");
+              }
             }}
           >
             Stop selling it as a course
@@ -186,9 +190,10 @@ function ModuleCard({
       <p id={`module-${unit.id}-heading`} className="eyebrow">{`Module ${index + 1}`}</p>
       <form
         className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-end"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
-          run({ action: "edit", op: "module-edit", moduleId: unit.id, title, dripDays: drip });
+          const answer = await run({ action: "edit", op: "module-edit", moduleId: unit.id, title, dripDays: drip });
+          if (answer.ok) toast("Module saved.");
         }}
       >
         <label className="block min-w-0">
@@ -222,7 +227,16 @@ function ModuleCard({
           Move module down
         </button>
         {unit.lessons.length === 0 ? (
-          <button type="button" className={small} aria-busy={busy} disabled={busy} onClick={() => run({ action: "edit", op: "module-remove", moduleId: unit.id })}>
+          <button
+            type="button"
+            className={small}
+            aria-busy={busy}
+            disabled={busy}
+            onClick={async () => {
+              const answer = await run({ action: "edit", op: "module-remove", moduleId: unit.id });
+              if (answer.ok) toast("Module removed.");
+            }}
+          >
             Remove module
           </button>
         ) : null}
@@ -321,7 +335,6 @@ function LessonEditor({
   const [loadingText, setLoadingText] = useState(false);
   const [uploading, setUploading] = useState<{ kind: "video" | "file"; percent: number } | null>(null);
   const [removing, setRemoving] = useState(false);
-  const [saved, setSaved] = useState<string | null>(null);
 
   async function loadText() {
     setLoadingText(true);
@@ -367,7 +380,7 @@ function LessonEditor({
         onSubmit={async (event) => {
           event.preventDefault();
           const answer = await run({ action: "edit", op: "lesson-edit", lessonId: lesson.id, title, preview, link });
-          if (answer.ok) setSaved("Saved.");
+          if (answer.ok) toast("Lesson saved.");
         }}
       >
         <label className="block">
@@ -384,7 +397,6 @@ function LessonEditor({
         </label>
         <div className="flex flex-wrap items-center gap-3">
           <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-secondary btn-sm">Save lesson</button>
-          {saved ? <span className="text-sm text-ink-soft" role="status">{saved}</span> : null}
         </div>
       </form>
 
@@ -393,7 +405,15 @@ function LessonEditor({
         {lesson.video ? (
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             <span className="min-w-0 break-all text-ink">{`${lesson.video.name} · ${readableSize(lesson.video.bytes)}`}</span>
-            <button type="button" className={`${small} font-bold`} disabled={busy || uploading !== null} onClick={() => run({ action: "edit", op: "media-remove", lessonId: lesson.id, pathname: lesson.video!.pathname })}>
+            <button
+              type="button"
+              className={`${small} font-bold`}
+              disabled={busy || uploading !== null}
+              onClick={async () => {
+                const answer = await run({ action: "edit", op: "media-remove", lessonId: lesson.id, pathname: lesson.video!.pathname });
+                if (answer.ok) toast("Video removed.");
+              }}
+            >
               Remove video
             </button>
           </div>
@@ -433,7 +453,7 @@ function LessonEditor({
             onSubmit={async (event) => {
               event.preventDefault();
               const answer = await run({ action: "body", lessonId: lesson.id, text });
-              if (answer.ok) setSaved("Text saved.");
+              if (answer.ok) toast("Lesson text saved.");
             }}
           >
             <textarea
@@ -459,7 +479,16 @@ function LessonEditor({
             {lesson.files.map((file) => (
               <li key={file.pathname} className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span className="min-w-0 break-all text-ink">{`${file.name} · ${readableSize(file.bytes)}`}</span>
-                <button type="button" className={`${small} font-bold`} aria-busy={busy} disabled={busy} onClick={() => run({ action: "edit", op: "media-remove", lessonId: lesson.id, pathname: file.pathname })}>
+                <button
+                  type="button"
+                  className={`${small} font-bold`}
+                  aria-busy={busy}
+                  disabled={busy}
+                  onClick={async () => {
+                    const answer = await run({ action: "edit", op: "media-remove", lessonId: lesson.id, pathname: file.pathname });
+                    if (answer.ok) toast("Download removed.");
+                  }}
+                >
                   Remove
                 </button>
               </li>
@@ -499,7 +528,10 @@ function LessonEditor({
               className="btn btn-secondary btn-sm"
               onClick={async () => {
                 const answer = await run({ action: "edit", op: "lesson-remove", lessonId: lesson.id });
-                if (answer.ok) onRemoved();
+                if (answer.ok) {
+                  onRemoved();
+                  toast("Lesson removed.");
+                }
               }}
             >
               Yes, remove it
@@ -527,8 +559,9 @@ export function StudentAccess({ productId, email, blocked }: { productId: string
       className="whitespace-nowrap text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep disabled:opacity-40"
       onClick={async () => {
         setBusy(true);
-        await post({ id: productId, action: "block", email, blocked: !blocked });
+        const answer = await post({ id: productId, action: "block", email, blocked: !blocked });
         setBusy(false);
+        if (answer.ok) toast(blocked ? "Access restored." : "Access removed.");
         router.refresh();
       }}
     >

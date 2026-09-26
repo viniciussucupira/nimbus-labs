@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 import type { Product } from "@/lib/store";
 import {
   MAX_PITCH_LENGTH,
@@ -37,7 +38,7 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
 
   if (!isOneOff(product)) return null;
 
-  async function send(payload: Record<string, unknown>) {
+  async function send(payload: Record<string, unknown>, confirmation: string) {
     setBusy(true);
     setError(null);
     try {
@@ -49,6 +50,7 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (data.ok) {
         setOpen(null);
+        toast(confirmation);
         router.refresh();
         return;
       }
@@ -69,7 +71,7 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
           className="rounded-[var(--r-sm)] border border-line bg-white p-4"
           onSubmit={(e) => {
             e.preventDefault();
-            send({ stock: stock.trim() });
+            send({ stock: stock.trim() }, "Limit saved.");
           }}
         >
           <label className="block">
@@ -106,7 +108,7 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
           {" · "}
           <button type="button" className={link} onClick={() => setOpen("stock")}>Change</button>
           {" · "}
-          <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => send({ stock: null })}>No limit</button>
+          <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => send({ stock: null }, "Limit removed.")}>No limit</button>
         </p>
       ) : (
         <button type="button" className={link} onClick={() => setOpen("stock")}>
@@ -130,6 +132,8 @@ const OFFER_TEXT = {
     on: (title: string, price: string) => `Offers ${title} for $${price} at checkout`,
     stop: "Stop offering it",
     save: "Save the offer",
+    saved: "Checkout offer saved.",
+    stopped: "Checkout offer stopped.",
     note: "Buyers see a box under the buy button and tick it themselves; it is never ticked for them. Both are paid in one checkout and both are delivered on the thanks page.",
   },
   upsell: {
@@ -137,6 +141,8 @@ const OFFER_TEXT = {
     on: (title: string, price: string) => `Offers ${title} for $${price} after paying, in one click`,
     stop: "Stop offering it",
     save: "Save the offer",
+    saved: "After-payment offer saved.",
+    stopped: "After-payment offer stopped.",
     note: "Right after paying, the buyer sees it on the thanks page, and one press charges the card they just used. Only the browser that paid can take it, only for an hour, and only once.",
   },
 } as const;
@@ -161,7 +167,7 @@ function OfferBlock({
   open: boolean;
   onOpen: () => void;
   onClose: () => void;
-  onSend: (payload: Record<string, unknown>) => void;
+  onSend: (payload: Record<string, unknown>, confirmation: string) => void;
   error: string | null;
 }) {
   const current = product[kind];
@@ -179,7 +185,7 @@ function OfferBlock({
         className="rounded-[var(--r-sm)] border border-line bg-white p-4"
         onSubmit={(e) => {
           e.preventDefault();
-          onSend({ [kind]: { productId: target, price: price.trim(), pitch } });
+          onSend({ [kind]: { productId: target, price: price.trim(), pitch } }, text.saved);
         }}
       >
         {candidates.length === 0 ? (
@@ -245,7 +251,7 @@ function OfferBlock({
         {" \u00b7 "}
         <button type="button" className={link} onClick={onOpen}>Change</button>
         {" \u00b7 "}
-        <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => onSend({ [kind]: null })}>{text.stop}</button>
+        <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => onSend({ [kind]: null }, text.stopped)}>{text.stop}</button>
       </p>
     );
   }
@@ -270,7 +276,7 @@ function PlanBlock({
   open: boolean;
   onOpen: () => void;
   onClose: () => void;
-  onSend: (payload: Record<string, unknown>) => void;
+  onSend: (payload: Record<string, unknown>, confirmation: string) => void;
   error: string | null;
 }) {
   const current = product.plan;
@@ -287,7 +293,7 @@ function PlanBlock({
         className="rounded-[var(--r-sm)] border border-line bg-white p-4"
         onSubmit={(e) => {
           e.preventDefault();
-          onSend({ plan: { payments, interval, price: price.trim() } });
+          onSend({ plan: { payments, interval, price: price.trim() } }, "Payment plan saved.");
         }}
       >
         <div className="grid gap-3 sm:grid-cols-3">
@@ -352,7 +358,7 @@ function PlanBlock({
         {" \u00b7 "}
         <button type="button" className={link} onClick={onOpen}>Change</button>
         {" \u00b7 "}
-        <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => onSend({ plan: null })}>Stop offering it</button>
+        <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => onSend({ plan: null }, "Payment plan stopped.")}>Stop offering it</button>
       </p>
     );
   }

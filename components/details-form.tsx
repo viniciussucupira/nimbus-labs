@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 import { MAX_BIO_LENGTH, MAX_NAME_LENGTH } from "@/lib/store";
 
 const MESSAGES: Record<string, string> = {
@@ -45,6 +46,7 @@ export function DetailsForm({
       const data = (await response.json()) as { ok?: boolean; error?: string };
       if (data.ok) {
         setState({ kind: "closed" });
+        toast("Name and description saved.");
         router.refresh();
         return;
       }

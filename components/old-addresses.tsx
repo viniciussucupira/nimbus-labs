@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 
 const MESSAGES: Record<string, string> = {
   current: "That is the address your store uses now.",
@@ -30,6 +31,7 @@ export function OldAddresses({ handles }: { handles: string[] }) {
       const data = (await response.json()) as { ok?: boolean; error?: string };
       if (data.ok) {
         setAsking(null);
+        toast(`@${handle} no longer leads to your store.`);
         router.refresh();
         return;
       }

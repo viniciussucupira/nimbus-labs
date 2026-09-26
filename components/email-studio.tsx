@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 import type { Flow } from "@/lib/flows";
 import type { MailSettings } from "@/lib/store";
 
@@ -139,7 +140,6 @@ function Settings({ name, mail }: { name: string; mail: MailSettings | null }) {
   const [address, setAddress] = useState(mail?.address ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
   return (
     <form
       className="mt-4 space-y-4"
@@ -147,11 +147,10 @@ function Settings({ name, mail }: { name: string; mail: MailSettings | null }) {
         e.preventDefault();
         setBusy(true);
         setError(null);
-        setDone(null);
         const a = await call({ action: "settings", fromName, address });
         setBusy(false);
         if (a.ok) {
-          setDone("Saved.");
+          toast("Email settings saved.");
           router.refresh();
         } else setError(message(a));
       }}
@@ -169,7 +168,7 @@ function Settings({ name, mail }: { name: string; mail: MailSettings | null }) {
         like these; a PO box or a mail service address counts.
       </p>
       <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-secondary">Save</button>
-      <Feedback error={error} done={done} />
+      <Feedback error={error} done={null} />
     </form>
   );
 }
@@ -254,7 +253,6 @@ function Compose(props: {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -269,7 +267,6 @@ function Compose(props: {
   async function send(payload: Record<string, unknown>, success: string) {
     setBusy(true);
     setError(null);
-    setDone(null);
     const a = await call(payload);
     setBusy(false);
     setConfirming(false);
@@ -277,7 +274,7 @@ function Compose(props: {
       setError(message(a));
       return false;
     }
-    setDone(success);
+    toast(success);
     return true;
   }
 
@@ -328,7 +325,7 @@ function Compose(props: {
             type="button"
             aria-busy={busy} disabled={busy}
             className="btn btn-secondary"
-            onClick={() => send({ action: "test", subject, body }, `A test went to ${props.email}.`)}
+            onClick={() => send({ action: "test", subject, body }, `Test sent to ${props.email}.`)}
           >
             Send me a test
           </button>
@@ -342,7 +339,7 @@ function Compose(props: {
                   const sendAt = later && at ? new Date(at).getTime() : undefined;
                   const ok = await send(
                     { action: "broadcast", subject, body, productId, sendAt },
-                    later ? "Scheduled. It goes out at the time you chose." : "On its way. The list below shows it going out.",
+                    later ? "Your email is scheduled." : "Your email is on its way.",
                   );
                   if (ok) {
                     setSubject("");
@@ -368,7 +365,7 @@ function Compose(props: {
             </button>
           )}
         </div>
-        <Feedback error={error} done={done} />
+        <Feedback error={error} done={null} />
       </div>
     </section>
   );
@@ -424,8 +421,9 @@ function History({ broadcasts, products }: { broadcasts: BroadcastRow[]; product
                 className="mt-2 text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
                 onClick={async () => {
                   setBusy(true);
-                  await call({ action: "cancel", id: b.id });
+                  const a = await call({ action: "cancel", id: b.id });
                   setBusy(false);
+                  if (a.ok) toast("Scheduled email cancelled.");
                   router.refresh();
                 }}
               >
@@ -503,6 +501,7 @@ function Flows({ flows, products }: { flows: FlowRow[]; products: { id: string; 
       return;
     }
     setDraft(null);
+    toast("Sequence saved.");
     router.refresh();
   }
 
@@ -536,8 +535,9 @@ function Flows({ flows, products }: { flows: FlowRow[]; products: { id: string; 
                   className="text-ink-soft underline underline-offset-4 hover:text-danger"
                   onClick={async () => {
                     setBusy(true);
-                    await call({ action: "flow-remove", id: f.id });
+                    const a = await call({ action: "flow-remove", id: f.id });
                     setBusy(false);
+                    if (a.ok) toast("Sequence removed.");
                     router.refresh();
                   }}
                 >

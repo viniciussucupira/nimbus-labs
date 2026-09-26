@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { SiteData } from "@/components/structured-data";
+import { Toaster } from "@/components/toast";
 import { SITE_URL } from "@/lib/site-url";
 
 /* Two faces, both served from our own domain so the page never waits on
@@ -91,6 +92,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
       <body className="min-h-full flex flex-col">
         {children}
+        <Toaster />
         <SiteData />
       </body>
     </html>

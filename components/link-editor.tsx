@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 import { LINK_PROBLEMS, type LinkProblem, linkHost } from "@/lib/product-link";
 import {
   MAX_LINK_TITLE_LENGTH,
@@ -160,7 +161,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(payload: Record<string, unknown>, done: () => void) {
+  async function run(payload: Record<string, unknown>, done: () => void, confirmation?: string) {
     setBusy(true);
     setError(null);
     const problem = await send(payload);
@@ -170,6 +171,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
       return;
     }
     done();
+    if (confirmation) toast(confirmation);
     router.refresh();
   }
 
@@ -228,6 +230,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
                       url: draft.url,
                     },
                     () => setEditingId(null),
+                    "Link saved.",
                   )
                 }
                 onCancel={() => {
@@ -308,8 +311,10 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
                         type="button"
                         aria-busy={busy} disabled={busy}
                         onClick={() =>
-                          run({ action: "remove", id: link.id }, () =>
-                            setRemovingId(null),
+                          run(
+                            { action: "remove", id: link.id },
+                            () => setRemovingId(null),
+                            "Link removed.",
                           )
                         }
                         className="btn btn-danger-solid btn-sm"
@@ -352,6 +357,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
               run(
                 { action: "add", title: draft.title, url: draft.url },
                 () => setAdding(false),
+                "Link added.",
               )
             }
             onCancel={() => {

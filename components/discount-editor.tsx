@@ -7,6 +7,7 @@ import {
   type DiscountCode,
   offLabel,
 } from "@/lib/discount";
+import { toast } from "@/components/toast";
 
 const MESSAGES: Record<string, string> = {
   none: "This account has no store yet.",
@@ -92,7 +93,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
     };
   }, [selling]);
 
-  async function run(payload: Record<string, unknown>, done: () => void) {
+  async function run(payload: Record<string, unknown>, done: () => void, confirmation: string) {
     setBusy(true);
     setError(null);
     const answer = await send(payload);
@@ -103,6 +104,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
     }
     setCodes(answer.codes);
     done();
+    toast(confirmation);
   }
 
   const live = (codes ?? []).filter((entry) => entry.active);
@@ -160,7 +162,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                   <button
                     type="button"
                     aria-busy={busy} disabled={busy}
-                    onClick={() => run({ action: "stop", id: entry.id }, () => {})}
+                    onClick={() => run({ action: "stop", id: entry.id }, () => {}, `${entry.code} switched off.`)}
                     className="mt-2 text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-danger disabled:no-underline disabled:opacity-40"
                   >
                     Switch it off
@@ -203,6 +205,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                     setCode("");
                     setUses("");
                   },
+                  `${code} is live.`,
                 );
               }}
               className="mt-5 space-y-4 rounded-2xl border-2 border-violet-brand/30 bg-white p-4"

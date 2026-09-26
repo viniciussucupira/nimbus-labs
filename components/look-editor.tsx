@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
+import { toast } from "@/components/toast";
 import {
   ACCENTS,
   THEMES,
@@ -30,7 +31,6 @@ const MESSAGES: Record<string, string> = {
 type Status =
   | { kind: "idle" }
   | { kind: "working"; what: "look" | "photo" }
-  | { kind: "saved"; what: "look" | "photo" }
   | { kind: "error"; message: string };
 
 /** Crops the middle square of a picture and shrinks it to a small file. */
@@ -124,7 +124,8 @@ export function LookEditor({
     try {
       const data = await post("/api/store/look", { theme, accent });
       if (data.ok) {
-        setStatus({ kind: "saved", what: "look" });
+        setStatus({ kind: "idle" });
+        toast("Look saved.");
         router.refresh();
         return;
       }
@@ -147,7 +148,8 @@ export function LookEditor({
       }
       const data = await post("/api/store/photo", { photo: data64 });
       if (data.ok) {
-        setStatus({ kind: "saved", what: "photo" });
+        setStatus({ kind: "idle" });
+        toast("Photo updated.");
         router.refresh();
         return;
       }
@@ -165,7 +167,8 @@ export function LookEditor({
     try {
       const data = await post("/api/store/photo", { remove: true });
       if (data.ok) {
-        setStatus({ kind: "saved", what: "photo" });
+        setStatus({ kind: "idle" });
+        toast("Photo removed.");
         router.refresh();
         return;
       }
@@ -326,12 +329,6 @@ export function LookEditor({
 
           {status.kind === "error" ? (
             <p className="notice notice-error" role="alert">{status.message}</p>
-          ) : null}
-          {status.kind === "saved" ? (
-            <p className="notice notice-success" role="status">
-              {status.what === "photo" ? "Your photo is updated. " : "Saved. "}
-              <a href={`/@${handle}`} className="link">See your page</a>
-            </p>
           ) : null}
 
           <div className="flex flex-wrap items-center gap-3">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 import type { Product } from "@/lib/store";
 import {
   BUFFERS,
@@ -89,7 +90,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
   const eligible =
     product.priceCents > 0 && !product.recurring && product.options.length === 0 && !product.file && !product.link && !product.course;
 
-  async function send(payload: Record<string, unknown>) {
+  async function send(payload: Record<string, unknown>, confirmation: string) {
     setBusy(true);
     setError(null);
     try {
@@ -101,6 +102,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (data.ok) {
         setOpen(false);
+        toast(confirmation);
         router.refresh();
         return;
       }
@@ -168,7 +170,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
           <button
             type="button"
             aria-busy={busy} disabled={busy}
-            onClick={() => send({ id: product.id, remove: true })}
+            onClick={() => send({ id: product.id, remove: true }, "It's no longer sold as a call.")}
             className="text-ink-soft underline underline-offset-4 transition hover:text-danger"
           >
             Stop selling it as a call
@@ -186,10 +188,13 @@ export function CallEditor({ product, email }: { product: Product; email: string
       className="mt-3 space-y-5 rounded-[var(--r-sm)] border border-line bg-white p-4"
       onSubmit={(event) => {
         event.preventDefault();
-        send({
-          id: product.id,
-          call: { ...draft, room: draft.room.trim() },
-        });
+        send(
+          {
+            id: product.id,
+            call: { ...draft, room: draft.room.trim() },
+          },
+          product.call ? "Hours saved." : "It's now sold as a paid call.",
+        );
       }}
     >
       <p className="font-semibold text-ink">Paid call</p>

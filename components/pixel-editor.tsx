@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 import { PIXEL_INFO, PIXEL_KINDS, type PixelKind, type Pixels, hasPixels, readPixels } from "@/lib/pixels";
 
 const MESSAGES: Record<string, string> = {
@@ -45,6 +46,7 @@ export function PixelEditor({ pixels }: { pixels: Pixels }) {
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; bad?: PixelKind };
       if (data.ok) {
         setOpen(false);
+        toast("Pixels saved.");
         router.refresh();
         return;
       }

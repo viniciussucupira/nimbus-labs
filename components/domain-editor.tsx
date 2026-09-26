@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
 
 type DnsRecord = { type: "A" | "CNAME" | "TXT"; name: string; value: string; why: string };
 type Status = { name: string; live: boolean; records: DnsRecord[] };
@@ -176,6 +177,7 @@ export function DomainEditor({
                 if (await act({ action: "remove" })) {
                   setStatus(null);
                   setRemoving(false);
+                  toast("Domain removed.");
                   router.refresh();
                 }
               }}

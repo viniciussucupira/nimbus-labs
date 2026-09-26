@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { SignInForm } from "@/components/signin-form";
+import { ToastOnLoad } from "@/components/toast";
 import { isConnectConfigured } from "@/lib/stripe-connect";
 import { TRIAL_DAYS } from "@/lib/plan";
 
@@ -17,10 +18,6 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   expired: {
     title: "That link no longer works",
     body: "A login link works once and lasts 15 minutes. Ask for a fresh one below.",
-  },
-  out: {
-    title: "You are logged out",
-    body: "Your session is closed on this device.",
   },
   "move-none": {
     title: "That move no longer makes sense",
@@ -38,10 +35,16 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     title: "The move did not finish",
     body: "Nothing was changed. Log in and try again.",
   },
-  "out-everywhere": {
-    title: "You are logged out of all devices",
-    body: "Every session you had open is closed, on every device. A fresh link logs you back in.",
-  },
+};
+
+/*
+ * Log out and log out of all devices end here. They only confirm what the
+ * person just did, so they are said in a toast rather than a box above the
+ * form; the address is cleaned up after, and old links still confirm it.
+ */
+const TOASTS: Record<string, string> = {
+  out: "You're logged out.",
+  "out-everywhere": "You're logged out of all devices.",
 };
 
 export default async function SignInPage({
@@ -52,6 +55,7 @@ export default async function SignInPage({
   const params = await searchParams;
   const status = typeof params.status === "string" ? params.status : "";
   const notice = NOTICES[status];
+  const confirmation = Object.hasOwn(TOASTS, status) ? TOASTS[status] : null;
 
   return (
     <div className="min-h-screen bg-paper text-ink lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
@@ -96,6 +100,7 @@ export default async function SignInPage({
             not. There is no password here, on purpose, and nothing to pay to begin.
           </p>
 
+          {confirmation ? <ToastOnLoad message={confirmation} param="status" /> : null}
           {notice ? (
             <div className="notice notice-warn mt-6" role="status">
               <p className="font-semibold">{notice.title}</p>
