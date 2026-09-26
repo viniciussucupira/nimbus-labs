@@ -40,7 +40,7 @@ export default function NotFound() {
             {[
               { href: "/help", icon: "info" as const, title: "Help centre", body: "Answers about the product as it is today." },
               { href: "/#pricing", icon: "tag" as const, title: "Pricing", body: "Two plans, and 0% of your sales on both." },
-              { href: "/signin", icon: "store" as const, title: "Your store", body: "Sign in with a link sent to your email." },
+              { href: "/signin", icon: "store" as const, title: "Your store", body: "Log in with a link sent to your email." },
             ].map((item) => (
               <li key={item.href}>
                 <Link href={item.href} className="card card-hover flex h-full flex-col p-5">

@@ -26,7 +26,7 @@ const MESSAGES: Record<string, string> = {
   step: "Every email in the sequence needs a subject, some text, and a wait of up to a year.",
   unknown: "That is not there any more. Reload the page.",
   send: "The email service did not take it just now. Nothing was sent; try again in a moment.",
-  signed_out: "Your session ended. Sign in again.",
+  signed_out: "Your session ended. Log in again.",
   unavailable: "Email is not switched on yet, so nothing was sent.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
@@ -165,7 +165,7 @@ function Settings({ name, mail }: { name: string; mail: MailSettings | null }) {
         <input className="field mt-2" maxLength={200} placeholder="Street, city, postcode, country — or a PO box" value={address} onChange={(e) => setAddress(e.target.value)} />
       </label>
       <p className="text-sm text-ink-soft">
-        Replies go to the address you sign in with. The postal address is required by the CAN-SPAM Act for emails
+        Replies go to the address you log in with. The postal address is required by the CAN-SPAM Act for emails
         like these; a PO box or a mail service address counts.
       </p>
       <button type="submit" aria-busy={busy} disabled={busy} className="btn btn-secondary">Save</button>

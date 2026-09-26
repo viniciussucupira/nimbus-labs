@@ -303,7 +303,7 @@ export function SiteNav() {
               href="/signin"
               className="hidden h-10 items-center rounded-[10px] px-3.5 text-[0.9375rem] font-medium text-ink-soft transition-colors hover:bg-sand hover:text-ink sm:flex"
             >
-              Sign in
+              Log in
             </Link>
             {/* Under 360px the header has room for the logo and the menu only;
                 the drawer and the hero both carry the same button. */}
@@ -466,7 +466,7 @@ export function SiteNav() {
             Start your store
           </Link>
           <Link href="/signin" onClick={closeAll} className="btn btn-ghost btn-block">
-            Sign in
+            Log in
           </Link>
         </div>
       </div>

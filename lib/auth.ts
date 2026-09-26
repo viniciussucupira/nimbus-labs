@@ -126,7 +126,7 @@ export async function sendMoveLink(
       "",
       "If that was you, finish it from the link sent to that address.",
       "",
-      "If it was not you, sign in here and sign out everywhere. Nothing has",
+      "If it was not you, log in here and sign out on all devices. Nothing has",
       "moved yet, and nothing moves until someone opens the link sent to that",
       "other address.",
     ].join("\n"),
@@ -219,9 +219,9 @@ export async function sendSignInLink(
   return sendEmail({
     from: NIMBUS_FROM,
     to: address,
-    subject: "Your sign-in link",
+    subject: "Your Nimbus Labs login link",
     text: [
-      "Here is your link to sign in to Nimbus Labs.",
+      "Here is your link to log in to Nimbus Labs.",
       "",
       link,
       "",

@@ -152,7 +152,7 @@ const GROUPS: Group[] = [
     items: [
       { title: "Your numbers", body: "Visitors, where they came from, checkouts and sales." },
       { title: "Every sale, from Stripe", body: "With the buyer's address, so you can answer them." },
-      { title: "No password, ever", body: "Sign in with a link sent to your email. Nothing for us to lose." },
+      { title: "No password, ever", body: "Log in with a link sent to your email. Nothing for us to lose." },
     ],
   },
 ];

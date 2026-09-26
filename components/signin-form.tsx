@@ -14,7 +14,7 @@ const MESSAGES: Record<string, string> = {
   rate_limited:
     "That is a lot of tries from one place. Wait an hour and try again.",
   unavailable:
-    "Sign-in is not switched on yet, so nothing was sent. Write to us and we will tell you when it is.",
+    "Logging in is not switched on yet, so nothing was sent. Write to us and we will tell you when it is.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
@@ -85,7 +85,7 @@ export function SignInForm() {
         </span>
         <p className="mt-4 text-xl font-semibold text-ink">Check that inbox</p>
         <p className="mt-2 text-ink-soft">
-          If <span className="font-medium text-ink">{email}</span> can sign in, the link is on its way from Nimbus Labs.
+          If <span className="font-medium text-ink">{email}</span> can log in, the link is on its way from Nimbus Labs.
           It works once and stops working in 15 minutes.
         </p>
         <p className="mt-3 text-sm text-ink-soft">Not there within a minute? Look in spam or promotions.</p>

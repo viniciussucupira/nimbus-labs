@@ -308,7 +308,7 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-black">Resend</strong>, our email
-            provider, which delivers the emails we send: sign-in links,
+            provider, which delivers the emails we send: login links,
             receipts and the links to what you asked for, and the emails a
             creator sends to their list;
           </li>
@@ -358,14 +358,14 @@ export default function PrivacyPage() {
       <LegalSection title="5. Cookies">
         <p>We may use cookies and similar technologies to:</p>
         <ul className="list-disc pl-6 space-y-2">
-          <li>keep you signed in;</li>
+          <li>keep you logged in;</li>
           <li>remember preferences;</li>
           <li>understand how the site is used; and</li>
           <li>maintain security.</li>
         </ul>
         <p>
           You can control cookies through your browser settings. Disabling
-          certain cookies may affect sign-in or other features. Where required
+          certain cookies may affect logging in or other features. Where required
           by law, we will request consent for non-essential cookies.
         </p>
       </LegalSection>

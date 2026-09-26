@@ -223,7 +223,7 @@ const ADDRESS_NOTICES: Record<string, { title: string; body: string }> = {
   },
   none: {
     title: "There is no store to move yet",
-    body: "Take your address first. Until then, simply sign in with whichever email you prefer.",
+    body: "Take your address first. Until then, simply log in with whichever email you prefer.",
   },
   limited: {
     title: "Too many attempts for that address",
@@ -414,7 +414,7 @@ export default async function StudioPage({
       <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
         <p className="eyebrow">Studio</p>
         <h1 className="t-h2 mt-3">
-          {store ? "Your store" : "You are signed in"}
+          {store ? "Your store" : "You are logged in"}
         </h1>
         <p className="mt-3 text-ink-soft">
           As <strong className="text-ink [overflow-wrap:anywhere]">{email}</strong>. No password was
@@ -1236,7 +1236,7 @@ export default async function StudioPage({
               type="submit"
               className="btn btn-ghost"
             >
-              Sign out everywhere
+              Sign out on all devices
             </button>
           </form>
         </div>

@@ -32,7 +32,7 @@ export default async function ConfirmMovePage({
         </h1>
         <p className="mt-4 text-lg text-ink-soft">
           Your store, your address and your products come with you. From then
-          on, this is the inbox that signs you in.
+          on, this is the inbox that logs you in.
         </p>
 
         <div className="card mt-8 p-6 sm:p-8">

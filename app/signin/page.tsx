@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 const NOTICES: Record<string, { title: string; body: string }> = {
   expired: {
     title: "That link no longer works",
-    body: "A sign-in link works once and lasts 15 minutes. Ask for a fresh one below.",
+    body: "A login link works once and lasts 15 minutes. Ask for a fresh one below.",
   },
   out: {
     title: "You are signed out",
@@ -36,11 +36,11 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   },
   "move-error": {
     title: "The move did not finish",
-    body: "Nothing was changed. Sign in and try again.",
+    body: "Nothing was changed. Log in and try again.",
   },
   "out-everywhere": {
-    title: "You are signed out everywhere",
-    body: "Every session you had open is closed, on every device. A fresh link signs you back in.",
+    title: "You are signed out on all devices",
+    body: "Every session you had open is closed, on every device. A fresh link logs you back in.",
   },
 };
 
@@ -65,7 +65,7 @@ export default async function SignInPage({
           </p>
           <ul className="mt-10 space-y-5 text-white/80">
             {[
-              { icon: "mail" as const, text: "No password. A link sent to your email signs you in." },
+              { icon: "mail" as const, text: "No password. A link sent to your email logs you in." },
               { icon: "bank" as const, text: "Your buyers pay into your own Stripe account." },
               { icon: "percent" as const, text: "Nimbus takes 0% of your sales." },
             ].map((item) => (
@@ -136,7 +136,7 @@ export default async function SignInPage({
             <p className="mt-6 flex gap-2 text-[0.9375rem] text-ink-soft">
               <Icon name="mail" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
               <span>
-                Trouble signing in?{" "}
+                Trouble logging in?{" "}
                 <a href="mailto:support@nimbuslabsai.com" className="link">
                   Write to us
                 </a>{" "}

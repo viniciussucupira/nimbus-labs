@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Confirm sign-in — Nimbus Labs",
-  description: "One tap to finish signing in to Nimbus Labs.",
+  title: "Confirm login — Nimbus Labs",
+  description: "One tap to finish logging in to Nimbus Labs.",
   robots: { index: false, follow: false },
 };
 
@@ -49,7 +49,7 @@ export default async function ConfirmPage({
               type="submit"
               className="btn btn-primary btn-lg btn-block"
             >
-              Sign me in
+              Log me in
             </button>
           </form>
           <p className="mt-4 text-sm text-ink-soft">

@@ -441,7 +441,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Read this line before anything else",
-        body: "Today you can sign in without a password, take a store address that is yours, write what you sell with its price, upload the file each one delivers, connect your own Stripe account, and be paid on it — the buyer's card is charged on your account, with nothing taken on top, and the file goes out the second Stripe confirms. The demo store is still there to try first, with a test card. Our own charge is switched on: $29 a month, or $99 on Pro with email to your list, free for the first 14 days, and it is what turns your page's till on. Everything marked as not available is exactly that — not promised, not dated. A line only turns green when you can open it and try it.",
+        body: "Today you can log in without a password, take a store address that is yours, write what you sell with its price, upload the file each one delivers, connect your own Stripe account, and be paid on it — the buyer's card is charged on your account, with nothing taken on top, and the file goes out the second Stripe confirms. The demo store is still there to try first, with a test card. Our own charge is switched on: $29 a month, or $99 on Pro with email to your list, free for the first 14 days, and it is what turns your page's till on. Everything marked as not available is exactly that — not promised, not dated. A line only turns green when you can open it and try it.",
       },
       {
         kind: "note",

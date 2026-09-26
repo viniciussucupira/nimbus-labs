@@ -435,7 +435,7 @@ function PlanCard({
         </Link>
         {/* What the button does, before it is pressed. */}
         <p className="mt-3 text-center text-[0.8125rem] leading-relaxed text-ink-mute">
-          {`Sends a sign-in link to your email. ${TRIAL_DAYS} days free, then $${
+          {`Sends a login link to your email. ${TRIAL_DAYS} days free, then $${
             yearly ? year / 100 : month / 100
           } ${yearly ? "a year" : "a month"}. Cancel in one click.`}
         </p>

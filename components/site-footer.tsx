@@ -51,7 +51,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "Our mission", href: "/mission" },
       { label: "Our products", href: "/products" },
       { label: "Write to us", href: SUPPORT },
-      { label: "Sign in", href: "/signin" },
+      { label: "Log in", href: "/signin" },
     ],
   },
   {
