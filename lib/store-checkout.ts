@@ -15,10 +15,10 @@ import {
   optionDelivers,
 } from "@/lib/product-option";
 import { isPaidUp } from "@/lib/billing";
-import { StripeError, onAccount, platformKey } from "@/lib/stripe-account";
+import { StripeError, checkoutClosesAt, onAccount, platformKey } from "@/lib/stripe-account";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { applyTax } from "@/lib/tax";
-import { inTheCurrencyShown, onlyInstantMethods } from "@/lib/instant-pay";
+import { inTheCurrencyShown, isSettled, onlyInstantMethods } from "@/lib/instant-pay";
 
 /**
  * How long a paid link keeps working.
@@ -112,8 +112,8 @@ export async function createCheckout(
   extras: {
     /** The buyer ticked the box for the product offered alongside. */
     bump?: boolean;
-    /** When the checkout closes, for a product whose units are held. */
-    expiresAt?: number;
+    /** A unit of the product is held, so the checkout has to close in time. */
+    held?: boolean;
     /**
      * The fingerprint of the secret the buyer's browser keeps, when an upsell
      * follows: the card is then kept for payments made while they are there.
@@ -189,8 +189,8 @@ export async function createCheckout(
   }
 
   // A limited product's unit is held while this checkout is open, so the
-  // checkout closes when the hold does.
-  if (extras.expiresAt) body.set("expires_at", String(extras.expiresAt));
+  // checkout closes before the hold does. The time is set just before the
+  // checkout is made, below, because Stripe counts its minimum from then.
 
   // An upsell follows: the buyer becomes a customer of the creator and the
   // card is kept for payments they make while present — the one-click offer
@@ -246,6 +246,7 @@ export async function createCheckout(
   applyTax(store, body);
   onlyInstantMethods(body);
   inTheCurrencyShown(body);
+  if (extras.held) body.set("expires_at", String(checkoutClosesAt()));
 
   const session = await onAccount(
     "POST",
@@ -297,12 +298,16 @@ export type Order =
  * checked against Stripe every time rather than against anything we wrote
  * down. The session must belong to this store and name a product this store
  * still lists, so a session from somewhere else cannot open a door here.
+ *
+ * It does not ask whether the store can sell today. Somebody who paid is owed
+ * what they paid for even if the creator's subscription ended, or Stripe
+ * paused their account, while the buyer was on the payment page.
  */
 export async function readOrder(
   store: Store,
   sessionId: string | undefined,
 ): Promise<Order> {
-  if (!canSell(store)) return { state: "unavailable" };
+  if (!isSellingConfigured() || !store.stripeAccountId) return { state: "unavailable" };
   if (!sessionId || !SESSION_ID_PATTERN.test(sessionId)) {
     return { state: "invalid" };
   }
@@ -323,7 +328,10 @@ export async function readOrder(
   }
 
   const metadata = session.metadata as Record<string, string> | null;
-  if (metadata?.store !== store.handle) return { state: "invalid" };
+  // Sold under an address this store still answers to: a rename while the
+  // buyer was paying does not lose them their order.
+  const handles = new Set([store.handle, ...store.previousHandles]);
+  if (!handles.has(metadata?.store ?? "")) return { state: "invalid" };
   const product = store.products.find((p) => p.id === metadata?.product);
   if (!product) return { state: "invalid" };
 
@@ -338,7 +346,7 @@ export async function readOrder(
   if (session.status === "complete" && session.payment_status === "unpaid") {
     return { state: "processing" };
   }
-  if (session.status !== "complete" || session.payment_status !== "paid") {
+  if (!isSettled(session)) {
     return { state: "unpaid" };
   }
 
@@ -451,8 +459,7 @@ export async function listSales(store: Store): Promise<SaleList> {
   const sales = rows
     .filter(
       (row) =>
-        row.status === "complete" &&
-        row.payment_status === "paid" &&
+        isSettled(row) &&
         row.metadata?.store === store.handle,
     )
     .map((row): Sale => {

@@ -1,0 +1,160 @@
+/**
+ * Keeping every store's "paid up" snapshot true to Stripe, once a day.
+ *
+ * The snapshot is what lets a buyer's page open without waiting on Stripe,
+ * and until now it was refreshed only when its creator opened the studio. A
+ * creator who cancelled, or whose card stopped paying, and then simply never
+ * came back, kept a till that took money for ever. This closes that, from
+ * Stripe's side, without anybody having to open anything:
+ *
+ *   1. Every subscription on our own account is read, newest first, and the
+ *      store named in its metadata is brought in line with it. A subscription
+ *      in good standing that its store never wrote down — the creator paid
+ *      and the way back did not arrive — is written down, if it is plainly
+ *      that store's (lib/billing.ts, ownedBy).
+ *   2. Every store that still counts as paid up, and whose subscription the
+ *      first step did not see, is asked about on its own. That covers the one
+ *      Stripe does not have at all: an id from another key, or another mode.
+ *
+ * Bounded by a deadline, safe to run as often as it is called, and it only
+ * writes where the snapshot is actually wrong. The walk through the stores
+ * picks up the next day where it stopped.
+ */
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import {
+  type SubscriptionState,
+  isBillingConfigured,
+  listSubscriptions,
+  ownedBy,
+  readSubscription,
+  startedFrom,
+  stateOf,
+} from "@/lib/billing";
+import { type Store, setSubscription, storeForHandle, storesAfter } from "@/lib/store";
+
+const MAX_PAGES = 50;
+const MAX_SCAN_STEPS = 500;
+/** Where the walk through the stores stopped, when the deadline stopped it. */
+const CURSOR_KEY = "nl:billing:sync:cursor";
+const CURSOR_SECONDS = 7 * 24 * 60 * 60;
+
+export type SyncCounts = {
+  /** Subscriptions read from Stripe. */
+  seen: number;
+  /** Stores whose snapshot was wrong and was corrected. */
+  updated: number;
+  /** Paying subscriptions a store had never written down, now written down. */
+  adopted: number;
+  /** Stores asked about one by one. */
+  checked: number;
+  failed: number;
+  /** Whether both steps reached the end before the deadline. */
+  complete: boolean;
+};
+
+/**
+ * Writes what Stripe says about the store's own subscription into its
+ * snapshot, the same way the studio does when it is opened. "unknown" means
+ * Stripe could not be asked, and changes nothing. Returns whether it wrote.
+ */
+export async function recordState(store: Store, state: SubscriptionState): Promise<boolean> {
+  if (state.state === "unknown") return false;
+  const active = state.state === "active";
+  const plan = active ? { tier: state.tier, cycle: state.cycle, trialEnds: state.trialing ? state.until : 0 } : null;
+  if (
+    active === store.subscriptionActive &&
+    (!plan || (plan.tier === store.tier && plan.cycle === store.cycle && plan.trialEnds === store.trialEnds))
+  ) {
+    return false;
+  }
+  return (await setSubscription(store.email, { active, ...(plan ?? {}) })) !== null;
+}
+
+/** Brings the store named by one listed subscription in line with it. */
+async function applyListed(subscription: Record<string, unknown>, counts: SyncCounts): Promise<void> {
+  const id = typeof subscription.id === "string" ? subscription.id : "";
+  const meta = subscription.metadata as Record<string, string> | null | undefined;
+  const handle = meta?.store;
+  if (!id || typeof handle !== "string" || !handle) return;
+  const store = await storeForHandle(handle);
+  if (!store) return;
+
+  // The one this store wrote down: Stripe's word stands.
+  if (store.subscriptionId === id) {
+    if (await recordState(store, stateOf(subscription))) counts.updated += 1;
+    return;
+  }
+
+  // Another subscription under this store's address. Written down only when
+  // it is paying, the store has nothing paying written down, and it is
+  // plainly this store's. A second paying one beside a first is left for a
+  // person to sort out — a refund is not something to decide in a loop.
+  const started = startedFrom(subscription);
+  if (!started || !ownedBy(store, subscription)) return;
+  if (store.subscriptionActive && store.subscriptionId) {
+    console.error(`store ${store.handle} has a second subscription in good standing: ${id}`);
+    return;
+  }
+  if (await setSubscription(store.email, started)) counts.adopted += 1;
+}
+
+/** Step 1: every subscription on our account, newest first. */
+async function syncListed(deadline: number, seen: Set<string>, counts: SyncCounts): Promise<boolean> {
+  let after: string | undefined;
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    if (Date.now() > deadline) return false;
+    const { data, hasMore } = await listSubscriptions("all", after);
+    for (const subscription of data) {
+      if (typeof subscription.id === "string") seen.add(subscription.id);
+      counts.seen += 1;
+      try {
+        await applyListed(subscription, counts);
+      } catch (error) {
+        counts.failed += 1;
+        console.error("settling a store's subscription failed", error);
+      }
+    }
+    const last = data[data.length - 1];
+    if (!hasMore || typeof last?.id !== "string") return true;
+    after = last.id;
+  }
+  return false;
+}
+
+/** Step 2: stores still paid up whose subscription step 1 did not see. */
+async function syncStores(deadline: number, seen: Set<string>, counts: SyncCounts): Promise<boolean> {
+  const [saved] = await redisPipeline([["GET", CURSOR_KEY]]);
+  let cursor = typeof saved === "string" && /^\d+$/.test(saved) ? saved : "0";
+  for (let step = 0; step < MAX_SCAN_STEPS; step += 1) {
+    if (Date.now() > deadline) break;
+    const { stores, next } = await storesAfter(cursor);
+    for (const store of stores) {
+      if (!store.subscriptionActive || !store.subscriptionId || seen.has(store.subscriptionId)) continue;
+      counts.checked += 1;
+      try {
+        if (await recordState(store, await readSubscription(store.subscriptionId))) counts.updated += 1;
+      } catch (error) {
+        counts.failed += 1;
+        console.error("checking a store's subscription failed", error);
+      }
+    }
+    cursor = next;
+    if (cursor === "0") {
+      await redisPipeline([["DEL", CURSOR_KEY]]);
+      return true;
+    }
+  }
+  await redisPipeline([["SET", CURSOR_KEY, cursor, "EX", CURSOR_SECONDS]]);
+  return false;
+}
+
+/** Runs both steps until `deadline` (milliseconds since the epoch). */
+export async function syncSubscriptions(deadline: number): Promise<SyncCounts> {
+  const counts: SyncCounts = { seen: 0, updated: 0, adopted: 0, checked: 0, failed: 0, complete: false };
+  if (!isRedisConfigured() || !isBillingConfigured()) return counts;
+  const seen = new Set<string>();
+  const listed = await syncListed(deadline, seen, counts);
+  const walked = await syncStores(deadline, seen, counts);
+  counts.complete = listed && walked;
+  return counts;
+}

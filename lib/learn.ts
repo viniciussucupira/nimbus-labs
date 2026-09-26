@@ -24,6 +24,7 @@ import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, SESSION_COOKIE, emailForSession, norma
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount } from "@/lib/stripe-account";
+import { isSettled } from "@/lib/instant-pay";
 import { recordDelivery } from "@/lib/delivery";
 import type { ProductFile } from "@/lib/product-file";
 import type { Product, Store } from "@/lib/store";
@@ -163,7 +164,7 @@ async function paidAtStripe(store: Store, email: string): Promise<Map<string, nu
     for (const session of rows) {
       const meta = (session.metadata ?? {}) as Record<string, string>;
       if (!handles.has(meta.store ?? "")) continue;
-      if (session.payment_status !== "paid") continue;
+      if (!isSettled(session)) continue;
       const product = courses.get(meta.product ?? "");
       if (!product) continue;
       // A course sold as a membership is open while the membership runs.

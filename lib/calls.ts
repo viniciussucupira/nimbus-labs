@@ -18,9 +18,9 @@
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
-import { onAccount } from "@/lib/stripe-account";
+import { HOLD_SECONDS, checkoutClosesAt, onAccount } from "@/lib/stripe-account";
 import { applyTax } from "@/lib/tax";
-import { inTheCurrencyShown, onlyInstantMethods } from "@/lib/instant-pay";
+import { inTheCurrencyShown, isSettled, onlyInstantMethods } from "@/lib/instant-pay";
 import type { Product, Store } from "@/lib/store";
 import {
   type Busy,
@@ -32,9 +32,6 @@ import {
   zoneName,
 } from "@/lib/call-setup";
 
-/** How long a time is held while the buyer is on Stripe's page. */
-export const HOLD_SECONDS = 31 * 60;
-
 /** How far back Stripe is read for paid bookings. Longer than any horizon. */
 const LOOKBACK_DAYS = 120;
 const MAX_PAGES = 5;
@@ -42,7 +39,10 @@ const MAX_PAGES = 5;
 type Entry = { e: number; until: number; session?: string };
 
 const busyKey = (callsId: string) => `nl:call:busy:${callsId}`;
-const lockKey = (callsId: string, start: number) => `nl:call:lock:${callsId}:${start}`;
+// One lock for the whole diary, not one per start time: two call products,
+// or two overlapping stretches of hours, can offer different starts that
+// overlap, and both buyers must not pass the check at once.
+const lockKey = (callsId: string) => `nl:call:lock:${callsId}`;
 const confirmedKey = (session: string) => `nl:call:confirmed:${session}`;
 
 async function heldAndBooked(callsId: string, now: number): Promise<Busy[]> {
@@ -96,7 +96,7 @@ export async function paidCalls(store: Store): Promise<
     for (const row of rows) {
       const meta = row.metadata ?? {};
       if (meta.kind !== "call" || !handles.has(meta.store ?? "")) continue;
-      if (row.status !== "complete" || row.payment_status !== "paid") continue;
+      if (!isSettled(row)) continue;
       const start = Number(meta.start);
       const end = Number(meta.end);
       if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
@@ -239,20 +239,28 @@ export async function holdAndCheckout(input: {
   const { store, product, start, origin } = input;
   const setup = product.call;
   if (!store.stripeAccountId || !store.callsId || !isRedisConfigured()) return { ok: false, reason: "unavailable" };
-  const now = Date.now();
   const end = start + setup.minutes * 60_000;
   const buyerTz = isTimeZone(input.buyerTz) ? input.buyerTz : setup.tz;
 
-  const lock = lockKey(store.callsId, start);
-  const [got] = await redisPipeline([["SET", lock, String(now), "NX", "EX", 15]]);
+  const lock = lockKey(store.callsId);
+  // Another buyer of this store may be picking a time right now. They hold
+  // the lock for a second or two, so wait for it rather than turn this one
+  // away over a time nobody took.
+  let got: unknown = null;
+  for (let attempt = 0; attempt < 12 && got === null; attempt += 1) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, 250));
+    [got] = await redisPipeline([["SET", lock, String(Date.now()), "NX", "EX", 15]]);
+  }
   if (got === null) {
     const [held] = await redisPipeline([["GET", lock]]);
     // A lock left behind by a request that died is taken over after 15 seconds.
-    if (typeof held === "string" && now - Number(held) < 15_000) return { ok: false, reason: "taken" };
-    await redisPipeline([["SET", lock, String(now), "EX", 15]]);
+    if (typeof held === "string" && Date.now() - Number(held) < 15_000) return { ok: false, reason: "taken" };
+    await redisPipeline([["SET", lock, String(Date.now()), "EX", 15]]);
   }
 
   try {
+    // Read once the lock is ours, so the check is about this moment.
+    const now = Date.now();
     let busy: Busy[];
     try {
       busy = await busyTimes(store, now);
@@ -261,7 +269,6 @@ export async function holdAndCheckout(input: {
     }
     if (!isOpenSlot(setup, now, busy, start)) return { ok: false, reason: "taken" };
 
-    const until = now + HOLD_SECONDS * 1000;
     // Said in the buyer's own time zone: they are the one reading Stripe's page.
     const when = `${readableTime(start, buyerTz)} (${zoneName(start, buyerTz)})`;
     const name = `${product.title} \u2014 ${when}`;
@@ -283,10 +290,6 @@ export async function holdAndCheckout(input: {
       "payment_intent_data[metadata][product]": product.id,
       "payment_intent_data[metadata][kind]": "call",
       "payment_intent_data[metadata][start]": String(start),
-      // Stripe will not keep a checkout open for less than half an hour, and
-      // the hold lasts a minute longer, so the time is never released while
-      // the page that pays for it is still open.
-      expires_at: String(Math.floor(now / 1000) + 30 * 60),
       success_url: `${origin}/@${store.handle}/thanks?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/@${store.handle}/book/${product.id}`,
     });
@@ -295,11 +298,17 @@ export async function holdAndCheckout(input: {
     applyTax(store, body);
     onlyInstantMethods(body);
     inTheCurrencyShown(body);
+    // Stripe will not keep a checkout open for less than half an hour, counted
+    // from when it makes it, so the closing time is set at the last moment;
+    // the hold is counted from after, and lasts a minute longer, so the time
+    // is never released while the page that pays for it is still open.
+    body.set("expires_at", String(checkoutClosesAt()));
 
     const session = await onAccount("POST", store.stripeAccountId, "/checkout/sessions", body);
     if (typeof session.url !== "string" || !session.url || typeof session.id !== "string") {
       return { ok: false, reason: "error" };
     }
+    const until = Date.now() + HOLD_SECONDS * 1000;
     const entry: Entry = { e: end, until, session: session.id };
     await redisPipeline([["HSET", busyKey(store.callsId), String(start), JSON.stringify(entry)]]);
     return { ok: true, url: session.url, session: session.id };

@@ -549,6 +549,24 @@ export async function storeForHandle(handle: string): Promise<Store | null> {
   return parseStore(raw);
 }
 
+/**
+ * One step through every store, for a scheduled job that has to look at all
+ * of them. `cursor` is Redis's own: "0" to begin, and "0" comes back once the
+ * last store has been read. A store can be seen twice while it moves between
+ * addresses, so whatever is done with each one has to be safe to repeat.
+ */
+export async function storesAfter(cursor: string): Promise<{ stores: Store[]; next: string }> {
+  if (!isRedisConfigured()) return { stores: [], next: "0" };
+  const [reply] = await redisPipeline([["SCAN", cursor, "MATCH", "nl:store:owner:*", "COUNT", 200]]);
+  if (!Array.isArray(reply) || reply.length < 2) return { stores: [], next: "0" };
+  const next = String(reply[0]);
+  const keys = Array.isArray(reply[1]) ? (reply[1] as unknown[]).map(String) : [];
+  if (keys.length === 0) return { stores: [], next };
+  const values = await redisPipeline(keys.map((key) => ["GET", key]));
+  const stores = values.map(parseStore).filter((store): store is Store => store !== null);
+  return { stores, next };
+}
+
 export type ClaimResult =
   | { ok: true; store: Store }
   | { ok: false; reason: "taken" | "reserved" | "shape" | "already" };

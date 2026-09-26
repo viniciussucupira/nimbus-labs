@@ -2,7 +2,7 @@
  * Limited quantities: how many are left, and never selling one more.
  *
  * Every checkout for a limited product holds one unit for as long as that
- * checkout can be paid — thirty minutes, the least Stripe allows — and the
+ * checkout can be paid — about half an hour, the least Stripe allows — and the
  * unit is either paid for or handed back. A hold whose time is up is checked
  * against the creator's Stripe account before it is let go, so a buyer who
  * paid and closed the tab before coming back still counts as sold.
@@ -11,11 +11,12 @@
  * paid for or is paying for right now.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
-import { onAccount } from "@/lib/stripe-account";
+import { HOLD_SECONDS, onAccount } from "@/lib/stripe-account";
+import { isSettled } from "@/lib/instant-pay";
 import { limitedStock } from "@/lib/product-extras";
 import type { Product, Store } from "@/lib/store";
 
-const HOLD_MS = 31 * 60_000;
+const HOLD_MS = HOLD_SECONDS * 1000;
 const MAX_CHECKS = 5;
 
 type Entry = { until: number; paid?: boolean };
@@ -64,7 +65,7 @@ export async function stockLeft(store: Store, product: Product, now = Date.now()
     checks += 1;
     try {
       const found = await onAccount("GET", store.stripeAccountId, `/checkout/sessions/${encodeURIComponent(session)}`);
-      if (found.status === "complete" && found.payment_status === "paid") {
+      if (isSettled(found)) {
         writes.push(["HSET", stockKey(store.statsId, product.id), session, JSON.stringify({ until: 0, paid: true })]);
         used += 1;
       } else if (found.status === "open") {
@@ -86,15 +87,16 @@ export type StockHold<T> = { ok: true; value: T } | { ok: false; reason: "soldou
  * Opens a checkout for a limited product only if a unit is free, and holds
  * that unit for it. Two buyers pressing buy for the last unit at the same
  * instant cannot both get a checkout: the count and the hold happen under one
- * short lock.
+ * short lock. `open` is told whether a unit is held, so the checkout it makes
+ * closes before the hold runs out.
  */
 export async function withStockHold<T extends { id: string }>(
   store: Store,
   product: Product,
-  open: (expiresAt: number) => Promise<T>,
+  open: (held: boolean) => Promise<T>,
 ): Promise<StockHold<T>> {
   if (limitedStock(product) === null || !store.statsId || !isRedisConfigured()) {
-    return { ok: true, value: await open(0) };
+    return { ok: true, value: await open(false) };
   }
   const lock = lockKey(store.statsId, product.id);
   let locked = false;
@@ -105,12 +107,12 @@ export async function withStockHold<T extends { id: string }>(
   }
   if (!locked) return { ok: false, reason: "busy" };
   try {
-    const now = Date.now();
-    const left = await stockLeft(store, product, now);
+    const left = await stockLeft(store, product, Date.now());
     if (left !== null && left <= 0) return { ok: false, reason: "soldout" };
-    const value = await open(Math.floor(now / 1000) + 30 * 60);
+    const value = await open(true);
+    // Counted from after the checkout exists, so the hold outlasts it.
     await redisPipeline([
-      ["HSET", stockKey(store.statsId, product.id), value.id, JSON.stringify({ until: now + HOLD_MS })],
+      ["HSET", stockKey(store.statsId, product.id), value.id, JSON.stringify({ until: Date.now() + HOLD_MS })],
     ]);
     return { ok: true, value };
   } finally {

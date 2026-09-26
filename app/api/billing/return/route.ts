@@ -36,7 +36,11 @@ export async function GET(request: NextRequest) {
 
     return away(origin, `/studio?billing=${started.active ? "on" : "pending"}`);
   } catch (error) {
+    // Stripe did not answer just now. The payment, if there was one, is not
+    // lost: it is found by the store's address, when the creator presses
+    // start again and by the daily job (lib/billing-sync.ts). So the creator
+    // is told that, rather than that nothing was charged.
     console.error("billing return failed", error);
-    return away(origin, "/studio?billing=error");
+    return away(origin, "/studio?billing=unconfirmed");
   }
 }

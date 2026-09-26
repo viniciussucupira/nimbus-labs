@@ -142,15 +142,21 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     await confirmStock(store, order.product, sessionId).catch((error) => console.error("confirming stock failed", error));
   }
 
-  // The one-click offer: settled first if the bank asked the buyer to confirm
-  // it, then shown only to the browser that paid, within the hour, once.
-  if (order.state === "paid" && sessionId && query.upsell === "back") await settleUpsell(store, sessionId);
+  // The one-click offer: settled first if it is still waiting on an answer —
+  // the bank asked the buyer to confirm it, or Stripe's reply was lost — then
+  // shown only to the browser that paid, within the hour, once, and only
+  // after an order that was paid with a card it can be charged to.
+  if (order.state === "paid" && sessionId) await settleUpsell(store, sessionId);
   const upsellOffer =
     order.state === "paid" && !order.plan && !store.tax.enabled ? activeUpsell(store.products, order.product) : null;
   const upsellRecord = upsellOffer && sessionId ? await readUpsell(sessionId) : null;
   const upsellSecret = (await cookies()).get(UPSELL_COOKIE)?.value;
   const showOffer =
-    order.state === "paid" && upsellOffer !== null && upsellRecord === null && offerOpen(order.created, upsellSecret, order.upsellKey ?? undefined);
+    order.state === "paid" &&
+    order.amount > 0 &&
+    upsellOffer !== null &&
+    upsellRecord === null &&
+    offerOpen(order.created, upsellSecret, order.upsellKey ?? undefined);
   const upsold = order.state === "paid" && sessionId ? await upsellDelivery(store, sessionId) : null;
   const upsellMissed = upsellRecord !== null && upsellRecord.state !== "paid";
 
@@ -408,7 +414,9 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 </div>
               ) : upsellMissed && upsellOffer ? (
                 <p className="st-note mt-6 text-sm" role="status">
-                  {upsellRecord?.state === "pending"
+                  {upsellRecord?.state === "pending" && !upsellRecord.pi
+                    ? `We are still hearing back from Stripe about ${upsellOffer.target.title}. Open this page again in a minute: it is charged once at most, and it appears here as soon as it is paid.`
+                    : upsellRecord?.state === "pending"
                     ? `Your bank has not confirmed ${upsellOffer.target.title}, so it was not charged.`
                     : `${upsellOffer.target.title} was not charged: your card turned it down. You can still buy it from the store.`}
                 </p>

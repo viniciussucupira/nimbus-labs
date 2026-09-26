@@ -26,6 +26,24 @@ export function platformKey(): string | null {
   return key;
 }
 
+/**
+ * How long a checkout that holds something stays open.
+ *
+ * Stripe keeps a checkout open for at least thirty minutes, counted from the
+ * moment it makes it, and refuses an earlier closing time. So the time is
+ * worked out right before the request that makes the checkout, with a minute
+ * to spare for the journey there. Whatever it holds — a call's time, a
+ * limited unit — is held for a minute longer still (HOLD_SECONDS), so it
+ * is never let go while the page that pays for it is open.
+ */
+export const CHECKOUT_OPEN_SECONDS = 31 * 60;
+export const HOLD_SECONDS = CHECKOUT_OPEN_SECONDS + 60;
+
+/** When a holding checkout made right now closes, in seconds. */
+export function checkoutClosesAt(): number {
+  return Math.floor(Date.now() / 1000) + CHECKOUT_OPEN_SECONDS;
+}
+
 export class StripeError extends Error {
   readonly status: number;
   readonly code: string;
@@ -54,6 +72,11 @@ export async function onAccount(
   path: string,
   body?: URLSearchParams,
   version?: string,
+  /**
+   * For a charge that must never happen twice: Stripe answers a repeat of
+   * the same key with the first result instead of doing it again.
+   */
+  idempotencyKey?: string,
 ): Promise<Record<string, unknown>> {
   const key = platformKey();
   if (!key) throw new Error("Selling is not configured");
@@ -65,6 +88,7 @@ export async function onAccount(
       // The whole point: this acts on the creator's account, not ours.
       "Stripe-Account": account,
       ...(version ? { "Stripe-Version": version } : {}),
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey.slice(0, 255) } : {}),
       ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
     },
     body,

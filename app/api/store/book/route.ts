@@ -4,6 +4,7 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { canSellProduct } from "@/lib/store-checkout";
 import { holdAndCheckout, isCallProduct, releaseOwnHold } from "@/lib/calls";
 import { countHit } from "@/lib/visit";
+import { HOLD_SECONDS } from "@/lib/stripe-account";
 
 /** The checkout this browser last opened for a call, so going back frees it. */
 const HOLD_COOKIE = "nl_call_hold";
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     headers: {
       Location: result.url,
       "Cache-Control": "no-store",
-      "Set-Cookie": `${HOLD_COOKIE}=${result.session}; Path=/api/store/book; Max-Age=1860; HttpOnly; SameSite=Lax${secure}`,
+      "Set-Cookie": `${HOLD_COOKIE}=${result.session}; Path=/api/store/book; Max-Age=${HOLD_SECONDS}; HttpOnly; SameSite=Lax${secure}`,
     },
   });
 }

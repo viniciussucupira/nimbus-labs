@@ -25,6 +25,7 @@ import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount, platformKey } from "@/lib/stripe-account";
+import { isSettled } from "@/lib/instant-pay";
 import type { ProductFile } from "@/lib/product-file";
 import type { Product, Store } from "@/lib/store";
 
@@ -135,7 +136,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       if (!SESSION_ID_PATTERN.test(id) || found.has(id)) continue;
       const meta = (session.metadata ?? {}) as Record<string, string>;
       if (!handles.has(meta.store ?? "")) continue;
-      if (session.payment_status !== "paid") continue;
+      if (!isSettled(session)) continue;
       if (meta.kind === "call") continue;
       const product = store.products.find((p) => p.id === meta.product);
       if (!product || product.call) continue;

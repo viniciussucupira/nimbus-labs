@@ -46,6 +46,7 @@ import {
   TRIAL_DAYS,
   isBillingConfigured,
   readSubscription,
+  trialOffered,
 } from "@/lib/billing";
 import { PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, priceWords, yearSaving } from "@/lib/plan";
 
@@ -190,6 +191,10 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
     title: "You already pay for this store",
     body: "There is nothing to start. One store, one subscription.",
   },
+  unconfirmed: {
+    title: "Stripe has not confirmed it yet",
+    body: "Stripe did not answer as you came back. If you finished paying, it is written down here within a day, and pressing start again does not charge you twice: it finds the subscription you already have.",
+  },
   unavailable: {
     title: "Paying is not switched on yet",
     body: "Our side of Stripe is not configured, so nothing would happen. Nothing was changed.",
@@ -290,6 +295,9 @@ export default async function StudioPage({
   // shows two different answers to the same question.
   const current = store ? { ...store, subscriptionActive: paid, ...(plan ?? {}) } : null;
   const trialing = live?.state === "active" && live.trialing;
+  // The trial is once per store. A store starting again is told, on every
+  // button, that it pays from today — the same rule the checkout opens with.
+  const withTrial = store ? trialOffered(store) : true;
   // Read from Stripe on this page load. When Stripe could not be asked, the
   // cancel button still shows: the route asks again before it does anything.
   const cancelling = live?.state === "active" && live.cancelsAtEnd;
@@ -371,7 +379,7 @@ export default async function StudioPage({
           ? [{ key: "stripe", title: "Connect your Stripe account", hint: "Where your buyers' money goes: yours, not ours.", done: store.stripeChargesEnabled, href: "#stripe" }]
           : []),
         ...(billingReadyForSteps
-          ? [{ key: "plan", title: "Switch on the till", hint: `Free for ${TRIAL_DAYS} days, and nothing is charged today.`, done: paid, href: "#billing" }]
+          ? [{ key: "plan", title: "Switch on the till", hint: withTrial ? `Free for ${TRIAL_DAYS} days, and nothing is charged today.` : `${priceWords("creator", "month")}, from today.`, done: paid, href: "#billing" }]
           : []),
         ...(connectReady && store.stripeChargesEnabled
           ? [
@@ -1005,7 +1013,9 @@ export default async function StudioPage({
                             comes out of the server with markers in the middle,
                             which is invisible to a reader and a lie to anything
                             that searches the page for the sentence. */}
-                        {`Start the ${TRIAL_DAYS}-day trial \u2014 ${priceWords("creator", "month")} after that`}
+                        {withTrial
+                          ? `Start the ${TRIAL_DAYS}-day trial \u2014 ${priceWords("creator", "month")} after that`
+                          : `Start again \u2014 ${priceWords("creator", "month")}, from today`}
                       </button>
                       <button
                         type="submit"
@@ -1013,25 +1023,38 @@ export default async function StudioPage({
                         value="year"
                         className="btn btn-secondary btn-wrap"
                       >
-                        {`Or pay yearly: ${priceWords("creator", "year")} after the trial, $${yearSaving("creator") / 100} less`}
+                        {withTrial
+                          ? `Or pay yearly: ${priceWords("creator", "year")} after the trial, $${yearSaving("creator") / 100} less`
+                          : `Or pay yearly: ${priceWords("creator", "year")}, $${yearSaving("creator") / 100} less`}
                       </button>
                     </form>
-                    <p className="mt-3 text-sm text-ink-soft">
-                      Nothing is charged today. The card is taken now and first
-                      billed in {TRIAL_DAYS} days, so you can open a store, sell
-                      something real and decide with an answer instead of a
-                      guess. We email you a week before that first charge.
-                    </p>
+                    {withTrial ? (
+                      <p className="mt-3 text-sm text-ink-soft">
+                        Nothing is charged today. The card is taken now and first
+                        billed in {TRIAL_DAYS} days, so you can open a store, sell
+                        something real and decide with an answer instead of a
+                        guess. We email you a week before that first charge.
+                      </p>
+                    ) : (
+                      <p className="mt-3 text-sm text-ink-soft">
+                        This store has had its free trial, so this time the first
+                        payment is taken at checkout, today. Cancelling is still
+                        one click on this page, and nothing more is charged after
+                        the period you paid for.
+                      </p>
+                    )}
                     {PRO_ON_SALE ? (
                       <div className="mt-6 rounded-[var(--r-md)] bg-sand p-5">
                         <p className="font-semibold text-ink">Pro</p>
                         <p className="mt-1 text-sm text-ink-soft">
-                          {`Everything above, plus email to your list: one-off emails, emails scheduled for later and automatic sequences, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month. The same ${TRIAL_DAYS}-day trial.`}
+                          {`Everything above, plus email to your list: one-off emails, emails scheduled for later and automatic sequences, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month.${withTrial ? ` The same ${TRIAL_DAYS}-day trial.` : ""}`}
                         </p>
                         <form action="/api/billing/checkout" method="post" className="mt-4 flex flex-col items-start gap-3">
                           <input type="hidden" name="tier" value="pro" />
                           <button type="submit" name="cycle" value="month" className="btn btn-secondary btn-wrap">
-                            {`Start the trial on Pro \u2014 ${priceWords("pro", "month")} after that`}
+                            {withTrial
+                              ? `Start the trial on Pro \u2014 ${priceWords("pro", "month")} after that`
+                              : `Start Pro \u2014 ${priceWords("pro", "month")}, from today`}
                           </button>
                           <button type="submit" name="cycle" value="year" className="btn btn-secondary btn-wrap">
                             {`Or Pro yearly: ${priceWords("pro", "year")}, $${yearSaving("pro") / 100} less`}

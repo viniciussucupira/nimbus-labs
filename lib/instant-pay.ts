@@ -42,3 +42,20 @@ export function onlyInstantMethods(body: URLSearchParams): void {
 export function inTheCurrencyShown(body: URLSearchParams): void {
   body.set("adaptive_pricing[enabled]", "false");
 }
+
+/**
+ * Whether a finished checkout is settled: paid, or brought to nothing by a
+ * discount code.
+ *
+ * A code for 100%, or for more than the price, closes the checkout with
+ * nothing to pay, and Stripe then says "no_payment_required" rather than
+ * "paid". The buyer still bought the thing and is owed it, so every door that
+ * asks "was this paid for?" asks it here, and none of them can forget the
+ * second answer.
+ */
+export function isSettled(session: { status?: unknown; payment_status?: unknown }): boolean {
+  return (
+    session.status === "complete" &&
+    (session.payment_status === "paid" || session.payment_status === "no_payment_required")
+  );
+}

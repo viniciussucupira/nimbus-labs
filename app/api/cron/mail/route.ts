@@ -12,8 +12,11 @@ export const maxDuration = 60;
  * comes, finishes long ones, and sends each step of a sequence when it is due.
  */
 export async function GET(request: NextRequest) {
+  // Vercel sends the secret with every scheduled run. Without one set, only a
+  // local development server runs the job on request; in production that is
+  // a closed door, not an open one.
   const secret = process.env.CRON_SECRET?.trim();
-  if (secret && request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (secret ? request.headers.get("authorization") !== `Bearer ${secret}` : process.env.NODE_ENV === "production") {
     return new Response("Unauthorized", { status: 401 });
   }
   if (!isRedisConfigured() || !isSenderConfigured()) {

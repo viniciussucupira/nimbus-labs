@@ -7,12 +7,15 @@ import { sendReminders } from "@/lib/billing-reminders";
  * Run on a schedule by Vercel: warns every creator before a trial turns into
  * a charge, and before a yearly plan renews.
  *
- * Safe to call by anyone: each charge is warned of once, only to the person
+ * Safe to run more than once: each charge is warned of once, only to the person
  * paying it, and one run at a time.
  */
 export async function GET(request: NextRequest) {
+  // Vercel sends the secret with every scheduled run. Without one set, only a
+  // local development server runs the job on request; in production that is
+  // a closed door, not an open one.
   const secret = process.env.CRON_SECRET?.trim();
-  if (secret && request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (secret ? request.headers.get("authorization") !== `Bearer ${secret}` : process.env.NODE_ENV === "production") {
     return new Response("Unauthorized", { status: 401 });
   }
   if (!isRedisConfigured() || !isBillingConfigured()) {

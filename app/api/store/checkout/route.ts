@@ -7,6 +7,7 @@ import { releaseStockHold, withStockHold } from "@/lib/stock";
 import { activePlan, activeUpsell } from "@/lib/product-extras";
 import { rememberPlan } from "@/lib/plans";
 import { UPSELL_COOKIE, newUpsellKey } from "@/lib/upsell";
+import { HOLD_SECONDS } from "@/lib/stripe-account";
 import { BUYER_COOKIE, BUYER_COOKIE_SECONDS, newBuyerKey } from "@/lib/learn";
 import { canWrite } from "@/lib/mail";
 
@@ -94,10 +95,10 @@ export async function POST(request: NextRequest) {
     const upsell = !inPlan && !store.tax.enabled && activeUpsell(store.products, product) ? newUpsellKey() : null;
     // A course opens straight away in the browser that paid for it.
     const buyer = product.course ? newBuyerKey() : null;
-    const held = await withStockHold(store, product, (expiresAt) =>
+    const held = await withStockHold(store, product, (holding) =>
       createCheckout(store, product, origin, optionId, {
         bump,
-        expiresAt: expiresAt || undefined,
+        held: holding,
         upsellKey: upsell?.fingerprint,
         plan: inPlan,
         buyerKey: buyer?.fingerprint,
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
     const headers = new Headers({ Location: held.value.url, "Cache-Control": "no-store" });
     const secure = origin.startsWith("https://") ? "; Secure" : "";
     if (product.stock !== null) {
-      headers.append("Set-Cookie", `${HOLD_COOKIE}=${held.value.id}; Path=/api/store/checkout; Max-Age=1860; HttpOnly; SameSite=Lax${secure}`);
+      headers.append("Set-Cookie", `${HOLD_COOKIE}=${held.value.id}; Path=/api/store/checkout; Max-Age=${HOLD_SECONDS}; HttpOnly; SameSite=Lax${secure}`);
     }
     if (upsell) {
       headers.append("Set-Cookie", `${UPSELL_COOKIE}=${upsell.secret}; Path=/; Max-Age=7200; HttpOnly; SameSite=Lax${secure}`);

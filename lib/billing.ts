@@ -22,8 +22,10 @@ import {
   TRIAL_DAYS,
 } from "@/lib/plan";
 import { inTheCurrencyShown } from "@/lib/instant-pay";
+import { normaliseEmail } from "@/lib/auth";
 import {
   CUSTOMER_PATTERN,
+  HANDLE_PATTERN,
   SUBSCRIPTION_PATTERN,
   type Store,
 } from "@/lib/store";
@@ -207,17 +209,35 @@ function writeInline(body: URLSearchParams, tier: Tier, cycle: Cycle): void {
 }
 
 /**
+ * Whether this store is offered the free trial.
+ *
+ * Once per store: a store that has ever started a subscription with us —
+ * trial or not, cancelled or not — pays from the first day when it starts
+ * again. Otherwise cancelling inside the trial and starting over would be a
+ * free store for as long as anyone cared to keep doing it. The studio reads
+ * the same answer, so the button never promises a trial the checkout does not
+ * open with.
+ */
+export function trialOffered(store: Pick<Store, "stripeCustomerId" | "subscriptionId">): boolean {
+  return !store.stripeCustomerId && !store.subscriptionId;
+}
+
+/**
  * Opens the page where a creator starts paying, and returns where to send them.
  *
  * The amount lives in lib/plan.ts and nowhere else. If the price at Stripe
  * cannot be read or made just now, the checkout is still opened with the same
  * amount written out inline, so a creator ready to pay is never turned away
  * over it.
+ *
+ * `customerId` is the customer this store already paid us from, when there is
+ * one, so a returning creator stays one customer with one history.
  */
 export async function createBillingCheckout(
   store: Store,
   origin: string,
   choice: { tier: Tier; cycle: Cycle } = { tier: "creator", cycle: "month" },
+  customerId: string | null = store.stripeCustomerId,
 ): Promise<string> {
   const { tier, cycle } = choice;
   const body = new URLSearchParams({
@@ -227,14 +247,20 @@ export async function createBillingCheckout(
     // payment page in whatever language the last person to test it spoke.
     locale: "en",
     "line_items[0][quantity]": "1",
-    customer_email: store.email,
-    "subscription_data[trial_period_days]": String(TRIAL_DAYS),
     "subscription_data[metadata][store]": store.handle,
     "subscription_data[metadata][tier]": tier,
     "metadata[store]": store.handle,
     success_url: `${origin}/api/billing/return?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/studio?billing=cancelled`,
   });
+  if (customerId && CUSTOMER_PATTERN.test(customerId)) {
+    body.set("customer", customerId);
+  } else {
+    body.set("customer_email", store.email);
+  }
+  if (trialOffered(store)) {
+    body.set("subscription_data[trial_period_days]", String(TRIAL_DAYS));
+  }
   inTheCurrencyShown(body);
 
   let price: string | null = null;
@@ -253,12 +279,21 @@ export async function createBillingCheckout(
   try {
     session = await onPlatform("POST", "/checkout/sessions", body);
   } catch (error) {
-    // A price archived at Stripe since we last read it: forget it, and open
-    // the checkout with the amount written out instead.
-    if (!price || !(error instanceof BillingError) || error.status !== 400) throw error;
-    priceIds.clear();
-    body.delete("line_items[0][price]");
-    writeInline(body, tier, cycle);
+    if (!(error instanceof BillingError) || error.status !== 400) throw error;
+    if (body.has("customer") && /customer/i.test(error.message)) {
+      // A customer Stripe no longer has — deleted, or made with a test key —
+      // is started again from the address, the way a first checkout is.
+      body.delete("customer");
+      body.set("customer_email", store.email);
+    } else if (price) {
+      // A price archived at Stripe since we last read it: forget it, and open
+      // the checkout with the amount written out instead.
+      priceIds.clear();
+      body.delete("line_items[0][price]");
+      writeInline(body, tier, cycle);
+    } else {
+      throw error;
+    }
     session = await onPlatform("POST", "/checkout/sessions", body);
   }
   if (typeof session.url !== "string" || !session.url) {
@@ -398,7 +433,7 @@ export function planOf(subscription: Record<string, unknown>): { tier: Tier; cyc
 }
 
 /** One reading of a subscription, used for what Stripe sends back either way. */
-function stateOf(subscription: Record<string, unknown>): SubscriptionState {
+export function stateOf(subscription: Record<string, unknown>): SubscriptionState {
   const status = typeof subscription.status === "string" ? subscription.status : "";
   if (!GOOD.has(status)) return { state: "inactive", reason: status || "unknown" };
 
@@ -520,12 +555,14 @@ export async function switchPlan(
   if (typeof itemId !== "string") throw new Error("The subscription has no item to change");
   const price = await ensurePrice(choice.tier, choice.cycle);
 
+  // Only what a pending update may carry. Stripe refuses any other field —
+  // metadata included — when the change waits on a payment, so the plan's
+  // name is written separately below, once the change has actually happened.
   const body = new URLSearchParams({
     "items[0][id]": itemId,
     "items[0][price]": price,
     proration_behavior: "always_invoice",
     payment_behavior: "pending_if_incomplete",
-    "metadata[tier]": choice.tier,
     "expand[]": "latest_invoice",
   });
   if (status === "trialing" && typeof subscription.trial_end === "number") {
@@ -553,6 +590,11 @@ export async function switchPlan(
     }
     return { kind: "refused", reason: "pending" };
   }
+  // The price says which plan this is; the note is for whoever reads the
+  // subscription in the Stripe dashboard. Missing it changes nothing charged.
+  await onPlatform("POST", path, new URLSearchParams({ "metadata[tier]": choice.tier })).catch((error) =>
+    console.error("noting the plan on the subscription failed", error),
+  );
   return { kind: "switched", state: stateOf(updated) };
 }
 
@@ -561,7 +603,7 @@ export async function switchPlan(
  * email, for the reminders sent before a charge.
  */
 export async function listSubscriptions(
-  status: "trialing" | "active",
+  status: "trialing" | "active" | "all",
   startingAfter?: string,
 ): Promise<{ data: Record<string, unknown>[]; hasMore: boolean }> {
   const query = new URLSearchParams({ status, limit: "100" });
@@ -575,6 +617,97 @@ export async function listSubscriptions(
 }
 
 export { periodEnd };
+
+/** The customer a subscription belongs to, whether or not it was expanded. */
+export function customerOf(subscription: Record<string, unknown>): { id: string; email: string } {
+  const customer = subscription.customer as { id?: unknown; email?: unknown } | string | null | undefined;
+  if (typeof customer === "string") return { id: customer, email: "" };
+  return {
+    id: typeof customer?.id === "string" ? customer.id : "",
+    email: typeof customer?.email === "string" ? customer.email : "",
+  };
+}
+
+/**
+ * Whether a subscription of ours was started by this store.
+ *
+ * The handle in its metadata only says which address it was bought under,
+ * and an address that was let go can later belong to somebody else. So it
+ * must also be paid by this store's own customer, or by the address this
+ * store signs in with — the address the checkout was opened for.
+ */
+export function ownedBy(store: Store, subscription: Record<string, unknown>): boolean {
+  const meta = subscription.metadata as Record<string, string> | null | undefined;
+  const handles = new Set([store.handle, ...store.previousHandles]);
+  if (!handles.has(meta?.store ?? "")) return false;
+  const customer = customerOf(subscription);
+  if (store.stripeCustomerId && customer.id === store.stripeCustomerId) return true;
+  return customer.email !== "" && normaliseEmail(customer.email) === normaliseEmail(store.email);
+}
+
+/** What a subscription in good standing means for the store's snapshot. */
+export function startedFrom(subscription: Record<string, unknown>): StartedSubscription | null {
+  const state = stateOf(subscription);
+  const customerId = customerOf(subscription).id;
+  const subscriptionId = typeof subscription.id === "string" ? subscription.id : "";
+  if (state.state !== "active") return null;
+  if (!CUSTOMER_PATTERN.test(customerId) || !SUBSCRIPTION_PATTERN.test(subscriptionId)) return null;
+  return {
+    customerId,
+    subscriptionId,
+    active: true,
+    tier: state.tier,
+    cycle: state.cycle,
+    trialEnds: state.trialing ? state.until : 0,
+  };
+}
+
+/** How many of a store's subscriptions one search looks at. */
+const SEARCH_LIMIT = 100;
+
+/**
+ * What Stripe already has for this store, looked up before a new checkout is
+ * opened.
+ *
+ * The store's own record only learns of a subscription when the creator comes
+ * back from paying. A return that never arrived — a closed tab, Stripe not
+ * answering at that moment — would otherwise leave a paying subscription the
+ * store does not know about, and a second one started over the top of it,
+ * both charged. So Stripe is asked by the handle the checkout wrote into the
+ * subscription (Subscription Search: `metadata['store']:'<handle>'`), under
+ * every address this store still answers to.
+ *
+ * `live` is one in good standing, to be written down instead of starting
+ * another; `customerId` is the customer this store last paid us from. Search
+ * can lag a new subscription by a minute or so; the daily job in
+ * lib/billing-sync.ts settles whatever it misses.
+ */
+export async function findStoreSubscriptions(
+  store: Store,
+): Promise<{ live: StartedSubscription | null; customerId: string | null }> {
+  // Stripe takes at most ten clauses in one query.
+  const handles = [store.handle, ...store.previousHandles]
+    .filter((handle) => HANDLE_PATTERN.test(handle))
+    .slice(0, 10);
+  if (handles.length === 0) return { live: null, customerId: null };
+  const query = new URLSearchParams({
+    query: handles.map((handle) => `metadata['store']:'${handle}'`).join(" OR "),
+    limit: String(SEARCH_LIMIT),
+  });
+  query.append("expand[]", "data.customer");
+  const page = await onPlatform("GET", `/subscriptions/search?${query}`);
+  const rows = (Array.isArray(page.data) ? (page.data as Record<string, unknown>[]) : [])
+    .filter((subscription) => ownedBy(store, subscription))
+    .sort((a, b) => (Number(b.created) || 0) - (Number(a.created) || 0));
+
+  let live: StartedSubscription | null = null;
+  for (const subscription of rows) {
+    live = startedFrom(subscription);
+    if (live) break;
+  }
+  const last = rows.map((subscription) => customerOf(subscription).id).find((id) => CUSTOMER_PATTERN.test(id));
+  return { live, customerId: last ?? null };
+}
 
 /**
  * Whether this store is paid up, read from what we wrote down.

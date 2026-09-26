@@ -12,7 +12,10 @@
  *   - it is open for an hour after paying and can be taken once, guarded so a
  *     double press charges once;
  *   - when the bank asks the buyer to confirm, they are sent to confirm it,
- *     and nothing is delivered until Stripe says it is paid.
+ *     and nothing is delivered until Stripe says it is paid;
+ *   - when the answer from Stripe is lost on the way back, the charge is not
+ *     guessed at: it is found again among the buyer's payments and settled
+ *     from what Stripe says happened.
  */
 import { createHash, randomBytes } from "node:crypto";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -26,7 +29,17 @@ export const UPSELL_WINDOW_SECONDS = 60 * 60;
 const RECORD_SECONDS = 8 * 24 * 60 * 60;
 const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
 
-type UpsellRecord = { state: "pending" | "paid" | "failed"; product: string; pi?: string; at: number };
+/** How long an upsell whose answer was lost is looked for before it counts as not charged. */
+const LOST_ANSWER_MS = 10 * 60 * 1000;
+
+type UpsellRecord = {
+  state: "pending" | "paid" | "failed";
+  product: string;
+  pi?: string;
+  /** The creator's customer the charge is made for, so it can be found again. */
+  customer?: string;
+  at: number;
+};
 
 const recordKey = (session: string) => `nl:upsell:${session}`;
 
@@ -58,6 +71,8 @@ export type TakeResult =
   | { kind: "done" }
   | { kind: "confirm"; url: string }
   | { kind: "failed" }
+  /** Stripe's answer did not arrive; the thanks page finds out what happened. */
+  | { kind: "checking" }
   | { kind: "unavailable" };
 
 type SessionView = {
@@ -135,6 +150,9 @@ export async function takeUpsell(input: {
     return { kind: "failed" };
   }
 
+  // Written down before Stripe is asked, so a lost answer can be looked for.
+  await writeUpsell(session, { state: "pending", product: offer.target.id, customer, at: Date.now() });
+
   const email = typeof view.customer_details?.email === "string" ? view.customer_details.email : "";
   const body = new URLSearchParams({
     amount: String(offer.bump.priceCents),
@@ -153,40 +171,80 @@ export async function takeUpsell(input: {
   if (email) body.set("receipt_email", email);
 
   try {
-    const pi = await onAccount("POST", store.stripeAccountId, "/payment_intents", body);
+    // One key per order: however this request is repeated, Stripe charges once.
+    const pi = await onAccount("POST", store.stripeAccountId, "/payment_intents", body, undefined, `nimbus-upsell:${session}`);
     const id = typeof pi.id === "string" ? pi.id : "";
     if (pi.status === "succeeded") {
-      await writeUpsell(session, { state: "paid", product: offer.target.id, pi: id, at: Date.now() });
+      await writeUpsell(session, { state: "paid", product: offer.target.id, pi: id, customer, at: Date.now() });
       return { kind: "done" };
     }
     const next = pi.next_action as { redirect_to_url?: { url?: unknown } } | null;
     const url = typeof next?.redirect_to_url?.url === "string" ? next.redirect_to_url.url : "";
     if (pi.status === "requires_action" && url) {
-      await writeUpsell(session, { state: "pending", product: offer.target.id, pi: id, at: Date.now() });
+      await writeUpsell(session, { state: "pending", product: offer.target.id, pi: id, customer, at: Date.now() });
       return { kind: "confirm", url };
     }
-    await writeUpsell(session, { state: "failed", product: offer.target.id, pi: id, at: Date.now() });
+    await writeUpsell(session, { state: "failed", product: offer.target.id, pi: id, customer, at: Date.now() });
     return { kind: "failed" };
   } catch (error) {
-    if (!(error instanceof StripeError) || error.status >= 500) console.error("upsell charge failed", error);
-    await writeUpsell(session, { state: "failed", product: offer.target.id, at: Date.now() });
-    return { kind: "failed" };
+    // Stripe answered and said no — a declined card, a refused request — so
+    // nothing was charged.
+    if (error instanceof StripeError && error.status < 500) {
+      await writeUpsell(session, { state: "failed", product: offer.target.id, customer, at: Date.now() });
+      return { kind: "failed" };
+    }
+    // No answer, or Stripe's own failure: the charge may have gone through.
+    // It stays pending and is settled from what Stripe says (settleUpsell),
+    // never reported as declined on a guess.
+    console.error("upsell charge failed", error);
+    return { kind: "checking" };
   }
 }
 
+/** The upsell charge made for this order, found among the customer's payments. */
+async function findCharge(store: Store, session: string, customer: string): Promise<Record<string, unknown> | null> {
+  const listed = await onAccount(
+    "GET",
+    store.stripeAccountId as string,
+    `/payment_intents?${new URLSearchParams({ customer, limit: "20" })}`,
+  );
+  const rows = Array.isArray(listed.data) ? (listed.data as Record<string, unknown>[]) : [];
+  return (
+    rows.find((pi) => {
+      const meta = pi.metadata as Record<string, string> | null;
+      return meta?.kind === "upsell" && meta?.parent === session;
+    }) ?? null
+  );
+}
+
 /**
- * Settles an upsell the bank asked the buyer to confirm, once they are back:
- * paid only if Stripe says so, for this very order.
+ * Settles an upsell still waiting on an answer: one the bank asked the buyer
+ * to confirm, or one whose answer from Stripe was lost on the way back. Paid
+ * only if Stripe says so, for this very order. Nothing is ever charged here.
  */
 export async function settleUpsell(store: Store, session: string): Promise<void> {
   const record = await readUpsell(session);
-  if (!record || record.state !== "pending" || !record.pi || !store.stripeAccountId) return;
+  if (!record || record.state !== "pending" || !store.stripeAccountId) return;
   try {
-    const pi = await onAccount("GET", store.stripeAccountId, `/payment_intents/${encodeURIComponent(record.pi)}`);
+    let pi: Record<string, unknown> | null;
+    if (record.pi) {
+      pi = await onAccount("GET", store.stripeAccountId, `/payment_intents/${encodeURIComponent(record.pi)}`);
+    } else if (record.customer) {
+      pi = await findCharge(store, session, record.customer);
+      if (!pi) {
+        // Not there after long enough: the request never reached Stripe.
+        if (Date.now() - record.at > LOST_ANSWER_MS) await writeUpsell(session, { ...record, state: "failed" });
+        return;
+      }
+    } else {
+      return;
+    }
     const meta = pi.metadata as Record<string, string> | null;
     if (meta?.parent !== session) return;
-    if (pi.status === "succeeded") await writeUpsell(session, { ...record, state: "paid" });
-    else if (pi.status === "requires_payment_method" || pi.status === "canceled") await writeUpsell(session, { ...record, state: "failed" });
+    const id = typeof pi.id === "string" ? pi.id : record.pi;
+    if (pi.status === "succeeded") await writeUpsell(session, { ...record, pi: id, state: "paid" });
+    else if (pi.status === "requires_payment_method" || pi.status === "canceled") await writeUpsell(session, { ...record, pi: id, state: "failed" });
+    else if (id !== record.pi) await writeUpsell(session, { ...record, pi: id });
   } catch (error) {
     console.error("settling an upsell failed", error);
   }
