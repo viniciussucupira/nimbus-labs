@@ -343,7 +343,7 @@ function EventRow({
       </div>
       <p className="mt-1 text-sm text-ink-soft">{`${event.when} · ${event.length}`}</p>
       <p className="mt-1 text-sm text-ink-soft">
-        {event.where === "room" ? "Private video room" : meetName ? `${meetName} (automatic)${made ? "" : ", using its private video room for now"}` : "Your meeting link"}
+        {event.where === "room" ? "Private video room" : meetName ? `${meetName} (automatic)${made || event.cancelled ? "" : ", using its private video room for now"}` : "Your meeting link"}
         {only.length ? ` · only for buyers of ${only.join(", ")}` : " · every member"}
         {event.post ? " · announced in the feed" : ""}
       </p>
