@@ -53,6 +53,7 @@ import {
   ProviderError,
   type Tokens,
   configuredProviders,
+  offeredProviders,
   consentUrl,
   exchangeCode,
   isConfigured,
@@ -152,8 +153,10 @@ function viewOf(c: Connection): ConnectionView {
 }
 
 /** Which accounts a store has connected, for the studio. Nothing is read when both are off. */
-export async function meetView(statsId: string | null): Promise<MeetView> {
-  const providers = configuredProviders();
+export async function meetView(statsId: string | null, sid?: string | null): Promise<MeetView> {
+  // A studio page names its store, and sees what that store is offered;
+  // the booking side (usableProviders) reads every provider switched on.
+  const providers = sid === undefined ? configuredProviders() : offeredProviders(sid);
   if (!providers.length || !statsId || !isRedisConfigured()) return { providers, connected: {}, problems: [] };
   const replies = await redisPipeline([...providers.map((p) => ["GET", connKey(statsId, p)]), ["LRANGE", logKey(statsId), 0, LOG_SIZE - 1]]);
   const connected: MeetView["connected"] = {};

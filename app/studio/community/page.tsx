@@ -24,7 +24,7 @@ import { can } from "@/lib/team-roles";
 import { CommunityStudio, type QueueRow, type StudioMember } from "@/components/community-studio";
 import { CommunityEventsStudio, type StudioEvent } from "@/components/community-events-studio";
 import { VIDEO_ROOM_NOTE } from "@/lib/call-rooms";
-import { configuredProviders } from "@/lib/meet-providers";
+import { offeredProviders } from "@/lib/meet-providers";
 import { meetView } from "@/lib/meet-connect";
 import { eventMeetings } from "@/lib/event-meetings";
 import type { MeetAccount } from "@/components/call-editor";
@@ -82,8 +82,8 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
   // Google Calendar and Zoom (lib/meet-connect.ts): which accounts an event
   // can have a meeting made on, for the form. Nothing is read when the
   // deployment has neither.
-  const meetOn = configuredProviders().length > 0;
-  const meet = id && meetOn && can(view.role, "events") ? await meetView(store.statsId).catch(() => null) : null;
+  const meetOn = offeredProviders(store.sid).length > 0;
+  const meet = id && meetOn && can(view.role, "events") ? await meetView(store.statsId, store.sid ?? null).catch(() => null) : null;
   const meetAccounts: MeetAccount[] = meet
     ? meet.providers.flatMap((p) => {
         const c = meet.connected[p];

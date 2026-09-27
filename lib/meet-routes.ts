@@ -14,7 +14,7 @@ import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { noticeCreator } from "@/lib/account-notice";
 import type { MeetProvider } from "@/lib/call-setup";
 import { ACCOUNT_NAMES, beginConsent, finishConsent, takeConsent } from "@/lib/meet-connect";
-import { isConfigured } from "@/lib/meet-providers";
+import { isConfigured, offeredProviders } from "@/lib/meet-providers";
 import { clientAddress, withinLimit } from "@/lib/request-guard";
 import { originFrom } from "@/lib/request-origin";
 import { ensureStatsId } from "@/lib/store";
@@ -38,6 +38,7 @@ export async function startConnect(request: NextRequest, provider: MeetProvider)
   const creator = await creatorFrom(request, "settings");
   if (creator instanceof Response) return creator;
   const { store, ref, email, origin } = creator;
+  if (!offeredProviders(store.sid).includes(provider)) return notFound();
   const back = (query: string) => away(origin, studioPath(store, query, "meetings"));
   const named = store.statsId ? store : await ensureStatsId(ref);
   if (!named?.statsId || !store.sid) return back(`meet=error&p=${provider}`);

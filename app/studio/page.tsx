@@ -28,7 +28,7 @@ import { WebhookEditor } from "@/components/webhook-editor";
 import { calendarBusy, calendarView, ensureFeedToken, overlaps, slotRooms } from "@/lib/calendar-sync";
 import { roomKind, roomLabel } from "@/lib/call-rooms";
 import { type MeetView, meetView } from "@/lib/meet-connect";
-import { configuredProviders } from "@/lib/meet-providers";
+import { offeredProviders } from "@/lib/meet-providers";
 import { slotMeetings } from "@/lib/meet-links";
 import type { MeetRecord } from "@/lib/meet-records";
 import { keepHandle, webhooksView } from "@/lib/webhooks";
@@ -487,9 +487,9 @@ export default async function StudioPage({
   // Google Calendar and Zoom (lib/meet-connect.ts): which accounts calls can
   // make meetings on, for the call editor, and what was made for each booked
   // time, for the list below. Nothing is read when the deployment has neither.
-  const meetOn = configuredProviders().length > 0;
+  const meetOn = store ? offeredProviders(store.sid).length > 0 : false;
   const meet: MeetView | null =
-    store && meetOn && (may("products") || may("orders")) ? await meetView(store.statsId).catch(() => null) : null;
+    store && meetOn && (may("products") || may("orders")) ? await meetView(store.statsId, store.sid ?? null).catch(() => null) : null;
   const meetAccounts = meet
     ? meet.providers.flatMap((p) => {
         const c = meet.connected[p];
@@ -693,7 +693,7 @@ export default async function StudioPage({
                   : []),
                 // Only once the deployment has the Google or Zoom app's keys (lib/meet-providers.ts).
                 ...(may("settings") && meetOn
-                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${configuredProviders().map((p) => MEET_NAMES[p]).join(" or ")} links, made for every booking and live event.`, icon: "video" as const }]
+                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${offeredProviders(store.sid).map((p) => MEET_NAMES[p]).join(" or ")} links, made for every booking and live event.`, icon: "video" as const }]
                   : []),
                 // Everyone on the store, for their own devices (lib/phone-alerts.ts).
                 { href: studioPath(store, "", "phone"), title: "Phone notifications", text: "A buzz for each sale, booking and report, on your own devices.", icon: "phone" as const },

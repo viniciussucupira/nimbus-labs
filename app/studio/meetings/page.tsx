@@ -8,7 +8,7 @@ import { StudioStorePin } from "@/components/studio-store-pin";
 import { MeetingConnections } from "@/components/meeting-connections";
 import { ToastOnLoad } from "@/components/toast";
 import { ACCOUNT_NAMES, meetView } from "@/lib/meet-connect";
-import { configuredProviders } from "@/lib/meet-providers";
+import { configuredProviders, offeredProviders } from "@/lib/meet-providers";
 import { MEET_NAMES, isMeetProvider } from "@/lib/call-setup";
 
 export const metadata: Metadata = {
@@ -73,12 +73,14 @@ export default async function StudioMeetingsPage({ searchParams }: Params) {
   const { view: access } = found;
   const loaded = access.store;
   const store = loaded.statsId ? loaded : ((await ensureStatsId(access.ref)) ?? loaded);
-  const view = await meetView(store.statsId).catch((error) => {
+  const offered = offeredProviders(store.sid);
+  if (offered.length === 0) notFound();
+  const view = await meetView(store.statsId, store.sid ?? null).catch((error) => {
     console.error("reading the meeting connections failed", error);
     return null;
   });
   const said = outcome(typeof query.meet === "string" ? query.meet : "", typeof query.p === "string" ? query.p : "");
-  const names = configuredProviders().map((p) => MEET_NAMES[p]);
+  const names = offered.map((p) => MEET_NAMES[p]);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -94,7 +96,7 @@ export default async function StudioMeetingsPage({ searchParams }: Params) {
           <p className="eyebrow">Video calls</p>
           <h1 className="t-h2 mt-3">{`${names.join(" and ")} links, made for every booking`}</h1>
           <p className="mt-3 max-w-2xl text-ink-soft">
-            {`Connect your own ${configuredProviders().map((p) => ACCOUNT_NAMES[p]).join(" or ")} account, and each booking of a call gets its own meeting on it, with the link in the buyer's confirmation, reminders and calendar file. Nothing to copy and paste.`}
+            {`Connect your own ${offered.map((p) => ACCOUNT_NAMES[p]).join(" or ")} account, and each booking of a call gets its own meeting on it, with the link in the buyer's confirmation, reminders and calendar file. Nothing to copy and paste.`}
           </p>
 
           {said?.tone === "ok" ? <ToastOnLoad message={said.text} param="meet" /> : null}

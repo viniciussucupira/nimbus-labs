@@ -96,6 +96,21 @@ export function configuredProviders(): MeetProvider[] {
   return (["google", "zoom"] as const).filter(isConfigured);
 }
 
+/**
+ * Zoom lets an app it has not yet published be added only from the account
+ * that built it, so until the Marketplace listing is approved Zoom is offered
+ * to the preview stores alone; ZOOM_LIVE=1 opens it to every store. A store
+ * that already has Zoom connected keeps it either way (usableProviders).
+ */
+const ZOOM_PREVIEW_STORES = new Set(["dc83ed016f0d4a83b71461bca159d8f5"]);
+
+/** What a store's studio offers to connect: switched on, and Zoom only once it is open to that store. */
+export function offeredProviders(sid: string | null | undefined): MeetProvider[] {
+  return configuredProviders().filter(
+    (p) => p !== "zoom" || env("ZOOM_LIVE") === "1" || Boolean(sid && ZOOM_PREVIEW_STORES.has(sid)),
+  );
+}
+
 /** Why a request did not do what it was sent to do. */
 export class ProviderError extends Error {
   /**
