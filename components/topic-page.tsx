@@ -420,23 +420,39 @@ function Related({ slugs }: { slugs: string[] }) {
  * filled by something a visitor actually wants: how long this is, what is in
  * it, and a way straight to the row they came for.
  */
-function HeroContents({ blocks }: { blocks: Block[] }) {
+/*
+ * The list of the page's sections, beside the heading when there is no
+ * drawing to show there. It is drawn for the dark opening of the evidence
+ * pages, and for the daylight opening of a feature page that has no drawing
+ * of its own yet, where white text would disappear into the background.
+ */
+function HeroContents({ blocks, light = false }: { blocks: Block[]; light?: boolean }) {
   const titles = blocks
     .map((b) => ("title" in b && typeof b.title === "string" ? b.title : null))
     .filter((t): t is string => Boolean(t))
     .slice(0, 6);
   if (titles.length < 2) return null;
   return (
-    <div className="nb-fade-up nb-delay-2 rounded-[var(--r-lg)] border border-white/14 bg-white/[0.05] p-6 backdrop-blur-sm sm:p-7">
-      <p className="text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-white/70">On this page</p>
+    <div
+      className={`nb-fade-up nb-delay-2 rounded-[var(--r-lg)] border p-6 sm:p-7 ${
+        light ? "border-line bg-white shadow-[var(--shadow-sm)]" : "border-white/14 bg-white/[0.05] backdrop-blur-sm"
+      }`}
+    >
+      <p className={`text-[0.75rem] font-semibold uppercase tracking-[0.14em] ${light ? "text-ink-mute" : "text-white/70"}`}>
+        On this page
+      </p>
       <ol className="mt-4 grid gap-1">
         {titles.map((t, i) => (
           <li key={t}>
             <a
               href={`#${sectionId(t)}`}
-              className="flex items-baseline gap-3 rounded-[10px] px-2 py-2 text-[0.9375rem] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+              className={`flex items-baseline gap-3 rounded-[10px] px-2 py-2 text-[0.9375rem] transition-colors ${
+                light ? "text-ink-soft hover:bg-paper hover:text-ink" : "text-white/80 hover:bg-white/10 hover:text-white"
+              }`}
             >
-              <span className="w-4 shrink-0 text-[0.75rem] font-semibold tabular-nums text-white/70">{i + 1}</span>
+              <span className={`w-4 shrink-0 text-[0.75rem] font-semibold tabular-nums ${light ? "text-violet-deep" : "text-white/70"}`}>
+                {i + 1}
+              </span>
               <span>{t}</span>
             </a>
           </li>
@@ -571,7 +587,7 @@ export function TopicPageView({ page }: { page: TopicPage }) {
                 ) : null}
               </div>
             ) : (
-              <HeroContents blocks={blocks} />
+              <HeroContents blocks={blocks} light={light} />
             )}
           </div>
         </section>

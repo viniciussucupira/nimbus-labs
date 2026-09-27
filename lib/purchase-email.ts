@@ -22,6 +22,17 @@
  *
  * Booked calls are left out: they have their own confirmation, with the time
  * and a calendar file, sent the moment the time is written down (lib/calls.ts).
+ *
+ * A product that hands out licence keys has its key in the email too, given
+ * to the sale here if the thanks page has not given it already
+ * (lib/licence-keys.ts): the same key either way, because a sale only ever
+ * gets one.
+ *
+ * An offer taken in one click after paying (lib/upsell.ts) is a payment of
+ * its own, made after this email has usually gone, so it gets a short one of
+ * its own (confirmOffer): what was added, what it cost, how to get it, and
+ * its licence key when it hands one out — kept under the offer's payment,
+ * the same reference the thanks page and the list of purchases use.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
@@ -33,8 +44,10 @@ import { everyLabel } from "@/lib/product-recurring";
 import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-store";
 import { SITE_URL } from "@/lib/site-url";
 import { type Product, type Store, centsToPrice } from "@/lib/store";
+import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 
 const SESSION_ID_PATTERN = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
+const INTENT_ID_PATTERN = /^pi_[A-Za-z0-9]{10,200}$/;
 
 /**
  * How old a paid checkout may be and still be confirmed. The five-minute job
@@ -113,11 +126,19 @@ function money(cents: number): string {
 
 export type Confirmation = { to: string; subject: string; text: string };
 
+/** A licence key the email carries, with the product it is for. */
+export type KeyLine = { title: string; key: SaleKey };
+
 /**
  * The email for one checkout, or null when this checkout is not one to
  * confirm: not settled, not this store's, a booked call, or too old.
  */
-export function confirmationFor(store: Store, session: SessionRecord, nowSeconds = Date.now() / 1000): Confirmation | null {
+export function confirmationFor(
+  store: Store,
+  session: SessionRecord,
+  nowSeconds = Date.now() / 1000,
+  keys: KeyLine[] = [],
+): Confirmation | null {
   const id = typeof session.id === "string" ? session.id : "";
   if (!SESSION_ID_PATTERN.test(id)) return null;
   if (!isSettled(session)) return null;
@@ -177,6 +198,16 @@ export function confirmationFor(store: Store, session: SessionRecord, nowSeconds
       `Open what you bought: ${base}/thanks?session_id=${id}`,
       "",
       `That page has your download or your link for the next 3 days. After that it is not lost: open ${base}/orders, type ${email}, and a link to everything you bought from ${name} is emailed to you, at any time.`,
+    );
+  }
+
+  for (const line of keys) {
+    const label = keys.length > 1 ? `Your licence key for ${line.title}` : "Your licence key";
+    lines.push(
+      "",
+      line.key.state === "issued"
+        ? `${label}: ${line.key.key}`
+        : `${label}: on its way. ${name}'s keys ran out just as you paid; it is emailed to you the moment they add more.`,
     );
   }
 
@@ -279,7 +310,8 @@ export async function confirmPurchase(
     }
   }
   if (session.id !== sessionId) return "skip";
-  const letter = confirmationFor(store, session);
+  if (!confirmationFor(store, session)) return "skip";
+  const letter = confirmationFor(store, session, Date.now() / 1000, await keysFor(store, session));
   if (!letter) return "skip";
 
   const [claimed] = await redisPipeline([["SET", key, "sending", "NX", "EX", SENDING_MARK_SECONDS]]);
@@ -301,4 +333,120 @@ export async function confirmPurchase(
     await redisPipeline(sent ? [["SET", key, "sent", "EX", SENT_MARK_SECONDS]] : [["DEL", key]]);
   }
   return sent ? "sent" : "failed";
+}
+
+/** One offer taken in one click after paying, as Stripe charged it. */
+export type TakenOffer = {
+  /** The offer's own payment (pi_…): what its key and its stamped copy are kept under. */
+  reference: string;
+  /** The checkout it followed, whose thanks page delivers it. */
+  parent: string;
+  product: Product;
+  email: string;
+  amountCents: number;
+};
+
+/** The email for an offer taken after paying, with its licence key when it has one. */
+export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleKey | null = null): Confirmation | null {
+  if (!INTENT_ID_PATTERN.test(offer.reference) || !SESSION_ID_PATTERN.test(offer.parent) || !offer.email) return null;
+  const name = store.name;
+  const base = storeBase(store);
+  const lines: string[] = [
+    `You added something to your order from ${name}. This is your confirmation.`,
+    "",
+    `What you added: ${offer.product.title}`,
+    `Paid: ${money(offer.amountCents)}, charged once to the card you had just paid with`,
+    `Reference: ${offer.reference}`,
+    "",
+    `Open it: ${base}/thanks?session_id=${offer.parent}`,
+    "",
+    `That page has it, beside what you bought first, for the next 3 days. After that it is not lost: open ${base}/orders, type ${offer.email}, and a link to everything you bought from ${name} is emailed to you, at any time.`,
+  ];
+  if (key) {
+    lines.push(
+      "",
+      key.state === "issued"
+        ? `Your licence key for ${offer.product.title}: ${key.key}`
+        : `Your licence key for ${offer.product.title}: on its way. ${name}'s keys ran out just as you paid; it is emailed to you the moment they add more.`,
+    );
+  }
+  lines.push(
+    "",
+    `${name}: ${base}`,
+    "",
+    `Questions about this order? Reply to this email and it reaches ${name}.`,
+    `The payment went to ${name}, on their own Stripe account. Nimbus Labs sent this email for them.`,
+  );
+  return {
+    to: offer.email,
+    subject: `Added to your order from ${name}: ${offer.product.title}`.slice(0, 200),
+    text: lines.join("\n"),
+  };
+}
+
+/**
+ * Sends the confirmation for one offer taken after paying, once, whichever of
+ * the offer's own answer and the thanks page settling it gets there first.
+ * Its licence key is given here if nothing gave it yet: the same key the
+ * thanks page and the list of purchases show, because a sale only gets one.
+ */
+export async function confirmOffer(store: Store, offer: TakenOffer): Promise<ConfirmOutcome> {
+  if (!canConfirm(store) || !INTENT_ID_PATTERN.test(offer.reference) || !offer.email) return "skip";
+  const mark = confirmationKey(offer.reference);
+  const [seen] = await redisPipeline([["GET", mark]]);
+  if (seen) return "already";
+  let key: SaleKey | null = null;
+  if (activeKeys(offer.product)) {
+    try {
+      key = await keyForSale(store, offer.product, offer.reference, offer.email);
+    } catch (error) {
+      // Left out rather than holding the email back: it is still on the
+      // thanks page and on the buyer's list of purchases.
+      console.error("reading a licence key for an offer's email failed", error);
+    }
+  }
+  const letter = offerConfirmationFor(store, offer, key);
+  if (!letter) return "skip";
+  const [claimed] = await redisPipeline([["SET", mark, "sending", "NX", "EX", SENDING_MARK_SECONDS]]);
+  if (claimed === null) return "already";
+  let sent = false;
+  try {
+    sent = await sendEmail({
+      from: fromStore(store),
+      to: letter.to,
+      subject: letter.subject,
+      text: letter.text,
+      replyTo: store.email,
+      idempotencyKey: `nimbus-confirm:${offer.reference}`,
+    });
+  } finally {
+    await redisPipeline(sent ? [["SET", mark, "sent", "EX", SENT_MARK_SECONDS]] : [["DEL", mark]]);
+  }
+  return sent ? "sent" : "failed";
+}
+
+/**
+ * The licence keys a paid checkout earns: the product's, and the one ticked
+ * at checkout's. A key that cannot be read or given right now is left out
+ * rather than holding the email back; it is still on the thanks page and on
+ * the buyer's list of purchases.
+ */
+async function keysFor(store: Store, session: SessionRecord): Promise<KeyLine[]> {
+  const meta = session.metadata ?? {};
+  const id = typeof session.id === "string" ? session.id : "";
+  const typed = session.customer_details?.email;
+  const email = typeof typed === "string" ? typed : "";
+  const products = [meta.product, meta.bump]
+    .map((pid) => (pid ? store.products.find((p) => p.id === pid) : undefined))
+    .filter((p): p is Product => Boolean(p && activeKeys(p)));
+  const lines: KeyLine[] = [];
+  for (const product of products) {
+    try {
+      const key = await keyForSale(store, product, id, email);
+      if (key) lines.push({ title: product.title, key });
+    } catch (error) {
+      console.error("reading a licence key for an email failed", error);
+    }
+  }
+  return lines;
 }

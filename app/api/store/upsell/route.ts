@@ -1,50 +1,59 @@
 import type { NextRequest } from "next/server";
-import { originFrom } from "@/lib/request-origin";
+import { linkOrigin, originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { UPSELL_COOKIE, takeUpsell } from "@/lib/upsell";
+import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 
 const MAX_BODY_BYTES = 1_000;
 
 /**
- * The buyer pressed the one-click offer on the thanks page. Charged to the
- * card they just used, only from the browser that paid, once.
+ * The buyer answered an offer on the thanks page. "Yes" is charged to the
+ * card they just used, only from the browser that paid, once; "No thanks"
+ * charges nothing and moves on to whatever the creator put next.
  */
 export async function POST(request: NextRequest) {
   const origin = originFrom(request);
-  const sender = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (sender && host) {
-    try {
-      if (new URL(sender).host !== host) return new Response("forbidden", { status: 403 });
-    } catch {
-      return new Response("forbidden", { status: 403 });
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return new Response("forbidden", { status: 403 });
   if (Number(request.headers.get("content-length") ?? "0") > MAX_BODY_BYTES) {
     return new Response("Too large", { status: 413 });
   }
 
   let handle = "";
   let session = "";
+  let step = "";
+  let answer: "yes" | "no" | "" = "";
   try {
-    const form = await request.formData();
+    const form = await (await limited(request, MAX_BODY_BYTES)).formData();
     const h = form.get("handle");
     const s = form.get("session_id");
+    const t = form.get("step");
     handle = typeof h === "string" ? normaliseHandle(h) : "";
     session = typeof s === "string" ? s.slice(0, 220) : "";
+    step = typeof t === "string" ? t.slice(0, 12) : "";
+    // Only the button that says yes adds anything; a form that says neither
+    // does nothing at all.
+    const a = form.get("answer");
+    answer = a === "yes" || a === "no" ? a : "";
   } catch {
     return new Response("Bad request", { status: 400 });
   }
-  if (!handle || !session) return new Response("Bad request", { status: 400 });
+  if (!handle || !session || !step || !answer) return new Response("Bad request", { status: 400 });
 
   const store = await storeForHandle(handle);
   if (!store) return new Response("No such store.", { status: 404 });
+  if (!(await withinLimit("upsell", `${clientAddress(request)}|${store.handle}`, 30, 600))) {
+    return new Response("Too many tries. Wait a few minutes.", { status: 429, headers: { "Cache-Control": "no-store" } });
+  }
 
   const result = await takeUpsell({
     store,
     session,
     secret: request.cookies.get(UPSELL_COOKIE)?.value,
-    origin,
+    origin: linkOrigin(request, store),
+    step,
+    answer,
   });
   const back = (status: string) =>
     new Response(null, {

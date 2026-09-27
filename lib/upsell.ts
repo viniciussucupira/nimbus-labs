@@ -1,39 +1,69 @@
 /**
- * The one-click upsell: after paying, one press adds another product, charged
- * to the card the buyer just used, on the creator's own account.
+ * The one-click offers after paying: each press adds another product,
+ * charged to the card the buyer just used, on the creator's own account.
  *
- * What keeps it honest and safe:
+ * A product's funnel (lib/funnel.ts) decides what is offered and in what
+ * order; this file is what happens when the buyer answers. What keeps it
+ * honest and safe is the same for the first offer as for the fifth:
  *
  *   - the card is saved only for payments made while the buyer is there
  *     (setup_future_usage "on_session"), never to be charged behind their back;
- *   - the offer only works in the browser that paid: a secret cookie is set
+ *   - the offers only work in the browser that paid: a secret cookie is set
  *     when the checkout opens and its fingerprint travels with the charge, so
  *     a thanks-page link that is forwarded cannot be used to charge the card;
- *   - it is open for an hour after paying and can be taken once, guarded so a
- *     double press charges once;
+ *   - they are open for an hour after paying, and each can be answered once,
+ *     yes or no, guarded so a double press charges once;
+ *   - only the offer the buyer is actually at can be answered: the answers
+ *     already given are walked again on the server, so no offer is skipped to
+ *     and none is taken twice;
  *   - when the bank asks the buyer to confirm, they are sent to confirm it,
- *     and nothing is delivered until Stripe says it is paid;
+ *     nothing is delivered until Stripe says it is paid, and nothing more is
+ *     offered until it has;
  *   - when the answer from Stripe is lost on the way back, the charge is not
  *     guessed at: it is found again among the buyer's payments and settled
- *     from what Stripe says happened.
+ *     from what Stripe says happened;
+ *   - a card that turns an offer down is not asked again: nothing more is
+ *     offered after a decline.
+ *
+ * Each offer paid is its own payment, with its own reference (the payment's
+ * id): its licence key, its stamped copy and its line on the buyer's list of
+ * purchases are all kept under it, and the buyer gets a short confirmation
+ * for it (lib/purchase-email.ts, confirmOffer), with the key in it.
+ *
+ * An offer still waiting on an answer — the bank asked the buyer to confirm,
+ * or Stripe's answer was lost on the way back — is also kept in a list the
+ * five-minute job walks (settlePendingOffers), so its confirmation email and
+ * the affiliate's credit follow Stripe's answer within minutes, whether or
+ * not the buyer ever comes back to the thanks page.
  */
 import { createHash, randomBytes } from "node:crypto";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { StripeError, onAccount } from "@/lib/stripe-account";
-import { activeUpsell } from "@/lib/product-extras";
+import {
+  type FunnelStep,
+  type StepAnswer,
+  activeFunnel,
+  funnelPosition,
+  stepSlot,
+} from "@/lib/funnel";
+import { funnelRate, noteCharge } from "@/lib/affiliates";
+import { confirmOffer } from "@/lib/purchase-email";
+import { refundedInFull } from "@/lib/refunds";
 import type { Product, Store } from "@/lib/store";
 import type { ProductFile } from "@/lib/product-file";
+import type { ProductImage } from "@/lib/product-image";
 
 export const UPSELL_COOKIE = "nl_upsell";
 export const UPSELL_WINDOW_SECONDS = 60 * 60;
 const RECORD_SECONDS = 8 * 24 * 60 * 60;
 const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
+const SLOT_PATTERN = /^[a-z0-9]{4,12}$/;
 
 /** How long an upsell whose answer was lost is looked for before it counts as not charged. */
 const LOST_ANSWER_MS = 10 * 60 * 1000;
 
 type UpsellRecord = {
-  state: "pending" | "paid" | "failed";
+  state: "pending" | "paid" | "failed" | "declined";
   product: string;
   pi?: string;
   /** The creator's customer the charge is made for, so it can be found again. */
@@ -41,7 +71,38 @@ type UpsellRecord = {
   at: number;
 };
 
-const recordKey = (session: string) => `nl:upsell:${session}`;
+/**
+ * One answer per offer per order. The first offer keeps the key the single
+ * upsell always had, so one taken before funnels existed is still found.
+ */
+const recordKey = (session: string, slot = "") => (slot ? `nl:upsell:${session}:${slot}` : `nl:upsell:${session}`);
+/** Which other offers of this order have an answer, so they can all be read. */
+const slotsKey = (session: string) => `nl:upsell-slots:${session}`;
+/**
+ * Every offer waiting on Stripe, across all stores, scored by when it began:
+ * members are "<store handle>|<checkout>|<slot>".
+ */
+const PENDING_KEY = "nl:upsell:pending";
+/** How long an offer waiting on the bank is looked at before the job lets it be. */
+const PENDING_WATCH_MS = 2 * 24 * 60 * 60 * 1000;
+const pendingMember = (handle: string, session: string, slot: string) => `${handle}|${session}|${slot}`;
+
+/**
+ * Adds an offer to the job's list, and takes it off. Best effort: the list
+ * only makes the settling sooner, the thanks page settles an offer too, so a
+ * moment of Redis trouble here never stands in the way of the buyer's answer.
+ */
+async function watchPending(store: Store, session: string, slot: string): Promise<void> {
+  await redisPipeline([["ZADD", PENDING_KEY, Date.now(), pendingMember(store.handle, session, slot)]]).catch((error) =>
+    console.error("listing a waiting offer failed", error),
+  );
+}
+
+async function unwatchPending(store: Store, session: string, slot: string): Promise<void> {
+  await redisPipeline([["ZREM", PENDING_KEY, pendingMember(store.handle, session, slot)]]).catch((error) =>
+    console.error("unlisting a settled offer failed", error),
+  );
+}
 
 export function newUpsellKey(): { secret: string; fingerprint: string } {
   const secret = randomBytes(24).toString("hex");
@@ -52,9 +113,7 @@ export function fingerprint(secret: string): string {
   return createHash("sha256").update(`nimbus-upsell:${secret}`).digest("hex").slice(0, 40);
 }
 
-export async function readUpsell(session: string): Promise<UpsellRecord | null> {
-  if (!isRedisConfigured() || !SESSION_ID.test(session)) return null;
-  const [raw] = await redisPipeline([["GET", recordKey(session)]]);
+function parseRecord(raw: unknown): UpsellRecord | null {
   if (typeof raw !== "string") return null;
   try {
     return JSON.parse(raw) as UpsellRecord;
@@ -63,12 +122,41 @@ export async function readUpsell(session: string): Promise<UpsellRecord | null> 
   }
 }
 
-async function writeUpsell(session: string, record: UpsellRecord): Promise<void> {
-  await redisPipeline([["SET", recordKey(session), JSON.stringify(record), "EX", RECORD_SECONDS]]);
+/** The answer to one offer of this order, or null when there is none yet. */
+export async function readUpsell(session: string, slot = ""): Promise<UpsellRecord | null> {
+  if (!isRedisConfigured() || !SESSION_ID.test(session) || (slot && !SLOT_PATTERN.test(slot))) return null;
+  const [raw] = await redisPipeline([["GET", recordKey(session, slot)]]);
+  return parseRecord(raw);
+}
+
+/** Every answer this order has, keyed by slot ("" for the first offer). */
+async function readAnswers(session: string): Promise<Map<string, UpsellRecord>> {
+  const out = new Map<string, UpsellRecord>();
+  if (!isRedisConfigured() || !SESSION_ID.test(session)) return out;
+  const [first, members] = await redisPipeline([
+    ["GET", recordKey(session)],
+    ["SMEMBERS", slotsKey(session)],
+  ]);
+  const root = parseRecord(first);
+  if (root) out.set("", root);
+  const slots = (Array.isArray(members) ? members.map(String) : []).filter((s) => SLOT_PATTERN.test(s)).slice(0, 20);
+  if (slots.length) {
+    const values = await redisPipeline(slots.map((slot) => ["GET", recordKey(session, slot)]));
+    slots.forEach((slot, i) => {
+      const record = parseRecord(values[i]);
+      if (record) out.set(slot, record);
+    });
+  }
+  return out;
+}
+
+async function writeUpsell(session: string, slot: string, record: UpsellRecord): Promise<void> {
+  await redisPipeline([["SET", recordKey(session, slot), JSON.stringify(record), "EX", RECORD_SECONDS]]);
 }
 
 export type TakeResult =
   | { kind: "done" }
+  | { kind: "declined" }
   | { kind: "confirm"; url: string }
   | { kind: "failed" }
   /** Stripe's answer did not arrive; the thanks page finds out what happened. */
@@ -104,105 +192,186 @@ async function paidSession(store: Store, session: string): Promise<{ view: Sessi
   return product ? { view, product } : null;
 }
 
-/** Whether the offer can still be shown to this browser, for this order. */
+/** Whether the offers can still be shown to this browser, for this order. */
 export function offerOpen(createdSeconds: number, secret: string | undefined, key: string | undefined): boolean {
   if (!secret || !key || fingerprint(secret) !== key) return false;
   return Date.now() / 1000 - createdSeconds <= UPSELL_WINDOW_SECONDS;
 }
 
+const toAnswers = (records: Map<string, UpsellRecord>) =>
+  new Map<string, StepAnswer>([...records].map(([slot, record]) => [slot, record.state]));
+
 /**
- * Charges the upsell to the card the buyer just paid with.
+ * Answers the offer the buyer is at: "yes" charges it to the card they just
+ * paid with, "no" moves on without charging anything.
  *
  * `secret` is the cookie from the buyer's own browser; without it, or after
- * the hour, or a second time, nothing is charged.
+ * the hour, or for an offer that is not the one they are at, or a second
+ * time, nothing happens.
  */
 export async function takeUpsell(input: {
   store: Store;
   session: string;
   secret: string | undefined;
   origin: string;
+  /** The offer the page showed; the answer only counts for that one. */
+  step: string;
+  answer: "yes" | "no";
 }): Promise<TakeResult> {
-  const { store, session, secret, origin } = input;
+  const { store, session, secret, origin, answer } = input;
   if (!store.stripeAccountId || !isRedisConfigured()) return { kind: "unavailable" };
   const found = await paidSession(store, session);
   if (!found) return { kind: "unavailable" };
   const { view, product } = found;
   // A one-click charge cannot carry Stripe Tax, so with tax on there is none.
-  const offer = store.tax.enabled ? null : activeUpsell(store.products, product);
-  if (!offer) return { kind: "unavailable" };
+  const funnel = store.tax.enabled ? null : activeFunnel(store.products, product);
+  if (!funnel) return { kind: "unavailable" };
   const created = typeof view.created === "number" ? view.created : 0;
   if (!offerOpen(created, secret, view.metadata?.upsell_key)) return { kind: "unavailable" };
 
+  // Where the buyer is, worked out from what they already answered: only
+  // that offer can be answered now.
+  const owned = new Set([product.id, ...(view.metadata?.bump ? [view.metadata.bump] : [])]);
+  const records = await readAnswers(session);
+  const position = funnelPosition(funnel, store.products, toAnswers(records), owned);
+  if (position.kind !== "offer" || position.step.id !== input.step) {
+    const asked = funnel.steps.find((s) => s.id === input.step);
+    const record = asked ? records.get(stepSlot(funnel, asked)) : undefined;
+    if (record?.state === "failed") return { kind: "failed" };
+    if (record?.state === "declined") return { kind: "declined" };
+    return record ? { kind: "done" } : { kind: "unavailable" };
+  }
+  const { step, target } = position;
+  const slot = stepSlot(funnel, step);
+
+  if (answer === "no") {
+    // Nothing is charged; the answer is written once, like a yes.
+    await redisPipeline([
+      ["SET", recordKey(session, slot), JSON.stringify({ state: "declined", product: target.id, at: Date.now() }), "NX", "EX", RECORD_SECONDS],
+      ...(slot ? [["SADD", slotsKey(session), slot], ["EXPIRE", slotsKey(session), RECORD_SECONDS]] : []),
+    ]);
+    return { kind: "declined" };
+  }
+
   // Once, however many times the button is pressed.
   const [claimed] = await redisPipeline([
-    ["SET", recordKey(session), JSON.stringify({ state: "pending", product: offer.target.id, at: Date.now() }), "NX", "EX", RECORD_SECONDS],
+    ["SET", recordKey(session, slot), JSON.stringify({ state: "pending", product: target.id, at: Date.now() }), "NX", "EX", RECORD_SECONDS],
   ]);
   if (claimed === null) {
-    const existing = await readUpsell(session);
-    return existing?.state === "paid" ? { kind: "done" } : existing?.state === "failed" ? { kind: "failed" } : { kind: "done" };
+    const existing = await readUpsell(session, slot);
+    return existing?.state === "failed" ? { kind: "failed" } : existing?.state === "declined" ? { kind: "declined" } : { kind: "done" };
   }
+  if (slot) await redisPipeline([["SADD", slotsKey(session), slot], ["EXPIRE", slotsKey(session), RECORD_SECONDS]]);
 
   const intent = typeof view.payment_intent === "object" && view.payment_intent ? view.payment_intent : null;
   const method = typeof intent?.payment_method === "string" ? intent.payment_method : null;
   const customer = typeof view.customer === "string" ? view.customer : null;
   if (!method || !customer) {
-    await writeUpsell(session, { state: "failed", product: offer.target.id, at: Date.now() });
+    await writeUpsell(session, slot, { state: "failed", product: target.id, at: Date.now() });
     return { kind: "failed" };
   }
 
-  // Written down before Stripe is asked, so a lost answer can be looked for.
-  await writeUpsell(session, { state: "pending", product: offer.target.id, customer, at: Date.now() });
+  // Written down before Stripe is asked, so a lost answer can be looked for,
+  // by the thanks page and by the five-minute job.
+  await writeUpsell(session, slot, { state: "pending", product: target.id, customer, at: Date.now() });
+  await watchPending(store, session, slot);
 
   const email = typeof view.customer_details?.email === "string" ? view.customer_details.email : "";
   const body = new URLSearchParams({
-    amount: String(offer.bump.priceCents),
+    amount: String(step.priceCents),
     currency: "usd",
     customer,
     payment_method: method,
     confirm: "true",
     return_url: `${origin}/@${store.handle}/thanks?session_id=${encodeURIComponent(session)}&upsell=back`,
-    description: offer.target.title.slice(0, 200),
+    description: target.title.slice(0, 200),
     "metadata[store]": store.handle,
-    "metadata[product]": offer.target.id,
-    "metadata[title]": offer.target.title.slice(0, 480),
+    "metadata[product]": target.id,
+    "metadata[title]": target.title.slice(0, 480),
     "metadata[kind]": "upsell",
     "metadata[parent]": session,
   });
+  // The first offer's charge looks exactly as a single upsell's always did.
+  if (slot) body.set("metadata[step]", slot);
+  // Which offer of the funnel this is — its own id and its place in the
+  // list — so what Stripe sends on about the charge (the creator's webhooks,
+  // lib/webhooks.ts) can say which step was taken.
+  body.set("metadata[step_id]", step.id);
+  body.set("metadata[step_number]", String(funnel.steps.findIndex((s) => s.id === step.id) + 1));
   if (email) body.set("receipt_email", email);
+  // An order that came through an affiliate's link carries them on to what
+  // is added after it, at the share this product earns today.
+  const via = view.metadata?.via ?? "";
+  const rate = via ? await funnelRate(store, via, target.id).catch(() => 0) : 0;
+  if (via && rate > 0) {
+    body.set("metadata[via]", via);
+    body.set("metadata[via_rate]", String(rate));
+  }
 
   try {
-    // One key per order: however this request is repeated, Stripe charges once.
-    const pi = await onAccount("POST", store.stripeAccountId, "/payment_intents", body, undefined, `nimbus-upsell:${session}`);
+    // One key per offer of each order: however this request is repeated,
+    // Stripe charges once.
+    const pi = await onAccount(
+      "POST",
+      store.stripeAccountId,
+      "/payment_intents",
+      body,
+      undefined,
+      slot ? `nimbus-upsell:${session}:${slot}` : `nimbus-upsell:${session}`,
+    );
     const id = typeof pi.id === "string" ? pi.id : "";
     if (pi.status === "succeeded") {
-      await writeUpsell(session, { state: "paid", product: offer.target.id, pi: id, customer, at: Date.now() });
+      await writeUpsell(session, slot, { state: "paid", product: target.id, pi: id, customer, at: Date.now() });
+      await unwatchPending(store, session, slot);
+      await afterPaid(store, session, target, pi, email);
       return { kind: "done" };
     }
     const next = pi.next_action as { redirect_to_url?: { url?: unknown } } | null;
     const url = typeof next?.redirect_to_url?.url === "string" ? next.redirect_to_url.url : "";
     if (pi.status === "requires_action" && url) {
-      await writeUpsell(session, { state: "pending", product: offer.target.id, pi: id, customer, at: Date.now() });
+      await writeUpsell(session, slot, { state: "pending", product: target.id, pi: id, customer, at: Date.now() });
       return { kind: "confirm", url };
     }
-    await writeUpsell(session, { state: "failed", product: offer.target.id, pi: id, customer, at: Date.now() });
+    await writeUpsell(session, slot, { state: "failed", product: target.id, pi: id, customer, at: Date.now() });
+    await unwatchPending(store, session, slot);
     return { kind: "failed" };
   } catch (error) {
     // Stripe answered and said no — a declined card, a refused request — so
     // nothing was charged.
     if (error instanceof StripeError && error.status < 500) {
-      await writeUpsell(session, { state: "failed", product: offer.target.id, customer, at: Date.now() });
+      await writeUpsell(session, slot, { state: "failed", product: target.id, customer, at: Date.now() });
+      await unwatchPending(store, session, slot);
       return { kind: "failed" };
     }
     // No answer, or Stripe's own failure: the charge may have gone through.
-    // It stays pending and is settled from what Stripe says (settleUpsell),
+    // It stays pending and is settled from what Stripe says (settleUpsells),
     // never reported as declined on a guess.
     console.error("upsell charge failed", error);
     return { kind: "checking" };
   }
 }
 
-/** The upsell charge made for this order, found among the customer's payments. */
-async function findCharge(store: Store, session: string, customer: string): Promise<Record<string, unknown> | null> {
+/**
+ * What follows an offer being paid, wherever that is learned: the affiliate
+ * the order came through is credited, and the buyer gets its confirmation.
+ * Neither can undo the payment, so neither failing is passed on.
+ */
+async function afterPaid(store: Store, session: string, target: Product, pi: Record<string, unknown>, email: string): Promise<void> {
+  await noteCharge(store, pi).catch((error) => console.error("noting an affiliate sale failed", error));
+  const reference = typeof pi.id === "string" ? pi.id : "";
+  const amountCents = typeof pi.amount === "number" ? pi.amount : 0;
+  await confirmOffer(store, { reference, parent: session, product: target, email, amountCents }).catch((error) =>
+    console.error("sending an offer's confirmation failed", error),
+  );
+}
+
+/** One offer's charge for this order, found among the customer's payments. */
+async function findCharge(
+  store: Store,
+  session: string,
+  slot: string,
+  customer: string,
+): Promise<Record<string, unknown> | null> {
   const listed = await onAccount(
     "GET",
     store.stripeAccountId as string,
@@ -212,51 +381,221 @@ async function findCharge(store: Store, session: string, customer: string): Prom
   return (
     rows.find((pi) => {
       const meta = pi.metadata as Record<string, string> | null;
-      return meta?.kind === "upsell" && meta?.parent === session;
+      return meta?.kind === "upsell" && meta?.parent === session && (meta?.step ?? "") === slot;
     }) ?? null
   );
 }
 
-/**
- * Settles an upsell still waiting on an answer: one the bank asked the buyer
- * to confirm, or one whose answer from Stripe was lost on the way back. Paid
- * only if Stripe says so, for this very order. Nothing is ever charged here.
- */
-export async function settleUpsell(store: Store, session: string): Promise<void> {
-  const record = await readUpsell(session);
-  if (!record || record.state !== "pending" || !store.stripeAccountId) return;
+/** Settles one offer still waiting on an answer. Nothing is ever charged here. */
+async function settleOne(store: Store, session: string, slot: string, record: UpsellRecord): Promise<void> {
+  if (record.state !== "pending" || !store.stripeAccountId) return;
   try {
     let pi: Record<string, unknown> | null;
     if (record.pi) {
       pi = await onAccount("GET", store.stripeAccountId, `/payment_intents/${encodeURIComponent(record.pi)}`);
     } else if (record.customer) {
-      pi = await findCharge(store, session, record.customer);
+      pi = await findCharge(store, session, slot, record.customer);
       if (!pi) {
         // Not there after long enough: the request never reached Stripe.
-        if (Date.now() - record.at > LOST_ANSWER_MS) await writeUpsell(session, { ...record, state: "failed" });
+        if (Date.now() - record.at > LOST_ANSWER_MS) {
+          await writeUpsell(session, slot, { ...record, state: "failed" });
+          await unwatchPending(store, session, slot);
+        }
         return;
       }
     } else {
       return;
     }
     const meta = pi.metadata as Record<string, string> | null;
-    if (meta?.parent !== session) return;
+    if (meta?.parent !== session || (meta?.step ?? "") !== slot) return;
     const id = typeof pi.id === "string" ? pi.id : record.pi;
-    if (pi.status === "succeeded") await writeUpsell(session, { ...record, pi: id, state: "paid" });
-    else if (pi.status === "requires_payment_method" || pi.status === "canceled") await writeUpsell(session, { ...record, pi: id, state: "failed" });
-    else if (id !== record.pi) await writeUpsell(session, { ...record, pi: id });
+    if (pi.status === "succeeded" || pi.status === "requires_payment_method" || pi.status === "canceled") {
+      await unwatchPending(store, session, slot);
+    }
+    if (pi.status === "succeeded") {
+      await writeUpsell(session, slot, { ...record, pi: id, state: "paid" });
+      const target = store.products.find((p) => p.id === record.product);
+      const email = typeof pi.receipt_email === "string" ? pi.receipt_email : "";
+      if (target) await afterPaid(store, session, target, pi, email);
+      else await noteCharge(store, pi).catch((error) => console.error("noting an affiliate sale failed", error));
+    } else if (pi.status === "requires_payment_method" || pi.status === "canceled") {
+      await writeUpsell(session, slot, { ...record, pi: id, state: "failed" });
+    } else if (id !== record.pi) {
+      await writeUpsell(session, slot, { ...record, pi: id });
+    }
   } catch (error) {
     console.error("settling an upsell failed", error);
   }
 }
 
-/** What the upsell delivers, once it is paid. */
+/**
+ * Settles every offer of this order still waiting on an answer: one the bank
+ * asked the buyer to confirm, or one whose answer from Stripe was lost on the
+ * way back. Paid only if Stripe says so, for this very order and this very
+ * offer. Nothing is ever charged here.
+ */
+export async function settleUpsells(store: Store, session: string): Promise<void> {
+  const records = await readAnswers(session);
+  for (const [slot, record] of records) {
+    if (record.state === "pending") await settleOne(store, session, slot, record);
+  }
+}
+
+/**
+ * The five-minute job's pass over offers still waiting on Stripe, in every
+ * store: each is settled from what Stripe says (settleOne), so a paid offer
+ * gets its confirmation email and its affiliate credit without waiting for
+ * the buyer to come back, and one the bank never confirmed is let go after
+ * two days. Nothing is ever charged here. `storeFor` is passed in, as the
+ * other jobs do, so this file does not depend on the store record's.
+ */
+export async function settlePendingOffers(
+  storeFor: (handle: string) => Promise<Store | null>,
+  deadline: number,
+): Promise<{ checked: number; settled: number }> {
+  const counts = { checked: 0, settled: 0 };
+  if (!isRedisConfigured()) return counts;
+  // A minute's grace: the buyer's own browser is usually back by then and
+  // settles it itself on the thanks page.
+  const [members] = await redisPipeline([["ZRANGEBYSCORE", PENDING_KEY, 0, Date.now() - 60_000, "LIMIT", 0, 50]]);
+  const list = Array.isArray(members) ? (members as unknown[]).map(String) : [];
+  for (const member of list) {
+    if (Date.now() >= deadline) break;
+    const [handle, session, slot = ""] = member.split("|");
+    const drop = () => redisPipeline([["ZREM", PENDING_KEY, member]]);
+    if (!handle || !SESSION_ID.test(session ?? "") || (slot && !SLOT_PATTERN.test(slot))) {
+      await drop();
+      continue;
+    }
+    counts.checked += 1;
+    try {
+      const record = await readUpsell(session, slot);
+      if (!record || record.state !== "pending") {
+        await drop();
+        continue;
+      }
+      const store = await storeFor(handle);
+      if (!store || !store.stripeAccountId) {
+        if (Date.now() - record.at > PENDING_WATCH_MS) await drop();
+        continue;
+      }
+      await settleOne(store, session, slot, record);
+      const after = await readUpsell(session, slot);
+      if (!after || after.state !== "pending") {
+        counts.settled += 1;
+        await drop();
+      } else if (Date.now() - after.at > PENDING_WATCH_MS) {
+        await drop();
+      }
+    } catch (error) {
+      console.error("settling a waiting offer failed", error);
+    }
+  }
+  return counts;
+}
+
+/**
+ * The reference a paid offer is known by: its own payment's id, as the
+ * buyer's list of purchases shows it, or, before Stripe gave one, the order
+ * and the offer's slot.
+ */
+export function upsellReference(session: string, slot: string, record: UpsellRecord): string {
+  return record.pi ?? (slot ? `${session}:upsell:${slot}` : `${session}:upsell`);
+}
+
+/**
+ * Whether an offer's own payment was refunded in full since (lib/refunds.ts),
+ * read from Stripe on every download, as the order is. An offer is its own
+ * payment, so the order it followed may stand while it is refunded, or the
+ * other way round. Throws when Stripe cannot be asked; the download then
+ * answers that it could not check, rather than handing the file over.
+ */
+export async function offerRefunded(store: Store, reference: string): Promise<boolean> {
+  if (!/^pi_[A-Za-z0-9]{6,200}$/.test(reference) || !store.stripeAccountId) return false;
+  const pi = await onAccount("GET", store.stripeAccountId, `/payment_intents/${encodeURIComponent(reference)}?expand[]=latest_charge`);
+  return refundedInFull(pi);
+}
+
+/** What one offer delivers, once it is paid. `slot` is "" for the first. */
 export async function upsellDelivery(
   store: Store,
   session: string,
-): Promise<{ product: Product; file: ProductFile | null; link: string | null } | null> {
-  const record = await readUpsell(session);
+  slot = "",
+): Promise<{ product: Product; file: ProductFile | null; link: string | null; reference: string; paidAt: number } | null> {
+  const record = await readUpsell(session, slot);
   if (!record || record.state !== "paid") return null;
   const product = store.products.find((p) => p.id === record.product);
-  return product ? { product, file: product.file, link: product.link } : null;
+  // Its own payment's id, when Stripe gave one: the same reference the
+  // buyer's list of purchases shows it under, so a licence key or a stamped
+  // copy made for it is found again from either page.
+  const reference = upsellReference(session, slot, record);
+  // When it was paid, in seconds: the date a stamped copy carries.
+  const paidAt = Math.floor(record.at / 1000);
+  return product ? { product, file: product.file, link: product.link, reference, paidAt } : null;
+}
+
+export type FunnelView = {
+  /** The offer to show now, when there is one. */
+  offer: {
+    step: FunnelStep;
+    target: Product;
+    image: ProductImage | null;
+    /** Reached by saying no to an earlier offer. */
+    afterNo: boolean;
+  } | null;
+  /** What was added and paid for, each with the slot its download is asked by. */
+  taken: { slot: string; product: Product; reference: string }[];
+  /** An offer still waiting on the bank or Stripe, or one the card turned down. */
+  notes: { state: "checking" | "unconfirmed" | "declined"; title: string }[];
+};
+
+/**
+ * What the thanks page shows of the offers after paying: the one the buyer
+ * is at — only to the browser that paid, within the hour — what they added,
+ * and anything still waiting or turned down.
+ */
+export async function funnelView(input: {
+  store: Store;
+  session: string;
+  product: Product;
+  /** What else this order holds: what was ticked at checkout. */
+  alsoOwned: string[];
+  /** Whether this order can be followed by offers at all. */
+  eligible: boolean;
+  created: number;
+  secret: string | undefined;
+  upsellKey: string | null;
+}): Promise<FunnelView> {
+  const { store, session, product } = input;
+  const records = await readAnswers(session);
+  const taken: FunnelView["taken"] = [];
+  const notes: FunnelView["notes"] = [];
+  for (const [slot, record] of records) {
+    const known = store.products.find((p) => p.id === record.product);
+    const title = known?.title ?? "The product you were offered";
+    if (record.state === "paid" && known) taken.push({ slot, product: known, reference: upsellReference(session, slot, record) });
+    if (record.state === "pending") notes.push({ state: record.pi ? "unconfirmed" : "checking", title });
+    if (record.state === "failed") notes.push({ state: "declined", title });
+  }
+
+  const funnel = input.eligible && !store.tax.enabled ? activeFunnel(store.products, product) : null;
+  if (!funnel || !offerOpen(input.created, input.secret, input.upsellKey ?? undefined)) {
+    return { offer: null, taken, notes };
+  }
+  const owned = new Set([product.id, ...input.alsoOwned]);
+  const position = funnelPosition(funnel, store.products, toAnswers(records), owned);
+  if (position.kind !== "offer") return { offer: null, taken, notes };
+  const { step, target } = position;
+  const pictured = step.imageFrom ? store.products.find((p) => p.id === step.imageFrom) ?? null : null;
+  const afterNo = funnel.steps.some((s) => s.no === step.id && records.get(stepSlot(funnel, s))?.state === "declined");
+  return {
+    offer: {
+      step,
+      target,
+      image: pictured?.image ?? null,
+      afterNo,
+    },
+    taken,
+    notes,
+  };
 }

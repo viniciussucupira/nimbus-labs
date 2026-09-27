@@ -8,6 +8,7 @@ import {
 } from "@/lib/product-file";
 import { recordDelivery } from "@/lib/delivery";
 import { isRedisConfigured } from "@/lib/redis";
+import { fileHeaders } from "@/lib/request-guard";
 
 /**
  * Gives the creator back the file they uploaded.
@@ -86,15 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     await recordDelivery(found.file.pathname, found.file.bytes);
-    return new Response(result.stream, {
-      headers: {
-        "Content-Type": found.file.contentType || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${found.file.name}"`,
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "private, no-store",
-        "X-Robots-Tag": "noindex",
-      },
-    });
+    return new Response(result.stream, { headers: fileHeaders(found.file.contentType, found.file.name) });
   } catch (error) {
     console.error("reading a file failed", error);
     return new Response("We could not fetch the file right now.", {

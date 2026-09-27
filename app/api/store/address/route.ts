@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { originFrom } from "@/lib/request-origin";
+import { linkOrigin, originFrom } from "@/lib/request-origin";
 import {
   EMAIL_PATTERN,
   MAX_EMAIL_LENGTH,
@@ -11,6 +11,7 @@ import {
   withinAddressLimit,
 } from "@/lib/auth";
 import { storeForEmail } from "@/lib/store";
+import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 /**
  * Asks to move the sign-in address.
@@ -21,17 +22,9 @@ import { storeForEmail } from "@/lib/store";
  */
 export async function POST(request: NextRequest) {
   const origin = originFrom(request);
-  const sender = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (sender && host) {
-    try {
-      if (new URL(sender).host !== host) {
-        return new Response("forbidden", { status: 403 });
-      }
-    } catch {
-      return new Response("forbidden", { status: 403 });
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return new Response("forbidden", { status: 403 });
 
   const back = (status: string) =>
     new Response(null, {
@@ -49,7 +42,7 @@ export async function POST(request: NextRequest) {
 
   let wanted = "";
   try {
-    const form = await request.formData();
+    const form = await (await limited(request, 8_000)).formData();
     const value = form.get("email");
     wanted = typeof value === "string" ? value.trim() : "";
   } catch {
@@ -74,7 +67,7 @@ export async function POST(request: NextRequest) {
 
   try {
     if (!(await withinAddressLimit(wanted))) return back("limited");
-    await sendMoveLink(email, wanted, origin);
+    await sendMoveLink(email, wanted, linkOrigin(request));
   } catch (error) {
     console.error("address move request failed", error);
     return back("error");

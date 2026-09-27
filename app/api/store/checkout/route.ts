@@ -1,15 +1,20 @@
 import { type NextRequest, after } from "next/server";
-import { originFrom } from "@/lib/request-origin";
+import { linkOrigin, originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { canSellProduct, createCheckout } from "@/lib/store-checkout";
 import { countHit } from "@/lib/visit";
 import { releaseStockHold, withStockHold } from "@/lib/stock";
-import { activePlan, activeUpsell } from "@/lib/product-extras";
+import { activePlan } from "@/lib/product-extras";
+import { activeFunnel } from "@/lib/funnel";
+import { affiliateCookieName, attributionFor } from "@/lib/affiliates";
+import { viaCookieName } from "@/lib/affiliate-setting";
 import { rememberPlan } from "@/lib/plans";
 import { UPSELL_COOKIE, newUpsellKey } from "@/lib/upsell";
 import { HOLD_SECONDS } from "@/lib/stripe-account";
 import { BUYER_COOKIE, BUYER_COOKIE_SECONDS, newBuyerKey } from "@/lib/learn";
 import { canWrite } from "@/lib/mail";
+import { outOfKeys } from "@/lib/licence-keys";
+import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -26,17 +31,9 @@ const HOLD_COOKIE = "nl_stock_hold";
 export async function POST(request: NextRequest) {
   const origin = originFrom(request);
 
-  const sender = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (sender && host) {
-    try {
-      if (new URL(sender).host !== host) {
-        return new Response("forbidden", { status: 403 });
-      }
-    } catch {
-      return new Response("forbidden", { status: 403 });
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return new Response("forbidden", { status: 403 });
 
   const away = (path: string) =>
     new Response(null, {
@@ -51,7 +48,7 @@ export async function POST(request: NextRequest) {
   let plan = false;
   let news = false;
   try {
-    const form = await request.formData();
+    const form = await (await limited(request, 8_000)).formData();
     const h = form.get("handle");
     const p = form.get("product");
     // An id, and only an id. The amount that goes to Stripe is read from the
@@ -77,11 +74,22 @@ export async function POST(request: NextRequest) {
   const product = store.products.find((item) => item.id === productId);
   if (!product) return away(`/@${store.handle}`);
 
+  // Each press opens a checkout on the creator's Stripe account and may hold
+  // a limited unit for half an hour, so one connection gets twenty in ten
+  // minutes per store: far past any buyer, and short of a script holding
+  // every unit to keep real buyers out.
+  if (!(await withinLimit("checkout", `${clientAddress(request)}|${store.handle}`, 20, 600))) {
+    return away(`/@${store.handle}?status=slow`);
+  }
+
   // Refused here rather than at Stripe, so a buyer never reaches a card form
   // for something that could not have been delivered anyway.
   if (!canSellProduct(store, product)) return away(`/@${store.handle}`);
   // A call is booked for a time on its own page, never bought without one.
   if (product.call) return away(`/@${store.handle}/book/${product.id}`);
+  // Every licence key in the pool is given: nobody is charged for one that
+  // does not exist. The creator was emailed when the pool ran low.
+  if (await outOfKeys(store, product).catch(() => false)) return away(`/@${store.handle}?status=soldout`);
 
   try {
     // A buyer who went back from Stripe's page hands back the unit they held
@@ -89,20 +97,27 @@ export async function POST(request: NextRequest) {
     const previous = request.cookies.get(HOLD_COOKIE)?.value ?? "";
     if (previous) await releaseStockHold(store, product, previous).catch(() => {});
 
-    // When an upsell follows, this browser gets a secret, and only its
-    // fingerprint travels with the charge.
+    // When offers follow the payment, this browser gets a secret, and only
+    // its fingerprint travels with the charge.
     const inPlan = plan && activePlan(product) !== null;
-    const upsell = !inPlan && !store.tax.enabled && activeUpsell(store.products, product) ? newUpsellKey() : null;
+    const upsell = !inPlan && !store.tax.enabled && activeFunnel(store.products, product) ? newUpsellKey() : null;
+    // Sent by an affiliate within the store's window: credited to them. A
+    // lookup that fails never stops the sale; it is only not credited.
+    const via = await attributionFor(store, product.id, {
+      via: request.cookies.get(viaCookieName(store.handle))?.value,
+      session: request.cookies.get(affiliateCookieName(store.handle))?.value,
+    }).catch(() => null);
     // A course opens straight away in the browser that paid for it.
     const buyer = product.course ? newBuyerKey() : null;
     const held = await withStockHold(store, product, (holding) =>
-      createCheckout(store, product, origin, optionId, {
+      createCheckout(store, product, linkOrigin(request, store), optionId, {
         bump,
         held: holding,
         upsellKey: upsell?.fingerprint,
         plan: inPlan,
         buyerKey: buyer?.fingerprint,
         news: news && canWrite(store),
+        via,
       }),
     );
     if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);

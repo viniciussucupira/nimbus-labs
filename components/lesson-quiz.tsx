@@ -1,0 +1,167 @@
+import type { Attempt, Quiz } from "@/lib/quiz";
+import { triesLeft } from "@/lib/quiz";
+
+/**
+ * A lesson's quiz, as a student meets it: the questions to answer, and after
+ * each try how it went. Plain form, no script: the answers are marked on the
+ * server and the page comes back with the result.
+ *
+ * What is shown after a try follows lib/quiz.ts: which questions were right,
+ * the explanations of those, and — once passed or out of tries — the right
+ * answers and every explanation.
+ */
+export function LessonQuiz({
+  quiz,
+  attempt,
+  mode,
+  action,
+  hidden,
+  storeName,
+  justMarked,
+}: {
+  quiz: Quiz;
+  attempt: Attempt | null;
+  /** "student" answers it; "owner" sees it with the answers; "visitor" is told it is there. */
+  mode: "student" | "owner" | "visitor";
+  action: string;
+  hidden: Record<string, string>;
+  storeName: string;
+  /** Came straight back from marking a try: the result is announced. */
+  justMarked: boolean;
+}) {
+  const total = quiz.questions.length;
+  const heading = (
+    <div className="flex flex-wrap items-baseline justify-between gap-2">
+      <h2 id="quiz-title" className="font-display text-xl font-semibold">Quiz</h2>
+      <p className="st-muted text-sm">
+        {[
+          `${total} ${total === 1 ? "question" : "questions"}`,
+          `pass mark ${quiz.passPercent}%`,
+          quiz.attempts ? `${quiz.attempts} ${quiz.attempts === 1 ? "try" : "tries"}` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      </p>
+    </div>
+  );
+
+  if (mode === "visitor") {
+    return (
+      <section id="quiz" className="mt-8 scroll-mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }} aria-labelledby="quiz-title">
+        {heading}
+        <p className="st-muted mt-2 text-sm">Students answer it here, and it is marked on the spot.</p>
+      </section>
+    );
+  }
+
+  const used = attempt?.used ?? 0;
+  const left = triesLeft(quiz, used);
+  const passed = attempt?.passed === true;
+  const last = attempt?.last ?? null;
+  const reveal = mode === "owner" || passed || left === 0;
+  const canAnswer = mode === "student" && !passed && left !== 0;
+
+  return (
+    <section id="quiz" className="mt-8 scroll-mt-6 rounded-2xl px-5 py-5 sm:px-6" style={{ border: "1px solid var(--st-line-strong)" }} aria-labelledby="quiz-title">
+      {heading}
+
+      {mode === "owner" ? (
+        <p className="st-note mt-3 text-sm">
+          You see the right answers because this is your course. Students see the questions only, and the answers after they have tried.
+        </p>
+      ) : last ? (
+        <div
+          id="quiz-result"
+          className="mt-3 rounded-2xl px-4 py-3"
+          style={{ background: passed ? "var(--st-accent-soft)" : "var(--st-item)", color: "var(--st-text)" }}
+          role={justMarked ? "status" : undefined}
+        >
+          <p className="font-semibold">
+            {passed
+              ? `Passed — ${last.grade.right} of ${last.grade.total} right (${last.grade.percent}%).`
+              : `${last.grade.right} of ${last.grade.total} right (${last.grade.percent}%). You need ${quiz.passPercent}% to pass.`}
+          </p>
+          <p className="st-muted mt-1 text-sm">
+            {passed
+              ? "This lesson is marked done. The right answers and every explanation are below."
+              : left === 0
+                ? `You have used all ${quiz.attempts} ${quiz.attempts === 1 ? "try" : "tries"}. The right answers are below. To try again, reply to your purchase confirmation email: it reaches ${storeName}, who can give you more tries.`
+                : left === null
+                  ? "Look at the ones marked not quite and try again. You can try as often as you like."
+                  : `Look at the ones marked not quite and try again. ${left} ${left === 1 ? "try" : "tries"} left.`}
+          </p>
+        </div>
+      ) : (
+        <p className="st-muted mt-2 text-sm">
+          {left === null
+            ? "Answer every question, then check your answers. You can try as often as you like."
+            : `Answer every question, then check your answers. You have ${left} ${left === 1 ? "try" : "tries"}.`}
+        </p>
+      )}
+
+      <form action={action} method="post" className="mt-5">
+        {Object.entries(hidden).map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
+        <ol className="space-y-6">
+          {quiz.questions.map((question, qi) => {
+            const picked = last?.answers[question.id] ?? [];
+            const mark = mode === "student" && last ? last.grade.marks[question.id] : undefined;
+            const showWhy = reveal || mark === true;
+            return (
+              <li key={question.id}>
+                <fieldset>
+                  <legend className="font-semibold leading-snug" style={{ color: "var(--st-text)" }}>
+                    <span className="st-muted mr-1 tabular-nums">{`${qi + 1}.`}</span>
+                    <span className="whitespace-pre-line">{question.text}</span>
+                    {question.kind === "multiple" ? <span className="st-muted mt-1 block text-sm font-normal">Choose every right answer.</span> : null}
+                  </legend>
+                  <div className="mt-3 space-y-2">
+                    {question.choices.map((choice, ci) => {
+                      const right = question.correct.includes(ci);
+                      const chosen = picked.includes(ci);
+                      return (
+                        <label key={ci} className={`st-option !justify-start ${canAnswer ? "" : "!cursor-default"}`}>
+                          <input
+                            type={question.kind === "single" ? "radio" : "checkbox"}
+                            name={`q_${question.id}`}
+                            value={ci}
+                            defaultChecked={mode === "student" ? chosen : mode === "owner" && right}
+                            disabled={!canAnswer}
+                            className="h-5 w-5 shrink-0"
+                          />
+                          <span className="min-w-0 flex-1 break-words">{choice}</span>
+                          {reveal && right ? (
+                            <span className="shrink-0 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--st-accent-text)" }}>
+                              {"✓ Right answer"}
+                            </span>
+                          ) : null}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {mark !== undefined ? (
+                    <p className="mt-2 text-sm font-semibold" style={{ color: mark ? "var(--st-accent-text)" : "var(--st-text)" }}>
+                      {mark ? "✓ You got this one right." : "✗ Not quite."}
+                    </p>
+                  ) : null}
+                  {showWhy && question.explanation ? (
+                    <p className="st-muted mt-2 whitespace-pre-line text-sm leading-relaxed">{question.explanation}</p>
+                  ) : null}
+                </fieldset>
+              </li>
+            );
+          })}
+        </ol>
+        {canAnswer ? (
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <button type="submit" className="btn st-btn">
+              {last ? "Check my answers again" : "Check my answers"}
+            </button>
+            {left !== null ? <span className="st-muted text-sm">{`${left} ${left === 1 ? "try" : "tries"} left`}</span> : null}
+          </div>
+        ) : null}
+      </form>
+    </section>
+  );
+}

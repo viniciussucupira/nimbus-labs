@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { isRedisConfigured } from "@/lib/redis";
+import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 /**
  * The four checks every write to a store has to pass, in one place.
@@ -25,15 +26,7 @@ export async function guardStoreWrite(
     response: Response.json({ ok: false, error }, { status }),
   });
 
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (origin && host) {
-    try {
-      if (new URL(origin).host !== host) return refuse("forbidden", 403);
-    } catch {
-      return refuse("forbidden", 403);
-    }
-  }
+  if (fromAnotherSite(request)) return refuse("forbidden", 403);
 
   if (Number(request.headers.get("content-length") ?? "0") > maxBodyBytes) {
     return refuse("invalid", 413);
@@ -46,7 +39,8 @@ export async function guardStoreWrite(
 
   let body: Record<string, unknown>;
   try {
-    const parsed: unknown = await request.json();
+    // Counted as it arrives: a body sent without a length stops at the cap.
+    const parsed: unknown = await (await limited(request, maxBodyBytes)).json();
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return refuse("invalid", 400);
     }

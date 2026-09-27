@@ -69,10 +69,11 @@ const BUILT = [
   "Or a link instead of a file, for what is too big to upload or is not a file at all",
   "Memberships: daily, weekly, monthly or yearly, charged on your own Stripe account, with a free trial of 1 to 90 days or a set number of payments, 2 to 36, after which they end by themselves",
   "Members who cancel on their own, in one click on Stripe's own page, without having to write to you",
-  "Your numbers: visitors, where they came from, checkouts started and sales for the last week or month — visits counted without cookies, sales read from your own Stripe",
+  "Your numbers: visitors, where they came from, checkouts started and sales for 7, 30 or 90 days or all time, with utm tags and CSV files of sales, visits and sources — visits counted without cookies, sales read from your own Stripe",
   "Your own Meta, Google, TikTok and Pinterest pixels, told of every page view, checkout, lead and purchase with its amount, and loaded only once a visitor allows it where the law asks for that",
   "An order bump: another of your products offered in a box the buyer ticks at checkout, at your price, never ticked for them, and delivered with the first",
   "A one-click upsell: another product offered on the thanks page, charged in one press to the card just used, only in the browser that paid, within the hour and once",
+  "Funnels: up to five offers after paying, one at a time, each with its own path for yes and for no, charged in one click to the same card",
   "Payment plans: two to twelve weekly or monthly payments on your own Stripe account, the product delivered after the first, and the plan given its end so no buyer is charged once more",
   "Sales tax and VAT worked out by Stripe Tax on your own account and added at checkout, switched on once Stripe says your tax setup is complete",
   "Limited quantities: the page shows how many are left, counted from real payments, and a unit someone is paying for is held so the last one is never sold twice",
@@ -89,6 +90,16 @@ const BUILT = [
   "Free products given for an email address, each address confirmed by its owner, and the list downloadable from your studio at any time",
   "Email to your list, on Pro: one-off emails now or at a time you choose, and sequences that send themselves after someone joins or buys — only to people who agreed, with a one-click unsubscribe in every one",
   "Every store installs to the home screen on iPhone and Android as an app of its own, with its name, its icon and its colour",
+  "A community for your buyers: up to 20 spaces, posts with a picture, comments, likes, pinned posts, an opt-in member directory, reports and moderation, open only to the buyers of the products you choose — with announcements emailed to members who asked, on Pro",
+  "Memberships whose files, course and community close when the membership ends",
+  "An affiliate programme: commission of 1% to 90%, a window of 1 to 90 days, a link and a page for each affiliate, and a record of who is owed what — paid out by you",
+  "Calendar sync: busy times in up to three Google, Outlook or iCloud calendars hide call times, and a private feed puts your bookings in your calendar",
+  "Webhooks: up to five addresses told about sales, members, leads, bookings and refunds, signed, for Zapier, Make or your own server",
+  "Course quizzes of up to 20 questions, and certificates of completion with a page anyone can open to check them",
+  "Licence keys: one unique key per sale, uploaded or made here, with a public check your software can ask",
+  "PDF stamping: the buyer's email, the date and the order on every page of the PDF they download",
+  "A full refund that closes what it paid for by itself: the download at once, the course within 10 minutes, the community within 5, and the licence key revoked within about 5",
+  "Security you can check: single-use sign-in links that expire in 15 minutes, “Log out of all devices”, an email when your Stripe account, domain or webhooks change, a strict Content-Security-Policy on store pages and the studio, forged requests refused, and limits on checkouts, bookings and emails",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
 
@@ -120,10 +131,13 @@ const DOMAIN_LINE =
 
 const NOT_BUILT = [
   "PayPal as a second way to be paid — it is Stripe only today",
-  "Communities and group chat",
-  "Reading your Google or Outlook calendar, so a busy day closes by itself",
+  "Live chat, private messages and webinars inside the community",
+  "Writing bookings into your calendar as events: calendars are read for busy times, and bookings come as a feed you subscribe to",
   "Several stores in one account",
-  "An affiliate programme",
+  "Paying affiliates automatically: you pay them yourself",
+  "Landing and opt-in pages before the checkout",
+  "Automatic replies on Instagram",
+  "A public API to read or change your store: webhooks only send",
   "More than 200 products in one store",
   "Phone-number and checkbox questions at checkout",
   "Streaming or recording live sessions here, rather than on the service whose link you give",
@@ -137,7 +151,7 @@ const RELEASES: { date: string; items: string }[] = [
   { date: "20 September 2026", items: "Memberships, discount codes, and several prices on one product in every store." },
   { date: "21 September 2026", items: "Free products for an email address, members who cancel on their own, and cancelling the Nimbus plan in one click." },
   { date: "22 September 2026", items: "Paid calls, courses, numbers and ad pixels, offers before and after paying, payment plans, sales tax, yearly plans, email to your list and your own domain on Pro, and buyers getting any purchase again by email." },
-  { date: "26 September 2026", items: "Up to 200 products with pictures and pages of their own, questions at checkout, pay what you want, free trials and fixed-length memberships, group calls and live sessions with reminders and self-serve moves, a confirmation email for every purchase, every store installable as its own app, 43 Stripe countries, and one reminder after an unpaid checkout." },
+  { date: "26 September 2026", items: "Up to 200 products with pictures and pages of their own, questions at checkout, pay what you want, free trials and fixed-length memberships, group calls and live sessions with reminders and self-serve moves, a confirmation email for every purchase, every store installable as its own app, 43 Stripe countries, and one reminder after an unpaid checkout. Then a community for your buyers, funnels of offers after paying, an affiliate programme, calendar sync, webhooks, course quizzes and certificates, licence keys, stamped PDFs, longer windows and exports for your numbers, and memberships whose access ends when they do." },
 ];
 
 /* Facts a creator can check before trusting us with a store. */

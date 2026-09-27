@@ -34,6 +34,7 @@ const PRODUCT_GROUPS: { label: string; items: MenuItem[] }[] = [
       item("Courses", "Video lessons that open over time.", "/platform/courses", "book"),
       item("Memberships", "Paid every week, month or year.", "/platform/memberships", "repeat"),
       item("Paid calls", "Booked in their time zone, paid first.", "/platform/calls", "calendar"),
+      item("Community", "Posts and comments, for your buyers.", "/platform/community", "chat"),
     ],
   },
   {
@@ -41,6 +42,7 @@ const PRODUCT_GROUPS: { label: string; items: MenuItem[] }[] = [
     items: [
       item("Your own Stripe", "The money lands in your account.", "/platform/your-stripe", "bank"),
       item("Checkout tools", "Codes, add-ons, instalments, tax.", "/platform/checkout", "percent"),
+      item("Funnels", "Up to five offers after paying.", "/platform/funnels", "ladder"),
     ],
   },
   {
@@ -48,6 +50,7 @@ const PRODUCT_GROUPS: { label: string; items: MenuItem[] }[] = [
     items: [
       item("Instant delivery", "On screen when paid, back by email.", "/platform/instant-delivery", "bolt"),
       item("Numbers and pixels", "Visits, sources, sales, ad pixels.", "/platform/insights", "chart"),
+      item("Affiliates", "A link for each. You pay them.", "/platform/affiliates", "handshake"),
       item("Email to your list", "Broadcasts and sequences. Pro.", "/platform/email", "mail"),
       item("Your own domain", "shop.yourname.com. Pro.", "/platform/domain", "globe"),
     ],

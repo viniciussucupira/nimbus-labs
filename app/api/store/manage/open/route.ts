@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
-import { originFrom } from "@/lib/request-origin";
+import { linkOrigin, originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { MANAGE_TOKEN_PATTERN, openPortal } from "@/lib/membership-manage";
+import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 
 const MAX_BODY_BYTES = 1_000;
 
@@ -12,15 +13,9 @@ const MAX_BODY_BYTES = 1_000;
 export async function POST(request: NextRequest) {
   const origin = originFrom(request);
 
-  const sender = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (sender && host) {
-    try {
-      if (new URL(sender).host !== host) return new Response("forbidden", { status: 403 });
-    } catch {
-      return new Response("forbidden", { status: 403 });
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return new Response("forbidden", { status: 403 });
   if (Number(request.headers.get("content-length") ?? "0") > MAX_BODY_BYTES) {
     return new Response("Too large", { status: 413 });
   }
@@ -28,7 +23,7 @@ export async function POST(request: NextRequest) {
   let handle = "";
   let token = "";
   try {
-    const form = await request.formData();
+    const form = await (await limited(request, MAX_BODY_BYTES)).formData();
     const read = (name: string) => {
       const value = form.get(name);
       return typeof value === "string" ? value : "";
@@ -53,8 +48,10 @@ export async function POST(request: NextRequest) {
     });
 
   if (!MANAGE_TOKEN_PATTERN.test(token)) return back("expired");
+  // Each press opens a billing page on the creator's Stripe account.
+  if (!(await withinLimit("manage-open", `${clientAddress(request)}|${store.handle}`, 20, 600))) return back("limited");
 
-  const result = await openPortal(store, token, origin);
+  const result = await openPortal(store, token, linkOrigin(request, store));
   if (!result.ok) return back(result.reason);
   return new Response(null, {
     status: 303,

@@ -2,7 +2,9 @@ import type { NextRequest } from "next/server";
 import { isFree, storeForHandle } from "@/lib/store";
 import { recordLead, spendClaim } from "@/lib/free";
 import { enroll } from "@/lib/flows";
+import { emitEvent } from "@/lib/webhooks";
 import { plain, serveFile } from "@/lib/serve-file";
+import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 /**
  * Hands over a free copy, from the link that was emailed.
@@ -16,19 +18,13 @@ import { plain, serveFile } from "@/lib/serve-file";
  * the moment it is proved: somebody holding that inbox pressed the button.
  */
 export async function POST(request: NextRequest) {
-  const sender = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (sender && host) {
-    try {
-      if (new URL(sender).host !== host) return plain(403, "forbidden");
-    } catch {
-      return plain(403, "forbidden");
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return plain(403, "forbidden");
 
   let token = "";
   try {
-    const value = (await request.formData()).get("token");
+    const value = (await (await limited(request, 8_000)).formData()).get("token");
     token = typeof value === "string" ? value.slice(0, 100) : "";
   } catch {
     return plain(400, "Bad request");
@@ -60,6 +56,14 @@ export async function POST(request: NextRequest) {
   // Sequences start only for someone who agreed to hear from the creator,
   // now or before; enroll checks that.
   if (listed) await enroll(store, claim.e, { joined: listed.joined, productId: claim.p });
+  // The creator's webhooks hear of it once per request, however many times
+  // the same link is pressed.
+  await emitEvent(store, "lead.captured", `${claim.e}|${claim.p}|${claim.at}`, {
+    email: claim.e,
+    agreed_to_emails: claim.c,
+    product: { id: product.id, title: product.title },
+    requested_at: claim.at || null,
+  }).catch((error) => console.error("queueing the lead.captured webhook failed", error));
 
   if (product.link) {
     return new Response(null, {

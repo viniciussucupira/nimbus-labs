@@ -24,6 +24,8 @@ import { type Answer, applyCheckoutFields, readAnswers } from "@/lib/checkout-fi
 import { imageUrl } from "@/lib/product-image";
 import { readMoves } from "@/lib/call-records";
 import { applyRecovery, recoveryOn, refusedRecovery, withoutRecovery } from "@/lib/recovery-setting";
+import { isLive, membershipStatus, soldAMembership } from "@/lib/membership-access";
+import { refundedInFull } from "@/lib/refunds";
 
 /**
  * How long a paid link keeps working.
@@ -133,6 +135,11 @@ export async function createCheckout(
     buyerKey?: string;
     /** The buyer ticked the box to hear from the creator. */
     news?: boolean;
+    /**
+     * The affiliate whose link the buyer followed, still inside the store's
+     * window, and the share this product earns them (lib/affiliates.ts).
+     */
+    via?: { aff: string; rate: number } | null;
   } = {},
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
@@ -225,6 +232,15 @@ export async function createCheckout(
 
   if (extras.buyerKey) body.set("metadata[buyer_key]", extras.buyerKey);
   if (extras.news) body.set("metadata[news]", "yes");
+
+  // Sent by an affiliate: who, and the share as it is today, kept with the
+  // charge so a later change of terms never changes what this sale earned.
+  // Only a single payment is credited, not a membership or a payment plan.
+  if (extras.via && !recurring) {
+    body.set("metadata[via]", extras.via.aff);
+    body.set("metadata[via_rate]", String(extras.via.rate));
+    body.set("payment_intent_data[metadata][via]", extras.via.aff);
+  }
 
   if (membership) {
     // The subscription is created on the creator's own account, like every
@@ -373,8 +389,22 @@ export type Order =
       endsAfter: number;
       /** What the buyer answered at checkout. */
       answers: Answer[];
+      /**
+       * The checkout as Stripe returned it, for the little only one page
+       * needs from it (an affiliate's sale is written down from it).
+       */
+      record: Record<string, unknown>;
+      /**
+       * For a membership: whether it is still running, as Stripe says in this
+       * same request. An ended one hands nothing over (lib/membership-access.ts).
+       * Null for anything that is not a membership.
+       */
+      membership: "live" | "ended" | null;
+      /** The checkout's own id, which a licence key and a stamped copy are kept under. */
+      reference: string;
     }
-  | { state: "unpaid" | "processing" | "expired" | "invalid" | "unavailable" | "error" };
+  /** Refunded in full: what it bought is closed, on every page (lib/refunds.ts). */
+  | { state: "unpaid" | "processing" | "expired" | "invalid" | "unavailable" | "error" | "refunded" };
 
 /**
  * Decides whether this buyer may have the file.
@@ -399,10 +429,13 @@ export async function readOrder(
 
   let session: Record<string, unknown>;
   try {
+    // The membership comes with it, so whether it still runs is known from
+    // this one request rather than a second one; so does the payment's
+    // charge, so a refund made since closes the order on the next request.
     session = await onAccount(
       "GET",
       store.stripeAccountId as string,
-      `/checkout/sessions/${encodeURIComponent(sessionId)}`,
+      `/checkout/sessions/${encodeURIComponent(sessionId)}?expand[]=subscription&expand[]=payment_intent.latest_charge`,
     );
   } catch (error) {
     if (error instanceof StripeError && error.status === 404) {
@@ -433,6 +466,11 @@ export async function readOrder(
   }
   if (!isSettled(session)) {
     return { state: "unpaid" };
+  }
+  // Given back in full: the download, the course and the offers after it
+  // close, whatever time is left on the link.
+  if (refundedInFull(session.payment_intent)) {
+    return { state: "refunded" };
   }
 
   const start = Number(metadata?.start);
@@ -467,8 +505,20 @@ export async function readOrder(
   const added = metadata?.bump ? store.products.find((p) => p.id === metadata.bump) ?? null : null;
   const bump = added ? { product: added, file: added.file, link: added.link } : null;
 
+  let membership: "live" | "ended" | null = null;
+  if (soldAMembership(product, { mode: session.mode, metadata })) {
+    try {
+      membership = isLive(await membershipStatus(store, session.subscription)) ? "live" : "ended";
+    } catch (error) {
+      console.error("reading a membership failed", error);
+      return { state: "error" };
+    }
+  }
+
   return {
     state: "paid",
+    membership,
+    reference: sessionId,
     call,
     bump,
     created,
@@ -478,6 +528,7 @@ export async function readOrder(
     trialDays: Number.isInteger(Number(metadata?.trial_days)) ? Math.max(0, Number(metadata?.trial_days)) : 0,
     endsAfter: Number.isInteger(Number(metadata?.ends_after)) ? Math.max(0, Number(metadata?.ends_after)) : 0,
     answers: readAnswers(session),
+    record: session,
     plan:
       metadata?.kind === "plan" && Number(metadata?.plan_payments) >= 2
         ? { payments: Number(metadata.plan_payments), interval: metadata.plan_interval === "week" ? "week" : "month" }

@@ -4,6 +4,7 @@ import {
   findDemoOption,
   isDemoCheckoutConfigured,
 } from "@/lib/demo-store";
+import { clientAddress, limited, withinLimit } from "@/lib/request-guard";
 
 const HOST_PATTERN = /^[a-z0-9.-]+(:\d+)?$/i;
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
   let form: FormData;
   try {
-    form = await request.formData();
+    form = await (await limited(request, 8_000)).formData();
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -48,6 +49,11 @@ export async function POST(request: NextRequest) {
 
   if (!isDemoCheckoutConfigured()) {
     return redirect(`${site}/demo/thanks?status=unavailable`);
+  }
+  // Each press opens a checkout on our own Stripe account; a script gets no
+  // more than a person trying the demo would ever use.
+  if (!(await withinLimit("demo-checkout", clientAddress(request), 20, 600))) {
+    return redirect(`${site}/demo/thanks?status=error`);
   }
 
   try {

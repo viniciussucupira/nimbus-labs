@@ -21,6 +21,7 @@ import { MAX_ABOUT_LENGTH, cleanAbout, dropAbout, readAbout, writeAbout } from "
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { dropCourse, filesInCourse, readCourse } from "@/lib/course";
+import { dropStamped } from "@/lib/pdf-stamp";
 
 const ACTIONS = new Set(["add", "edit", "remove", "move", "link", "unlink"]);
 
@@ -139,6 +140,7 @@ export async function POST(request: NextRequest) {
             console.error("could not delete the file of a removed product", error);
           });
         }
+        for (const file of going ? filesOnProduct(going) : []) await dropStamped(file);
       }
     } else if (action === "link") {
       // The link is checked before anything is written, so a product is never
@@ -157,6 +159,7 @@ export async function POST(request: NextRequest) {
         await del(linked.removed.pathname).catch((error: unknown) => {
           console.error("could not delete a file replaced by a link", error);
         });
+        await dropStamped(linked.removed);
       }
       result = linked.ok
         ? { ok: true, store: linked.store }

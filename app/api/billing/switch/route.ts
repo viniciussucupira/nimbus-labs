@@ -3,6 +3,7 @@ import { away, creatorFrom } from "@/lib/studio-route";
 import { isBillingConfigured, switchPlan } from "@/lib/billing";
 import { PRO_ON_SALE, parseCycle, parseTier } from "@/lib/plan";
 import { setSubscription } from "@/lib/store";
+import { limited } from "@/lib/request-guard";
 
 /**
  * Moves the creator's own subscription to another plan or billing cycle.
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   let fields: FormData | null = null;
   try {
-    fields = await request.formData();
+    fields = await (await limited(request, 8_000)).formData();
   } catch {
     fields = null;
   }

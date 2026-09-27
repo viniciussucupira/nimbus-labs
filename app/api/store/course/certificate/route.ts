@@ -1,0 +1,58 @@
+import type { NextRequest } from "next/server";
+import { cookies } from "next/headers";
+import { originFrom } from "@/lib/request-origin";
+import { fromAnotherSite } from "@/lib/studio-route";
+import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { readCourse } from "@/lib/course";
+import { courseAccess, doneLessons, emailKey, storeKey } from "@/lib/learn";
+import { passedQuizzes } from "@/lib/quiz";
+import { hasFinished, issueCertificate } from "@/lib/certificate";
+import { limited } from "@/lib/request-guard";
+
+/**
+ * "Get my certificate": issues a student's certificate of completion under
+ * the name they typed, then opens it. Issued once per student and course;
+ * pressing again opens the one already issued.
+ */
+export async function POST(request: NextRequest) {
+  const origin = originFrom(request);
+  if (fromAnotherSite(request)) return new Response("forbidden", { status: 403 });
+
+  let handle = "";
+  let productId = "";
+  let name: unknown = "";
+  try {
+    const form = await (await limited(request, 8_000)).formData();
+    handle = normaliseHandle(String(form.get("handle") ?? ""));
+    productId = String(form.get("product") ?? "").slice(0, 40);
+    name = String(form.get("name") ?? "").slice(0, 400);
+  } catch {
+    return new Response("Bad request", { status: 400 });
+  }
+  const store = handle ? await storeForHandle(handle) : null;
+  const product = store?.products.find((p) => p.id === productId && p.course);
+  if (!store || !product?.course) return new Response("Not found.", { status: 404 });
+  const base = `${origin}/@${store.handle}/course/${product.id}`;
+  const away = (path: string) => new Response(null, { status: 303, headers: { Location: path, "Cache-Control": "no-store" } });
+
+  const access = await courseAccess(store, product, await cookies());
+  const course = await readCourse(product.course.id);
+  if (access.state !== "open" || access.learner.owner || !course?.certificate) return away(base);
+
+  const who = emailKey(access.learner.email);
+  const [done, passed] = await Promise.all([doneLessons(course.id, access.learner.email), passedQuizzes(course.id, who)]);
+  if (!hasFinished(course, done, passed)) return away(`${base}?cert=unfinished#certificate`);
+
+  const issued = await issueCertificate({
+    store: storeKey(store),
+    productId: product.id,
+    course,
+    title: product.title,
+    creator: store.name,
+    email: access.learner.email,
+    who,
+    name,
+  });
+  if (!issued.ok) return away(`${base}?cert=name#certificate`);
+  return away(`${origin}/@${store.handle}/certificate/${issued.certificate.id}${issued.fresh ? "?issued=1" : ""}`);
+}

@@ -10,6 +10,7 @@ import {
 import { MAX_OPTION_LABEL_LENGTH } from "@/lib/product-option";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { StoreFullError } from "@/lib/store";
+import { dropStamped } from "@/lib/pdf-stamp";
 
 const ACTIONS = new Set(["add", "edit", "remove", "move"]);
 
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
       await del(file.pathname).catch((error: unknown) => {
         console.error("could not delete the file of a removed option", error);
       });
+      await dropStamped(file);
     }
 
     return Response.json({ ok: true, products: result.store.products });

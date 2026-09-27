@@ -578,6 +578,10 @@ export const BLOG_POSTS: BlogPost[] = [
         type: "note",
         text: "Disclosure: we build Nimbus. Everything below about Stan comes from Stan's own website and help centre, which anyone can read. Where we are worse, we say so.",
       },
+      {
+        type: "note",
+        text: "Updated on 26 September 2026, when Nimbus added a community, funnels of offers after the checkout, an affiliate programme you pay out yourself, calendar sync and webhooks. The lines below say where that leaves each of us.",
+      },
       { type: "h2", text: "What Stan is" },
       {
         type: "p",
@@ -585,7 +589,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "That is a large product. If you want a community in the same place as your store today, they have one and we do not.",
+        text: "That is a large product. A community in the same place as your store is something we both have now; theirs can hold webinars inside it, and ours cannot.",
       },
       { type: "h2", text: "What Nimbus is" },
       {
@@ -605,10 +609,10 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "Range: communities, funnels, automated Instagram replies and affiliates. We have none of those yet. Webinars we now sell as live sessions on dates you set, held on the meeting service whose link you give.",
+          "Range: automated Instagram replies, PayPal, affiliates paid automatically, webinars inside the community and funnel pages before the checkout. We have none of those. Our affiliates are paid by you, our funnels are offers after the checkout, and webinars we sell as live sessions on dates you set, held on the meeting service whose link you give.",
           "Years of running: their support library is deep, and ours is a few pages.",
           "An installable creator app: their help centre states their creator app is currently available on iPhone and iPad. We do not have a native app at all — our store installs to the home screen from the browser, on both iPhone and Android, which is a different trade-off, not a better one in every case.",
-          "Integrations with third-party tools, which they list on their site and we are still building.",
+          "Integrations with third-party tools, which they list on their site. We have webhooks that Zapier, Make or your own server can catch, and no app of our own in anyone's directory.",
         ],
       },
       { type: "h2", text: "Where we think we are ahead" },

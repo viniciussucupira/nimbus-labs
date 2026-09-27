@@ -7,12 +7,15 @@ import { lookStyle } from "@/lib/store-look";
 import { linkHost } from "@/lib/product-link";
 import { readableSize } from "@/lib/product-file";
 import { findLesson, isOpen, lessonsInOrder, readBody, readCourse } from "@/lib/course";
-import { VIDEO_URL_SECONDS, courseAccess, doneLessons, signedMedia } from "@/lib/learn";
+import { VIDEO_URL_SECONDS, courseAccess, doneLessons, emailKey, signedMedia } from "@/lib/learn";
+import { type Attempt, attemptOf, heldBack, passedQuizzes, readQuizFor } from "@/lib/quiz";
 import { CourseOutline } from "@/components/course-outline";
 import { LessonText } from "@/components/lesson-text";
+import { LessonQuiz } from "@/components/lesson-quiz";
 
 type Params = {
   params: Promise<{ handle: string; product: string; lesson: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export const metadata: Metadata = {
@@ -21,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 /** One lesson: its video, its text, its downloads, and the way on. */
-export default async function LessonPage({ params }: Params) {
+export default async function LessonPage({ params, searchParams }: Params) {
   const { handle: raw, product: productId, lesson: lessonId } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
@@ -43,16 +46,29 @@ export default async function LessonPage({ params }: Params) {
   const { lesson, unit } = found;
   const start = access.state === "open" ? access.start : null;
   const student = access.state === "open" && !access.learner.owner ? access.learner : null;
-  const done = student ? await doneLessons(course.id, student.email) : new Set<string>();
-  const [body, video] = await Promise.all([
+  const who = student ? emailKey(student.email) : "";
+  const [done, passed] = student
+    ? await Promise.all([doneLessons(course.id, student.email), passedQuizzes(course.id, who)])
+    : [new Set<string>(), new Set<string>()];
+  // A quiz that has to be passed holds the lessons after it shut, for a student.
+  const held = student ? heldBack(course, passed) : new Map<string, string>();
+  const blocker = held.get(lesson.id);
+  if (blocker && !lesson.preview) redirect(`${base}/${blocker}?held=1#quiz`);
+
+  const query = await searchParams;
+  const [body, video, quiz, attempt] = await Promise.all([
     lesson.hasBody ? readBody(course.id, lesson.id) : Promise.resolve(""),
     lesson.video ? signedMedia(lesson.video, VIDEO_URL_SECONDS) : Promise.resolve(null),
+    lesson.quiz ? readQuizFor(course.id, lesson.id) : Promise.resolve(null),
+    lesson.quiz && student ? attemptOf(course.id, lesson.id, who) : Promise.resolve<Attempt | null>(null),
   ]);
+  const quizMode = access.state === "open" && access.learner.owner ? "owner" : student && open ? "student" : "visitor";
+  const mustPass = Boolean(student && quiz && lesson.quiz?.required && !passed.has(lesson.id));
 
   const order = lessonsInOrder(course);
   const at = order.findIndex((entry) => entry.lesson.id === lesson.id);
   const reachable = (entry: (typeof order)[number]) =>
-    entry.lesson.preview || (start !== null && isOpen(entry.unit, start));
+    entry.lesson.preview || (start !== null && isOpen(entry.unit, start) && !held.has(entry.lesson.id));
   const previous = order.slice(0, at).reverse().find(reachable) ?? null;
   const next = order.slice(at + 1).find(reachable) ?? null;
   const isDone = done.has(lesson.id);
@@ -74,6 +90,11 @@ export default async function LessonPage({ params }: Params) {
             <h1 className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">{lesson.title}</h1>
             {!open ? (
               <p className="st-muted mt-2 text-sm font-semibold">Free preview</p>
+            ) : null}
+            {query.held === "1" && mustPass ? (
+              <p className="st-note mt-4 text-sm" role="status">
+                <strong>Pass this lesson&apos;s quiz to go on.</strong> The lessons after it open as soon as you do.
+              </p>
             ) : null}
 
             {lesson.video ? (
@@ -127,12 +148,26 @@ export default async function LessonPage({ params }: Params) {
               </div>
             ) : null}
 
-            {!lesson.video && !body && !lesson.link && lesson.files.length === 0 ? (
+            {!lesson.video && !body && !lesson.link && lesson.files.length === 0 && !quiz ? (
               <p className="st-muted mt-6">This lesson has nothing in it yet.</p>
             ) : null}
 
+            {quiz ? (
+              <LessonQuiz
+                quiz={quiz}
+                attempt={attempt}
+                mode={quizMode}
+                action="/api/store/course/quiz"
+                hidden={{ handle: store.handle, product: product.id, lesson: lesson.id }}
+                storeName={store.name}
+                justMarked={query.quiz === "marked"}
+              />
+            ) : null}
+
             <div className="mt-8 flex flex-wrap items-center gap-3 border-t pt-6" style={{ borderColor: "var(--st-line)" }}>
-              {student && open ? (
+              {student && open && mustPass ? (
+                <p className="st-muted text-sm font-semibold">Pass the quiz above to finish this lesson and open the next.</p>
+              ) : student && open ? (
                 <form action="/api/store/course/progress" method="post" className="flex flex-wrap items-center gap-3">
                   <input type="hidden" name="handle" value={store.handle} />
                   <input type="hidden" name="product" value={product.id} />
@@ -164,7 +199,7 @@ export default async function LessonPage({ params }: Params) {
           <aside className="st-card h-fit p-5 sm:p-6">
             <p className="st-label">In this course</p>
             <div className="mt-3">
-              <CourseOutline course={course} base={base} start={start} done={done} current={lesson.id} />
+              <CourseOutline course={course} base={base} start={start} done={done} current={lesson.id} held={held} />
             </div>
             {!open ? (
               <Link href={base} className="btn st-btn btn-block mt-5">Get the whole course</Link>

@@ -3,6 +3,7 @@ import { del, head } from "@vercel/blob";
 import { setProductFile, storeForEmail, storeFolder } from "@/lib/store";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { ownsPath, safeFileName, type ProductFile } from "@/lib/product-file";
+import { dropStamped } from "@/lib/pdf-stamp";
 
 /**
  * Puts the file that was just uploaded onto the product, or takes it off.
@@ -65,6 +66,8 @@ export async function POST(request: NextRequest) {
       await del(result.removed.pathname).catch((error: unknown) => {
         console.error("could not delete the replaced file", error);
       });
+      // Buyers' stamped copies of it go with it.
+      await dropStamped(result.removed);
     }
 
     return Response.json({ ok: true, products: result.store.products });

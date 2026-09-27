@@ -1,0 +1,82 @@
+"use client";
+
+import { useState } from "react";
+
+/**
+ * A buyer's licence key, shown where they will look for it: big enough to
+ * read, in a type where 0 and O differ, selectable by hand, and with a button
+ * that copies it. Works without scripts as plain selectable text.
+ */
+export function LicenceKeyBox({
+  title,
+  value,
+  revoked = false,
+  waiting = false,
+  storeName,
+}: {
+  /** The product the key is for, when more than one key is on the page. */
+  title?: string;
+  value: string | null;
+  revoked?: boolean;
+  /** Paid while the creator's keys ran out: the key is emailed when they add more. */
+  waiting?: boolean;
+  storeName: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line-strong)", background: "var(--st-item)" }}>
+      <p className="st-label">{title ? `Your licence key for ${title}` : "Your licence key"}</p>
+      {value ? (
+        <>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+            <code
+              className="min-w-0 flex-1 select-all break-words rounded-xl px-3 py-2 font-mono text-base font-semibold tracking-wide sm:text-lg"
+              style={{ background: "var(--st-accent-soft)", color: "var(--st-text)", textDecoration: revoked ? "line-through" : undefined }}
+            >
+              {/* A long key wraps between its groups rather than inside one. */}
+              {value.split("-").map((part, i, all) => (
+                <span key={i}>
+                  {part}
+                  {i < all.length - 1 ? (
+                    <>
+                      -<wbr />
+                    </>
+                  ) : null}
+                </span>
+              ))}
+            </code>
+            {revoked ? null : (
+              <button
+                type="button"
+                className="btn st-btn btn-sm min-h-[40px] self-start sm:self-auto"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(value);
+                    setCopied(true);
+                    window.setTimeout(() => setCopied(false), 2200);
+                  } catch {
+                    setCopied(false);
+                  }
+                }}
+              >
+                <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
+              </button>
+            )}
+          </div>
+          <p className="st-muted mt-2 text-sm">
+            {revoked
+              ? `${storeName} has marked this key as no longer valid. If you think that is a mistake, reply to your receipt and it reaches them.`
+              : "It is yours alone: nobody else is given this key. It is also in your confirmation email and on your list of purchases."}
+          </p>
+        </>
+      ) : waiting ? (
+        <p className="st-muted mt-2 text-sm">
+          {`Your payment went through just as ${storeName}'s keys ran out, so yours is not ready yet. They have been told, and it is emailed to you the moment they add more. It also appears here and on your list of purchases.`}
+        </p>
+      ) : (
+        <p className="st-muted mt-2 text-sm">Your key could not be shown just now. Refresh the page in a moment; it is kept for you.</p>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,702 @@
+/**
+ * Licence keys: one unique key handed to each buyer of a product.
+ *
+ * For a creator who sells software, a plugin, a preset pack that unlocks
+ * with a code, or seats in something they run elsewhere. They choose where
+ * the keys come from:
+ *
+ *   - a pool they upload — a text or CSV file of keys their own system made,
+ *     up to 10,000 at a time and 10,000 waiting at once — handed out one per
+ *     sale in the order they were uploaded;
+ *   - or keys made here, in a shape they set: a prefix and groups of letters
+ *     and digits, like STUDIO-7K2Q-9XFD-M3PL. The alphabet leaves out the
+ *     letters and digits people misread (0 and O, 1 and I), and the shortest
+ *     key allowed has twelve random characters, which is 60 bits: nobody
+ *     guesses one.
+ *
+ * The rule the whole file is built around is that a key is never given twice.
+ * A pool is a Redis list and a key leaves it with one LPOP, which Redis does
+ * atomically: two buyers paying in the same millisecond get two different
+ * keys. A sale is given its key with HSETNX, so a sale that is looked at from
+ * two places at once — the thanks page and the five-minute job that sends
+ * the confirmation email — gets one key, and the loser of that race puts the
+ * key it popped back at the front of the pool. A made key is only kept if
+ * SADD says nobody has had it before. Every key ever uploaded or made is kept
+ * in that set, so an upload that repeats an old key has the repeat skipped
+ * rather than handed to a second buyer.
+ *
+ * The buyer sees their key on the thanks page, in the confirmation email and
+ * on their list of purchases. The creator sees every key given, to whom and
+ * for which sale, and can mark one revoked, which the public check
+ * (/api/store/licence) then reports, so the creator's own software can refuse
+ * it. A sale refunded in full in Stripe has its key revoked by itself: the
+ * five-minute job reads the refunds on the creator's account and marks the
+ * key, the same rule every other door uses (lib/refunds.ts). Nothing here can
+ * reach into that software: revoking is a record the creator's app has to
+ * ask about.
+ *
+ * When a pool runs low the creator is emailed once, and again after each
+ * top-up; when it is empty the product shows as sold out and no checkout is
+ * opened. A buyer who paid in the moment the last key went is not left with
+ * nothing: their sale waits, the creator is told who is waiting, and the
+ * next upload gives them a key and emails it to them.
+ *
+ *   nl:keys:<store>:<product>:pool     list of keys not yet given
+ *   nl:keys:<store>:<product>:all      set of every key ever added or made
+ *   nl:keys:<store>:<product>:sale     hash sale reference -> key
+ *   nl:keys:<store>:<product>:info     hash key -> who, when, which sale, revoked
+ *   nl:keys:<store>:<product>:waiting  hash sale reference -> buyer waiting for a key
+ *   nl:keys:<store>:<product>:warned   set once the low-pool email has gone
+ *
+ * <store> is the store's statsId, which follows it through a new address and
+ * a new sign-in email.
+ */
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { NIMBUS_FROM, sendEmail } from "@/lib/email";
+import { SITE_URL } from "@/lib/site-url";
+import type { Product, Store } from "@/lib/store";
+import { onAccount } from "@/lib/stripe-account";
+import { refundedInFull } from "@/lib/refunds";
+
+/** The most keys one upload may hold, and the most a pool may hold waiting. */
+export const MAX_UPLOAD_KEYS = 10_000;
+export const MAX_POOL_KEYS = 10_000;
+export const MIN_KEY_LENGTH = 4;
+export const MAX_KEY_LENGTH = 100;
+/** Letters and digits nobody confuses with another, so a key can be typed from a screenshot. */
+export const KEY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+export const MAX_PREFIX_LENGTH = 12;
+export const MIN_GROUPS = 3;
+export const MAX_GROUPS = 8;
+export const MIN_GROUP_LENGTH = 4;
+export const MAX_GROUP_LENGTH = 8;
+/** The pool size under which the creator is warned, by default and at most. */
+export const DEFAULT_LOW_AT = 20;
+export const MAX_LOW_AT = 1_000;
+/** The biggest file of keys the studio reads. */
+export const MAX_KEY_FILE_BYTES = 1_200_000;
+
+export type KeySource = "pool" | "generated";
+
+/** How a product hands out keys. Kept on the product in the store record. */
+export type KeySetup = {
+  source: KeySource;
+  /** For made keys: what each starts with, and its shape. */
+  prefix: string;
+  groups: number;
+  groupLength: number;
+  /** For a pool: the count at or under which the creator is warned. */
+  lowAt: number;
+};
+
+export const DEFAULT_KEYS: KeySetup = { source: "generated", prefix: "", groups: 4, groupLength: 4, lowAt: DEFAULT_LOW_AT };
+
+function wholeIn(raw: unknown, min: number, max: number): number | null {
+  const n = typeof raw === "string" && raw.trim() ? Number(raw.trim()) : raw;
+  return typeof n === "number" && Number.isInteger(n) && n >= min && n <= max ? n : null;
+}
+
+function cleanPrefix(raw: unknown): string | null {
+  const text = typeof raw === "string" ? raw.trim().toUpperCase().replace(/-+$/, "") : "";
+  if (text.length > MAX_PREFIX_LENGTH || !/^[A-Z0-9-]*$/.test(text)) return null;
+  return text;
+}
+
+export function parseKeySetup(raw: unknown): KeySetup | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const source: KeySource | null = value.source === "pool" ? "pool" : value.source === "generated" ? "generated" : null;
+  if (!source) return null;
+  return {
+    source,
+    prefix: cleanPrefix(value.prefix) ?? "",
+    groups: wholeIn(value.groups, MIN_GROUPS, MAX_GROUPS) ?? DEFAULT_KEYS.groups,
+    groupLength: wholeIn(value.groupLength, MIN_GROUP_LENGTH, MAX_GROUP_LENGTH) ?? DEFAULT_KEYS.groupLength,
+    lowAt: wholeIn(value.lowAt, 0, MAX_LOW_AT) ?? DEFAULT_LOW_AT,
+  };
+}
+
+export type SetupProblem = "source" | "prefix" | "groups" | "length" | "low";
+
+/** Reads the studio's form, and says which field is wrong when one is. */
+export function readKeySetup(raw: Record<string, unknown>): KeySetup | SetupProblem {
+  const source = raw.source === "pool" ? "pool" : raw.source === "generated" ? "generated" : null;
+  if (!source) return "source";
+  const prefix = cleanPrefix(raw.prefix);
+  if (prefix === null) return "prefix";
+  const groups = wholeIn(raw.groups, MIN_GROUPS, MAX_GROUPS);
+  if (groups === null) return "groups";
+  const groupLength = wholeIn(raw.groupLength, MIN_GROUP_LENGTH, MAX_GROUP_LENGTH);
+  if (groupLength === null) return "length";
+  const lowAt = wholeIn(raw.lowAt === "" ? DEFAULT_LOW_AT : raw.lowAt, 0, MAX_LOW_AT);
+  if (lowAt === null) return "low";
+  return { source, prefix, groups, groupLength, lowAt };
+}
+
+/** Which products may hand out keys: paid, sold once, and delivering a file or a link. */
+export function canHaveKeys(product: Product): boolean {
+  return product.priceCents > 0 && product.recurring === null && product.call === null && product.course === null;
+}
+
+/**
+ * One made key, from the shape the creator chose, drawn from the system's
+ * secure random source. The alphabet has 32 letters, which divides 256, so
+ * every letter is exactly as likely as every other.
+ */
+export function generateKey(setup: Pick<KeySetup, "prefix" | "groups" | "groupLength">): string {
+  const bytes = new Uint8Array(setup.groups * setup.groupLength);
+  crypto.getRandomValues(bytes);
+  const groups: string[] = [];
+  for (let g = 0; g < setup.groups; g += 1) {
+    let group = "";
+    for (let i = 0; i < setup.groupLength; i += 1) group += KEY_ALPHABET[bytes[g * setup.groupLength + i] % KEY_ALPHABET.length];
+    groups.push(group);
+  }
+  return [setup.prefix, ...groups].filter(Boolean).join("-");
+}
+
+/** What a made key looks like, for the studio to show before anything is sold. */
+export function sampleKey(setup: Pick<KeySetup, "prefix" | "groups" | "groupLength">): string {
+  return [setup.prefix, ...Array.from({ length: setup.groups }, () => "X".repeat(setup.groupLength))].filter(Boolean).join("-");
+}
+
+export type KeyList = {
+  keys: string[];
+  /** Lines that were not a key: too short, too long, or with spaces inside. */
+  refused: number;
+  /** Keys that appeared more than once in the file itself. */
+  repeated: number;
+  /** Whether the file held more than one upload may. */
+  tooMany: boolean;
+};
+
+/**
+ * Reads a pasted list or an uploaded file of keys: one per line, or a CSV
+ * whose first column is the key. A header line such as "key" or
+ * "licence_key" is skipped, as are empty lines. A key keeps its case: a key
+ * someone else's system made has to be handed over exactly as it was made.
+ */
+export function readKeyList(text: string): KeyList {
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  let refused = 0;
+  let repeated = 0;
+  let tooMany = false;
+  const lines = text.replace(/^\uFEFF/, "").split(/\r\n|\r|\n/);
+  lines.forEach((line, index) => {
+    let cell = line.trim();
+    if (!cell) return;
+    if (cell.includes(",") || cell.includes("\t") || cell.includes(";")) {
+      cell = cell.split(/[,\t;]/)[0].trim();
+    }
+    cell = cell.replace(/^"(.*)"$/, "$1").trim();
+    if (index === 0 && /^(licen[cs]e[ _-]?)?keys?$|^codes?$|^serials?$/i.test(cell)) return;
+    if (cell.length < MIN_KEY_LENGTH || cell.length > MAX_KEY_LENGTH || /\s/.test(cell) || /[\u0000-\u001f\u007f]/.test(cell)) {
+      refused += 1;
+      return;
+    }
+    if (seen.has(cell)) {
+      repeated += 1;
+      return;
+    }
+    if (keys.length >= MAX_UPLOAD_KEYS) {
+      tooMany = true;
+      return;
+    }
+    seen.add(cell);
+    keys.push(cell);
+  });
+  return { keys, refused, repeated, tooMany };
+}
+
+// ---------------------------------------------------------------- storage
+
+const base = (store: Store, product: Pick<Product, "id">) => `nl:keys:${store.statsId}:${product.id}`;
+const poolKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:pool`;
+const allKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:all`;
+const saleKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:sale`;
+const infoKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:info`;
+const waitingKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:waiting`;
+const warnedKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:warned`;
+
+/** Keys go to Redis in batches this size, well under any request limit. */
+const BATCH = 1_000;
+
+export type IssuedKey = {
+  key: string;
+  /** The sale it went to: a checkout (cs_…) or a one-click payment (pi_…). */
+  reference: string;
+  email: string;
+  at: number;
+  /** When it was marked revoked; 0 while it is good. */
+  revokedAt: number;
+  /** Who revoked it: the creator, or a refund in full read from Stripe. */
+  revokedBy: "creator" | "refund" | "";
+};
+
+type Info = { r: string; e: string; at: number; v?: number; w?: "refund" };
+
+function parseInfo(key: string, raw: unknown): IssuedKey | null {
+  if (typeof raw !== "string") return null;
+  try {
+    const value = JSON.parse(raw) as Info;
+    const revokedAt = Number(value.v) || 0;
+    return {
+      key,
+      reference: String(value.r ?? ""),
+      email: String(value.e ?? ""),
+      at: Number(value.at) || 0,
+      revokedAt,
+      revokedBy: revokedAt ? (value.w === "refund" ? "refund" : "creator") : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+export type SaleKey =
+  | { state: "issued"; key: string; revoked: boolean }
+  /** Paid for while the pool was empty: the next upload gives it one. */
+  | { state: "waiting" };
+
+/** Whether this product hands out keys that can be read or given right now. */
+function usable(store: Store, product: Product): boolean {
+  return Boolean(activeKeys(product) && store.statsId && isRedisConfigured());
+}
+
+/**
+ * The key set-up that applies right now. A product made a membership or a
+ * course after keys were switched on keeps the setting but hands out none.
+ */
+export function activeKeys(product: Product): KeySetup | null {
+  return product.keys && canHaveKeys(product) ? product.keys : null;
+}
+
+/** The key a sale already has, without giving it one. */
+export async function keyOfSale(store: Store, product: Product, reference: string): Promise<SaleKey | null> {
+  if (!usable(store, product) || !reference) return null;
+  const [key, waiting] = await redisPipeline([
+    ["HGET", saleKey(store, product), reference],
+    ["HEXISTS", waitingKey(store, product), reference],
+  ]);
+  if (typeof key === "string" && key) {
+    const [raw] = await redisPipeline([["HGET", infoKey(store, product), key]]);
+    const info = parseInfo(key, raw);
+    return { state: "issued", key, revoked: Boolean(info?.revokedAt) };
+  }
+  return Number(waiting) === 1 ? { state: "waiting" } : null;
+}
+
+/**
+ * The sale's key, giving it one if it has none yet. Safe to call from every
+ * place that shows a key, as often as they like: a sale only ever gets one.
+ *
+ * `reference` must be a sale Stripe has already said is paid; the callers
+ * only reach here after that check.
+ */
+export async function keyForSale(store: Store, product: Product, reference: string, email: string): Promise<SaleKey | null> {
+  if (!usable(store, product) || !reference) return null;
+  const known = await keyOfSale(store, product, reference);
+  if (known?.state === "issued") return known;
+  const setup = activeKeys(product) as KeySetup;
+
+  if (setup.source === "generated") {
+    for (let tries = 0; tries < 5; tries += 1) {
+      const key = generateKey(setup);
+      const [fresh] = await redisPipeline([["SADD", allKey(store, product), key]]);
+      if (Number(fresh) !== 1) continue;
+      return settle(store, product, reference, email, key, false);
+    }
+    throw new Error("could not make a unique licence key");
+  }
+
+  const [popped] = await redisPipeline([["LPOP", poolKey(store, product)]]);
+  if (typeof popped !== "string" || !popped) {
+    const [added] = await redisPipeline([
+      ["HSETNX", waitingKey(store, product), reference, JSON.stringify({ e: email, at: Math.floor(Date.now() / 1000) })],
+    ]);
+    if (Number(added) === 1) await tellCreatorEmpty(store, product, reference, email);
+    return { state: "waiting" };
+  }
+  const result = await settle(store, product, reference, email, popped, true);
+  if (result.state === "issued" && result.key === popped) await warnIfLow(store, product);
+  return result;
+}
+
+/**
+ * Ties a key to a sale, unless the sale got one a moment ago from somewhere
+ * else — then that one stands, and this key goes back where it came from.
+ */
+async function settle(store: Store, product: Product, reference: string, email: string, key: string, fromPool: boolean): Promise<SaleKey> {
+  const [won] = await redisPipeline([["HSETNX", saleKey(store, product), reference, key]]);
+  if (Number(won) !== 1) {
+    await redisPipeline(fromPool ? [["LPUSH", poolKey(store, product), key]] : [["SREM", allKey(store, product), key]]);
+    const again = await keyOfSale(store, product, reference);
+    return again ?? { state: "waiting" };
+  }
+  const info: Info = { r: reference, e: email, at: Math.floor(Date.now() / 1000) };
+  await redisPipeline([
+    ["HSET", infoKey(store, product), key, JSON.stringify(info)],
+    ["HDEL", waitingKey(store, product), reference],
+  ]);
+  return { state: "issued", key, revoked: false };
+}
+
+export type KeyCounts = {
+  /** Keys in the pool, not yet given. 0 for made keys. */
+  left: number;
+  issued: number;
+  revoked: number;
+  /** Sales paid while the pool was empty, still waiting for a key. */
+  waiting: number;
+};
+
+export async function keyCounts(store: Store, product: Product): Promise<KeyCounts> {
+  if (!store.statsId || !isRedisConfigured()) return { left: 0, issued: 0, revoked: 0, waiting: 0 };
+  const [left, issued, waiting] = await redisPipeline([
+    ["LLEN", poolKey(store, product)],
+    ["HLEN", saleKey(store, product)],
+    ["HLEN", waitingKey(store, product)],
+  ]);
+  const list = await issuedKeys(store, product, "", 0);
+  return { left: Number(left) || 0, issued: Number(issued) || 0, revoked: list.revoked, waiting: Number(waiting) || 0 };
+}
+
+/** Whether a product that hands out keys from a pool has none left to give. */
+export async function outOfKeys(store: Store, product: Product): Promise<boolean> {
+  if (activeKeys(product)?.source !== "pool" || !store.statsId || !isRedisConfigured()) return false;
+  const [left] = await redisPipeline([["LLEN", poolKey(store, product)]]);
+  return Number(left) === 0;
+}
+
+export type UploadResult = {
+  added: number;
+  /** Already in this product's pool or given to someone before. */
+  known: number;
+  /** Left out because the pool would pass MAX_POOL_KEYS. */
+  overflow: number;
+  left: number;
+  /** Waiting buyers given a key by this upload. */
+  served: number;
+};
+
+/**
+ * Adds keys to the end of the pool, skipping any this product has ever had.
+ * Then gives a key to every buyer who paid while the pool was empty, and
+ * emails it to them.
+ */
+export async function addKeys(store: Store, product: Product, keys: string[], origin: string = SITE_URL): Promise<UploadResult> {
+  if (!store.statsId || !isRedisConfigured()) throw new Error("keys cannot be stored");
+  const [length] = await redisPipeline([["LLEN", poolKey(store, product)]]);
+  let room = Math.max(0, MAX_POOL_KEYS - (Number(length) || 0));
+  let added = 0;
+  let known = 0;
+  let overflow = 0;
+  for (let i = 0; i < keys.length; i += BATCH) {
+    const batch = keys.slice(i, i + BATCH);
+    // One key at a time into the set, so the answer says which ones are new.
+    const fresh = await redisPipeline(batch.map((key) => ["SADD", allKey(store, product), key]));
+    const take: string[] = [];
+    const giveBack: string[] = [];
+    batch.forEach((key, j) => {
+      if (Number(fresh[j]) !== 1) {
+        known += 1;
+        return;
+      }
+      if (room > 0) {
+        take.push(key);
+        room -= 1;
+      } else {
+        overflow += 1;
+        giveBack.push(key);
+      }
+    });
+    const writes: (string | number)[][] = [];
+    if (take.length) writes.push(["RPUSH", poolKey(store, product), ...take]);
+    if (giveBack.length) writes.push(["SREM", allKey(store, product), ...giveBack]);
+    if (writes.length) await redisPipeline(writes);
+    added += take.length;
+  }
+  // A top-up means the next low pool is worth another warning.
+  if (added > 0) await redisPipeline([["DEL", warnedKey(store, product)]]);
+  const served = added > 0 ? await serveWaiting(store, product, origin) : 0;
+  const [after] = await redisPipeline([["LLEN", poolKey(store, product)]]);
+  return { added, known, overflow, left: Number(after) || 0, served };
+}
+
+/** Takes every key still in the pool out, so none of them is ever given. */
+export async function clearPool(store: Store, product: Product): Promise<number> {
+  if (!store.statsId || !isRedisConfigured()) return 0;
+  const [length] = await redisPipeline([["LLEN", poolKey(store, product)]]);
+  await redisPipeline([["DEL", poolKey(store, product)]]);
+  return Number(length) || 0;
+}
+
+/**
+ * Every key given for this product, newest first, with what matches `query`
+ * — part of a key, a sale reference or an email — when one is given.
+ */
+export async function issuedKeys(
+  store: Store,
+  product: Product,
+  query: string,
+  limit = 50,
+): Promise<{ keys: IssuedKey[]; total: number; revoked: number }> {
+  if (!store.statsId || !isRedisConfigured()) return { keys: [], total: 0, revoked: 0 };
+  const [raw] = await redisPipeline([["HGETALL", infoKey(store, product)]]);
+  const all: IssuedKey[] = [];
+  const flat = Array.isArray(raw) ? (raw as unknown[]) : [];
+  for (let i = 0; i + 1 < flat.length; i += 2) {
+    const entry = parseInfo(String(flat[i]), flat[i + 1]);
+    if (entry) all.push(entry);
+  }
+  const needle = query.trim().toLowerCase();
+  const matching = needle
+    ? all.filter((k) => k.key.toLowerCase().includes(needle) || k.reference.toLowerCase().includes(needle) || k.email.toLowerCase().includes(needle))
+    : all;
+  matching.sort((a, b) => b.at - a.at);
+  return { keys: limit > 0 ? matching.slice(0, limit) : [], total: matching.length, revoked: all.filter((k) => k.revokedAt).length };
+}
+
+/**
+ * Marks a given key revoked, or good again. False when this product never
+ * gave it. `by` says whether the creator did it or a refund did; a key
+ * already revoked stays as it was, so a refund read twice changes nothing.
+ */
+export async function setRevoked(
+  store: Store,
+  product: Pick<Product, "id">,
+  key: string,
+  revoked: boolean,
+  by: "creator" | "refund" = "creator",
+): Promise<boolean> {
+  if (!store.statsId || !isRedisConfigured()) return false;
+  const [raw] = await redisPipeline([["HGET", infoKey(store, product), key]]);
+  if (typeof raw !== "string") return false;
+  let info: Info;
+  try {
+    info = JSON.parse(raw) as Info;
+  } catch {
+    return false;
+  }
+  if (revoked && info.v) return true;
+  const next: Info = {
+    r: info.r,
+    e: info.e,
+    at: info.at,
+    ...(revoked ? { v: Math.floor(Date.now() / 1000), ...(by === "refund" ? { w: "refund" as const } : {}) } : {}),
+  };
+  await redisPipeline([["HSET", infoKey(store, product), key, JSON.stringify(next)]]);
+  return true;
+}
+
+// ------------------------------------------------------- refunds revoke keys
+
+const refundAnchorKey = (store: Store) => `nl:keys:${store.statsId}:refunds:since`;
+const refundSeenKey = (store: Store) => `nl:keys:${store.statsId}:refunds:seen`;
+/** How far back the first look goes, and how long a refund is remembered as read. */
+const REFUND_LOOKBACK_SECONDS = 30 * 86_400;
+/** Pages of a hundred refunds, and payments looked up, per store per run. */
+const REFUND_PAGES = 3;
+const REFUND_LOOKUPS = 20;
+const INTENT_PATTERN = /^pi_[A-Za-z0-9]{6,200}$/;
+
+/** Whether any product of this store hands out keys, so its refunds are worth reading. */
+export function storeHasKeys(store: Store): boolean {
+  return Boolean(store.statsId && store.stripeAccountId) && store.products.some((p) => activeKeys(p) !== null);
+}
+
+/**
+ * Reads the refunds made on the creator's Stripe account since the last run
+ * and revokes the key of every sale refunded in full. Run by the five-minute
+ * job for each store that hands out keys (lib/checkout-sweep.ts).
+ *
+ * A refund names a payment; the sale a key was given to is the checkout that
+ * made that payment (a cs_… reference), or the payment itself for an offer
+ * taken in one click (a pi_… reference). Both the product bought and the one
+ * ticked at checkout lose their keys, since both were paid by that payment.
+ * A partial refund changes nothing. Returns how many keys it revoked.
+ */
+export async function revokeRefunded(store: Store, deadline: number): Promise<number> {
+  if (!storeHasKeys(store) || !isRedisConfigured()) return 0;
+  const account = store.stripeAccountId as string;
+  const now = Math.floor(Date.now() / 1000);
+  const [anchorRaw] = await redisPipeline([["GET", refundAnchorKey(store)]]);
+  const anchor = Number(anchorRaw) > 0 ? Number(anchorRaw) : now - REFUND_LOOKBACK_SECONDS;
+  // A little overlap, so a refund created in the second the last run read is
+  // not missed; the set of refunds already read keeps it from counting twice.
+  const since = Math.max(0, anchor - 300);
+  let newest = anchor;
+  let lookups = REFUND_LOOKUPS;
+  let revoked = 0;
+  let after = "";
+  let complete = false;
+  const handles = new Set([store.handle, ...store.previousHandles]);
+
+  for (let page = 0; page < REFUND_PAGES && Date.now() < deadline; page += 1) {
+    const query = new URLSearchParams({ limit: "100", "created[gte]": String(since) });
+    query.append("expand[]", "data.charge");
+    if (after) query.set("starting_after", after);
+    const listed = await onAccount("GET", account, `/refunds?${query}`);
+    const rows = Array.isArray(listed.data) ? (listed.data as Record<string, unknown>[]) : [];
+    for (const refund of rows) {
+      if (Date.now() >= deadline) break;
+      const id = typeof refund.id === "string" ? refund.id : "";
+      const created = typeof refund.created === "number" ? refund.created : 0;
+      if (!id) continue;
+      if (refund.status !== "succeeded" && refund.status !== "pending") continue;
+      if (!refundedInFull(refund.charge)) continue;
+      const [seen] = await redisPipeline([["SISMEMBER", refundSeenKey(store), id]]);
+      if (Number(seen) === 1) {
+        newest = Math.max(newest, created);
+        continue;
+      }
+      const intent = typeof refund.payment_intent === "string" ? refund.payment_intent : "";
+      if (!INTENT_PATTERN.test(intent) || lookups <= 0) continue;
+      lookups -= 1;
+
+      // Which sale that payment was: a checkout of this store, or an offer.
+      const sales: { reference: string; products: string[] }[] = [];
+      const sessions = await onAccount("GET", account, `/checkout/sessions?${new URLSearchParams({ payment_intent: intent, limit: "1" })}`);
+      const session = (Array.isArray(sessions.data) ? (sessions.data as Record<string, unknown>[]) : [])[0];
+      if (session && typeof session.id === "string") {
+        const meta = (session.metadata ?? {}) as Record<string, string>;
+        if (handles.has(meta.store ?? "")) sales.push({ reference: session.id, products: [meta.product, meta.bump].filter(Boolean) });
+      } else if (lookups > 0) {
+        lookups -= 1;
+        const pi = await onAccount("GET", account, `/payment_intents/${encodeURIComponent(intent)}`);
+        const meta = (pi.metadata ?? {}) as Record<string, string>;
+        if (meta.kind === "upsell" && handles.has(meta.store ?? "")) sales.push({ reference: intent, products: [meta.product].filter(Boolean) });
+      }
+
+      for (const sale of sales) {
+        for (const productId of sale.products) {
+          const product = store.products.find((p) => p.id === productId);
+          if (!product) continue;
+          const [key] = await redisPipeline([["HGET", saleKey(store, product), sale.reference]]);
+          if (typeof key === "string" && key && (await setRevoked(store, product, key, true, "refund"))) revoked += 1;
+          // A buyer still waiting for a key from an empty pool is not given one.
+          await redisPipeline([["HDEL", waitingKey(store, product), sale.reference]]);
+        }
+      }
+      await redisPipeline([
+        ["SADD", refundSeenKey(store), id],
+        ["EXPIRE", refundSeenKey(store), REFUND_LOOKBACK_SECONDS + 86_400],
+      ]);
+      newest = Math.max(newest, created);
+    }
+    const last = rows[rows.length - 1];
+    if (listed.has_more !== true || !last || typeof last.id !== "string") {
+      complete = true;
+      break;
+    }
+    after = last.id;
+  }
+  // Only moved forward past what was read to the end: a run cut short by
+  // its deadline, its pages or its lookups starts from the same place next
+  // time, and the refunds it already handled are skipped as read.
+  if (complete && lookups > 0 && Date.now() < deadline) {
+    await redisPipeline([["SET", refundAnchorKey(store), String(Math.max(newest, anchor)), "EX", REFUND_LOOKBACK_SECONDS * 2]]);
+  }
+  return revoked;
+}
+
+export type KeyCheck = "valid" | "revoked" | "unknown";
+
+/** What the public check answers about a key: given and good, given and revoked, or never given. */
+export async function checkKey(store: Store, product: Product, key: string): Promise<KeyCheck> {
+  if (!activeKeys(product) || !store.statsId || !isRedisConfigured()) return "unknown";
+  if (key.length < MIN_KEY_LENGTH || key.length > MAX_KEY_LENGTH) return "unknown";
+  const [raw] = await redisPipeline([["HGET", infoKey(store, product), key]]);
+  const info = parseInfo(key, raw);
+  if (!info) return "unknown";
+  return info.revokedAt ? "revoked" : "valid";
+}
+
+// ---------------------------------------------------------------- email
+
+function displayName(name: string): string {
+  return name.replace(/["\\<>\r\n]/g, "").trim().slice(0, 60) || "A store";
+}
+
+function senderAddress(): string {
+  const match = NIMBUS_FROM.match(/<([^>]+)>/);
+  return (match ? match[1] : NIMBUS_FROM).trim();
+}
+
+/** Once per top-up: the pool is at or under the number the creator chose. */
+async function warnIfLow(store: Store, product: Product): Promise<void> {
+  const setup = activeKeys(product);
+  if (!setup || setup.source !== "pool") return;
+  const [left] = await redisPipeline([["LLEN", poolKey(store, product)]]);
+  const count = Number(left) || 0;
+  if (count > setup.lowAt) return;
+  const [claimed] = await redisPipeline([["SET", warnedKey(store, product), "1", "NX", "EX", 90 * 86_400]]);
+  if (claimed === null) return;
+  await sendEmail({
+    from: `"Nimbus Labs" <${senderAddress()}>`,
+    to: store.email,
+    subject: count === 0 ? `No licence keys left for ${product.title}` : `${count} licence ${count === 1 ? "key" : "keys"} left for ${product.title}`,
+    text: [
+      count === 0
+        ? `The last licence key for ${product.title} has just been given to a buyer. Until you add more, the product shows as sold out on your store and no checkout opens for it.`
+        : `${product.title} has ${count} licence ${count === 1 ? "key" : "keys"} left to give. You asked to be told at ${setup.lowAt}.`,
+      "",
+      `Add more in your studio, under the product: ${SITE_URL}/studio#products`,
+      "",
+      "This email comes once each time the pool runs low; adding keys resets it.",
+    ].join("\n"),
+  }).catch((error) => console.error("warning about licence keys failed", error));
+}
+
+/** A buyer paid in the moment the last key went: the creator hears at once. */
+async function tellCreatorEmpty(store: Store, product: Product, reference: string, email: string): Promise<void> {
+  await sendEmail({
+    from: `"Nimbus Labs" <${senderAddress()}>`,
+    to: store.email,
+    subject: `A buyer of ${product.title} is waiting for a licence key`,
+    text: [
+      `${email || "A buyer"} paid for ${product.title} just as its licence keys ran out, so they have not been given one yet.`,
+      `Their order reference is ${reference}.`,
+      "",
+      `Add keys in your studio, under the product: ${SITE_URL}/studio#products`,
+      "The moment you do, they are given the first one and it is emailed to them. Nothing else is needed from you.",
+    ].join("\n"),
+  }).catch((error) => console.error("telling a creator about a waiting buyer failed", error));
+}
+
+/** Gives every waiting buyer a key from a fresh upload, and emails it. */
+async function serveWaiting(store: Store, product: Product, origin: string): Promise<number> {
+  const [raw] = await redisPipeline([["HGETALL", waitingKey(store, product)]]);
+  const flat = Array.isArray(raw) ? (raw as unknown[]) : [];
+  let served = 0;
+  for (let i = 0; i + 1 < flat.length; i += 2) {
+    const reference = String(flat[i]);
+    let email = "";
+    try {
+      email = String((JSON.parse(String(flat[i + 1])) as { e?: unknown }).e ?? "");
+    } catch {}
+    const given = await keyForSale(store, product, reference, email);
+    if (given?.state !== "issued") break;
+    served += 1;
+    if (!email) continue;
+    await sendEmail({
+      from: `"${displayName(store.name)}" <${senderAddress()}>`,
+      to: email,
+      replyTo: store.email,
+      subject: `Your licence key for ${product.title}`.slice(0, 200),
+      text: [
+        `Your licence key for ${product.title} is ready:`,
+        "",
+        given.key,
+        "",
+        `Thank you for waiting. It is also on your list of purchases: ${origin}/@${store.handle}/orders`,
+        `Order reference: ${reference}`,
+        "",
+        `Questions? Reply to this email and it reaches ${store.name}.`,
+      ].join("\n"),
+      idempotencyKey: `nimbus-key:${store.statsId}:${product.id}:${reference}`,
+    }).catch((error) => console.error("emailing a waiting buyer their key failed", error));
+  }
+  return served;
+}

@@ -20,8 +20,10 @@ import {
   saveBody,
   saveCourse,
 } from "@/lib/course";
-import { registerDrip, setBlocked } from "@/lib/learn";
+import { emailKey, registerDrip, setBlocked } from "@/lib/learn";
 import { EMAIL_PATTERN, SESSION_COOKIE, emailForSession } from "@/lib/auth";
+import { dropQuiz, readQuiz, readQuizFor, resetTries, saveQuiz, setupOf } from "@/lib/quiz";
+import { CERT_ID_PATTERN, withdrawCertificate } from "@/lib/certificate";
 
 const OPS = new Set([
   "module-add",
@@ -35,7 +37,10 @@ const OPS = new Set([
   "media-remove",
 ]);
 
-/** A lesson's text, for the studio to edit. The creator's own courses only. */
+/**
+ * A lesson's text, or with `&quiz=1` its quiz with the right answers, for the
+ * studio to edit. The creator's own courses only.
+ */
 export async function GET(request: NextRequest) {
   const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
   if (!email) return Response.json({ ok: false, error: "signed_out" }, { status: 401 });
@@ -45,6 +50,9 @@ export async function GET(request: NextRequest) {
   const product = store?.products.find((p) => p.id === id);
   const course = product?.course ? await readCourse(product.course.id) : null;
   if (!course || !findLesson(course, lessonId)) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
+  if (request.nextUrl.searchParams.get("quiz") === "1") {
+    return Response.json({ ok: true, quiz: await readQuizFor(course.id, lessonId) }, { headers: { "Cache-Control": "no-store" } });
+  }
   return Response.json({ ok: true, text: await readBody(course.id, lessonId) }, { headers: { "Cache-Control": "no-store" } });
 }
 
@@ -56,7 +64,11 @@ export async function GET(request: NextRequest) {
  * the outline; `{ action: "body", id, lessonId, text }` saves a lesson's
  * text; `{ action: "media", id, lessonId, kind, pathname, name }` puts an
  * uploaded video or file on a lesson; `{ action: "block", id, email, blocked
- * }` takes a student off the course or lets them back.
+ * }` takes a student off the course or lets them back; `{ action: "quiz", id,
+ * lessonId, quiz }` saves a lesson's quiz and `quiz: null` takes it off;
+ * `{ action: "cert", id, on }` switches certificates on or off; `{ action:
+ * "withdraw", id, certificate }` withdraws one; `{ action: "retries", id,
+ * email }` gives a student their quiz tries back.
  *
  * `id` is always the product's, and the course is found through the
  * creator's own store, so nothing here can reach anyone else's course.
@@ -101,6 +113,50 @@ export async function POST(request: NextRequest) {
       const who = text(body.email, 254).trim();
       if (!EMAIL_PATTERN.test(who)) return Response.json({ ok: false, error: "email" }, { status: 400 });
       await setBlocked(store, course.id, who, body.blocked === true);
+      return Response.json({ ok: true });
+    }
+
+    if (action === "quiz") {
+      const lessonId = text(body.lessonId, 20);
+      if (!findLesson(course, lessonId)) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
+      if (body.quiz === null) {
+        const result = editCourse(course, { op: "quiz", lessonId, quiz: null });
+        if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
+        await saveCourse(result.course);
+        await dropQuiz(course.id, lessonId);
+        return Response.json({ ok: true, course: result.course });
+      }
+      const read = readQuiz(body.quiz);
+      if (!read.ok) {
+        // Which question, and what is wrong with it, so the studio can say so.
+        const at = "at" in read ? read.at : null;
+        return Response.json({ ok: false, error: "quiz", problem: { reason: read.reason, at } }, { status: 400 });
+      }
+      await saveQuiz(course.id, lessonId, read.quiz);
+      const result = editCourse(course, { op: "quiz", lessonId, quiz: setupOf(read.quiz) });
+      if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
+      await saveCourse(result.course);
+      return Response.json({ ok: true, course: result.course, quiz: read.quiz });
+    }
+
+    if (action === "cert") {
+      const result = editCourse(course, { op: "certificate", on: body.on === true });
+      if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
+      await saveCourse(result.course);
+      return Response.json({ ok: true, course: result.course });
+    }
+
+    if (action === "withdraw") {
+      const certificate = text(body.certificate, 20);
+      if (!CERT_ID_PATTERN.test(certificate)) return Response.json({ ok: false, error: "unknown" }, { status: 400 });
+      const done = await withdrawCertificate(course.id, certificate);
+      return done ? Response.json({ ok: true }) : Response.json({ ok: false, error: "unknown" }, { status: 404 });
+    }
+
+    if (action === "retries") {
+      const who = text(body.email, 254).trim();
+      if (!EMAIL_PATTERN.test(who)) return Response.json({ ok: false, error: "email" }, { status: 400 });
+      await resetTries(course, emailKey(who));
       return Response.json({ ok: true });
     }
 
@@ -174,7 +230,10 @@ export async function POST(request: NextRequest) {
     await saveCourse(result.course);
     const lessons = lessonCount(result.course);
     if (lessons !== product.course.lessons) await setCourseLessons(email, id, lessons);
-    if (edit.op === "lesson-remove") await dropBody(course.id, edit.lessonId);
+    if (edit.op === "lesson-remove") {
+      await dropBody(course.id, edit.lessonId);
+      await dropQuiz(course.id, edit.lessonId);
+    }
     if (edit.op === "module-edit" || edit.op === "module-remove" || edit.op === "lesson-add") {
       await registerDrip(store, product, result.course);
     }

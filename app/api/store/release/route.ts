@@ -2,22 +2,15 @@ import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { releaseHandle } from "@/lib/store";
 import { isRedisConfigured } from "@/lib/redis";
+import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 const MAX_BODY_BYTES = 2_000;
 
 /** Lets go of an address the signed-in creator's store used before. */
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (origin && host) {
-    try {
-      if (new URL(origin).host !== host) {
-        return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
-      }
-    } catch {
-      return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   if (Number(request.headers.get("content-length") ?? "0") > MAX_BODY_BYTES) {
     return Response.json({ ok: false, error: "invalid" }, { status: 413 });
@@ -32,7 +25,7 @@ export async function POST(request: NextRequest) {
 
   let body: Record<string, unknown>;
   try {
-    const parsed: unknown = await request.json();
+    const parsed: unknown = await (await limited(request, MAX_BODY_BYTES)).json();
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return Response.json({ ok: false, error: "invalid" }, { status: 400 });
     }

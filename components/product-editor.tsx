@@ -7,6 +7,8 @@ import { CourseToggle } from "@/components/course-toggle";
 import { CheckoutExtras } from "@/components/checkout-extras";
 import { CheckoutFieldsEditor } from "@/components/checkout-fields-editor";
 import { ProductImageEditor } from "@/components/product-image-editor";
+import { LicenceKeyEditor } from "@/components/licence-key-editor";
+import { PdfStampToggle } from "@/components/pdf-stamp-toggle";
 import { toast } from "@/components/toast";
 import { uploadPresigned } from "@vercel/blob/client";
 import {
@@ -777,6 +779,7 @@ function OptionsBlock({
                   onDetach={() => onDetach(option.id)}
                   onLink={(url) => onLink(option.id, url)}
                   onUnlink={() => onUnlink(option.id)}
+                  membership={product.recurring !== null}
                 />
 
                 {removingId === option.id ? (
@@ -886,6 +889,7 @@ function FileBlock({
   onDetach,
   onLink,
   onUnlink,
+  membership = false,
 }: {
   target: Delivers;
   busy: boolean;
@@ -895,6 +899,8 @@ function FileBlock({
   onDetach: () => void;
   onLink: (url: string) => void;
   onUnlink: () => void;
+  /** Sold as a membership: a file closes when it ends, a link cannot. */
+  membership?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [typing, setTyping] = useState(false);
@@ -963,6 +969,12 @@ function FileBlock({
               Take it off
             </button>
           </div>
+          {membership ? (
+            <p className="mt-2 text-xs text-ink-soft">
+              Members download it only while their membership runs. When it ends, the download closes and they are shown a
+              page to renew.
+            </p>
+          ) : null}
         </>
       ) : link ? (
         <>
@@ -1001,6 +1013,12 @@ function FileBlock({
               Take it off
             </button>
           </div>
+          {membership ? (
+            <p className="notice notice-warn mt-2 text-sm">
+              A link cannot be taken back when a membership ends: whoever has the address keeps it. To close access when
+              members stop paying, upload the file here instead, or turn off sharing where the link points.
+            </p>
+          ) : null}
         </>
       ) : (
         <>
@@ -1056,6 +1074,9 @@ function FileBlock({
           <p className="mt-1 text-sm text-ink-soft">
             A Google Drive folder, a private video page, a Notion page — anything
             with an https address. Check that anyone with the link can open it.
+            {membership
+              ? " A link cannot be taken back when a membership ends: a file uploaded here can, and closes by itself when a member stops paying."
+              : ""}
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button
@@ -1606,6 +1627,7 @@ export function ProductEditor({
                     onDetach={() => detach(product.id)}
                     onLink={(url) => linkTo(product.id, url)}
                     onUnlink={() => unlink(product.id)}
+                    membership={product.recurring !== null}
                   />
                 ) : null}
 
@@ -1622,6 +1644,8 @@ export function ProductEditor({
                   onUnlink={unlink}
                 />
                 )}
+                <PdfStampToggle product={product} />
+                <LicenceKeyEditor product={product} handle={handle} />
                 </>
                 )}
 

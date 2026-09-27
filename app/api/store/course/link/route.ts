@@ -1,9 +1,10 @@
 import type { NextRequest } from "next/server";
-import { originFrom } from "@/lib/request-origin";
+import { linkOrigin, originFrom } from "@/lib/request-origin";
 import { fromAnotherSite } from "@/lib/studio-route";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { requestCourseLink } from "@/lib/learn";
 import { clientIp } from "@/lib/visit";
+import { limited } from "@/lib/request-guard";
 
 /** "Send me a link": a student opening the course on another device. */
 export async function POST(request: NextRequest) {
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
   let productId = "";
   let email = "";
   try {
-    const form = await request.formData();
+    const form = await (await limited(request, 8_000)).formData();
     handle = normaliseHandle(String(form.get("handle") ?? ""));
     productId = String(form.get("product") ?? "").slice(0, 40);
     email = String(form.get("email") ?? "").slice(0, 300);
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   let result: string;
   try {
-    result = await requestCourseLink({ store, product, email, ip: clientIp(request), origin });
+    result = await requestCourseLink({ store, product, email, ip: clientIp(request), origin: linkOrigin(request, store) });
   } catch (error) {
     console.error("sending a course link failed", error);
     result = "error";

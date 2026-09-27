@@ -14,8 +14,10 @@
  *
  * Nothing is written down about purchases here. The list is asked of the
  * creator's own Stripe account every time, which is the record of who paid
- * for what; a refunded sale and a membership that stopped are left off,
- * because Stripe says so, not because we remembered.
+ * for what; a refunded sale is left off, because Stripe says so, not because
+ * we remembered. A membership that stopped stays on the list with nothing to
+ * open and the way to renew, so its former member is told what happened
+ * rather than finding it quietly gone (lib/membership-access.ts).
  *
  * Like cancelling a membership, this works whatever state the creator's own
  * Nimbus subscription is in: somebody paid for that file, and they get it.
@@ -27,6 +29,8 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount, platformKey } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
 import type { ProductFile } from "@/lib/product-file";
+import { isLive, soldAMembership } from "@/lib/membership-access";
+import { refundedInFull } from "@/lib/refunds";
 import type { Product, Store } from "@/lib/store";
 
 /** How long the emailed link opens the list. */
@@ -38,7 +42,6 @@ export const MAX_LISTED = 40;
 const IP_LIMIT = 10;
 const ADDRESS_LIMIT = 5;
 const RATE_WINDOW_SECONDS = 60 * 60;
-const LIVE = new Set(["active", "trialing", "past_due"]);
 const SESSION_ID_PATTERN = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
 const INTENT_ID_PATTERN = /^pi_[A-Za-z0-9]{10,200}$/;
 const CUSTOMER_PATTERN = /^cus_[A-Za-z0-9]{6,64}$/;
@@ -66,6 +69,14 @@ export type Purchase = {
   paidAt: number;
   /** A membership, still being paid for. */
   member: boolean;
+  /**
+   * A membership that has ended. It hands nothing over any more; the page
+   * says so and offers the way back.
+   */
+  ended: boolean;
+  /** The product bought, and the one ticked at checkout, as the store lists them. */
+  productId: string;
+  bumpId: string | null;
   /** A course opens on its own page rather than as a download. */
   courseProduct: string | null;
   main: Delivery | null;
@@ -106,12 +117,8 @@ function rows(listed: Listed): Row[] {
   return Array.isArray(listed.data) ? (listed.data as Row[]) : [];
 }
 
-/** Whether Stripe says this charge was given back in full. */
-function refunded(intent: unknown): boolean {
-  if (!intent || typeof intent !== "object") return false;
-  const charge = (intent as { latest_charge?: unknown }).latest_charge;
-  return Boolean(charge && typeof charge === "object" && (charge as { refunded?: unknown }).refunded === true);
-}
+/** Whether Stripe says this charge was given back in full: the shared rule (lib/refunds.ts). */
+const refunded = refundedInFull;
 
 /**
  * Everything this address paid this store for that can be handed over again,
@@ -143,10 +150,26 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       if (refunded(session.payment_intent)) continue;
 
       // A membership hands its thing over while it is being paid for.
-      const member = session.mode === "subscription" && meta.kind !== "plan";
+      const member = soldAMembership(product, { mode: session.mode, metadata: meta });
       if (member) {
         const sub = session.subscription as { status?: unknown } | null;
-        if (!sub || typeof sub !== "object" || typeof sub.status !== "string" || !LIVE.has(sub.status)) continue;
+        if (!sub || typeof sub !== "object" || !isLive(sub.status)) {
+          found.set(id, {
+            reference: id,
+            kind: "sale",
+            title: product.title,
+            option: null,
+            paidAt: typeof session.created === "number" ? session.created : 0,
+            member: false,
+            ended: true,
+            productId: product.id,
+            bumpId: null,
+            courseProduct: null,
+            main: null,
+            bump: null,
+          });
+          continue;
+        }
       }
 
       const { delivery, option } = deliveryOf(product, meta.option);
@@ -163,6 +186,9 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         option,
         paidAt: typeof session.created === "number" ? session.created : 0,
         member,
+        ended: false,
+        productId: product.id,
+        bumpId: bump && added ? added.id : null,
         courseProduct,
         main: courseProduct ? null : delivery,
         bump,
@@ -191,6 +217,9 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         option: null,
         paidAt: typeof intent.created === "number" ? intent.created : 0,
         member: false,
+        ended: false,
+        productId: product.id,
+        bumpId: null,
         courseProduct: null,
         main: { title: product.title, file: product.file, link: product.link },
         bump: null,
@@ -198,7 +227,18 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
     }
   }
 
-  return [...found.values()].sort((a, b) => b.paidAt - a.paidAt).slice(0, MAX_LISTED);
+  // An ended membership is shown once, and not at all when the same address
+  // has joined again since: the running one is what they have.
+  const all = [...found.values()].sort((a, b) => b.paidAt - a.paidAt);
+  const running = new Set(all.filter((p) => p.member).map((p) => p.productId));
+  const shownEnded = new Set<string>();
+  const kept = all.filter((p) => {
+    if (!p.ended) return true;
+    if (running.has(p.productId) || shownEnded.has(p.productId)) return false;
+    shownEnded.add(p.productId);
+    return true;
+  });
+  return kept.slice(0, MAX_LISTED);
 }
 
 async function within(key: string, limit: number): Promise<boolean> {

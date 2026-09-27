@@ -2,6 +2,8 @@ import type { NextRequest } from "next/server";
 import { originFrom } from "@/lib/request-origin";
 import { UNSUB_TOKEN, unsubscribe } from "@/lib/contacts";
 import { STOP_TOKEN, stopReminders } from "@/lib/checkout-recovery";
+import { COMMUNITY_UNSUB, stopAnnouncements } from "@/lib/community-mail";
+import { limited } from "@/lib/request-guard";
 
 /**
  * Leaving a creator's list. A mail app's own unsubscribe button posts here
@@ -11,22 +13,31 @@ import { STOP_TOKEN, stopReminders } from "@/lib/checkout-recovery";
  *
  * The same door stops a store's abandoned-checkout reminders (an `r` link
  * rather than a `t` one, lib/checkout-recovery.ts), which are sent to people
- * who may never have joined the list.
+ * who may never have joined the list, and a community member's announcement
+ * emails (a `c` link, lib/community-mail.ts), which leaves them in the
+ * community and on or off the list exactly as they were.
  */
 export async function POST(request: NextRequest) {
   const origin = originFrom(request);
   const token = (request.nextUrl.searchParams.get("t") ?? "").slice(0, 60);
   const reminder = (request.nextUrl.searchParams.get("r") ?? "").slice(0, 60);
+  const community = (request.nextUrl.searchParams.get("c") ?? "").slice(0, 60);
   let fromPage = false;
-  if (!UNSUB_TOKEN.test(token) && !STOP_TOKEN.test(reminder)) return new Response("Not found.", { status: 404 });
+  if (!UNSUB_TOKEN.test(token) && !STOP_TOKEN.test(reminder) && !COMMUNITY_UNSUB.test(community)) {
+    return new Response("Not found.", { status: 404 });
+  }
   try {
-    const form = await request.formData();
+    const form = await (await limited(request, 8_000)).formData();
     fromPage = form.get("from") === "page";
   } catch {
     fromPage = false;
   }
-  const done = STOP_TOKEN.test(reminder) ? await stopReminders(reminder) : await unsubscribe(token);
-  const which = STOP_TOKEN.test(reminder) ? `r=${reminder}` : `t=${token}`;
+  const done = COMMUNITY_UNSUB.test(community)
+    ? await stopAnnouncements(community)
+    : STOP_TOKEN.test(reminder)
+      ? await stopReminders(reminder)
+      : await unsubscribe(token);
+  const which = COMMUNITY_UNSUB.test(community) ? `c=${community}` : STOP_TOKEN.test(reminder) ? `r=${reminder}` : `t=${token}`;
   if (fromPage) {
     return new Response(null, {
       status: 303,
@@ -44,6 +55,11 @@ export async function GET(request: NextRequest) {
   const origin = originFrom(request);
   const token = (request.nextUrl.searchParams.get("t") ?? "").slice(0, 60);
   const reminder = (request.nextUrl.searchParams.get("r") ?? "").slice(0, 60);
-  const which = reminder ? `r=${encodeURIComponent(reminder)}` : `t=${encodeURIComponent(token)}`;
+  const community = (request.nextUrl.searchParams.get("c") ?? "").slice(0, 60);
+  const which = community
+    ? `c=${encodeURIComponent(community)}`
+    : reminder
+      ? `r=${encodeURIComponent(reminder)}`
+      : `t=${encodeURIComponent(token)}`;
   return new Response(null, { status: 303, headers: { Location: `${origin}/unsubscribe?${which}` } });
 }

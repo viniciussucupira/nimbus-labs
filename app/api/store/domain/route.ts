@@ -1,4 +1,5 @@
-import type { NextRequest } from "next/server";
+import { type NextRequest, after } from "next/server";
+import { noticeCreator } from "@/lib/account-notice";
 import { setDomain, storeForEmail } from "@/lib/store";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import {
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest) {
       if (!store.domain) return Response.json({ ok: true });
       if (!(await disconnectDomain(store.domain.name))) return fail("unavailable", 502);
       await setDomain(email, null);
+      const name = store.domain.name;
+      after(() => noticeCreator(store, { kind: "domain-removed", name }));
       return Response.json({ ok: true });
     }
 
@@ -46,6 +49,8 @@ export async function POST(request: NextRequest) {
       if (!result.ok) return fail(result.reason);
       const now = new Date().toISOString();
       await setDomain(email, { name: result.name, addedAt: now, liveAt: "" });
+      // A domain decides where buyers land; the creator hears of every one.
+      after(() => noticeCreator(store, { kind: "domain-added", name: result.name }));
       const status = await domainStatus(result.name);
       return Response.json({ ok: true, status });
     }

@@ -28,9 +28,13 @@ import { type TaxSetting, NO_TAX, parseTax } from "@/lib/tax";
 import { type RecoverySetting, NO_RECOVERY, parseRecovery } from "@/lib/recovery-setting";
 import { type Cycle, type Tier, parseCycle, parseTier } from "@/lib/plan";
 import { COURSE_ID_PATTERN } from "@/lib/course";
+import { COMMUNITY_ID } from "@/lib/community-text";
 import { type Bump, type Plan, canBeBumped, isOneOff, parseBump, parsePlan, parseStock } from "@/lib/product-extras";
+import { type Funnel, type FunnelProblem, funnelFromUpsell, funnelProblem, parseFunnel } from "@/lib/funnel";
+import { type AffiliateSetting, parseAffiliateSetting } from "@/lib/affiliate-setting";
 import { type PayWhatYouWant, type PwywProblem, parsePwyw, pwywProblem } from "@/lib/pay-what-you-want";
 import { type CheckoutField, parseFields } from "@/lib/checkout-fields";
+import { type KeySetup, canHaveKeys, parseKeySetup } from "@/lib/licence-keys";
 import {
   type DisplayStyle,
   type ProductImage,
@@ -222,8 +226,12 @@ export type Product = {
   stock: number | null;
   /** Another product offered in a box at checkout, at a price of its own. */
   bump: Bump | null;
-  /** Another product offered after paying, added in one click. */
-  upsell: Bump | null;
+  /**
+   * What is offered after paying, one offer at a time, each added in one
+   * click (lib/funnel.ts). A product saved when there was a single upsell
+   * reads back as a funnel of that one offer.
+   */
+  funnel: Funnel | null;
   /** Paying in a fixed number of payments instead of at once. */
   plan: Plan | null;
   /**
@@ -244,6 +252,16 @@ export type Product = {
   pwyw: PayWhatYouWant | null;
   /** Whether it has a long description, kept in a record of its own. */
   about: boolean;
+  /**
+   * Whether each sale hands the buyer a unique licence key, and where the
+   * keys come from (lib/licence-keys.ts). Null is no keys.
+   */
+  keys: KeySetup | null;
+  /**
+   * Whether a PDF it delivers is stamped with the buyer's email on every
+   * page when it is downloaded (lib/pdf-stamp.ts).
+   */
+  stamp: boolean;
 };
 
 /** What every email to a creator's list carries, as the law asks. */
@@ -287,6 +305,21 @@ function parseDomain(raw: unknown): StoreDomain | null {
 
 /** The part of a course a store record carries. */
 export type CourseRef = { id: string; lessons: number };
+
+/**
+ * The part of a store's community its record carries: where the community
+ * is kept (lib/community.ts) and whether it is open. Everything else about it
+ * lives in its own records, so the store page learns whether to show the way
+ * in without reading any of them.
+ */
+export type CommunityRef = { id: string; on: boolean };
+
+function parseCommunityRef(raw: unknown): CommunityRef | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  if (typeof value.id !== "string" || !COMMUNITY_ID.test(value.id)) return null;
+  return { id: value.id, on: value.on === true };
+}
 
 function parseCourseRef(raw: unknown): CourseRef | null {
   if (!raw || typeof raw !== "object") return null;
@@ -404,6 +437,14 @@ export type Store = {
    * for every store until its creator switches it on.
    */
   recovery: RecoverySetting;
+  /** The store's community, once the creator has made one (lib/community.ts). */
+  community: CommunityRef | null;
+  /**
+   * The store's affiliate programme: whether it is on, what it pays and for
+   * how long a click counts (lib/affiliates.ts). Off until the creator
+   * switches it on. The money itself never passes through here.
+   */
+  affiliates: AffiliateSetting;
 };
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
@@ -491,7 +532,7 @@ function parseProducts(raw: unknown): Product[] {
       call: parseSetup(value.call),
       stock: parseStock(value.stock),
       bump: parseBump(value.bump),
-      upsell: parseBump(value.upsell),
+      funnel: parseFunnel((value as { funnel?: unknown }).funnel) ?? funnelFromUpsell(parseBump((value as { upsell?: unknown }).upsell)),
       plan: parsePlan(value.plan),
       course: parseCourseRef(value.course),
       image: parseProductImage(value.image),
@@ -499,6 +540,9 @@ function parseProducts(raw: unknown): Product[] {
       fields: parseFields(value.fields),
       pwyw: parsePwyw(value.pwyw),
       about: value.about === true,
+      // Products written before keys and stamping existed have neither.
+      keys: parseKeySetup(value.keys),
+      stamp: value.stamp === true,
     });
     if (products.length >= MAX_PRODUCTS) break;
   }
@@ -572,6 +616,9 @@ function parseStore(raw: unknown): Store | null {
       // Stores written before reminders existed have them off, as every
       // store does until its creator says otherwise.
       recovery: parseRecovery(value.recovery),
+      // Stores written before communities existed simply have none.
+      community: parseCommunityRef(value.community),
+      affiliates: parseAffiliateSetting(value.affiliates),
     };
   } catch {
     return null;
@@ -703,6 +750,8 @@ export async function claimHandle(
     pixels: { ...NO_PIXELS },
     tax: { ...NO_TAX },
     recovery: { ...NO_RECOVERY },
+    community: null,
+    affiliates: parseAffiliateSetting(null),
   };
 
   try {
@@ -1119,6 +1168,19 @@ export async function setCourseLessons(email: string, id: string, lessons: numbe
   await saveStore({ ...store, products });
 }
 
+/**
+ * Gives the store its community, or switches it on or off. The id is made
+ * once and kept, so switching off and on again finds every post where it was.
+ */
+export async function setCommunity(email: string, on: boolean): Promise<Store | null> {
+  const store = await storeForEmail(email);
+  if (!store) return null;
+  const id = store.community?.id ?? crypto.randomUUID().replace(/-/g, "");
+  const next: Store = { ...store, community: { id, on } };
+  await saveStore(next);
+  return next;
+}
+
 /** Saves how the creator's emails are signed. */
 export async function setMailSettings(email: string, mail: MailSettings): Promise<Store | null> {
   const store = await storeForEmail(email);
@@ -1160,7 +1222,7 @@ export type ExtrasResult =
 export async function setProductExtras(
   email: string,
   id: string,
-  change: { stock?: number | null; bump?: Bump | null; upsell?: Bump | null; plan?: Plan | null },
+  change: { stock?: number | null; bump?: Bump | null; plan?: Plan | null },
 ): Promise<ExtrasResult> {
   const store = await storeForEmail(email);
   if (!store) return { ok: false, reason: "none" };
@@ -1182,15 +1244,6 @@ export async function setProductExtras(
       if (change.bump.priceCents > target.priceCents) return { ok: false, reason: "price" };
     }
     next.bump = change.bump;
-  }
-  if (change.upsell !== undefined) {
-    if (change.upsell !== null) {
-      if (!isOneOff(product)) return { ok: false, reason: "kind" };
-      const target = store.products.find((p) => p.id === change.upsell!.productId);
-      if (!target || target.id === product.id || !canBeBumped(target)) return { ok: false, reason: "target" };
-      if (change.upsell.priceCents > target.priceCents) return { ok: false, reason: "price" };
-    }
-    next.upsell = change.upsell;
   }
   if (change.plan !== undefined) {
     if (change.plan !== null) {
@@ -1231,6 +1284,50 @@ export async function setRecovery(
   if (!store) return { ok: false, reason: "none" };
   const next: Store = { ...store, recovery: parseRecovery(recovery), statsId: store.statsId ?? newListId() };
   await saveStore(next);
+  return { ok: true, store: next };
+}
+
+export type FunnelResult =
+  | { ok: true; store: Store }
+  | { ok: false; reason: "none" | "unknown" | FunnelProblem };
+
+/**
+ * Sets or clears what is offered after paying for one product. Checked
+ * against the store as it is now (lib/funnel.ts), so a funnel that could not
+ * be shown to a buyer is refused here rather than skipped on the thanks page.
+ */
+export async function setProductFunnel(email: string, id: string, funnel: Funnel | null): Promise<FunnelResult> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const at = store.products.findIndex((product) => product.id === id);
+  if (at < 0) return { ok: false, reason: "unknown" };
+  const product = store.products[at];
+  if (funnel) {
+    const problem = funnelProblem(funnel, store.products, product);
+    if (problem) return { ok: false, reason: problem };
+  }
+  const products = [...store.products];
+  products[at] = { ...product, funnel };
+  const saved: Store = { ...store, products };
+  await saveStore(saved, store);
+  return { ok: true, store: saved };
+}
+
+/**
+ * Saves the affiliate programme's terms. The store is also given the id its
+ * affiliates, clicks and sales are kept under, if it has none yet.
+ */
+export async function setAffiliateSetting(
+  email: string,
+  setting: AffiliateSetting,
+): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
+  const store = await storeForEmail(email);
+  if (!store) return { ok: false, reason: "none" };
+  const known = new Set(store.products.map((p) => p.id));
+  const parsed = parseAffiliateSetting(setting);
+  const rates = Object.fromEntries(Object.entries(parsed.rates).filter(([id]) => known.has(id)));
+  const next: Store = { ...store, affiliates: { ...parsed, rates }, statsId: store.statsId ?? newListId() };
+  await saveStore(next, store);
   return { ok: true, store: next };
 }
 
@@ -1369,7 +1466,7 @@ export async function addProduct(
     call: null,
     stock: null,
     bump: null,
-    upsell: null,
+    funnel: null,
     plan: null,
     course: null,
     image: null,
@@ -1377,6 +1474,8 @@ export async function addProduct(
     fields: [],
     pwyw: null,
     about: false,
+    keys: null,
+    stamp: false,
   };
   if (pwywCents !== null) {
     const problem = pwywProblem(product, pwywCents);
@@ -2026,4 +2125,30 @@ export async function setProductAbout(email: string, id: string, has: boolean): 
     (product) => ({ ...product, about: has }),
     (store) => ({ statsId: store.statsId ?? newListId() }),
   );
+}
+
+export type KeysResult =
+  | { ok: true; store: Store; product: Product }
+  | { ok: false; reason: "none" | "unknown" | "kind" };
+
+/**
+ * Switches licence keys on for a product, changes how they are made, or
+ * switches them off (null). Only a paid product sold once can have them. The
+ * store is given the id its keys are kept under, if it has none yet.
+ */
+export async function setProductKeys(email: string, id: string, keys: KeySetup | null): Promise<KeysResult> {
+  const store = await storeForEmail(email);
+  const product = store?.products.find((p) => p.id === id);
+  if (store && product && keys && !canHaveKeys(product)) return { ok: false, reason: "kind" };
+  return changeProduct(
+    email,
+    id,
+    (current) => ({ ...current, keys }),
+    (current) => ({ statsId: current.statsId ?? newListId() }),
+  );
+}
+
+/** Switches stamping the buyer's email into a product's PDFs on or off. */
+export async function setProductStamp(email: string, id: string, on: boolean): Promise<ProductPartResult> {
+  return changeProduct(email, id, (product) => ({ ...product, stamp: on }));
 }

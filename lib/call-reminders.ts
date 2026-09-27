@@ -195,6 +195,7 @@ export async function sendCallReminders(
               start: call.start,
               end: call.end,
               buyerEmail: call.email,
+              buyerName: call.name,
               buyerTz: call.buyerTz,
               moves: call.moves,
               answers: call.answers,

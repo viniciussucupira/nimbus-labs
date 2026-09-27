@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { readUnsubToken } from "@/lib/contacts";
 import { STOP_TOKEN, readStopToken } from "@/lib/checkout-recovery";
+import { COMMUNITY_UNSUB, readCommunityUnsub } from "@/lib/community-mail";
+import { readConfig } from "@/lib/community";
 import { storeForHandle } from "@/lib/store";
 
 export const metadata: Metadata = {
@@ -23,6 +25,8 @@ export default async function UnsubscribePage({
   const query = await searchParams;
   const reminder = typeof query.r === "string" ? query.r.slice(0, 60) : "";
   if (reminder) return <StopReminders token={reminder} done={query.done === "1"} />;
+  const community = typeof query.c === "string" ? query.c.slice(0, 60) : "";
+  if (community) return <StopAnnouncements token={community} done={query.done === "1"} />;
   const token = typeof query.t === "string" ? query.t.slice(0, 60) : "";
   const done = query.done === "1";
   const found = token ? await readUnsubToken(token) : null;
@@ -53,6 +57,46 @@ export default async function UnsubscribePage({
             <form action={`/api/mail/unsubscribe?t=${token}`} method="post" className="mt-6">
               <input type="hidden" name="from" value="page" />
               <button type="submit" className="btn btn-primary btn-block">Unsubscribe</button>
+            </form>
+          </>
+        )}
+        <p className="mt-6 text-sm text-ink-mute">Emails sent with Nimbus Labs, on behalf of the creator who wrote them.</p>
+      </div>
+    </main>
+  );
+}
+
+/** The same one button, for a community's announcement emails. */
+async function StopAnnouncements({ token, done }: { token: string; done: boolean }) {
+  const found = COMMUNITY_UNSUB.test(token) ? await readCommunityUnsub(token) : null;
+  const store = found ? await storeForHandle(found.handle) : null;
+  const config = found && store?.community?.id === found.community ? await readConfig(found.community) : null;
+  const who = store ? store.mail?.fromName || store.name : "this creator";
+  const where = config?.name ?? "the community";
+  return (
+    <main id="content" className="min-h-screen bg-paper px-4 py-20 text-ink">
+      <div className="card mx-auto max-w-md p-7 sm:p-9">
+        {!found ? (
+          <>
+            <h1 className="t-h3">This link is not one we know</h1>
+            <p className="mt-3 text-ink-soft">
+              Open the link from the email itself, or use your mail app&apos;s own unsubscribe button.
+            </p>
+          </>
+        ) : done || !found.member.mail ? (
+          <>
+            <h1 className="t-h3">No more announcement emails</h1>
+            <p className="mt-3 text-ink-soft">
+              {`${found.member.e} will not be emailed ${who}'s announcements again. You are still in ${where}, and can read them there.`}
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="t-h3">{`Stop ${who}'s announcement emails?`}</h1>
+            <p className="mt-3 text-ink-soft">{`For ${found.member.e}. You stay in ${where}; only the emails stop.`}</p>
+            <form action={`/api/mail/unsubscribe?c=${token}`} method="post" className="mt-6">
+              <input type="hidden" name="from" value="page" />
+              <button type="submit" className="btn btn-primary btn-block">Stop the emails</button>
             </form>
           </>
         )}

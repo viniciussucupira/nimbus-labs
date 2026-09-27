@@ -92,9 +92,10 @@ const GROUPS: Group[] = [
     items: [
       { title: "Files and links", body: "PDFs, videos, presets and templates up to 5 GB, or a link to where it lives." },
       { title: "Courses", body: "Modules and lessons that can open over time, with free previews." },
-      { title: "Paid calls", body: "One to one, groups of up to 50, or live sessions on dates you set." },
+      { title: "Paid calls", body: "One to one, groups of up to 50, or live sessions, around your calendar's busy times." },
       { title: "Memberships", body: "Weekly, monthly or yearly, with a free trial if you want one." },
       { title: "Free products", body: "Given for an email address, each one confirmed by its owner." },
+      { title: "A community", body: "Posts and comments, open only to the buyers you choose." },
     ],
   },
   {
@@ -109,7 +110,7 @@ const GROUPS: Group[] = [
       { title: "Up to three prices", body: "One week for $27, five weeks for $39, on one product." },
       { title: "Pay what you want", body: "Your price as the minimum, a suggested price, and the buyer chooses." },
       { title: "Payment plans", body: "Two to twelve payments that end by themselves after the last." },
-      { title: "Offers before and after paying", body: "A box at checkout, one click after, on the same card." },
+      { title: "Offers before and after paying", body: "A box at checkout, and up to five one-click offers after, on the same card." },
       { title: "Discount codes and sales tax", body: "Codes and Stripe Tax, both on your own account." },
     ],
   },
@@ -126,6 +127,9 @@ const GROUPS: Group[] = [
       { title: "Calendar invites", body: "A booked call lands in both calendars, with reminders before it." },
       { title: "A confirmation for every buyer", body: "From your store's name, with the way back to what they bought." },
       { title: "Limited quantities", body: "Counted from real payments, and selling stops at zero." },
+      { title: "Licence keys", body: "A unique key with each sale, never given twice." },
+      { title: "Stamped PDFs", body: "The buyer's email on every page of the PDF they bought." },
+      { title: "Quizzes and certificates", body: "Questions after a lesson, and a certificate anyone can check." },
     ],
   },
   {
@@ -138,7 +142,9 @@ const GROUPS: Group[] = [
     items: [
       { title: "Email to your list", body: "One-off emails and sequences, only to people who agreed.", pro: true },
       ...(DOMAINS ? [{ title: "Your own domain", body: "shop.yourname.com opens your store, certificate included.", pro: true }] : []),
+      { title: "Affiliates", body: "A link and a page for each one. You pay them yourself." },
       { title: "Ad pixels", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount." },
+      { title: "Webhooks", body: "Sales, leads and bookings, sent to Zapier, Make or your own server." },
       { title: "Your photo, your colour", body: "Four themes, ten colours or your own, each checked for contrast." },
       { title: "An address that never breaks", body: "Change it any time; every old link keeps working." },
       { title: "Installs like an app", body: "Your store on any phone's home screen, with its own name and icon." },
@@ -152,7 +158,7 @@ const GROUPS: Group[] = [
     href: "/platform/insights",
     link: "What your numbers show",
     items: [
-      { title: "Your numbers", body: "Visitors, where they came from, checkouts and sales." },
+      { title: "Your numbers", body: "Visitors, where they came from, checkouts and sales, from 7 days to all time, as CSV files too." },
       { title: "Every sale, from Stripe", body: "With the buyer's address, so you can answer them." },
       { title: "No password, ever", body: "Log in with a link sent to your email. Nothing for us to lose." },
     ],
@@ -704,8 +710,9 @@ export default function Home() {
                 <div>
                   <p className="font-semibold text-ink">Where Stan is ahead today</p>
                   <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                    Stan has funnels, affiliates paid automatically, automatic Instagram replies and communities.
-                    We do not have those yet, and we say so on every page that could make you think otherwise.
+                    Stan has PayPal, affiliates paid automatically, automatic Instagram replies, webinars inside its
+                    community, funnel pages before the checkout and an iPhone app. We do not have those, and we say so on
+                    every page that could make you think otherwise.
                   </p>
                 </div>
                 <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3">

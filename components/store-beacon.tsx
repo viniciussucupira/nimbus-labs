@@ -19,16 +19,17 @@ function beacon(payload: Record<string, string>) {
  * Tells the store it was opened, and which of its links are followed.
  *
  * No cookie and nothing kept in the browser: the page sends where the visitor
- * came from — the referring site, or the campaign tag on the creator's own
- * link — and the server does the rest.
+ * came from — the referring site, or the utm_source, utm_medium and
+ * utm_campaign tags on the creator's own link — and the server does the rest.
  */
 export function StoreBeacon({ handle }: { handle: string }) {
   useEffect(() => {
     const key = `${handle}|${location.href}`;
     if (!sent.has(key)) {
       sent.add(key);
-      const utm = new URLSearchParams(location.search).get("utm_source") ?? "";
-      beacon({ h: handle, k: "v", r: document.referrer.slice(0, 500), u: utm.slice(0, 60) });
+      const query = new URLSearchParams(location.search);
+      const tag = (name: string) => (query.get(name) ?? "").slice(0, 60);
+      beacon({ h: handle, k: "v", r: document.referrer.slice(0, 500), u: tag("utm_source"), m: tag("utm_medium"), g: tag("utm_campaign") });
     }
     const onClick = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target.closest("a[data-link]") : null;

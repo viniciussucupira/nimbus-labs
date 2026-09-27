@@ -3,8 +3,10 @@ import { originFrom } from "@/lib/request-origin";
 import {
   SESSION_COOKIE,
   SESSION_COOKIE_OPTIONS,
+  endSession,
   spendSignInLink,
 } from "@/lib/auth";
+import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 /**
  * Finishing the emailed link.
@@ -36,21 +38,13 @@ export async function POST(request: NextRequest) {
 
   // A form on another site must not be able to sign this browser into an
   // account of the attacker's choosing.
-  const sender = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (sender && host) {
-    try {
-      if (new URL(sender).host !== host) {
-        return new Response("forbidden", { status: 403 });
-      }
-    } catch {
-      return new Response("forbidden", { status: 403 });
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return new Response("forbidden", { status: 403 });
 
   let token = "";
   try {
-    const form = await request.formData();
+    const form = await (await limited(request, 8_000)).formData();
     const value = form.get("token");
     token = typeof value === "string" ? value : "";
   } catch {
@@ -67,6 +61,13 @@ export async function POST(request: NextRequest) {
   if (!sessionId) {
     return redirectTo(origin, "/signin?status=expired");
   }
+
+  // A session this browser already held is closed, not kept alongside: the
+  // new one is always freshly made here, and nothing set before signing in —
+  // by another tab, another person on this computer, or a planted cookie —
+  // outlives the sign-in.
+  const previous = request.cookies.get(SESSION_COOKIE)?.value;
+  if (previous && previous !== sessionId) await endSession(previous);
 
   const response = redirectTo(origin, "/studio");
   const options = SESSION_COOKIE_OPTIONS;

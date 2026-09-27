@@ -24,6 +24,13 @@
  * time themselves (moveBooking), within the creator's notice and at most
  * MAX_MOVES times; the reminders a day and an hour before are sent by the
  * mail job (lib/call-reminders.ts).
+ *
+ * A fourth source applies to weekly hours only: the creator's own calendars,
+ * when they have pasted their private calendar addresses in the studio
+ * (lib/calendar-sync.ts). A time they are busy there is not offered, and a
+ * calendar that cannot be read takes nothing away — the bookings go on
+ * without it. Dated sessions are never hidden by it: the creator put them on
+ * that date themselves, so the studio shows the clash instead.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
@@ -49,6 +56,9 @@ import {
   zoneName,
 } from "@/lib/call-setup";
 import { planCheck, planReminders, readMoves, unplanReminders, writeMove } from "@/lib/call-records";
+import { calendarBusy } from "@/lib/calendar-sync";
+import { fold, icsText, icsTime } from "@/lib/ics-write";
+import { emitEvent } from "@/lib/webhooks";
 
 /** How far back Stripe is read for paid bookings. Longer than any horizon. */
 const LOOKBACK_DAYS = 120;
@@ -106,7 +116,7 @@ type SessionRow = {
   status?: unknown;
   payment_status?: unknown;
   metadata?: Record<string, string> | null;
-  customer_details?: { email?: unknown } | null;
+  customer_details?: { email?: unknown; name?: unknown } | null;
   created?: unknown;
   custom_fields?: unknown;
 };
@@ -123,6 +133,8 @@ export async function paidCalls(store: Store): Promise<
     product: string;
     title: string;
     email: string | null;
+    /** The name the buyer gave Stripe, when they gave one. */
+    name: string | null;
     buyerTz: string;
     /** How many times its buyer has moved it. */
     moves: number;
@@ -150,6 +162,7 @@ export async function paidCalls(store: Store): Promise<
       const end = Number(meta.end);
       if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
       const email = row.customer_details?.email;
+      const name = row.customer_details?.name;
       found.push({
         session: typeof row.id === "string" ? row.id : "",
         start,
@@ -157,6 +170,7 @@ export async function paidCalls(store: Store): Promise<
         product: meta.product ?? "",
         title: meta.title ?? "",
         email: typeof email === "string" && email ? email : null,
+        name: typeof name === "string" && name.trim() ? name.trim().slice(0, 120) : null,
         buyerTz: isTimeZone(meta.tz) ? meta.tz : "UTC",
         moves: 0,
         answers: readAnswers(row),
@@ -176,10 +190,18 @@ export async function paidCalls(store: Store): Promise<
 
 export type PaidCall = Awaited<ReturnType<typeof paidCalls>>[number];
 
-/** Everything that makes a seat or a time unavailable, and the paid calls behind it. */
-async function readBusy(store: Store, now: number): Promise<{ busy: Busy[]; paid: PaidCall[] }> {
+/**
+ * Everything that makes a seat or a time unavailable, the paid calls behind
+ * it, and the times the creator's own calendars say they are busy.
+ */
+async function readBusy(store: Store, now: number): Promise<{ busy: Busy[]; paid: PaidCall[]; blocked: Busy[] }> {
   const local = store.callsId && isRedisConfigured() ? await heldAndBooked(store.callsId, now) : [];
   let paid: PaidCall[] = [];
+  // Read alongside Stripe, and never a reason to fail: a calendar that does
+  // not answer blocks nothing.
+  const calendar = store.products.some((p) => p.call?.kind === "weekly")
+    ? calendarBusy(store, now).catch(() => ({ busy: [] as Busy[] }))
+    : Promise.resolve({ busy: [] as Busy[] });
   try {
     paid = await paidCalls(store);
   } catch (error) {
@@ -195,7 +217,7 @@ async function readBusy(store: Store, now: number): Promise<{ busy: Busy[]; paid
     ...local.filter((b) => !b.session || !fromStripe.has(b.session)),
     ...paid.map((c) => ({ start: c.start, end: c.end, product: c.product, session: c.session })),
   ];
-  return { busy, paid };
+  return { busy, paid, blocked: (await calendar).busy };
 }
 
 /** Every seat taken or held in this store, right now. */
@@ -220,9 +242,12 @@ function sessionTimes(store: Store, now: number): Busy[] {
   return out;
 }
 
-/** What a product is checked against: its seats, and for weekly hours the creator's dated sessions too. */
-function against(store: Store, product: Product & { call: CallSetup }, busy: Busy[], now: number): Busy[] {
-  return product.call.kind === "weekly" ? [...busy, ...sessionTimes(store, now)] : busy;
+/**
+ * What a product is checked against: its seats, and for weekly hours the
+ * creator's dated sessions and the busy times of their own calendars too.
+ */
+function against(store: Store, product: Product & { call: CallSetup }, busy: Busy[], now: number, blocked: Busy[] = []): Busy[] {
+  return product.call.kind === "weekly" ? [...busy, ...sessionTimes(store, now), ...blocked] : busy;
 }
 
 /**
@@ -286,6 +311,7 @@ export async function catchUpBookings(store: Store, paid: PaidCall[], origin: st
       start: call.start,
       end: call.end,
       buyerEmail: call.email,
+      buyerName: call.name,
       buyerTz: call.buyerTz,
       moves: call.moves,
       answers: call.answers,
@@ -410,6 +436,8 @@ export async function holdAndCheckout(input: {
   start: number;
   buyerTz: string;
   origin: string;
+  /** The affiliate whose link the buyer followed, and the share it earns. */
+  via?: { aff: string; rate: number } | null;
 }): Promise<HoldResult> {
   const { store, product, start, origin } = input;
   const setup = product.call;
@@ -427,7 +455,8 @@ export async function holdAndCheckout(input: {
     const now = Date.now();
     let busy: Busy[];
     try {
-      busy = against(store, product, await busyTimes(store, now), now);
+      const read = await readBusy(store, now);
+      busy = against(store, product, read.busy, now, read.blocked);
     } catch {
       return { ok: false, reason: "error" };
     }
@@ -459,6 +488,12 @@ export async function holdAndCheckout(input: {
     });
     if (product.summary) body.set("line_items[0][price_data][product_data][description]", product.summary);
     if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
+    // Sent by an affiliate: credited to them, at today's share (lib/affiliates.ts).
+    if (input.via) {
+      body.set("metadata[via]", input.via.aff);
+      body.set("metadata[via_rate]", String(input.via.rate));
+      body.set("payment_intent_data[metadata][via]", input.via.aff);
+    }
     // What the creator wants to know before the call, asked before paying.
     applyCheckoutFields(body, product.fields);
     applyTax(store, body);
@@ -505,10 +540,11 @@ function offerFrom(
   product: Product & { call: CallSetup },
   now: number,
   seats: Busy[],
+  blocked: Busy[],
 ): Offer {
   const setup = product.call;
   if (setup.kind === "live") return { days: [], left: {}, sessions: openSessions(setup, now, seats, product.id) };
-  const days = openSlots(setup, now, against(store, product, seats, now), product.id);
+  const days = openSlots(setup, now, against(store, product, seats, now, blocked), product.id);
   const left: Record<string, number> = {};
   if (setup.seats > 1) {
     for (const day of days) {
@@ -525,8 +561,8 @@ function offerFrom(
 export async function slotsForProduct(store: Store, product: Product & { call: CallSetup }) {
   try {
     const now = Date.now();
-    const { busy, paid } = await readBusy(store, now);
-    return { ...offerFrom(store, product, now, busy), paid };
+    const { busy, paid, blocked } = await readBusy(store, now);
+    return { ...offerFrom(store, product, now, busy, blocked), paid };
   } catch {
     return null;
   }
@@ -545,8 +581,8 @@ export async function slotsForMove(
 ): Promise<Offer | null> {
   try {
     const now = Date.now();
-    const { busy } = await readBusy(store, now);
-    const offer = offerFrom(store, product, now, busy.filter((b) => b.session !== session));
+    const { busy, blocked } = await readBusy(store, now);
+    const offer = offerFrom(store, product, now, busy.filter((b) => b.session !== session), blocked);
     return {
       days: offer.days
         .map((day) => ({ ...day, starts: day.starts.filter((start) => start !== current) }))
@@ -633,12 +669,13 @@ export async function moveBooking(input: {
     if (start === from.start) return { ok: false, reason: "same" };
 
     let busy: Busy[];
+    let blocked: Busy[];
     try {
-      busy = await busyTimes(store, now);
+      ({ busy, blocked } = await readBusy(store, now));
     } catch {
       return { ok: false, reason: "error" };
     }
-    const others = against(store, product, busy.filter((b) => b.session !== session), now);
+    const others = against(store, product, busy.filter((b) => b.session !== session), now, blocked);
     if (!isBookable(setup, now, others, start, product.id)) return { ok: false, reason: "taken" };
 
     await writeMove(session, { s: start, e: end, n: from.moves + 1 });
@@ -674,6 +711,14 @@ export async function moveBooking(input: {
   await tellMoved({ store, product, session, from, start, end, moves, email: input.booked.email, buyerTz: input.booked.buyerTz, origin }).catch(
     (error) => console.error("sending the move emails failed", error),
   );
+  await emitEvent(store, "call.moved", `${session}|${moves}`, {
+    checkout_session: session,
+    product: { id: product.id, title: product.title },
+    from: { start: new Date(from.start).toISOString(), end: new Date(from.end).toISOString() },
+    to: { start: new Date(start).toISOString(), end: new Date(end).toISOString() },
+    moves,
+    buyer: { email: input.booked.email, timezone: input.booked.buyerTz },
+  }).catch((error) => console.error("queueing the call.moved webhook failed", error));
   return { ok: true, start, end, moves };
 }
 
@@ -745,33 +790,6 @@ async function tellMoved(input: {
 }
 
 // ---- Calendar files ------------------------------------------------------
-
-function icsText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
-}
-
-function icsTime(ms: number): string {
-  return new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-}
-
-/** Folds a line at 75 bytes, as the calendar format requires. */
-function fold(line: string): string {
-  const bytes = new TextEncoder().encode(line);
-  if (bytes.length <= 75) return line;
-  const out: string[] = [];
-  let current = "";
-  for (const char of line) {
-    const next = current + char;
-    if (new TextEncoder().encode(next).length > (out.length ? 74 : 75)) {
-      out.push(current);
-      current = char;
-    } else {
-      current = next;
-    }
-  }
-  out.push(current);
-  return out.join("\r\n ");
-}
 
 /**
  * A calendar file for one booked call. A moved booking keeps its event id
@@ -851,6 +869,8 @@ export async function confirmBooking(input: {
   start: number;
   end: number;
   buyerEmail: string | null;
+  /** The name the buyer gave Stripe, for the creator's webhooks. */
+  buyerName?: string | null;
   buyerTz: string;
   /** How many times it was moved before this, when that is known. */
   moves?: number;
@@ -868,6 +888,15 @@ export async function confirmBooking(input: {
   await planReminders(store.callsId, store.handle, session, start).catch((error) =>
     console.error("planning call reminders failed", error),
   );
+  await emitEvent(store, "call.booked", session, {
+    checkout_session: session,
+    product: { id: product.id, title: product.title },
+    start: new Date(start).toISOString(),
+    end: new Date(end).toISOString(),
+    kind: product.call.kind === "live" ? "live_session" : product.call.seats > 1 ? "group_call" : "call",
+    buyer: { email: buyerEmail, name: input.buyerName ?? null, timezone: input.buyerTz },
+    answers: (input.answers ?? []).map((answer) => ({ question: answer.label, answer: answer.value })),
+  }).catch((error) => console.error("queueing the call.booked webhook failed", error));
   if (!isSenderConfigured()) return;
 
   const setup = product.call;

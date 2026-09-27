@@ -5,10 +5,18 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/logo";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { storeFolder, storeForEmail } from "@/lib/store";
-import { lessonCount, readCourse } from "@/lib/course";
-import { studentsOf } from "@/lib/learn";
+import { lessonCount, lessonsInOrder, readCourse } from "@/lib/course";
+import { emailKey, studentsOf } from "@/lib/learn";
 import { canSellProduct } from "@/lib/store-checkout";
-import { CourseEditor, StudentAccess } from "@/components/course-editor";
+import { passedFor } from "@/lib/quiz";
+import { certificatesFor } from "@/lib/certificate";
+import {
+  CertificateSwitch,
+  CourseEditor,
+  GiveTriesBack,
+  StudentAccess,
+  WithdrawCertificate,
+} from "@/components/course-editor";
 
 export const metadata: Metadata = {
   title: "Your course — Nimbus Labs",
@@ -37,6 +45,10 @@ export default async function StudioCoursePage({ params }: { params: Promise<{ p
   const finished = students.filter((s) => lessons > 0 && s.done >= lessons).length;
   const started = students.filter((s) => s.done > 0).length;
   const selling = canSellProduct(store, product);
+  const quizLessons = lessonsInOrder(course).filter(({ lesson }) => lesson.quiz).map(({ lesson }) => lesson.id);
+  const passed = quizLessons.length ? await passedFor(course.id, students.map((s) => emailKey(s.email))) : [];
+  const certificates = await certificatesFor(course.id);
+  const standing = certificates.list.filter((c) => !c.withdrawnAt).length;
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -53,9 +65,9 @@ export default async function StudioCoursePage({ params }: { params: Promise<{ p
         <p className="eyebrow">Course</p>
         <h1 className="t-h2 mt-3 break-words">{product.title}</h1>
         <p className="mt-3 max-w-2xl text-ink-soft">
-          Modules hold lessons. A lesson can have a video, text, downloads and a link, and any lesson can be a free
-          preview on your store. A module can open a number of days after each student joins, and they get an email
-          the day it does.
+          Modules hold lessons. A lesson can have a video, text, downloads, a link and a quiz, and any lesson can be a
+          free preview on your store. A module can open a number of days after each student joins, and they get an
+          email the day it does.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-4 text-sm font-bold">
           <Link href={`/@${store.handle}/course/${product.id}`} className="text-ink-soft underline underline-offset-4 hover:text-violet-deep">
@@ -71,6 +83,76 @@ export default async function StudioCoursePage({ params }: { params: Promise<{ p
         </div>
 
         <CourseEditor productId={product.id} initial={course} folder={folder} />
+
+        <section className="card mt-8 p-6 sm:p-8" aria-labelledby="certificate-title">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="certificate-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Certificate of completion</h2>
+            <span className={`tag ${course.certificate ? "tag-live" : ""}`}>{course.certificate ? "On" : "Off"}</span>
+          </div>
+          <p className="mt-2 max-w-2xl text-ink-soft">
+            A student who has marked every lesson done, and passed every quiz that has to be passed, types their name and
+            gets a certificate they can print or save as a PDF. It carries the name as they typed it, the course title,
+            your name and the date, and it has an address of its own that anyone can open to check it is real.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <CertificateSwitch productId={product.id} on={course.certificate} />
+            {course.certificate ? (
+              <Link
+                href={`/@${store.handle}/certificate/sample?product=${product.id}`}
+                className="text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep"
+              >
+                See a sample
+              </Link>
+            ) : null}
+          </div>
+
+          <h3 className="mt-7 font-semibold text-ink">{`Completions \u00b7 ${standing} ${standing === 1 ? "certificate" : "certificates"} issued`}</h3>
+          {certificates.list.length === 0 ? (
+            <p className="mt-3 rounded-[var(--r-md)] bg-sand p-5 text-sm text-ink-soft">
+              {course.certificate
+                ? "Nobody has finished yet. When a student does and asks for their certificate, it is listed here."
+                : "Switch certificates on and each student who finishes is listed here with theirs."}
+            </p>
+          ) : (
+            <div className="mt-3 overflow-x-auto" tabIndex={0} role="region" aria-label="Certificates issued, one row each">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="text-ink-mute">
+                    <th scope="col" className="py-2 pr-3 font-semibold">Name on it</th>
+                    <th scope="col" className="py-2 pr-3 font-semibold">Student</th>
+                    <th scope="col" className="py-2 pr-3 font-semibold">Issued</th>
+                    <th scope="col" className="py-2 font-semibold"><span className="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {certificates.list.map((certificate) => (
+                    <tr key={certificate.id} className="border-t border-line align-top">
+                      <td className={`max-w-[14rem] break-words py-2 pr-3 font-semibold ${certificate.withdrawnAt ? "text-ink-mute line-through" : "text-ink"}`}>
+                        {certificate.name}
+                      </td>
+                      <td className="max-w-[14rem] break-all py-2 pr-3">{certificate.email}</td>
+                      <td className="whitespace-nowrap py-2 pr-3">
+                        {day(certificate.issuedAt)}
+                        {certificate.withdrawnAt ? <span className="block text-xs text-ink-mute">{`Withdrawn ${day(certificate.withdrawnAt)}`}</span> : null}
+                      </td>
+                      <td className="py-2">
+                        <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <Link
+                            href={`/@${store.handle}/certificate/${certificate.id}`}
+                            className="whitespace-nowrap text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep"
+                          >
+                            Open
+                          </Link>
+                          {certificate.withdrawnAt ? null : <WithdrawCertificate productId={product.id} certificate={certificate.id} />}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
 
         <section className="card mt-8 p-6 sm:p-8" aria-labelledby="students-title">
           <h2 id="students-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Students</h2>
@@ -103,18 +185,27 @@ export default async function StudioCoursePage({ params }: { params: Promise<{ p
                     <th scope="col" className="py-2 pr-3 font-semibold">Joined</th>
                     <th scope="col" className="py-2 pr-3 font-semibold">Done</th>
                     <th scope="col" className="py-2 pr-3 font-semibold">Last here</th>
+                    {quizLessons.length ? <th scope="col" className="py-2 pr-3 font-semibold">Quizzes passed</th> : null}
                     <th scope="col" className="py-2 font-semibold"><span className="sr-only">Access</span></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map((student) => (
+                  {students.map((student, i) => (
                     <tr key={student.email} className="border-t border-line align-top">
                       <td className="max-w-[14rem] break-all py-2 pr-3">{student.email}</td>
                       <td className="whitespace-nowrap py-2 pr-3">{day(student.since)}</td>
                       <td className="whitespace-nowrap py-2 pr-3 tabular-nums">{`${Math.min(student.done, lessons)} of ${lessons}`}</td>
                       <td className="whitespace-nowrap py-2 pr-3">{day(student.lastSeen)}</td>
+                      {quizLessons.length ? (
+                        <td className="whitespace-nowrap py-2 pr-3 tabular-nums">
+                          {`${quizLessons.filter((id) => passed[i]?.has(id)).length} of ${quizLessons.length}`}
+                        </td>
+                      ) : null}
                       <td className="py-2">
-                        <StudentAccess productId={product.id} email={student.email} blocked={student.blocked} />
+                        <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                          <StudentAccess productId={product.id} email={student.email} blocked={student.blocked} />
+                          {quizLessons.some((id) => !passed[i]?.has(id)) ? <GiveTriesBack productId={product.id} email={student.email} /> : null}
+                        </span>
                       </td>
                     </tr>
                   ))}

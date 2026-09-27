@@ -1,47 +1,140 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { handleForDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
+import { AFFILIATE_CODE_PATTERN, VIA_COOKIE_SECONDS, viaCookieName } from "@/lib/affiliate-setting";
+import { dynamicPolicy, isDynamicPage, newNonce } from "@/lib/csp";
+import { fromAnotherSite } from "@/lib/request-guard";
+import { isPlatformHost, requestHost } from "@/lib/request-origin";
 
 /**
  * A creator's own domain, served as their store.
  *
  * On nimbuslabsai.com (and the deployment's own addresses) nothing happens
  * here. On a creator's domain, the root is their store page, the store's own
- * pages keep their short paths (/thanks, /course/…, /p/<product>), and
+ * pages keep their short paths (/thanks, /course/…, /p/<product>, /community,
+ * /affiliates, /renew/<product>, /certificate/<id>), and
  * anything that belongs to the site itself — signing in, the studio, the help
  * pages — is sent to nimbuslabsai.com, where the session lives.
  *
  * The store page is told which domain it was reached on, so it can send a
  * visitor back to nimbuslabsai.com if the store is no longer on Pro.
+ *
+ * Two more jobs happen here because this runs before everything else: every
+ * page rendered for a visit gets its Content-Security-Policy with a fresh
+ * nonce (lib/csp.ts), and every request to the API that changes something is
+ * refused when it comes from another site or carries a body too large to
+ * read (guardApi, below).
  */
-const PLATFORM = new URL(SITE_URL).hostname;
 const DOMAIN_HEADER = "x-nimbus-domain";
-const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|p)(\/|$)/;
+const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|community|p|affiliates|renew|certificate)(\/|$)/;
 
-function isPlatformHost(host: string): boolean {
-  return (
-    host === "" ||
-    host === PLATFORM ||
-    host === `www.${PLATFORM}` ||
-    host.endsWith(".vercel.app") ||
-    host === "localhost" ||
-    host === "127.0.0.1"
-  );
+/**
+ * A visitor who followed an affiliate's link (?via=<code>) keeps the code and
+ * the time in a first-party cookie on the store's own address, so a purchase
+ * made later, inside the store's window, is credited to whoever sent them
+ * (lib/affiliates.ts). Set here so it works without JavaScript; whether the
+ * code is real, and still inside the window, is decided at the checkout.
+ */
+function withAffiliateClick(request: NextRequest, handle: string, response: NextResponse): NextResponse {
+  const code = request.nextUrl.searchParams.get("via")?.toLowerCase() ?? "";
+  if (!handle || !AFFILIATE_CODE_PATTERN.test(code)) return response;
+  response.cookies.set({
+    name: viaCookieName(handle),
+    value: `${code}.${Math.floor(Date.now() / 1000)}`,
+    path: "/",
+    maxAge: VIA_COOKIE_SECONDS,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: request.nextUrl.protocol === "https:",
+  });
+  return response;
+}
+
+/**
+ * The biggest body any API route takes: the store photo and a file of licence
+ * keys are the largest, at under three megabytes. Each route caps its own
+ * body lower; this is the ceiling nothing can pass, checked before a route
+ * reads a byte.
+ */
+const MAX_API_BODY_BYTES = 4 * 1024 * 1024;
+
+/**
+ * The one address another site may post to: the one-click unsubscribe that
+ * mail apps send (RFC 8058). Its token is the whole key, it only ever takes
+ * somebody off a list, and a web mail app is entitled to press it from its
+ * own page.
+ */
+const CROSS_SITE_POSTS = new Set(["/api/mail/unsubscribe"]);
+
+/**
+ * Every request under /api/ that changes something passes here first.
+ *
+ * A request from another site is refused whatever route it names, so no
+ * route can be added without the check (lib/request-guard.ts). A declared
+ * body over the ceiling is refused before it is read, and a body sent
+ * without a declared length — which only a script, never a form or a fetch
+ * of ours, does — is refused too, so a route's own ceiling always has a
+ * number to check.
+ */
+function guardApi(request: NextRequest): NextResponse {
+  const method = request.method.toUpperCase();
+  if (method === "GET" || method === "HEAD" || method === "OPTIONS") return NextResponse.next();
+  if (fromAnotherSite(request) && !CROSS_SITE_POSTS.has(request.nextUrl.pathname)) {
+    return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  }
+  const length = request.headers.get("content-length");
+  if (length === null && request.headers.has("transfer-encoding")) {
+    return NextResponse.json({ ok: false, error: "length_required" }, { status: 411 });
+  }
+  if (Number(length ?? "0") > MAX_API_BODY_BYTES) {
+    return NextResponse.json({ ok: false, error: "too_large" }, { status: 413 });
+  }
+  return NextResponse.next();
+}
+
+/**
+ * The nonce policy for a page rendered for this visit (lib/csp.ts).
+ *
+ * Next reads the nonce from the policy on the request and puts it on every
+ * script it writes into the page; the same policy goes back on the response
+ * for the browser to enforce. A page built ahead of time is left to the
+ * policy in next.config.ts, since its scripts were written without one.
+ */
+function withPolicy(path: string, headers: Headers): string | null {
+  if (!isDynamicPage(path)) return null;
+  const policy = dynamicPolicy(newNonce());
+  headers.set("content-security-policy", policy);
+  return policy;
+}
+
+function answer(response: NextResponse, policy: string | null): NextResponse {
+  if (policy) response.headers.set("Content-Security-Policy", policy);
+  return response;
+}
+
+/** The store a platform path belongs to: /@handle and everything under it. */
+function handleInPath(pathname: string): string {
+  const match = pathname.match(/^\/(?:@|%40)([^/]+)/i);
+  if (!match) return "";
+  try {
+    return decodeURIComponent(match[1]).toLowerCase();
+  } catch {
+    return "";
+  }
 }
 
 export async function proxy(request: NextRequest) {
-  const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "")
-    .split(",")[0]
-    .trim()
-    .toLowerCase()
-    .replace(/:\d+$/, "");
+  const host = requestHost(request);
+
+  if (request.nextUrl.pathname.startsWith("/api/")) return guardApi(request);
 
   if (isPlatformHost(host)) {
+    const store = request.nextUrl.searchParams.has("via") ? handleInPath(request.nextUrl.pathname) : "";
     // The header is ours to set; one sent by a visitor is dropped.
-    if (!request.headers.has(DOMAIN_HEADER)) return NextResponse.next();
     const headers = new Headers(request.headers);
     headers.delete(DOMAIN_HEADER);
-    return NextResponse.next({ request: { headers } });
+    const policy = withPolicy(request.nextUrl.pathname, headers);
+    return answer(withAffiliateClick(request, store, NextResponse.next({ request: { headers } })), policy);
   }
 
   const { pathname, search } = request.nextUrl;
@@ -53,21 +146,27 @@ export async function proxy(request: NextRequest) {
   const rewrite = (path: string) => {
     const url = request.nextUrl.clone();
     url.pathname = path;
-    return NextResponse.rewrite(url, { request: { headers } });
+    const policy = withPolicy(path, headers);
+    return answer(withAffiliateClick(request, handle, NextResponse.rewrite(url, { request: { headers } })), policy);
   };
 
   if (pathname === "/") return rewrite(`/@${handle}`);
   if (STORE_PATHS.test(pathname)) return rewrite(`/@${handle}${pathname}`);
-  if (pathname === "/unsubscribe") return NextResponse.next({ request: { headers } });
+  if (pathname === "/unsubscribe") {
+    const policy = withPolicy(pathname, headers);
+    return answer(NextResponse.next({ request: { headers } }), policy);
+  }
   // The store's own long address works here too; another store's does not.
   const own = pathname.match(/^\/@([^/]+)(\/.*)?$/);
   if (own && decodeURIComponent(own[1]).toLowerCase() === handle) {
-    return NextResponse.next({ request: { headers } });
+    const policy = withPolicy(pathname, headers);
+    return answer(withAffiliateClick(request, handle, NextResponse.next({ request: { headers } })), policy);
   }
   return NextResponse.redirect(`${SITE_URL}${pathname}${search}`, 308);
 }
 
 export const config = {
-  // Pages only: not the API, not Next's own files, not files with an extension.
-  matcher: ["/((?!api/|_next/|.*\\.[a-z0-9]+$).*)"],
+  // Pages (not Next's own files, not files with an extension), and the API,
+  // where only the request guard above runs.
+  matcher: ["/((?!api/|_next/|.*\\.[a-z0-9]+$).*)", "/api/:path*"],
 };

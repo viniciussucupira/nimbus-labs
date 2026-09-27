@@ -8,6 +8,7 @@
  */
 import type { NextRequest } from "next/server";
 import { originFrom } from "@/lib/request-origin";
+import { fromAnotherSite as crossSite } from "@/lib/request-guard";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { storeForEmail, type Store } from "@/lib/store";
 
@@ -18,16 +19,13 @@ export function away(origin: string, path: string): Response {
   });
 }
 
-/** True when the request came from somewhere that is not this site. */
+/**
+ * True when the request came from somewhere that is not this site: by its
+ * Origin, or, when it has none, by what the browser says in Sec-Fetch-Site
+ * (lib/request-guard.ts).
+ */
 export function fromAnotherSite(request: NextRequest): boolean {
-  const sender = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (!sender || !host) return false;
-  try {
-    return new URL(sender).host !== host;
-  } catch {
-    return true;
-  }
+  return crossSite(request);
 }
 
 export type Creator = { email: string; store: Store; origin: string };

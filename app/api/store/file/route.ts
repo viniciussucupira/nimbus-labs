@@ -12,6 +12,7 @@ import {
   ownsPath,
 } from "@/lib/product-file";
 import { ITEM_ID_PATTERN, findLesson, readCourses } from "@/lib/course";
+import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 /** How long the creator has to start the upload after asking for the door. */
 const UPLOAD_WINDOW_MS = 10 * 60 * 1000;
@@ -33,21 +34,13 @@ const UPLOAD_WINDOW_MS = 10 * 60 * 1000;
  * to be answered politely rather than retried five times.
  */
 export async function POST(request: NextRequest) {
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (origin && host) {
-    try {
-      if (new URL(origin).host !== host) {
-        return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
-      }
-    } catch {
-      return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
 
   let body: HandleUploadPresignedBody;
   try {
-    body = (await request.json()) as HandleUploadPresignedBody;
+    body = (await (await limited(request, 16_000)).json()) as HandleUploadPresignedBody;
   } catch {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
   }

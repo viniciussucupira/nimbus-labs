@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
+import { type Product, centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
 import { linkHost } from "@/lib/product-link";
 import { everyLabel } from "@/lib/product-recurring";
 import { DOWNLOAD_WINDOW_SECONDS, readOrder } from "@/lib/store-checkout";
@@ -14,14 +14,19 @@ import { StoreTracking } from "@/components/store-tracking";
 import { confirmStock } from "@/lib/stock";
 import { finishPlan } from "@/lib/plans";
 import { cookies } from "next/headers";
-import { activeUpsell } from "@/lib/product-extras";
-import { UPSELL_COOKIE, offerOpen, readUpsell, settleUpsell, upsellDelivery } from "@/lib/upsell";
+import { UPSELL_COOKIE, funnelView, settleUpsells } from "@/lib/upsell";
+import { imageUrl } from "@/lib/product-image";
+import { noteSession } from "@/lib/affiliates";
 import { recordEnrollment } from "@/lib/learn";
 import { noteProduct, upsertContact } from "@/lib/contacts";
 import { enroll } from "@/lib/flows";
 import { canRecover } from "@/lib/buyer-orders";
 import { after } from "next/server";
 import { CONFIRM_WITHIN_SECONDS, canConfirm, confirmPurchase } from "@/lib/purchase-email";
+import { readConfig } from "@/lib/community";
+import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
+import { renewPath } from "@/lib/membership-access";
+import { LicenceKeyBox } from "@/components/licence-key-box";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -57,6 +62,10 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   error: {
     title: "We could not check this order",
     body: "Nothing is lost. Try the link again in a moment.",
+  },
+  refunded: {
+    title: "This order was refunded",
+    body: "The payment was given back in full, so what it bought no longer opens here. If you think this is a mistake, reply to the receipt you were emailed when you paid.",
   },
 };
 
@@ -168,23 +177,84 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     await confirmStock(store, order.product, sessionId).catch((error) => console.error("confirming stock failed", error));
   }
 
-  // The one-click offer: settled first if it is still waiting on an answer —
-  // the bank asked the buyer to confirm it, or Stripe's reply was lost — then
-  // shown only to the browser that paid, within the hour, once, and only
-  // after an order that was paid with a card it can be charged to.
-  if (order.state === "paid" && sessionId) await settleUpsell(store, sessionId);
-  const upsellOffer =
-    order.state === "paid" && !order.plan && !store.tax.enabled ? activeUpsell(store.products, order.product) : null;
-  const upsellRecord = upsellOffer && sessionId ? await readUpsell(sessionId) : null;
+  // A sale through an affiliate's link is written down for them, once,
+  // with what was paid before tax (the five-minute job does the same for a
+  // buyer who never comes back here).
+  if (order.state === "paid" && order.record.metadata) {
+    await noteSession(store, order.record as Parameters<typeof noteSession>[1]).catch((error) =>
+      console.error("noting an affiliate sale failed", error),
+    );
+  }
+
+  // The offers after paying: any still waiting on an answer are settled
+  // first — the bank asked the buyer to confirm one, or Stripe's reply was
+  // lost — then the one the buyer is at is shown only to the browser that
+  // paid, within the hour, and only after an order paid in one go with a
+  // card it can be charged to.
+  if (order.state === "paid" && sessionId) await settleUpsells(store, sessionId);
   const upsellSecret = (await cookies()).get(UPSELL_COOKIE)?.value;
-  const showOffer =
-    order.state === "paid" &&
-    order.amount > 0 &&
-    upsellOffer !== null &&
-    upsellRecord === null &&
-    offerOpen(order.created, upsellSecret, order.upsellKey ?? undefined);
-  const upsold = order.state === "paid" && sessionId ? await upsellDelivery(store, sessionId) : null;
-  const upsellMissed = upsellRecord !== null && upsellRecord.state !== "paid";
+  const funnel =
+    order.state === "paid" && sessionId
+      ? await funnelView({
+          store,
+          session: sessionId,
+          product: order.product,
+          alsoOwned: order.bump ? [order.bump.product.id] : [],
+          eligible: order.amount > 0 && !order.plan,
+          created: order.created,
+          secret: upsellSecret,
+          upsellKey: order.upsellKey,
+        })
+      : null;
+  const offer = funnel?.offer ?? null;
+
+  // A purchase that opens the creator's community says so, with the way in —
+  // counting what was ticked at checkout and what was added after paying, as
+  // the community's own door does (lib/community-access.ts).
+  const community =
+    order.state === "paid" && store.community?.on
+      ? await readConfig(store.community.id).catch(() => null)
+      : null;
+  const opensCommunity =
+    order.state === "paid" && community !== null && order.membership !== "ended" &&
+    [order.product.id, ...(order.bump ? [order.bump.product.id] : []), ...(funnel?.taken ?? []).map((added) => added.product.id)].some(
+      (id) => community.access.includes(id),
+    );
+
+  // A membership that has ended hands nothing over, here or anywhere else.
+  const ended = order.state === "paid" && order.membership === "ended";
+
+  // Each licence key this order earns: given here if the five-minute job
+  // that sends the confirmation has not given it already. A sale only ever
+  // gets one key, however many times this page is opened.
+  const keyOf = async (product: Product, reference: string): Promise<SaleKey | null | "error"> => {
+    if (order.state !== "paid" || ended || !activeKeys(product)) return null;
+    try {
+      return await keyForSale(store, product, reference, order.email ?? "");
+    } catch (error) {
+      console.error("giving a licence key failed", error);
+      return "error";
+    }
+  };
+  const [mainKey, bumpKey, ...takenKeys] =
+    order.state === "paid"
+      ? await Promise.all([
+          keyOf(order.product, order.reference),
+          order.bump ? keyOf(order.bump.product, order.reference) : Promise.resolve(null),
+          ...(funnel?.taken ?? []).map((added) => keyOf(added.product, added.reference)),
+        ])
+      : [null, null];
+  const upsellKey = takenKeys.some((found) => found !== null);
+  const keyBox = (found: SaleKey | null | "error", title?: string) =>
+    found === null ? null : (
+      <LicenceKeyBox
+        title={title}
+        storeName={store.name}
+        value={found !== "error" && found.state === "issued" ? found.key : null}
+        revoked={found !== "error" && found.state === "issued" && found.revoked}
+        waiting={found !== "error" && found.state === "waiting"}
+      />
+    );
 
   const notice = order.state !== "paid" ? NOTICES[order.state] : null;
   const hours = order.state === "paid" ? Math.floor(order.secondsLeft / 3600) : 0;
@@ -236,7 +306,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     }`}
                 .
               </p>
-              {order.product.recurring && order.trialDays > 0 ? (
+              {order.product.recurring && order.trialDays > 0 && !ended ? (
                 <p
                   className="mt-3 rounded-2xl px-4 py-3 text-sm"
                   style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
@@ -252,7 +322,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   {`This is the first of ${order.plan.payments} ${order.plan.interval === "week" ? "weekly" : "monthly"} payments. The other ${order.plan.payments - 1} are charged to the same card on ${store.name}'s own account, and it stops by itself after the last one. To change the card or ask about a payment, reply to the receipt Stripe emailed you.`}
                 </p>
               ) : null}
-              {order.product.recurring ? (
+              {order.product.recurring && !ended ? (
                 <p
                   className="mt-3 rounded-2xl px-4 py-3 text-sm"
                   style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
@@ -275,7 +345,17 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 </p>
               ) : null}
 
-              {booked ? (
+              {ended ? (
+                <div className="st-note mt-7" role="status">
+                  <p className="font-bold" style={{ color: "var(--st-text)" }}>Your membership has ended</p>
+                  <p className="mt-1 text-sm">
+                    {`Stripe says this membership is no longer running, so what it gave is closed now. Join again and it opens straight away.`}
+                  </p>
+                  <Link href={renewPath(store, order.product)} className="btn st-btn mt-4">
+                    Renew your membership
+                  </Link>
+                </div>
+              ) : booked ? (
                 <>
                   <div
                     className="mt-6 rounded-2xl px-5 py-4"
@@ -390,6 +470,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   reply to the receipt Stripe emailed you and they will see it.
                 </p>
               )}
+              {/* What is theirs first — the product, what was ticked at checkout and
+                  what was added after paying, each with its key — then the way into
+                  the community, and only then the next offer. */}
+              {keyBox(mainKey, bumpKey || upsellKey ? order.product.title : undefined)}
               {order.bump ? (
                 <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
                   <p className="st-label">Also yours</p>
@@ -420,64 +504,110 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                       {`This one has nothing attached right now. Reply to your receipt and ${store.name} will send it.`}
                     </p>
                   )}
+                  {keyBox(bumpKey, order.bump.product.title)}
                 </div>
               ) : null}
-              {showOffer && upsellOffer ? (
-                <form
-                  action="/api/store/upsell"
-                  method="post"
-                  className="mt-7 rounded-2xl px-5 py-5"
-                  style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
+              {funnel?.taken.map((added, index) => (
+                <div
+                  key={added.slot || "first"}
+                  className="mt-6 rounded-2xl px-5 py-4"
+                  style={{ border: "1px solid var(--st-line)" }}
                 >
-                  <input type="hidden" name="handle" value={store.handle} />
-                  <input type="hidden" name="session_id" value={sessionId ?? ""} />
-                  <p className="st-label">One more thing</p>
-                  <p className="mt-1 text-lg font-semibold">
-                    {`${upsellOffer.target.title} for $${centsToPrice(upsellOffer.bump.priceCents)}`}
-                  </p>
-                  {upsellOffer.bump.pitch ? <p className="mt-1 text-sm">{upsellOffer.bump.pitch}</p> : null}
-                  {upsellOffer.bump.priceCents < upsellOffer.target.priceCents ? (
-                    <p className="st-muted mt-1 text-xs">{`$${centsToPrice(upsellOffer.target.priceCents)} on its own`}</p>
-                  ) : null}
-                  <button type="submit" className="btn st-btn mt-4">
-                    {`Add it for $${centsToPrice(upsellOffer.bump.priceCents)}`}
-                  </button>
-                  <p className="st-muted mt-3 text-xs">
-                    {`One press charges the card you just used, on ${store.name}'s own account. Nothing else is charged, and you can simply leave this page.`}
-                  </p>
-                </form>
-              ) : null}
-              {upsold ? (
-                <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
                   <p className="st-label">Also yours</p>
-                  <p className="mt-1 font-semibold">{upsold.product.title}</p>
-                  {upsold.link ? (
+                  <p className="mt-1 font-semibold">{added.product.title}</p>
+                  {added.product.link ? (
                     <>
-                      <a href={upsold.link} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn mt-3">
+                      <a href={added.product.link} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn mt-3">
                         Open it
                       </a>
-                      <p className="st-muted mt-3 break-all text-sm">{upsold.link}</p>
+                      <p className="st-muted mt-3 break-all text-sm">{added.product.link}</p>
                     </>
-                  ) : upsold.file ? (
+                  ) : added.product.file ? (
                     <a
                       href={`/api/store/download?handle=${encodeURIComponent(store.handle)}&session_id=${encodeURIComponent(
                         sessionId ?? "",
-                      )}&item=upsell`}
+                      )}&item=upsell${added.slot ? `&step=${added.slot}` : ""}`}
                       className="btn st-btn mt-3"
                     >
                       Download it
                     </a>
                   ) : null}
+                  {keyBox(takenKeys[index] ?? null, added.product.title)}
                 </div>
-              ) : upsellMissed && upsellOffer ? (
-                <p className="st-note mt-6 text-sm" role="status">
-                  {upsellRecord?.state === "pending" && !upsellRecord.pi
-                    ? `We are still hearing back from Stripe about ${upsellOffer.target.title}. Open this page again in a minute: it is charged once at most, and it appears here as soon as it is paid.`
-                    : upsellRecord?.state === "pending"
-                    ? `Your bank has not confirmed ${upsellOffer.target.title}, so it was not charged.`
-                    : `${upsellOffer.target.title} was not charged: your card turned it down. You can still buy it from the store.`}
-                </p>
+              ))}
+              {opensCommunity && community ? (
+                <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
+                  <p className="st-label">Also yours</p>
+                  <p className="mt-1 font-semibold">{community.name}</p>
+                  <p className="st-muted mt-1 text-sm">
+                    {`This purchase opens ${store.name}'s members' community. Come in with ${order.email ?? "the address you paid with"}: a link is sent there, and there is no password to make.`}
+                  </p>
+                  <Link href={`/@${store.handle}/community`} className="btn st-btn mt-3">
+                    Go to the community
+                  </Link>
+                </div>
               ) : null}
+              {offer && sessionId ? (
+                <section
+                  aria-labelledby="offer-title"
+                  className="mt-7 overflow-hidden rounded-2xl"
+                  style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
+                >
+                  {offer.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imageUrl(offer.image)}
+                      alt={offer.image.alt}
+                      width={offer.image.width}
+                      height={offer.image.height}
+                      className="aspect-[16/9] w-full object-cover"
+                    />
+                  ) : null}
+                  <form action="/api/store/upsell" method="post" className="px-5 py-5 sm:px-6">
+                    <input type="hidden" name="handle" value={store.handle} />
+                    <input type="hidden" name="session_id" value={sessionId} />
+                    <input type="hidden" name="step" value={offer.step.id} />
+                    <p className="st-label">{offer.afterNo ? "Before you go" : "One more thing"}</p>
+                    <h2 id="offer-title" className="mt-1 text-xl font-semibold leading-snug tracking-[-0.01em]">
+                      {offer.step.headline || `${offer.target.title} for $${centsToPrice(offer.step.priceCents)}`}
+                    </h2>
+                    {offer.step.headline ? (
+                      <p className="mt-1 text-sm font-semibold">
+                        {`${offer.target.title} for $${centsToPrice(offer.step.priceCents)}`}
+                      </p>
+                    ) : null}
+                    {offer.step.text ? <p className="mt-2 text-sm leading-relaxed">{offer.step.text}</p> : null}
+                    {offer.step.priceCents < offer.target.priceCents ? (
+                      <p className="st-muted mt-1 text-xs">{`$${centsToPrice(offer.target.priceCents)} on its own`}</p>
+                    ) : null}
+                    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                      <button type="submit" name="answer" value="yes" className="btn st-btn">
+                        {`Yes, add it for $${centsToPrice(offer.step.priceCents)}`}
+                      </button>
+                      <button
+                        type="submit"
+                        name="answer"
+                        value="no"
+                        className="st-footer-link min-h-[44px] px-1 text-sm font-semibold"
+                      >
+                        No thanks
+                      </button>
+                    </div>
+                    <p className="st-muted mt-3 text-xs">
+                      {`Yes charges the card you just used, once, on ${store.name}'s own account. No thanks charges nothing. You can also simply leave this page.`}
+                    </p>
+                  </form>
+                </section>
+              ) : null}
+              {funnel?.notes.map((note) => (
+                <p key={`${note.state}-${note.title}`} className="st-note mt-6 text-sm" role="status">
+                  {note.state === "checking"
+                    ? `We are still hearing back from Stripe about ${note.title}. Open this page again in a minute: it is charged once at most, and it appears here as soon as it is paid.`
+                    : note.state === "unconfirmed"
+                      ? `Your bank has not confirmed ${note.title}, so it was not charged.`
+                      : `${note.title} was not charged: your card turned it down. You can still buy it from the store.`}
+                </p>
+              ))}
               {confirming && order.email ? (
                 <p className="st-muted mt-2 text-sm">
                   {`A confirmation from ${store.name} is on its way to ${order.email}, with how to get back to this later. The charge was made on ${store.name}'s own Stripe account, not ours.`}

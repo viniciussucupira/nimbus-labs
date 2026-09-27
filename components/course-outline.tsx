@@ -16,6 +16,7 @@ export function CourseOutline({
   start,
   done,
   current,
+  held,
 }: {
   course: Course;
   /** The course page's path, lessons hang under it. */
@@ -24,6 +25,8 @@ export function CourseOutline({
   start: number | null;
   done: Set<string>;
   current?: string;
+  /** Lessons a quiz that must be passed still holds shut, for this student. */
+  held?: Map<string, string>;
 }) {
   return (
     <ol className="space-y-5">
@@ -45,7 +48,8 @@ export function CourseOutline({
             ) : (
               <ol className="mt-2 space-y-1">
                 {unit.lessons.map((lesson) => {
-                  const reachable = open || lesson.preview;
+                  const waiting = open && Boolean(held?.has(lesson.id));
+                  const reachable = (open && !waiting) || lesson.preview;
                   const isDone = done.has(lesson.id);
                   const here = lesson.id === current;
                   const mark = isDone ? "✓" : reachable ? "○" : "🔒";
@@ -67,6 +71,12 @@ export function CourseOutline({
                           <span className="st-muted break-words">{label}</span>
                         )}
                         {isDone ? <span className="sr-only"> (done)</span> : null}
+                        {lesson.quiz ? (
+                          <span className="st-muted ml-2 text-xs font-semibold">{lesson.quiz.required ? "Quiz to pass" : "Quiz"}</span>
+                        ) : null}
+                        {waiting && !lesson.preview ? (
+                          <span className="st-muted block text-xs">Opens when you pass the quiz before it</span>
+                        ) : null}
                         {!open && lesson.preview ? (
                           <span className="ml-2 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--st-accent-text)" }}>Free preview</span>
                         ) : null}

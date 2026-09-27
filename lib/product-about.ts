@@ -72,8 +72,11 @@ export function linkPieces(line: string): Piece[] {
   let last = 0;
   for (const match of line.matchAll(pattern)) {
     let url = match[0];
-    const trailing = /[.,;:!?)\]}'’]+$/.exec(url);
-    if (trailing) url = url.slice(0, url.length - trailing[0].length);
+    // Counted from the end in one pass: an anchored pattern would take time
+    // growing with the square of a long run of these that stops short of it.
+    let cut = 0;
+    while (cut < url.length && ".,;:!?)]}'’".includes(url[url.length - 1 - cut])) cut += 1;
+    if (cut) url = url.slice(0, url.length - cut);
     const start = match.index ?? 0;
     let valid = false;
     try {

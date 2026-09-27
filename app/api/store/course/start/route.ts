@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { originFrom } from "@/lib/request-origin";
+import { linkOrigin, originFrom } from "@/lib/request-origin";
 import { fromAnotherSite } from "@/lib/studio-route";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { readOrder } from "@/lib/store-checkout";
@@ -12,6 +12,7 @@ import {
   sendCourseLink,
   touchStudent,
 } from "@/lib/learn";
+import { clientAddress, limited, withinLimit } from "@/lib/request-guard";
 
 /**
  * The thanks page's "Start the course" button.
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
   let handle = "";
   let sessionId = "";
   try {
-    const form = await request.formData();
+    const form = await (await limited(request, 8_000)).formData();
     handle = normaliseHandle(String(form.get("handle") ?? ""));
     sessionId = String(form.get("session_id") ?? "");
   } catch {
@@ -42,6 +43,14 @@ export async function POST(request: NextRequest) {
   }
   const store = handle ? await storeForHandle(handle) : null;
   if (!store) return new Response("No such store.", { status: 404 });
+  // A press may email the buyer a link, so it is counted like the other
+  // forms that send one: per connection, and per order.
+  if (
+    !(await withinLimit("course-start", `${clientAddress(request)}|${store.handle}`, 10, 3600)) ||
+    !(await withinLimit("course-start-order", sessionId.slice(0, 220), 5, 3600))
+  ) {
+    return away(`/@${store.handle}`);
+  }
 
   const order = await readOrder(store, sessionId);
   if (order.state !== "paid" || !order.product.course) return away(`/@${store.handle}`);
@@ -57,6 +66,6 @@ export async function POST(request: NextRequest) {
     const token = await mintPass(store, order.email, [course.id]);
     return away(path, passCookie(store, token, origin.startsWith("https://")));
   }
-  const sent = await sendCourseLink(store, product, order.email, origin);
+  const sent = await sendCourseLink(store, product, order.email, linkOrigin(request, store));
   return away(`${path}?link=${sent ? "sent" : "error"}`);
 }

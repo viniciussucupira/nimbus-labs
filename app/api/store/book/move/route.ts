@@ -1,8 +1,9 @@
 import type { NextRequest } from "next/server";
-import { originFrom } from "@/lib/request-origin";
+import { linkOrigin, originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { readOrder } from "@/lib/store-checkout";
 import { isCallProduct, moveBooking } from "@/lib/calls";
+import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 
 const MAX_BODY_BYTES = 1_000;
 
@@ -17,15 +18,9 @@ const MAX_BODY_BYTES = 1_000;
 export async function POST(request: NextRequest) {
   const origin = originFrom(request);
 
-  const sender = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (sender && host) {
-    try {
-      if (new URL(sender).host !== host) return new Response("forbidden", { status: 403 });
-    } catch {
-      return new Response("forbidden", { status: 403 });
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return new Response("forbidden", { status: 403 });
   if (Number(request.headers.get("content-length") ?? "0") > MAX_BODY_BYTES) {
     return new Response("Too large", { status: 413 });
   }
@@ -35,7 +30,7 @@ export async function POST(request: NextRequest) {
   let session = "";
   let start = NaN;
   try {
-    const form = await request.formData();
+    const form = await (await limited(request, MAX_BODY_BYTES)).formData();
     const read = (name: string) => {
       const value = form.get(name);
       return typeof value === "string" ? value : "";
@@ -67,6 +62,7 @@ export async function POST(request: NextRequest) {
     });
 
   if (!Number.isFinite(start)) return back("invalid");
+  if (!(await withinLimit("book-move", `${clientAddress(request)}|${store.handle}`, 10, 600))) return back("slow");
   const order = await readOrder(store, session);
   if (order.state !== "paid" || !order.call || order.product.id !== product.id) {
     return back(order.state === "error" || order.state === "unavailable" ? "error" : "unknown");
@@ -78,7 +74,7 @@ export async function POST(request: NextRequest) {
     session,
     booked: { start: order.call.start, end: order.call.end, email: order.email, buyerTz: order.call.buyerTz },
     start,
-    origin,
+    origin: linkOrigin(request, store),
   });
   return back(result.ok ? "moved" : result.reason);
 }

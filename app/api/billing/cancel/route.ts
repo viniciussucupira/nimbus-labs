@@ -7,6 +7,7 @@ import {
   setCancelAtPeriodEnd,
 } from "@/lib/billing";
 import { setSubscription } from "@/lib/store";
+import { limited } from "@/lib/request-guard";
 
 /**
  * Cancels the creator's subscription, or takes the cancellation back.
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   let intent = "";
   try {
-    const value = (await request.formData()).get("intent");
+    const value = (await (await limited(request, 8_000)).formData()).get("intent");
     intent = typeof value === "string" ? value : "";
   } catch {
     intent = "";

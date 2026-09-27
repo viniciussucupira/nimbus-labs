@@ -50,6 +50,22 @@ export const REDIRECT_ABOVE_BYTES = 20 * 1024 * 1024;
 export const DOWNLOAD_URL_SECONDS = 5 * 60;
 
 /**
+ * The biggest PDF that is stamped with its buyer's email (lib/pdf-stamp.ts).
+ *
+ * Stamping reads the whole file into memory, marks every page and writes it
+ * out again, inside one function with a time limit. Fifty megabytes is a
+ * 500-page illustrated book; above it the time and memory a stamp takes stop
+ * being predictable, so a bigger PDF is handed over as it was uploaded and
+ * the studio tells the creator so, beside the setting.
+ */
+export const MAX_STAMP_BYTES = 50 * 1024 * 1024;
+
+/** Whether a stored file is a PDF, by the type storage measured when it arrived. */
+export function isPdf(file: Pick<ProductFile, "contentType" | "name">): boolean {
+  return file.contentType === "application/pdf" || (!file.contentType && /\.pdf$/i.test(file.name));
+}
+
+/**
  * What a creator may sell.
  *
  * Documents, pictures, sound, video and archives. Anything that runs — an

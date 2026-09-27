@@ -10,7 +10,10 @@ import { canSellProduct } from "@/lib/store-checkout";
 import { membershipPrice } from "@/lib/product-recurring";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { isOpen, lessonCount, lessonsInOrder, readCourse } from "@/lib/course";
-import { courseAccess, doneLessons, touchStudent } from "@/lib/learn";
+import { courseAccess, doneLessons, emailKey, touchStudent } from "@/lib/learn";
+import { heldBack, passedQuizzes, requiredQuizLessons } from "@/lib/quiz";
+import { MAX_CERT_NAME, MIN_CERT_NAME, certificateOf, hasFinished } from "@/lib/certificate";
+import { canManage } from "@/lib/membership-manage";
 import { CourseOutline } from "@/components/course-outline";
 
 type Params = {
@@ -37,6 +40,11 @@ const LINK_NOTICES: Record<string, { title: string; body: string }> = {
   },
 };
 
+const CERT_NOTICES: Record<string, string> = {
+  name: `Type your name as it should appear, between ${MIN_CERT_NAME} and ${MAX_CERT_NAME} characters.`,
+  unfinished: "Finish every lesson first, and pass the quizzes that have to be passed.",
+};
+
 /** The course's front door: its outline, and for a student, where they are. */
 export default async function CoursePage({ params, searchParams }: Params) {
   const { handle: raw, product: productId } = await params;
@@ -54,17 +62,31 @@ export default async function CoursePage({ params, searchParams }: Params) {
   const access = await courseAccess(store, product, await cookies());
   const open = access.state === "open";
   const start = open ? access.start : null;
-  const done = open && !access.learner.owner ? await doneLessons(course.id, access.learner.email) : new Set<string>();
+  const studying = open && !access.learner.owner;
+  const who = studying ? emailKey(access.learner.email) : "";
+  const [done, passed, certificate] = studying
+    ? await Promise.all([
+        doneLessons(course.id, access.learner.email),
+        passedQuizzes(course.id, who),
+        course.certificate ? certificateOf(course.id, who) : Promise.resolve(null),
+      ])
+    : [new Set<string>(), new Set<string>(), null];
   if (open && !access.learner.owner) {
     const { email } = access.learner;
     after(() => touchStudent(course.id, email, access.start));
   }
+  // Lessons a quiz that has to be passed still holds shut, for this student.
+  const held = studying ? heldBack(course, passed) : new Map<string, string>();
+  const finished = studying && hasFinished(course, done, passed);
+  const mustPass = requiredQuizLessons(course).length;
+  const certNotice = CERT_NOTICES[typeof query.cert === "string" ? query.cert : ""] ?? null;
 
   const all = lessonsInOrder(course);
   const total = lessonCount(course);
   const doneCount = all.filter(({ lesson }) => done.has(lesson.id)).length;
+  const reachable = (entry: (typeof all)[number]) => isOpen(entry.unit, start!) && !held.has(entry.lesson.id);
   const next = open
-    ? all.find(({ lesson, unit }) => !done.has(lesson.id) && isOpen(unit, start!)) ?? all.find(({ unit }) => isOpen(unit, start!))
+    ? all.find((entry) => !done.has(entry.lesson.id) && reachable(entry)) ?? all.find(reachable)
     : null;
   const preview = all.find(({ lesson }) => lesson.preview);
   const base = `/@${store.handle}/course/${product.id}`;
@@ -100,7 +122,12 @@ export default async function CoursePage({ params, searchParams }: Params) {
           <h1 className="font-display mt-1 text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">{product.title}</h1>
           {product.summary ? <p className="st-muted mt-3 leading-relaxed">{product.summary}</p> : null}
           <p className="st-muted mt-3 text-sm font-semibold">
-            {`${total} ${total === 1 ? "lesson" : "lessons"} in ${course.modules.length} ${course.modules.length === 1 ? "module" : "modules"}`}
+            {[
+              `${total} ${total === 1 ? "lesson" : "lessons"} in ${course.modules.length} ${course.modules.length === 1 ? "module" : "modules"}`,
+              course.certificate ? "certificate of completion" : null,
+            ]
+              .filter(Boolean)
+              .join(" \u00b7 ")}
           </p>
 
           {notice ? (
@@ -114,6 +141,31 @@ export default async function CoursePage({ params, searchParams }: Params) {
             <div className="st-note mt-6">
               <p className="font-bold" style={{ color: "var(--st-text)" }}>This is your own course</p>
               <p className="mt-1 text-sm">You see every lesson, as a student sees an open one. Nothing you do here is counted as progress.</p>
+              {course.certificate ? (
+                <p className="mt-2 text-sm">
+                  <Link href={`/@${store.handle}/certificate/sample?product=${product.id}`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>
+                    See the certificate students get
+                  </Link>
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {access.state === "ended" ? (
+            <div className="st-note mt-6" role="status">
+              <p className="font-bold" style={{ color: "var(--st-text)" }}>Your membership has ended</p>
+              <p className="mt-1 text-sm">
+                {`This course came with your membership, which is no longer running, so its lessons are closed now. Join again and it opens straight away, with your progress where you left it.`}
+              </p>
+              {canManage(store) ? (
+                <p className="mt-2 text-sm">
+                  {"Did a payment fail rather than you cancelling? Updating the card may bring it back: "}
+                  <Link href={`/@${store.handle}/manage`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>
+                    manage your membership
+                  </Link>
+                  .
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -144,6 +196,52 @@ export default async function CoursePage({ params, searchParams }: Params) {
               ) : (
                 <p className="st-muted mt-5 text-sm">The first lessons open soon: the dates are below.</p>
               )}
+
+              {studying && course.certificate ? (
+                <div id="certificate" className="mt-6 scroll-mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line-strong)" }}>
+                  <p className="st-label">Certificate of completion</p>
+                  {certificate ? (
+                    <>
+                      <p className="st-muted mt-1 text-sm">{`Issued to ${certificate.name}. Anyone you share the link with can check it is real.`}</p>
+                      <Link href={`/@${store.handle}/certificate/${certificate.id}`} className="btn st-btn mt-3">
+                        Open your certificate
+                      </Link>
+                    </>
+                  ) : finished ? (
+                    <form action="/api/store/course/certificate" method="post" className="mt-2">
+                      <input type="hidden" name="handle" value={store.handle} />
+                      <input type="hidden" name="product" value={product.id} />
+                      <label htmlFor="cert-name" className="st-muted block text-sm">
+                        You finished the course. Type your name exactly as it should be printed; it cannot be changed afterwards.
+                      </label>
+                      {certNotice ? (
+                        <p className="mt-2 text-sm font-semibold" role="alert" style={{ color: "var(--st-text)" }}>
+                          {certNotice}
+                        </p>
+                      ) : null}
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <input
+                          id="cert-name"
+                          name="name"
+                          required
+                          minLength={MIN_CERT_NAME}
+                          maxLength={MAX_CERT_NAME}
+                          autoComplete="name"
+                          placeholder="Your full name"
+                          className="st-field min-w-0 flex-1"
+                        />
+                        <button type="submit" className="btn st-btn">Get my certificate</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <p className="st-muted mt-1 text-sm">
+                      {mustPass > 0
+                        ? `Finish every lesson and pass ${mustPass === 1 ? "the quiz that has" : `the ${mustPass} quizzes that have`} to be passed, and you can print yours with your name on it.`
+                        : "Finish every lesson and you can print yours with your name on it."}
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="mt-6 space-y-6">
@@ -151,7 +249,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
                 <form action="/api/store/checkout" method="post" data-checkout="">
                   <input type="hidden" name="handle" value={store.handle} />
                   <input type="hidden" name="product" value={product.id} />
-                  <button type="submit" className="btn st-btn btn-lg btn-block">{`Buy the course · ${price}`}</button>
+                  <button type="submit" className="btn st-btn btn-lg btn-block">{`${access.state === "ended" ? "Renew" : "Buy the course"} · ${price}`}</button>
                 </form>
               ) : (
                 <p className="st-muted text-sm">{`${store.name}'s store is not taking payments right now.`}</p>
@@ -163,6 +261,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
                   </Link>
                 </p>
               ) : null}
+              {access.state === "ended" ? null : (
               <form action="/api/store/course/link" method="post" className="rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
                 <input type="hidden" name="handle" value={store.handle} />
                 <input type="hidden" name="product" value={product.id} />
@@ -173,6 +272,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
                   <button type="submit" className="btn st-btn">Send me the link</button>
                 </div>
               </form>
+              )}
             </div>
           )}
         </div>
@@ -180,7 +280,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
         <div className="st-card mt-6 p-6 sm:p-8">
           <h2 className="font-display text-xl font-semibold">What is inside</h2>
           <div className="mt-4">
-            <CourseOutline course={course} base={base} start={start} done={done} />
+            <CourseOutline course={course} base={base} start={start} done={done} held={held} />
           </div>
         </div>
 

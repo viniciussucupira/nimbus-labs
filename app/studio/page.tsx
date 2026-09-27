@@ -24,6 +24,10 @@ import { LookEditor } from "@/components/look-editor";
 import { type PaidCall, catchUpBookings, paidCalls } from "@/lib/calls";
 import { readSales, readStats, studioStats } from "@/lib/stats";
 import { StatsPanel } from "@/components/stats-panel";
+import { CalendarEditor } from "@/components/calendar-editor";
+import { WebhookEditor } from "@/components/webhook-editor";
+import { calendarBusy, calendarView, ensureFeedToken, overlaps } from "@/lib/calendar-sync";
+import { keepHandle, webhooksView } from "@/lib/webhooks";
 import { PixelEditor } from "@/components/pixel-editor";
 import { TaxEditor } from "@/components/tax-editor";
 import { RecoveryEditor } from "@/components/recovery-editor";
@@ -34,6 +38,7 @@ import { ProductEditor } from "@/components/product-editor";
 import { LinkEditor } from "@/components/link-editor";
 import { DiscountEditor } from "@/components/discount-editor";
 import { DomainEditor } from "@/components/domain-editor";
+import { StudioTools } from "@/components/studio-tools";
 import { StudioNav, StudioStart, type StartStep } from "@/components/studio-start";
 import { domainStatus, isDomainsConfigured } from "@/lib/domains";
 import {
@@ -375,6 +380,20 @@ export default async function StudioPage({
       ? await paidCalls(current).catch(() => null)
       : null;
   const calls = paidList && store ? upcoming(paidList, store.products) : null;
+  // The creator's calendars: the private subscription address is made the
+  // first time there is a call to put in it, and the busy times are read (from
+  // the ten-minute copy, usually) to point out a dated session that clashes.
+  if (current && callProducts.length > 0) await ensureFeedToken(current).catch(() => {});
+  const [calendar, calendarBusyTimes, hooks] = current
+    ? await Promise.all([
+        callProducts.length > 0 ? calendarView(current).catch(() => null) : Promise.resolve(null),
+        callProducts.some((p) => p.call?.kind === "live")
+          ? calendarBusy(current).then((r) => r.busy, () => [])
+          : Promise.resolve([]),
+        webhooksView(current).catch(() => null),
+      ])
+    : [null, [], null];
+  if (current) after(() => keepHandle(current));
   // A buyer who paid and never came back from Stripe still gets their email,
   // and so does the creator, the next time the creator looks.
   if (current && paidList && paidList.length) after(() => catchUpBookings(current, paidList, SITE_URL));
@@ -466,19 +485,32 @@ export default async function StudioPage({
 
         {store ? (
           <>
+            {/* The bar jumps within this page only, in the page's own order;
+                the parts with pages of their own are the tiles below it. */}
             <StudioNav
               items={[
                 { href: "#details", label: "Store" },
                 ...(numbers ? [{ href: "#numbers", label: "Numbers" }] : []),
                 { href: "#look", label: "Look" },
                 { href: "#products", label: "Products" },
+                ...(calendar ? [{ href: "#calendar", label: "Calendar" }] : []),
+                ...(hooks ? [{ href: "#webhooks", label: "Webhooks" }] : []),
                 { href: "#stripe", label: "Payments" },
                 ...(billingReady ? [{ href: "#billing", label: "Plan" }] : []),
-                ...(PRO_ON_SALE ? [{ href: "/studio/email", label: "Email" }] : []),
                 { href: "#account", label: "Account" },
               ]}
             />
             <StudioStart steps={startSteps} />
+            <StudioTools
+              tools={[
+                { href: "/studio/funnels", title: "Funnels", text: "Up to five one-click offers after paying.", icon: "ladder" },
+                { href: "/studio/affiliates", title: "Affiliates", text: "People who share your store, for a share you set.", icon: "handshake" },
+                { href: "/studio/community", title: "Community", text: "A members-only space for your buyers.", icon: "users" },
+                ...(PRO_ON_SALE
+                  ? [{ href: "/studio/email", title: "Email", text: "One-off emails and sequences to your list.", icon: "mail" as const, tag: "Pro" }]
+                  : []),
+              ]}
+            />
             <div className="grid items-start gap-x-6 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
             <div className="min-w-0">
             <div id="details" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
@@ -563,6 +595,11 @@ export default async function StudioPage({
                       const seats = setup ? seatsAt(setup, slot.start) : 1;
                       const group = setup !== null && (setup.kind === "live" || seats > 1);
                       const emails = slot.people.map((c) => c.email).filter((e): e is string => Boolean(e));
+                      // A dated session keeps its date whatever the creator's
+                      // calendar says; a clash is pointed out rather than hidden.
+                      const clash =
+                        setup?.kind === "live" &&
+                        overlaps(calendarBusyTimes, slot.start, slot.start + (setup.sessions.find((s) => s.start === slot.start)?.minutes ?? setup.minutes) * 60_000);
                       return (
                         <li key={slot.key} className="py-3">
                           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -591,6 +628,12 @@ export default async function StudioPage({
                               </a>
                             ) : null}
                           </div>
+                          {clash ? (
+                            <p className="mt-2 flex items-start gap-2 rounded-[10px] bg-amber-brand/10 px-3 py-2 text-sm text-ink">
+                              <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
+                              <span>Your calendar shows you busy during this session. It stays on sale as you set it: dated sessions are never hidden by your calendar.</span>
+                            </p>
+                          ) : null}
                           {group && slot.people.length > 0 ? (
                             <details className="group mt-2 rounded-[10px] bg-paper px-3 py-2">
                               <summary className="cursor-pointer text-sm font-semibold text-ink-soft transition hover:text-violet-deep">
@@ -625,6 +668,8 @@ export default async function StudioPage({
               </section>
             ) : null}
 
+            {calendar ? <CalendarEditor view={calendar} weekly={callProducts.some((p) => p.call?.kind === "weekly")} /> : null}
+
             <LinkEditor links={store.links} />
 
             <DiscountEditor selling={current ? canSell(current) : false} />
@@ -638,6 +683,8 @@ export default async function StudioPage({
               suggestedAddress={store.mail?.address ?? ""}
               connected={Boolean(current?.stripeAccountId)}
             />
+
+            {hooks ? <WebhookEditor view={hooks} /> : null}
 
             {list && (givesAway || list.total > 0) ? (
               <div className="card mt-8 p-6 sm:p-8">

@@ -119,8 +119,10 @@ export default function PrivacyPage() {
           of the day, the store, the visitor&apos;s network address and browser,
           and add it to a counter that keeps only an estimate of how many
           different fingerprints it has seen. The fingerprint and the address
-          are not stored, no cookie is set, and the counts are kept for about
-          thirteen months. The creator sees totals, never a person.
+          are not stored, no cookie is set, and the daily counts are kept for
+          about thirteen months, with a running all-time total of the same
+          counts for as long as the store exists. The creator sees totals,
+          never a person.
         </p>
         <p id="ads">
           <strong className="text-black">
@@ -217,6 +219,115 @@ export default function PrivacyPage() {
           link or your mail app&apos;s own button — we record it and when, and
           you are not written to by that creator again unless you tick their
           box again yourself.
+        </p>
+        <p id="community">
+          <strong className="text-black">A creator&apos;s community.</strong>{" "}
+          When a creator opens a community on their store, we decide who may
+          come in by looking up the email address a person types on the
+          creator&apos;s own Stripe account, or on that creator&apos;s list for
+          something free, and we email that address a link that works for one
+          hour. Using it sets a cookie for that store in their browser for 90
+          days, the same one a course uses. For each member we keep their email
+          address, the name they choose to be seen by, whether they chose to be
+          listed in the member directory and to be emailed announcements, when
+          they joined and were last there, and whether the creator muted or
+          removed them. We keep what members write: posts, comments, the
+          pictures they add, likes, and reports of a post or comment. Posts,
+          comments, pictures and likes are seen by the other members and by the
+          creator. The directory shows only the chosen name, and only of those
+          who asked to be listed. A member&apos;s email address is seen by the
+          creator and never by other members. What is written is kept while
+          the community exists, until its author or the creator deletes it;
+          deleting a post deletes its comments, likes, reports and picture.
+          Who reported something is kept for 90 days, so each member&apos;s
+          report counts once. The answer about whether someone may come in is
+          kept for up to five minutes, a record of each announcement emailed
+          and who it went to for up to 60 days, the code in a member&apos;s
+          unsubscribe link with their member record, and, to limit abuse, one-way hashes
+          of the address and network address that asked for a link for one
+          hour.
+        </p>
+        <p id="affiliates">
+          <strong className="text-black">
+            A creator&apos;s affiliate programme.
+          </strong>{" "}
+          When someone follows an affiliate&apos;s link to a store, a cookie
+          named <code>nl_via_</code> followed by the store&apos;s address holds
+          the affiliate&apos;s code and the time of the click, for up to 90
+          days; a purchase counts for the affiliate only within the window the
+          creator set. To count a click once per visitor per day we keep a
+          one-way hash of the visitor&apos;s network address and browser for
+          two days. When a purchase counts, we note which product, when, what
+          was paid before tax and in all, and the share it earns, and never
+          the buyer&apos;s name or email address. When someone applies to be an
+          affiliate, we keep their email address, the note they wrote, their
+          code, when they applied and what the creator decided, their clicks
+          and sales, and the payments the creator records to them with the
+          date and reference the creator types. An affiliate who signs in to
+          their page keeps a cookie named <code>nl_aff_</code> followed by the
+          store&apos;s address, for 30 days. The creator sees all of this; an
+          affiliate sees only their own figures. It is kept with the
+          store&apos;s records. We never hold or pay out an affiliate&apos;s
+          money: the creator pays them.
+        </p>
+        <p id="calendars">
+          <strong className="text-black">Calendars a creator connects.</strong>{" "}
+          A creator can give us the private iCal address of up to three of
+          their own calendars. We store the address, never show it again once
+          saved, and use it only to read when they are busy; we keep only the
+          busy times, never a title, guest or place, and each reading for up to
+          six hours. The calendar&apos;s provider sees our request for it. A
+          creator also gets a private address of their own that lists their
+          upcoming calls and sessions with the name and email address of each
+          buyer, for the calendar app they subscribe with; replacing that
+          address turns the old one off.
+        </p>
+        <p id="webhooks">
+          <strong className="text-black">Webhooks a creator adds.</strong> A
+          creator can give us up to five web addresses of their own, such as a
+          Zapier or Make hook. When a sale, a change to a membership, a
+          confirmed request for something free, a booking, a moved booking or a
+          refund happens in their store, we send that address a message with
+          its details, which can include the buyer&apos;s name and email
+          address, the product and the amount. What happens to it there is the
+          creator&apos;s choice and responsibility. We keep each address and its
+          signing secret until the creator removes it, a mark of each event
+          sent for 30 days so it is never sent twice, and each delivery, with
+          the answer the address gave, for up to seven days.
+        </p>
+        <p id="licence-keys">
+          <strong className="text-black">Licence keys.</strong> When a creator
+          sells a product with licence keys, we keep each key with the sale it
+          went to, when, and the buyer&apos;s email address, so the buyer can
+          see it again and the creator can see who has it, and whether the
+          creator revoked it. Anyone can ask whether a key is valid; the answer
+          says nothing about who bought it. Keys are kept with the
+          store&apos;s records.
+        </p>
+        <p id="quizzes">
+          <strong className="text-black">
+            Course quizzes and certificates.
+          </strong>{" "}
+          For each student and quiz we keep how many tries they used, their
+          last answers, their best mark and whether they passed, with their
+          course progress. A certificate keeps the name exactly as the student
+          typed it, the course title, the creator&apos;s name, the
+          student&apos;s email address and when it was issued or withdrawn.
+          Its page shows the name, the course, the creator and the date to
+          anyone who has its address, is kept out of search engines, and never
+          shows the email address. Certificates are kept for good, so the page
+          goes on proving what it says; a withdrawn one says it was withdrawn.
+          A student who wants theirs withdrawn asks the creator.
+        </p>
+        <p id="stamping">
+          <strong className="text-black">Stamped PDFs.</strong> When a creator
+          switches on stamping for a product, every page of the PDF a buyer
+          downloads carries the buyer&apos;s email address, the date and the
+          end of the order number. The stamped copy is made by our own code, is
+          kept privately beside the creator&apos;s file so a later download
+          gets the same copy, and is deleted with that file; a note of which
+          copy belongs to which sale is kept for about 400 days. Anyone the
+          buyer passes the file to can read that line.
         </p>
         <p>
           <strong className="text-black">Usage and technical data.</strong> We
@@ -332,6 +443,23 @@ export default function PrivacyPage() {
             is their store;
           </li>
           <li>
+            <strong className="text-black">
+              The other members of a community you join
+            </strong>
+            , who see what you post there and the name you chose, never your
+            email address;
+          </li>
+          <li>
+            <strong className="text-black">
+              The addresses a creator connects
+            </strong>
+            : a creator&apos;s webhook addresses receive the details of events
+            in their store, which can include your name and email address as a
+            buyer, and the calendar app a creator subscribes with reads their
+            bookings, with each buyer&apos;s name and email address. Affiliates
+            never receive buyers&apos; names or email addresses;
+          </li>
+          <li>
             <strong className="text-black">Vercel</strong>, our host, which
             serves the site and, when a creator adds their own domain, receives
             that domain&apos;s name to check its records and issue its
@@ -340,8 +468,9 @@ export default function PrivacyPage() {
           <li>
             <strong className="text-black">Resend</strong>, our email
             provider, which delivers the emails we send: login links,
-            receipts and the links to what you asked for, and the emails a
-            creator sends to their list;
+            receipts and the links to what you asked for, the links that let
+            members, students and affiliates in, and the emails a creator sends
+            to their list or their community;
           </li>
           <li>
             <strong className="text-black">
@@ -373,6 +502,12 @@ export default function PrivacyPage() {
           buyers or list to market anything of ours.
         </p>
         <p>
+          The same is true for the members of a creator&apos;s community, the
+          people who apply to their affiliate programme, and their
+          students&apos; quiz answers and certificates: the creator is the
+          controller, and we handle that data on their behalf.
+        </p>
+        <p>
           In practice this means a request about your data as a buyer — a copy
           of it, a correction, a deletion — is answered by the creator you
           bought from. Write to them first. If you write to us instead, we will
@@ -394,6 +529,19 @@ export default function PrivacyPage() {
           <li>understand how the site is used; and</li>
           <li>maintain security.</li>
         </ul>
+        <p>
+          Besides the short-lived cookies described in section 1, a
+          creator&apos;s store may set these, each for that store alone: a pass
+          that lets a
+          browser into a course or a community, named <code>nl_learn_</code>{" "}
+          followed by a code for the store, for 90 days; the code and time of
+          an affiliate link a visitor followed, named <code>nl_via_</code>{" "}
+          followed by the store&apos;s address, for up to 90 days; and an
+          affiliate&apos;s own sign-in, named <code>nl_aff_</code> followed by
+          the store&apos;s address, for 30 days. The ad pixels a creator may
+          add are described in section 1 and are asked for first where the law
+          says so.
+        </p>
         <p>
           You can control cookies through your browser settings. Disabling
           certain cookies may affect logging in or other features. Where required
@@ -418,6 +566,17 @@ export default function PrivacyPage() {
           ask for it to be deleted entirely instead, it is.
         </p>
         <p>
+          A community&apos;s posts, comments, pictures and member records are
+          kept while the community exists, until the author or the creator
+          deletes them. An affiliate programme&apos;s records, licence keys and
+          the list of who holds them are kept with the store&apos;s records.
+          Certificates are kept for good, so their pages keep proving what
+          they say. Webhook deliveries are kept for up to seven days, and the
+          mark that an event was sent for 30 days. A calendar reading is kept
+          for up to six hours, and the calendar address until the creator
+          removes it.
+        </p>
+        <p>
           Creator research answers are kept for up to 24 months from the date
           you sent them, or until you ask us to delete them, whichever comes
           first. They are stored with our database provider (Upstash) on
@@ -433,10 +592,10 @@ export default function PrivacyPage() {
 
       <LegalSection title="7. International transfers">
         <p>
-          Nimbus Labs is based in Brazil and serves customers internationally.
-          Your information may be processed in Brazil and in other countries
-          where our service providers operate, which may include the United
-          States or the European Union. Where required, we use appropriate
+          Nimbus Labs serves customers internationally. Your information may
+          be processed in the countries where we and our service providers
+          operate, which include the United States and may include the
+          European Union. Where required, we use appropriate
           safeguards for cross-border transfers. Our database provider,
           Upstash, stores creator research answers under its Data Processing
           Agreement, which includes the EU Standard Contractual Clauses, the UK

@@ -33,9 +33,10 @@ const MESSAGES: Record<string, string> = {
 /**
  * Shrinks a picture in the browser: never more than IMAGE_LONG_SIDE on its
  * long side and never more than a megabyte, keeping its shape. WebP where the
- * browser can write it, JPEG where it cannot.
+ * browser can write it, JPEG where it cannot. Also used for the picture on a
+ * community post (components/community-composer.tsx).
  */
-async function shrink(file: File): Promise<{ blob: Blob; width: number; height: number }> {
+export async function shrink(file: File): Promise<{ blob: Blob; width: number; height: number }> {
   const url = URL.createObjectURL(file);
   try {
     const image = new Image();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
 import type { Product } from "@/lib/store";
@@ -30,7 +31,7 @@ const dollars = (cents: number) => (cents % 100 ? (cents / 100).toFixed(2) : Str
 /** A product's limited quantity and its order bump, in the studio. */
 export function CheckoutExtras({ product, products }: { product: Product; products: Product[] }) {
   const router = useRouter();
-  const [open, setOpen] = useState<"stock" | "bump" | "upsell" | "plan" | null>(null);
+  const [open, setOpen] = useState<"stock" | "bump" | "plan" | null>(null);
   const [stock, setStock] = useState(product.stock ? String(product.stock) : "");
   const candidates = products.filter((p) => p.id !== product.id && canBeBumped(p));
   const [busy, setBusy] = useState(false);
@@ -118,7 +119,19 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
 
       {/* A chosen amount has to be the only thing in its checkout. */}
       {product.pwyw ? null : <OfferBlock kind="bump" product={product} products={products} candidates={candidates} busy={busy} open={open === "bump"} onOpen={() => setOpen("bump")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "bump" ? error : null} />}
-      <OfferBlock kind="upsell" product={product} products={products} candidates={candidates} busy={busy} open={open === "upsell"} onOpen={() => setOpen("upsell")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "upsell" ? error : null} />
+      {product.funnel ? (
+        <p className="text-sm text-ink-soft">
+          <span className="font-semibold text-ink">
+            {`${product.funnel.steps.length === 1 ? "One offer" : `${product.funnel.steps.length} offers`} after paying`}
+          </span>
+          {" \u00b7 "}
+          <Link href={`/studio/funnels?product=${product.id}`} className={link}>Edit the funnel</Link>
+        </p>
+      ) : (
+        <Link href={`/studio/funnels?product=${product.id}`} className={`block ${link}`}>
+          Offer more after they pay
+        </Link>
+      )}
       {product.options.length === 0 && !product.pwyw ? (
         <PlanBlock product={product} busy={busy} open={open === "plan"} onOpen={() => setOpen("plan")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "plan" ? error : null} />
       ) : null}
@@ -137,15 +150,6 @@ const OFFER_TEXT = {
     stopped: "Checkout offer stopped.",
     note: "Buyers see a box under the buy button and tick it themselves; it is never ticked for them. Both are paid in one checkout and both are delivered on the thanks page.",
   },
-  upsell: {
-    add: "Offer another product after they pay",
-    on: (title: string, price: string) => `Offers ${title} for $${price} after paying, in one click`,
-    stop: "Stop offering it",
-    save: "Save the offer",
-    saved: "After-payment offer saved.",
-    stopped: "After-payment offer stopped.",
-    note: "Right after paying, the buyer sees it on the thanks page, and one press charges the card they just used. Only the browser that paid can take it, only for an hour, and only once.",
-  },
 } as const;
 
 function OfferBlock({
@@ -160,7 +164,7 @@ function OfferBlock({
   onSend,
   error,
 }: {
-  kind: "bump" | "upsell";
+  kind: "bump";
   product: Product;
   products: Product[];
   candidates: Product[];

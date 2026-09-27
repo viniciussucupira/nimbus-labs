@@ -9,6 +9,17 @@
  * estimate of how many different ones it has seen and nothing from which any
  * one of them could be read back.
  *
+ * Every day has a record of its own, kept KEPT_DAYS days, and the studio
+ * reads the last STATS_DAYS of them for its 7, 30 and 90 day views. "All
+ * time" has a record of its own that never expires: the same counts, added
+ * to as they happen, and filled once from whatever days are still kept the
+ * first time it is read. So all time begins at the store's first counted
+ * visit still on record, which the studio says.
+ *
+ * Where a visit came from is kept three ways: the source (the site, the app,
+ * or the utm_source tag on the creator's link), and the utm_medium and
+ * utm_campaign tags when the link carries them.
+ *
  * Sales are not counted here. They are read from the creator's own Stripe
  * account, which is the only record of money that deserves the name.
  */
@@ -20,14 +31,19 @@ import type { Store } from "@/lib/store";
 /** Days kept, a little over a year, so a year-on-year look is possible. */
 const TTL_SECONDS = 400 * 86400;
 
-/** The longest window the studio shows. */
-export const STATS_DAYS = 30;
+/** The longest window read day by day. "All time" is kept apart (below). */
+export const STATS_DAYS = 90;
+
+/** How many days of visits are kept, and so how far back an export of them goes. */
+export const KEPT_DAYS = 400;
 
 const MAX_SOURCES = 40;
 
 const dayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 const countsKey = (statsId: string, day: string) => `nl:stats:${statsId}:${day}`;
 const visitorsKey = (statsId: string, day: string) => `nl:stats:${statsId}:${day}:u`;
+const lifeKey = (statsId: string) => `nl:stats:${statsId}:life`;
+const lifeLockKey = (statsId: string) => `nl:stats:${statsId}:life:lock`;
 
 const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|embedly|headless|lighthouse|pingdom|uptime|monitor|curl|wget|python|node-fetch|axios|go-http|java\/|okhttp|scrapy|httpclient/i;
 
@@ -90,6 +106,16 @@ export function classifySource(input: { referrer: string; utm: string; userAgent
   return "direct";
 }
 
+
+/**
+ * A utm_medium or utm_campaign tag as it is counted: lower case, letters,
+ * digits, dots, dashes and underscores, at most thirty characters; an empty
+ * string when nothing is left.
+ */
+export function cleanTag(raw: string): string {
+  return raw.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 30);
+}
+
 export type HitKind = "view" | "checkout" | "link";
 
 /**
@@ -97,141 +123,277 @@ export type HitKind = "view" | "checkout" | "link";
  *
  * A view is counted once per page load, from the page itself; a checkout is
  * counted by the server when a buyer presses the button that takes them to
- * pay, or to get something free; a link is counted when one is opened.
+ * pay, or to get something free; a link is counted when one is opened. Each
+ * is added to its day and to the store's all-time record together.
  */
 export async function recordHit(
   store: Store,
-  hit: { kind: HitKind; id?: string; source?: string; ip: string; userAgent: string },
+  hit: { kind: HitKind; id?: string; source?: string; medium?: string; campaign?: string; ip: string; userAgent: string },
   now = Date.now(),
 ): Promise<void> {
   if (!store.statsId || !isRedisConfigured() || isBot(hit.userAgent)) return;
   const day = dayKey(now);
   const counts = countsKey(store.statsId, day);
+  const life = lifeKey(store.statsId);
   const commands: (string | number)[][] = [];
+  const both = (field: string) => {
+    commands.push(["HINCRBY", counts, field, 1]);
+    commands.push(["HINCRBY", life, field, 1]);
+  };
+  let pfAt = -1;
   if (hit.kind === "view") {
     const visitor = createHash("sha256")
       .update(`${day}|${store.statsId}|${hit.ip}|${hit.userAgent}`)
       .digest("hex")
       .slice(0, 24);
     const visitors = visitorsKey(store.statsId, day);
-    commands.push(["HINCRBY", counts, "v", 1]);
-    commands.push(["HINCRBY", counts, `r:${hit.source || "direct"}`, 1]);
+    both("v");
+    both(`r:${hit.source || "direct"}`);
+    if (hit.medium) both(`m:${hit.medium}`);
+    if (hit.campaign) both(`g:${hit.campaign}`);
+    pfAt = commands.length;
     commands.push(["PFADD", visitors, visitor]);
     commands.push(["EXPIRE", visitors, TTL_SECONDS]);
   } else if (hit.kind === "checkout" && hit.id) {
-    commands.push(["HINCRBY", counts, "c", 1]);
-    commands.push(["HINCRBY", counts, `c:${hit.id}`, 1]);
+    both("c");
+    both(`c:${hit.id}`);
   } else if (hit.kind === "link" && hit.id) {
-    commands.push(["HINCRBY", counts, `l:${hit.id}`, 1]);
+    both(`l:${hit.id}`);
   } else {
     return;
   }
   commands.push(["EXPIRE", counts, TTL_SECONDS]);
-  await redisPipeline(commands);
+  // The day the all-time record started counting, so filling it from the
+  // kept days never counts that day or any after it twice.
+  commands.push(["HSETNX", life, "started", day]);
+  const results = await redisPipeline(commands);
+  // A visitor new to today is a visitor for all time too.
+  if (pfAt >= 0 && Number(results[pfAt]) === 1) await redisPipeline([["HINCRBY", life, "u", 1]]);
 }
 
 export type DayStats = { date: string; views: number; visitors: number; checkouts: number };
 
-export type Stats = {
-  days: DayStats[];
+export type Ranked = { name: string; visits: number }[];
+
+/** What happened over one stretch of days. */
+export type WindowStats = {
   /** People, over the whole window — not the sum of the days. */
   visitors: number;
-  visitors7: number;
   views: number;
   checkouts: number;
-  sources: { name: string; visits: number }[];
-  sources7: { name: string; visits: number }[];
-  checkoutsByProduct: Record<string, { all: number; last7: number }>;
-  linkClicks: Record<string, { all: number; last7: number }>;
+  sources: Ranked;
+  mediums: Ranked;
+  campaigns: Ranked;
+  checkoutsByProduct: Record<string, number>;
+  linkClicks: Record<string, number>;
 };
 
-/** The last thirty days of a store, oldest first. */
+export type Windows = { d7: WindowStats; d30: WindowStats; d90: WindowStats };
+
+export type Stats = {
+  /** The last STATS_DAYS days, oldest first. */
+  days: DayStats[];
+  windows: Windows;
+  /** Everything since `since`, or null when it could not be read. */
+  life: (WindowStats & { since: string }) | null;
+};
+
+const ranked = (map: Map<string, number>): Ranked =>
+  [...map.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MAX_SOURCES)
+    .map(([name, visits]) => ({ name, visits }));
+
+/** Adds one day's (or one record's) fields into running totals. */
+class Tally {
+  views = 0;
+  checkouts = 0;
+  sources = new Map<string, number>();
+  mediums = new Map<string, number>();
+  campaigns = new Map<string, number>();
+  checkoutsByProduct: Record<string, number> = {};
+  linkClicks: Record<string, number> = {};
+
+  add(field: string, count: number) {
+    if (field === "v") this.views += count;
+    else if (field === "c") this.checkouts += count;
+    else if (field.startsWith("r:")) this.sources.set(field.slice(2), (this.sources.get(field.slice(2)) ?? 0) + count);
+    else if (field.startsWith("m:")) this.mediums.set(field.slice(2), (this.mediums.get(field.slice(2)) ?? 0) + count);
+    else if (field.startsWith("g:")) this.campaigns.set(field.slice(2), (this.campaigns.get(field.slice(2)) ?? 0) + count);
+    else if (field.startsWith("c:")) this.checkoutsByProduct[field.slice(2)] = (this.checkoutsByProduct[field.slice(2)] ?? 0) + count;
+    else if (field.startsWith("l:")) this.linkClicks[field.slice(2)] = (this.linkClicks[field.slice(2)] ?? 0) + count;
+  }
+
+  window(visitors: number): WindowStats {
+    return {
+      visitors,
+      views: this.views,
+      checkouts: this.checkouts,
+      sources: ranked(this.sources),
+      mediums: ranked(this.mediums),
+      campaigns: ranked(this.campaigns),
+      checkoutsByProduct: this.checkoutsByProduct,
+      linkClicks: this.linkClicks,
+    };
+  }
+}
+
+function pairs(reply: unknown): [string, number][] {
+  const flat = Array.isArray(reply) ? (reply as unknown[]).map(String) : [];
+  const out: [string, number][] = [];
+  for (let i = 0; i + 1 < flat.length; i += 2) out.push([flat[i], Number(flat[i + 1]) || 0]);
+  return out;
+}
+
+/** The dates of the last `count` days, oldest first, ending today (UTC). */
+function lastDays(now: number, count: number): string[] {
+  const dates: string[] = [];
+  for (let i = count - 1; i >= 0; i -= 1) dates.push(dayKey(now - i * 86400_000));
+  return dates;
+}
+
+/** The last STATS_DAYS days of a store, and its all-time record. */
 export async function readStats(store: Store, now = Date.now()): Promise<Stats | null> {
   if (!store.statsId || !isRedisConfigured()) return null;
   const statsId = store.statsId;
-  const dates: string[] = [];
-  for (let i = STATS_DAYS - 1; i >= 0; i -= 1) dates.push(dayKey(now - i * 86400_000));
-  const last7 = new Set(dates.slice(-7));
+  const dates = lastDays(now, STATS_DAYS);
 
   const commands: (string | number)[][] = [
     ...dates.map((d) => ["HGETALL", countsKey(statsId, d)]),
     ...dates.map((d) => ["PFCOUNT", visitorsKey(statsId, d)]),
-    ["PFCOUNT", ...dates.map((d) => visitorsKey(statsId, d))],
     ["PFCOUNT", ...dates.slice(-7).map((d) => visitorsKey(statsId, d))],
+    ["PFCOUNT", ...dates.slice(-30).map((d) => visitorsKey(statsId, d))],
+    ["PFCOUNT", ...dates.map((d) => visitorsKey(statsId, d))],
   ];
   const results = await redisPipeline(commands);
 
   const days: DayStats[] = [];
-  const sources = new Map<string, number>();
-  const sources7 = new Map<string, number>();
-  const checkoutsByProduct: Stats["checkoutsByProduct"] = {};
-  const linkClicks: Stats["linkClicks"] = {};
-  let views = 0;
-  let checkouts = 0;
-
+  const tallies = { d7: new Tally(), d30: new Tally(), d90: new Tally() };
   dates.forEach((date, index) => {
-    const flat = Array.isArray(results[index]) ? (results[index] as string[]) : [];
-    const recent = last7.has(date);
-    let dayViews = 0;
-    let dayCheckouts = 0;
-    for (let i = 0; i + 1 < flat.length; i += 2) {
-      const field = flat[i];
-      const count = Number(flat[i + 1]) || 0;
-      if (field === "v") dayViews = count;
-      else if (field === "c") dayCheckouts = count;
-      else if (field.startsWith("r:")) {
-        const name = field.slice(2);
-        sources.set(name, (sources.get(name) ?? 0) + count);
-        if (recent) sources7.set(name, (sources7.get(name) ?? 0) + count);
-      } else if (field.startsWith("c:")) {
-        const id = field.slice(2);
-        const entry = (checkoutsByProduct[id] ??= { all: 0, last7: 0 });
-        entry.all += count;
-        if (recent) entry.last7 += count;
-      } else if (field.startsWith("l:")) {
-        const id = field.slice(2);
-        const entry = (linkClicks[id] ??= { all: 0, last7: 0 });
-        entry.all += count;
-        if (recent) entry.last7 += count;
-      }
+    const age = dates.length - 1 - index;
+    let views = 0;
+    let checkouts = 0;
+    for (const [field, count] of pairs(results[index])) {
+      if (field === "v") views = count;
+      else if (field === "c") checkouts = count;
+      tallies.d90.add(field, count);
+      if (age < 30) tallies.d30.add(field, count);
+      if (age < 7) tallies.d7.add(field, count);
     }
-    views += dayViews;
-    checkouts += dayCheckouts;
-    days.push({ date, views: dayViews, visitors: Number(results[dates.length + index]) || 0, checkouts: dayCheckouts });
+    days.push({ date, views, visitors: Number(results[dates.length + index]) || 0, checkouts });
   });
-
-  const ranked = (map: Map<string, number>) =>
-    [...map.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, MAX_SOURCES)
-      .map(([name, visits]) => ({ name, visits }));
-
-  return {
-    days,
-    visitors: Number(results[dates.length * 2]) || 0,
-    visitors7: Number(results[dates.length * 2 + 1]) || 0,
-    views,
-    checkouts,
-    sources: ranked(sources),
-    sources7: ranked(sources7),
-    checkoutsByProduct,
-    linkClicks,
+  const base = dates.length * 2;
+  const windows: Windows = {
+    d7: tallies.d7.window(Number(results[base]) || 0),
+    d30: tallies.d30.window(Number(results[base + 1]) || 0),
+    d90: tallies.d90.window(Number(results[base + 2]) || 0),
   };
+  const life = await readLife(store, now).catch((error) => {
+    console.error("reading all-time counts failed", error);
+    return null;
+  });
+  return { days, windows, life };
 }
+
+/** Fields the all-time record keeps for itself rather than as counts. */
+const LIFE_OWN = new Set(["started", "since", "filled", "u"]);
+/** Beyond this many fields, the smallest sources and tags are let go. */
+const LIFE_MAX_FIELDS = 2000;
+const LIFE_KEEP_PER_KIND = 300;
+
+/**
+ * The store's all-time record. The first time it is read it is filled from
+ * the days still kept from before it started counting — once, under a lock,
+ * and marked so it never happens twice.
+ */
+async function readLife(store: Store, now: number): Promise<(WindowStats & { since: string }) | null> {
+  const statsId = store.statsId as string;
+  const life = lifeKey(statsId);
+  let [raw] = await redisPipeline([["HGETALL", life]]);
+  let fields = new Map(pairs(raw));
+  const flat = Array.isArray(raw) ? (raw as unknown[]).map(String) : [];
+  const text = (name: string) => {
+    const at = flat.indexOf(name);
+    return at >= 0 && at % 2 === 0 ? flat[at + 1] : "";
+  };
+
+  if (!text("filled")) {
+    const [mine] = await redisPipeline([["SET", lifeLockKey(statsId), "1", "NX", "EX", 60]]);
+    if (mine !== null) {
+      const today = dayKey(now);
+      const started = /^\d{4}-\d{2}-\d{2}$/.test(text("started")) ? text("started") : today;
+      const created = /^\d{4}-\d{2}-\d{2}/.test(store.createdAt) ? store.createdAt.slice(0, 10) : "";
+      const earliest = dayKey(now - (KEPT_DAYS - 1) * 86400_000);
+      const from = created && created > earliest ? created : earliest;
+      const dates = lastDays(now, KEPT_DAYS).filter((d) => d >= from && d < started);
+      const tally = new Map<string, number>();
+      let visitors = 0;
+      let first = "";
+      if (dates.length) {
+        const replies = await redisPipeline([
+          ...dates.map((d) => ["HGETALL", countsKey(statsId, d)]),
+          ...dates.map((d) => ["PFCOUNT", visitorsKey(statsId, d)]),
+        ]);
+        dates.forEach((date, i) => {
+          const day = pairs(replies[i]);
+          if (day.length && !first) first = date;
+          for (const [field, count] of day) tally.set(field, (tally.get(field) ?? 0) + count);
+          visitors += Number(replies[dates.length + i]) || 0;
+        });
+      }
+      await redisPipeline([
+        ...[...tally.entries()].map(([field, count]) => ["HINCRBY", life, field, count]),
+        ...(visitors ? [["HINCRBY", life, "u", visitors]] : []),
+        ["HSET", life, "since", first || started, "filled", today],
+        ["HSETNX", life, "started", started],
+        ["DEL", lifeLockKey(statsId)],
+      ]);
+      [raw] = await redisPipeline([["HGETALL", life]]);
+      fields = new Map(pairs(raw));
+      flat.length = 0;
+      flat.push(...(Array.isArray(raw) ? (raw as unknown[]).map(String) : []));
+    }
+  }
+
+  // A record that has gathered too many one-off sources lets the smallest go.
+  if (fields.size > LIFE_MAX_FIELDS) {
+    const drop: string[] = [];
+    for (const prefix of ["r:", "m:", "g:"]) {
+      const kind = [...fields.entries()].filter(([f]) => f.startsWith(prefix)).sort((a, b) => b[1] - a[1]);
+      drop.push(...kind.slice(LIFE_KEEP_PER_KIND).map(([f]) => f));
+    }
+    if (drop.length) await redisPipeline([["HDEL", life, ...drop]]);
+  }
+
+  const tally = new Tally();
+  for (const [field, count] of fields) if (!LIFE_OWN.has(field)) tally.add(field, count);
+  const since = text("since") || text("started") || dayKey(now);
+  return { ...tally.window(fields.get("u") ?? 0), since };
+}
+
+// ---- Sales, from the creator's Stripe -----------------------------------------
+
+type SalesWindow = { sales: number; cents: number };
 
 export type SalesStats = {
   /** Paid checkouts per day, same days as the visits. */
-  byDay: Record<string, { sales: number; cents: number }>;
-  byProduct: Record<string, { sales: number; cents: number; sales7: number; cents7: number }>;
-  sales: number;
-  cents: number;
-  sales7: number;
-  cents7: number;
+  byDay: Record<string, SalesWindow>;
+  byProduct: Record<string, { d7: SalesWindow; d30: SalesWindow; d90: SalesWindow }>;
+  totals: { d7: SalesWindow; d30: SalesWindow; d90: SalesWindow };
   /** True when there were more sales than one reading covers. */
   partial: boolean;
 };
 
+export type AllTimeSales = {
+  totals: SalesWindow;
+  byProduct: Record<string, SalesWindow>;
+  /** The first sale read, as a date; empty when none. */
+  since: string;
+  partial: boolean;
+};
+
 type Row = {
+  id?: unknown;
   status?: unknown;
   payment_status?: unknown;
   amount_total?: unknown;
@@ -240,136 +402,297 @@ type Row = {
   metadata?: Record<string, string> | null;
 };
 
-/**
- * Sales in the same thirty days, read from the creator's own Stripe account:
- * every checkout on it that this store opened and that was paid. The amount
- * is what the buyer paid, after any discount code and before Stripe's fee or
- * any refund.
- */
-export async function readSales(store: Store, now = Date.now()): Promise<SalesStats | null> {
-  if (!store.stripeAccountId) return null;
-  const handles = new Set([store.handle, ...store.previousHandles]);
-  const since = Math.floor(now / 1000) - STATS_DAYS * 86400;
-  const weekAgo = dayKey(now - 6 * 86400_000);
-  const out: SalesStats = { byDay: {}, byProduct: {}, sales: 0, cents: 0, sales7: 0, cents7: 0, partial: false };
-  let after = "";
-  for (let page = 0; page < 10; page += 1) {
-    const list = (await onAccount(
-      "GET",
-      store.stripeAccountId,
-      `/checkout/sessions?limit=100&created[gte]=${since}${after ? `&starting_after=${encodeURIComponent(after)}` : ""}`,
-    )) as { data?: unknown; has_more?: unknown };
-    const rows = Array.isArray(list.data) ? (list.data as (Row & { id?: unknown })[]) : [];
-    for (const row of rows) {
-      const meta = row.metadata ?? {};
-      if (!handles.has(meta.store ?? "")) continue;
-      if (row.status !== "complete" || row.payment_status !== "paid") continue;
-      if (typeof row.currency === "string" && row.currency !== "usd") continue;
-      const cents = typeof row.amount_total === "number" ? row.amount_total : 0;
-      const created = typeof row.created === "number" ? row.created * 1000 : now;
-      const day = dayKey(created);
-      const recent = day >= weekAgo;
-      const d = (out.byDay[day] ??= { sales: 0, cents: 0 });
-      d.sales += 1;
-      d.cents += cents;
-      const p = (out.byProduct[meta.product ?? ""] ??= { sales: 0, cents: 0, sales7: 0, cents7: 0 });
-      p.sales += 1;
-      p.cents += cents;
-      out.sales += 1;
-      out.cents += cents;
-      if (recent) {
-        p.sales7 += 1;
-        p.cents7 += cents;
-        out.sales7 += 1;
-        out.cents7 += cents;
-      }
-    }
-    if (list.has_more !== true || rows.length === 0) break;
-    const last = rows[rows.length - 1];
-    after = typeof last.id === "string" ? last.id : "";
-    if (!after) break;
-    if (page === 9) out.partial = true;
-  }
+/** One paid sale as read from Stripe: a checkout, or a one-click extra after one. */
+export type Sale = { created: number; product: string; cents: number; row: Record<string, unknown>; upsell: boolean };
 
-  // Products taken in one click after paying are charges of their own.
-  const add = (day: string, productId: string, cents: number) => {
-    const recent = day >= weekAgo;
-    const d = (out.byDay[day] ??= { sales: 0, cents: 0 });
-    d.sales += 1;
-    d.cents += cents;
-    const p = (out.byProduct[productId] ??= { sales: 0, cents: 0, sales7: 0, cents7: 0 });
-    p.sales += 1;
-    p.cents += cents;
-    out.sales += 1;
-    out.cents += cents;
-    if (recent) {
-      p.sales7 += 1;
-      p.cents7 += cents;
-      out.sales7 += 1;
-      out.cents7 += cents;
+/**
+ * Every paid sale of this store since `since` (seconds), newest first, read
+ * from the creator's own Stripe account: checkouts this store opened that
+ * were paid, and the one-click extras taken after them. At most `pages`
+ * pages of a hundred of each are read; `partial` says when there were more.
+ * Amounts are what the buyer paid, after any discount code and before
+ * Stripe's fee or any refund, in US dollars.
+ */
+export async function readPaidSales(store: Store, since: number, pages: number): Promise<{ sales: Sale[]; partial: boolean }> {
+  if (!store.stripeAccountId) return { sales: [], partial: false };
+  const handles = new Set([store.handle, ...store.previousHandles]);
+  const sales: Sale[] = [];
+  let partial = false;
+  const walk = async (path: string, take: (row: Record<string, unknown>) => void) => {
+    let after = "";
+    for (let page = 0; page < pages; page += 1) {
+      const list = (await onAccount(
+        "GET",
+        store.stripeAccountId as string,
+        `${path}${since > 0 ? `&created[gte]=${since}` : ""}${after ? `&starting_after=${encodeURIComponent(after)}` : ""}`,
+      )) as { data?: unknown; has_more?: unknown };
+      const rows = Array.isArray(list.data) ? (list.data as Record<string, unknown>[]) : [];
+      rows.forEach(take);
+      if (list.has_more !== true || rows.length === 0) return;
+      const last = rows[rows.length - 1];
+      after = typeof last.id === "string" ? last.id : "";
+      if (!after) return;
+      if (page === pages - 1) partial = true;
     }
   };
-  const intents = (await onAccount(
-    "GET",
-    store.stripeAccountId,
-    `/payment_intents?limit=100&created[gte]=${since}`,
-  )) as { data?: unknown };
-  for (const pi of Array.isArray(intents.data) ? (intents.data as Record<string, unknown>[]) : []) {
+  await walk("/checkout/sessions?limit=100", (raw) => {
+    const row = raw as Row;
+    const meta = row.metadata ?? {};
+    if (!handles.has(meta.store ?? "")) return;
+    if (row.status !== "complete" || row.payment_status !== "paid") return;
+    if (typeof row.currency === "string" && row.currency !== "usd") return;
+    sales.push({
+      created: typeof row.created === "number" ? row.created * 1000 : Date.now(),
+      product: meta.product ?? "",
+      cents: typeof row.amount_total === "number" ? row.amount_total : 0,
+      row: raw,
+      upsell: false,
+    });
+  });
+  // Products taken in one click after paying are charges of their own.
+  await walk("/payment_intents?limit=100", (pi) => {
     const meta = (pi.metadata ?? {}) as Record<string, string>;
-    if (meta.kind !== "upsell" || !handles.has(meta.store ?? "") || pi.status !== "succeeded") continue;
-    const created = typeof pi.created === "number" ? pi.created * 1000 : now;
-    add(dayKey(created), meta.product ?? "", typeof pi.amount === "number" ? pi.amount : 0);
+    if (meta.kind !== "upsell" || !handles.has(meta.store ?? "") || pi.status !== "succeeded") return;
+    sales.push({
+      created: typeof pi.created === "number" ? pi.created * 1000 : Date.now(),
+      product: meta.product ?? "",
+      cents: typeof pi.amount === "number" ? pi.amount : 0,
+      row: pi,
+      upsell: true,
+    });
+  });
+  sales.sort((a, b) => b.created - a.created);
+  return { sales, partial };
+}
+
+/** Sales in the last STATS_DAYS days, by day, by product, and for each window. */
+export async function readSales(store: Store, now = Date.now()): Promise<SalesStats | null> {
+  if (!store.stripeAccountId) return null;
+  const since = Math.floor(now / 1000) - STATS_DAYS * 86400;
+  const { sales, partial } = await readPaidSales(store, since, 10);
+  const cut7 = dayKey(now - 6 * 86400_000);
+  const cut30 = dayKey(now - 29 * 86400_000);
+  const zero = () => ({ sales: 0, cents: 0 });
+  const out: SalesStats = { byDay: {}, byProduct: {}, totals: { d7: zero(), d30: zero(), d90: zero() }, partial };
+  for (const sale of sales) {
+    const day = dayKey(sale.created);
+    const d = (out.byDay[day] ??= zero());
+    d.sales += 1;
+    d.cents += sale.cents;
+    const p = (out.byProduct[sale.product] ??= { d7: zero(), d30: zero(), d90: zero() });
+    const windows: ("d7" | "d30" | "d90")[] = ["d90", ...(day >= cut30 ? (["d30"] as const) : []), ...(day >= cut7 ? (["d7"] as const) : [])];
+    for (const w of windows) {
+      p[w].sales += 1;
+      p[w].cents += sale.cents;
+      out.totals[w].sales += 1;
+      out.totals[w].cents += sale.cents;
+    }
+  }
+  return out;
+}
+
+/** The most pages of a hundred read for all-time sales. */
+export const ALL_TIME_PAGES = 30;
+const allSalesKey = (statsId: string) => `nl:stats:${statsId}:allsales`;
+/** How long an all-time reading is reused, so the button can be pressed freely. */
+const ALL_SALES_SECONDS = 600;
+
+/**
+ * Every sale the store has made, as far back as ALL_TIME_PAGES pages of
+ * checkouts reach, read when the creator asks for it and kept ten minutes.
+ */
+export async function readAllTimeSales(store: Store): Promise<AllTimeSales | null> {
+  if (!store.stripeAccountId) return null;
+  if (store.statsId && isRedisConfigured()) {
+    const [cached] = await redisPipeline([["GET", allSalesKey(store.statsId)]]);
+    if (typeof cached === "string" && cached) {
+      try {
+        return JSON.parse(cached) as AllTimeSales;
+      } catch {
+        // Read again below.
+      }
+    }
+  }
+  const { sales, partial } = await readPaidSales(store, 0, ALL_TIME_PAGES);
+  const out: AllTimeSales = { totals: { sales: 0, cents: 0 }, byProduct: {}, since: "", partial };
+  for (const sale of sales) {
+    out.totals.sales += 1;
+    out.totals.cents += sale.cents;
+    const p = (out.byProduct[sale.product] ??= { sales: 0, cents: 0 });
+    p.sales += 1;
+    p.cents += sale.cents;
+  }
+  if (sales.length) out.since = dayKey(sales[sales.length - 1].created);
+  if (store.statsId && isRedisConfigured()) {
+    await redisPipeline([["SET", allSalesKey(store.statsId), JSON.stringify(out), "EX", ALL_SALES_SECONDS]]).catch(() => {});
   }
   return out;
 }
 
 // ---- What the studio shows ------------------------------------------------
 
+export type RangeKey = "d7" | "d30" | "d90" | "all";
+
 export type Totals = { visitors: number; views: number; checkouts: number; sales: number; cents: number };
+
+export type ProductRow = { checkouts: number; sales: number; cents: number };
 
 export type StatsData = {
   days: { date: string; visitors: number; views: number; checkouts: number; sales: number }[];
-  totals: { d7: Totals; d30: Totals };
-  sources: { d7: { name: string; visits: number }[]; d30: { name: string; visits: number }[] };
-  products: {
-    id: string;
-    title: string;
-    d7: { checkouts: number; sales: number; cents: number };
-    d30: { checkouts: number; sales: number; cents: number };
-  }[];
-  links: { id: string; title: string; d7: number; d30: number }[];
+  /** "all" has no sales until the creator asks for them (salesAll). */
+  totals: Record<RangeKey, Totals>;
+  sources: Record<RangeKey, Ranked>;
+  mediums: Record<RangeKey, Ranked>;
+  campaigns: Record<RangeKey, Ranked>;
+  products: ({ id: string; title: string } & Record<RangeKey, ProductRow>)[];
+  links: ({ id: string; title: string } & Record<RangeKey, number>)[];
   /** "none" when there is no Stripe account to read sales from yet. */
   sales: "ok" | "none" | "error";
   partial: boolean;
+  /** The first day all-time visits cover, or empty when unknown. */
+  since: string;
 };
+
+const EMPTY_WINDOW: WindowStats = { visitors: 0, views: 0, checkouts: 0, sources: [], mediums: [], campaigns: [], checkoutsByProduct: {}, linkClicks: {} };
 
 /** Visits and sales put together, the shape the studio's panel draws. */
 export function studioStats(store: Store, stats: Stats, sales: SalesStats | null, salesState: StatsData["sales"]): StatsData {
+  const w: Record<RangeKey, WindowStats> = { ...stats.windows, all: stats.life ?? EMPTY_WINDOW };
   const days = stats.days.map((day) => ({ ...day, sales: sales?.byDay[day.date]?.sales ?? 0 }));
-  const last7 = days.slice(-7);
-  const sum = (list: typeof days, key: "views" | "checkouts") => list.reduce((total, day) => total + day[key], 0);
+  const zero = { sales: 0, cents: 0 };
+  const salesOf = (key: RangeKey) => (key === "all" ? zero : sales?.totals[key] ?? zero);
+  const keys: RangeKey[] = ["d7", "d30", "d90", "all"];
+  const per = <T,>(pick: (key: RangeKey) => T) => Object.fromEntries(keys.map((k) => [k, pick(k)])) as Record<RangeKey, T>;
   return {
     days,
-    totals: {
-      d7: { visitors: stats.visitors7, views: sum(last7, "views"), checkouts: sum(last7, "checkouts"), sales: sales?.sales7 ?? 0, cents: sales?.cents7 ?? 0 },
-      d30: { visitors: stats.visitors, views: stats.views, checkouts: stats.checkouts, sales: sales?.sales ?? 0, cents: sales?.cents ?? 0 },
-    },
-    sources: { d7: stats.sources7, d30: stats.sources },
-    products: store.products.map((product) => {
-      const c = stats.checkoutsByProduct[product.id] ?? { all: 0, last7: 0 };
-      const s = sales?.byProduct[product.id] ?? { sales: 0, cents: 0, sales7: 0, cents7: 0 };
-      return {
-        id: product.id,
-        title: product.title,
-        d7: { checkouts: c.last7, sales: s.sales7, cents: s.cents7 },
-        d30: { checkouts: c.all, sales: s.sales, cents: s.cents },
-      };
-    }),
-    links: store.links.map((link) => {
-      const l = stats.linkClicks[link.id] ?? { all: 0, last7: 0 };
-      return { id: link.id, title: link.title, d7: l.last7, d30: l.all };
-    }),
+    totals: per((k) => ({ visitors: w[k].visitors, views: w[k].views, checkouts: w[k].checkouts, ...salesOf(k) })),
+    sources: per((k) => w[k].sources),
+    mediums: per((k) => w[k].mediums),
+    campaigns: per((k) => w[k].campaigns),
+    products: store.products.map((product) => ({
+      id: product.id,
+      title: product.title,
+      ...per((k) => {
+        const s = k === "all" ? zero : sales?.byProduct[product.id]?.[k] ?? zero;
+        return { checkouts: w[k].checkoutsByProduct[product.id] ?? 0, sales: s.sales, cents: s.cents };
+      }),
+    })),
+    links: store.links.map((link) => ({ id: link.id, title: link.title, ...per((k) => w[k].linkClicks[link.id] ?? 0) })),
     sales: salesState,
     partial: sales?.partial ?? false,
+    since: stats.life?.since ?? "",
   };
+}
+
+// ---- Files to take away -------------------------------------------------------
+
+/**
+ * One spreadsheet cell: quoted always, and a leading character a spreadsheet
+ * would read as a formula defused, because a product name or a buyer's name
+ * is text somebody else typed and must never run on the creator's computer.
+ */
+export function csvCell(value: string | number): string {
+  const text = String(value);
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
+}
+
+export function csvRow(values: (string | number)[]): string {
+  return values.map(csvCell).join(",");
+}
+
+const dollars = (cents: number) => (cents / 100).toFixed(2);
+
+/** The most pages of a hundred read for a sales file. */
+export const EXPORT_PAGES = 50;
+
+/**
+ * The store's sales as CSV, newest first: every paid checkout and one-click
+ * extra since `sinceSeconds` (0 for all), up to EXPORT_PAGES pages of each.
+ */
+export async function salesCsv(store: Store, sinceSeconds: number): Promise<{ csv: string; rows: number; partial: boolean }> {
+  const { sales, partial } = await readPaidSales(store, sinceSeconds, EXPORT_PAGES);
+  const title = (id: string, fallback: unknown) => store.products.find((p) => p.id === id)?.title ?? (typeof fallback === "string" ? fallback : "");
+  const lines = [
+    csvRow(["paid_at_utc", "stripe_id", "product_id", "product", "price_option", "order_bump", "kind", "amount", "discount", "tax", "currency", "buyer_email", "buyer_name", "buyer_country"]),
+  ];
+  for (const sale of sales) {
+    const row = sale.row;
+    const meta = (row.metadata ?? {}) as Record<string, string>;
+    const details = (row.customer_details ?? {}) as { email?: unknown; name?: unknown; address?: { country?: unknown } | null };
+    const totals = (row.total_details ?? {}) as { amount_discount?: unknown; amount_tax?: unknown };
+    const text = (v: unknown) => (typeof v === "string" ? v : "");
+    const cents = (v: unknown) => (typeof v === "number" ? v : 0);
+    const product = store.products.find((p) => p.id === sale.product);
+    const option = product?.options.find((o) => o.id === meta.option)?.label ?? meta.option ?? "";
+    const kind = sale.upsell
+      ? "upsell"
+      : meta.kind === "call"
+        ? "call"
+        : meta.kind === "plan"
+          ? "payment_plan"
+          : row.mode === "subscription"
+            ? "membership"
+            : "one_time";
+    lines.push(
+      csvRow([
+        new Date(sale.created).toISOString().replace(/\.\d{3}Z$/, "Z"),
+        text(row.id),
+        sale.product,
+        title(sale.product, meta.title),
+        option,
+        meta.bump ? title(meta.bump, "") : "",
+        kind,
+        dollars(sale.cents),
+        dollars(cents(totals.amount_discount)),
+        dollars(cents(totals.amount_tax)),
+        (text(row.currency) || "usd").toUpperCase(),
+        text(details.email) || text(row.customer_email) || text(row.receipt_email),
+        text(details.name),
+        text(details.address?.country),
+      ]),
+    );
+  }
+  return { csv: `${lines.join("\r\n")}\r\n`, rows: sales.length, partial };
+}
+
+/** Every kept day of visits as CSV, newest first. */
+export async function visitsCsv(store: Store, now = Date.now()): Promise<string> {
+  const lines = [csvRow(["date_utc", "visitors", "page_views", "checkouts_started", "link_opens", "top_source"])];
+  if (!store.statsId || !isRedisConfigured()) return `${lines.join("\r\n")}\r\n`;
+  const statsId = store.statsId;
+  const created = /^\d{4}-\d{2}-\d{2}/.test(store.createdAt) ? store.createdAt.slice(0, 10) : "";
+  const dates = lastDays(now, KEPT_DAYS).filter((d) => !created || d >= created);
+  const replies = await redisPipeline([
+    ...dates.map((d) => ["HGETALL", countsKey(statsId, d)]),
+    ...dates.map((d) => ["PFCOUNT", visitorsKey(statsId, d)]),
+  ]);
+  for (let i = dates.length - 1; i >= 0; i -= 1) {
+    let views = 0;
+    let checkouts = 0;
+    let links = 0;
+    let top = ["", 0] as [string, number];
+    for (const [field, count] of pairs(replies[i])) {
+      if (field === "v") views = count;
+      else if (field === "c") checkouts = count;
+      else if (field.startsWith("l:")) links += count;
+      else if (field.startsWith("r:") && count > top[1]) top = [field.slice(2), count];
+    }
+    lines.push(csvRow([dates[i], Number(replies[dates.length + i]) || 0, views, checkouts, links, top[0]]));
+  }
+  return `${lines.join("\r\n")}\r\n`;
+}
+
+/** Where visits came from, by source, medium and campaign, for each window, as CSV. */
+export function sourcesCsv(data: StatsData): string {
+  const lines = [csvRow(["kind", "name", "visits_7_days", "visits_30_days", "visits_90_days", "visits_all_time"])];
+  for (const [kind, table] of [["source", data.sources], ["medium", data.mediums], ["campaign", data.campaigns]] as const) {
+    const names = new Set<string>();
+    for (const key of ["d7", "d30", "d90", "all"] as const) for (const row of table[key]) names.add(row.name);
+    const count = (key: RangeKey, name: string) => table[key].find((row) => row.name === name)?.visits ?? 0;
+    for (const name of [...names].sort((a, b) => count("all", b) - count("all", a) || count("d90", b) - count("d90", a))) {
+      lines.push(csvRow([kind, name, count("d7", name), count("d30", name), count("d90", name), count("all", name)]));
+    }
+  }
+  return `${lines.join("\r\n")}\r\n`;
 }

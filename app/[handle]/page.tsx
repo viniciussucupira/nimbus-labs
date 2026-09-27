@@ -12,6 +12,7 @@ import { canManage } from "@/lib/membership-manage";
 import { canRecover, sellsDeliverables } from "@/lib/buyer-orders";
 import { StoreTracking } from "@/components/store-tracking";
 import { stockLeft } from "@/lib/stock";
+import { outOfKeys } from "@/lib/licence-keys";
 import { ProductCard } from "@/components/store-product";
 import { canWrite } from "@/lib/mail";
 import { canUseDomain } from "@/lib/domains";
@@ -30,6 +31,10 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   busy: {
     title: "Lots of people are buying that right now",
     body: "Nothing was charged. Press buy again in a moment.",
+  },
+  slow: {
+    title: "That was a lot of tries in a few minutes",
+    body: "Nothing was charged. Wait a few minutes, then press buy again.",
   },
 };
 
@@ -122,7 +127,16 @@ export default async function StorePage({ params, searchParams }: Params) {
   // What is left of each limited product, counted from real checkouts. Asked
   // side by side, so a long store does not wait on its products one by one;
   // a product without a limit is answered without asking anything.
-  const counts = await Promise.all(store.products.map((product) => stockLeft(store, product).catch(() => null)));
+  // A product handing out keys from a pool that is empty is sold out too.
+  const counts = await Promise.all(
+    store.products.map(async (product) => {
+      const [stock, out] = await Promise.all([
+        stockLeft(store, product).catch(() => null),
+        outOfKeys(store, product).catch(() => false),
+      ]);
+      return out ? 0 : stock;
+    }),
+  );
   const left = new Map<string, number>();
   store.products.forEach((product, i) => {
     const count = counts[i];
@@ -263,11 +277,31 @@ export default async function StorePage({ params, searchParams }: Params) {
             </ul>
           ) : null}
 
+          {/*
+            The way into the members-only community, when the creator has one
+            switched on. Who is let in is decided on the other side of it.
+          */}
+          {store.community?.on ? (
+            <p className="mt-8">
+              <Link href={`/@${store.handle}/community`} className="st-card st-link-card px-5 py-4 text-center sm:px-6">
+                <span className="block font-bold">Members&apos; community</span>
+                <span className="st-muted mt-0.5 block text-sm">{`For people who bought from ${store.name}. Come in with the address you paid with.`}</span>
+              </Link>
+            </p>
+          ) : null}
+
           <div className="mt-12 text-center">
             {canRecover(store) && sellsDeliverables(store) ? (
               <p className="mb-4">
                 <Link href={`/@${store.handle}/orders`} className="st-footer-link text-sm font-semibold">
                   Bought something here? Get it again
+                </Link>
+              </p>
+            ) : null}
+            {store.affiliates.enabled ? (
+              <p className="mb-4">
+                <Link href={`/@${store.handle}/affiliates`} className="st-footer-link text-sm font-semibold">
+                  {`Earn by sharing ${store.name}: the affiliate programme`}
                 </Link>
               </p>
             ) : null}

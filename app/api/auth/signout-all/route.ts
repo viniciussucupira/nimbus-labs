@@ -5,6 +5,7 @@ import {
   emailForSession,
   endAllSessions,
 } from "@/lib/auth";
+import { fromAnotherSite } from "@/lib/request-guard";
 
 /**
  * Closes every session this creator has open, on every device.
@@ -13,17 +14,9 @@ import {
  * a laptop is lost or borrowed. This is the door that shuts all of them.
  */
 export async function POST(request: NextRequest) {
-  const sender = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (sender && host) {
-    try {
-      if (new URL(sender).host !== host) {
-        return new Response("forbidden", { status: 403 });
-      }
-    } catch {
-      return new Response("forbidden", { status: 403 });
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return new Response("forbidden", { status: 403 });
 
   const id = request.cookies.get(SESSION_COOKIE)?.value;
   const email = await emailForSession(id);

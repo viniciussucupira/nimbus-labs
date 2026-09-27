@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
-import { classifySource } from "@/lib/stats";
-import { countHit } from "@/lib/visit";
+import { classifySource, cleanTag } from "@/lib/stats";
+import { countAffiliateClick, countHit } from "@/lib/visit";
+import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 
 const MAX_BODY_BYTES = 1_500;
 
@@ -16,20 +17,15 @@ const done = () => new Response(null, { status: 204, headers: { "Cache-Control":
  * and a caller probing for stores learns nothing either.
  */
 export async function POST(request: NextRequest) {
-  const sender = request.headers.get("origin");
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return done();
   const host = request.headers.get("host");
-  if (sender && host) {
-    try {
-      if (new URL(sender).host !== host) return done();
-    } catch {
-      return done();
-    }
-  }
   if (Number(request.headers.get("content-length") ?? "0") > MAX_BODY_BYTES) return done();
 
   let body: Record<string, unknown> = {};
   try {
-    const raw = await request.text();
+    const raw = await (await limited(request, MAX_BODY_BYTES)).text();
     if (raw.length > MAX_BODY_BYTES) return done();
     const parsed = JSON.parse(raw) as unknown;
     if (parsed && typeof parsed === "object") body = parsed as Record<string, unknown>;
@@ -42,6 +38,9 @@ export async function POST(request: NextRequest) {
   if (!handle) return done();
   const store = await storeForHandle(handle).catch(() => null);
   if (!store) return done();
+  // A page sends one of these per visit and per click; a script sending
+  // thousands would only inflate the creator's numbers, so it stops counting.
+  if (!(await withinLimit("hit", `${clientAddress(request)}|${store.handle}`, 120, 600))) return done();
 
   const kind = read("k", 2);
   if (kind === "v") {
@@ -51,10 +50,13 @@ export async function POST(request: NextRequest) {
       userAgent: request.headers.get("user-agent") ?? "",
       ownHost: (host ?? "").split(":")[0].toLowerCase(),
     });
-    await countHit(request, store, { kind: "view", source });
+    await countHit(request, store, { kind: "view", source, medium: cleanTag(read("m", 60)), campaign: cleanTag(read("g", 60)) });
   } else if (kind === "l") {
     const id = read("id", 40);
     if (store.links.some((link) => link.id === id)) await countHit(request, store, { kind: "link", id });
+  } else if (kind === "a") {
+    // A visit through an affiliate's link: counted for them, once a day.
+    await countAffiliateClick(request, store, read("c", 20).toLowerCase());
   }
   return done();
 }

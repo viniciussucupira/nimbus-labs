@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { findLesson, isOpen, readCourse } from "@/lib/course";
-import { courseAccess } from "@/lib/learn";
+import { courseAccess, emailKey } from "@/lib/learn";
+import { heldBack, passedQuizzes } from "@/lib/quiz";
 import { plain, serveFile } from "@/lib/serve-file";
 
 /**
@@ -24,6 +25,12 @@ export async function GET(request: NextRequest) {
     const access = await courseAccess(store, product, await cookies());
     if (access.state !== "open" || !isOpen(found.unit, access.start)) {
       return plain(403, "This lesson is not open for you. Open the course page to get in.");
+    }
+    if (!access.learner.owner && course) {
+      const passed = await passedQuizzes(course.id, emailKey(access.learner.email));
+      if (heldBack(course, passed).has(found.lesson.id)) {
+        return plain(403, "This lesson opens when you pass the quiz before it.");
+      }
     }
   }
   return serveFile(file);

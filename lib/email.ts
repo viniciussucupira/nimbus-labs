@@ -29,6 +29,41 @@ export function isSenderConfigured(): boolean {
   return getKey() !== null;
 }
 
+/**
+ * What goes into a header of an email, made safe to put there.
+ *
+ * Subjects and sender names are built from text creators and buyers typed —
+ * a product title, a store name, an affiliate's address — and a line break
+ * in a header is how an email is made to carry headers, or recipients, that
+ * nobody wrote. The sender's API takes JSON rather than raw headers, but we
+ * do not rely on it to clean what we send: every control character becomes a
+ * space here, runs of space become one, and the length is capped.
+ */
+export function headerText(value: string, max = 250): string {
+  return value.replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ").replace(/\s{2,}/g, " ").trim().slice(0, max);
+}
+
+/** One plain address, or null: no spaces, no commas, one @, nothing that could name a second recipient. */
+export function oneAddress(value: string | undefined): string | null {
+  const text = (value ?? "").trim();
+  if (!text || text.length > 254 || !/^[^\s@,;<>"()]+@[^\s@,;<>"()]+\.[^\s@,;<>"()]+$/.test(text)) return null;
+  return text;
+}
+
+/** A From line: `Name <address>` or a bare address, with nothing that breaks the header. */
+function fromLine(value: string): string {
+  return headerText(value, 320);
+}
+
+function cleanHeaders(headers: Record<string, string> | undefined): Record<string, string> | undefined {
+  if (!headers) return undefined;
+  const out: Record<string, string> = {};
+  for (const [name, value] of Object.entries(headers)) {
+    if (/^[A-Za-z0-9-]{1,64}$/.test(name)) out[name] = headerText(value, 2000);
+  }
+  return out;
+}
+
 export async function sendEmail(message: {
   from: string;
   to: string;
@@ -48,15 +83,19 @@ export async function sendEmail(message: {
 }): Promise<boolean> {
   const key = getKey();
   if (!key) return false;
+  const to = oneAddress(message.to);
+  if (!to) return false;
+  const replyTo = oneAddress(message.replyTo);
+  const headers = cleanHeaders(message.headers);
 
   const payload = JSON.stringify({
-    from: message.from,
-    to: [message.to],
-    subject: message.subject,
+    from: fromLine(message.from),
+    to: [to],
+    subject: headerText(message.subject),
     text: message.text,
     ...(message.attachments?.length ? { attachments: message.attachments } : {}),
-    ...(message.replyTo ? { reply_to: message.replyTo } : {}),
-    ...(message.headers ? { headers: message.headers } : {}),
+    ...(replyTo ? { reply_to: replyTo } : {}),
+    ...(headers ? { headers } : {}),
   });
   // A sign-in link or a receipt must not be lost because the sender was busy
   // with a creator's newsletter a second earlier: asked to slow down, it
@@ -123,15 +162,22 @@ export async function sendBatch(
         "Idempotency-Key": idempotencyKey.slice(0, 256),
       },
       body: JSON.stringify(
-        messages.slice(0, 100).map((m) => ({
-          from: m.from,
-          to: [m.to],
-          subject: m.subject,
-          text: m.text,
-          html: m.html,
-          ...(m.replyTo ? { reply_to: m.replyTo } : {}),
-          ...(m.headers ? { headers: m.headers } : {}),
-        })),
+        messages
+          .slice(0, 100)
+          .filter((m) => oneAddress(m.to) !== null)
+          .map((m) => {
+            const replyTo = oneAddress(m.replyTo);
+            const headers = cleanHeaders(m.headers);
+            return {
+              from: fromLine(m.from),
+              to: [oneAddress(m.to) as string],
+              subject: headerText(m.subject),
+              text: m.text,
+              html: m.html,
+              ...(replyTo ? { reply_to: replyTo } : {}),
+              ...(headers ? { headers } : {}),
+            };
+          }),
       ),
       cache: "no-store",
     });

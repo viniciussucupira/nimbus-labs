@@ -15,6 +15,7 @@
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { type ProductFile, parseProductFile } from "@/lib/product-file";
+import { type QuizSetup, parseSetup as parseQuizSetup } from "@/lib/quiz";
 
 export const MAX_MODULES = 30;
 export const MAX_LESSONS = 200;
@@ -41,6 +42,12 @@ export type Lesson = {
   link: string | null;
   /** Whether the lesson has text, so the outline can say so without loading it. */
   hasBody: boolean;
+  /**
+   * The lesson's quiz, when it has one: how many questions, the pass mark,
+   * the tries allowed and whether it holds later lessons shut. The questions
+   * themselves are kept apart (lib/quiz.ts).
+   */
+  quiz: QuizSetup | null;
 };
 
 export type CourseModule = {
@@ -57,6 +64,11 @@ export type CourseModule = {
 export type Course = {
   id: string;
   modules: CourseModule[];
+  /**
+   * Whether a student who finishes gets a certificate of completion
+   * (lib/certificate.ts). Off until the creator switches it on.
+   */
+  certificate: boolean;
 };
 
 export function newCourseId(): string {
@@ -91,6 +103,8 @@ function parseLesson(raw: unknown): Lesson | null {
     files,
     link: typeof value.link === "string" && value.link ? value.link.slice(0, 2000) : null,
     hasBody: value.hasBody === true,
+    // Lessons written before quizzes existed have none.
+    quiz: parseQuizSetup(value.quiz),
   };
 }
 
@@ -117,7 +131,7 @@ export function parseCourse(raw: unknown): Course | null {
     const modules = Array.isArray(value.modules)
       ? value.modules.map(parseModule).filter((m): m is CourseModule => m !== null).slice(0, MAX_MODULES)
       : [];
-    return { id: value.id, modules };
+    return { id: value.id, modules, certificate: value.certificate === true };
   } catch {
     return null;
   }
@@ -167,7 +181,9 @@ export type CourseEdit =
   | { op: "lesson-move"; lessonId: string; direction: "up" | "down" }
   | { op: "lesson-remove"; lessonId: string }
   | { op: "media"; lessonId: string; kind: "video" | "file"; file: ProductFile }
-  | { op: "media-remove"; lessonId: string; pathname: string };
+  | { op: "media-remove"; lessonId: string; pathname: string }
+  | { op: "quiz"; lessonId: string; quiz: QuizSetup | null }
+  | { op: "certificate"; on: boolean };
 
 export type EditResult =
   | { ok: true; course: Course; removed: ProductFile[]; addedId?: string }
@@ -243,6 +259,7 @@ export function editCourse(course: Course, edit: CourseEdit): EditResult {
         files: [],
         link: null,
         hasBody: false,
+        quiz: null,
       };
       const next = [...modules];
       next[at] = { ...next[at], lessons: [...next[at].lessons, lesson] };
@@ -322,6 +339,12 @@ export function editCourse(course: Course, edit: CourseEdit): EditResult {
       const next = mapLesson(course, edit.lessonId, (l) => ({ ...l, files: l.files.filter((f) => f.pathname !== edit.pathname) }));
       return { ok: true, course: next as Course, removed: [file] };
     }
+    case "quiz": {
+      const next = mapLesson(course, edit.lessonId, (lesson) => ({ ...lesson, quiz: edit.quiz }));
+      return next ? { ok: true, course: next, removed: [] } : { ok: false, reason: "unknown" };
+    }
+    case "certificate":
+      return { ok: true, course: { ...course, certificate: edit.on }, removed: [] };
   }
 }
 
@@ -331,7 +354,7 @@ const courseKey = (id: string) => `nl:course:${id}`;
 const bodyKey = (id: string, lessonId: string) => `nl:course:${id}:body:${lessonId}`;
 
 export function emptyCourse(id: string = newCourseId()): Course {
-  return { id, modules: [{ id: newItemId(), title: "Module 1", dripDays: 0, lessons: [] }] };
+  return { id, modules: [{ id: newItemId(), title: "Module 1", dripDays: 0, lessons: [] }], certificate: false };
 }
 
 export async function readCourse(id: string): Promise<Course | null> {

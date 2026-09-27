@@ -50,6 +50,10 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     title: "This call cannot be booked right now",
     body: "Nothing was charged.",
   },
+  slow: {
+    title: "That was a lot of tries in a few minutes",
+    body: "Nothing was charged. Wait a few minutes, then pick a time again.",
+  },
 };
 
 /** What a buyer moving their booking may be told. */
@@ -70,6 +74,7 @@ const MOVE_NOTICES: Record<string, { title: string; body: string }> = {
   },
   error: { title: "Something went wrong on our side", body: "Your booking has not changed. Try again in a moment." },
   unavailable: { title: "Bookings cannot be moved right now", body: "Your booking has not changed." },
+  slow: { title: "That was a lot of tries in a few minutes", body: "Your booking has not changed. Wait a few minutes, then try again." },
 };
 
 /** Where a buyer picks a time for a paid call. */

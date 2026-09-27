@@ -8,6 +8,7 @@ import {
   spendMoveLink,
 } from "@/lib/auth";
 import { moveAccount } from "@/lib/store";
+import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 /**
  * Finishes a move of the sign-in address.
@@ -22,24 +23,16 @@ import { moveAccount } from "@/lib/store";
 export async function POST(request: NextRequest) {
   const origin = originFrom(request);
 
-  const sender = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (sender && host) {
-    try {
-      if (new URL(sender).host !== host) {
-        return new Response("forbidden", { status: 403 });
-      }
-    } catch {
-      return new Response("forbidden", { status: 403 });
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return new Response("forbidden", { status: 403 });
 
   const away = (path: string) =>
     new Response(null, { status: 303, headers: { Location: `${origin}${path}` } });
 
   let token = "";
   try {
-    const form = await request.formData();
+    const form = await (await limited(request, 8_000)).formData();
     const value = form.get("token");
     token = typeof value === "string" ? value : "";
   } catch {

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   const domains = isDomainsConfigured();
   return (
-    <LegalPage title="Terms of Service" lastUpdated="September 22, 2026">
+    <LegalPage title="Terms of Service" lastUpdated="September 26, 2026">
       <p>
         These Terms of Service (“Terms”) govern your access to and use of the
         websites, products, and subscription services operated by Nimbus Labs
@@ -54,8 +54,9 @@ export default function TermsPage() {
       <LegalSection title="2. The Services">
         <p>
           <strong className="text-black">The Nimbus creator store.</strong> A
-          hosted store page where a creator sells digital files, plans, and
-          calls. The buyer pays into the creator&apos;s own connected Stripe
+          hosted store page where a creator sells digital files, courses,
+          memberships and calls, and can run a community for their buyers and
+          an affiliate programme. The buyer pays into the creator&apos;s own connected Stripe
           account, and the file is delivered as soon as the payment clears.
           Nimbus Labs takes 0% of a creator&apos;s sales; what we charge a
           creator is a subscription for the store itself.
@@ -106,7 +107,10 @@ export default function TermsPage() {
           to everything you upload and sell; answering your own buyers;
           refunds, disputes, and chargebacks on your own sales; and any tax you
           owe on your sales, including sales tax, VAT, or GST where it applies
-          to you.
+          to you. If you run an affiliate programme, paying your affiliates what
+          you agreed is yours too: we keep the record, and we never hold or
+          pay out that money. If you run a community, what is posted in it is
+          yours to moderate, and the rules in section 4 apply to it.
         </p>
         <p>
           <strong className="text-black">What you may not sell.</strong>{" "}
@@ -187,7 +191,8 @@ export default function TermsPage() {
           includes everything to sell. Nimbus Labs Pro, at $99 a month or $948
           a year, adds email to your list{domains ? " and your store on a domain you own" : ""},
           with up to 50,000 emails a month,
-          counted together for one-off emails and sequences; during the free
+          counted together for one-off emails, sequences and community
+          announcements; during the free
           trial a store may send up to 1,000 emails a month, and the full
           number opens with the first payment. What is not sent in a month does
           not carry over. Emails a month cannot cover wait for the next one.

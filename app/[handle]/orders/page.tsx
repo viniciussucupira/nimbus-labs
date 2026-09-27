@@ -6,6 +6,9 @@ import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { linkHost } from "@/lib/product-link";
 import { type Delivery, type Purchase, canRecover, ordersGrant, purchasesFor } from "@/lib/buyer-orders";
+import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
+import { renewPath } from "@/lib/membership-access";
+import { LicenceKeyBox } from "@/components/licence-key-box";
 
 export const metadata: Metadata = {
   title: "Your purchases — Nimbus Labs",
@@ -107,6 +110,44 @@ export default async function OrdersPage({ params, searchParams }: Params) {
   }
   const notice = token && !email ? NOTICES.expired : failed ? NOTICES.error : NOTICES[status] ?? null;
 
+  // The licence key of each purchase that has one, read — or given, if the
+  // thanks page and the confirmation email never got the chance — per sale.
+  const keys = new Map<string, SaleKey | "error">();
+  if (email && purchases) {
+    const wanted: { slot: string; productId: string; reference: string }[] = [];
+    for (const purchase of purchases) {
+      if (purchase.ended) continue;
+      wanted.push({ slot: `${purchase.reference}|main`, productId: purchase.productId, reference: purchase.reference });
+      if (purchase.bumpId) wanted.push({ slot: `${purchase.reference}|bump`, productId: purchase.bumpId, reference: purchase.reference });
+    }
+    await Promise.all(
+      wanted.map(async ({ slot, productId, reference }) => {
+        const product = store.products.find((p) => p.id === productId);
+        if (!product || !activeKeys(product)) return;
+        try {
+          const key = await keyForSale(store, product, reference, email);
+          if (key) keys.set(slot, key);
+        } catch (error) {
+          console.error("reading a licence key failed", error);
+          keys.set(slot, "error");
+        }
+      }),
+    );
+  }
+  const keyBox = (slot: string, title?: string) => {
+    const found = keys.get(slot);
+    if (!found) return null;
+    return (
+      <LicenceKeyBox
+        title={title}
+        storeName={store.name}
+        value={found !== "error" && found.state === "issued" ? found.key : null}
+        revoked={found !== "error" && found.state === "issued" && found.revoked}
+        waiting={found !== "error" && found.state === "waiting"}
+      />
+    );
+  };
+
   const form = (
     <form action="/api/store/orders" method="post" className="mt-7 space-y-3">
       <input type="hidden" name="handle" value={store.handle} />
@@ -164,7 +205,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
               </h1>
               {purchases.length === 0 ? (
                 <p className="st-muted mt-4 text-lg leading-relaxed">
-                  {`There is nothing to open here any more. A purchase that was refunded, or a membership that has ended, is no longer listed. If something is missing, reply to the receipt you were emailed when you paid, and it reaches ${store.name}.`}
+                  {`There is nothing to open here any more. A purchase that was refunded is no longer listed. If something is missing, reply to the receipt you were emailed when you paid, and it reaches ${store.name}.`}
                 </p>
               ) : (
                 <>
@@ -179,6 +220,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                           {[
                             purchase.option,
                             purchase.member ? "Membership, still running" : null,
+                            purchase.ended ? "Membership, ended" : null,
                             purchase.kind === "upsell" ? "Added after paying" : null,
                             purchase.paidAt ? `Bought on ${DATE.format(new Date(purchase.paidAt * 1000))}` : null,
                           ]
@@ -186,6 +228,16 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                             .join(" · ")}
                         </p>
                         <div className="mt-4 space-y-3">
+                          {purchase.ended ? (
+                            <>
+                              <p className="st-muted text-sm">
+                                This membership is no longer running, so what it gave is closed now. Join again and it opens straight away.
+                              </p>
+                              <Link href={renewPath(store, { id: purchase.productId })} className="btn st-btn btn-block">
+                                Renew your membership
+                              </Link>
+                            </>
+                          ) : null}
                           {purchase.courseProduct ? (
                             <Link href={`/@${store.handle}/course/${purchase.courseProduct}`} className="btn st-btn btn-block">
                               Open the course
@@ -198,6 +250,8 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                             <DeliveryButton handle={store.handle} token={token} purchase={purchase} delivery={purchase.bump} item="bump" />
                           ) : null}
                         </div>
+                        {keyBox(`${purchase.reference}|main`, keys.has(`${purchase.reference}|bump`) ? purchase.title : undefined)}
+                        {purchase.bump ? keyBox(`${purchase.reference}|bump`, purchase.bump.title) : null}
                       </li>
                     ))}
                   </ul>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadPresigned } from "@vercel/blob/client";
 import { toast } from "@/components/toast";
+import { QuizEditor } from "@/components/quiz-editor";
 import {
   type Course,
   type CourseModule,
@@ -253,6 +254,7 @@ function ModuleCard({
                   lesson.hasBody ? "text" : null,
                   lesson.files.length ? `${lesson.files.length} ${lesson.files.length === 1 ? "download" : "downloads"}` : null,
                   lesson.link ? "link" : null,
+                  lesson.quiz ? `quiz${lesson.quiz.required ? ", must pass" : ""}` : null,
                   lesson.preview ? "free preview" : null,
                 ]
                   .filter(Boolean)
@@ -518,6 +520,8 @@ function LessonEditor({
         ) : null}
       </div>
 
+      <QuizEditor productId={productId} lessonId={lesson.id} setup={lesson.quiz} onCourse={onCourse} />
+
       <div className="border-t border-line pt-4">
         {removing ? (
           <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -569,3 +573,100 @@ export function StudentAccess({ productId, email, blocked }: { productId: string
     </button>
   );
 }
+
+/** Certificates of completion for this course: on or off. */
+export function CertificateSwitch({ productId, on }: { productId: string; on: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div>
+      <label className="flex min-h-6 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
+        <input
+          type="checkbox"
+          checked={on}
+          disabled={busy}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-violet-brand"
+          onChange={async (event) => {
+            const next = event.target.checked;
+            setBusy(true);
+            setError(null);
+            const answer = await post({ id: productId, action: "cert", on: next });
+            setBusy(false);
+            if (!answer.ok) {
+              setError(problem(answer));
+              return;
+            }
+            toast(next ? "Certificates are on." : "Certificates are off.");
+            router.refresh();
+          }}
+        />
+        Give a certificate to every student who finishes
+      </label>
+      {error ? (
+        <p className="notice notice-error mt-2" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Withdrawing one certificate: its page then says so, and the student may issue it again. */
+export function WithdrawCertificate({ productId, certificate }: { productId: string; certificate: string }) {
+  const router = useRouter();
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!asking) {
+    return (
+      <button type="button" className="whitespace-nowrap text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger" onClick={() => setAsking(true)}>
+        Withdraw
+      </button>
+    );
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-2 text-sm">
+      <button
+        type="button"
+        aria-busy={busy}
+        disabled={busy}
+        className="btn btn-secondary btn-sm"
+        onClick={async () => {
+          setBusy(true);
+          const answer = await post({ id: productId, action: "withdraw", certificate });
+          setBusy(false);
+          if (answer.ok) toast("Certificate withdrawn.");
+          setAsking(false);
+          router.refresh();
+        }}
+      >
+        Yes, withdraw it
+      </button>
+      <button type="button" className={`${small} font-bold`} onClick={() => setAsking(false)}>
+        Keep it
+      </button>
+    </span>
+  );
+}
+
+/** Gives a student back their tries on every quiz they have not passed. */
+export function GiveTriesBack({ productId, email }: { productId: string; email: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      aria-busy={busy}
+      disabled={busy}
+      className="whitespace-nowrap text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep disabled:opacity-40"
+      onClick={async () => {
+        setBusy(true);
+        const answer = await post({ id: productId, action: "retries", email });
+        setBusy(false);
+        if (answer.ok) toast("Quiz tries given back.");
+      }}
+    >
+      Give quiz tries back
+    </button>
+  );
+}
+

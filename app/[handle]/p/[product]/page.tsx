@@ -11,6 +11,7 @@ import { type Block, type Piece, aboutBlocks, aboutExcerpt, readAbout } from "@/
 import { activePlan, planWords } from "@/lib/product-extras";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { stockLeft } from "@/lib/stock";
+import { outOfKeys } from "@/lib/licence-keys";
 import { canWrite } from "@/lib/mail";
 import { canManage } from "@/lib/membership-manage";
 import { canUseDomain } from "@/lib/domains";
@@ -187,10 +188,12 @@ export default async function ProductPage({ params }: Params) {
 
   const selling = canSell(store);
   const rehearsal = selling && isConnectInTestMode();
-  const [about, count] = await Promise.all([
+  const [about, stock, noKeys] = await Promise.all([
     product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""),
     stockLeft(store, product).catch(() => null),
+    outOfKeys(store, product).catch(() => false),
   ]);
+  const count = noKeys ? 0 : stock;
   const blocks = aboutBlocks(about);
   const remaining = count !== null && canSellProduct(store, product) ? count : null;
   const plan = activePlan(product);

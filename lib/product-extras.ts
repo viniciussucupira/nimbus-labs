@@ -10,9 +10,9 @@
  * paid for. The number the page shows is the real one, counted from real
  * checkouts, because scarcity that is not true is a lie told to a buyer.
  *
- * A one-click upsell: after paying, the buyer is offered another product,
- * and one press adds it, charged to the card they just used. The same rules
- * apply to what can be offered as to a bump.
+ * A funnel of one-click offers after paying (lib/funnel.ts): each offer is
+ * another product, and one press adds it, charged to the card the buyer just
+ * used. The same rules apply to what can be offered as to a bump.
  *
  * A payment plan: the same product, paid in a fixed number of weekly or
  * monthly payments instead of at once, delivered after the first. It ends
@@ -85,15 +85,6 @@ export function activeBump(products: Product[], product: Product): { bump: Bump;
 /** Whether a product's quantity is limited right now. */
 export function limitedStock(product: Product): number | null {
   return product.stock !== null && isOneOff(product) ? product.stock : null;
-}
-
-/** The upsell offered after paying for this product, or null. */
-export function activeUpsell(products: Product[], product: Product): { bump: Bump; target: Product } | null {
-  if (!product.upsell || !isOneOff(product)) return null;
-  const target = products.find((p) => p.id === product.upsell!.productId);
-  if (!target || target.id === product.id || !canBeBumped(target)) return null;
-  if (product.upsell.priceCents > target.priceCents) return null;
-  return { bump: product.upsell, target };
 }
 
 export type Plan = {

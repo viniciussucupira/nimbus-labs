@@ -14,6 +14,7 @@ import {
   type ProductFile,
 } from "@/lib/product-file";
 import { recordDelivery } from "@/lib/delivery";
+import { fileHeaders } from "@/lib/request-guard";
 
 /** A short answer in plain text, never cached and never indexed. */
 export function plain(status: number, message: string): Response {
@@ -80,15 +81,9 @@ export async function serveFile(file: ProductFile): Promise<Response> {
     }
 
     await recordDelivery(file.pathname, file.bytes);
-    return new Response(result.stream, {
-      headers: {
-        "Content-Type": file.contentType || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${file.name}"`,
-        "X-Content-Type-Options": "nosniff",
-        "Cache-Control": "private, no-store",
-        "X-Robots-Tag": "noindex",
-      },
-    });
+    // Saved, never opened as a page of ours: the name is encoded so any
+    // character survives, and the file may run nothing (lib/request-guard.ts).
+    return new Response(result.stream, { headers: fileHeaders(file.contentType, file.name) });
   } catch (error) {
     console.error("serving a file failed", error);
     return plain(502, "We could not fetch the file right now.");

@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { cronAllowed } from "@/lib/request-guard";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { settlePlans } from "@/lib/plans";
 import { isBillingConfigured } from "@/lib/billing";
@@ -21,12 +22,11 @@ export const maxDuration = 60;
  * one run at a time.
  */
 export async function GET(request: NextRequest) {
-  // Vercel sends the secret with every scheduled run. Without one set, only a
-  // local development server runs the job on request; in production that is
-  // a closed door, not an open one.
-  const secret = process.env.CRON_SECRET?.trim();
-  if (secret ? request.headers.get("authorization") !== `Bearer ${secret}` : process.env.NODE_ENV === "production") {
-    return new Response("Unauthorized", { status: 401 });
+  // Vercel sends the secret with every scheduled run, compared here in
+  // constant time. Without one set, only a local development server runs the
+  // job on request; in production that is a closed door, not an open one.
+  if (!(await cronAllowed(request))) {
+    return new Response("Unauthorized", { status: 401, headers: { "Cache-Control": "no-store" } });
   }
   if (!isRedisConfigured()) return Response.json({ ok: false, error: "unavailable" }, { status: 503 });
   const [got] = await redisPipeline([["SET", "nl:plans:lock", "1", "NX", "EX", 120]]);

@@ -1,7 +1,7 @@
 // Minimal service worker: it makes the site, and each creator's store, installable
 // on Android, and keeps a page usable when the connection drops. It never caches a
 // payment page, a download, a signed-in page, or a page opened with a private link.
-const CACHE = "nimbus-v2";
+const CACHE = "nimbus-v4";
 const SHELL = ["/", "/demo", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -25,10 +25,12 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// A store's own pages that show an order, a membership or a course, on either
-// address a store has (/@name/thanks here, /thanks on its own domain), and the
-// site's signed-in pages.
-const PRIVATE = /^\/(?:@[^/]+\/)?(?:thanks|orders|manage|course|book)(?:\/|$)|^\/(?:studio|signin|unsubscribe|demo\/thanks)(?:\/|$)/;
+// A store's own pages that show an order, a membership, a course, its
+// members-only community, an affiliate's own numbers, a membership to renew
+// or a certificate (which a creator can withdraw, so an old copy must never
+// stand in for it), on either address a store has (/@name/thanks here,
+// /thanks on its own domain), and the site's signed-in pages.
+const PRIVATE = /^\/(?:@[^/]+\/)?(?:thanks|orders|manage|course|book|community|affiliates|renew|certificate)(?:\/|$)|^\/(?:studio|signin|unsubscribe|demo\/thanks)(?:\/|$)/;
 const PRIVATE_QUERY = /[?&](?:session_id|token|t|r)=/;
 
 self.addEventListener("fetch", (event) => {

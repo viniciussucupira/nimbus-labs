@@ -7,6 +7,7 @@ import {
   type CreatorAnswer,
 } from "@/lib/creator-research";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 const RESPONSES_KEY = "nl:creators:responses";
 const RATE_LIMIT = 5;
@@ -42,22 +43,16 @@ async function hashIp(ip: string): Promise<string> {
 
 export async function POST(request: NextRequest) {
   // Only accept submissions sent from this site.
-  const origin = request.headers.get("origin");
-  const host = request.headers.get("host");
-  if (origin && host) {
-    try {
-      if (new URL(origin).host !== host) return fail(403, "forbidden");
-    } catch {
-      return fail(403, "forbidden");
-    }
-  }
+  // Refused before anything else is read: another site, by Origin or by
+  // Sec-Fetch-Site (lib/request-guard.ts).
+  if (fromAnotherSite(request)) return fail(403, "forbidden");
 
   const length = Number(request.headers.get("content-length") ?? "0");
   if (length > MAX_BODY_BYTES) return fail(413, "too_large");
 
   let body: Record<string, unknown>;
   try {
-    const parsed: unknown = await request.json();
+    const parsed: unknown = await (await limited(request, MAX_BODY_BYTES)).json();
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       return fail(400, "invalid");
     }

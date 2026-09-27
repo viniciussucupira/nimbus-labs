@@ -172,19 +172,29 @@ export function bodyHtml(body: string): string {
 
 export type Rendered = { subject: string; html: string; text: string; headers: Record<string, string> };
 
+/**
+ * The way out of an email that is not to the creator's list, such as the
+ * announcements a community member asked for (lib/community-mail.ts): its
+ * own page and one-click address, why the reader gets it, and what the link
+ * stops.
+ */
+export type Door = { page: string; oneClick: string; why: string; label: string; after: string };
+
 /** One email, for one reader, with everything it has to carry. */
-export function render(store: Store, subject: string, body: string, token: string | null): Rendered {
+export function render(store: Store, subject: string, body: string, token: string | null, door?: Door): Rendered {
   const fromName = store.mail?.fromName || store.name;
   const address = store.mail?.address ?? "";
-  const unsub = token ? `${SITE_URL}/unsubscribe?t=${token}` : `${SITE_URL}/@${store.handle}`;
-  const oneClick = token ? `${SITE_URL}/api/mail/unsubscribe?t=${token}` : "";
-  const why = `You are getting this because you told ${fromName} you wanted to hear from them, at nimbuslabsai.com/@${store.handle}.`;
+  const unsub = door ? door.page : token ? `${SITE_URL}/unsubscribe?t=${token}` : `${SITE_URL}/@${store.handle}`;
+  const oneClick = door ? door.oneClick : token ? `${SITE_URL}/api/mail/unsubscribe?t=${token}` : "";
+  const why = door ? door.why : `You are getting this because you told ${fromName} you wanted to hear from them, at nimbuslabsai.com/@${store.handle}.`;
+  const label = door ? door.label : "Unsubscribe";
+  const after = door ? door.after : `in one click, and ${fromName} will not email you again.`;
   const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f7f5f0">
 <div style="max-width:560px;margin:0 auto;padding:32px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1c1917">
 <div style="background:#ffffff;border-radius:16px;padding:28px 24px">${bodyHtml(body)}</div>
 <div style="padding:20px 8px 0;font-size:13px;line-height:1.5;color:#57534e">
 <p style="margin:0 0 8px">${escape(why)}</p>
-<p style="margin:0 0 8px"><a href="${escape(unsub)}" style="color:#57534e;text-decoration:underline">Unsubscribe</a> in one click, and ${escape(fromName)} will not email you again.</p>
+<p style="margin:0 0 8px"><a href="${escape(unsub)}" style="color:#57534e;text-decoration:underline">${escape(label)}</a> ${escape(after)}</p>
 ${address ? `<p style="margin:0 0 8px">${escape(fromName)} · ${escape(address)}</p>` : ""}
 <p style="margin:0">Sent with Nimbus Labs.</p>
 </div></div></body></html>`;
@@ -193,7 +203,7 @@ ${address ? `<p style="margin:0 0 8px">${escape(fromName)} · ${escape(address)}
     "",
     "—",
     why,
-    `Unsubscribe in one click: ${unsub}`,
+    door ? `${door.label}: ${unsub}` : `Unsubscribe in one click: ${unsub}`,
     address ? `${fromName} · ${address}` : "",
     "Sent with Nimbus Labs.",
   ]

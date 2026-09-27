@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { staticPolicy } from "./lib/csp";
 
 const nextConfig: NextConfig = {
   experimental: {
@@ -90,36 +91,60 @@ const nextConfig: NextConfig = {
    * headers added there reach the studio and the store pages and quietly miss
    * the home page. This list reaches all of them.
    *
-   * frame-ancestors is the one that matters. Without it anyone can put the
-   * studio inside an invisible frame on their own site and collect a signed-in
+   * The Content-Security-Policy here is the one for pages built ahead of
+   * time (lib/csp.ts explains both). The pages rendered for each visit — the
+   * stores, the studio — are given a stricter one with a fresh nonce by
+   * proxy.ts, which replaces this one on those responses. Its frame-ancestors
+   * is the rule that matters most: without it anyone can put the studio
+   * inside an invisible frame on their own site and collect a signed-in
    * creator's clicks on buttons they never meant to press. 'self' is used
    * rather than 'none' because the home page shows the demo store in a frame
-   * of its own, and that has to keep working.
+   * of its own, and that has to keep working; X-Frame-Options says the same
+   * to browsers that predate the policy.
+   *
+   * Strict-Transport-Security deliberately has no includeSubDomains: these
+   * pages are also served on creators' own domains, and on theirs it would
+   * force https on every other subdomain they run, which is not ours to
+   * decide.
+   *
+   * Cross-Origin-Opener-Policy keeps a page opened from ours (or ours opened
+   * from elsewhere) from holding a handle on the other window. Stripe is
+   * reached by a redirect, never a popup, so nothing needs that handle.
    */
   async headers() {
     return [
       {
         source: "/:path*",
         headers: [
-          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "Content-Security-Policy", value: staticPolicy() },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), browsing-topics=()",
+          },
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
           { key: "Strict-Transport-Security", value: "max-age=63072000" },
         ],
       },
       /*
-       * A creator's uploaded photograph keeps its own, much stricter policy.
+       * Nothing the API answers is a page. A picture, a file, a calendar or a
+       * piece of JSON may not run, fetch or be framed, even if a browser were
+       * talked into opening one as a document.
        *
-       * The route already sets this on the response, but a header named here
-       * is applied by the routing layer and wins, so the list above would
-       * quietly replace "this file may do nothing at all" with a rule about
-       * framing. It is written again here, last, because a header set in two
+       * The routes set this on their files too, but a header named here is
+       * applied by the routing layer and wins, so the page policy above would
+       * quietly replace "this file may do nothing at all" with the rules for
+       * a page. It is written again here, last, because a header set in two
        * places is decided by the one that comes last.
        */
       {
-        source: "/api/photo/:id*",
-        headers: [{ key: "Content-Security-Policy", value: "default-src 'none'; sandbox; frame-ancestors 'none'" }],
+        source: "/api/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: "default-src 'none'; sandbox; frame-ancestors 'none'" },
+          { key: "X-Frame-Options", value: "DENY" },
+        ],
       },
     ];
   },

@@ -4,8 +4,9 @@
  */
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { type HitKind, recordHit } from "@/lib/stats";
+import { type HitKind, isBot, recordHit } from "@/lib/stats";
 import type { Store } from "@/lib/store";
+import { affiliateCookieName, recordClick } from "@/lib/affiliates";
 
 export function clientIp(request: NextRequest): string {
   return (
@@ -29,7 +30,7 @@ async function isOwner(request: NextRequest, store: Store): Promise<boolean> {
 export async function countHit(
   request: NextRequest,
   store: Store,
-  hit: { kind: HitKind; id?: string; source?: string },
+  hit: { kind: HitKind; id?: string; source?: string; medium?: string; campaign?: string },
 ): Promise<void> {
   try {
     if (await isOwner(request, store)) return;
@@ -40,5 +41,23 @@ export async function countHit(
     });
   } catch (error) {
     console.error("counting a visit failed", error);
+  }
+}
+
+/**
+ * Counts a click on an affiliate's link, unless it is the creator's own or a
+ * robot's (lib/affiliates.ts does the rest). Never throws, like countHit.
+ */
+export async function countAffiliateClick(request: NextRequest, store: Store, code: string): Promise<void> {
+  try {
+    const userAgent = request.headers.get("user-agent") ?? "";
+    if (isBot(userAgent) || (await isOwner(request, store))) return;
+    await recordClick(store, code, {
+      ip: clientIp(request),
+      userAgent,
+      session: request.cookies.get(affiliateCookieName(store.handle))?.value,
+    });
+  } catch (error) {
+    console.error("counting an affiliate click failed", error);
   }
 }

@@ -36,7 +36,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "Live in three steps",
         items: [
           { title: "Take your address", body: "nimbuslabsai.com/@yourname is yours the moment you take it, and the page is up straight away." },
-          { title: "Put up what you sell", body: "Its name, what is inside, the price and a picture. Files, courses, memberships, calls and live sessions, free things for an email, and plain links." },
+          { title: "Put up what you sell", body: "Its name, what is inside, the price and a picture. Files, courses, memberships, calls and live sessions, free things for an email, and plain links. A community for your buyers sits beside them." },
           { title: "Make it look like you", body: "Your photo, one of four themes, and one of ten colours or your own. The studio shows the page before you save." },
         ],
       },
@@ -169,7 +169,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "sell",
     menu: { label: "Courses", description: "Video lessons, free previews and modules that open over time.", icon: "book" },
-    related: ["memberships", "checkout", "email", "instant-delivery"],
+    related: ["quizzes-and-certificates", "community", "memberships", "checkout"],
     blocks: [
       {
         kind: "how",
@@ -190,6 +190,8 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "key", title: "No password to make", body: "The course opens straight away in the browser that paid. On any other device, a link goes to the address they paid with." },
           { icon: "chart", title: "Each student's progress", body: "Your studio shows who opened the course and how many lessons each one marked done." },
           { icon: "users", title: "Your list of students", body: "See every student, and take one off the course if you need to." },
+          { icon: "cap", title: "Quizzes and certificates", body: "Up to 20 questions after any lesson, a pass mark, and a certificate with a page anyone can open to check it.", href: "/platform/quizzes-and-certificates" },
+          { icon: "chat", title: "A community for students", body: "Your store's community can open to the buyers of a course, for questions and work shared where everyone can learn from it.", href: "/platform/community" },
         ],
       },
       {
@@ -205,8 +207,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do yet",
         items: [
-          "No quizzes and no certificates.",
-          "No comments or community inside the course.",
+          "No comments under a lesson. Conversation happens in your store's community, which a course can open.",
+          "Certificates are pages printed or saved as a PDF from the student's browser; no PDF file is made.",
           "No live lessons. A live session can go in a lesson as a link to where you hold it.",
           "Videos watched count towards your store's 200 GB a month, the same as downloads. Going over never cuts a student off; we write to you instead.",
         ],
@@ -218,7 +220,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { q: "How does a student come back next week?", a: "On the device they paid on, the course simply opens. On any other, they ask for a link on the course page and it goes to the address they paid with. No account, no password." },
           { q: "Can I sell a course monthly?", a: "Yes. Sold as a membership, the course stays open while the member pays and closes when the membership ends." },
           { q: "Can students pay in instalments?", a: "Yes. A course with one price can be offered in two to twelve weekly or monthly payments. The student gets in after the first." },
-          { q: "What if I refund a student?", a: "Refunds are made in your own Stripe dashboard. For a course paid once, take the student off the course in your studio as well." },
+          { q: "What if I refund a student?", a: "Refunds are made in your own Stripe dashboard. A refund in full closes the course for that student within ten minutes; a partial refund keeps it open. A refund on a payment plan is not detected, so take that student off the course in your studio." },
         ],
       },
     ],
@@ -237,7 +239,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "sell",
     menu: { label: "Memberships", description: "Daily, weekly, monthly or yearly, on your own Stripe.", icon: "repeat" },
-    related: ["courses", "your-stripe", "email", "checkout"],
+    related: ["courses", "community", "your-stripe", "email"],
     blocks: [
       {
         kind: "how",
@@ -258,6 +260,8 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "book", title: "A course that stays open", body: "A course sold as a membership is open while the member pays, and closes when it ends." },
           { icon: "gift", title: "A free trial, said plainly", body: "1 to 90 days. The card is taken at the start and nothing is charged until the trial ends. The page and the button say so, and the confirmation email gives the date of the first payment." },
           { icon: "calendar", title: "Or a set number of payments", body: "2 to 36 payments, and then it ends by itself. The member can still cancel before that." },
+          { icon: "lock", title: "Access that ends with it", body: "When a membership ends, its files, its course and your community close, and the member is shown how to join again." },
+          { icon: "chat", title: "A community for members", body: "Open your store's community to a membership. A member who stops paying loses the door within five minutes.", href: "/platform/community" },
         ],
       },
       {
@@ -275,8 +279,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           "A free trial is a number of free days, the same for every member of that product. There is no first month at a lower price.",
           "A membership is charged at its set price: it cannot be pay what you want.",
-          "When somebody stops paying, a link they were given keeps working: remove them wherever you keep the thing itself. Courses close by themselves.",
-          "No community space for members.",
+          "Files, courses and the community close when a membership ends: cancelled, or unpaid once Stripe stops retrying. A link you sell stays wherever you keep it, so remove the member there.",
         ],
       },
       {
@@ -304,7 +307,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "sell",
     menu: { label: "Paid calls", description: "Your hours, their time zone, paid before it is booked.", icon: "calendar" },
-    related: ["checkout", "your-stripe", "insights", "store-page"],
+    related: ["calendar-sync", "checkout", "your-stripe", "webhooks"],
     blocks: [
       {
         kind: "how",
@@ -329,6 +332,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "video", title: "Live sessions on dates", body: "Up to 50 dates per product, each with 1 to 500 seats, its own length and its own link. Sales close when you say, up to 72 hours before." },
           { icon: "mail", title: "Reminders", body: "A day and an hour before, to every buyer in their time zone, with the link to join. You get one per time, listing everyone booked." },
           { icon: "refresh", title: "Buyers move their own booking", body: "Up to twice, from the link in their email, until the notice you set before the call. Nothing is charged or refunded." },
+          { icon: "calendar", title: "Your calendar's busy times", body: "Up to three Google, Outlook or iCloud calendars, read by their private address: when you are busy there, that time is not offered.", href: "/platform/calendar-sync" },
         ],
       },
       {
@@ -344,7 +348,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do yet",
         items: [
-          "It does not read your Google or Outlook calendar. The hours you set are the hours offered: to take a day off, change them.",
+          "Your calendars are read for busy times, not written to. Bookings reach your calendar as a feed you subscribe to, and a new busy time can take about ten minutes to close a slot.",
           "Buyers move a booking themselves, but cancelling is a reply to their confirmation email, which reaches you; a refund is made from your Stripe dashboard.",
           "The call or the session itself happens on the service whose link you give. Nothing is streamed or recorded here.",
           "No reminder is sent to a buyer who left the checkout of a call without paying.",
@@ -368,14 +372,14 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Earn more from every buyer,",
     highlight: "on the $29 plan",
     intro:
-      "Discount codes, a product added at checkout, a one-click offer after paying, payment plans, pay what you want, questions at checkout, limited quantities and sales tax. On Stan the first four are on the $99 plan.",
+      "Discount codes, a product added at checkout, one-click offers after paying, payment plans, pay what you want, questions at checkout, limited quantities and sales tax. On Stan the first four are on the $99 plan.",
     badge: WORKING,
     accent: "from-amber-brand to-pink-brand",
     visual: "checkout",
     plan: "creator",
     group: "paid",
     menu: { label: "Checkout tools", description: "Codes, add-ons, one-click offers, instalments and tax.", icon: "percent" },
-    related: ["price-options", "your-stripe", "insights", "memberships"],
+    related: ["funnels", "price-options", "your-stripe", "insights"],
     blocks: [
       {
         kind: "features",
@@ -384,7 +388,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "percent", title: "Discount codes", body: "A word you choose, a percentage or an amount off, and a cap on uses if you want one. Up to twenty codes, kept as coupons on your own Stripe." },
           { icon: "plus", title: "Add it at checkout", body: "A box under the buy button offers another of your products at a price of your own. Never ticked for the buyer." },
-          { icon: "bolt", title: "One click after paying", body: "The thanks page offers one more product, charged to the card just used. Only in that browser, for an hour, once." },
+          { icon: "bolt", title: "One click after paying", body: "The thanks page offers one more product, or up to five in a row as a funnel, charged to the card just used. Only in that browser, for an hour.", href: "/platform/funnels" },
           { icon: "calendar", title: "Payment plans", body: "Two to twelve weekly or monthly payments. The buyer gets it after the first, and it ends by itself after the last." },
           { icon: "list", title: "Limited quantity", body: "Sell fifty and stop. The count shown is the real one, and a unit being paid for is held so the last one is never sold twice." },
           { icon: "receipt", title: "Sales tax and VAT", body: "Stripe Tax works it out from each buyer's address, on your account, once your Stripe tax setup is complete." },
@@ -407,8 +411,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do yet",
         items: [
           "A discount code comes off the payment it is typed into. On a membership, that is the first charge.",
-          "One product can be offered in the box, and one after paying, per product.",
-          "While sales tax is on, the one-click offer after paying is paused, because tax cannot be added to a one-click charge.",
+          "One product can be offered in the box under each product, and up to five after paying.",
+          "While sales tax is on, offers after paying are paused, because tax cannot be added to a one-click charge.",
           "A payment plan cannot be cancelled from your page; a buyer who needs to change something replies to their receipt, which reaches you.",
           "Pay what you want is for a product with one price, sold once: not with memberships, price options, payment plans, the box at checkout, calls or discount codes.",
           "Questions are short answers, numbers or lists: no phone-number or checkbox question, and none on free products.",
@@ -506,7 +510,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "deliver",
     menu: { label: "Instant delivery", description: "On screen when paid, and back by email whenever it is lost.", icon: "bolt" },
-    related: ["price-options", "courses", "your-stripe", "checkout"],
+    related: ["licence-keys", "pdf-stamping", "price-options", "courses"],
     blocks: [
       {
         kind: "how",
@@ -526,6 +530,8 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "download", title: "200 GB of downloads a month", body: "Published, and shown in your studio as it is used. Going over never cuts a buyer off; we write to you instead." },
           { icon: "shield", title: "Nothing that runs", body: "Programs, installers and scripts are refused, so a taken-over account cannot hand out malware." },
           { icon: "mail", title: "A confirmation email", body: "Every buyer gets one from your store's name: what they bought, what they paid and the way back to it. Replies reach you." },
+          { icon: "key", title: "A licence key with each sale", body: "One key per buyer, never given twice, on the thanks page, in the email and in their list of purchases.", href: "/platform/licence-keys" },
+          { icon: "file", title: "The buyer's email on their PDF", body: "Switch on stamping and every page of the PDF they download carries their email, the date and their order.", href: "/platform/pdf-stamping" },
         ],
       },
       {
@@ -541,7 +547,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do yet",
         items: [
-          "No licence keys, and no stamping of the buyer's name on a PDF.",
+          "Stamping a PDF discourages sharing; it does not stop it, and it covers PDFs up to 50 MB.",
           "Getting a purchase back needs the address the buyer paid with. If they typed it wrong, you see the sale in Stripe and can send the file yourself.",
           "A link you sell stays wherever you keep it: we cannot take it back from someone who has it.",
         ],
@@ -551,8 +557,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "Questions about delivery",
         items: [
           { q: "How does a buyer get a file again after three days?", a: "At the foot of your store page, “Bought something here? Get it again”. They type the address they paid with and receive a link to a page with everything that address bought from you, read from your Stripe account. No account and no password." },
-          { q: "Can a buyer pass the download around?", a: "The download is tied to their order and to a short window, and the file is fetched through a link that expires in minutes. A leaked link does not become a free copy for everyone." },
-          { q: "What if a buyer was refunded?", a: "A sale you refunded in full no longer appears when they ask to get their purchases again, because that list is read from your Stripe account each time it opens." },
+          { q: "Can a buyer pass the download around?", a: "The download is tied to their order and to a short window, and the file is fetched through a link that expires in minutes. A leaked link does not become a free copy for everyone. With stamping on, a PDF also carries the buyer's email on every page." },
+          { q: "What if a buyer was refunded?", a: "A sale you refunded in full stops downloading at once and no longer appears when they ask to get their purchases again, because both read your Stripe account each time. A partial refund keeps both. A file already saved cannot be taken back." },
         ],
       },
     ],
@@ -590,6 +596,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "ban", title: "One-click unsubscribe", body: "In every email, and in the header mail apps use. Whoever leaves is never written to again, whatever a later import says." },
           { icon: "pin", title: "Your postal address", body: "And why the reader is getting it — what the law in the United States asks of every commercial email." },
           { icon: "download", title: "Your list is yours", body: "Download it as a CSV any time, from any plan. Bring one in, confirming each time that those people agreed." },
+          { icon: "chat", title: "Announcements to your community", body: "A post in your community can also go by email to the members who asked for it, counted in the same monthly emails.", href: "/platform/community" },
         ],
       },
       {
@@ -685,7 +692,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "See what sells,",
     highlight: "and where buyers come from",
     intro:
-      "Visitors, checkouts, sales and conversion for the last 7 or 30 days, where each visit came from, and every product and link on its own line. Counted without cookies.",
+      "Visitors, checkouts, sales and conversion for the last 7, 30 or 90 days or all time, where each visit came from, every product and link on its own line, and the lot as CSV files. Counted without cookies.",
     badge: WORKING,
     accent: "from-mint-brand to-violet-brand",
     visual: "insights",
@@ -699,7 +706,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "How it is counted",
         items: [
           { title: "Visits, without cookies", body: "A visitor is one person on one device on one day, told apart by a one-way fingerprint that is never stored. Your own visits are not counted." },
-          { title: "Sources, even from apps", body: "Instagram and TikTok hide where a visit came from, so we read the app's name. Add ?utm_source= to a link to count it under your own word." },
+          { title: "Sources, even from apps", body: "Instagram and TikTok hide where a visit came from, so we read the app's name. Add utm_source, utm_medium and utm_campaign to a link to count it under your own words." },
           { title: "Sales, from Stripe", body: "New purchases and new members are read from your own Stripe account, not counted by us." },
         ],
       },
@@ -714,11 +721,20 @@ export const FEATURE_PAGES: TopicPage[] = [
         ],
       },
       {
+        kind: "features",
+        title: "Your numbers, to keep",
+        items: [
+          { icon: "download", title: "Sales as a file", body: "Every paid sale for the last 30 or 90 days or all time, read from your Stripe account, as a CSV. Up to 5,000 sales in one file, and it says so when there are more." },
+          { icon: "chart", title: "Visits and sources as files", body: "Your visits day by day, and where visitors came from, as CSV files." },
+          { icon: "target", title: "Every product on its own line", body: "Each product's checkouts started, sales and revenue, side by side, for each window." },
+        ],
+      },
+      {
         kind: "limits",
         title: "What it does not do yet",
         items: [
           "Renewals are not in the revenue figure; they are in your Stripe dashboard.",
-          "The last 30 days at most, with no export.",
+          "All time starts at the first visit still on record; daily visits are kept for about thirteen months.",
           "No A/B tests of the page.",
         ],
       },
@@ -728,6 +744,549 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Do the visit counts set cookies?", a: "No. They set no cookie and keep no personal data, so there is nothing about them to ask a visitor. The ad pixels are different, which is why visitors are asked first where the law says so." },
           { q: "Why do my numbers differ from Stripe's?", a: "Sales here are new purchases and new members before Stripe's fee and any refund. Renewals and refunds are in your Stripe dashboard." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "community",
+    section: "platform",
+    eyebrow: "Community",
+    title: "A community for the people",
+    highlight: "who bought from you",
+    intro:
+      "One members' area on your store, with spaces, posts, comments and likes, open only to the buyers of the products you choose. Members come in with a link sent to their email: no account, no password.",
+    badge: WORKING,
+    accent: "from-violet-brand to-mint-brand",
+    plan: "creator",
+    group: "sell",
+    menu: { label: "Community", description: "Posts and comments, open only to your buyers.", icon: "chat" },
+    related: ["memberships", "courses", "email", "calls"],
+    blocks: [
+      {
+        kind: "how",
+        title: "How people get in",
+        items: [
+          { title: "Choose what opens it", body: "Any paid product can: a course, a file, a call, or a membership while it is being paid for. Free products too, if you want them to." },
+          { title: "They come in by email", body: "A member types the address they paid with and opens the link we send. That browser stays in for 90 days." },
+          { title: "Checked on every visit", body: "Who bought what is read from your own Stripe account. A membership that ends loses the door within five minutes, and a member you take out loses it at once." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "What the community holds",
+        items: [
+          { icon: "list", title: "Up to 20 spaces", body: "Each with its own name and a line about what it is for. A space can be yours alone to post in, with members still commenting." },
+          { icon: "type", title: "Posts with a picture", body: "A title of up to 120 characters, up to 5,000 characters of text and one picture." },
+          { icon: "chat", title: "Comments, replies and likes", body: "Comments of up to 2,000 characters, one level of replies, up to 300 under a post, and one like per member on each post." },
+          { icon: "pin", title: "Pinned posts and Start here", body: "Up to three posts held at the top, and one post every member sees first." },
+          { icon: "mail", title: "Announcements", body: "Posts labelled as yours. On Pro they can also go by email to the members who ticked the box for it, with a one-click unsubscribe." },
+          { icon: "users", title: "A member directory they opt into", body: "Members choose the name they are seen by and whether to be listed. Their email address is never shown to other members." },
+          { icon: "shield", title: "Reports and moderation", body: "Members report a post or a comment and it lands in your queue. You hide it, delete it, mute a member or take them out." },
+          { icon: "clock", title: "Limits that stop a spammer", body: "Each member can write 5 posts an hour and 20 a day, 30 comments an hour and 10 pictures an hour. You are never limited." },
+          { icon: "phone", title: "In your store's look", body: "Your theme and colour, and part of your store's installable app. Nothing in it is kept offline on a device." },
+        ],
+      },
+      {
+        kind: "uses",
+        title: "What creators use it for",
+        items: [
+          { icon: "cap", who: "A course with a cohort", what: "Students of the course post their work and questions, and you answer where everyone can learn from it." },
+          { icon: "repeat", who: "A paid monthly club", what: "Open it to a membership, and whoever stops paying stops seeing it, without you lifting a finger." },
+          { icon: "users", who: "Coaching clients", what: "A space for wins, a space for questions, and your announcements pinned at the top." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do yet",
+        intro: "Said here so nobody signs up expecting it.",
+        items: [
+          "No live chat, private messages, or video inside it. Posts and comments appear when a page is opened, not as they are written.",
+          "No webinars inside the community: sell those as live sessions, held on the meeting service whose link you give.",
+          "No search, mentions, polls, or emails about replies. Posts cannot be edited once written.",
+          "One community per store, and every space is open to every member: a space cannot be kept for the buyers of one product.",
+          "Up to 10,000 posts and 50,000 members in one community.",
+          "No app-store app. It opens in the browser, and in your store's app on the home screen.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about the community",
+        items: [
+          { q: "Who can see what is posted?", a: "Only the people let in, and you. Community pages and their pictures are shown only to a browser that is let in, and they are kept out of search engines." },
+          { q: "Can members see each other's email addresses?", a: "No. Other members see only the name someone chose, and the directory lists only those who asked to be listed. You see members' addresses in your studio, because they are your buyers." },
+          { q: "What happens after a refund?", a: "A payment you refund in full on your Stripe account stops opening the community, within five minutes." },
+          { q: "Does Stan have this?", a: "Yes. Stan has a community, and its help centre, read on 26 September 2026, lists webinars inside it, which ours cannot hold. Ours is on the $29 plan; emailing announcements needs Pro." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "funnels",
+    section: "platform",
+    eyebrow: "Funnels",
+    title: "After the sale,",
+    highlight: "the next best offer",
+    intro:
+      "Up to five offers after someone pays, shown one at a time, each charged in one click to the card they just used. A yes and a no can lead to different next offers, so a no can meet something smaller.",
+    badge: WORKING,
+    accent: "from-amber-brand to-violet-brand",
+    plan: "creator",
+    group: "paid",
+    menu: { label: "Funnels", description: "Up to five one-click offers after paying.", icon: "ladder" },
+    related: ["checkout", "your-stripe", "price-options", "insights"],
+    blocks: [
+      {
+        kind: "how",
+        title: "How a funnel works",
+        items: [
+          { title: "Pick what it follows", body: "Any one-off product can have a funnel after it. Each offer is another of your products, at a price you set for the offer." },
+          { title: "Draw the two paths", body: "For every offer, where yes leads and where no thanks leads: a later offer, or the end. A path only ever moves forward, so nobody sees an offer twice." },
+          { title: "One click, same card", body: "The thanks page shows the first offer. Taking it charges the card just used, on your own Stripe account, once." },
+        ],
+      },
+      {
+        kind: "lead",
+        text: "On Stan, funnels are on the $99 plan. Here, offers after paying are on the $29 plan. The difference in shape is real too: ours start after the checkout, and Stan's can include pages before it.",
+      },
+      {
+        kind: "features",
+        title: "What each offer carries",
+        items: [
+          { icon: "type", title: "Its own words", body: "A headline of up to 90 characters, a few sentences of up to 400, and the picture of one of your products." },
+          { icon: "tag", title: "Its own price", body: "Never more than the product costs on its own, so the offer is always a real one." },
+          { icon: "ladder", title: "Downsells", body: "A no can lead to the same product for less, or to something else entirely." },
+          { icon: "check", title: "Nothing sold twice", body: "The product just bought is never offered again, and anything already in the order is passed over." },
+          { icon: "lock", title: "Only for the buyer who paid", body: "The offers show only in the browser that paid, within an hour of paying." },
+          { icon: "mail", title: "A receipt for each", body: "Every offer taken is delivered on the thanks page and gets its own confirmation email." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do yet",
+        items: [
+          "No landing or opt-in pages before the checkout. A funnel starts after someone pays.",
+          "Up to five offers after each product.",
+          "Offers are one-off products with one price: not memberships, payment plans or calls.",
+          "While sales tax is on, offers after paying are paused, because tax cannot be added to a one-click charge.",
+          "A buyer who closes the page, or comes back after the hour, is not shown the offers again.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about funnels",
+        items: [
+          { q: "Can a buyer be charged without meaning to?", a: "No. An offer is charged only when the buyer presses to take it, in the browser that paid, within the hour, and once. If the bank asks them to confirm, they confirm it." },
+          { q: "Where do I see what was taken?", a: "In your numbers and your sales export, marked as taken after paying, and in your own Stripe dashboard." },
+          { q: "Does Nimbus take anything from an offer?", a: "No. 0%, as on every other sale. Stripe charges its own card fee on your account." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "affiliates",
+    section: "platform",
+    eyebrow: "Affiliates",
+    title: "Let the people who love it",
+    highlight: "sell it for you",
+    intro:
+      "People apply, you approve, and each affiliate gets a link and a page of their own with their clicks, sales and what they are owed. You pay them yourself: every sale lands in full in your own Stripe account.",
+    badge: WORKING,
+    accent: "from-mint-brand to-sky-brand",
+    plan: "creator",
+    group: "grow",
+    menu: { label: "Affiliates", description: "A link and a page for each. You pay them.", icon: "handshake" },
+    related: ["your-stripe", "insights", "funnels", "webhooks"],
+    blocks: [
+      {
+        kind: "how",
+        title: "How your programme runs",
+        items: [
+          { title: "Set the terms", body: "A share of 1% to 90%, for the whole store or product by product, and a window of 1 to 90 days after a click." },
+          { title: "Approve who you want", body: "People apply on your store's affiliate page with an email address they confirm. Nobody is in until you say so." },
+          { title: "Pay what is owed", body: "Your studio shows what each affiliate earned and what you have paid. Pay them however you agree, then mark it paid." },
+        ],
+      },
+      {
+        kind: "note",
+        title: "We do not pay your affiliates, and we say so first",
+        body: "Stan pays its affiliates automatically, on its $99 plan. We never hold your money, so there is nothing for us to pay out from: you pay affiliates yourself, by bank transfer, PayPal or however you agree. What you get from us is the record of who sent which sale and what it earned, on the $29 plan.",
+      },
+      {
+        kind: "features",
+        title: "What the programme keeps track of",
+        items: [
+          { icon: "user", title: "A page for each affiliate", body: "Their link, their clicks, their sales, what they earned and what you paid them. They never see who the buyers were." },
+          { icon: "link", title: "Last click wins", body: "The most recent affiliate link a buyer followed, inside your window, gets the sale." },
+          { icon: "scale", title: "Worked out fairly", body: "The share is taken of what was paid before tax. A refund on your Stripe account cancels it, and a partial refund reduces it." },
+          { icon: "shield", title: "Hard to game", body: "No commission on an affiliate's own purchase, a click counted once per visitor per day, and your own clicks not counted." },
+          { icon: "download", title: "The book, as a file", body: "Download who is owed what as a CSV, and note each payment with its date and reference." },
+          { icon: "users", title: "Up to 1,000 people", body: "Applications included, each approved or declined by you." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        items: [
+          "No automatic payouts. You pay affiliates yourself and mark each payment in your studio.",
+          "Memberships and payment plans earn no commission; one-off sales and booked calls do.",
+          "A dispute on your Stripe account does not cancel a commission by itself: check your dashboard before you pay.",
+          "Contracts, tax forms and payments between you and your affiliates are yours to arrange.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about affiliates",
+        items: [
+          { q: "Does Nimbus take a cut of affiliate sales?", a: "No. 0% of every sale, as on any other. The full amount lands in your Stripe account, and the affiliate's share is yours to pay." },
+          { q: "How is a sale tied to an affiliate?", a: "Their link is your store's address with their code on the end. Following it leaves a cookie on your store's own address with the code and the time of the click, and a purchase inside your window is credited to them." },
+          { q: "What does someone need to join?", a: "An email address they can open. They apply on your store's affiliate page, confirm with the link we email, and you approve them in your studio." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "calendar-sync",
+    section: "platform",
+    eyebrow: "Calendar sync",
+    title: "Busy in your calendar,",
+    highlight: "not bookable on your store",
+    intro:
+      "Paste the private address of up to three calendars, from Google, Outlook or iCloud, and the times you are busy there stop being offered as call times. Your bookings come back the other way, as a calendar you subscribe to.",
+    badge: WORKING,
+    accent: "from-sky-brand to-violet-brand",
+    plan: "creator",
+    group: "sell",
+    menu: { label: "Calendar sync", description: "Your busy times hide call slots.", icon: "refresh" },
+    related: ["calls", "webhooks", "checkout", "store-page"],
+    blocks: [
+      {
+        kind: "how",
+        title: "Three steps, no account to connect",
+        items: [
+          { title: "Copy your calendar's private address", body: "Google calls it the secret address in iCal format; Outlook, a published calendar; iCloud, a public calendar. No sign-in and no password." },
+          { title: "Paste it in your studio", body: "Up to three. The studio shows which service each one is and when you added it, never the address." },
+          { title: "Busy means not offered", body: "Times you are busy there, up to 120 days ahead, drop out of your call times, usually within about ten minutes." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "Both directions",
+        items: [
+          { icon: "eye", title: "Only busy times are kept", body: "Never a title, a guest or a place from your calendar: only when you are busy." },
+          { icon: "calendar", title: "Your bookings, in your calendar", body: "A private address of your own lists every upcoming call and session with who booked it, for Google, Outlook or Apple Calendar to subscribe to." },
+          { icon: "door", title: "Stopped whenever you like", body: "Remove an address in your studio, or reset it in your calendar app, and it stops working. Your own feed's address can be replaced the same way." },
+          { icon: "alert", title: "When a calendar stops answering", body: "Its last good reading is used for up to six hours, and your studio says what went wrong." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        items: [
+          "It is not a two-way sync. Nothing is written into your calendar: bookings reach it through the feed you subscribe to, which your calendar app refreshes on its own schedule.",
+          "A new busy time can take about ten minutes to close a slot.",
+          "Up to three calendars, read 120 days ahead.",
+          "No sign-in with Google or Microsoft. A calendar that cannot give a private iCal address cannot be read.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about calendar sync",
+        items: [
+          { q: "Does Stan do this?", a: "Stan's help centre, read on 26 September 2026, lists Google Calendar for its calls. Ours reads Google, Outlook and iCloud calendars by their private address, and does not write events into any of them." },
+          { q: "What happens to my calendar's address?", a: "It is stored with your store and used only to read your busy times. Once saved it is never shown again, not even to you. If you are ever unsure, reset it in your calendar app and the old one stops working." },
+          { q: "Does it block group calls and live sessions too?", a: "It hides call times you are busy for. Live sessions are on the dates you set yourself, so they are yours to place around your calendar." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "webhooks",
+    section: "platform",
+    eyebrow: "Webhooks",
+    title: "Tell your other tools",
+    highlight: "what just happened",
+    intro:
+      "Up to five addresses of your own, such as a Zapier Catch Hook, a Make scenario or your own server, told about sales, members, leads, bookings and refunds as they happen, in signed JSON.",
+    badge: WORKING,
+    accent: "from-violet-brand to-sky-brand",
+    plan: "creator",
+    group: "grow",
+    menu: { label: "Webhooks", description: "Sales, leads and bookings, sent to Zapier or Make.", icon: "plug" },
+    related: ["insights", "calls", "affiliates", "email"],
+    blocks: [
+      {
+        kind: "how",
+        title: "How to connect a tool",
+        items: [
+          { title: "Add an address", body: "An https address, and the events it should hear. Its signing secret is shown to you once." },
+          { title: "Send a test", body: "One press sends a test message, and the delivery log shows what the address answered." },
+          { title: "Let it run", body: "Each event is sent when it happens. Those read from your Stripe account can take up to about five minutes." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "Seven events, and how they arrive",
+        items: [
+          { icon: "receipt", title: "sale.completed and refund.issued", body: "A paid checkout of any product, each one-click offer taken after it, and a refund, even one made in your Stripe dashboard." },
+          { icon: "repeat", title: "membership.started and membership.canceled", body: "A membership bought, and a membership set to end or ended." },
+          { icon: "gift", title: "lead.captured", body: "Someone confirmed their address for a free product." },
+          { icon: "calendar", title: "call.booked and call.moved", body: "A call or a seat in a session booked and paid, and a booking the buyer moved." },
+          { icon: "lock", title: "Signed", body: "Every message carries a Nimbus-Signature header: an HMAC-SHA256 of its time and body under that address's secret." },
+          { icon: "refresh", title: "Tried again", body: "When an address does not answer, the message is tried six more times over about forty hours, then marked failed." },
+          { icon: "list", title: "A log you can read", body: "Your studio keeps the last 50 deliveries, each for up to seven days, with what the address answered." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        items: [
+          "There is no Nimbus app in Zapier's directory. In Zapier, use its Webhooks by Zapier trigger, Catch Hook.",
+          "Webhooks only send. There is no public API to read or change your store; the one public address is the licence key check.",
+          "Up to five addresses per store, https only, and redirects are not followed.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about webhooks",
+        items: [
+          { q: "How do I know a message came from you?", a: "Check its Nimbus-Signature header against the secret you were shown when you added the address, and check that its time is recent." },
+          { q: "What if the same event arrives twice?", a: "Every event has an id made from what it is about, and it is sent once however often it is noticed. Keep the ids you have seen and ignore a repeat, in case a retry crosses a slow answer." },
+          { q: "Does Stan have webhooks?", a: "Not that its help centre publishes, read on 17 September 2026." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "quizzes-and-certificates",
+    section: "platform",
+    eyebrow: "Quizzes and certificates",
+    title: "Quizzes that teach,",
+    highlight: "a certificate that proves it",
+    intro:
+      "A quiz after any lesson, marked on our side, and a certificate of completion with a page of its own that anyone can open to check it.",
+    badge: WORKING,
+    accent: "from-pink-brand to-violet-brand",
+    plan: "creator",
+    group: "deliver",
+    menu: { label: "Quizzes and certificates", description: "Questions after a lesson, a certificate at the end.", icon: "cap" },
+    related: ["courses", "memberships", "community", "email"],
+    blocks: [
+      {
+        kind: "how",
+        title: "From a lesson to a certificate",
+        items: [
+          { title: "Add a quiz to a lesson", body: "Up to 20 questions, each with one right answer or several, and a line of explanation for after." },
+          { title: "Set the rules", body: "The pass mark, how many tries (up to 10, or as many as they like), and whether later lessons stay shut until it is passed." },
+          { title: "Switch certificates on", body: "A student who finishes every lesson and passes every quiz that has to be passed types their name and gets a certificate." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "What makes it worth having",
+        items: [
+          { icon: "lock", title: "Marked on the server", body: "The right answers are not sent to the page before the student answers, so they cannot be read from it." },
+          { icon: "eye", title: "Answers shown fairly", body: "After a try the student sees what they got right. The rest are shown once they pass or run out of tries." },
+          { icon: "type", title: "The name as they typed it", body: "The certificate carries the student's name exactly as typed, with the course title and your name as they were that day." },
+          { icon: "globe", title: "A page that proves it", body: "Each certificate has its own address on your store that anyone can open to check it. It is kept out of search engines." },
+          { icon: "ban", title: "Withdrawn when it has to be", body: "Issued to the wrong name, or to someone you refunded? Withdraw it, and its page says it was withdrawn." },
+          { icon: "list", title: "Your list of certificates", body: "Your studio lists the certificates of each course, who earned them and when." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do yet",
+        items: [
+          "The certificate is a page that the student prints or saves as a PDF from their browser. No PDF file is made for them.",
+          "Questions are multiple choice, with one right answer or several. No written answers.",
+          "One quiz per lesson, up to 20 questions.",
+          "A student who used all their tries asks you for more by replying to their purchase email.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about quizzes and certificates",
+        items: [
+          { q: "Can a certificate be faked by editing a link?", a: "No. Its page is read from our record of it, never from anything in the address. Anyone checking one should open its page on your store." },
+          { q: "Does passing a quiz count as finishing the lesson?", a: "Yes. Passing marks the lesson done, which is what a certificate counts." },
+          { q: "Does Stan have quizzes and certificates?", a: "Not by its help centre, read on 17 September 2026." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "licence-keys",
+    section: "platform",
+    eyebrow: "Licence keys",
+    title: "A unique key",
+    highlight: "with every sale",
+    intro:
+      "For software, plugins and anything that unlocks with a code. Upload the keys your own system made, or have them made here, and each buyer gets one nobody else has.",
+    badge: WORKING,
+    accent: "from-amber-brand to-mint-brand",
+    plan: "creator",
+    group: "deliver",
+    menu: { label: "Licence keys", description: "One unique key per sale, and a check for your app.", icon: "key" },
+    related: ["instant-delivery", "pdf-stamping", "webhooks", "checkout"],
+    blocks: [
+      {
+        kind: "how",
+        title: "How keys reach a buyer",
+        items: [
+          { title: "Choose where they come from", body: "A text or CSV file of up to 10,000 keys, handed out in the order you uploaded them, or keys made here in a shape you set, like STUDIO-7K2Q-9XFD-M3PL." },
+          { title: "A buyer pays", body: "They see their key on the thanks page, in their confirmation email and in their list of purchases." },
+          { title: "Your software asks", body: "A public address answers whether a key is valid, revoked or unknown, and nothing about who bought it." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "What it takes care of",
+        items: [
+          { icon: "check", title: "Never given twice", body: "Two buyers paying in the same moment get two different keys, and a key uploaded twice is handed out once." },
+          { icon: "type", title: "Keys people can type", body: "Made keys leave out the characters people confuse, like 0 and O, and are long enough that nobody guesses one." },
+          { icon: "alert", title: "A warning before you run out", body: "An email when the pool runs low, at 20 keys unless you choose another number. When it is empty, the product shows as sold out." },
+          { icon: "ban", title: "Revoke and restore", body: "A key given for a payment refunded in full is revoked by itself within about five minutes, and you can revoke any key by hand. Restore it if you change your mind." },
+          { icon: "list", title: "Who has which key", body: "Your studio shows every key given, to whom and for which sale." },
+          { icon: "mail", title: "Nobody left without one", body: "A buyer who paid in the moment the last key went is not left with nothing: the next keys you upload go to them first, by email." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        items: [
+          "Paid one-off products only: not memberships, calls or courses.",
+          "No activation or seat counting. The check says whether a key is good; your software decides the rest.",
+          "Revoking is a record your software has to ask about. Nothing here can switch off a copy that never checks.",
+          "Up to 10,000 keys waiting in one product's pool.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about licence keys",
+        items: [
+          { q: "How does my software check a key?", a: "It asks /api/store/licence with your store's address, the product and the key, and gets back valid, revoked or unknown. It can be called from a website or an app, up to 120 times a minute from one connection." },
+          { q: "Can I use keys my own system already made?", a: "Yes. Upload them as a text or CSV file. A key that was already uploaded is skipped, so it can never go to two buyers." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "pdf-stamping",
+    section: "platform",
+    eyebrow: "PDF stamping",
+    title: "Every page says",
+    highlight: "whose copy it is",
+    intro:
+      "Switch it on for an ebook or a workbook, and each page of the PDF a buyer downloads carries their email, the date and their order along its foot.",
+    badge: WORKING,
+    accent: "from-pink-brand to-amber-brand",
+    plan: "creator",
+    group: "deliver",
+    menu: { label: "PDF stamping", description: "The buyer's email on every page of their PDF.", icon: "file" },
+    related: ["instant-delivery", "licence-keys", "price-options", "courses"],
+    blocks: [
+      {
+        kind: "how",
+        title: "How it works",
+        items: [
+          { title: "Switch it on per product", body: "One box on the product, for the PDF it delivers." },
+          { title: "The buyer downloads", body: "One quiet line along the foot of every page: “Sold to maya@example.com on Sep 26, 2026 · order …E54F2A · for personal use”." },
+          { title: "Made once per sale", body: "The stamped copy is kept beside your original, so downloading again gives the buyer the same file." },
+        ],
+      },
+      {
+        kind: "note",
+        title: "What it is, and what it is not",
+        body: "It discourages sharing: a copy that turns up somewhere else says whose it was, and that makes a buyer think twice. It is not copy protection. It does not stop anyone from sharing the file, and someone determined can remove the line.",
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        items: [
+          "PDFs up to 50 MB. A bigger one, or one locked with a password or damaged, is handed over as you uploaded it, and your studio tells you.",
+          "PDFs only. Images, ZIP files and everything else are handed over as uploaded.",
+          "A product sold as a link is not stamped: the file is wherever you keep it.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about PDF stamping",
+        items: [
+          { q: "Does it change my original file?", a: "No. Your upload stays as it is. Each buyer's copy is made from it, kept beside it, and deleted with it." },
+          { q: "Is the file sent to another company to be stamped?", a: "No. It is stamped by our own code on the servers that run Nimbus, and not sent anywhere else." },
+          { q: "Should I tell buyers?", a: "Yes. Their email is printed on the file they receive, so say so on the product." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "security",
+    section: "platform",
+    eyebrow: "Security",
+    title: "How your store",
+    highlight: "and your buyers are protected",
+    intro:
+      "What we do, written so you can check it: payments on your own Stripe account, sign-in without passwords, strict rules on what your pages may run, and a refund that closes what it paid for. And, at the end, what none of it does.",
+    badge: WORKING,
+    accent: "from-violet-brand to-mint-brand",
+    plan: "creator",
+    group: "paid",
+    menu: { label: "Security", description: "Sign-in, checkout, files and refunds, in plain words.", icon: "shield" },
+    related: ["your-stripe", "instant-delivery", "webhooks", "licence-keys"],
+    blocks: [
+      {
+        kind: "features",
+        title: "Your money and your account",
+        items: [
+          { icon: "bank", title: "Sales on your own Stripe", body: "The buyer pays on Stripe's own checkout, on your account. We never see a card number and never hold a balance of yours." },
+          { icon: "tag", title: "Prices worked out on our side", body: "What a buyer is charged is read on our server from what you saved, never from anything the page sends." },
+          { icon: "key", title: "No password to steal", body: "You sign in with a link sent to your email. It works once, stops working after 15 minutes, and how often links can be asked for is limited." },
+          { icon: "refresh", title: "A fresh session every time", body: "Each sign-in starts a new session, and a session the browser held before is closed." },
+          { icon: "door", title: "Log out of all devices", body: "One button at the foot of your studio closes every session you have open, everywhere." },
+          { icon: "mail", title: "An email when something important changes", body: "Whenever your Stripe account, your domain or your webhooks change, we write to your sign-in address saying what changed and when." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "Your pages",
+        items: [
+          { icon: "lock", title: "A strict policy on what runs", body: "Store pages, on nimbuslabsai.com and on your own domain, the studio and signing in carry a Content-Security-Policy with a new nonce on every response, so text somebody typed cannot run as a script." },
+          { icon: "target", title: "Pixels only where allowed", body: "Your Meta, Google, TikTok and Pinterest pixels load only after the visitor agrees, where the law says they must be asked." },
+          { icon: "shield", title: "Forged requests refused", body: "Every request that changes something must come from this site, and our cookies are HttpOnly and SameSite." },
+          { icon: "globe", title: "The usual browser protections", body: "HSTS, nosniff, a referrer policy, Cross-Origin-Opener-Policy, a Permissions-Policy that switches off camera, microphone and location, and no framing by other sites." },
+          { icon: "link", title: "Emailed links go to us or to you", body: "Every link we email points at nimbuslabsai.com or at your store's own domain, never at an address a request made up." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "Files, refunds and bots",
+        items: [
+          { icon: "download", title: "Downloads that expire", body: "The download on the thanks page works for 3 days; after that the buyer gets it again by email. Where a file is stored is never shown, and large files go through signed links that expire in minutes." },
+          { icon: "file", title: "Files that cannot run", body: "Every file is handed over as a download, with headers that stop a browser running anything inside it." },
+          { icon: "ban", title: "A full refund closes the door", body: "Refund a payment in full on your Stripe account and its download stops at once, its course closes within 10 minutes, the community within 5, and its licence key is revoked within about 5. A partial refund keeps access." },
+          { icon: "clock", title: "Limits that stop bots", body: "Checkouts are limited to 20 per 10 minutes per connection per store, and bookings and every form that sends an email have limits of their own, so a script cannot sit on your limited stock or your call times." },
+          { icon: "plug", title: "Signed webhooks, guarded addresses", body: "Webhooks are signed with HMAC-SHA256, and a calendar or webhook address that points into a private network is refused." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What this does not do",
+        intro: "Said here so nobody trusts it for more than it is.",
+        items: [
+          "There is no two-factor sign-in, because there are no passwords. Your account is as safe as your email inbox: protect that one.",
+          "A refund on a payment plan is not detected: take the buyer off the course, or remove their access, yourself. A refunded membership closes when its subscription is cancelled in Stripe.",
+          "A refund cannot take back a file already saved, or a product delivered as a link to somewhere else.",
+          "The limits on checkouts, bookings and forms are counted in our database. If it cannot be reached, they let requests through rather than stop a buyer from paying.",
+          "Pages built ahead of time, such as the home page, the help and the blog, carry a policy without a nonce. Nothing on them comes from a creator or a visitor.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about security",
+        items: [
+          { q: "What if I get an email about a change I did not make?", a: "Log in, choose “Log out of all devices” at the foot of your studio, put the setting back, and reply to that email so we can help." },
+          { q: "Who handles a refund?", a: "You do, in your own Stripe dashboard. What a full refund closes here happens by itself, read from Stripe." },
+          { q: "Can I sign in with a password?", a: "No. There is no password to set, and none kept here to be stolen. Each link we email works once, for 15 minutes." },
         ],
       },
     ],
@@ -789,9 +1348,9 @@ export const CREATOR_PAGES: TopicPage[] = [
         kind: "limits",
         title: "Where it falls short for coaches today",
         items: [
-          "Calls do not read your Google or Outlook calendar: to block a day, change your hours.",
+          "Calls read your calendar's busy times but do not write bookings into it: you subscribe to a feed of them instead.",
           "Clients move their own booking up to twice, but cancelling is a reply to the confirmation email, and a refund is yours to make in Stripe.",
-          "No community space. Group calls and live sessions happen on the meeting service whose link you give.",
+          "Group calls and live sessions happen on the meeting service whose link you give. Your community holds posts and comments, not live video.",
         ],
       },
       {
@@ -924,7 +1483,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         title: "Where it falls short for trainers today",
         items: [
           "No workout-tracking app and no progress photos: students mark lessons done, and that is what you see.",
-          "No community or group chat for a challenge.",
+          "No live group chat for a challenge: your community holds posts, comments and likes, updated when the page is opened.",
           "Videos watched count towards the store's 200 GB a month; going over never cuts anyone off, and we write to you.",
         ],
       },
@@ -982,13 +1541,15 @@ export const CREATOR_PAGES: TopicPage[] = [
           { icon: "list", title: "Limited editions that are true", body: "The count left is the real one, and the last copy is never sold twice.", href: "/platform/checkout" },
           { icon: "target", title: "Pixels for your ads", body: "Meta, Google, TikTok and Pinterest, with each purchase and its amount, on the $29 plan.", href: "/platform/insights" },
           { icon: "globe", title: "Your own domain", body: "shop.yourstudio.com on Pro, with the certificate made for you.", href: "/platform/domain" },
+          { icon: "key", title: "Licence keys", body: "A unique key with each sale, for plugins and apps, checked by your software through a public address.", href: "/platform/licence-keys" },
+          { icon: "file", title: "Stamped PDFs", body: "The buyer's email on every page of a guide or a colour book, to make sharing it a second thought.", href: "/platform/pdf-stamping" },
         ],
       },
       {
         kind: "limits",
         title: "Where it falls short for designers today",
         items: [
-          "No licence keys, and no stamping of the buyer's name into files.",
+          "Stamping works on PDFs only: presets, brushes and images are handed over as uploaded.",
           "No marketplace that sends you buyers: people arrive from your own links.",
           "No reviews or ratings on products.",
         ],
