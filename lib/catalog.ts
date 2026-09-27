@@ -48,6 +48,7 @@ import { type PayWhatYouWant, parsePwyw } from "@/lib/pay-what-you-want";
 import { type CheckoutField, parseFields } from "@/lib/checkout-fields";
 import { type KeySetup, activeKeys, parseKeySetup } from "@/lib/key-setup";
 import { type DisplayStyle, type ProductImage, parseDisplay, parseProductImage } from "@/lib/product-image";
+import { deliveredIds, parseBundleItems } from "@/lib/bundle-rules";
 import type { Store } from "@/lib/store";
 
 /**
@@ -172,6 +173,19 @@ export type Product = {
    * record of its own. False is the page it has always had.
    */
   page: boolean;
+  /**
+   * When this is a bundle: the ids of the store's own products it hands over,
+   * in the creator's order (lib/bundles.ts). A bundle delivers nothing of its
+   * own; each product in it is delivered as if it had been bought on its own.
+   * Null is an ordinary product.
+   */
+  bundle: string[] | null;
+  /**
+   * A draft: kept in the studio and left off the store, its own page and its
+   * checkout until the creator publishes it. What an import makes starts
+   * here. A hidden product can still be part of a bundle.
+   */
+  hidden: boolean;
 };
 
 /**
@@ -213,6 +227,10 @@ export const KIND = {
   pool: 256,
   /** Offers follow its purchase (lib/funnel.ts). Known only from a product read in full. */
   funnel: 512,
+  /** A bundle of other products (lib/bundles.ts). */
+  bundle: 1024,
+  /** A draft, left off the store until it is published. */
+  hidden: 2048,
 } as const;
 
 export type Kind = keyof typeof KIND;
@@ -262,6 +280,9 @@ export function parseProduct(entry: unknown): Product | null {
     stamp: value.stamp === true,
     // Products written before pages of blocks existed have the plain page.
     page: value.page === true,
+    // Products written before bundles and drafts existed are neither.
+    bundle: parseBundleItems(value.bundle),
+    hidden: value.hidden === true,
   };
 }
 
@@ -298,6 +319,8 @@ export function listingOf(product: Listing): Listing {
     keys: product.keys,
     stamp: product.stamp,
     page: product.page,
+    bundle: product.bundle,
+    hidden: product.hidden,
   };
 }
 
@@ -318,6 +341,8 @@ export function kindOf(product: Listing & { funnel?: Product["funnel"] }): numbe
   if (keys?.source === "pool") bits |= KIND.pool;
   if (product.stock !== null && isOneOff(product)) bits |= KIND.limited;
   if (product.funnel) bits |= KIND.funnel;
+  if (product.bundle) bits |= KIND.bundle;
+  if (product.hidden) bits |= KIND.hidden;
   return bits;
 }
 
@@ -396,6 +421,19 @@ export function productIds(store: Store): string[] {
   return store.catalog.items.map((item) => item.id);
 }
 
+/**
+ * What the public store lists, in the creator's order: every product but the
+ * drafts. Answered from the index, so a store page learns it without reading.
+ */
+export function visibleIds(store: Store): string[] {
+  return store.catalog.items.filter((item) => (item.kind & KIND.hidden) === 0).map((item) => item.id);
+}
+
+/** How many products the public store lists. */
+export function visibleCount(store: Store): number {
+  return store.catalog.items.reduce((n, item) => n + ((item.kind & KIND.hidden) === 0 ? 1 : 0), 0);
+}
+
 export function hasProduct(store: Store, id: string): boolean {
   return store.catalog.items.some((item) => item.id === id);
 }
@@ -449,9 +487,12 @@ export function recordListings(store: Store): Listing[] {
   return store.catalog.inline ? store.catalog.inline.map(listingOf) : store.catalog.head;
 }
 
-/** The listings a checkout's metadata names, the product and what was added, read at once. */
+/**
+ * The listings a checkout's metadata names, read at once: the product, what
+ * was added, and every product of a bundle among them (lib/bundles.ts).
+ */
 export async function listingsNamed(store: Store, meta: Record<string, string | undefined> | null | undefined): Promise<Listing[]> {
-  const ids = [meta?.product, meta?.bump].filter((id): id is string => typeof id === "string" && id !== "");
+  const ids = deliveredIds(meta);
   return ids.length ? readListings(store, ids) : [];
 }
 
@@ -595,10 +636,12 @@ export async function readPage(
   store: Store,
   page: number,
 ): Promise<{ listings: Listing[]; related: Listing[]; page: number; pages: number }> {
-  const total = productCount(store);
+  // Drafts are left out before the page is cut, so every page is full.
+  const visible = visibleIds(store);
+  const total = visible.length;
   const pages = Math.max(1, Math.ceil(total / STORE_PAGE_SIZE));
   const at = Math.min(Math.max(1, Math.floor(page) || 1), pages);
-  const ids = productIds(store).slice((at - 1) * STORE_PAGE_SIZE, at * STORE_PAGE_SIZE);
+  const ids = visible.slice((at - 1) * STORE_PAGE_SIZE, at * STORE_PAGE_SIZE);
   const listings = await readListings(store, ids);
   const onPage = new Set(ids);
   const targets = listings.flatMap((l) => (l.bump && !onPage.has(l.bump.productId) ? [l.bump.productId] : []));
@@ -733,9 +776,17 @@ export async function runWrites(commands: Command[]): Promise<void> {
   }
 }
 
+/**
+ * The products on the store's first page: the first STORE_PAGE_SIZE that are
+ * not drafts, which is what readPage shows as page one.
+ */
+function firstPage(items: Item[]): Item[] {
+  return items.filter((item) => (item.kind & KIND.hidden) === 0).slice(0, STORE_PAGE_SIZE);
+}
+
 /** The head, from listings already at hand; nothing is read. */
 export function headFrom(items: Item[], known: Map<string, Listing>): Listing[] {
-  const first = items.slice(0, STORE_PAGE_SIZE).map((item) => known.get(item.id)).filter((l): l is Listing => Boolean(l));
+  const first = firstPage(items).map((item) => known.get(item.id)).filter((l): l is Listing => Boolean(l));
   const present = new Set(items.map((item) => item.id));
   const onPage = new Set(first.map((l) => l.id));
   const targets: Listing[] = [];
@@ -770,7 +821,7 @@ export async function buildHead(catalog: string, items: Item[], known: Map<strin
     });
   };
   const present = new Set(items.map((item) => item.id));
-  const first = items.slice(0, STORE_PAGE_SIZE).map((item) => item.id);
+  const first = firstPage(items).map((item) => item.id);
   await fill(first);
   await fill(
     first.flatMap((id) => {

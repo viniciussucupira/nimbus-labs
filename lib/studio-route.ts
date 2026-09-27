@@ -167,7 +167,12 @@ export async function studioAccess(
   const reading = request.method === "GET" || request.method === "HEAD";
   // The team's own route writes its lines itself, in words of its own.
   // Counting who an email would reach changes nothing, and would fill the log.
-  const selfLogged = request.nextUrl.pathname === "/api/store/team" || action === "count";
+  // An import is logged when it starts, finishes uploading or is cancelled,
+  // not for each of the batches and steps in between.
+  const selfLogged =
+    request.nextUrl.pathname === "/api/store/team" ||
+    action === "count" ||
+    (request.nextUrl.pathname === "/api/store/import" && (action === "rows" || action === "step"));
   if (access.role !== "owner" && !selfLogged && (!reading || need === "export")) {
     const route = request.nextUrl.pathname.replace(/^\/api\/(store\/)?/, "");
     const detail = action || request.nextUrl.searchParams.get("what") || request.nextUrl.searchParams.get("who") || "";

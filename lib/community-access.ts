@@ -13,7 +13,12 @@
  *     or stops being paid closes the door on the next check;
  *   - something free, when the creator includes it: the address confirmed it
  *     reads its own inbox by using the link we emailed (lib/free.ts), and the
- *     creator's list says so.
+ *     creator's list says so;
+ *   - a purchase the creator brought over from another platform
+ *     (lib/imported-purchases.ts) of a product that opens the community, or
+ *     of a bundle that held one. Only the store's owner and Admins can bring
+ *     buyers over, a membership never can be, and the creator's "remove"
+ *     closes the door on one of them as on anybody.
  *
  * A product added in the box at checkout, or in one click after it, counts
  * the same as one bought on its own.
@@ -50,6 +55,8 @@ import { leadsKey, parseContact } from "@/lib/contacts";
 import { type Learner, TOKEN_PATTERN, emailKey, learnerFrom, storeKey } from "@/lib/learn";
 import type { Listing, Store } from "@/lib/store";
 import { KIND, itemFor, readListings } from "@/lib/catalog";
+import { deliveredIds } from "@/lib/bundle-rules";
+import { importedFor } from "@/lib/imported-purchases";
 import {
   CREATOR,
   type CommunityConfig,
@@ -111,7 +118,8 @@ export async function paidForAny(store: Store, email: string, ids: Set<string>):
       if (!isSettled(session)) continue;
       if (refunded(session.payment_intent)) continue;
       if (typeof session.customer === "string" && CUSTOMER_PATTERN.test(session.customer)) customers.add(session.customer);
-      const bought = [meta.product, meta.bump].filter((id): id is string => Boolean(id) && ids.has(id));
+      // A product in a bundle opens the door as if bought on its own.
+      const bought = deliveredIds(meta).filter((id) => ids.has(id));
       if (!bought.length) continue;
       // A membership opens the door while it is being paid for; a payment
       // plan is a one-off paid in parts, and counts like one.
@@ -132,7 +140,7 @@ export async function paidForAny(store: Store, email: string, ids: Set<string>):
       const meta = (intent.metadata ?? {}) as Record<string, string>;
       if (meta.kind !== "upsell" || !handles.has(meta.store ?? "")) continue;
       if (intent.status !== "succeeded" || refunded(intent)) continue;
-      if (ids.has(meta.product ?? "")) return true;
+      if (deliveredIds(meta).some((id) => ids.has(id))) return true;
     }
   }
   return false;
@@ -146,6 +154,13 @@ async function gotFree(store: Store, email: string, ids: Set<string>): Promise<b
   return Boolean(contact && contact.ids.some((id) => ids.has(id)));
 }
 
+/** Whether the creator brought this address over holding one of these products, or a bundle with one in it. */
+async function broughtOver(store: Store, email: string, ids: Set<string>): Promise<boolean> {
+  if (!store.pastBuyers || ids.size === 0) return false;
+  const given = await importedFor(store, email);
+  return given.some((p) => ids.has(p.productId) || (p.items ?? []).some((id) => ids.has(id)));
+}
+
 /**
  * Whether this address holds a ticket in, by the settings as they are now.
  * Stripe is asked at most once every five minutes per address (once a minute
@@ -154,31 +169,52 @@ async function gotFree(store: Store, email: string, ids: Set<string>): Promise<b
 export async function holdsTicket(store: Store, config: CommunityConfig, email: string): Promise<boolean> {
   const id = store.community?.id;
   if (!id || !isRedisConfigured()) return false;
+  return ticketFor(store, config.access, email, okKey(id, email), config.v);
+}
+
+/**
+ * The same question for a narrower door: whether this address holds one of
+ * `ids` — a live event open only to the buyers of some of the community's
+ * products (lib/community-events.ts). Its answer is kept under `cacheKey`
+ * with `version`, apart from the community's own, for the same five minutes
+ * (one while it is no), so a membership that lapses loses the event with the
+ * community.
+ */
+export async function holdsAnyOf(store: Store, ids: string[], email: string, cacheKey: string, version: string): Promise<boolean> {
+  if (!store.community?.id || !isRedisConfigured()) return false;
+  return ticketFor(store, ids, email, cacheKey, version);
+}
+
+async function ticketFor(store: Store, ids: string[], email: string, cacheKey: string, version: number | string): Promise<boolean> {
   // Which products let in, and whether each is free, is in the store record.
-  const products = config.access.flatMap((pid) => {
+  const products = ids.flatMap((pid) => {
     const item = itemFor(store, pid);
     return item ? [{ id: item.id, free: (item.kind & KIND.free) !== 0 }] : [];
   });
   if (products.length === 0) return false;
-  const [cached] = await redisPipeline([["GET", okKey(id, email)]]);
+  const [cached] = await redisPipeline([["GET", cacheKey]]);
   if (typeof cached === "string") {
     try {
       const value = JSON.parse(cached) as { v?: unknown; ok?: unknown };
-      if (value.v === config.v && typeof value.ok === "boolean") return value.ok;
+      if (value.v === version && typeof value.ok === "boolean") return value.ok;
     } catch {}
   }
   const free = new Set(products.filter((p) => p.free).map((p) => p.id));
   const paid = new Set(products.filter((p) => !p.free).map((p) => p.id));
   let ok = false;
   try {
-    ok = (await gotFree(store, email, free)) || (await paidForAny(store, email, paid));
+    // Stripe last: the other two are one read each.
+    ok =
+      (await gotFree(store, email, free)) ||
+      (await broughtOver(store, email, new Set(products.map((p) => p.id)))) ||
+      (await paidForAny(store, email, paid));
   } catch (error) {
     // Stripe could not be asked. Nobody is let in on a guess, and the answer
     // is not kept, so the next page asks again.
     console.error("checking community access failed", error);
     return false;
   }
-  await redisPipeline([["SET", okKey(id, email), JSON.stringify({ v: config.v, ok }), "EX", ok ? OPEN_SECONDS : SHUT_SECONDS]]);
+  await redisPipeline([["SET", cacheKey, JSON.stringify({ v: version, ok }), "EX", ok ? OPEN_SECONDS : SHUT_SECONDS]]);
   return ok;
 }
 

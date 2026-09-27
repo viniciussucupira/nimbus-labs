@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { readKind } from "@/lib/catalog";
-import { issueSignedToken } from "@vercel/blob";
+import { issueSignedToken } from "@/lib/blob";
 import {
   handleUploadPresigned,
   type HandleUploadPresignedBody,

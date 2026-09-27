@@ -66,11 +66,11 @@ export default async function CommunityYouPage({ params, searchParams }: Params)
             <label className="flex min-h-6 items-start gap-3">
               <input type="checkbox" name="mail" value="1" defaultChecked={member.mail} className="mt-0.5 h-5 w-5 shrink-0" />
               <span>
-                <span className="block font-semibold">{`Email me ${store.name}'s announcements`}</span>
+                <span className="block font-semibold">{`Email me ${store.name}'s announcements and event reminders`}</span>
                 <span className="st-muted block text-sm">
                   {canAnnounceByEmail(store)
-                    ? `Only when ${store.name} sends one, to ${viewer.email}. Every email has a one-click way to stop.`
-                    : `To ${viewer.email}, if ${store.name} starts sending them. Every email has a one-click way to stop.`}
+                    ? `Announcements when ${store.name} sends one, and a reminder a day and an hour before each live event you RSVP to. To ${viewer.email}; every email has a one-click way to stop.`
+                    : `A reminder a day and an hour before each live event you RSVP to, and announcements if ${store.name} starts emailing them. To ${viewer.email}; every email has a one-click way to stop.`}
                 </span>
               </span>
             </label>

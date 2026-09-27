@@ -49,6 +49,7 @@ import { formatMoney } from "@/lib/money";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { refundedInFull } from "@/lib/refunds";
 import { scheduleReviewAsk } from "@/lib/review-ask";
+import { bundleFromMeta, deliveredIds } from "@/lib/bundle-rules";
 
 const SESSION_ID_PATTERN = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
 const INTENT_ID_PATTERN = /^pi_[A-Za-z0-9]{10,200}$/;
@@ -164,6 +165,13 @@ export function confirmationFor(
 
   const option = product.options.find((entry) => entry.id === meta.option) ?? null;
   const bump = meta.bump ? listings.find((p) => p.id === meta.bump) ?? null : null;
+  // What a bundle bought or ticked hands over, from the list on the order.
+  const inside = (slot: "bundle" | "bump_bundle") =>
+    bundleFromMeta(meta, slot)
+      .map((pid) => listings.find((p) => p.id === pid))
+      .filter((p): p is Listing => Boolean(p));
+  const items = inside("bundle");
+  const bumpItems = bump ? inside("bump_bundle") : [];
   const plan =
     meta.kind === "plan" && Number(meta.plan_payments) >= 2
       ? { payments: Number(meta.plan_payments), weekly: meta.plan_interval === "week" }
@@ -185,6 +193,8 @@ export function confirmationFor(
     `Thank you for buying from ${name}. This is your confirmation.`,
     "",
     `What you bought: ${title}${bump ? `, with ${bump.title}` : ""}`,
+    ...(items.length ? [`Inside ${product.title}: ${items.map((p) => p.title).join(", ")}`] : []),
+    ...(bumpItems.length && bump ? [`Inside ${bump.title}: ${bumpItems.map((p) => p.title).join(", ")}`] : []),
     `Paid: ${paid}`,
     `Order reference: ${id}`,
   ];
@@ -209,6 +219,14 @@ export function confirmationFor(
       "",
       `That page has your download or your link for the next 3 days. After that it is not lost: open ${base}/orders, type ${email}, and a link to everything you bought from ${name} is emailed to you, at any time.`,
     );
+  }
+  // A course inside a bundle opens on its own page, as one bought on its own does.
+  const courses = [...items, ...bumpItems].filter((p) => p.course);
+  for (const course of courses) {
+    lines.push("", `Start ${course.title}: ${base}/course/${course.id}`);
+  }
+  if (courses.length) {
+    lines.push("", `On the device you paid with a course opens straight away. On any other, its page asks for your email: type ${email}, and a link that lets that device in arrives within a minute.`);
   }
 
   for (const line of keys) {
@@ -366,10 +384,12 @@ export type TakenOffer = {
   amountCents: number;
   /** What Stripe charged it in. */
   currency: string;
+  /** When what was added is a bundle: the products it hands over. */
+  items?: Listing[];
 };
 
 /** The email for an offer taken after paying, with its licence key when it has one. */
-export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleKey | null = null): Confirmation | null {
+export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleKey | null = null, keys: KeyLine[] = []): Confirmation | null {
   if (!INTENT_ID_PATTERN.test(offer.reference) || !SESSION_ID_PATTERN.test(offer.parent) || !offer.email) return null;
   const name = store.name;
   const base = storeBase(store);
@@ -377,6 +397,7 @@ export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleK
     `You added something to your order from ${name}. This is your confirmation.`,
     "",
     `What you added: ${offer.product.title}`,
+    ...(offer.items?.length ? [`Inside it: ${offer.items.map((p) => p.title).join(", ")}`] : []),
     `Paid: ${money(offer.amountCents, offer.currency)}, charged once to the card you had just paid with`,
     `Reference: ${offer.reference}`,
     "",
@@ -384,12 +405,12 @@ export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleK
     "",
     `That page has it, beside what you bought first, for the next 3 days. After that it is not lost: open ${base}/orders, type ${offer.email}, and a link to everything you bought from ${name} is emailed to you, at any time.`,
   ];
-  if (key) {
+  for (const line of [...(key ? [{ title: offer.product.title, key }] : []), ...keys]) {
     lines.push(
       "",
-      key.state === "issued"
-        ? `Your licence key for ${offer.product.title}: ${key.key}`
-        : `Your licence key for ${offer.product.title}: on its way. ${name}'s keys ran out just as you paid; it is emailed to you the moment they add more.`,
+      line.key.state === "issued"
+        ? `Your licence key for ${line.title}: ${line.key.key}`
+        : `Your licence key for ${line.title}: on its way. ${name}'s keys ran out just as you paid; it is emailed to you the moment they add more.`,
     );
   }
   lines.push(
@@ -427,7 +448,18 @@ export async function confirmOffer(store: Store, offer: TakenOffer): Promise<Con
       console.error("reading a licence key for an offer's email failed", error);
     }
   }
-  const letter = offerConfirmationFor(store, offer, key);
+  // Each product of a bundle added this way has its own key, under the offer's payment.
+  const keys: KeyLine[] = [];
+  for (const item of offer.items ?? []) {
+    if (!activeKeys(item)) continue;
+    try {
+      const found = await keyForSale(store, item, offer.reference, offer.email);
+      if (found) keys.push({ title: item.title, key: found });
+    } catch (error) {
+      console.error("reading a licence key for an offer's email failed", error);
+    }
+  }
+  const letter = offerConfirmationFor(store, offer, key, keys);
   if (!letter) return "skip";
   const [claimed] = await redisPipeline([["SET", mark, "sending", "NX", "EX", SENDING_MARK_SECONDS]]);
   if (claimed === null) return "already";
@@ -458,8 +490,9 @@ async function keysFor(store: Store, session: SessionRecord, listings: Listing[]
   const id = typeof session.id === "string" ? session.id : "";
   const typed = session.customer_details?.email;
   const email = typeof typed === "string" ? typed : "";
-  const products = [meta.product, meta.bump]
-    .map((pid) => (pid ? listings.find((p) => p.id === pid) : undefined))
+  // The product, the one ticked at checkout, and each product of a bundle.
+  const products = deliveredIds(meta)
+    .map((pid) => listings.find((p) => p.id === pid))
     .filter((p): p is Listing => Boolean(p && activeKeys(p)));
   const lines: KeyLine[] = [];
   for (const product of products) {

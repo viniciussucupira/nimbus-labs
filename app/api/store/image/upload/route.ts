@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { hasProduct } from "@/lib/catalog";
-import { issueSignedToken } from "@vercel/blob";
+import { issueSignedToken } from "@/lib/blob";
 import { handleUploadPresigned, type HandleUploadPresignedBody } from "@vercel/blob/client";
 import { studioAccess } from "@/lib/studio-route";
 import { imageFolder } from "@/lib/store";

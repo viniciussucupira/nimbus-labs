@@ -40,7 +40,8 @@ import { ordersGrant } from "@/lib/buyer-orders";
 import { DOWNLOAD_WINDOW_SECONDS } from "@/lib/store-checkout";
 import { REVIEW_STORES_KEY, markRefunded } from "@/lib/reviews";
 import type { Listing, Store } from "@/lib/store";
-import { readListing, readListings } from "@/lib/catalog";
+import { readListings } from "@/lib/catalog";
+import { deliveredIds } from "@/lib/bundle-rules";
 
 const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
 const INTENT_ID = /^pi_[A-Za-z0-9]{10,200}$/;
@@ -64,9 +65,13 @@ export type Proof = {
 
 export type ProofResult = { state: "ok"; proof: Proof } | { state: "no" | "expired" | "error" };
 
-/** A product that can be reviewed at all: still listed, paid, not a booked call. */
+/**
+ * A product that can be reviewed at all: still listed, paid, not a booked
+ * call. A bundle is not reviewed itself: each product in it is, by whoever
+ * bought the bundle (lib/bundle-rules.ts).
+ */
 export function reviewable(product: Listing | null | undefined): product is Listing {
-  return Boolean(product && product.priceCents > 0 && !product.call);
+  return Boolean(product && product.priceCents > 0 && !product.call && !product.bundle);
 }
 
 type Row = Record<string, unknown>;
@@ -113,9 +118,8 @@ export async function provePurchase(store: Store, reference: string): Promise<Pr
       if (!isSettled(session) || session.payment_status !== "paid") return { state: "no" };
       if (typeof session.amount_total !== "number" || session.amount_total <= 0) return { state: "no" };
       // Read by id (lib/catalog.ts), however many products the store has.
-      const products = (await readListings(store, [meta.product, meta.bump].filter((id): id is string => Boolean(id)))).filter(
-        reviewable,
-      );
+      // What was bought, what was ticked, and each product of a bundle among them.
+      const products = (await readListings(store, deliveredIds(meta))).filter(reviewable);
       const details = session.customer_details as { email?: unknown } | null;
       const email =
         typeof details?.email === "string" && details.email
@@ -150,8 +154,9 @@ export async function provePurchase(store: Store, reference: string): Promise<Pr
       const meta = (intent.metadata ?? {}) as Record<string, string>;
       if (meta.kind !== "upsell" || !handles.has(meta.store ?? "")) return { state: "no" };
       if (intent.status !== "succeeded" || typeof intent.amount !== "number" || intent.amount <= 0) return { state: "no" };
-      const product = await readListing(store, meta.product);
-      if (!reviewable(product)) return { state: "no" };
+      // What was added: the product, or each product of a bundle added.
+      const products = (await readListings(store, deliveredIds(meta))).filter(reviewable);
+      if (products.length === 0) return { state: "no" };
       let email = typeof intent.receipt_email === "string" ? intent.receipt_email : "";
       if (!email && SESSION_ID.test(meta.parent ?? "")) {
         const parent = await onAccount("GET", account, `/checkout/sessions/${encodeURIComponent(meta.parent)}`);
@@ -164,7 +169,7 @@ export async function provePurchase(store: Store, reference: string): Promise<Pr
         proof: {
           reference,
           email,
-          products: [product],
+          products,
           pi: reference,
           paidAt: typeof intent.created === "number" ? intent.created : 0,
           refunded: refundedInFull(intent),

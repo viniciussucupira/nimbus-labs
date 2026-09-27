@@ -2383,15 +2383,118 @@ a.rv-line:hover {
 .st-page select.st-field {
   appearance: auto;
 }
+/* The community's live events: the date on a leaf, the "on now" light, the
+   join panel, and the video room shown inside the page. */
+.ev-leaf {
+  display: inline-flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.75rem;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  background: var(--st-card);
+  box-shadow: 0 0 0 1px var(--st-line-strong);
+  line-height: 1;
+}
+.ev-leaf-month {
+  display: block;
+  width: 100%;
+  padding: 0.3rem 0 0.25rem;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, var(--st-accent), var(--st-accent-2));
+  color: var(--st-on-accent);
+}
+.ev-leaf-day {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  font-size: 1.45rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--st-text);
+}
+.ev-leaf-lg {
+  width: 4.25rem;
+  height: 4.6rem;
+}
+.ev-leaf-lg .ev-leaf-day {
+  font-size: 1.8rem;
+}
+.ev-leaf-off .ev-leaf-month {
+  background: var(--st-item);
+  color: var(--st-muted);
+}
+.ev-card {
+  transition: border-color var(--d-base) var(--ease);
+}
+.ev-card:hover {
+  border-color: var(--st-accent-text);
+}
+.ev-live::before {
+  content: "";
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.35rem;
+  border-radius: 999px;
+  background: currentColor;
+  animation: ev-pulse 1.6s ease-in-out infinite;
+}
+@keyframes ev-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+.ev-join {
+  border-radius: 1rem;
+  border: 1px solid var(--st-line);
+  background: var(--st-accent-soft);
+  padding: 1rem 1.1rem 1.1rem;
+}
+.ev-room {
+  position: relative;
+  margin-top: 1rem;
+  width: 100%;
+  height: min(72vh, 40rem);
+  min-height: 26rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: #0d0b24;
+  box-shadow: 0 0 0 1px var(--st-line-strong);
+}
+.ev-room iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+@media (max-width: 420px) {
+  .cm-tab {
+    padding: 0 0.55rem;
+    font-size: 0.875rem;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .cm-pill,
   .cm-tab,
   .cm-side,
-  .cm-row {
+  .cm-row,
+  .ev-card {
     transition: none;
   }
   .cm-pill:active {
     transform: none;
+  }
+  .ev-live::before {
+    animation: none;
   }
 }
 

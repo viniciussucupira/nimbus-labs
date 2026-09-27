@@ -26,7 +26,7 @@
  * and when they last came back. That is all, and the creator sees it.
  */
 import { createHash, randomBytes } from "node:crypto";
-import { issueSignedToken, presignUrl } from "@vercel/blob";
+import { issueSignedToken, presignUrl } from "@/lib/blob";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, SESSION_COOKIE, emailForSession, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -39,6 +39,8 @@ import type { ProductFile } from "@/lib/product-file";
 import type { Listing, Store } from "@/lib/store";
 import { readKind, readListing } from "@/lib/catalog";
 import { type Course, type CourseModule, lessonsInOrder, opensAt } from "@/lib/course";
+import { deliveredIds } from "@/lib/bundle-rules";
+import { importedFrom, importedRead } from "@/lib/imported-purchases";
 
 /** The secret a course checkout leaves in the buyer's browser. */
 export const BUYER_COOKIE = "nl_buyer";
@@ -190,25 +192,31 @@ async function paidAtStripe(store: Store, email: string): Promise<Ledger> {
       const meta = (session.metadata ?? {}) as Record<string, string>;
       if (!handles.has(meta.store ?? "")) continue;
       if (!isSettled(session)) continue;
-      const product = courses.get(meta.product ?? "");
-      if (!product) continue;
+      // The course bought, or a course in a bundle bought or ticked at
+      // checkout (lib/bundle-rules.ts): each opens as if bought on its own.
+      const bought = deliveredIds(meta)
+        .map((id) => courses.get(id))
+        .filter((p): p is Listing => Boolean(p));
+      if (bought.length === 0) continue;
       // Refunded in full: the one rule every door uses (lib/refunds.ts).
       if (refundedInFull(session.payment_intent)) {
-        refunded.add(product.id);
+        for (const product of bought) refunded.add(product.id);
         continue;
       }
-      // A course sold as a membership is open while the membership runs.
-      if (product.recurring && session.mode === "subscription" && meta.kind !== "plan") {
-        const sub = session.subscription as { status?: unknown } | null;
-        // The same rule as every other door a membership opens (lib/membership-access.ts).
-        if (!sub || typeof sub !== "object" || !isLive(sub.status)) {
-          ended.add(product.id);
-          continue;
+      for (const product of bought) {
+        // A course sold as a membership is open while the membership runs.
+        if (product.id === meta.product && product.recurring && session.mode === "subscription" && meta.kind !== "plan") {
+          const sub = session.subscription as { status?: unknown } | null;
+          // The same rule as every other door a membership opens (lib/membership-access.ts).
+          if (!sub || typeof sub !== "object" || !isLive(sub.status)) {
+            ended.add(product.id);
+            continue;
+          }
         }
+        const created = typeof session.created === "number" ? session.created : Math.floor(Date.now() / 1000);
+        const before = found.get(product.id);
+        if (before === undefined || created < before) found.set(product.id, created);
       }
-      const created = typeof session.created === "number" ? session.created : Math.floor(Date.now() / 1000);
-      const before = found.get(product.id);
-      if (before === undefined || created < before) found.set(product.id, created);
     }
   }
   // Joined again after it ended, or bought again after a refund: the
@@ -250,9 +258,13 @@ export async function paidCourses(store: Store, email: string): Promise<Map<stri
 async function courseLedger(store: Store, email: string): Promise<Ledger> {
   const result = new Map<string, number>();
   if (!isRedisConfigured()) return { paid: result, ended: new Set(), refunded: new Set() };
-  const [cached, ledger] = await redisPipeline([
+  // A store that brought buyers over from another platform reads theirs in
+  // the same round trip (lib/imported-purchases.ts); any other asks nothing more.
+  const imported = importedRead(store, email);
+  const [cached, ledger, broughtOver] = await redisPipeline([
     ["GET", paidCacheKey(store, email)],
     ["HGETALL", ledgerKey(store, email)],
+    ...(imported ? [imported] : []),
   ]);
   let asked: Ledger | null = typeof cached === "string" ? parseLedger(cached) : null;
   if (!asked) {
@@ -273,6 +285,16 @@ async function courseLedger(store: Store, email: string): Promise<Ledger> {
     for (const [k, v] of Object.entries(ledger as Record<string, string>)) recorded.set(k, Number(v));
   }
 
+  // Brought over from another platform: the course itself, or a course in a
+  // bundle that was. Nothing was paid through Stripe, so nothing there can
+  // take it back; the creator can still take a student off (setBlocked).
+  const given = new Map<string, number>();
+  for (const purchase of importedFrom(broughtOver)) {
+    for (const id of [purchase.productId, ...(purchase.items ?? [])]) {
+      if (!given.has(id)) given.set(id, purchase.at);
+    }
+  }
+
   const courses = await readKind(store, "course");
   for (const product of courses) {
     if (!product.course) continue;
@@ -281,7 +303,8 @@ async function courseLedger(store: Store, email: string): Promise<Ledger> {
     const start = product.recurring || asked.refunded.has(product.id)
       ? fromStripe.get(product.id)
       : recorded.get(product.id) ?? fromStripe.get(product.id);
-    if (start !== undefined && Number.isFinite(start)) result.set(product.id, start);
+    const opens = start ?? (product.recurring ? undefined : given.get(product.id));
+    if (opens !== undefined && Number.isFinite(opens)) result.set(product.id, opens);
   }
 
   // A student the creator took off the course stays off it.

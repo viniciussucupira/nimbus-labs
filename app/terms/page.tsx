@@ -135,12 +135,28 @@ export default function TermsPage() {
         <p>
           <strong className="text-black">Services you choose to connect.</strong>{" "}
           If you connect an email platform (Mailchimp, Kit, beehiiv or
-          MailerLite) or choose Jitsi Meet rooms for your calls, that is your
-          choice. Those services are run by third parties under their own
+          MailerLite) or, once it is offered, your Google Calendar or Zoom
+          account, or choose Jitsi Meet rooms or your own meeting link for
+          your calls and live events, that is your choice. Those services are run by third parties under their own
           terms and privacy policies, your account with them is yours, and we
           are not responsible for what they do or for their being available.
           Send to an email platform only people who agreed to hear from you;
-          the Services send only those who did.
+          the Services send only those who did. A meeting made on your Google
+          or Zoom account is yours: it stays there if you disconnect, and
+          what that service does with it is between you and them.
+        </p>
+        <p>
+          <strong className="text-black">
+            Bringing a store from another platform.
+          </strong>{" "}
+          When you import contacts, you confirm, and are responsible for it
+          being true, that every person in the file agreed to receive your
+          emails, and that you may lawfully give us their details. When you
+          import past buyers, you confirm that each person bought what the
+          file says from you, that you have the right to give it to them
+          here, and, if you ask us to email them, that you may tell them so.
+          We check the file&apos;s format, not the truth of it, and we may
+          switch off imports or email for a store that misuses them.
         </p>
         <p>
           <strong className="text-black">What you may not sell.</strong>{" "}

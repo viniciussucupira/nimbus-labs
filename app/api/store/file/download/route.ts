@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { get, issueSignedToken, presignUrl } from "@vercel/blob";
+import { get, issueSignedToken, presignUrl } from "@/lib/blob";
 import { studioAccess } from "@/lib/studio-route";
 import { productFile } from "@/lib/store";
 import {

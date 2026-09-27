@@ -3,6 +3,7 @@ import { setProductCall, storeForEmail } from "@/lib/store";
 import { type CallSetup, readSetup } from "@/lib/call-setup";
 import { checkCallChange } from "@/lib/calls";
 import { guardStoreWrite, text } from "@/lib/store-request";
+import { usableProviders } from "@/lib/meet-connect";
 
 /**
  * Makes a product a paid call, changes its hours, or turns it back.
@@ -10,7 +11,9 @@ import { guardStoreWrite, text } from "@/lib/store-request";
  * `{ id, call: {...} }` sets it; `{ id, remove: true }` turns it back into an
  * ordinary product. Every field of the setup is checked here, whatever the
  * studio already checked, and so is what buyers already booked
- * (checkCallChange): a booked session is not moved from under them.
+ * (checkCallChange): a booked session is not moved from under them. A call
+ * set to make Google Meet or Zoom meetings is only saved while the store has
+ * that account connected and working (lib/meet-connect.ts).
  */
 export async function POST(request: NextRequest) {
   // Fifty dated sessions, each with its own meeting link, fit well inside this.
@@ -27,6 +30,9 @@ export async function POST(request: NextRequest) {
       return Response.json({ ok: false, error: read }, { status: 400 });
     }
     setup = read;
+    if (setup.meet && !(await usableProviders(guarded.store.statsId)).includes(setup.meet)) {
+      return Response.json({ ok: false, error: `meet_${setup.meet}` }, { status: 400 });
+    }
   }
 
   try {

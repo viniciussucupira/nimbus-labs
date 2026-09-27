@@ -6,8 +6,9 @@
  * and the sessions it opens. Someone who got hold of a session — a borrowed
  * laptop, a cookie that walked off — would go for the few settings that
  * matter: the Stripe account sales are paid into, the currency every price
- * is charged in, the domain the store is served on, the webhooks and the
- * email platform that send buyers' details somewhere, the people let onto
+ * is charged in, the domain the store is served on, the webhooks, the
+ * email platform and the Google Calendar or Zoom account that send buyers'
+ * details somewhere, the people let onto
  * the store's team (lib/team.ts), and the devices told about every sale. So
  * each change to one of those sends the creator a plain notice at their
  * sign-in address, saying what changed and when, and what to do if it was
@@ -33,7 +34,10 @@ export type AccountChange =
   | { kind: "currency-changed"; from: string; to: string }
   | { kind: "email-platform-connected"; name: string }
   | { kind: "email-platform-removed"; name: string }
-  | { kind: "phone-added"; label: string };
+  | { kind: "phone-added"; label: string }
+  | { kind: "meeting-connected"; name: string; account: string }
+  | { kind: "meeting-disconnected"; name: string; account: string; byProvider?: boolean }
+  | { kind: "meeting-broken"; name: string };
 
 const SUPPORT = "support@nimbuslabsai.com";
 
@@ -94,6 +98,23 @@ function describe(change: AccountChange): { subject: string; line: string } {
         subject: `${change.name} was disconnected from your store`,
         line: `Your store no longer sends anybody to ${change.name}, and the API key saved for it was deleted.`,
       };
+    case "meeting-connected":
+      return {
+        subject: `${change.name} was connected to your store`,
+        line: `The ${change.name} account ${change.account} was connected to your store. Calls set to use it get a meeting made on that account for each booking, with the buyer's name and email address in it.`,
+      };
+    case "meeting-disconnected":
+      return {
+        subject: `${change.name} was disconnected from your store`,
+        line: change.byProvider
+          ? `The app was removed from the ${change.name} account ${change.account}, so your store no longer makes meetings on it. Calls set to use it now give buyers your own link, or a private video room. Meetings already made stay where they are.`
+          : `The ${change.name} account ${change.account} was disconnected from your store and its access was given back. Calls set to use it now give buyers your own link, or a private video room. Meetings already made stay where they are.`,
+      };
+    case "meeting-broken":
+      return {
+        subject: `Your store can no longer reach ${change.name}`,
+        line: `${change.name} stopped letting your store in (its access was withdrawn or ran out), so new bookings get your own link, or a private video room, instead of a meeting on it. Connect it again in your studio, under Video calls.`,
+      };
     case "phone-added":
       return {
         subject: "A new device gets your store's notifications",
@@ -125,7 +146,7 @@ export async function noticeCreator(store: Pick<Store, "email" | "handle">, chan
         `${SITE_URL}/signin`,
         "with this email address, choose “Log out of all devices” at the foot of your studio, put the setting back, and reply to this email so we can help.",
         "",
-        "Nimbus Labs sends this notice every time your Stripe account, your store's currency, your domain, your webhooks, your email platform or your team change, and when a new device gets your notifications.",
+        "Nimbus Labs sends this notice every time your Stripe account, your store's currency, your domain, your webhooks, your email platform, your Google Calendar or Zoom connection or your team change, and when a new device gets your notifications.",
       ].join("\n"),
     });
   } catch (error) {

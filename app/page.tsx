@@ -95,7 +95,8 @@ const GROUPS: Group[] = [
       { title: "Paid calls", body: "One to one, groups of up to 50, or live sessions, with your meeting link or a private video room." },
       { title: "Memberships", body: "Weekly, monthly or yearly, with a free trial if you want one." },
       { title: "Free products", body: "Given for an email address, each one confirmed by its owner." },
-      { title: "A community", body: "Posts and comments, open only to the buyers you choose." },
+      { title: "A community", body: "Posts, comments and live events, open only to the buyers you choose." },
+      { title: "Bundles", body: "2 to 20 of your products at one price, each delivered as itself." },
       { title: "Sales and landing pages", body: "Up to 30 blocks for any product, with video and your buyers' reviews." },
       { title: "Up to 2,000 products", body: "And 100 links, on one page that shows them 24 at a time." },
     ],
@@ -153,6 +154,7 @@ const GROUPS: Group[] = [
       { title: "Your photo, your colour", body: "Four themes, ten colours or your own, each checked for contrast." },
       { title: "An address that never breaks", body: "Change it any time; every old link keeps working." },
       { title: "Installs like an app", body: "Your store on any phone's home screen, with its own name and icon." },
+      { title: "Moving from another platform", body: "Your list, products and past buyers, brought over from a spreadsheet." },
     ],
   },
   {
@@ -723,8 +725,7 @@ export default function Home() {
                   <p className="font-semibold text-ink">Where Stan is ahead today</p>
                   <p className="mt-3 text-[0.9375rem] text-ink-soft">
                     Stan has PayPal for creators in the United States, affiliates paid automatically, automatic Instagram
-                    replies, webinars inside its community, Zoom and Google Meet links made for each booking and an iPhone
-                    app. We do not have those, and we say so on every page that could make you think otherwise.
+                    replies, Zoom and Google Meet links made for each booking and webinar, and an iPhone app. We do not have those, and we say so on every page that could make you think otherwise.
                   </p>
                 </div>
                 <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3">

@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { issueSignedToken } from "@vercel/blob";
+import { issueSignedToken } from "@/lib/blob";
 import { handleUploadPresigned, type HandleUploadPresignedBody } from "@vercel/blob/client";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES } from "@/lib/product-image";

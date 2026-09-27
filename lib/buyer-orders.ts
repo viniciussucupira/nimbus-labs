@@ -36,6 +36,8 @@ import { listingFinder, readListings, sellsAny, sellsThings } from "@/lib/catalo
 import { paidCalls } from "@/lib/calls";
 import { roomsFor } from "@/lib/call-rooms";
 import type { CallSetup } from "@/lib/call-setup";
+import { bundleFromMeta } from "@/lib/bundle-rules";
+import { IMPORTED_REFERENCE, importedFor, importedReference } from "@/lib/imported-purchases";
 
 /** How long the emailed link opens the list. */
 export const ORDERS_LINK_SECONDS = 24 * 60 * 60;
@@ -62,11 +64,31 @@ export type Delivery = {
   link: string | null;
 };
 
+/** One product of a bundle on the list of purchases, with what it hands over. */
+export type PurchaseLine = {
+  productId: string;
+  title: string;
+  delivery: Delivery | null;
+  /** A course opens on its own page. */
+  courseProduct: string | null;
+};
+
+/** What a bundle on the list hands over, and how many of its products the store no longer has. */
+export type PurchaseItems = { lines: PurchaseLine[]; missing: number };
+
 export type Purchase = {
-  /** The Checkout Session, or the one-click payment, that paid for it. */
+  /**
+   * The Checkout Session, or the one-click payment, that paid for it — or,
+   * for something brought over from another platform, an "imp_" reference
+   * of its own (lib/imported-purchases.ts).
+   */
   reference: string;
-  /** "sale" is a checkout; "upsell" is what was added in one click after it. */
-  kind: "sale" | "upsell";
+  /**
+   * "sale" is a checkout; "upsell" is what was added in one click after it;
+   * "imported" was brought over by the creator from another platform, with
+   * no payment here.
+   */
+  kind: "sale" | "upsell" | "imported";
   title: string;
   /** The price option chosen, when the product has several. */
   option: string | null;
@@ -86,16 +108,46 @@ export type Purchase = {
   main: Delivery | null;
   /** The product ticked at checkout, delivered with it. */
   bump: Delivery | null;
+  /** When the product is a bundle: its products, from the list on the order. */
+  items: PurchaseItems | null;
+  /** When the product ticked at checkout is a bundle: its products. */
+  bumpItems: PurchaseItems | null;
 };
 
-/** Whether this store's buyers can be offered this at all. */
+/** The products of a list on an order, each with what it hands over now. */
+async function linesOf(find: (id: string | undefined) => Promise<Listing | null>, ids: string[]): Promise<PurchaseItems | null> {
+  if (ids.length === 0) return null;
+  const lines: PurchaseLine[] = [];
+  let missing = 0;
+  for (const id of ids) {
+    const item = await find(id);
+    if (!item) {
+      missing += 1;
+      continue;
+    }
+    const delivery = item.options.length === 0 && (item.file || item.link) ? { title: item.title, file: item.file, link: item.link } : null;
+    lines.push({ productId: item.id, title: item.title, delivery, courseProduct: item.course ? item.id : null });
+  }
+  return { lines, missing };
+}
+
+/**
+ * Whether this store's buyers can be offered this at all: its sales are on a
+ * Stripe account we can read, or it brought buyers over from another
+ * platform (lib/imported-purchases.ts), who have no Stripe sale to look up.
+ */
 export function canRecover(store: Store): boolean {
-  return (
-    Boolean(store.stripeAccountId) &&
-    platformKey() !== null &&
-    isRedisConfigured() &&
-    isSenderConfigured()
-  );
+  const stripe = Boolean(store.stripeAccountId) && platformKey() !== null;
+  return (stripe || store.pastBuyers) && isRedisConfigured() && isSenderConfigured();
+}
+
+/**
+ * What an emailed link is tied to: the Stripe account the purchases are on,
+ * or, for a store that has only buyers brought over, the store itself. A link
+ * stops working when that changes.
+ */
+function grantAccount(store: Store): string {
+  return store.stripeAccountId ?? `imports:${store.statsId ?? ""}`;
 }
 
 /** One booked call still to come, as the buyer's list shows it. */
@@ -182,19 +234,19 @@ const refunded = refundedInFull;
  */
 export async function purchasesFor(store: Store, email: string): Promise<Purchase[]> {
   const account = store.stripeAccountId;
-  if (!account) return [];
+  if (!account && !store.pastBuyers) return [];
   const handles = new Set([store.handle, ...store.previousHandles]);
   const find = listingFinder(store);
   const found = new Map<string, Purchase>();
   const customers = new Set<string>();
 
   // Stripe keeps the address as it was typed at checkout.
-  const variants = [...new Set([email.trim(), normaliseEmail(email)])];
+  const variants = account ? [...new Set([email.trim(), normaliseEmail(email)])] : [];
   for (const variant of variants) {
     const query = new URLSearchParams({ "customer_details[email]": variant, status: "complete", limit: "100" });
     query.append("expand[]", "data.subscription");
     query.append("expand[]", "data.payment_intent.latest_charge");
-    const listed = (await onAccount("GET", account, `/checkout/sessions?${query}`)) as Listed;
+    const listed = (await onAccount("GET", account as string, `/checkout/sessions?${query}`)) as Listed;
     for (const session of rows(listed)) {
       const id = typeof session.id === "string" ? session.id : "";
       if (!SESSION_ID_PATTERN.test(id) || found.has(id)) continue;
@@ -224,6 +276,8 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
             courseProduct: null,
             main: null,
             bump: null,
+            items: null,
+            bumpItems: null,
           });
           continue;
         }
@@ -233,7 +287,10 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       const added = meta.bump ? await find(meta.bump) : null;
       const bump = added && (added.file || added.link) ? { title: added.title, file: added.file, link: added.link } : null;
       const courseProduct = product.course ? product.id : null;
-      if (!delivery && !bump && !courseProduct) continue;
+      // A bundle, bought or ticked: its products, from the list on the order.
+      const items = await linesOf(find, bundleFromMeta(meta, "bundle"));
+      const bumpItems = added ? await linesOf(find, bundleFromMeta(meta, "bump_bundle")) : null;
+      if (!delivery && !bump && !courseProduct && !items && !bumpItems) continue;
 
       if (typeof session.customer === "string" && CUSTOMER_PATTERN.test(session.customer)) customers.add(session.customer);
       found.set(id, {
@@ -245,20 +302,22 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         member,
         ended: false,
         productId: product.id,
-        bumpId: bump && added ? added.id : null,
+        bumpId: (bump || bumpItems) && added ? added.id : null,
         courseProduct,
         main: courseProduct ? null : delivery,
         bump,
+        items,
+        bumpItems,
       });
     }
   }
 
   // What was added in one click after paying is its own payment, made for
   // the customer the checkout created.
-  for (const customer of [...customers].slice(0, 10)) {
+  for (const customer of account ? [...customers].slice(0, 10) : []) {
     const query = new URLSearchParams({ customer, limit: "50" });
     query.append("expand[]", "data.latest_charge");
-    const listed = (await onAccount("GET", account, `/payment_intents?${query}`)) as Listed;
+    const listed = (await onAccount("GET", account as string, `/payment_intents?${query}`)) as Listed;
     for (const intent of rows(listed)) {
       const id = typeof intent.id === "string" ? intent.id : "";
       if (!INTENT_ID_PATTERN.test(id) || found.has(id)) continue;
@@ -266,7 +325,8 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       if (meta.kind !== "upsell" || !handles.has(meta.store ?? "")) continue;
       if (intent.status !== "succeeded" || refunded(intent)) continue;
       const product = await find(meta.product);
-      if (!product || !(product.file || product.link)) continue;
+      const items = product ? await linesOf(find, bundleFromMeta(meta, "bundle")) : null;
+      if (!product || !(product.file || product.link || items)) continue;
       found.set(id, {
         reference: id,
         kind: "upsell",
@@ -278,8 +338,40 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         productId: product.id,
         bumpId: null,
         courseProduct: null,
-        main: { title: product.title, file: product.file, link: product.link },
+        main: product.file || product.link ? { title: product.title, file: product.file, link: product.link } : null,
         bump: null,
+        items,
+        bumpItems: null,
+      });
+    }
+  }
+
+  // Brought over from another platform by the creator: no payment here, so
+  // nothing on Stripe to read, and shown as exactly that.
+  if (store.pastBuyers && store.statsId) {
+    for (const given of await importedFor(store, email)) {
+      const product = await find(given.productId);
+      if (!product) continue;
+      const reference = importedReference(store.statsId, email, product.id);
+      const { delivery } = deliveryOf(product, undefined);
+      const items = given.items?.length ? await linesOf(find, given.items) : null;
+      const courseProduct = product.course ? product.id : null;
+      if (!delivery && !courseProduct && !items) continue;
+      found.set(reference, {
+        reference,
+        kind: "imported",
+        title: product.title,
+        option: null,
+        paidAt: given.at,
+        member: false,
+        ended: false,
+        productId: product.id,
+        bumpId: null,
+        courseProduct,
+        main: courseProduct ? null : delivery,
+        bump: null,
+        items,
+        bumpItems: null,
       });
     }
   }
@@ -352,7 +444,7 @@ export async function requestOrdersLink(input: {
 
   const token = randomBytes(32).toString("hex");
   // Kept as typed: Stripe matches the address as it was written at checkout.
-  const grant: Grant = { a: store.stripeAccountId as string, e: raw };
+  const grant: Grant = { a: grantAccount(store), e: raw };
   await redisPipeline([["SET", tokenKey(token), JSON.stringify(grant), "EX", ORDERS_LINK_SECONDS]]);
 
   const name = store.name;
@@ -371,7 +463,9 @@ export async function requestOrdersLink(input: {
       "",
       "If you did not ask for this, ignore this email; nothing happens unless the link is opened.",
       "",
-      `Sent by Nimbus Labs on behalf of ${name}. Every purchase was charged by ${name} on their own Stripe account.`,
+      purchases.some((p) => p.kind === "imported")
+        ? `Sent by Nimbus Labs on behalf of ${name}. What you bought here was charged by ${name} on their own Stripe account; what ${name} brought over from another platform was not charged again.`
+        : `Sent by Nimbus Labs on behalf of ${name}. Every purchase was charged by ${name} on their own Stripe account.`,
     ].join("\n"),
   });
   return sent ? "sent" : "error";
@@ -384,7 +478,7 @@ export async function ordersGrant(store: Store, token: string): Promise<string |
   if (typeof raw !== "string" || !raw) return null;
   try {
     const grant = JSON.parse(raw) as Partial<Grant>;
-    if (grant.a !== store.stripeAccountId || typeof grant.e !== "string" || !grant.e) return null;
+    if (grant.a !== grantAccount(store) || typeof grant.e !== "string" || !grant.e) return null;
     return grant.e;
   } catch {
     return null;
@@ -396,6 +490,7 @@ export async function ordersGrant(store: Store, token: string): Promise<string |
  * Read again from Stripe, so a refund made a minute ago is already honoured.
  */
 export async function findPurchase(store: Store, token: string, reference: string): Promise<Purchase | null> {
+  if (reference.startsWith("imp_") && !IMPORTED_REFERENCE.test(reference)) return null;
   const email = await ordersGrant(store, token);
   if (!email) return null;
   const purchases = await purchasesFor(store, email);

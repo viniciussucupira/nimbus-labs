@@ -586,6 +586,10 @@ export const BLOG_POSTS: BlogPost[] = [
         type: "note",
         text: "Updated again on 27 September 2026, when Nimbus added sales and landing pages, reviews only buyers can write, 15 currencies and the ways to pay a creator switches on in Stripe, Mailchimp, Kit, beehiiv and MailerLite built in, up to five stores and a team with roles, a video room for each booking, phone notifications and up to 2,000 products.",
       },
+      {
+        type: "note",
+        text: "And later the same day, when Nimbus added live events inside the community, bundles of products, drafts, and importing a list, products and past buyers from another platform.",
+      },
       { type: "h2", text: "What Stan is" },
       {
         type: "p",
@@ -593,7 +597,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "That is a large product. A community in the same place as your store is something we both have now; theirs can hold webinars inside it, and ours cannot.",
+        text: "That is a large product. A community in the same place as your store, with live sessions inside it, is something we both have now. Theirs are webinars members sign up for, with Zoom or Google Meet links made automatically; ours are live events members RSVP to, in a private Jitsi Meet room shown in the page or at the creator's own link, with no Zoom or Google Meet link made for you.",
       },
       { type: "h2", text: "What Nimbus is" },
       {
@@ -613,7 +617,7 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "Range: automated Instagram replies, PayPal for creators in the United States, affiliates paid automatically, webinars inside the community, Zoom and Google Meet links made for each booking, and stores with no limit on products. We have none of those. PayPal reaches our checkout only through Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein; our affiliates are paid by you; our funnels are pages and offers you connect rather than one builder; our video rooms are Jitsi Meet rooms, where the first person in may have to sign in to Jitsi; and a store holds up to 2,000 products.",
+          "Range: automated Instagram replies, PayPal for creators in the United States, affiliates paid automatically, Zoom and Google Meet links made for each booking and webinar, and stores with no limit on products. We have none of those. PayPal reaches our checkout only through Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein; our affiliates are paid by you; our funnels are pages and offers you connect rather than one builder; our video rooms, for calls and live events alike, are Jitsi Meet rooms, where the first person in may have to sign in to Jitsi; and a store holds up to 2,000 products.",
           "Years of running: their support library is deep, and ours is a few pages.",
           "An installable creator app: their help centre states their creator app is currently available on iPhone and iPad. We do not have a native app at all — our studio and every store install to the home screen from the browser, on both iPhone and Android, and the studio can send notifications of sales, which is a different trade-off, not a better one in every case.",
           "Integrations with third-party tools, which they list on their site. We have webhooks that Zapier, Make or your own server can catch, and no app of our own in anyone's directory.",
@@ -628,6 +632,8 @@ export const BLOG_POSTS: BlogPost[] = [
           "Reviews only buyers can write, checked against the payment. Stan's help centre says reviews there are added by the creator.",
           "A team with roles, each person signing in with their own email. Stan's help centre says the only way there is to share your login.",
           "Sales pages, landing pages, discount codes, payment plans and offers after paying on the $29 plan, and a store in any of 15 currencies.",
+          "Bundles that hand over each of your products as if bought on its own. Stan's help centre lists bundles among what one download can hold.",
+          "Moving in from a spreadsheet: up to 50,000 contacts, 500 products and 20,000 past buyers a file, where Stan's help centre imports up to 5,000 contacts per store in all and gives buyers access one at a time.",
           "A live demo store anyone can buy from with a test card, before signing up for anything.",
           "Prices and terms published as pages on the site, not as PDFs you have to download.",
         ],

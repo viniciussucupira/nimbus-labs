@@ -26,14 +26,18 @@ import { StatsPanel } from "@/components/stats-panel";
 import { CalendarEditor } from "@/components/calendar-editor";
 import { WebhookEditor } from "@/components/webhook-editor";
 import { calendarBusy, calendarView, ensureFeedToken, overlaps, slotRooms } from "@/lib/calendar-sync";
-import { isVideoRoom } from "@/lib/call-rooms";
+import { roomKind, roomLabel } from "@/lib/call-rooms";
+import { type MeetView, meetView } from "@/lib/meet-connect";
+import { configuredProviders } from "@/lib/meet-providers";
+import { slotMeetings } from "@/lib/meet-links";
+import type { MeetRecord } from "@/lib/meet-records";
 import { keepHandle, webhooksView } from "@/lib/webhooks";
 import { PixelEditor } from "@/components/pixel-editor";
 import { TaxEditor } from "@/components/tax-editor";
 import { RecoveryEditor } from "@/components/recovery-editor";
 import { taxStatus } from "@/lib/tax";
 import { SITE_URL } from "@/lib/site-url";
-import { readableTime, roomFor, seatsAt, zoneName } from "@/lib/call-setup";
+import { MEET_NAMES, readableTime, roomFor, seatsAt, zoneName } from "@/lib/call-setup";
 import { ProductEditor } from "@/components/product-editor";
 import { PaymentsPanel } from "@/components/payments-panel";
 import { chargeableCurrencies, readWaysToPay } from "@/lib/payment-methods";
@@ -105,6 +109,24 @@ function upcoming(list: PaidCall[], products: Listing[]): CallSlot[] {
     }
   }
   return [...slots.values()].sort((a, b) => a.start - b.start);
+}
+
+/** What went wrong with a booked time's Google Meet or Zoom meeting, in a sentence for the creator. */
+function meetProblem(meeting: MeetRecord): string {
+  const name = MEET_NAMES[meeting.provider];
+  const what =
+    meeting.todo === "patch"
+      ? `The ${name} meeting could not be moved to the new time yet`
+      : meeting.todo === "delete"
+        ? `The ${name} meeting of this refunded booking could not be removed yet`
+        : meeting.todo === "guests"
+          ? `The ${name} guest list could not be updated yet`
+          : `The ${name} link could not be made`;
+  const who = meeting.group ? "Everyone booked was" : "They were";
+  const fallback = roomKind(meeting.link) === "room" ? "a private video room" : "your own link";
+  const given = meeting.made ? "" : meeting.link ? ` ${who} given ${fallback} instead.` : " Nobody was given a link: send one yourself.";
+  const next = meeting.todo ? " We try again by ourselves over the next hours." : "";
+  return `${what}: ${meeting.error}.${given}${next}`;
 }
 
 const NEXT_WHEN_NOT = [
@@ -462,6 +484,30 @@ export default async function StudioPage({
   // The room of each booked time: the one made for it, or the creator's own link.
   const callRooms =
     calls && store ? await slotRooms(store, calls.flatMap((slot) => slot.people), callProducts).catch(() => null) : null;
+  // Google Calendar and Zoom (lib/meet-connect.ts): which accounts calls can
+  // make meetings on, for the call editor, and what was made for each booked
+  // time, for the list below. Nothing is read when the deployment has neither.
+  const meetOn = configuredProviders().length > 0;
+  const meet: MeetView | null =
+    store && meetOn && (may("products") || may("orders")) ? await meetView(store.statsId).catch(() => null) : null;
+  const meetAccounts = meet
+    ? meet.providers.flatMap((p) => {
+        const c = meet.connected[p];
+        return c && !c.broken ? [{ provider: p, account: c.account }] : [];
+      })
+    : [];
+  const callMeets: Map<string, MeetRecord> | null =
+    calls && store && meetOn
+      ? await slotMeetings(
+          store.callsId,
+          calls.map((slot) => ({
+            key: slot.key,
+            product: slot.key.split("|")[0],
+            start: slot.start,
+            session: slot.people.length === 1 ? slot.people[0].session : null,
+          })),
+        ).catch(() => null)
+      : null;
   // The creator's calendars: the private subscription address is made the
   // first time there is a call to put in it, and the busy times are read (from
   // the ten-minute copy, usually) to point out a dated session that clashes.
@@ -627,7 +673,11 @@ export default async function StudioPage({
                   ? [
                       { href: studioPath(store, "", "pages"), title: "Sales pages", text: "Build each product's page from blocks, or a landing page for something free.", icon: "layout" as const },
                       { href: studioPath(store, "", "funnels"), title: "Funnels", text: "Up to five one-click offers after paying.", icon: "ladder" as const },
+                      { href: studioPath(store, "", "bundles"), title: "Bundles", text: "Several of your products for one price.", icon: "gift" as const },
                     ]
+                  : []),
+                ...(may("import")
+                  ? [{ href: studioPath(store, "", "import"), title: "Moving from another platform", text: "Bring your list, products and past buyers.", icon: "door" as const }]
                   : []),
                 ...(may("reviews")
                   ? [{ href: studioPath(store, "", "reviews"), title: "Reviews", text: "Verified reviews from buyers, and your replies.", icon: "star" as const }]
@@ -640,6 +690,10 @@ export default async function StudioPage({
                   : []),
                 ...(may("settings")
                   ? [{ href: studioPath(store, "", "integrations"), title: "Email platforms", text: "Mailchimp, Kit, beehiiv or MailerLite, kept fed.", icon: "plug" as const }]
+                  : []),
+                // Only once the deployment has the Google or Zoom app's keys (lib/meet-providers.ts).
+                ...(may("settings") && meetOn
+                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${configuredProviders().map((p) => MEET_NAMES[p]).join(" or ")} links, made for every booking and live event.`, icon: "video" as const }]
                   : []),
                 // Everyone on the store, for their own devices (lib/phone-alerts.ts).
                 { href: studioPath(store, "", "phone"), title: "Phone notifications", text: "A buzz for each sale, booking and report, on your own devices.", icon: "phone" as const },
@@ -726,6 +780,7 @@ export default async function StudioPage({
                   testMode={isConnectInTestMode()}
                   email={email}
                   currency={store.currency}
+                  meetings={meetAccounts}
                 />
               </div>
             ) : (
@@ -796,6 +851,7 @@ export default async function StudioPage({
                       const emails = slot.people.map((c) => c.email).filter((e): e is string => Boolean(e));
                       // A dated session keeps its date whatever the creator's
                       // calendar says; a clash is pointed out rather than hidden.
+                      const meeting = callMeets?.get(slot.key) ?? null;
                       const clash =
                         setup?.kind === "live" &&
                         overlaps(calendarBusyTimes, slot.start, slot.start + (setup.sessions.find((s) => s.start === slot.start)?.minutes ?? setup.minutes) * 60_000);
@@ -821,12 +877,33 @@ export default async function StudioPage({
                                 ) : null}
                               </span>
                             </span>
-                            {room ? (
-                              <a href={room} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4">
-                                {isVideoRoom(room) ? "Join the video room" : "Join"}
-                              </a>
-                            ) : null}
+                            <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                              {/* The host's own way in: a fresh start link asked of Zoom on the click, never kept. */}
+                              {meeting && meeting.provider === "zoom" && meeting.made && !meeting.gone && may("settings") ? (
+                                <a
+                                  href={`/api/integrations/zoom/host?${new URLSearchParams({ scope: meeting.scope, ...(store.sid ? { store: store.sid } : {}) })}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4"
+                                >
+                                  Start in Zoom
+                                </a>
+                              ) : null}
+                              {room ? (
+                                <a href={room} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4">
+                                  {roomLabel(room) === "The link to join" ? "Join" : roomLabel(room)}
+                                </a>
+                              ) : null}
+                            </span>
                           </div>
+                          {meeting && meeting.error && (!meeting.made || meeting.todo) ? (
+                            <p className="mt-2 flex items-start gap-2 rounded-[10px] bg-amber-brand/10 px-3 py-2 text-sm text-ink">
+                              <Icon name="alert" size={16} className="mt-0.5 shrink-0" />
+                              <span className="min-w-0 break-words">
+                                {meetProblem(meeting)}
+                              </span>
+                            </p>
+                          ) : null}
                           {clash ? (
                             <p className="mt-2 flex items-start gap-2 rounded-[10px] bg-amber-brand/10 px-3 py-2 text-sm text-ink">
                               <Icon name="alert" size={16} className="mt-0.5 shrink-0" />

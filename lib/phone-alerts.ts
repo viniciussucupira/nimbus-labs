@@ -32,6 +32,11 @@
  *   report     a member reported a post or a comment (told once for each
  *              post or comment, however many members report it).
  *   affiliate  somebody confirmed an application to the affiliate programme.
+ *   live       a live event in the community starts in fifteen minutes
+ *              (lib/community-event-mail.ts): its title, its time, how many
+ *              said they are coming. A device kept before this event existed
+ *              that hears of bookings hears of these too, until its person
+ *              switches them off.
  *
  * What a notification says is written for a lock screen: amounts, product
  * titles and times, never a buyer's name or email address. Each is sent
@@ -57,7 +62,7 @@ import { type Permission, type Role, can } from "@/lib/team-roles";
 import { memberStores, readTeam } from "@/lib/team";
 import { type PushFetchHooks, type Subscription, readSubscription, sendPush, vapidKeys, vapidKeysFor } from "@/lib/web-push";
 
-export const PHONE_EVENTS = ["sale", "booking", "report", "affiliate"] as const;
+export const PHONE_EVENTS = ["sale", "booking", "report", "affiliate", "live"] as const;
 export type PhoneEvent = (typeof PHONE_EVENTS)[number];
 
 /** Devices one person may have on one store. */
@@ -69,13 +74,15 @@ const MAX_STORE_DEVICES = MAX_DEVICES * 6;
  * What a role has to be allowed to hear each event (lib/team-roles.ts): a
  * sale's amount is a number of the store's (stats) or an order (orders); a
  * booking is an order; a report is the community's; an application is the
- * affiliate programme's, a setting.
+ * affiliate programme's, a setting; a live event about to start is the
+ * community's, which everyone who helps run it may see.
  */
 const EVENT_NEEDS: Record<PhoneEvent, Permission[]> = {
   sale: ["orders", "stats"],
   booking: ["orders"],
   report: ["community"],
   affiliate: ["settings"],
+  live: ["community"],
 };
 
 /** The events a role may be told about, in the studio's order. */
@@ -104,6 +111,11 @@ type Device = {
   /** "iPhone · Safari", from the browser that turned it on. */
   label: string;
   events: PhoneEvent[];
+  /**
+   * 1 once its choices were made knowing about live events. A device from
+   * before, that hears of bookings, is given them too (see parseConfig).
+   */
+  lv?: number;
   addedAt: number;
   /**
    * Whose device it is: their sign-in address, for someone on the team. ""
@@ -143,7 +155,10 @@ function parseConfig(raw: unknown): Config | null {
             ...d,
             kid: typeof d.kid === "string" ? d.kid : "",
             label: typeof d.label === "string" ? d.label.slice(0, 60) : "A device",
-            events: eventsFrom(d.events),
+            // A device chosen before live events existed and that hears of
+            // bookings hears of them too; from then on its choice is its own.
+            events: d.lv === 1 || !eventsFrom(d.events).includes("booking") ? eventsFrom(d.events) : [...eventsFrom(d.events), "live" as const],
+            lv: 1,
             addedAt: typeof d.addedAt === "number" ? d.addedAt : 0,
             who: typeof d.who === "string" ? d.who : "",
           }))
@@ -308,11 +323,13 @@ async function deliver(store: Store, device: Device, event: PhoneEvent | "test",
   const statsId = store.statsId as string;
   const subscription: Subscription = { endpoint: device.endpoint, p256dh: device.p256dh, auth: device.auth };
   const result = await sendPush(subscription, payloadFor(event, alert), {
-    // A sale or a booking wakes a phone that is saving power; the rest waits for it.
-    urgency: event === "sale" || event === "booking" || event === "test" ? "high" : "normal",
+    // A sale, a booking or a live event about to start wakes a phone that is
+    // saving power; the rest waits for it.
+    urgency: event === "sale" || event === "booking" || event === "live" || event === "test" ? "high" : "normal",
     // A newer report or application replaces one still waiting at the push service.
     topic: event === "report" || event === "affiliate" ? `nimbus-${event}` : undefined,
-    ttlSeconds: event === "test" ? 600 : 86400,
+    // A live event's notice is no use once the event has started.
+    ttlSeconds: event === "test" ? 600 : event === "live" ? 900 : 86400,
     hooks: hooksForTests,
     keys: vapidKeysFor(device.kid),
   });
@@ -473,6 +490,7 @@ export async function addDevice(
     kid: keys.kid,
     label: deviceLabel(userAgent),
     events: chosen.length ? chosen : allowed,
+    lv: 1,
     addedAt: now,
     who: whoFor(store, person),
   };

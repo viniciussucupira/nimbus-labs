@@ -26,7 +26,7 @@
  */
 import { createHash } from "node:crypto";
 import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
-import { del, get, list, put } from "@vercel/blob";
+import { del, get, list, put } from "@/lib/blob";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { MAX_STAMP_BYTES, type ProductFile, isPdf } from "@/lib/product-file";
 import { folderFromPathname } from "@/lib/delivery";

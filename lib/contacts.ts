@@ -20,7 +20,7 @@
  *   nl:store:leads:<listId>:unsub    how many of those have since left
  *   nl:mail:unsub:<token>            listId|address|handle, for the link in an email
  */
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 
@@ -50,7 +50,30 @@ export type Contact = {
   unsubAt: string;
   /** The token in their unsubscribe link, made the first time they are sent to. */
   t: string;
+  /** Their name, when an import brought one (lib/imports.ts). "" when unknown. */
+  name: string;
+  /** Labels an import brought with them, as the creator's old platform had them. */
+  tags: string[];
+  /** When an import brought them or marked them as agreeing; "" when none did. */
+  importedAt: string;
 };
+
+/** How long a name kept for a contact may be, and how many labels of what length. */
+export const MAX_CONTACT_NAME = 100;
+export const MAX_CONTACT_TAGS = 10;
+export const MAX_TAG_LENGTH = 40;
+
+/** Labels as a file writes them — "vip, buyers" or "vip;buyers" — cleaned and kept once each. */
+export function readTags(raw: string | string[]): string[] {
+  const pieces = Array.isArray(raw) ? raw : raw.split(/[,;|]/);
+  const out: string[] = [];
+  for (const piece of pieces) {
+    const tag = String(piece).replace(/\s+/g, " ").trim().slice(0, MAX_TAG_LENGTH);
+    if (tag && !out.some((t) => t.toLowerCase() === tag.toLowerCase())) out.push(tag);
+    if (out.length >= MAX_CONTACT_TAGS) break;
+  }
+  return out;
+}
 
 export const leadsKey = (listId: string) => `nl:store:leads:${listId}`;
 export const agreedKey = (listId: string) => `nl:store:leads:${listId}:agreed`;
@@ -74,6 +97,10 @@ export function parseContact(raw: unknown): Contact | null {
       unsub: value.unsub === true,
       unsubAt: typeof value.unsubAt === "string" ? value.unsubAt : "",
       t: typeof value.t === "string" && UNSUB_TOKEN.test(value.t) ? value.t : "",
+      // Contacts written before imports kept names and labels have neither.
+      name: typeof value.name === "string" ? value.name.slice(0, MAX_CONTACT_NAME) : "",
+      tags: Array.isArray(value.tags) ? readTags(value.tags.filter((t): t is string => typeof t === "string")) : [],
+      importedAt: typeof value.importedAt === "string" ? value.importedAt : "",
     };
   } catch {
     return null;
@@ -137,6 +164,9 @@ export async function upsertContact(
     unsub: resubscribe ? false : Boolean(before?.unsub),
     unsubAt: resubscribe ? "" : before?.unsubAt ?? "",
     t: before?.t ?? "",
+    name: before?.name ?? "",
+    tags: before?.tags ?? [],
+    importedAt: before?.importedAt ?? "",
   };
   const commands: (string | number)[][] = [["HSET", key, email, JSON.stringify(next)]];
   if (input.agreed && !before?.agreed) commands.push(["INCR", agreedKey(listId)]);
@@ -218,6 +248,9 @@ export async function importContacts(
         unsub: false,
         unsubAt: "",
         t: before?.t ?? "",
+        name: before?.name ?? "",
+        tags: before?.tags ?? [],
+        importedAt: now,
       };
       pairs.push(email, JSON.stringify(next));
       newlyAgreed += 1;
@@ -231,6 +264,144 @@ export async function importContacts(
     }
   }
   return { added, already: emails.length - added, full };
+}
+
+/** One row of a file of contacts, already read (lib/imports.ts). */
+export type ImportedContact = { email: string; name: string; tags: string[] };
+
+/**
+ * What became of one row: put on the list as someone who agreed ("added"),
+ * already on it as someone who agreed ("already"), someone who unsubscribed
+ * and is left alone ("left"), or no room on the list ("full").
+ */
+export type ContactOutcome = "added" | "already" | "left" | "full";
+
+/**
+ * Brings in one chunk of a file of contacts the creator confirmed agreed to
+ * hear from them, in two round trips. The rules are importContacts's, with
+ * the file's names and labels kept:
+ *
+ *   - nobody who unsubscribed is put back, whatever the file says;
+ *   - somebody already on the list who agreed keeps everything; the file
+ *     only fills in a name they did not have and adds its labels;
+ *   - somebody on the list who never agreed (they asked for something free
+ *     and left the box empty) is marked as agreeing now, from the import;
+ *   - somebody new is added as agreeing, marked as brought by an import on
+ *     this date.
+ *
+ * Nobody is emailed because of any of it: no welcome, no sequence.
+ *
+ * Each address is written only if it is still as it was read (CAS_HSET): the
+ * import reads a chunk, decides, then writes, and somebody who unsubscribes
+ * in between must not be written back as agreeing. An address that changed
+ * meanwhile is read again and left as it now is.
+ */
+export async function importContactRows(listId: string, rows: ImportedContact[]): Promise<ContactOutcome[]> {
+  if (!isRedisConfigured() || !listId || rows.length === 0) return rows.map(() => "full");
+  const key = leadsKey(listId);
+  const [size, found] = await redisPipeline([
+    ["HLEN", key],
+    ["HMGET", key, ...rows.map((r) => r.email)],
+  ]);
+  let room = MAX_LEADS - (Number(size) || 0);
+  const now = new Date().toISOString();
+  const existing = Array.isArray(found) ? found : [];
+  // Each write, with the fingerprint of what its address held when read.
+  const writes: { email: string; value: string; was: string; row: number }[] = [];
+  const write = (i: number, value: string) => {
+    const raw = existing[i];
+    writes.push({ email: rows[i].email, value, was: typeof raw === "string" ? sha1(raw) : "", row: i });
+  };
+  let newlyAgreed = 0;
+  const outcomes = rows.map((row, i): ContactOutcome => {
+    const before = parseContact(existing[i]);
+    if (before?.unsub) return "left";
+    if (!before && room <= 0) return "full";
+    if (!before) room -= 1;
+    const name = before?.name || row.name.slice(0, MAX_CONTACT_NAME);
+    const tags = readTags([...(before?.tags ?? []), ...row.tags]);
+    if (before?.agreed) {
+      // Already agreeing: only a missing name or new labels are written.
+      if (name !== before.name || tags.length !== before.tags.length) {
+        write(i, JSON.stringify({ ...before, name, tags }));
+      }
+      return "already";
+    }
+    const next: Contact = {
+      agreed: true,
+      agreedAt: now,
+      firstAt: before?.firstAt || now,
+      lastAt: now,
+      titles: before?.titles ?? [],
+      ids: before?.ids ?? [],
+      source: before?.source || "import",
+      unsub: false,
+      unsubAt: "",
+      t: before?.t ?? "",
+      name,
+      tags,
+      importedAt: now,
+    };
+    write(i, JSON.stringify(next));
+    newlyAgreed += 1;
+    return "added";
+  });
+  if (!writes.length) return outcomes;
+  const written = await casWrite(key, writes);
+  const lost = writes.filter((_, i) => !written[i]);
+  if (lost.length) {
+    // Changed in the moment between: whatever it is now stands.
+    const [now] = await redisPipeline([["HMGET", key, ...lost.map((w) => w.email)]]);
+    lost.forEach((w, i) => {
+      const contact = parseContact(Array.isArray(now) ? now[i] : null);
+      if (outcomes[w.row] === "added") newlyAgreed -= 1;
+      outcomes[w.row] = contact?.unsub ? "left" : "already";
+    });
+  }
+  if (newlyAgreed > 0) await redisPipeline([["INCRBY", agreedKey(listId), newlyAgreed]]);
+  return outcomes;
+}
+
+const sha1 = (value: string) => createHash("sha1").update(value).digest("hex");
+
+/** Sets each field only if it still holds what was read (by its SHA-1, "" for none); one step on the Redis side. */
+const CAS_HSET = [
+  "local out = {}",
+  "for i = 1, #ARGV, 3 do",
+  '  local cur = redis.call("HGET", KEYS[1], ARGV[i])',
+  '  local seen = ""',
+  "  if cur then seen = redis.sha1hex(cur) end",
+  "  if seen == ARGV[i + 1] then",
+  '    redis.call("HSET", KEYS[1], ARGV[i], ARGV[i + 2])',
+  "    out[#out + 1] = 1",
+  "  else",
+  "    out[#out + 1] = 0",
+  "  end",
+  "end",
+  "return out",
+].join("\n");
+
+/**
+ * Writes each field that still holds what was read; says which were written.
+ * Upstash runs the script; where a Redis does not (the local stand-ins), the
+ * same check is made as a read just before the write, which keeps the rule
+ * and only narrows the gap rather than closing it.
+ */
+async function casWrite(key: string, writes: { email: string; value: string; was: string }[]): Promise<boolean[]> {
+  try {
+    const [result] = await redisPipeline([["EVAL", CAS_HSET, 1, key, ...writes.flatMap((w) => [w.email, w.was, w.value])]]);
+    if (Array.isArray(result) && result.length === writes.length) return result.map((v) => Number(v) === 1);
+    throw new Error("unexpected answer");
+  } catch {
+    const [now] = await redisPipeline([["HMGET", key, ...writes.map((w) => w.email)]]);
+    const same = writes.map((w, i) => {
+      const raw = Array.isArray(now) ? now[i] : null;
+      return (typeof raw === "string" ? sha1(raw) : "") === w.was;
+    });
+    const pairs = writes.flatMap((w, i) => (same[i] ? [w.email, w.value] : []));
+    if (pairs.length) await redisPipeline([["HSET", key, ...pairs]]);
+    return same;
+  }
 }
 
 /**

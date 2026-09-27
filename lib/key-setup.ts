@@ -74,7 +74,8 @@ export function readKeySetup(raw: Record<string, unknown>): KeySetup | SetupProb
 
 /** Which products may hand out keys: paid, sold once, and delivering a file or a link. */
 export function canHaveKeys(product: Listing): boolean {
-  return product.priceCents > 0 && product.recurring === null && product.call === null && product.course === null;
+  // A bundle hands out the keys of the products in it, each its own.
+  return product.priceCents > 0 && product.recurring === null && product.call === null && product.course === null && !product.bundle;
 }
 
 /**

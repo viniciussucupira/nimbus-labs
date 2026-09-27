@@ -11,6 +11,7 @@ import { canBeBumped, isOneOff } from "@/lib/product-extras";
 import { MAX_FUNNEL_STEPS } from "@/lib/funnel";
 import { imageUrl } from "@/lib/product-image";
 import { FunnelEditor } from "@/components/funnel-editor";
+import { offerableAfterPaying } from "@/lib/bundles";
 
 export const metadata: Metadata = {
   title: "Funnels — Nimbus Labs",
@@ -54,7 +55,8 @@ export default async function StudioFunnelsPage({ searchParams }: Params) {
     .sort((a, b) => Number(withOffers.has(b.id)) - Number(withOffers.has(a.id)));
   const listed = matching.slice(0, NAV_LIMIT);
   if (selected && !listed.some((p) => p.id === selected.id)) listed.unshift(selected);
-  const offerable = listings
+  // A bundle is offered like any product, unless it holds a course (lib/bundles.ts).
+  const offerable = (await offerableAfterPaying(store, listings))
     .filter((p) => canBeBumped(p))
     .map((p) => ({
       id: p.id,

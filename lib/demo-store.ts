@@ -1,5 +1,6 @@
 // Demo creator store: proves that a buyer can pay a creator directly and get
 // the file right after Stripe confirms the payment. Test mode only.
+import { STRIPE_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 import type { DemoFileName } from "@/lib/demo-file";
 import { inTheCurrencyShown, onlyInstantMethods } from "@/lib/instant-pay";
 
@@ -99,18 +100,21 @@ async function stripeRequest(
   const key = getSecretKey();
   if (!key) throw new Error("Demo checkout is not configured");
 
-  const response = await fetch(`${STRIPE_API}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Stripe-Account": DEMO_CONNECTED_ACCOUNT,
-      ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
-    },
-    body,
-    cache: "no-store",
+  // Given up after STRIPE_TIMEOUT_MS as a network failure is (lib/fetch-timeout.ts).
+  const { response, data } = await timed(STRIPE_TIMEOUT_MS, async (signal) => {
+    const response = await fetch(`${STRIPE_API}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Stripe-Account": DEMO_CONNECTED_ACCOUNT,
+        ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+      },
+      body,
+      cache: "no-store",
+      signal,
+    });
+    return { response, data: (await response.json()) as Record<string, unknown> };
   });
-
-  const data = (await response.json()) as Record<string, unknown>;
   if (!response.ok) {
     const error = data.error as { code?: string; type?: string } | undefined;
     throw new StripeError(

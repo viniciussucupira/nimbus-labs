@@ -55,6 +55,7 @@ import { SafeFetchError, checkUrl, problemWords, safeFetch } from "@/lib/safe-fe
 import { type Store, storeForHandle } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
 import { SITE_URL } from "@/lib/site-url";
+import { bundleFromMeta } from "@/lib/bundle-rules";
 
 export const WEBHOOK_EVENTS = [
   "sale.completed",
@@ -547,12 +548,18 @@ async function fromStripe(store: Store, event: StripeEvent, lookups: { left: num
     const membership = object.mode === "subscription" && meta.kind !== "plan";
     const kind = meta.kind === "call" ? "call" : meta.kind === "plan" ? "payment_plan" : membership ? "membership" : "one_time";
     const totals = (object.total_details ?? {}) as { amount_discount?: unknown };
+    // A bundle names every product it handed over, from the list on the order.
+    const inside = async (slot: "bundle" | "bump_bundle") => {
+      const ids = bundleFromMeta(meta, slot);
+      return ids.length ? Promise.all(ids.map((id) => product(id))) : null;
+    };
     await emitEvent(store, "sale.completed", session, {
       checkout_session: session,
       kind,
       product: await product(meta.product),
       option: meta.option ?? null,
-      order_bump: meta.bump ? await product(meta.bump) : null,
+      bundle_items: await inside("bundle"),
+      order_bump: meta.bump ? { ...(await product(meta.bump)), bundle_items: await inside("bump_bundle") } : null,
       amount_cents: num(object.amount_total),
       discount_cents: num(totals.amount_discount),
       currency: str(object.currency) ?? "usd",
@@ -582,6 +589,7 @@ async function fromStripe(store: Store, event: StripeEvent, lookups: { left: num
       payment_intent: intent,
       kind: "upsell",
       product: await product(meta.product),
+      bundle_items: bundleFromMeta(meta, "bundle").length ? await Promise.all(bundleFromMeta(meta, "bundle").map((id) => product(id))) : null,
       after_checkout: meta.parent ?? null,
       // Which offer of the funnel was taken: its id and its place (1 to 5).
       // An offer charged before this was recorded carries its id only when

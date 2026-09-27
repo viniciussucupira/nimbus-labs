@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { del, get, head } from "@vercel/blob";
+import { del, get, head } from "@/lib/blob";
 import {
   StoreFullError,
   imageFolder,

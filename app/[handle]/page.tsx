@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import { normaliseHandle, storeForPage } from "@/lib/store";
-import { productCount, readPage, sellsAny } from "@/lib/catalog";
+import { type Listing, normaliseHandle, storeForPage } from "@/lib/store";
+import { readPage, sellsAny, visibleCount } from "@/lib/catalog";
+import { offeredItems } from "@/lib/bundles";
 import { canSell, canSellProduct } from "@/lib/store-checkout";
 import { linkHost } from "@/lib/product-link";
 import { isConnectInTestMode } from "@/lib/stripe-connect";
@@ -74,7 +75,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     // something on it does, so it stops hiding the moment it has. A page of
     // links alone counts: it is a page somebody may be looking for.
     robots: {
-      index: productCount(store) > 0 || store.links.length > 0,
+      index: visibleCount(store) > 0 || store.links.length > 0,
       follow: true,
     },
     // A shared link shows the creator's face when they have put one up.
@@ -134,7 +135,8 @@ export default async function StorePage({ params, searchParams }: Params) {
   const ratings = store.reviewed ? summaries(store.statsId).catch(() => new Map()) : Promise.resolve(new Map());
   const { listings, related, page, pages } = await readPage(store, asking);
   const known = [...listings, ...related];
-  const total = productCount(store);
+  // What the store lists: drafts are left off (lib/catalog.ts).
+  const total = visibleCount(store);
 
   const bold = store.look.theme === "bold";
   // A member can always find the way out, even when the store cannot sell
@@ -146,6 +148,9 @@ export default async function StorePage({ params, searchParams }: Params) {
   // side by side, so a long store does not wait on its products one by one;
   // a product without a limit is answered without asking anything.
   // A product handing out keys from a pool that is empty is sold out too.
+  // What each bundle on this page holds now: one read for the page, none for
+  // a page without bundles (lib/bundles.ts).
+  const inBundles = offeredItems(store, known).catch(() => new Map<string, Listing[]>());
   const counts = await Promise.all(
     listings.map(async (product) => {
       const [stock, out] = await Promise.all([
@@ -156,6 +161,7 @@ export default async function StorePage({ params, searchParams }: Params) {
     }),
   );
   const rated = await ratings;
+  const bundleItems = await inBundles;
   const left = new Map<string, number>();
   listings.forEach((product, i) => {
     const count = counts[i];
@@ -232,6 +238,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                     selling={selling}
                     manageable={manageable}
                     rating={rated.get(product.id) ?? null}
+                    bundleItems={bundleItems.get(product.id) ?? null}
                   />
                 ))}
               </ul>

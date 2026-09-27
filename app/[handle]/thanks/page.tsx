@@ -10,7 +10,7 @@ import { lookStyle } from "@/lib/store-look";
 import { canManage } from "@/lib/membership-manage";
 import { canMove, confirmBooking, moveLink } from "@/lib/calls";
 import { readableTime, zoneName } from "@/lib/call-setup";
-import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
+import { VIDEO_ROOM_NOTE, isVideoRoom, roomLabel, roomOf } from "@/lib/call-rooms";
 import { SITE_URL } from "@/lib/site-url";
 import { StoreTracking } from "@/components/store-tracking";
 import { confirmStock } from "@/lib/stock";
@@ -34,6 +34,8 @@ import { reviewable } from "@/lib/review-proof";
 import { type Review, readReview, reviewId } from "@/lib/reviews";
 import { REVIEW_NOTICES, ReviewForm } from "@/components/review-form";
 import { type SaleRecord, noteSale } from "@/lib/sale-events";
+import { BundleDelivery } from "@/components/bundle-delivery";
+import type { BundleContents } from "@/lib/bundles";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
@@ -110,7 +112,24 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   const order: Order | { state: "slow" } = allowed ? await readOrder(store, sessionId) : { state: "slow" };
 
   // A paid call: the time is written down and the two emails go out, once,
-  // however many times this page is opened.
+  // however many times this page is opened. Confirmed before its link is
+  // read, because confirming is what makes a Google Meet or Zoom meeting for
+  // it (lib/meet-links.ts), and this page shows that meeting's link.
+  if (sessionId && order.state === "paid" && order.call && order.product.call) {
+    await confirmBooking({
+      store,
+      product: { ...order.product, call: order.product.call },
+      session: sessionId,
+      start: order.call.start,
+      end: order.call.end,
+      buyerEmail: order.email,
+      buyerTz: order.call.buyerTz,
+      moves: order.call.moves,
+      answers: order.answers,
+      amountCents: order.amount,
+      origin: SITE_URL,
+    }).catch((error) => console.error("confirming a booking failed", error));
+  }
   const booked =
     order.state === "paid" && order.call && order.product.call
       ? {
@@ -129,21 +148,6 @@ export default async function ThanksPage({ params, searchParams }: Params) {
           minutes: Math.round((order.call.end - order.call.start) / 60_000),
         }
       : null;
-  if (booked && sessionId && order.state === "paid" && order.product.call) {
-    await confirmBooking({
-      store,
-      product: { ...order.product, call: order.product.call },
-      session: sessionId,
-      start: booked.start,
-      end: booked.end,
-      buyerEmail: order.email,
-      buyerTz: booked.buyerTz,
-      moves: booked.moves,
-      answers: order.answers,
-      amountCents: order.amount,
-      origin: SITE_URL,
-    }).catch((error) => console.error("confirming a booking failed", error));
-  }
 
   // A payment plan, or a membership with a set number of payments, is given
   // its end the moment its buyer is back; the daily job does the same for
@@ -152,12 +156,21 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     await finishPlan(store.stripeAccountId, sessionId).catch((error) => console.error("finishing a plan failed", error));
   }
 
+  // What a bundle bought or ticked at checkout hands over, each product as if
+  // bought on its own (lib/bundles.ts).
+  const bundled: Listing[] =
+    order.state === "paid" ? [...(order.items?.items ?? []), ...(order.bump?.items?.items ?? [])] : [];
+
   // A course is written down as bought, so the student list and the emails
-  // about modules opening know about this student from today.
-  if (order.state === "paid" && order.product.course && order.email) {
-    await recordEnrollment(store, order.email, order.product.id, order.created).catch((error) =>
-      console.error("recording a course purchase failed", error),
-    );
+  // about modules opening know about this student from today — a course in
+  // a bundle as much as one bought on its own.
+  if (order.state === "paid" && order.email) {
+    const courses = [...(order.product.course ? [order.product] : []), ...bundled.filter((p) => p.course)];
+    for (const course of courses) {
+      await recordEnrollment(store, order.email, course.id, order.created).catch((error) =>
+        console.error("recording a course purchase failed", error),
+      );
+    }
   }
 
   // A buyer who ticked the box joins the creator's list, and any sequence
@@ -172,6 +185,12 @@ export default async function ThanksPage({ params, searchParams }: Params) {
         title: order.product.title,
       });
       await enroll(store, order.email, { joined: added.joined, productId: order.product.id });
+      // Each product of a bundle is noted too, and starts its own sequence.
+      for (const item of bundled) {
+        if (await noteProduct(store.listId, order.email, item.id, item.title)) {
+          await enroll(store, order.email, { joined: false, productId: item.id });
+        }
+      }
     } catch (error) {
       console.error("adding a buyer to a list failed", error);
     }
@@ -179,8 +198,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     // Someone already on the list who buys without the box: nobody new is
     // added, but a sequence about this product starts for them.
     try {
-      if (await noteProduct(store.listId, order.email, order.product.id, order.product.title)) {
-        await enroll(store, order.email, { joined: false, productId: order.product.id });
+      for (const got of [order.product, ...bundled]) {
+        if (await noteProduct(store.listId, order.email, got.id, got.title)) {
+          await enroll(store, order.email, { joined: false, productId: got.id });
+        }
       }
     } catch (error) {
       console.error("noting a purchase on a list failed", error);
@@ -238,7 +259,8 @@ export default async function ThanksPage({ params, searchParams }: Params) {
           store,
           session: sessionId,
           product: order.product,
-          alsoOwned: order.bump ? [order.bump.product.id] : [],
+          // What a bundle held is owned too: it is never offered again.
+          alsoOwned: [...(order.bump ? [order.bump.product.id] : []), ...bundled.map((p) => p.id)],
           // Paid in one go, in the store's currency, with a method a one-click
           // charge can reach again (a saved card, Apple Pay, Google Pay):
           // anything else — Klarna, iDEAL and the like — skips the offers.
@@ -259,7 +281,12 @@ export default async function ThanksPage({ params, searchParams }: Params) {
       : null;
   const opensCommunity =
     order.state === "paid" && community !== null && order.membership !== "ended" &&
-    [order.product.id, ...(order.bump ? [order.bump.product.id] : []), ...(funnel?.taken ?? []).map((added) => added.product.id)].some(
+    [
+      order.product.id,
+      ...(order.bump ? [order.bump.product.id] : []),
+      ...bundled.map((p) => p.id),
+      ...(funnel?.taken ?? []).flatMap((added) => [added.product.id, ...(added.items?.items ?? []).map((p) => p.id)]),
+    ].some(
       (id) => community.access.includes(id),
     );
 
@@ -287,6 +314,20 @@ export default async function ThanksPage({ params, searchParams }: Params) {
         ])
       : [null, null];
   const upsellKey = takenKeys.some((found) => found !== null);
+  // The key of each product of a bundle, each its own, under the order (or
+  // the offer's own payment) that paid for it.
+  const bundleKeys = new Map<string, SaleKey | null | "error">();
+  if (order.state === "paid") {
+    const wanted = [
+      ...(order.items?.items ?? []).map((p) => ({ scope: "main", product: p, reference: order.reference })),
+      ...(order.bump?.items?.items ?? []).map((p) => ({ scope: "bump", product: p, reference: order.reference })),
+      ...(funnel?.taken ?? []).flatMap((added) =>
+        (added.items?.items ?? []).map((p) => ({ scope: added.reference, product: p, reference: added.reference })),
+      ),
+    ];
+    const found = await Promise.all(wanted.map((w) => keyOf(w.product, w.reference)));
+    wanted.forEach((w, i) => bundleKeys.set(`${w.scope}|${w.product.id}`, found[i]));
+  }
   const keyBox = (found: SaleKey | null | "error", title?: string) =>
     found === null ? null : (
       <LicenceKeyBox
@@ -303,7 +344,9 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   // form is checked against again when it is sent).
   const toReview =
     order.state === "paid" && sessionId && !booked && !ended && order.amount > 0 && order.email
-      ? [order.product, ...(order.bump ? [order.bump.product] : [])].filter(reviewable)
+      ? [order.product, ...(order.bump ? [order.bump.product] : []), ...bundled]
+          .filter(reviewable)
+          .filter((p, i, all) => all.findIndex((q) => q.id === p.id) === i)
       : [];
   const reviewed = new Map<string, Review | null>();
   if (toReview.length && store.statsId && order.state === "paid" && order.email) {
@@ -317,6 +360,26 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   }
   const reviewStatus = typeof query.review === "string" && REVIEW_NOTICES[query.review] ? query.review : "";
   const reviewProduct = typeof query.product === "string" ? query.product : "";
+
+  // One bundle's products, each with its own download, link or course, and key.
+  const contents = (items: BundleContents | null | undefined, scope: string, download: (id: string) => string, heading?: string) =>
+    items && order.state === "paid" ? (
+      <BundleDelivery
+        storeName={store.name}
+        missing={items.missing}
+        heading={heading}
+        lines={items.items.map((p) => ({
+          product: p,
+          download: p.file && p.options.length === 0 ? download(p.id) : null,
+          course: p.course
+            ? { action: "/api/store/course/start", fields: { handle: store.handle, session_id: sessionId ?? "", product: p.id } }
+            : null,
+          keyBox: keyBox(bundleKeys.get(`${scope}|${p.id}`) ?? null, p.title),
+        }))}
+      />
+    ) : null;
+  const downloadAt = (extra: Record<string, string>) => (id: string) =>
+    `/api/store/download?${new URLSearchParams({ handle: store.handle, session_id: sessionId ?? "", ...extra, pid: id })}`;
 
   const notice = order.state !== "paid" ? NOTICES[order.state] : null;
   const hours = order.state === "paid" ? Math.floor(order.secondsLeft / 3600) : 0;
@@ -436,7 +499,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                         target="_blank"
                         className="btn st-btn"
                       >
-                        {isVideoRoom(booked.room) ? "Join the video room" : "The link to join"}
+                        {roomLabel(booked.room)}
                       </a>
                     ) : null}
                     <a
@@ -468,6 +531,13 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                       {`, up to ${Math.max(booked.setup.noticeHours, 1)} ${Math.max(booked.setup.noticeHours, 1) === 1 ? "hour" : "hours"} before it starts.`}
                     </p>
                   ) : null}
+                </>
+              ) : order.items ? (
+                <>
+                  {contents(order.items, "main", downloadAt({ item: "bundle" }))}
+                  <p className="st-muted mt-5 text-sm">
+                    {`Downloads here work for about ${hours} more ${hours === 1 ? "hour" : "hours"}; courses and links keep working. After that nothing is lost: choose \u201cGet it again\u201d at the foot of ${store.name}'s page, type the address you paid with, and a link to all of it is emailed to you.`}
+                  </p>
                 </>
               ) : order.product.course ? (
                 <>
@@ -541,7 +611,9 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
                   <p className="st-label">Also yours</p>
                   <p className="mt-1 font-semibold">{order.bump.product.title}</p>
-                  {order.bump.link ? (
+                  {order.bump.items ? (
+                    contents(order.bump.items, "bump", downloadAt({ item: "bump" }), "Inside it")
+                  ) : order.bump.link ? (
                     <>
                       <a
                         href={order.bump.link}
@@ -578,7 +650,9 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 >
                   <p className="st-label">Also yours</p>
                   <p className="mt-1 font-semibold">{added.product.title}</p>
-                  {added.product.link ? (
+                  {added.items ? (
+                    contents(added.items, added.reference, downloadAt({ item: "upsell", ...(added.slot ? { step: added.slot } : {}) }), "Inside it")
+                  ) : added.product.link ? (
                     <>
                       <a href={added.product.link} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn mt-3">
                         Open it

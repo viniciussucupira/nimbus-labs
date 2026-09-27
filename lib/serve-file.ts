@@ -7,7 +7,7 @@
  * one place: a door that serves files its own way is a door that one day
  * serves them differently.
  */
-import { get, issueSignedToken, presignUrl } from "@vercel/blob";
+import { get, issueSignedToken, presignUrl } from "@/lib/blob";
 import {
   DOWNLOAD_URL_SECONDS,
   REDIRECT_ABOVE_BYTES,

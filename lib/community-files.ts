@@ -3,7 +3,7 @@
  * the same one product pictures and paid files live in. Kept apart from the
  * checks so they can be tried against a stand-in without a network.
  */
-import { del, get, head } from "@vercel/blob";
+import { del, get, head } from "@/lib/blob";
 import type { ImageStore } from "@/lib/community-image";
 
 async function firstBytes(path: string): Promise<Uint8Array | null> {

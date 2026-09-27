@@ -30,9 +30,17 @@
  * instant still get the same room. Once made it stays the booking's room even
  * if the creator later switches back to their own link; a booking made
  * before rooms were switched on keeps the link it was given.
+ *
+ * A call made on Google Meet or Zoom (lib/meet-links.ts) is read here too,
+ * first: the link its record says the booking was given wins over anything
+ * else, so every page, email and calendar file shows the same one. Until a
+ * record exists — a page drawn in the second before the booking is
+ * confirmed — such a call shows what it would fall back to: the creator's
+ * own link, or a room made here when they have none.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { type CallSetup, isGroup, roomFor } from "@/lib/call-setup";
+import { callScope, givenLink, parseRecord, recordKey } from "@/lib/meet-records";
 
 export const VIDEO_ROOM_BASE = "https://meet.jit.si/";
 
@@ -70,22 +78,45 @@ export type RoomAsk = {
 };
 
 /**
- * The room of each booking asked about, in order: a room already made for
- * it (or for its time, in a group), else a new one when its product makes
- * rooms, else the creator's own link. Two round trips at most, however many.
+ * What a call made on Google Meet or Zoom falls back to when the meeting
+ * cannot be made: the creator's own link when they gave one, else a private
+ * room made here. Any other setup is itself.
+ */
+export function fallbackSetup(setup: CallSetup, start: number): CallSetup {
+  if (!setup.meet) return setup;
+  return { ...setup, meet: null, video: !roomFor(setup, start) };
+}
+
+/**
+ * The room of each booking asked about, in order: the link a Google Meet or
+ * Zoom meeting gave it, else a room already made for it (or for its time, in
+ * a group), else a new one when its product makes rooms, else the creator's
+ * own link. Two round trips at most, however many.
  */
 export async function roomsFor(callsId: string | null, asks: RoomAsk[]): Promise<(string | null)[]> {
   if (!callsId || !isRedisConfigured() || asks.length === 0) return asks.map((a) => roomFor(a.setup, a.start));
   const read = await redisPipeline(
-    asks.flatMap((a) => [["GET", bookingKey(callsId, a.session)], ["GET", timeKey(callsId, a.product, a.start)]]),
+    asks.flatMap((a) => [
+      ["GET", bookingKey(callsId, a.session)],
+      ["GET", timeKey(callsId, a.product, a.start)],
+      // Asked for every booking, not only those of a product set to make
+      // meetings now, and under both of its possible names, since a call can
+      // go from one seat to several: a booking keeps the link it was given.
+      ["GET", recordKey(callScope(callsId, { group: false, session: a.session, product: a.product, start: a.start }))],
+      ["GET", recordKey(callScope(callsId, { group: true, session: a.session, product: a.product, start: a.start }))],
+    ]),
   );
   const found: (string | null)[] = asks.map((_, i) => {
-    const own = read[i * 2];
-    const shared = read[i * 2 + 1];
+    const own = read[i * 4];
+    const shared = read[i * 4 + 1];
+    const meeting = givenLink(parseRecord(read[i * 4 + 2])) ?? givenLink(parseRecord(read[i * 4 + 3]));
+    if (meeting) return meeting;
     if (isVideoRoom(own as string)) return own as string;
     if (isVideoRoom(shared as string)) return shared as string;
     return null;
   });
+  // A call made on Google Meet or Zoom that has no record yet is shown what it falls back to.
+  asks = asks.map((a) => (a.setup.meet ? { ...a, setup: fallbackSetup(a.setup, a.start) } : a));
   // Rooms still to make, one per key, so a group asked about twice gets one.
   const making = new Map<string, { at: number[]; ttl: number }>();
   asks.forEach((a, i) => {
@@ -111,6 +142,34 @@ export async function roomsFor(callsId: string | null, asks: RoomAsk[]): Promise
     });
   }
   return asks.map((a, i) => found[i] ?? roomFor(a.setup, a.start));
+}
+
+/** Which service a room is on, as far as its address says. */
+export function roomKind(room: string | null): "room" | "meet" | "zoom" | "other" {
+  if (!room) return "other";
+  if (isVideoRoom(room)) return "room";
+  try {
+    const host = new URL(room).hostname;
+    if (host === "meet.google.com") return "meet";
+    if (host === "zoom.us" || host.endsWith(".zoom.us") || host === "zoom.com" || host.endsWith(".zoom.com")) return "zoom";
+  } catch {
+    // Not a web address.
+  }
+  return "other";
+}
+
+/** What a button that opens a room says: where it goes, when that is known. */
+export function roomLabel(room: string | null): string {
+  switch (roomKind(room)) {
+    case "room":
+      return "Join the video room";
+    case "meet":
+      return "Join on Google Meet";
+    case "zoom":
+      return "Join on Zoom";
+    default:
+      return "The link to join";
+  }
 }
 
 /** The room of one booking (roomsFor, for one). */

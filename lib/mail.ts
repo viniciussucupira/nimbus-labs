@@ -24,6 +24,16 @@ export const MAX_SUBJECT = 150;
 export const MAX_MAIL_BODY = 20_000;
 /** How many go in one request to the sender. */
 export const BATCH_SIZE = 100;
+/**
+ * How many go in one request when each person is first checked against the
+ * creator's Stripe account (community announcements, live events'
+ * reminders): a checked batch is the five-minute job's unit of work, and it
+ * starts none after its mark (app/api/cron/mail), so a smaller one keeps a
+ * run inside its sixty seconds — 25 checks, five at a time, is a few
+ * seconds even when none is cached. The batch boundaries stay fixed, so a
+ * batch tried again carries the same key and is never sent twice.
+ */
+export const CHECKED_BATCH_SIZE = 25;
 
 /** The address marketing email is sent from; the name in front is the creator's. */
 function marketingAddress(): string {
@@ -90,6 +100,31 @@ async function dailyRoom(): Promise<number> {
 }
 
 export type Reserved = "ok" | "month" | "day";
+
+/**
+ * Takes `n` from the company's day only (MARKETING_DAILY_CAP), for a bulk
+ * notice that is not a creator's list email but goes out from the same
+ * sender — the one email to buyers brought over from another platform
+ * (lib/imports.ts). False, and nothing taken, when it would pass the cap.
+ */
+export async function reserveDay(n: number): Promise<boolean> {
+  const cap = dailyCap();
+  if (cap === 0 || n <= 0) return true;
+  const day = dayKey();
+  const [today] = await redisPipeline([
+    ["INCRBY", day, n],
+    ["EXPIRE", day, 3 * 86_400],
+  ]);
+  if (Number(today) <= cap) return true;
+  await redisPipeline([["DECRBY", day, n]]);
+  return false;
+}
+
+/** Gives back what reserveDay took, for a send that did not go out. */
+export async function releaseDay(n: number): Promise<void> {
+  if (dailyCap() === 0 || n <= 0) return;
+  await redisPipeline([["DECRBY", dayKey(), n]]);
+}
 
 /** Takes `n` from the month (and the company's day), or nothing when that would pass either. */
 export async function reserve(store: Store, n: number): Promise<Reserved> {

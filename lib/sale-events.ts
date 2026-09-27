@@ -28,7 +28,8 @@ import { isSettled } from "@/lib/instant-pay";
 import { alertCreator } from "@/lib/phone-alerts";
 import { queuePerson } from "@/lib/email-sync";
 import type { Listing, Store } from "@/lib/store";
-import { readListing } from "@/lib/catalog";
+import { readListing, readListings } from "@/lib/catalog";
+import { bundleFromMeta } from "@/lib/bundle-rules";
 import { formatMoney } from "@/lib/money";
 
 /** How long a told sale is remembered: past the day the job looks back over. */
@@ -75,7 +76,13 @@ export function buyerAgreed(record: SaleRecord): boolean {
 async function tell(store: Store, record: SaleRecord, session: string): Promise<void> {
   const meta = record.metadata ?? {};
   // Read by id (lib/catalog.ts), however many products the store has.
-  const [product, bump] = await Promise.all([readListing(store, meta.product), meta.bump ? readListing(store, meta.bump) : Promise.resolve(null)]);
+  const inside = [...bundleFromMeta(meta, "bundle"), ...bundleFromMeta(meta, "bump_bundle")];
+  const [product, bump, items] = await Promise.all([
+    readListing(store, meta.product),
+    meta.bump ? readListing(store, meta.bump) : Promise.resolve(null),
+    // A bundle's products go to the email platform as if each were bought on its own.
+    inside.length ? readListings(store, inside) : Promise.resolve([] as Listing[]),
+  ]);
   const title = product?.title ?? meta.title ?? "A product";
   const amount = typeof record.amount_total === "number" ? record.amount_total : 0;
   const at = typeof record.created === "number" ? record.created * 1000 : Date.now();
@@ -102,6 +109,7 @@ async function tell(store: Store, record: SaleRecord, session: string): Promise<
     products: [
       { id: meta.product ?? "", title },
       ...(bump ? [{ id: bump.id, title: bump.title }] : []),
+      ...items.map((item) => ({ id: item.id, title: item.title })),
     ],
     consent: buyerAgreed(record),
     seed: session,

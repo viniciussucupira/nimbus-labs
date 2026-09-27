@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { del, head } from "@vercel/blob";
+import { del, head } from "@/lib/blob";
 import { setProductFile, storeForEmail, storeFolder } from "@/lib/store";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { ownsPath, safeFileName, type ProductFile } from "@/lib/product-file";

@@ -89,8 +89,16 @@ const SECTIONS: Section[] = [
         q: "Can I run more than one store, or have someone help me?",
         a: [
           "Both. One account runs up to five stores, each with its own address, products, buyers, Stripe account and plan, and you switch between them at the top of your studio. The 14-day free trial is for an account's first store; each other store is charged from the day its plan starts, and cancelling one touches no other.",
-          "Each store can have a team of up to five people, invitations still waiting included, each signing in with their own email: an Admin runs everything except the plan, the Stripe connection, the team and deleting the store; an Editor looks after products, courses, calls, sales pages and the store page and writes email drafts without sending them; Support reads orders and bookings, sends purchase emails again and moderates the community and reviews. What each role may do is checked on our server for every request. You are emailed when someone joins or changes role, and the activity log shows the last 500 changes and downloads your team made.",
+          "Each store can have a team of up to five people, invitations still waiting included, each signing in with their own email: an Admin runs everything except the plan, the Stripe connection, the team and deleting the store; an Editor looks after products, courses, calls, bundles, sales pages, the store page and the community's live events and writes email drafts without sending them; Support reads orders and bookings, sends purchase emails again, sees who is coming to live events and moderates the community and reviews. What each role may do is checked on our server for every request. You are emailed when someone joins or changes role, and the activity log shows the last 500 changes and downloads your team made.",
           "Stan's help centre, read on 27 September 2026, says the only way to give a team member access there is to share your login.",
+        ],
+      },
+      {
+        q: "Can I move my store from Stan, Gumroad or another platform?",
+        a: [
+          "Yes, from a spreadsheet, in three imports from the Import page of your studio, on every plan. Your list: up to 50,000 rows a file, and only people who agreed to hear from you \u2014 you confirm it each time, a consent column in the file narrows it further, nobody who unsubscribed here is added back, and nobody is emailed because of it. Your products: up to 500 a file, each made a draft that waits in your studio until you publish it, with its title, price, description and link. Your past buyers: up to 20,000 a file, each given what they bought on your store's list of purchases, marked as brought over from another platform, with no payment and no receipt.",
+          "Bring products first, because the buyers' file names them by their title or their id here, then add each product's file or lessons. A buyer brought over for a product that opens your community is let in. If you tick it, each buyer gets one email from your store's name saying what moved and how to open it \u2014 up to 20,000 buyers per store in 30 days \u2014 and nothing more is sent because of it. The studio reads the file in your browser, you say which column is which, and every row that is not brought in is listed with its row number and the reason, as a spreadsheet you download.",
+          "What it does not do: files, pictures and lessons are not imported; memberships, calls and products with several prices cannot be given to past buyers; buyers brought over get no licence key here and are not counted as sales, sent to webhooks, credited to affiliates or able to review; and an import cannot be undone in one step. You and your Admins can import. Stan's help centre, read on 27 September 2026, imports up to 5,000 contacts per store in all and emails them to opt in again, and grants a customer access one at a time.",
         ],
       },
       {
@@ -213,7 +221,7 @@ const SECTIONS: Section[] = [
       {
         q: "What can I sell?",
         a: [
-          "Digital files, courses, memberships that charge on a schedule, paid calls one to one or in groups of up to 50, and live sessions on dates you set. What is too big to upload, or is not a file at all, is sold as a link to where it already lives. And anything can be given away for free, in exchange for an email address.",
+          "Digital files, courses, memberships that charge on a schedule, paid calls one to one or in groups of up to 50, live sessions on dates you set, and bundles of 2 to 20 of your products at one price. What is too big to upload, or is not a file at all, is sold as a link to where it already lives. And anything can be given away for free, in exchange for an email address.",
           "One product can carry up to three prices — one week and five weeks, personal and commercial — and each one hands over its own file or its own link. The buyer picks on the card, and what they are charged is read from what you saved rather than from the page they are looking at.",
           "Your page also holds links that are not for sale, with no price and no checkout on them: the channel, the podcast, the profile, the booking page you already pay someone else for.",
         ],
@@ -254,6 +262,13 @@ const SECTIONS: Section[] = [
           "Or offer it right after they pay: the thanks page shows it, and one press charges the card they just used, on your own Stripe account. It only works in the browser that paid, for an hour, so a forwarded link can never charge anyone. If the bank wants the buyer to confirm, they confirm it, and nothing is handed over until the payment is through.",
           "After a product you can line up to five such offers, shown one at a time: a funnel. For each one you choose where yes leads and where no thanks leads, so a no can meet the same product for less. Each offer has its own headline, text, picture and price, never above the product's own price, and each one taken gets its own confirmation email. Offers after paying are shown only to buyers who paid by card, Apple Pay or Google Pay, and while sales tax is on, they are paused. Before the checkout, a sales page or a landing page for something free can lead the way, but there is no editor that chains pages into one funnel.",
           "You can also limit how many of a product can be sold. Your page shows how many are left, counted from real payments, and stops selling at zero. A buyer who is paying right now holds one for up to 30 minutes, so the last one is never sold to two people; if they do not pay, it comes back.",
+        ],
+      },
+      {
+        q: "Can I sell a bundle of products?",
+        a: [
+          "Yes, on every plan. Make a product the bundle, give it a price, and choose 2 to 20 of your one-off products to go in it: those with one price and a file, a link or a course with lessons. The buyer gets every one exactly as if bought on its own \u2014 its download or link, its course, its licence key, its stamped PDF, its place on their list of purchases and the right to review it \u2014 and your community, if one of them opens it. Your store shows what the products cost on their own next to the bundle's price, worked out from their prices today, only when they really cost more.",
+          "What a buyer gets is written onto their order when they pay, so changing the bundle later changes it for the next buyer and nobody loses what they paid for. A bundle can be the box ticked at checkout, and an offer after paying unless it holds a course. Memberships, calls, free products, products with several prices or pay what you want, and other bundles cannot go in one, and a bundle itself has one price, charged once. Any product can also be unpublished and kept as a draft, and a draft can still go in a bundle.",
         ],
       },
       {
@@ -350,7 +365,16 @@ const SECTIONS: Section[] = [
         a: [
           "A community, yes, one per store. You choose which products open it: any paid product, a membership while it is being paid for, and free products if you want. Members come in with a link emailed to the address they bought with, and that browser stays in for 90 days. Who bought what is checked against your own Stripe account on every visit, so a membership that ends loses the door within five minutes.",
           "Inside: up to 20 spaces, posts with a title, up to 5,000 characters and one picture, comments and one level of replies, likes, up to three pinned posts and a Start here post. Members choose the name they are seen by and whether to appear in the directory; other members never see their email address. They can report a post or a comment, and you hide or delete it, mute a member or take them out. Your announcements can also go by email to members who asked for them, on Pro.",
-          "What it does not have: live chat, private messages, video, search, mentions, polls, editing a post after it is written, or spaces for one product only. A webinar you sell as a live session on the dates you set, with up to 500 seats each, held on the meeting service whose link you give or in a Jitsi Meet room made for each session. Stan can hold webinars inside its community; ours cannot.",
+          "It also holds live events members RSVP to, with reminders, a private video room in the event's page or your own link, and replays \u2014 the next answer has the details. A webinar you want to sell to anyone, not only to members, you sell as a live session on the dates you set, with up to 500 seats each.",
+          "What it does not have: live chat, private messages, search, mentions, polls, editing a post after it is written, or spaces for one product only. Stan adds webinars to its community with Zoom or Google Meet links made automatically; ours makes no Zoom or Google Meet link for you.",
+        ],
+      },
+      {
+        q: "How do live events in the community work?",
+        a: [
+          "From the community in your studio you schedule an event: a title, a few words, a start in your time zone and a length from 15 minutes to four hours, up to a year ahead, with an announcement in the feed if you want one. Up to 50 can be coming up at once, and up to 500 are kept with their replays. Members RSVP with one click, and you can cap the places at anything from 1 to 5,000. An event can be for every member, or only for the buyers of some of the products that open the community; the others see it but cannot RSVP or join.",
+          "The way in shows on the event's page from 15 minutes before the start until the end, only to members who may come \u2014 and, with a cap, only to those with a place \u2014 checked again on every visit. It is a private Jitsi Meet room made for the event, which members open inside the page or in a tab of its own, or your own meeting link. Emails, calendar files and the feed point to the page, never to the room. Members who asked for the community's emails get a reminder a day and an hour before; a move or a cancellation is emailed once to everyone coming; and your phone gets a notification 15 minutes before. After it starts you can add a replay from YouTube, Vimeo or Loom.",
+          "What it does not do: nothing makes a Zoom or Google Meet link for you, as Stan's webinars do. Jitsi Meet is run by a third party, and the first person to open a room may be asked to sign in to Jitsi to start it, so open it a few minutes early. Nothing is streamed or recorded here, there is no chat beside the room and no waiting list, and an event is not sold on its own: to sell seats, sell live sessions on dates.",
         ],
       },
       {
@@ -449,7 +473,7 @@ const SECTIONS: Section[] = [
       {
         q: "What do you store about me?",
         a: [
-          "For your store: the email address that logs you in, the store you build, and the Stripe account id you connect. If you ask a store for something free: your email address, what you asked for, and whether you ticked the box to hear from that store \u2014 kept for that store and nobody else. If you join a store's community or its affiliate programme: your email address, the name you chose and what you write or earn there, for that store. If you review something you bought: your stars, your words, the name you chose and the order they came from. If you are on a store's team: your email address, your role and the changes you make there. For the research form: what you typed in it and, if you ticked the box, your email address. The privacy page lists it in full.",
+          "For your store: the email address that logs you in, the store you build, and the Stripe account id you connect. If you ask a store for something free: your email address, what you asked for, and whether you ticked the box to hear from that store \u2014 kept for that store and nobody else. If you join a store's community or its affiliate programme: your email address, the name you chose and what you write or earn there, for that store. If you review something you bought: your stars, your words, the name you chose and the order they came from. If you RSVP to a community's live event: that you are coming, for that event. If a store brought you over from another platform: the products it gave you, kept against a one-way hash of your address. If you are on a store's team: your email address, your role and the changes you make there. For the research form: what you typed in it and, if you ticked the box, your email address. The privacy page lists it in full.",
         ],
       },
       {

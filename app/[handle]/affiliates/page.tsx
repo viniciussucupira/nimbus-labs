@@ -97,7 +97,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
   // Products that earn differently from the store-wide share, by name.
   // Only products with a rate of their own can differ, so only those are read.
   const different = (await readListings(store, Object.keys(terms.rates)))
-    .filter((p) => p.priceCents > 0 && p.recurring === null && commissionRate(terms, p.id) !== terms.percent)
+    .filter((p) => !p.hidden && p.priceCents > 0 && p.recurring === null && commissionRate(terms, p.id) !== terms.percent)
     .map((p) => ({ title: p.title, rate: commissionRate(terms, p.id) }));
 
   const form = (

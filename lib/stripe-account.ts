@@ -13,6 +13,8 @@
  * one of them quietly missing a header.
  */
 
+import { STRIPE_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
+
 /** Local tests may point this at a mock on 127.0.0.1; nothing else is taken. */
 const STRIPE_API = /^http:\/\/127\.0\.0\.1:\d+$/.test(
   process.env.STRIPE_CONNECT_API_BASE ?? "",
@@ -81,21 +83,27 @@ export async function onAccount(
   const key = platformKey();
   if (!key) throw new Error("Selling is not configured");
 
-  const response = await fetch(`${STRIPE_API}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${key}`,
-      // The whole point: this acts on the creator's account, not ours.
-      "Stripe-Account": account,
-      ...(version ? { "Stripe-Version": version } : {}),
-      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey.slice(0, 255) } : {}),
-      ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
-    },
-    body,
-    cache: "no-store",
+  // Given up after STRIPE_TIMEOUT_MS (lib/fetch-timeout.ts) as a network
+  // failure is: never a StripeError, so a charge that timed out is "no
+  // answer" to its caller — kept pending and settled from what Stripe says
+  // later, with the same idempotency key — never "declined".
+  const { response, data } = await timed(STRIPE_TIMEOUT_MS, async (signal) => {
+    const response = await fetch(`${STRIPE_API}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${key}`,
+        // The whole point: this acts on the creator's account, not ours.
+        "Stripe-Account": account,
+        ...(version ? { "Stripe-Version": version } : {}),
+        ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey.slice(0, 255) } : {}),
+        ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+      },
+      body,
+      cache: "no-store",
+      signal,
+    });
+    return { response, data: (await response.json()) as Record<string, unknown> };
   });
-
-  const data = (await response.json()) as Record<string, unknown>;
   if (!response.ok) {
     const error = data.error as
       | { code?: string; type?: string; message?: string }

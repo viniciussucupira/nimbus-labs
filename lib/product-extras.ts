@@ -22,6 +22,7 @@
  */
 import type { Listing } from "@/lib/store";
 import { formatMoney } from "@/lib/money";
+import { MIN_BUNDLE_ITEMS } from "@/lib/bundle-rules";
 
 export type Bump = {
   /** Another product of the same store. */
@@ -66,14 +67,16 @@ export function isOneOff(product: Listing): boolean {
 /**
  * Whether a product can be the thing added: something with one price and one
  * delivery, so the buyer who ticks the box gets exactly one clear thing. A
- * product whose buyers choose the price has no one price to offer it at.
+ * product whose buyers choose the price has no one price to offer it at. A
+ * bundle counts as one thing, at its one price: what it holds is handed over
+ * with it (lib/bundle-rules.ts).
  */
 export function canBeBumped(product: Listing): boolean {
   return (
     isOneOff(product) &&
     product.options.length === 0 &&
     !product.pwyw &&
-    (product.file !== null || product.link !== null)
+    (product.file !== null || product.link !== null || (product.bundle?.length ?? 0) >= MIN_BUNDLE_ITEMS)
   );
 }
 

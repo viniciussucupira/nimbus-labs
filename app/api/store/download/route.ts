@@ -51,6 +51,17 @@ async function deliver(
   return serveFile(file);
 }
 
+/**
+ * One product of a bundle, asked for by its id (`pid`): only one the order's
+ * own list names, and only as the store has it now (lib/bundles.ts).
+ */
+function pick(items: { items: Listing[] } | null | undefined, pid: string): Listing | null {
+  if (!items || !pid) return null;
+  return items.items.find((p) => p.id === pid) ?? null;
+}
+
+const NOT_A_DOWNLOAD = "This one is not a download. Open your purchases again and use the link on it.";
+
 function toRenew(request: NextRequest, store: Store, product: Pick<Listing, "id">): Response {
   return new Response(null, {
     status: 303,
@@ -85,6 +96,16 @@ export async function GET(request: NextRequest) {
     }
     if (purchase.ended) return toRenew(request, store, { id: purchase.productId });
     const bumped = request.nextUrl.searchParams.get("item") === "bump";
+    // A product of a bundle on this purchase, by its id.
+    const pid = request.nextUrl.searchParams.get("pid") ?? "";
+    if (pid) {
+      const line = (bumped ? purchase.bumpItems : purchase.items)?.lines.find((l) => l.productId === pid) ?? null;
+      if (!line || !line.delivery) return plain(404, "There is nothing to download on this one.");
+      if (!line.delivery.file) return plain(409, NOT_A_DOWNLOAD);
+      const item = await readListing(store, line.productId);
+      if (!item) return plain(404, "There is nothing to download on this one.");
+      return deliver(item, line.delivery.file, { reference: purchase.reference, email, paidAt: purchase.paidAt });
+    }
     const delivery = bumped ? purchase.bump : purchase.main;
     if (!delivery) return plain(404, "There is nothing to download on this one.");
     if (!delivery.file) {
@@ -104,6 +125,7 @@ export async function GET(request: NextRequest) {
   // A membership that has ended hands nothing over any more.
   if (order.membership === "ended") return toRenew(request, store, order.product);
   const sale = { reference: order.reference, email: order.email, paidAt: order.created };
+  const pid = request.nextUrl.searchParams.get("pid") ?? "";
 
   // A product taken in one click after paying: only once Stripe said so.
   // `step` names which offer, and is left out for the first.
@@ -114,6 +136,8 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get("step") ?? "",
     );
     if (!added) return plain(404, "This order has nothing added to it.");
+    const inside = pid ? pick(added.items, pid) : null;
+    if (pid && !inside) return plain(404, "This added product has no such part.");
     // Its own payment, refunded in full since, hands nothing over any more.
     try {
       if (await offerRefunded(store, added.reference)) return plain(410, "This added product was refunded in full, so its download is closed.");
@@ -121,19 +145,34 @@ export async function GET(request: NextRequest) {
       console.error("checking an added product failed", error);
       return plain(502, "We could not check this order right now. Please try again.");
     }
-    if (!added.file) {
-      return plain(added.link ? 409 : 404, added.link ? "This one is not a download. Open the order page again and use the link on it." : "There is no file on this product.");
+    const wanted = inside ?? added.product;
+    if (!wanted.file) {
+      return plain(wanted.link ? 409 : 404, wanted.link ? "This one is not a download. Open the order page again and use the link on it." : "There is no file on this product.");
     }
-    return deliver(added.product, added.file, { ...sale, reference: added.reference, paidAt: added.paidAt });
+    return deliver(wanted, wanted.file, { ...sale, reference: added.reference, paidAt: added.paidAt });
   }
 
   // The product added at checkout has its own file, asked for by name.
   if (request.nextUrl.searchParams.get("item") === "bump") {
     if (!order.bump) return plain(404, "This order has nothing added to it.");
+    if (pid) {
+      const inside = pick(order.bump.items, pid);
+      if (!inside) return plain(404, "The product added to this order has no such part.");
+      if (!inside.file) return plain(inside.link ? 409 : 404, inside.link ? NOT_A_DOWNLOAD : "There is no file on this product.");
+      return deliver(inside, inside.file, sale);
+    }
     if (!order.bump.file) {
       return plain(order.bump.link ? 409 : 404, order.bump.link ? "This one is not a download. Open the order page again and use the link on it." : "There is no file on this product.");
     }
     return deliver(order.bump.product, order.bump.file, sale);
+  }
+
+  // One product of the bundle that was bought, by its id.
+  if (request.nextUrl.searchParams.get("item") === "bundle") {
+    const inside = pick(order.items, pid);
+    if (!inside) return plain(404, "This order has no such product in it.");
+    if (!inside.file) return plain(inside.link ? 409 : 404, inside.link ? NOT_A_DOWNLOAD : "There is no file on this product.");
+    return deliver(inside, inside.file, sale);
   }
 
   // The file of the option that was bought, when the product has options, and

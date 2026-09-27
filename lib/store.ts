@@ -57,6 +57,8 @@ import { type PwywProblem, pwywProblem } from "@/lib/pay-what-you-want";
 import { type CheckoutField } from "@/lib/checkout-fields";
 import { type Currency, DEFAULT_CURRENCY, currencyRule, parseCurrency, priceInRange, readMoney } from "@/lib/money";
 import { type KeySetup, canHaveKeys } from "@/lib/key-setup";
+import { type BundleProblem, bundleProblem, isBundle } from "@/lib/bundle-rules";
+import { offerableAfterPaying } from "@/lib/bundles";
 import { type DisplayStyle, type ProductImage } from "@/lib/product-image";
 import {
   MAX_LINK_TITLE_LENGTH,
@@ -89,6 +91,7 @@ import {
   productWrites,
   movedMark,
   movedCount,
+  idsOfKind,
   readDelivery,
   readListing,
   readListings,
@@ -430,6 +433,12 @@ export type Store = {
    * sales on this store even when nothing else would have it look.
    */
   phoneSales: boolean;
+  /**
+   * Whether the creator brought past buyers over from another platform
+   * (lib/imported-purchases.ts). Set once, by the first such import, so the
+   * list of purchases knows to look for them without reading anything.
+   */
+  pastBuyers: boolean;
 };
 
 /** The part of the email platform settings a store record carries. */
@@ -626,6 +635,8 @@ function parseStore(raw: unknown): Store | null {
       // Stores written before either existed send nothing anywhere.
       emailSync: parseEmailSyncRef(value.emailSync),
       phoneSales: value.phoneSales === true,
+      // Stores written before imports existed brought nobody over.
+      pastBuyers: value.pastBuyers === true,
     };
   } catch {
     return null;
@@ -776,6 +787,7 @@ async function freshStore(fields: {
     reviewed: false,
     emailSync: null,
     phoneSales: false,
+    pastBuyers: false,
   };
 }
 
@@ -1560,7 +1572,7 @@ async function onProduct<R extends string>(
 
 export type CallResult =
   | { ok: true; store: Store; product: Product }
-  | { ok: false; reason: "none" | "unknown" | "free" | "recurring" | "options" | "delivery" | "course" | "pwyw" };
+  | { ok: false; reason: "none" | "unknown" | "free" | "recurring" | "options" | "delivery" | "course" | "pwyw" | "bundle" };
 
 /**
  * Makes a product a paid call, changes when it can be booked, or turns it
@@ -1575,12 +1587,14 @@ export async function setProductCall(
   id: string,
   setup: CallSetup | null,
 ): Promise<CallResult> {
-  return onProduct<"free" | "recurring" | "options" | "delivery" | "course" | "pwyw">(
+  return onProduct<"free" | "recurring" | "options" | "delivery" | "course" | "pwyw" | "bundle">(
     email,
     id,
     (product) => {
       if (setup) {
         if (isFree(product)) return { ok: false, reason: "free" };
+        // A bundle hands over its products; a time in a calendar is not one.
+        if (isBundle(product)) return { ok: false, reason: "bundle" };
         if (product.recurring) return { ok: false, reason: "recurring" };
         if (product.options.length > 0) return { ok: false, reason: "options" };
         if (product.file || product.link) return { ok: false, reason: "delivery" };
@@ -1595,7 +1609,7 @@ export async function setProductCall(
 
 export type CourseResult =
   | { ok: true; store: Store; product: Product }
-  | { ok: false; reason: "none" | "unknown" | "free" | "options" | "delivery" | "call" | "not_empty" };
+  | { ok: false; reason: "none" | "unknown" | "free" | "options" | "delivery" | "call" | "not_empty" | "bundle" };
 
 /**
  * Makes a product a course, or turns an empty course back into an ordinary
@@ -1611,9 +1625,10 @@ export async function setProductCourse(
   id: string,
   course: CourseRef | null,
 ): Promise<CourseResult> {
-  return onProduct<"free" | "options" | "delivery" | "call" | "not_empty">(email, id, (product) => {
+  return onProduct<"free" | "options" | "delivery" | "call" | "not_empty" | "bundle">(email, id, (product) => {
     if (course) {
       if (isFree(product)) return { ok: false, reason: "free" };
+      if (isBundle(product)) return { ok: false, reason: "bundle" };
       if (product.options.length > 0) return { ok: false, reason: "options" };
       if (product.file || product.link) return { ok: false, reason: "delivery" };
       if (product.call) return { ok: false, reason: "call" };
@@ -1746,7 +1761,8 @@ export type FunnelResult =
 export async function setProductFunnel(email: string, id: string, funnel: Funnel | null): Promise<FunnelResult> {
   return onProduct<FunnelProblem>(email, id, async (product, store) => {
     if (funnel) {
-      const offered = await readListings(store, funnel.steps.map((step) => step.productId));
+      // A bundle holding a course is not offered in one click (lib/bundles.ts).
+      const offered = await offerableAfterPaying(store, await readListings(store, funnel.steps.map((step) => step.productId)));
       const problem = funnelProblem(funnel, offered, product);
       if (problem) return { ok: false, reason: problem };
       // Each offer is a charge of its own: not under Stripe's smallest one in
@@ -1931,7 +1947,7 @@ export type ProductResult =
   | { ok: true; store: Store; product: Product }
   | {
       ok: false;
-      reason: "none" | "title" | "price" | "free" | "too_many" | "unknown" | "call" | "course" | "pwyw";
+      reason: "none" | "title" | "price" | "free" | "too_many" | "unknown" | "call" | "course" | "pwyw" | "bundle";
       limit?: number;
       /** When the choose-your-price setting was refused: why. */
       pwyw?: PwywProblem;
@@ -2031,6 +2047,8 @@ export async function addProduct(
       keys: null,
       stamp: false,
       page: false,
+      bundle: null,
+      hidden: false,
     };
     if (pwywCents !== null) {
       const problem = pwywProblem(product, pwywCents, store.currency);
@@ -2068,7 +2086,7 @@ export async function editProduct(
   // Written only when the product is changed, so the store's own list id is
   // what a free product gets (below) whatever the price turned out to be.
   let freeNow = false;
-  const result = await onProduct<"free" | "call" | "course" | "pwyw" | "title" | "price">(
+  const result = await onProduct<"free" | "call" | "course" | "pwyw" | "title" | "price" | "bundle">(
     email,
     id,
     (product, store) => {
@@ -2093,6 +2111,9 @@ export async function editProduct(
       if (product.call && (fields.priceCents === 0 || recurring)) return { ok: false, reason: "call" };
       // A course is sold. Giving lessons away for an email address is not built.
       if (product.course && fields.priceCents === 0) return { ok: false, reason: "course" };
+      // A bundle is one sale of several things at one price: never free, never
+      // charged again and again, never priced by its buyer (lib/bundle-rules.ts).
+      if (isBundle(product) && (fields.priceCents === 0 || recurring || pwywCents !== null)) return { ok: false, reason: "bundle" };
       const next: Product = {
         ...product,
         title: fields.title,
@@ -2129,7 +2150,15 @@ export async function removeProduct(
   const result = await withStore(email, async (store, save) => {
     const product = await readProduct(store, id);
     if (!product) return { ok: false as const, reason: "unknown" as const };
-    const next = await save(store, { drop: [id] });
+    // A bundle that held it holds it no more, in the same write, so no bundle
+    // goes on promising a product the store no longer has. Whoever bought the
+    // bundle before kept its list on their order (lib/bundle-rules.ts).
+    const holders = (await readProducts(store, idsOfKind(store, "bundle"))).filter((p) => p.bundle?.includes(id));
+    const put = holders.map((p) => {
+      const left = (p.bundle ?? []).filter((item) => item !== id);
+      return { ...p, bundle: left.length ? left : null };
+    });
+    const next = await save(store, { drop: [id], put });
     return { ok: true as const, store: next, product };
   });
   return result ?? { ok: false, reason: "none" };
@@ -2168,7 +2197,7 @@ export async function moveProduct(
 
 export type FileResult =
   | { ok: true; store: Store; removed: ProductFile | null }
-  | { ok: false; reason: "none" | "unknown" | "invalid" | "call" | "course" };
+  | { ok: false; reason: "none" | "unknown" | "invalid" | "call" | "course" | "bundle" };
 
 /** What is handed over when something is paid for. One or the other. */
 export type Delivery = { file: ProductFile | null; link: string | null };
@@ -2214,14 +2243,16 @@ async function changeDelivery(
   id: string,
   giving: boolean,
   change: (current: Delivery) => Delivery,
-): Promise<{ ok: true; store: Store; previous: Delivery } | { ok: false; reason: "none" | "unknown" | "call" | "course" }> {
+): Promise<{ ok: true; store: Store; previous: Delivery } | { ok: false; reason: "none" | "unknown" | "call" | "course" | "bundle" }> {
   const result = await withStore(email, async (store, save) => {
     const owner = productIdFor(store, id);
     const product = owner ? await readProduct(store, owner) : null;
     if (!product) return { ok: false as const, reason: "unknown" as const };
-    // A call delivers a booking, and a course its lessons, not a file or a link.
+    // A call delivers a booking, a course its lessons and a bundle its
+    // products, not a file or a link of their own.
     if (giving && product.id === id && product.call) return { ok: false as const, reason: "call" as const };
     if (giving && product.id === id && product.course) return { ok: false as const, reason: "course" as const };
+    if (giving && product.id === id && isBundle(product)) return { ok: false as const, reason: "bundle" as const };
     const done = rewriteDelivery(product, id, change);
     if (!done) return { ok: false as const, reason: "unknown" as const };
     const next = await save(store, { put: [done.product] });
@@ -2396,7 +2427,7 @@ export type OptionResult =
   | { ok: true; store: Store; removed: ProductFile[] }
   | {
       ok: false;
-      reason: "none" | "label" | "price" | "free" | "too_many" | "unknown" | "call" | "course" | "pwyw";
+      reason: "none" | "label" | "price" | "free" | "too_many" | "unknown" | "call" | "course" | "pwyw" | "bundle";
       limit?: number;
     };
 
@@ -2430,6 +2461,8 @@ export async function addOption(
     if (isFree(product)) return { ok: false, reason: "free" };
     if (product.call) return { ok: false, reason: "call" };
     if (product.course) return { ok: false, reason: "course" };
+    // A bundle has one price for everything in it.
+    if (isBundle(product)) return { ok: false, reason: "bundle" };
     // The buyer would be choosing a price twice.
     if (product.pwyw) return { ok: false, reason: "pwyw" };
     if (product.options.length >= MAX_OPTIONS) {
@@ -2660,3 +2693,123 @@ export async function setProductStamp(email: string, id: string, on: boolean): P
   return changeProduct(email, id, (product) => ({ ...product, stamp: on }));
 }
 
+
+// ---- Bundles and drafts -------------------------------------------------------
+
+export type BundleResult =
+  | { ok: true; store: Store; product: Product }
+  | { ok: false; reason: "none" | "unknown" | BundleProblem };
+
+/**
+ * Makes a product a bundle of other products of this store, changes what is
+ * in it, or turns it back into an ordinary product (null). Checked under the
+ * store's lock against the products as they are (lib/bundle-rules.ts), so a
+ * bundle can never be saved holding something that cannot be handed over.
+ * Buyers who already paid keep the list that was on their order.
+ */
+export async function setProductBundle(email: string, id: string, items: string[] | null): Promise<BundleResult> {
+  return onProduct<BundleProblem>(email, id, async (product, store) => {
+    if (items === null) return { ...product, bundle: null };
+    const listed = await readListings(store, items);
+    const problem = bundleProblem(items, listed, product);
+    if (problem) return { ok: false, reason: problem };
+    return { ...product, bundle: [...items] };
+  });
+}
+
+export type HiddenResult =
+  | { ok: true; store: Store; product: Product }
+  | { ok: false; reason: "none" | "unknown" };
+
+/**
+ * Publishes a draft, or takes a product off the store without removing it.
+ * A hidden product keeps everything it has, its buyers keep what they bought,
+ * and a bundle that holds it still hands it over.
+ */
+export async function setProductHidden(email: string, id: string, hidden: boolean): Promise<HiddenResult> {
+  const done = await onProduct<never>(email, id, (product) => ({ ...product, hidden }));
+  return done.ok ? { ok: true, store: done.store, product: done.product } : done;
+}
+
+/** One product an import makes, already checked (lib/imports.ts). */
+export type DraftProduct = {
+  title: string;
+  summary: string;
+  /** In the store currency's smallest unit; 0 for free. */
+  priceCents: number;
+  /** Where the buyer is sent, already read by lib/product-link.ts; null for none yet. */
+  link: string | null;
+  /** Whether a long description is written for it, in its own record, by the caller. */
+  about?: boolean;
+};
+
+export type DraftsResult =
+  | { ok: true; store: Store; ids: string[] }
+  | { ok: false; reason: "none" | "too_many"; limit: number; room: number };
+
+/**
+ * Adds several products at once, each a draft the store does not show until
+ * the creator publishes it, at the end of the list, in one write under the
+ * store's lock. All of them or none: when they would take the store past its
+ * ceiling nothing is added, and the answer says how much room there is.
+ */
+export async function addDraftProducts(email: string, drafts: DraftProduct[]): Promise<DraftsResult> {
+  const result = await withStore<DraftsResult>(email, async (store, save) => {
+    const room = MAX_PRODUCTS - store.catalog.items.length;
+    if (drafts.length > room) return { ok: false, reason: "too_many", limit: MAX_PRODUCTS, room: Math.max(0, room) };
+    const createdAt = new Date().toISOString();
+    const taken = usedIds(store);
+    for (const link of store.links) taken.add(link.id);
+    const made: Product[] = [];
+    for (const draft of drafts) {
+      let id = "";
+      for (let attempt = 0; attempt < 50 && (!id || taken.has(id)); attempt += 1) {
+        id = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+      }
+      taken.add(id);
+      made.push({
+        id,
+        title: draft.title.trim().slice(0, MAX_TITLE_LENGTH),
+        summary: draft.summary.trim().slice(0, MAX_SUMMARY_LENGTH),
+        priceCents: draft.priceCents,
+        createdAt,
+        file: null,
+        link: draft.link,
+        recurring: null,
+        options: [],
+        call: null,
+        stock: null,
+        bump: null,
+        funnel: null,
+        plan: null,
+        course: null,
+        image: null,
+        display: "button",
+        fields: [],
+        pwyw: null,
+        about: draft.about === true,
+        keys: null,
+        stamp: false,
+        page: false,
+        bundle: null,
+        hidden: true,
+      });
+    }
+    const anyFree = made.some((p) => p.priceCents === 0);
+    const next = await save(
+      { ...store, listId: store.listId ?? (anyFree ? newListId() : null), statsId: store.statsId ?? newListId() },
+      { put: made },
+    );
+    return { ok: true, store: next, ids: made.map((p) => p.id) };
+  });
+  return result ?? { ok: false, reason: "none", limit: MAX_PRODUCTS, room: 0 };
+}
+
+/**
+ * Notes that some buyers were brought over from another platform
+ * (lib/imported-purchases.ts), so the store's list of purchases answers them
+ * even before — or without — a Stripe account. Set once, like `reviewed`.
+ */
+export async function setPastBuyers(email: string): Promise<Store | null> {
+  return patchStore(email, (store) => (store.pastBuyers ? null : { pastBuyers: true }));
+}

@@ -9,7 +9,7 @@ import { photoUrl } from "@/lib/photo-limits";
 import { canSellProduct } from "@/lib/store-checkout";
 import { type CallListing, canMove, catchUpBookings, icsLink, isCallProduct, slotsForMove, slotsForProduct, whyNotMove } from "@/lib/calls";
 import { type CallSetup, MAX_MOVES, movableUntil, readableTime, zoneName } from "@/lib/call-setup";
-import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
+import { VIDEO_ROOM_NOTE, isVideoRoom, roomLabel, roomOf } from "@/lib/call-rooms";
 import { readOrder } from "@/lib/store-checkout";
 import { SITE_URL } from "@/lib/site-url";
 import { imageUrl } from "@/lib/product-image";
@@ -301,7 +301,7 @@ async function MovePage({
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {room ? (
                 <a href={room} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn">
-                  {isVideoRoom(room) ? "Join the video room" : "The link to join"}
+                  {roomLabel(room)}
                 </a>
               ) : null}
               <a href={icsLink("", store, session)} className="btn btn-secondary">

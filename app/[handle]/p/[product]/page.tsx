@@ -29,6 +29,8 @@ import { type BlockContext, BlockView, HeroView } from "@/components/sales-block
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { StoreTracking } from "@/components/store-tracking";
 import { JsonLd } from "@/components/structured-data";
+import { offeredItems } from "@/lib/bundles";
+import { MIN_BUNDLE_ITEMS, worthWords } from "@/lib/bundle-rules";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -61,7 +63,8 @@ const load = cache(async (raw: string, id: string): Promise<{ store: Store; prod
   const store = await storeForPage(asked);
   if (!store) return null;
   const product = await readListing(store, id);
-  return product ? { store, product, asked } : null;
+  // A draft has no page until the creator publishes it.
+  return product && !product.hidden ? { store, product, asked } : null;
 });
 
 async function pageOf(store: Store, product: Listing): Promise<SalesPage> {
@@ -212,7 +215,7 @@ export default async function ProductPage({ params }: Params) {
 
   const selling = canSell(store);
   const rehearsal = selling && isConnectInTestMode();
-  const [about, stock, noKeys, page, summary, related] = await Promise.all([
+  const [about, stock, noKeys, page, summary, related, inside] = await Promise.all([
     product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""),
     stockLeft(store, product).catch(() => null),
     outOfKeys(store, product).catch(() => false),
@@ -220,7 +223,37 @@ export default async function ProductPage({ params }: Params) {
     summaryOf(store.statsId, product.id).catch(() => null),
     // What its order bump offers, drawn in the same box as on the store page.
     product.bump ? readListings(store, [product.bump.productId]) : Promise.resolve([]),
+    // What a bundle holds now, each product as it is today (lib/bundles.ts).
+    product.bundle ? offeredItems(store, [product]).then((m) => m.get(product.id) ?? []).catch(() => []) : Promise.resolve(null),
   ]);
+  const bundleReady = !product.bundle || (inside?.length ?? 0) >= MIN_BUNDLE_ITEMS;
+  const worth = inside && product.bundle ? worthWords(inside, product.priceCents, store.currency) : null;
+  // What a bundle holds, each with what it costs on its own and its own page
+  // when it has one on the store.
+  const bundleList =
+    inside && inside.length > 0 ? (
+      <section className="mt-6" aria-labelledby="inside-title">
+        <h2 id="inside-title" className="st-label">{`What is inside: ${inside.length} products`}</h2>
+        <ul className="mt-3 divide-y" style={{ borderColor: "var(--st-line)" }}>
+          {inside.map((item) => (
+            <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5" style={{ borderColor: "var(--st-line)" }}>
+              {item.hidden ? (
+                <span className="min-w-0 font-semibold">{item.title}</span>
+              ) : (
+                <Link prefetch={false} href={productPath(store, item)} className="st-title-link min-w-0 font-semibold">
+                  {item.title}
+                </Link>
+              )}
+              <span className="st-muted shrink-0 text-sm tabular-nums">
+                {`${item.course ? `Course, ${item.course.lessons} ${item.course.lessons === 1 ? "lesson" : "lessons"} \u00b7 ` : ""}${formatMoney(item.priceCents, store.currency)} on its own`}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {worth ? <p className="mt-3 font-semibold">{worth}</p> : null}
+        <p className="st-muted mt-2 text-sm">Each one is yours straight after paying, as if you had bought it on its own.</p>
+      </section>
+    ) : null;
   const reviews = summary && summary.visible > 0 ? await visibleReviews(store.statsId, product.id, 0, REVIEWS_ON_PAGE).catch(() => []) : [];
   const count = noKeys ? 0 : stock;
   const blocks = aboutBlocks(about);
@@ -274,7 +307,7 @@ export default async function ProductPage({ params }: Params) {
           {remaining === 0 ? "Sold out" : `${remaining.toLocaleString("en-US")} left`}
         </p>
       ) : null}
-      <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} />
+      <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} />
       {product.recurring && canManage(store) ? (
         <p className="mt-3 text-center text-sm">
           <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">
@@ -348,9 +381,10 @@ export default async function ProductPage({ params }: Params) {
               <p className="st-price text-base">{pricePill(product, store.currency)}</p>
             </div>
             {summary ? <RatingLine summary={summary} href="#reviews" className="mt-2" /> : null}
-            <ProductFacts store={store} product={product} />
+            <ProductFacts store={store} product={product} bundleItems={inside} linkCourse={false} />
             {product.summary ? <p className="st-muted mt-4 text-lg leading-relaxed">{product.summary}</p> : null}
             {blocks.length > 0 ? <About blocks={blocks} /> : null}
+            {bundleList}
 
             <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--st-line)" }}>
               {buyTerms}
@@ -397,7 +431,8 @@ export default async function ProductPage({ params }: Params) {
         </h2>
         <p className="st-price text-base">{pricePill(product, store.currency)}</p>
       </div>
-      <ProductFacts store={store} product={product} linkCourse={false} />
+      <ProductFacts store={store} product={product} linkCourse={false} bundleItems={inside} />
+      {bundleList}
       <div className="mt-4">{buyTerms}</div>
     </section>
   );

@@ -65,9 +65,30 @@ export const RATE_LIMITS = {
   like: { limit: 200, seconds: 60 * 60, words: "200 likes an hour" },
   report: { limit: 20, seconds: 24 * 60 * 60, words: "20 reports a day" },
   upload: { limit: 10, seconds: 60 * 60, words: "10 pictures an hour" },
+  rsvp: { limit: 30, seconds: 60 * 60, words: "30 RSVPs or cancelled RSVPs an hour" },
 } as const;
 
 export type RateKind = keyof typeof RATE_LIMITS;
+
+/**
+ * Live events inside the community (lib/community-events.ts): how many may
+ * be coming up at once, how many are kept in all (the ones that are over
+ * stay, with their replays, until this many are kept; then the oldest one
+ * that is over makes room), what one may say, how long one lasts, and how
+ * many people one may take.
+ */
+export const MAX_UPCOMING_EVENTS = 50;
+export const MAX_KEPT_EVENTS = 500;
+export const MAX_EVENT_TITLE = 120;
+export const MAX_EVENT_ABOUT = 3_000;
+export const EVENT_LENGTHS = [15, 30, 45, 60, 90, 120, 180, 240] as const;
+export const MAX_EVENT_CAP = 5_000;
+/** How far ahead an event may be put. */
+export const MAX_EVENT_AHEAD_DAYS = 365;
+/** The way in shows this many minutes before the start, and until the end. */
+export const JOIN_EARLY_MINUTES = 15;
+/** Events a creator may schedule or change in an hour: a person is nowhere near it. */
+export const EVENT_WRITES_PER_HOUR = 60;
 
 /** Ids of spaces, posts and comments: short, random, and nothing else. */
 export const ITEM_ID = /^[0-9a-f]{12}$/;

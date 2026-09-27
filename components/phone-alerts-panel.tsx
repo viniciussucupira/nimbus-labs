@@ -14,6 +14,7 @@ const EVENTS: { key: PhoneEvent; label: string; hint: string }[] = [
   { key: "booking", label: "Bookings", hint: "A call or a seat booked: what, when, and what was paid" },
   { key: "report", label: "Community reports", hint: "A member reported a post or a comment" },
   { key: "affiliate", label: "Affiliate applications", hint: "Someone applied to promote your store" },
+  { key: "live", label: "Live events", hint: "A community live event starts in 15 minutes" },
 ];
 
 const MESSAGES: Record<string, string> = {

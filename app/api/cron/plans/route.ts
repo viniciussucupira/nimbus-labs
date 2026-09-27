@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { cronAllowed } from "@/lib/request-guard";
+import { withCutoff } from "@/lib/fetch-timeout";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { settlePlans } from "@/lib/plans";
 import { isBillingConfigured } from "@/lib/billing";
@@ -29,6 +30,12 @@ export const maxDuration = 60;
  * one run at a time.
  */
 export async function GET(request: NextRequest) {
+  // Every request to Redis, Stripe and the rest is given up by 57 s
+  // (lib/fetch-timeout.ts), inside the sixty Vercel gives the job.
+  return withCutoff(Date.now() + 57_000, () => run(request));
+}
+
+async function run(request: NextRequest): Promise<Response> {
   // Vercel sends the secret with every scheduled run, compared here in
   // constant time. Without one set, only a local development server runs the
   // job on request; in production that is a closed door, not an open one.

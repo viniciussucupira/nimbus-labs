@@ -351,8 +351,8 @@ const INCLUDED = [
   "Buyers pay into your own Stripe account",
   "Up to 2,000 products: files, courses, memberships, paid calls and live sessions",
   "Sales pages and landing pages built from blocks, and reviews only buyers can write",
-  "A community for your buyers, with spaces, posts, comments and moderation",
-  "Up to three prices on any product, pay what you want, discount codes and payment plans",
+  "A community for your buyers, with spaces, posts, comments, moderation and live events members RSVP to",
+  "Up to three prices on any product, bundles of 2 to 20 products, pay what you want, discount codes and payment plans",
   "15 currencies, and Apple Pay, Google Pay, Klarna and the other ways to pay you switch on in Stripe",
   "Offers before and after paying: a box at checkout, and up to five one-click offers after",
   "An affiliate programme with a page for each affiliate; you pay them yourself",
@@ -363,6 +363,7 @@ const INCLUDED = [
   "A team of up to five per store with roles, and notifications of sales on your phone",
   "Sign-in without passwords, and a full refund that closes access by itself",
   "Free products that build an email list you can download",
+  "Your list, products and past buyers brought over from another platform, from a spreadsheet",
 ];
 
 const PRO_INCLUDED = [
@@ -370,7 +371,7 @@ const PRO_INCLUDED = [
   "One-off emails to your list, now or at a time you choose",
   "Sequences that go out by themselves after someone joins or buys",
   `Up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month (${TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")} during the free trial), from your name, with replies coming to you`,
-  "Import the list you already have; one-click unsubscribe in every email",
+  "One-click unsubscribe in every email, honoured for good",
   "Community announcements emailed to the members who asked for them, from the same monthly emails",
   "One email that asks each buyer for a review, 3 to 30 days after buying",
 ];

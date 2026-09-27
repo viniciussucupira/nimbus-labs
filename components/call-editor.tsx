@@ -9,6 +9,8 @@ import {
   CALL_LENGTHS,
   type CallSetup,
   DAY_NAMES,
+  MEET_NAMES,
+  type MeetProvider,
   HORIZON_CHOICES,
   MAX_RANGES_PER_DAY,
   MAX_SEATS,
@@ -38,6 +40,8 @@ const MESSAGES: Record<string, string> = {
   session_time: "Check each session's date and start time: one of them is missing, or is a time your clocks skip when they go forward.",
   session_seats: `Seats in a session have to be a whole number from 1 to ${MAX_SESSION_SEATS}.`,
   session_room: "Each session's meeting link has to be a full web address starting with https://, or left empty.",
+  meet_google: "Google Calendar is not connected to this store any more. Connect it again under Video calls in your studio, or pick another place for the call.",
+  meet_zoom: "Zoom is not connected to this store any more. Connect it again under Video calls in your studio, or pick another place for the call.",
   past: "A new or changed session has to start in the future.",
   upcoming: "Add at least one session that is still to come.",
   booked: "Somebody has booked a session you moved or took off. A booked session keeps its date, time and length; you can still change its link, or add more seats.",
@@ -104,46 +108,88 @@ type Draft = {
   room: string;
   /** A private video room made for each booking, instead of the link above. */
   video: boolean;
+  /** A Google Meet or Zoom meeting made for each booking, on the creator's connected account. */
+  meet: MeetProvider | null;
   /** Typed, so a field being cleared to retype it is not snapped back to a number. */
   seats: string;
   sessions: SessionDraft[];
 };
 
+/** A Google Calendar or Zoom account this store can make meetings on, as the studio shows it. */
+export type MeetAccount = { provider: MeetProvider; account: string };
+
+type Where = "own" | "video" | MeetProvider;
+
+function whereOf(draft: Pick<Draft, "video" | "meet">): Where {
+  return draft.meet ?? (draft.video ? "video" : "own");
+}
+
 /**
- * Where the call happens: the creator's own link, as it always was, or a
- * private video room made for each booking (lib/call-rooms.ts). Two radio
- * cards; what the second one means, and what it asks of whoever opens the
- * room first, is said right under it.
+ * Where the call happens: the creator's own link, as it always was, a
+ * private video room made for each booking (lib/call-rooms.ts), or — when
+ * the store has connected Google Calendar or Zoom (lib/meet-connect.ts) — a
+ * Google Meet or Zoom meeting made on that account for each booking
+ * (lib/meet-links.ts). Radio cards; what the chosen one means, and what it
+ * asks of the creator, is said right under it. The automatic ones are only
+ * offered while connected: a store that has not connected either sees the
+ * two cards it always saw.
  */
 function RoomChoice({
-  video,
+  where,
   live,
+  meetings,
   onChange,
   children,
 }: {
-  video: boolean;
+  where: Where;
   live: boolean;
-  onChange: (video: boolean) => void;
-  /** The field for the creator's own link, shown while that is chosen. */
+  /** The accounts connected and working; empty offers neither automatic choice. */
+  meetings: MeetAccount[];
+  onChange: (where: Where) => void;
+  /** The field for the creator's own link, shown while that (or a meeting, as its fallback) is chosen. */
   children?: React.ReactNode;
 }) {
   const card =
     "flex cursor-pointer items-start gap-3 rounded-[12px] border px-3 py-3 transition has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-violet-brand";
+  const chosen = (value: Where) => (where === value ? "border-violet-brand bg-lilac/40" : "border-line bg-white");
+  const connected = (p: MeetProvider) => meetings.find((m) => m.provider === p) ?? null;
+  // A choice saved while connected stays on screen after a disconnect, so
+  // the creator sees why it no longer works rather than a silent switch.
+  const offered = (["google", "zoom"] as const).filter((p) => connected(p) || where === p);
+  const meeting = where === "google" || where === "zoom" ? where : null;
   return (
     <fieldset>
       <legend className="field-label">Where the call happens</legend>
       <div className="mt-2 grid gap-2">
-        <label className={`${card} ${video ? "border-line bg-white" : "border-violet-brand bg-lilac/40"}`}>
-          <input type="radio" name="where" checked={!video} onChange={() => onChange(false)} className="mt-1 h-4 w-4 shrink-0" />
+        {offered.map((p) => {
+          const account = connected(p);
+          return (
+            <label key={p} className={`${card} ${chosen(p)}`}>
+              <input type="radio" name="where" checked={where === p} onChange={() => onChange(p)} className="mt-1 h-4 w-4 shrink-0" />
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-ink">{`${MEET_NAMES[p]} (automatic)`}</span>
+                <span className="mt-0.5 block break-words text-sm text-ink-soft">
+                  {account
+                    ? p === "google"
+                      ? `A Google Calendar event with a Meet link is made on ${account.account} for ${live ? "each session" : "each booking"}.`
+                      : `A Zoom meeting is made on ${account.account} for ${live ? "each session" : "each booking"}.`
+                    : `${p === "google" ? "Google Calendar" : "Zoom"} is not connected any more: connect it again under Video calls in your studio, or pick another place.`}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+        <label className={`${card} ${chosen("own")}`}>
+          <input type="radio" name="where" checked={where === "own"} onChange={() => onChange("own")} className="mt-1 h-4 w-4 shrink-0" />
           <span>
-            <span className="block text-sm font-semibold text-ink">Your own link (Zoom, Google Meet…)</span>
+            <span className="block text-sm font-semibold text-ink">{meetings.length || offered.length ? "Your own link" : "Your own link (Zoom, Google Meet…)"}</span>
             <span className="mt-0.5 block text-sm text-ink-soft">
               {live ? "The link you give each session below." : "The link you type below, the same for every booking."}
             </span>
           </span>
         </label>
-        <label className={`${card} ${video ? "border-violet-brand bg-lilac/40" : "border-line bg-white"}`}>
-          <input type="radio" name="where" checked={video} onChange={() => onChange(true)} className="mt-1 h-4 w-4 shrink-0" />
+        <label className={`${card} ${chosen("video")}`}>
+          <input type="radio" name="where" checked={where === "video"} onChange={() => onChange("video")} className="mt-1 h-4 w-4 shrink-0" />
           <span>
             <span className="block text-sm font-semibold text-ink">Create a private video room for each booking</span>
             <span className="mt-0.5 block text-sm text-ink-soft">
@@ -152,7 +198,7 @@ function RoomChoice({
           </span>
         </label>
       </div>
-      {video ? (
+      {where === "video" ? (
         <div className="mt-3 rounded-[10px] bg-paper px-3 py-3 text-sm text-ink-soft">
           <p>
             {live
@@ -167,6 +213,27 @@ function RoomChoice({
             then. Open it a few minutes early and sign in yourself.
           </p>
         </div>
+      ) : meeting ? (
+        <>
+          <div className="mt-3 rounded-[10px] bg-paper px-3 py-3 text-sm text-ink-soft">
+            <p>
+              {live
+                ? "Each session gets one meeting, made when its first seat is booked and shared by everyone booked into it. "
+                : "Each booking gets its own meeting, moved with it if the buyer moves it; a group call has one meeting per time. "}
+              {meeting === "google"
+                ? "Buyers are on the event's guest list but never see each other's addresses, and get the link in our emails and calendar file; Google emails nobody."
+                : "Buyers get its join link in our emails and calendar file; you start it from Zoom or from Upcoming calls in your studio."}
+            </p>
+            <p className="mt-2">
+              <strong className="text-ink">Good to know:</strong>{" "}
+              {meeting === "google"
+                ? "Your Google plan sets how many can join and for how long (free accounts: 100 people, 60 minutes for three or more)."
+                : "Your Zoom plan sets how many can join and for how long (free accounts: 100 people, 40 minutes)."}{" "}
+              If a meeting cannot be made, the buyer gets the link below, or a private video room when it is empty, and we try again for the next hours.
+            </p>
+          </div>
+          {children ?? null}
+        </>
       ) : (
         children ?? null
       )}
@@ -226,6 +293,7 @@ function toDraft(setup: CallSetup | null, kind: "weekly" | "live"): Draft {
     bufferMinutes: 10,
     room: "",
     video: false,
+    meet: null,
     seats: "1",
     sessions: kind === "live" ? [newSession(tz, undefined)] : [],
   };
@@ -249,7 +317,7 @@ function sessionWhen(start: number, tz: string): string {
 }
 
 /** Selling a product as a paid call: hours or dated sessions, length, seats, and where it happens. */
-export function CallEditor({ product, email }: { product: Product; email: string }) {
+export function CallEditor({ product, email, meetings = [] }: { product: Product; email: string; meetings?: MeetAccount[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(() => toDraft(product.call, product.call?.kind ?? "weekly"));
@@ -349,7 +417,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
                 {coming.slice(0, 5).map((s) => (
                   <li key={s.id} className="break-words">
                     <span className="font-semibold text-ink">{sessionWhen(s.start, setup.tz)}</span>
-                    {` · ${sessionLength(s.minutes)} · ${s.seats} ${s.seats === 1 ? "seat" : "seats"}${s.room || setup.video ? "" : " · no meeting link yet"}`}
+                    {` · ${sessionLength(s.minutes)} · ${s.seats} ${s.seats === 1 ? "seat" : "seats"}${s.room || setup.video || setup.meet ? "" : " · no meeting link yet"}`}
                   </li>
                 ))}
                 {coming.length > 5 ? <li>{`and ${coming.length - 5} more`}</li> : null}
@@ -362,7 +430,9 @@ export function CallEditor({ product, email }: { product: Product; email: string
                 ? "On sale until each session starts."
                 : `Sales close ${hoursLabel(setup.noticeHours)} before each session.`}
             </p>
-            {setup.video ? (
+            {setup.meet ? (
+              <p className="mt-1 text-sm text-ink-soft">{`A ${MEET_NAMES[setup.meet]} meeting is made for each session, shared by everyone booked into it.`}</p>
+            ) : setup.video ? (
               <p className="mt-1 text-sm text-ink-soft">A private video room is made for each session, shared by everyone booked into it.</p>
             ) : null}
           </>
@@ -378,7 +448,11 @@ export function CallEditor({ product, email }: { product: Product; email: string
               {`At least ${setup.noticeHours} hours' notice, up to ${setup.horizonDays} days ahead${setup.bufferMinutes ? `, ${setup.bufferMinutes} minutes between calls` : ""}.`}
             </p>
             <p className="mt-1 break-all text-sm text-ink-soft">
-              {setup.video
+              {setup.meet
+                ? setup.seats > 1
+                  ? `A ${MEET_NAMES[setup.meet]} meeting is made for each time, shared by everyone booked into it.`
+                  : `A ${MEET_NAMES[setup.meet]} meeting is made for each booking.`
+                : setup.video
                 ? setup.seats > 1
                   ? "A private video room is made for each time, shared by everyone booked into it."
                   : "A private video room is made for each booking."
@@ -433,6 +507,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
                 tz: draft.tz,
                 noticeHours: draft.noticeHours,
                 video: draft.video,
+                meet: draft.meet,
                 sessions: draft.sessions.map((s) => ({
                   id: s.id,
                   date: s.date,
@@ -471,7 +546,12 @@ export function CallEditor({ product, email }: { product: Product; email: string
           </label>
         </div>
 
-        <RoomChoice video={draft.video} live onChange={(video) => setDraft({ ...draft, video })} />
+        <RoomChoice
+          where={whereOf(draft)}
+          live
+          meetings={meetings}
+          onChange={(where) => setDraft({ ...draft, video: where === "video", meet: where === "google" || where === "zoom" ? where : null })}
+        />
 
         <fieldset className="min-w-0">
           <legend className="field-label">Sessions, in your time zone</legend>
@@ -541,7 +621,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
                   </label>
                   {draft.video ? null : (
                     <label className="col-span-2 block sm:col-span-4">
-                      <span className="text-xs font-semibold text-ink-soft">Meeting link</span>
+                      <span className="text-xs font-semibold text-ink-soft">{draft.meet ? "Your own link, if the meeting cannot be made (optional)" : "Meeting link"}</span>
                       <input
                         type="url"
                         inputMode="url"
@@ -603,6 +683,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
               bufferMinutes: draft.bufferMinutes,
               room: draft.room.trim(),
               video: draft.video,
+              meet: draft.meet,
               seats: Number(draft.seats),
             },
           },
@@ -766,9 +847,14 @@ export function CallEditor({ product, email }: { product: Product; email: string
         </label>
       </div>
 
-      <RoomChoice video={draft.video} live={false} onChange={(video) => setDraft({ ...draft, video })}>
+      <RoomChoice
+        where={whereOf(draft)}
+        live={false}
+        meetings={meetings}
+        onChange={(where) => setDraft({ ...draft, video: where === "video", meet: where === "google" || where === "zoom" ? where : null })}
+      >
         <label className="mt-3 block">
-          <span className="field-label">Meeting link</span>
+          <span className="field-label">{draft.meet ? "Your own link, if the meeting cannot be made (optional)" : "Meeting link"}</span>
           <input
             type="url"
             inputMode="url"
@@ -778,7 +864,9 @@ export function CallEditor({ product, email }: { product: Product; email: string
             className="field mt-2"
           />
           <span className="field-hint mt-1 block">
-            Your Zoom, Google Meet or Whereby room. Each buyer gets it the moment they have paid. Leave it empty to send one yourself.
+            {draft.meet
+              ? "Given to a buyer only when the meeting cannot be made. Leave it empty to give them a private video room instead."
+              : "Your Zoom, Google Meet or Whereby room. Each buyer gets it the moment they have paid. Leave it empty to send one yourself."}
           </span>
         </label>
       </RoomChoice>

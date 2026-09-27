@@ -81,15 +81,15 @@ export const PAGES: TopicPage[] = [
         intro: "Four lines before the long table. Every one of them is backed by a row below, with its source.",
         items: [
           { icon: "bank", title: "Where we are ahead: the money", body: "Sales land in a full Stripe account in your own name, with its own login and payout schedule. Stan's creators get an account Stan manages, and cash out inside Stan." },
-          { icon: "tag", title: "Where we are ahead: the $29 plan", body: "Several prices on one product, discount codes in percent or dollars, sales and landing pages, offers before and after paying, payment plans, ad pixels and an affiliate programme, where Stan keeps most of those for $99. And pay what you want, free trials on memberships, reviews only buyers can write, 15 currencies and a team with roles, which Stan's help centre does not offer." },
+          { icon: "tag", title: "Where we are ahead: the $29 plan", body: "Several prices on one product, discount codes in percent or dollars, sales and landing pages, offers before and after paying, payment plans, ad pixels and an affiliate programme, where Stan keeps most of those for $99. And pay what you want, free trials on memberships, reviews only buyers can write, 15 currencies, a team with roles, bundles that hand over each product as itself, and past buyers brought over from a file, which Stan's help centre does not offer." },
           { icon: "scale", title: "Where we are the same", body: "0% of each sale, and the same $29 and $99 a month, or $300 and $948 a year." },
-          { icon: "info", title: "Where Stan is ahead", body: "PayPal for creators in the United States, affiliates paid for you automatically, automated Instagram replies, webinars inside its community, Zoom and Google Meet links made for each booking, an iPhone app, and as many products as you like where we stop at 2,000. If you need those today, Stan is the better tool today." },
+          { icon: "info", title: "Where Stan is ahead", body: "PayPal for creators in the United States, affiliates paid for you automatically, automated Instagram replies, Zoom and Google Meet links made for each booking and webinar, an iPhone app, and as many products as you like where we stop at 2,000. If you need those today, Stan is the better tool today." },
         ],
       },
       {
         kind: "table",
         title: "The part that decides",
-        note: "Sources: Stan's help centre articles 'Creator vs. Creator Pro', 'How to Connect Stan with Stripe', 'How to Cash Out Inside Stan', 'Experiment: How to Connect an Existing Stripe Account' and 'How to Subscribe on the Stan Mobile App', read on 18 September 2026; 'Can I Create More Than One Stan Store?' and 'How to Change Your Stan Username or Email', read on 19 September 2026. The rows on products, prices, trials and the customer area re-checked on Stan's help centre on 26 September 2026; 'Can I Create More Than One Stan Store?', 'Can I Grant Administrative Access to a Team Member?' and 'How Can I Add My Customer Reviews?' read on 27 September 2026, and the rows on ways to pay and currency re-checked the same day.",
+        note: "Sources: Stan's help centre articles 'Creator vs. Creator Pro', 'How to Connect Stan with Stripe', 'How to Cash Out Inside Stan', 'Experiment: How to Connect an Existing Stripe Account' and 'How to Subscribe on the Stan Mobile App', read on 18 September 2026; 'Can I Create More Than One Stan Store?' and 'How to Change Your Stan Username or Email', read on 19 September 2026. The rows on products, prices, trials and the customer area re-checked on Stan's help centre on 26 September 2026; 'Can I Create More Than One Stan Store?', 'Can I Grant Administrative Access to a Team Member?' and 'How Can I Add My Customer Reviews?' read on 27 September 2026, and the rows on ways to pay and currency re-checked the same day. The rows on live events, bundles and moving from another platform from 'How to Add an Integrated Webinar to Community', 'Webinar Product', the Digital Downloads category, 'How to Import Your Existing Email List into Stan' and 'How Do I Manually Give Access or Add a Customer to a Product?', read on 27 September 2026.",
         head: ["", "Stan", "Nimbus Labs"],
         rows: [
           ["Monthly price", "$29 and $99", "$29 and $99, free for the first 14 days"],
@@ -113,6 +113,9 @@ export const PAGES: TopicPage[] = [
           ["Several stores in one account", "Not in one account. Several accounts, each with its own email and its own subscription", "Up to five in one account, each with its own address, Stripe account and plan"],
           ["People who help you run it", "No roles. Their help centre says the only way is to share your login", "Up to five per store, as Admin, Editor or Support, each with their own sign-in, checked on our server, with an activity log"],
           ["Reviews", "Added by the creator. Their help centre says customers cannot write one", "Written only by buyers whose payment your Stripe account confirms. You can answer or hide one, never edit it, and hidden reviews still count in the average"],
+          ["Live events in the community", "Webinars added to the community as a product members sign up for, with Zoom or Google Meet links made automatically", "Live events members RSVP to, with a cap of 1 to 5,000, reminders, a private Jitsi Meet room shown in the page or your own link, and replays. No Zoom or Google Meet link made for you — they are ahead there"],
+          ["Bundles", "Their digital download page lists bundles among what one download can hold. No product type that hands over other products in their help centre", "2 to 20 of your products at one price, each delivered as itself: its download, link, course and licence key"],
+          ["Moving from another platform", "A list of up to 5,000 imported contacts per store in all, each sent an email to opt in again. Buyers given access one at a time", "A list of up to 50,000 a file that you confirm agreed, up to 500 products a file as drafts, and up to 20,000 past buyers a file who keep what they bought, with one email to them if you choose"],
         ],
       },
       {
@@ -128,7 +131,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Stan is ahead, and we say so",
-        body: "Stan has things we do not: PayPal for creators in the United States, affiliates paid automatically, automated Instagram replies, webinars inside its community, Zoom and Google Meet links made for each booking, an app for iPhone and iPad, stores with no limit on products, and a support team with years of track record. We now have a community, an affiliate programme you pay out yourself, sales and landing pages, offers after the checkout and a private video room for each booking, but not those. If you depend on them today, Stan is the better tool today.",
+        body: "Stan has things we do not: PayPal for creators in the United States, affiliates paid automatically, automated Instagram replies, Zoom and Google Meet links made for each booking and webinar, an app for iPhone and iPad, stores with no limit on products, and a support team with years of track record. We now have a community with live events, an affiliate programme you pay out yourself, sales and landing pages, offers after the checkout and a private video room for each booking and event, but not those. If you depend on them today, Stan is the better tool today.",
       },
     ],
   },
@@ -359,7 +362,7 @@ export const PAGES: TopicPage[] = [
     title: "Feature by feature,",
     highlight: "against Stan",
     intro:
-      "Everything Stan publicly offers, read from its own help centre, app store listings and blog on 17 September 2026, with the rows on the store, what you can sell, checkout and marketing re-checked on its help centre on 26 September 2026, and the rows on stores, teams, reviews, calls, ways to pay, currency, funnels and email platforms on 27 September 2026 — and exactly where Nimbus Labs stands on each line. Green means it works today, and nothing else pretends to.",
+      "Everything Stan publicly offers, read from its own help centre, app store listings and blog on 17 September 2026, with the rows on the store, what you can sell, checkout and marketing re-checked on its help centre on 26 September 2026, and the rows on stores, teams, reviews, calls, ways to pay, currency, funnels, email platforms, webinars, bundles and imports on 27 September 2026 — and exactly where Nimbus Labs stands on each line. Green means it works today, and nothing else pretends to.",
     badge: PROOF,
     accent: "from-violet-brand to-mint-brand",
     blocks: [
@@ -413,9 +416,11 @@ export const PAGES: TopicPage[] = [
           ["Video link for each booking", "Yes \u2014 Zoom or Google Meet links created automatically", "Your own meeting link, or a private Jitsi Meet room made for each booking. The first person in may be asked to sign in to Jitsi to start it. No Zoom or Google Meet link is made for you \u2014 Stan is ahead here"],
           ["Coaching calls with a calendar", "Yes \u2014 with Google Calendar and reminder emails", "Yes \u2014 your hours in your time zone, times shown to each buyer in theirs, held while they pay, a calendar file emailed to both of you, reminders a day and an hour before, and buyers who move their own booking up to twice. Busy times in up to three Google, Outlook or iCloud calendars hide call times; bookings reach your calendar as a feed you subscribe to, not as events written into it"],
           ["Group calls", "Yes \u2014 a maximum number of attendees", "Yes \u2014 1 to 50 people at each time, with the seats left shown to buyers"],
-          ["Live webinars", "Yes", "Yes \u2014 live sessions on dates you set, up to 50 dates per product and 1 to 500 seats each, held on the meeting service whose link you give or in a Jitsi Meet room made for each session. No streaming or recording built in"],
+          ["Live webinars", "Yes", "Yes \u2014 live sessions on dates you set, up to 50 dates per product and 1 to 500 seats each, held on the meeting service whose link you give or in a Jitsi Meet room made for each session. And free live events for your community's members. No streaming or recording built in"],
           ["Lead magnets", "Yes", "Yes \u2014 anything priced at 0 is given for an email address, each address confirmed by its owner, and the list downloads as a CSV at any time"],
-          ["Community", "Yes, one per account, with webinars inside it", "Yes, one per store, on the $29 plan: up to 20 spaces, posts with a picture, comments, likes, pinned posts, an opt-in member directory, reports and moderation, open only to the buyers you choose. Announcements by email on Pro. No live chat and no webinars inside it"],
+          ["Community", "Yes, one per account, with webinars inside it", "Yes, one per store, on the $29 plan: up to 20 spaces, posts with a picture, comments, likes, pinned posts, an opt-in member directory, reports and moderation, open only to the buyers you choose. Announcements by email on Pro. No live chat"],
+          ["Webinars inside the community", "Yes \u2014 a webinar product added to the community, which members sign up for on its landing page, with Zoom or Google Meet links made automatically", "Yes \u2014 live events: up to 50 coming up, RSVPs with a cap of 1 to 5,000, the way in on the event's page from 15 minutes before, in a private Jitsi Meet room shown in the page or at your own link, reminders a day and an hour before, emails when one moves or is cancelled, and replays from YouTube, Vimeo or Loom. Free to members, not sold on its own, and no Zoom or Google Meet link made for you \u2014 Stan is ahead there"],
+          ["Bundles", "Their digital download page lists bundles among what one download can hold. No product type that hands over other products in their help centre", "Yes \u2014 2 to 20 of your one-off products at one price, each delivered as itself, with \u201cwhat they cost on their own\u201d shown only when it is true. Not with memberships or calls"],
           ["External links on your page", "Yes, as one of their product types", "Yes, as their own list — no price on them and nothing to check out"],
           ["Physical products", "Not supported", "Not available"],
           ["Course quizzes and certificates", "Not available", "Yes \u2014 up to 20 questions after any lesson, a pass mark and a number of tries, and a certificate with a page of its own that anyone can open to check it. The certificate is printed or saved as a PDF from the browser"],
@@ -457,6 +462,9 @@ export const PAGES: TopicPage[] = [
           ["Advertising pixels", "Yes, on the $99 plan", "Yes \u2014 Meta, Google, TikTok and Pinterest, on the $29 plan, with each purchase and its amount. Visitors are asked first where the law says so"],
           ["Visits, sources and conversion", "Yes", "Yes \u2014 7, 30 and 90 days and all time, with utm tags, counted without cookies, sales read from your own Stripe account, and CSV files of sales, visits and sources"],
           ["Public API and webhooks", "None published", "Webhooks: up to five addresses, seven events, signed, for Zapier's Catch Hook, Make or your own server. No public API beyond a licence key check"],
+          ["Importing your list", "A CSV, up to 5,000 imported contacts per store in all, each sent an email to opt in again", "A CSV, up to 50,000 rows a file on a list of up to 100,000, only people you confirm agreed, never anyone who unsubscribed here. Nobody is emailed because of it"],
+          ["Importing products", "Not in their help centre", "A CSV, up to 500 a file, as drafts: title, price, description and link. Files, pictures and lessons are added afterwards"],
+          ["Past buyers from another platform", "Access granted one customer at a time, to downloads, courses and the community, with no bulk undo", "A CSV, up to 20,000 a file: files, links, courses, bundles and the community, and one email to them if you choose. Not memberships or calls, and no undo in one step"],
         ],
       },
       {

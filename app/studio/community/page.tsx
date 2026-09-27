@@ -22,6 +22,24 @@ import {
 import { announcementReach, canAnnounceByEmail } from "@/lib/community-mail";
 import { can } from "@/lib/team-roles";
 import { CommunityStudio, type QueueRow, type StudioMember } from "@/components/community-studio";
+import { CommunityEventsStudio, type StudioEvent } from "@/components/community-events-studio";
+import { VIDEO_ROOM_NOTE } from "@/lib/call-rooms";
+import { configuredProviders } from "@/lib/meet-providers";
+import { meetView } from "@/lib/meet-connect";
+import { eventMeetings } from "@/lib/event-meetings";
+import type { MeetAccount } from "@/components/call-editor";
+import { videoAddress } from "@/lib/sales-page";
+import {
+  type CommunityEvent,
+  eventClock,
+  eventFields,
+  eventTime,
+  isOver,
+  lengthWords,
+  pastEvents,
+  rsvpList,
+  upcomingEvents,
+} from "@/lib/community-events";
 
 type Params = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
@@ -32,6 +50,9 @@ export const metadata: Metadata = {
 
 /** How many members the studio lists, most recently seen first. */
 const MEMBERS_SHOWN = 500;
+/** Past events the studio lists, and people it names per event. */
+const PAST_SHOWN = 20;
+const PEOPLE_SHOWN = 200;
 
 function excerpt(text: string): string {
   const flat = text.replace(/\s+/g, " ").trim();
@@ -56,7 +77,64 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
   let queue: QueueRow[] = [];
   let members: StudioMember[] = [];
   let totals = { members: 0, listed: 0, posts: 0, reach: 0 };
+  let coming: StudioEvent[] = [];
+  let over: StudioEvent[] = [];
+  // Google Calendar and Zoom (lib/meet-connect.ts): which accounts an event
+  // can have a meeting made on, for the form. Nothing is read when the
+  // deployment has neither.
+  const meetOn = configuredProviders().length > 0;
+  const meet = id && meetOn && can(view.role, "events") ? await meetView(store.statsId).catch(() => null) : null;
+  const meetAccounts: MeetAccount[] = meet
+    ? meet.providers.flatMap((p) => {
+        const c = meet.connected[p];
+        return c && !c.broken ? [{ provider: p, account: c.account }] : [];
+      })
+    : [];
   if (id && config) {
+    // The live events, with who is coming (lib/community-events.ts): read by
+    // everyone with "community"; changed only with "events".
+    const now = eventClock();
+    const [soon, past] = await Promise.all([upcomingEvents(id, now), pastEvents(id, null, PAST_SHOWN, now)]);
+    const shownEvents = [...soon, ...past.events];
+    const lists = await Promise.all(shownEvents.map((e) => rsvpList(id, e.id)));
+    const people = await readMembers(id, lists.flatMap((l) => l.slice(0, PEOPLE_SHOWN).map((r) => r.key)));
+    // What was made on Google or Zoom for the events that use them (lib/event-meetings.ts).
+    const meetings = await eventMeetings(store, shownEvents).catch(() => null);
+    const shape = (e: CommunityEvent, i: number): StudioEvent => ({
+      id: e.id,
+      title: e.title,
+      about: e.about,
+      ...eventFields(e),
+      tz: e.tz,
+      minutes: e.minutes,
+      cap: e.cap,
+      where: e.where,
+      link: e.link,
+      meet: e.meet,
+      meeting: (() => {
+        const record = meetings?.get(e.id);
+        return record
+          ? { link: record.link, made: record.made && !record.gone, error: record.error, retrying: record.todo !== "", scope: record.scope }
+          : null;
+      })(),
+      room: e.room,
+      only: e.only,
+      replayUrl: e.replay ? videoAddress(e.replay) : "",
+      cancelled: e.cancelled,
+      over: isOver(e, now),
+      started: e.start <= now,
+      when: eventTime(e),
+      length: lengthWords(e.minutes),
+      going: lists[i].length,
+      people: lists[i].slice(0, PEOPLE_SHOWN).flatMap((r) => {
+        const m = people.get(r.key);
+        return m ? [{ name: m.n, email: m.e, at: r.at }] : [];
+      }),
+      post: e.post,
+    });
+    coming = soon.map((e, i) => shape(e, i));
+    over = past.events.map((e, i) => shape(e, soon.length + i));
+
     const [reports, first, listed, posts, reach] = await Promise.all([
       reportQueue(id, 100),
       memberPage(id, "0", 1000),
@@ -142,9 +220,9 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
         <p className="eyebrow">Community</p>
         <h1 className="t-h2 mt-3">A place for your buyers</h1>
         <p className="mt-3 max-w-2xl text-ink-soft">
-          Posts, comments and likes in spaces you set up, a member directory people choose to join, and
-          announcements you can also email. You choose which products let people in; each visit is checked against
-          your own Stripe account, so a membership that stops being paid stops opening it. Members come in with a
+          Posts, comments and likes in spaces you set up, live events members RSVP to and join from the page, a
+          member directory people choose to join, and announcements you can also email. You choose which products let people in; each visit is checked against
+          your own Stripe account (and the past buyers you brought over from another platform), so a membership that stops being paid stops opening it. Members come in with a
           link to their inbox, with no account or password to make.
         </p>
 
@@ -160,6 +238,24 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
           canEmail={canAnnounceByEmail(store)}
           canSettings={can(view.role, "settings")}
           isOwner={view.role === "owner"}
+          events={
+            config ? (
+              <CommunityEventsStudio
+                events={coming}
+                past={over}
+                products={config.access.flatMap((pid) => {
+                  const p = listings.find((l) => l.id === pid);
+                  return p ? [{ id: p.id, title: p.title }] : [];
+                })}
+                spaces={config.spaces.map((s) => ({ id: s.id, name: s.name }))}
+                canManage={can(view.role, "events")}
+                handle={store.handle}
+                roomNote={VIDEO_ROOM_NOTE}
+                meetings={meetAccounts}
+                hostStore={can(view.role, "settings") ? store.sid || "" : null}
+              />
+            ) : null
+          }
         />
       </main>
       </StudioStorePin>

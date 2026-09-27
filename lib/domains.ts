@@ -13,6 +13,7 @@
  * The nimbuslabsai.com address keeps working either way, so a link already
  * printed somewhere never breaks because a domain was added or removed.
  */
+import { DOMAINS_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { canUse } from "@/lib/plan";
 import { SITE_URL } from "@/lib/site-url";
@@ -106,14 +107,18 @@ async function vercel(method: string, path: string, body?: unknown): Promise<Ver
   const separator = path.includes("?") ? "&" : "?";
   const url = `${API}${path}${separator}slug=${encodeURIComponent(TEAM)}`;
   try {
-    const response = await fetch(url, {
-      method,
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: "no-store",
+    // Given up after DOMAINS_TIMEOUT_MS (lib/fetch-timeout.ts), answered as "did not answer".
+    return await timed(DOMAINS_TIMEOUT_MS, async (signal) => {
+      const response = await fetch(url, {
+        method,
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        cache: "no-store",
+        signal,
+      });
+      const parsed = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      return { status: response.status, body: parsed };
     });
-    const parsed = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-    return { status: response.status, body: parsed };
   } catch (error) {
     console.error("the domain service did not answer", error);
     return { status: 502, body: {} };

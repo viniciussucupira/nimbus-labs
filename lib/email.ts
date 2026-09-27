@@ -5,6 +5,7 @@
  * single answer to "is sending switched on?" and a single place to change if
  * the provider ever changes.
  */
+import { RESEND_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 
 // Local tests may point this at a mock server on 127.0.0.1; nothing else is
 // accepted, so a test can never reach the real sender.
@@ -102,16 +103,22 @@ export async function sendEmail(message: {
   // waits a moment and tries again.
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const response = await fetch(API, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
-          ...(message.idempotencyKey ? { "Idempotency-Key": message.idempotencyKey.slice(0, 256) } : {}),
-        },
-        body: payload,
-        cache: "no-store",
-      });
+      // Given up after RESEND_TIMEOUT_MS (lib/fetch-timeout.ts): not sent,
+      // as far as the caller knows. A message that must go out once carries
+      // an idempotency key, so trying it again later cannot send it twice.
+      const response = await timed(RESEND_TIMEOUT_MS, (signal) =>
+        fetch(API, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+            ...(message.idempotencyKey ? { "Idempotency-Key": message.idempotencyKey.slice(0, 256) } : {}),
+          },
+          body: payload,
+          cache: "no-store",
+          signal,
+        }),
+      );
       if (response.ok) return true;
       if (response.status === 429 && attempt < 2) {
         await pause(1_000 + attempt * 1_000);
@@ -154,7 +161,8 @@ export async function sendBatch(
   if (!key) return "retry";
   if (messages.length === 0) return "sent";
   try {
-    const response = await fetch(`${BASE}/emails/batch`, {
+    // Given up after RESEND_TIMEOUT_MS: "retry", with the same key next time.
+    const response = await timed(RESEND_TIMEOUT_MS, (signal) => fetch(`${BASE}/emails/batch`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,
@@ -180,7 +188,8 @@ export async function sendBatch(
           }),
       ),
       cache: "no-store",
-    });
+      signal,
+    }));
     if (response.ok) return "sent";
     console.error("batch rejected", response.status);
     return response.status === 429 || response.status >= 500 ? "retry" : "refused";

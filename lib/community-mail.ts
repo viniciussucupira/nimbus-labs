@@ -26,7 +26,7 @@
 import { randomBytes } from "node:crypto";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { type BatchMessage, sendBatch } from "@/lib/email";
-import { BATCH_SIZE, canWrite, fromLine, monthlyAllowance, release, render, reserve } from "@/lib/mail";
+import { CHECKED_BATCH_SIZE, canWrite, fromLine, monthlyAllowance, release, render, reserve } from "@/lib/mail";
 import { SITE_URL } from "@/lib/site-url";
 import type { Store } from "@/lib/store";
 import {
@@ -135,8 +135,12 @@ export async function queueAnnouncement(store: Store, config: CommunityConfig, p
   return { ok: true, job };
 }
 
-/** The token for a member's stop link, made once and kept. */
-async function tokenFor(store: Store, communityId: string, member: Member): Promise<string> {
+/**
+ * The token for a member's stop link, made once and kept. The same link stops
+ * the reminders for the live events they said they are coming to
+ * (lib/community-event-mail.ts): both are the community's emails they asked for.
+ */
+export async function tokenFor(store: Store, communityId: string, member: Member): Promise<string> {
   if (member.t) return member.t;
   const token = randomBytes(20).toString("hex");
   await redisPipeline([["SET", unsubKey(token), `${communityId}|${member.k}|${store.handle}`]]);
@@ -193,7 +197,8 @@ export async function advanceAnnouncement(
     job = { ...job, status: "sending", note: "" };
 
     while (job.done < job.total && Date.now() < deadline) {
-      const [chunk] = await redisPipeline([["LRANGE", toKey(id), job.done, job.done + BATCH_SIZE - 1]]);
+      // Checked batches (lib/mail.ts): each member is asked of Stripe before sending.
+      const [chunk] = await redisPipeline([["LRANGE", toKey(id), job.done, job.done + CHECKED_BATCH_SIZE - 1]]);
       const keys = Array.isArray(chunk) ? (chunk as string[]) : [];
       if (!keys.length) {
         job = { ...job, done: job.total };

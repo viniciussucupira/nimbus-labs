@@ -13,6 +13,7 @@
  * never be confused: a charge made on the wrong one is either us taking a cut
  * we promised not to take, or us billing ourselves.
  */
+import { STRIPE_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 import {
   type Cycle,
   type Tier,
@@ -78,17 +79,20 @@ async function onPlatform(
   const key = platformKey();
   if (!key) throw new Error("Billing is not configured");
 
-  const response = await fetch(`${STRIPE_API}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${key}`,
-      ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
-    },
-    body,
-    cache: "no-store",
+  // Given up after STRIPE_TIMEOUT_MS as a network failure is (lib/fetch-timeout.ts).
+  const { response, data } = await timed(STRIPE_TIMEOUT_MS, async (signal) => {
+    const response = await fetch(`${STRIPE_API}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${key}`,
+        ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+      },
+      body,
+      cache: "no-store",
+      signal,
+    });
+    return { response, data: (await response.json()) as Record<string, unknown> };
   });
-
-  const data = (await response.json()) as Record<string, unknown>;
   if (!response.ok) {
     const error = data.error as
       | { code?: string; type?: string; message?: string }

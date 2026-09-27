@@ -58,6 +58,7 @@ import type { Listing, Store } from "@/lib/store";
 import { onAccount } from "@/lib/stripe-account";
 import { refundedInFull } from "@/lib/refunds";
 import { readListing, sellsAny } from "@/lib/catalog";
+import { deliveredIds } from "@/lib/bundle-rules";
 import {
   MAX_PREFIX_LENGTH,
   MIN_GROUPS,
@@ -516,12 +517,13 @@ export async function revokeRefunded(store: Store, deadline: number): Promise<nu
       const session = (Array.isArray(sessions.data) ? (sessions.data as Record<string, unknown>[]) : [])[0];
       if (session && typeof session.id === "string") {
         const meta = (session.metadata ?? {}) as Record<string, string>;
-        if (handles.has(meta.store ?? "")) sales.push({ reference: session.id, products: [meta.product, meta.bump].filter(Boolean) });
+        // The product, the one ticked, and every product of a bundle among them.
+        if (handles.has(meta.store ?? "")) sales.push({ reference: session.id, products: deliveredIds(meta) });
       } else if (lookups > 0) {
         lookups -= 1;
         const pi = await onAccount("GET", account, `/payment_intents/${encodeURIComponent(intent)}`);
         const meta = (pi.metadata ?? {}) as Record<string, string>;
-        if (meta.kind === "upsell" && handles.has(meta.store ?? "")) sales.push({ reference: intent, products: [meta.product].filter(Boolean) });
+        if (meta.kind === "upsell" && handles.has(meta.store ?? "")) sales.push({ reference: intent, products: deliveredIds(meta) });
       }
 
       for (const sale of sales) {

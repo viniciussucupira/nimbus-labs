@@ -34,10 +34,13 @@ export async function POST(request: NextRequest) {
 
   let handle = "";
   let sessionId = "";
+  let asked = "";
   try {
     const form = await (await limited(request, 8_000)).formData();
     handle = normaliseHandle(String(form.get("handle") ?? ""));
     sessionId = String(form.get("session_id") ?? "");
+    // A course inside a bundle, named by its id: only one this order's own list holds.
+    asked = String(form.get("product") ?? "").slice(0, 64);
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -53,8 +56,12 @@ export async function POST(request: NextRequest) {
   }
 
   const order = await readOrder(store, sessionId);
-  if (order.state !== "paid" || !order.product.course) return away(`/@${store.handle}`);
-  const product = order.product;
+  if (order.state !== "paid") return away(`/@${store.handle}`);
+  const inside = asked
+    ? [...(order.items?.items ?? []), ...(order.bump?.items?.items ?? [])].find((p) => p.id === asked && p.course) ?? null
+    : null;
+  const product = inside ?? (order.product.course ? order.product : null);
+  if (!product?.course) return away(`/@${store.handle}`);
   const course = product.course!;
   const path = `/@${store.handle}/course/${product.id}`;
   if (!order.email) return away(`${path}?link=ask`);

@@ -16,6 +16,7 @@ import { canWrite } from "@/lib/mail";
 import { outOfKeys } from "@/lib/licence-keys";
 import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 import { readListings, readProduct } from "@/lib/catalog";
+import { MIN_BUNDLE_ITEMS, deliverableItems } from "@/lib/bundle-rules";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -87,6 +88,10 @@ export async function POST(request: NextRequest) {
   // Refused here rather than at Stripe, so a buyer never reaches a card form
   // for something that could not have been delivered anyway.
   if (!canSellProduct(store, product)) return away(`/@${store.handle}`);
+  // A bundle that holds too little that can be handed over right now is not sold.
+  if (product.bundle && deliverableItems(product, await readListings(store, product.bundle)).length < MIN_BUNDLE_ITEMS) {
+    return away(`/@${store.handle}`);
+  }
   // A call is booked for a time on its own page, never bought without one.
   if (product.call) return away(`/@${store.handle}/book/${product.id}`);
   // Every licence key in the pool is given: nobody is charged for one that
@@ -110,7 +115,8 @@ export async function POST(request: NextRequest) {
       session: request.cookies.get(affiliateCookieName(store.handle))?.value,
     }).catch(() => null);
     // A course opens straight away in the browser that paid for it.
-    const buyer = product.course ? newBuyerKey() : null;
+    // So does a course in a bundle.
+    const buyer = product.course || product.bundle ? newBuyerKey() : null;
     const held = await withStockHold(store, product, (holding) =>
       createCheckout(store, product, linkOrigin(request, store), optionId, {
         bump,

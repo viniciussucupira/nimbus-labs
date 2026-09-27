@@ -25,7 +25,7 @@ import { isSenderConfigured, sendEmail } from "@/lib/email";
 import type { Listing, Store } from "@/lib/store";
 import { listingFinder } from "@/lib/catalog";
 import { readableTime, seatsAt, zoneName, isTimeZone } from "@/lib/call-setup";
-import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
+import { VIDEO_ROOM_NOTE, isVideoRoom, roomKind, roomOf } from "@/lib/call-rooms";
 import { REMINDER_QUEUE, parseMember } from "@/lib/call-records";
 import {
   type PaidCall,
@@ -110,7 +110,11 @@ async function remindCreator(store: Store, product: Listing, paid: PaidCall[], c
       room
         ? isVideoRoom(room)
           ? `The private video room, which they have: ${room}\n${VIDEO_ROOM_NOTE} Open it a few minutes early and sign in, so nobody is left waiting.`
-          : `Your meeting link, which they have: ${room}`
+          : roomKind(room) === "meet"
+            ? `The Google Meet link, which they have: ${room}`
+            : roomKind(room) === "zoom"
+              ? `The Zoom link, which they have: ${room}\nStart it as the host, signed in to Zoom.`
+              : `Your meeting link, which they have: ${room}`
         : `You have not set a meeting link, so send one to ${people.length === 1 ? "them" : "each of them"} before it starts.`,
       "",
       "Everyone booked is also in your studio, under Upcoming calls.",

@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { del } from "@vercel/blob";
+import { del } from "@/lib/blob";
 import {
   MAX_SUMMARY_LENGTH,
   MAX_TITLE_LENGTH,
@@ -10,6 +10,7 @@ import {
   moveProduct,
   removeProduct,
   setProductAbout,
+  setProductHidden,
   setProductLink,
   storeForEmail,
   type Product,
@@ -25,7 +26,7 @@ import { dropCourse, filesInCourse, readCourse } from "@/lib/course";
 import { dropStamped } from "@/lib/pdf-stamp";
 import { readListing } from "@/lib/catalog";
 
-const ACTIONS = new Set(["add", "edit", "remove", "move", "link", "unlink"]);
+const ACTIONS = new Set(["add", "edit", "remove", "move", "link", "unlink", "visibility"]);
 
 /** What one change came to: the product as saved, when there is one to show. */
 type Outcome =
@@ -44,8 +45,8 @@ const STATUS: Record<string, number> = {
  * with a word the caller has never seen would be worse than "unknown".
  */
 function asProductReason(
-  reason: "none" | "unknown" | "invalid" | "call" | "course",
-): "none" | "unknown" | "call" | "course" {
+  reason: "none" | "unknown" | "invalid" | "call" | "course" | "bundle",
+): "none" | "unknown" | "call" | "course" | "bundle" {
   return reason === "invalid" ? "unknown" : reason;
 }
 
@@ -169,6 +170,11 @@ export async function POST(request: NextRequest) {
         await dropStamped(linked.removed);
       }
       result = linked.ok ? { ok: true, product: null } : { ok: false, reason: asProductReason(linked.reason) };
+    } else if (action === "visibility") {
+      // A draft published, or a product taken off the store and kept.
+      if (typeof body.hidden !== "boolean") return Response.json({ ok: false, error: "invalid" }, { status: 400 });
+      const done = await setProductHidden(ref, id, body.hidden);
+      result = done.ok ? { ok: true, product: done.product } : done;
     } else if (action === "unlink") {
       const cleared = await setProductLink(ref, id, null);
       result = cleared.ok ? { ok: true, product: null } : { ok: false, reason: asProductReason(cleared.reason) };

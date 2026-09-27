@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { handleForDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
 import { AFFILIATE_CODE_PATTERN, VIA_COOKIE_SECONDS, viaCookieName } from "@/lib/affiliate-setting";
-import { dynamicPolicy, isDynamicPage, isStorePage, newNonce } from "@/lib/csp";
+import { dynamicPolicy, isDynamicPage, isEventRoomPage, isStorePage, newNonce, roomPermissions } from "@/lib/csp";
 import { fromAnotherSite } from "@/lib/request-guard";
 import { isPlatformHost, requestHost } from "@/lib/request-origin";
 
@@ -100,16 +100,21 @@ function guardApi(request: NextRequest): NextResponse {
  * for the browser to enforce. A page built ahead of time is left to the
  * policy in next.config.ts, since its scripts were written without one.
  */
-function withPolicy(path: string, headers: Headers): string | null {
+function withPolicy(path: string, headers: Headers): Policy | null {
   if (!isDynamicPage(path)) return null;
-  // Ad platforms and video players only on a store's own pages (lib/csp.ts).
-  const policy = dynamicPolicy(newNonce(), { store: isStorePage(path) });
+  // Ad platforms and video players only on a store's own pages, and a live
+  // event's video room only on that event's own page (lib/csp.ts).
+  const room = isEventRoomPage(path);
+  const policy = dynamicPolicy(newNonce(), { store: isStorePage(path), room });
   headers.set("content-security-policy", policy);
-  return policy;
+  return { csp: policy, room };
 }
 
-function answer(response: NextResponse, policy: string | null): NextResponse {
-  if (policy) response.headers.set("Content-Security-Policy", policy);
+type Policy = { csp: string; room: boolean };
+
+function answer(response: NextResponse, policy: Policy | null): NextResponse {
+  if (policy) response.headers.set("Content-Security-Policy", policy.csp);
+  if (policy?.room) response.headers.set("Permissions-Policy", roomPermissions());
   return response;
 }
 

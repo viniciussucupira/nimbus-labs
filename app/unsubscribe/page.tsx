@@ -69,7 +69,7 @@ export default async function UnsubscribePage({
   );
 }
 
-/** The same one button, for a community's announcement emails. */
+/** The same one button, for a community's emails: announcements and live event reminders. */
 async function StopAnnouncements({ token, done }: { token: string; done: boolean }) {
   const found = COMMUNITY_UNSUB.test(token) ? await readCommunityUnsub(token) : null;
   const store = found ? await storeForHandle(found.handle) : null;
@@ -88,15 +88,15 @@ async function StopAnnouncements({ token, done }: { token: string; done: boolean
           </>
         ) : done || !found.member.mail ? (
           <>
-            <h1 className="t-h3">No more announcement emails</h1>
+            <h1 className="t-h3">No more emails from the community</h1>
             <p className="mt-3 text-ink-soft">
-              {`${found.member.e} will not be emailed ${who}'s announcements again. You are still in ${where}, and can read them there.`}
+              {`${found.member.e} will not be emailed ${who}'s announcements or live event reminders again. You are still in ${where}, and can read them there. If an event you RSVP'd to is moved or cancelled, you are still told, once.`}
             </p>
           </>
         ) : (
           <>
-            <h1 className="t-h3">{`Stop ${who}'s announcement emails?`}</h1>
-            <p className="mt-3 text-ink-soft">{`For ${found.member.e}. You stay in ${where}; only the emails stop.`}</p>
+            <h1 className="t-h3">{`Stop ${who}'s community emails?`}</h1>
+            <p className="mt-3 text-ink-soft">{`Announcements and live event reminders, for ${found.member.e}. You stay in ${where}, and keep your RSVPs; only the emails stop.`}</p>
             <form action={`/api/mail/unsubscribe?c=${token}`} method="post" className="mt-6">
               <input type="hidden" name="from" value="page" />
               <button type="submit" className="btn btn-primary btn-block">Stop the emails</button>

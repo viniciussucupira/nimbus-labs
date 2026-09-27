@@ -36,6 +36,7 @@ const PRODUCT_GROUPS: { label: string; items: MenuItem[] }[] = [
       item("Memberships", "Paid every week, month or year.", "/platform/memberships", "repeat"),
       item("Paid calls", "Booked in their time zone, paid first.", "/platform/calls", "calendar"),
       item("Community", "Posts and comments, for your buyers.", "/platform/community", "chat"),
+      item("Live events", "RSVPs, reminders and replays.", "/platform/live-events", "video"),
     ],
   },
   {
@@ -45,6 +46,7 @@ const PRODUCT_GROUPS: { label: string; items: MenuItem[] }[] = [
       item("Checkout tools", "Codes, add-ons, instalments, tax.", "/platform/checkout", "percent"),
       item("Currencies and ways to pay", "15 currencies, Klarna, Apple Pay.", "/platform/currencies-and-ways-to-pay", "card"),
       item("Funnels", "Up to five offers after paying.", "/platform/funnels", "ladder"),
+      item("Bundles", "Several products, one price.", "/platform/bundles", "basket"),
     ],
   },
   {
@@ -150,6 +152,12 @@ export const MENUS: Menu[] = [
         description: "Our answer to what creators complain about.",
         href: "/proof/promises",
         icon: "handshake",
+      },
+      {
+        label: "Moving from another platform",
+        description: "Your list, products and past buyers.",
+        href: "/platform/switching-to-nimbus",
+        icon: "door",
       },
       {
         label: "Our mission",

@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { get } from "@vercel/blob";
+import { get } from "@/lib/blob";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { communityViewer } from "@/lib/community-access";
 import { COMMUNITY_FILE_PATTERN, communityFolder, communityImageType } from "@/lib/community-image";

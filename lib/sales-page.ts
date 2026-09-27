@@ -240,7 +240,8 @@ export const PROVIDER_NAMES: Record<VideoProvider, string> = { youtube: "YouTube
 /** The frame origins the page policy lets in (lib/csp.ts), and nothing else. */
 export const VIDEO_FRAME_ORIGINS = ["https://www.youtube-nocookie.com", "https://player.vimeo.com", "https://www.loom.com"];
 
-function parseVideo(raw: unknown): Video | null {
+/** A video as it was kept, made safe to use; null when it is not one. Also read by lib/community-events.ts. */
+export function parseVideo(raw: unknown): Video | null {
   if (!raw || typeof raw !== "object") return null;
   const value = raw as Record<string, unknown>;
   const id = typeof value.id === "string" ? value.id : "";

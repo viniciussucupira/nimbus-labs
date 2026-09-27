@@ -17,6 +17,8 @@ import {
   MAX_SPACE_ABOUT,
   MAX_SPACE_NAME,
   RATE_LIMITS,
+  MAX_EVENT_CAP,
+  MAX_UPCOMING_EVENTS,
 } from "@/lib/community-text";
 
 export type QueueRow = {
@@ -95,6 +97,7 @@ export function CommunityStudio({
   canEmail,
   canSettings = true,
   isOwner = true,
+  events = null,
 }: {
   handle: string;
   address: string;
@@ -113,6 +116,8 @@ export function CommunityStudio({
   canSettings?: boolean;
   /** The store's owner, who also moderates from inside the community itself. */
   isOwner?: boolean;
+  /** The live events section (components/community-events-studio.tsx), drawn after the basics. */
+  events?: React.ReactNode;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -174,10 +179,13 @@ export function CommunityStudio({
         {canSettings ? (
           <>
             <Basics handle={handle} address={address} on={on} config={config} busy={busy} run={run} problem={problem} totals={totals} canEmail={canEmail} />
+            {events}
             <Access config={config} products={products} busy={busy} run={run} problem={problem} />
             <Spaces config={config} busy={busy} run={run} problem={problem} />
           </>
-        ) : null}
+        ) : (
+          events
+        )}
         <Queue queue={queue} busy={busy} run={run} problem={problem} isOwner={isOwner} />
         <Members members={members} total={totals.members} busy={busy} run={run} problem={problem} />
       </div>
@@ -236,7 +244,7 @@ function Basics({
         </div>
         <div className="rounded-[var(--r-sm)] bg-sand p-3">
           <p className="text-xl font-semibold tabular-nums">{totals.reach}</p>
-          <p className="text-xs text-ink-soft">want announcement emails</p>
+          <p className="text-xs text-ink-soft">want the community&apos;s emails</p>
         </div>
       </div>
       {!canEmail ? (
@@ -646,7 +654,7 @@ function Members({
                   </p>
                   <p className="break-all text-sm text-ink-soft">{m.email}</p>
                   <p className="text-xs text-ink-mute">
-                    {`Joined ${day(m.joined)} · last here ${day(m.seen)}${m.listed ? " · in the directory" : ""}${m.mail ? " · wants announcement emails" : ""}`}
+                    {`Joined ${day(m.joined)} · last here ${day(m.seen)}${m.listed ? " · in the directory" : ""}${m.mail ? " · wants the community's emails" : ""}`}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3">
@@ -689,6 +697,7 @@ function Limits() {
     ["Comments under one post", `${MAX_COMMENTS_PER_POST}, each up to ${MAX_COMMENT_TEXT.toLocaleString("en-US")} characters, one level of replies`],
     ["Pinned posts", `${MAX_PINNED}, plus one Start here post`],
     ["Members", MAX_MEMBERS.toLocaleString("en-US")],
+    ["Live events", `${MAX_UPCOMING_EVENTS} coming up at a time, up to ${MAX_EVENT_CAP.toLocaleString("en-US")} places each or no cap; past ones kept with their replays`],
   ];
   return (
     <aside className="card mt-8 p-6 sm:p-8 lg:sticky lg:top-24" aria-labelledby="cm-limits-title">

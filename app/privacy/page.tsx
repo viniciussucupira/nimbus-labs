@@ -224,8 +224,9 @@ export default function PrivacyPage() {
           <strong className="text-black">A creator&apos;s community.</strong>{" "}
           When a creator opens a community on their store, we decide who may
           come in by looking up the email address a person types on the
-          creator&apos;s own Stripe account, or on that creator&apos;s list for
-          something free, and we email that address a link that works for one
+          creator&apos;s own Stripe account, on that creator&apos;s list for
+          something free, or among the buyers the creator brought over from
+          another platform, and we email that address a link that works for one
           hour. Using it sets a cookie for that store in their browser for 90
           days, the same one a course uses. For each member we keep their email
           address, the name they choose to be seen by, whether they chose to be
@@ -246,6 +247,60 @@ export default function PrivacyPage() {
           unsubscribe link with their member record, and, to limit abuse, one-way hashes
           of the address and network address that asked for a link for one
           hour.
+        </p>
+        <p id="live-events">
+          <strong className="text-black">Live events in a community.</strong>{" "}
+          When a member says they are coming to a creator&apos;s live event
+          (an RSVP), we keep that they are coming and when they said so,
+          under a one-way key made from their email address, with the event;
+          giving the place back removes it. The creator and the people on
+          their team see who is coming, with the name and email address the
+          community keeps for each member. Reminders a day and an hour before
+          go only to members who asked for the community&apos;s emails; a
+          move or a cancellation is emailed once to everyone coming. For each
+          of those emails we keep a record of it and of who it went to for 30
+          days, so it is never sent twice. For an event kept for the buyers
+          of some products, the answer to whether a member holds one is
+          looked up on the creator&apos;s Stripe account and kept for up to
+          five minutes. An event, with the list of who is coming, is kept
+          until the creator deletes it once it is over or cancelled, or until
+          it makes room for a newer one after 500 are kept. When a member
+          presses Join here, the event&apos;s video room loads from Jitsi Meet
+          inside the page, with the name they chose in the community filled
+          in as their name in the room, where the others in it see it. A
+          replay is a YouTube, Vimeo or Loom video that loads from that
+          service only when a member presses play.
+        </p>
+        <p id="imports">
+          <strong className="text-black">
+            Moving a store from another platform.
+          </strong>{" "}
+          A creator can bring spreadsheets from another platform. The file is
+          read in their own browser, and we receive only the columns they
+          match: for a list, email address, name, labels and consent; for
+          products, title, price, description and link; for past buyers,
+          email address and product. We keep the rows as they came, which
+          rows were already seen, the report of rows not brought in (each
+          with its row number, column, reason and value), the buyers still to
+          be emailed, and the import&apos;s own record (the file&apos;s name,
+          who started it and its counts) for 14 days after the import began,
+          and then delete them. Contacts are added to the creator&apos;s list
+          only when the creator confirms that the people in the file agreed
+          to hear from them; each is marked as imported, with when, and keeps
+          the name and labels from the file. An address that unsubscribed from
+          that creator is never added back. For each past buyer we keep which
+          products they were given, when and by which import, stored against
+          a one-way hash of their email address, for as long as the store
+          exists; nothing is charged, no receipt is made, and these are never
+          counted as sales. When that person opens the store&apos;s list of
+          purchases or its community with that address, we use it to look up
+          what they were given. If the creator ticks it, each past buyer gets
+          one email from the store&apos;s name, through our email provider,
+          saying what moved and how to open it. We send it on the
+          creator&apos;s instruction and on their word that these people
+          bought from them and may be told so, which we cannot check against
+          the other platform. A store may send up to 20,000 of these in 30
+          days, and for that we keep only a count.
         </p>
         <p id="affiliates">
           <strong className="text-black">
@@ -437,7 +492,97 @@ export default function PrivacyPage() {
           run by 8x8, not by us: whoever opens the room uses that service under
           its own privacy policy, and the first person in may be asked to sign
           in to it with a Google, GitHub or Facebook account. We send Jitsi
-          nothing ourselves.
+          nothing ourselves. A community&apos;s live event has a room of its
+          own, made with the event, as the section on live events describes.
+        </p>
+        <p id="google-zoom">
+          <strong className="text-black">
+            Google Calendar or Zoom, if a creator connects it.
+          </strong>{" "}
+          Once we switch it on in the studio, a creator will be able to
+          connect their own Google Calendar or Zoom account to their store,
+          so that a meeting is made on that account for each booked call and,
+          if they choose it, for a community&apos;s live event. This section
+          says what happens then. None of it happens unless a creator
+          connects one.
+          Only the store&apos;s owner and its Admins can connect or disconnect
+          it, and the owner is emailed each time.
+        </p>
+        <p>
+          <strong className="text-black">Google.</strong> When a creator
+          connects Google Calendar, we ask Google for their account&apos;s
+          identity and email address (<code>openid</code>,{" "}
+          <code>email</code>), to show which account is connected, and for
+          one permission, <code>https://www.googleapis.com/auth/calendar.events</code>.
+          We use that permission only to create, change and delete the events
+          of calls booked through their store, and of their community&apos;s
+          live events, each with a Google Meet link, on their primary
+          calendar. We do not read, change or delete any other event, and we
+          read nothing else from their calendar or their Google account. What
+          we send Google: for a one-to-one call, a title with the product and
+          the buyer&apos;s name (or their email address when there is no
+          name), a description with the store&apos;s address and the
+          buyer&apos;s email address, the time, and the buyer&apos;s email
+          address on the event&apos;s guest list; for a group call or a
+          session on dates, the product&apos;s title, the time and each
+          buyer&apos;s email address on the guest list, up to 200, set so
+          that guests do not see one another; for a live event, only its
+          title, its time and the address of its page, and no member&apos;s
+          name or email address. Google is told not to email anyone about
+          these events: the booking emails come from us. When a booking is
+          moved the event moves with it, and when it is refunded in full the
+          event is deleted or the buyer taken off the guest list.
+        </p>
+        <p>
+          Nimbus Labs&apos; use and transfer of information received from
+          Google APIs will adhere to the{" "}
+          <a
+            href="https://developers.google.com/terms/api-services-user-data-policy"
+            className="text-black underline underline-offset-2 hover:no-underline"
+          >
+            Google API Services User Data Policy
+          </a>
+          , including the Limited Use requirements. We use that information
+          only to make and keep these meetings, never for advertising; we do
+          not sell it, transfer it to anyone else except as needed to provide
+          this feature or as the law requires, or use it to train any
+          artificial intelligence model; and no person reads it unless the
+          creator asks us to for support, it is needed for security, or the
+          law requires it.
+        </p>
+        <p>
+          <strong className="text-black">Zoom.</strong> When a creator
+          connects Zoom, we ask for permission to create, read, change and
+          delete the meetings of the Zoom user who connects, and to read that
+          user&apos;s own profile for the name shown in the studio. What we
+          send Zoom: for a one-to-one call, a topic with the product and the
+          buyer&apos;s name (or their email address when there is no name),
+          an agenda with the store&apos;s address and the buyer&apos;s email
+          address, and the time; for a group call or a session on dates, the
+          product&apos;s title and the time; for a live event, only its
+          title, its time and the address of its page. The link that starts
+          a meeting as its host is asked of Zoom when the creator presses
+          Start, shown to them, and never stored.
+        </p>
+        <p>
+          <strong className="text-black">
+            What we keep, and how it ends.
+          </strong>{" "}
+          For each connection we keep the account&apos;s id, email address
+          and name, when and by whom it was connected, and the access and
+          refresh tokens the provider gives us, encrypted at rest; the tokens
+          never leave our servers. For each meeting we keep which account made
+          it, its id, link, title and time and, on Google, its guest list,
+          until 60 days after the meeting. We keep a short log of problems with a
+          connection for 30 days, and each consent in progress for ten
+          minutes. When a creator disconnects from the studio, we give the
+          token back to Google or Zoom so that access ends on their side too,
+          and delete the connection and its tokens; meetings already made
+          stay on the creator&apos;s calendar or Zoom account. If the creator
+          removes our app from their Zoom account, Zoom tells us and we delete
+          every connection that user made, with its tokens, at once. If the
+          creator withdraws our access in their Google account, we stop using
+          the connection and tell them, and disconnecting deletes it.
         </p>
         <p>
           <strong className="text-black">Usage and technical data.</strong> We
@@ -585,6 +730,16 @@ export default function PrivacyPage() {
             from that creator;
           </li>
           <li>
+            <strong className="text-black">
+              Google or Zoom, when a creator connects their own account
+            </strong>
+            , which receive what the section on Google Calendar and Zoom
+            lists: for a call, its time, the buyer&apos;s name and email address
+            for a one-to-one call, and on Google each buyer&apos;s email
+            address on the guest list; for a live event, only its title, time
+            and page;
+          </li>
+          <li>
             <strong className="text-black">Push services</strong> run by the
             maker of the browser a notification goes to, such as Apple, Google
             or Mozilla, which carry it encrypted;
@@ -600,7 +755,9 @@ export default function PrivacyPage() {
             provider, which delivers the emails we send: login links,
             receipts and the links to what you asked for, the links that let
             members, students, affiliates and team members in, the emails that
-            ask a buyer for a review, and the emails a creator sends to their
+            ask a buyer for a review, the reminders about a community&apos;s live
+            events, the one email a creator may send to buyers they brought
+            over from another platform, and the emails a creator sends to their
             list or their community;
           </li>
           <li>
@@ -637,8 +794,9 @@ export default function PrivacyPage() {
           people who apply to their affiliate programme, their students&apos;
           quiz answers and certificates, and their buyers&apos; reviews: the
           creator is the controller, and we handle that data on their behalf.
-          When a creator connects an email platform or chooses Jitsi Meet for
-          their calls, that is the creator&apos;s choice, and the data sent or
+          When a creator connects an email platform, Google Calendar or Zoom,
+          or chooses Jitsi Meet for their calls and events, that is the
+          creator&apos;s choice, and the data sent or
           used there is governed by the creator&apos;s account and that
           service&apos;s own terms.
         </p>
@@ -726,6 +884,18 @@ export default function PrivacyPage() {
           Reviews are kept until their buyer deletes them or the creator
           deletes the product. A video room&apos;s address is kept for 60 days after
           its call.
+        </p>
+        <p>
+          A live event and its list of who is coming are kept until the
+          creator deletes the event once it is over or cancelled, or until it
+          makes room after 500 are kept; the record of each event email, for
+          30 days. What an import from another platform sends us is deleted 14
+          days after it began, except the contacts it added to a list, kept as
+          the list is, and what past buyers were given, kept for as long as the
+          store exists. A Google Calendar or Zoom connection is kept until the
+          creator disconnects it or removes our app, each meeting&apos;s record
+          until 60 days after the meeting, and a connection&apos;s problem log
+          for 30 days.
         </p>
         <p>
           Creator research answers are kept for up to 24 months from the date

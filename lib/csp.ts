@@ -18,7 +18,11 @@
  *     embed hosts — YouTube's privacy-enhanced one, Vimeo's player and
  *     Loom's embed — never the sites themselves. Both lists are given to a
  *     store's own pages only; the studio, signing in and unsubscribing get
- *     neither.
+ *     neither. One page more may frame one address more: a community live
+ *     event's own page (/@<handle>/community/events/<event>) may show its
+ *     private video room from meet.jit.si (lib/community-events.ts), and is
+ *     the only page allowed the camera, the microphone and sharing a screen,
+ *     for that frame alone (roomPermissions, below).
  *
  *   - The pages built once, ahead of time — the home page, the help, the
  *     blog, the comparison pages — have no request to make a nonce for, so
@@ -63,6 +67,9 @@ const PIXEL_CONNECT = [
 /** Frames Google's tag opens for ad conversions. Nothing else is framed from elsewhere. */
 const PIXEL_FRAMES = ["https://td.doubleclick.net", "https://www.googletagmanager.com"];
 
+/** The video rooms made for live events (lib/call-rooms.ts), framed on an event's own page only. */
+export const ROOM_FRAME_ORIGIN = "https://meet.jit.si";
+
 /** Where the studio uploads files to (Vercel Blob), and where lesson videos play from. */
 const BLOB_API = "https://vercel.com";
 const BLOB_FILES = "https://*.blob.vercel-storage.com";
@@ -99,16 +106,33 @@ const shared = (): Record<string, string[]> => ({
  * run none of that, so for them the list of other addresses stays at the
  * file storage the studio uploads to.
  */
-export function dynamicPolicy(nonce: string, options: { store?: boolean } = {}): string {
+export function dynamicPolicy(nonce: string, options: { store?: boolean; room?: boolean } = {}): string {
   const store = options.store !== false;
+  const room = store && options.room === true;
   return join({
     ...shared(),
     // 'self', https: and 'unsafe-inline' are only for browsers too old to
     // know nonces; every current one ignores them when a nonce is present.
     "script-src": [`'nonce-${nonce}'`, "'strict-dynamic'", "'self'", "https:", "'unsafe-inline'", ...(dev() ? ["'unsafe-eval'"] : [])],
     "connect-src": ["'self'", BLOB_API, BLOB_FILES, ...(store ? PIXEL_CONNECT : [])],
-    "frame-src": ["'self'", ...(store ? [...PIXEL_FRAMES, ...VIDEO_FRAME_ORIGINS] : [])],
+    "frame-src": ["'self'", ...(store ? [...PIXEL_FRAMES, ...VIDEO_FRAME_ORIGINS] : []), ...(room ? [ROOM_FRAME_ORIGIN] : [])],
   });
+}
+
+/** Whether a page is a community live event's own page, the one page that may frame its video room. */
+export function isEventRoomPage(pathname: string): boolean {
+  return /^\/(?:@|%40)[^/]+\/community\/events\/[0-9a-f]{12}\/?$/i.test(pathname);
+}
+
+/**
+ * The Permissions-Policy for that page: the site's own (next.config.ts) says
+ * no camera, microphone or screen sharing anywhere, and a frame cannot be
+ * given what its page was refused. Here they are allowed to the page itself
+ * and the room's address, and to nothing else; everything else stays off.
+ */
+export function roomPermissions(): string {
+  const room = `"${ROOM_FRAME_ORIGIN}"`;
+  return `camera=(self ${room}), microphone=(self ${room}), display-capture=(self ${room}), fullscreen=(self ${room}), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), browsing-topics=()`;
 }
 
 /** Whether a page rendered per visit is a store's own page (under /@, or the demo store's thanks page). */

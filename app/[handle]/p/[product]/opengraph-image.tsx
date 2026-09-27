@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { get } from "@vercel/blob";
+import { get } from "@/lib/blob";
 import { isFree, normaliseHandle, storeForHandle } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
 import { lookColours } from "@/lib/store-look";
@@ -71,7 +71,9 @@ export default async function OpengraphImage({ params }: Params) {
     // An address with a broken escape in it names no store: the plain card.
   }
   const store = decoded.startsWith("@") ? await storeForHandle(normaliseHandle(decoded)).catch(() => null) : null;
-  const product = store ? await readListing(store, id).catch(() => null) : null;
+  const found = store ? await readListing(store, id).catch(() => null) : null;
+  // A draft has no picture to share either.
+  const product = found && !found.hidden ? found : null;
   const colours = lookColours(store?.look ?? { theme: "light", accent: "#5a36ee" });
   const title = product?.title ?? "Nimbus Labs";
   const storeName = store?.name ?? "Nimbus Labs";

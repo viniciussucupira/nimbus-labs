@@ -106,6 +106,14 @@ export type CallSetup = {
    * keeps.
    */
   video: boolean;
+  /**
+   * Whether a Google Meet or Zoom meeting is made for each booking, on the
+   * creator's own connected account (lib/meet-links.ts), instead of either of
+   * the above. When that cannot be done the booking gets the creator's own
+   * link, or a private video room when they have none. Null for every setup
+   * saved before the choice existed, and whenever the deployment has neither.
+   */
+  meet: MeetProvider | null;
   /** Buyers per weekly time: 1 for a one-to-one call, up to MAX_SEATS. */
   seats: number;
   /** The dated sessions, soonest first. Empty for weekly hours. */
@@ -113,6 +121,16 @@ export type CallSetup = {
 };
 
 export const MAX_ROOM_LENGTH = 500;
+
+/** The two services a meeting can be made on for each booking (lib/meet-links.ts). */
+export type MeetProvider = "google" | "zoom";
+
+export function isMeetProvider(value: unknown): value is MeetProvider {
+  return value === "google" || value === "zoom";
+}
+
+/** What each is called where a creator or a buyer reads it. */
+export const MEET_NAMES: Record<MeetProvider, string> = { google: "Google Meet", zoom: "Zoom" };
 
 /** Whether the platform knows this time zone. */
 export function isTimeZone(tz: unknown): tz is string {
@@ -228,6 +246,7 @@ export function readSetup(raw: unknown): CallSetup | SetupProblem {
       bufferMinutes: 0,
       room: null,
       video: value.video === true,
+      meet: isMeetProvider(value.meet) ? value.meet : null,
       seats: 1,
       sessions,
     };
@@ -282,6 +301,7 @@ export function readSetup(raw: unknown): CallSetup | SetupProblem {
     bufferMinutes,
     room,
     video: value.video === true,
+    meet: isMeetProvider(value.meet) ? value.meet : null,
     seats,
     sessions: [],
   };

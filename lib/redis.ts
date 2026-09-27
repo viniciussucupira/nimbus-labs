@@ -1,5 +1,8 @@
 // Minimal Upstash Redis client over the REST API (no extra dependency).
 // Accepts either the Upstash variable names or the Vercel KV names.
+// Each pipeline is given up after REDIS_TIMEOUT_MS (lib/fetch-timeout.ts),
+// failing as a network failure does, so no page or job hangs on Redis.
+import { REDIS_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 
 type Command = (string | number)[];
 
@@ -20,24 +23,27 @@ export async function redisPipeline(commands: Command[]): Promise<unknown[]> {
   const config = getConfig();
   if (!config) throw new Error("Redis is not configured");
 
-  const response = await fetch(`${config.url}/pipeline`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(commands),
-    cache: "no-store",
+  const results = await timed(REDIS_TIMEOUT_MS, async (signal) => {
+    const response = await fetch(`${config.url}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(commands),
+      cache: "no-store",
+      signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Redis request failed with status ${response.status}`);
+    }
+
+    return (await response.json()) as {
+      result?: unknown;
+      error?: string;
+    }[];
   });
-
-  if (!response.ok) {
-    throw new Error(`Redis request failed with status ${response.status}`);
-  }
-
-  const results = (await response.json()) as {
-    result?: unknown;
-    error?: string;
-  }[];
   const failed = results.find((item) => item.error);
   if (failed) throw new Error(`Redis error: ${failed.error}`);
 

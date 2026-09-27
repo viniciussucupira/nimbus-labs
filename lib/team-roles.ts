@@ -15,16 +15,18 @@
  *     Stripe account its sales go into, manages the team and deletes the
  *     store — the four things that decide where money goes and who is let in.
  *   - Admin: everything else — the store's address, domain, pixels, tax,
- *     webhooks, discounts, affiliates and their payouts, sending email, and
- *     the files of buyers' addresses and sales.
+ *     webhooks, discounts, affiliates and their payouts, sending email, the
+ *     files of buyers' addresses and sales, and bringing contacts, products
+ *     and past buyers over from another platform (lib/imports.ts).
  *   - Editor: the catalogue and the page — products, prices, files, courses,
  *     calls, offers after paying, sales pages, the store's name, look and
- *     links — plus moderating the community and the reviews, and writing
- *     email drafts. No sending to the list, nothing about payments, and no
- *     files of buyers' data.
+ *     links, the community's live events — plus moderating the community
+ *     and the reviews, and writing email drafts. No sending to the list,
+ *     nothing about payments, no files of buyers' data and no imports.
  *   - Support: reading orders and bookings, sending a buyer their purchase
- *     email again, and moderating the community and the reviews. Nothing that
- *     edits the store.
+ *     email again, and moderating the community and the reviews — which
+ *     includes seeing who said they are coming to a live event, not
+ *     scheduling one. Nothing that edits the store.
  *
  * Nothing in this file reads a secret or the environment, so the browser may
  * import it to decide what to draw.
@@ -61,14 +63,23 @@ export type Permission =
   | "orders"
   /** Files that carry buyers' or affiliates' addresses: the list, sales, affiliates. */
   | "export"
-  /** Reports, muting and taking members out of the community. */
+  /** Reports, muting and taking members out of the community; reading who RSVP'd to its live events. */
   | "community"
+  /** Scheduling, moving, cancelling the community's live events, and posting their replays. */
+  | "events"
   /** Hiding and showing buyers' reviews, and answering them (lib/reviews.ts). */
   | "reviews"
   /** Writing and keeping email drafts, counting who they would reach, a test to yourself. */
   | "draft"
   /** Sending and scheduling email to the list, cancelling it, sequences, importing addresses. */
-  | "send";
+  | "send"
+  /**
+   * Moving from another platform (lib/imports.ts): a file of contacts onto the
+   * list, of products into the store, of past buyers given what they bought.
+   * Each writes a great deal at once, and the first and last say who may be
+   * emailed and who owns what, so only the owner and admins have it.
+   */
+  | "import";
 
 const EVERYTHING: Permission[] = [
   "billing",
@@ -82,16 +93,18 @@ const EVERYTHING: Permission[] = [
   "orders",
   "export",
   "community",
+  "events",
   "reviews",
   "draft",
   "send",
+  "import",
 ];
 
 /** The table itself. */
 export const ROLE_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   owner: new Set(EVERYTHING),
-  admin: new Set<Permission>(["settings", "page", "products", "stats", "orders", "export", "community", "reviews", "draft", "send"]),
-  editor: new Set<Permission>(["page", "products", "stats", "community", "reviews", "draft"]),
+  admin: new Set<Permission>(["settings", "page", "products", "stats", "orders", "export", "community", "events", "reviews", "draft", "send", "import"]),
+  editor: new Set<Permission>(["page", "products", "stats", "community", "events", "reviews", "draft"]),
   support: new Set<Permission>(["orders", "community", "reviews"]),
 };
 
@@ -114,8 +127,8 @@ export const ROLE_NAMES: Record<Role, string> = {
 /** One line each, shown where a role is chosen. */
 export const ROLE_SUMMARIES: Record<TeamRole, string> = {
   admin: "Everything except the plan, the Stripe connection, the team and deleting the store.",
-  editor: "Products, courses, sales pages, the store page, community and review moderation, and email drafts. Cannot send email, touch payments or download buyers' data.",
-  support: "Reads orders and bookings, sends purchase emails again, and moderates the community and reviews. Cannot edit the store.",
+  editor: "Products, courses, sales pages, the store page, the community's live events, community and review moderation, and email drafts. Cannot send email, touch payments, import from another platform or download buyers' data.",
+  support: "Reads orders and bookings, sends purchase emails again, sees who is coming to live events, and moderates the community and reviews. Cannot edit the store.",
 };
 
 /** The words an activity log line starts with, per permission. */
@@ -131,7 +144,9 @@ export const PERMISSION_WORDS: Record<Permission, string> = {
   orders: "Orders",
   export: "Download",
   community: "Community",
+  events: "Live events",
   reviews: "Reviews",
   draft: "Email draft",
+  import: "Import",
   send: "Email",
 };

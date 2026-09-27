@@ -20,6 +20,7 @@
  * fees and losses collected by us — are refused across a border. So the honest
  * design and the possible design are the same design here.
  */
+import { STRIPE_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 
 /** Local tests may point this at a mock on 127.0.0.1; nothing else is taken. */
 const STRIPE_ROOT = /^http:\/\/127\.0\.0\.1:\d+$/.test(
@@ -90,22 +91,23 @@ async function stripeRequest(
   const key = platformKey();
   if (!key) throw new Error("Stripe is not configured");
 
-  const response = await fetch(`${STRIPE_ROOT}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Stripe-Version": STRIPE_VERSION,
-      // API v2 speaks JSON, unlike the form-encoded v1 endpoints.
-      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    cache: "no-store",
+  // Given up after STRIPE_TIMEOUT_MS as a network failure is (lib/fetch-timeout.ts).
+  const { response, data } = await timed(STRIPE_TIMEOUT_MS, async (signal) => {
+    const response = await fetch(`${STRIPE_ROOT}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Stripe-Version": STRIPE_VERSION,
+        // API v2 speaks JSON, unlike the form-encoded v1 endpoints.
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+      signal,
+    });
+    const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    return { response, data };
   });
-
-  const data = (await response.json().catch(() => ({}))) as Record<
-    string,
-    unknown
-  >;
   if (!response.ok) {
     const error = data.error as
       | { code?: string; type?: string; message?: string }

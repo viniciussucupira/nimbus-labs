@@ -10,6 +10,7 @@ import { imageUrl } from "@/lib/product-image";
 import type { PageAction } from "@/components/sales-blocks";
 import { RatingLine } from "@/components/review-list";
 import type { Summary } from "@/lib/review-summary";
+import { MIN_BUNDLE_ITEMS, worthWords } from "@/lib/bundle-rules";
 
 /**
  * Where a product's own page is, under the store's address.
@@ -54,10 +55,28 @@ export function hasDateOnSale(call: NonNullable<Listing["call"]>, now = Date.now
  * call, a course's lessons, a free trial, a set number of payments, a price
  * the buyer chooses. Every one of them is something the checkout will do.
  */
-export function ProductFacts({ store, product, linkCourse = true }: { store: Store; product: Listing; linkCourse?: boolean }) {
+export function ProductFacts({
+  store,
+  product,
+  linkCourse = true,
+  bundleItems = null,
+}: {
+  store: Store;
+  product: Listing;
+  linkCourse?: boolean;
+  /** For a bundle: what it hands over now (lib/bundles.ts, offeredItems). */
+  bundleItems?: Listing[] | null;
+}) {
   const pwyw = activePwyw(product);
   const options = sellableOptions(product);
   const facts: string[] = [];
+  // A bundle: how many products, and — only when it is true — what they cost
+  // on their own, from their prices today (lib/bundle-rules.ts).
+  const inside = product.bundle && bundleItems && bundleItems.length >= MIN_BUNDLE_ITEMS ? bundleItems : null;
+  if (inside) {
+    const worth = worthWords(inside, product.priceCents, store.currency);
+    facts.push(`Bundle of ${inside.length} products${worth ? ` \u00b7 ${worth}` : ""}`);
+  }
   if (product.call) facts.push(callLine(product.call));
   if (product.recurring && (product.recurring.trialDays > 0 || product.recurring.payments > 0)) {
     const price = `${formatMoney(fromPriceCents(product), store.currency)}`;
@@ -75,6 +94,11 @@ export function ProductFacts({ store, product, linkCourse = true }: { store: Sto
           {fact}
         </p>
       ))}
+      {inside && linkCourse ? (
+        <p className="st-muted mt-1 text-sm">
+          {`Includes ${inside.slice(0, 4).map((p) => p.title).join(", ")}${inside.length > 4 ? ` and ${inside.length - 4} more` : ""}`}
+        </p>
+      ) : null}
       {course ? (
         <p className="mt-1 text-sm font-semibold">
           <span className="st-muted">{`Course · ${course.lessons} ${course.lessons === 1 ? "lesson" : "lessons"}`}</span>
@@ -110,6 +134,7 @@ export function BuyBox({
   writes,
   selling,
   related,
+  ready = true,
 }: {
   store: Store;
   product: Listing;
@@ -121,6 +146,8 @@ export function BuyBox({
   writes: boolean;
   /** Whether the store can take a payment at all right now. */
   selling: boolean;
+  /** For a bundle: whether it holds enough to hand over right now. */
+  ready?: boolean;
 }) {
   const options = sellableOptions(product);
   const every = product.recurring ? ` ${everyLabel(product.recurring.interval)}` : "";
@@ -190,7 +217,7 @@ export function BuyBox({
 
   if (soldOut) return null;
 
-  if (!canSellProduct(store, product)) {
+  if (!canSellProduct(store, product) || !ready) {
     /*
       Sellable store, but this one has nothing attached to hand over. Better to
       say so than to take the money and work out the delivery afterwards.
@@ -259,6 +286,9 @@ export function BuyBox({
             <input id={`b-${product.id}`} type="checkbox" name="bump" value="yes" className="mt-1 h-4 w-4 shrink-0" />
             <span>
               <span className="block font-bold">{`Add ${extra.target.title} for ${formatMoney(extra.bump.priceCents, store.currency)}`}</span>
+              {extra.target.bundle ? (
+                <span className="st-muted mt-0.5 block text-sm">{`A bundle of ${extra.target.bundle.length} products, each yours to open straight after paying.`}</span>
+              ) : null}
               {extra.bump.pitch ? <span className="st-muted mt-0.5 block text-sm">{extra.bump.pitch}</span> : null}
               {extra.bump.priceCents < extra.target.priceCents ? (
                 <span className="st-muted mt-0.5 block text-xs">{`${formatMoney(extra.target.priceCents, store.currency)} on its own`}</span>
@@ -391,6 +421,7 @@ export function ProductCard({
   manageable,
   eager = false,
   rating = null,
+  bundleItems = null,
 }: {
   store: Store;
   product: Listing;
@@ -404,6 +435,8 @@ export function ProductCard({
   eager?: boolean;
   /** Its buyers' reviews, shown only when lib/reviews.ts says a page may. */
   rating?: Summary | null;
+  /** For a bundle: what it hands over now (lib/bundles.ts, offeredItems). */
+  bundleItems?: Listing[] | null;
 }) {
   const href = productPath(store, product);
   const image = product.image;
@@ -443,7 +476,7 @@ export function ProductCard({
   const body = (
     <>
       {stars}
-      <ProductFacts store={store} product={product} />
+      <ProductFacts store={store} product={product} bundleItems={bundleItems} />
       {summary}
       {product.about || product.page ? (
         <p className="mt-2 text-sm font-semibold">
@@ -465,7 +498,15 @@ export function ProductCard({
           {soldOut ? "Sold out" : `${remaining.toLocaleString("en-US")} left`}
         </p>
       ) : null}
-      <BuyBox store={store} product={product} related={related} remaining={remaining} writes={writes} selling={selling} />
+      <BuyBox
+        store={store}
+        product={product}
+        related={related}
+        remaining={remaining}
+        writes={writes}
+        selling={selling}
+        ready={!product.bundle || (bundleItems?.length ?? 0) >= MIN_BUNDLE_ITEMS}
+      />
       {product.recurring && manageable ? (
         <p className="mt-3 text-center text-sm">
           <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">
@@ -506,7 +547,7 @@ export function ProductCard({
             </h2>
             <p className="st-price mt-2 text-sm">{pricePill(product, store.currency)}</p>
             {stars ? <div>{stars}</div> : null}
-            <ProductFacts store={store} product={product} />
+            <ProductFacts store={store} product={product} bundleItems={bundleItems} />
             {/* Beside the picture on a wide screen, where there is room for it. */}
             <div className="hidden sm:block">{summary}</div>
           </div>

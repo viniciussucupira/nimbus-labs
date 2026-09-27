@@ -48,8 +48,13 @@ type Prop = { name: string; params: Record<string, string>; value: string };
 /** How many times one repeating event is stepped through, at most. */
 const MAX_STEPS = 5000;
 
-/** Our own bookings, which a calendar may hold from the email that confirmed them. */
-const OWN_UID = /@nimbuslabsai\.com$/i;
+/**
+ * Our own bookings, which a calendar may hold from the email that confirmed
+ * them, and the events we made in the creator's Google Calendar for them
+ * (lib/meet-providers.ts, eventId): neither is time the creator is busy for
+ * something else, and a group call's event must not hide its seats still free.
+ */
+const OWN_UID = /(@nimbuslabsai\.com|^nimbus[0-9a-v]{26}@google\.com)$/i;
 
 /**
  * Windows time zone names, as Outlook writes them, and the IANA zone each

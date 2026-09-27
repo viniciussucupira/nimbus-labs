@@ -25,6 +25,11 @@
  * MAX_MOVES times; the reminders a day and an hour before are sent by the
  * mail job (lib/call-reminders.ts).
  *
+ * Where the call happens is the creator's own link, a private video room
+ * (lib/call-rooms.ts), or a Google Meet or Zoom meeting made on the
+ * creator's connected account for each booking (lib/meet-links.ts), made
+ * here when the booking is confirmed and moved here when the booking moves.
+ *
  * A fourth source applies to weekly hours only: the creator's own calendars,
  * when they have pasted their private calendar addresses in the studio
  * (lib/calendar-sync.ts). A time they are busy there is not offered, and a
@@ -65,6 +70,8 @@ import { fold, icsText, icsTime } from "@/lib/ics-write";
 import { emitEvent } from "@/lib/webhooks";
 import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
 import { alertCreator } from "@/lib/phone-alerts";
+import { callMeeting, callMoved, linkUpdates } from "@/lib/meet-links";
+import type { MeetRecord } from "@/lib/meet-records";
 
 /** How far back Stripe is read for paid bookings. Longer than any horizon. */
 const LOOKBACK_DAYS = 120;
@@ -724,6 +731,11 @@ export async function moveBooking(input: {
   } catch (error) {
     console.error("planning reminders after a move failed", error);
   }
+  // A Google Meet or Zoom meeting moves with the booking (lib/meet-links.ts),
+  // before anybody is told, so the emails carry the link of the new time.
+  await callMoved({ store, product, session, from, start, end, email: input.booked.email }).catch((error) =>
+    console.error("moving a booking's meeting failed", error),
+  );
   await tellMoved({ store, product, session, from, start, end, moves, email: input.booked.email, buyerTz: input.booked.buyerTz, origin }).catch(
     (error) => console.error("sending the move emails failed", error),
   );
@@ -758,9 +770,11 @@ async function tellMoved(input: {
   // group moves into the room of its new time (lib/call-rooms.ts).
   const room = await roomOf(store.callsId, { product: product.id, setup, session, start, end });
   const video = isVideoRoom(room);
+  // A link replaced after a failure counts too, so this file replaces every one sent before.
+  const sequence = moves + (await linkUpdates(store.callsId, { session, product: product.id, start }));
   const invite = (note: string) =>
     Buffer.from(
-      callInvite({ uid: session, start, end, title: product.title, storeName: store.name, room, note, sequence: moves }),
+      callInvite({ uid: session, start, end, title: product.title, storeName: store.name, room, note, sequence }),
     ).toString("base64");
   const at = (ms: number, tz: string) => `${readableTime(ms, tz)} (${zoneName(ms, tz)})`;
 
@@ -934,6 +948,14 @@ export async function confirmBooking(input: {
     },
     { seed: session },
   ).catch((error) => console.error("a booking notification failed", error));
+  // A Google Meet or Zoom meeting, when the product makes them: made now, on
+  // the creator's account, so both emails carry its link, and made even
+  // where email is off, since the pages show it too (lib/meet-links.ts). It
+  // never holds the booking up: a failure gives the fallback link.
+  const meeting = await callMeeting({ store, product, session, start, end, buyerEmail, buyerName: input.buyerName }).catch((error) => {
+    console.error("making a booking's meeting failed", error);
+    return null;
+  });
   if (!isSenderConfigured()) return;
 
   const setup = product.call;
@@ -943,7 +965,7 @@ export async function confirmBooking(input: {
   const video = isVideoRoom(room);
   const invite = (note: string) =>
     Buffer.from(
-      callInvite({ uid: session, start, end, title: product.title, storeName: store.name, room, note, sequence: input.moves ?? 0 }),
+      callInvite({ uid: session, start, end, title: product.title, storeName: store.name, room, note, sequence: (input.moves ?? 0) + (meeting?.updates ?? 0) }),
     ).toString("base64");
   const minutes = Math.round((end - start) / 60_000);
   const what = setup.kind === "live" ? "Your seat" : setup.seats > 1 ? "Your place in the group call" : "Your call";
@@ -993,15 +1015,111 @@ export async function confirmBooking(input: {
         : []),
       `${readableTime(start, setup.tz)} (${zoneName(start, setup.tz)}, your time zone)`,
       "",
-      room
+      meeting ? meetingLine(meeting, setup.kind === "live" || setup.seats > 1) : room
         ? video
           ? `A private video room was made for ${setup.kind === "live" || setup.seats > 1 ? "this time" : "this booking"}, and they were given it: ${room}\n${VIDEO_ROOM_NOTE} Open it a few minutes early and sign in, so they are not left waiting.`
           : `They were given your meeting link: ${room}`
         : `You have not set a meeting link, so send them one before the call${buyerEmail ? ` at ${buyerEmail}` : ""}.`,
+      ...(meeting && !meeting.made && video ? [VIDEO_ROOM_NOTE] : []),
       "",
-      "The calendar file attached adds it to your calendar. Every booking is also in your studio, under Upcoming calls, and you get a reminder with everyone booked a day and an hour before.",
+      inGoogle(meeting)
+        ? "It is already in your Google Calendar, so no calendar file is attached. Every booking is also in your studio, under Upcoming calls, and you get a reminder with everyone booked a day and an hour before."
+        : "The calendar file attached adds it to your calendar. Every booking is also in your studio, under Upcoming calls, and you get a reminder with everyone booked a day and an hour before.",
     ].join("\n"),
     ...(buyerEmail ? { replyTo: buyerEmail } : {}),
-    attachments: [{ filename: "call.ics", content: invite(`With ${buyerEmail ?? "your buyer"}.${room ? ` Join: ${room}` : ""}${video ? `\n\n${VIDEO_ROOM_NOTE}` : ""}`) }],
+    // A booking already in the creator's Google Calendar is not sent to it twice.
+    ...(inGoogle(meeting)
+      ? {}
+      : { attachments: [{ filename: "call.ics", content: invite(`With ${buyerEmail ?? "your buyer"}.${room ? ` Join: ${room}` : ""}${video ? `\n\n${VIDEO_ROOM_NOTE}` : ""}`) }] }),
   });
+}
+
+/** Whether a booking's meeting is an event already in the creator's Google Calendar. */
+function inGoogle(meeting: MeetRecord | null): boolean {
+  return Boolean(meeting && meeting.made && meeting.provider === "google");
+}
+
+/** What the creator is told about the meeting made, or not made, for a booking. */
+function meetingLine(meeting: MeetRecord, group: boolean): string {
+  const what = group ? "this time" : "this booking";
+  if (meeting.made) {
+    return meeting.provider === "google"
+      ? `A Google Meet link was made for ${what} on your Google Calendar, with them on the guest list, and they were given it: ${meeting.link}`
+      : `A Zoom meeting was made for ${what} on your Zoom account, and they were given its join link: ${meeting.link}\nStart it as the host from Zoom, or with Start in Zoom next to the booking in your studio.`;
+  }
+  const name = meeting.provider === "google" ? "Google Meet" : "Zoom";
+  return [
+    `The ${name} link could not be made (${meeting.error || "no answer"}), so they were given ${meeting.link ? `this link instead: ${meeting.link}` : "no link: send them one before the call"}.`,
+    meeting.todo === "create"
+      ? `We try again over the next hours; if it works while there are more than two hours to go, you and they are emailed the ${name} link.`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
+ * Tells the people booked into a call that its Google Meet or Zoom link was
+ * made after all, replacing the link they were given when it could not be
+ * (lib/call-meetings.ts, after a later try worked). The calendar file counts
+ * up its sequence, so it replaces the one sent before.
+ */
+export async function tellNewLink(input: {
+  store: Store;
+  product: CallListing;
+  meeting: MeetRecord;
+  previous: string;
+  people: PaidCall[];
+  origin: string;
+}): Promise<number> {
+  if (!isSenderConfigured()) return 0;
+  const { store, product, meeting, previous, people, origin } = input;
+  const setup = product.call;
+  const name = meeting.provider === "google" ? "Google Meet" : "Zoom";
+  let told = 0;
+  for (const call of people) {
+    if (!call.email) continue;
+    const tz = isTimeZone(call.buyerTz) ? call.buyerTz : setup.tz;
+    const note = `Join: ${meeting.link}`;
+    const invite = Buffer.from(
+      callInvite({ uid: call.session, start: call.start, end: call.end, title: product.title, storeName: store.name, room: meeting.link, note, sequence: call.moves + meeting.updates }),
+    ).toString("base64");
+    const sent = await sendEmail({
+      from: storeSender(store),
+      to: call.email,
+      subject: `New link to join: ${product.title} with ${store.name}`,
+      text: [
+        `The link to join ${product.title} with ${store.name} has changed. The time has not.`,
+        "",
+        `${readableTime(call.start, tz)} (${zoneName(call.start, tz)})`,
+        "",
+        `Join here at that time, on ${name}: ${meeting.link}`,
+        ...(previous ? [`The link you were sent before (${previous}) is no longer the one to use.`] : []),
+        "",
+        "The calendar file attached replaces the one sent before.",
+        `Your booking: ${origin}/@${store.handle}`,
+        `To cancel, reply to this email; the reply goes to ${store.name}.`,
+      ].join("\n"),
+      replyTo: store.email,
+      attachments: [{ filename: "call.ics", content: invite }],
+      idempotencyKey: `meet-link:${meeting.scope}:${meeting.updates}:${call.session}`.slice(0, 256),
+    }).catch(() => false);
+    if (sent) told += 1;
+  }
+  await sendEmail({
+    from: `"Nimbus Labs" <${senderAddress()}>`,
+    to: store.email,
+    subject: `${name} link made: ${product.title}, ${readableTime(meeting.start, setup.tz)}`,
+    text: [
+      `The ${name} link for ${product.title} could not be made when ${people.length === 1 ? "it was booked" : "it was first booked"}, and it has been made now.`,
+      "",
+      `${readableTime(meeting.start, setup.tz)} (${zoneName(meeting.start, setup.tz)}, your time zone)`,
+      `The ${name} link: ${meeting.link}`,
+      ...(previous ? [`It replaces the link they were given before: ${previous}`] : []),
+      "",
+      `${told} ${told === 1 ? "person was" : "people were"} emailed the new link.`,
+    ].join("\n"),
+    idempotencyKey: `meet-link:${meeting.scope}:${meeting.updates}:creator`.slice(0, 256),
+  }).catch(() => false);
+  return told;
 }

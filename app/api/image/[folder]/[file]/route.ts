@@ -1,4 +1,4 @@
-import { get } from "@vercel/blob";
+import { get } from "@/lib/blob";
 import { IMAGE_FILE_PATTERN, IMAGE_FOLDER_PATTERN, imageType } from "@/lib/product-image";
 
 /**

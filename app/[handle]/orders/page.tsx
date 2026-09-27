@@ -8,12 +8,14 @@ import { linkHost } from "@/lib/product-link";
 import { type BookedCall, type Delivery, type Purchase, callsFor, canRecover, ordersGrant, purchasesFor } from "@/lib/buyer-orders";
 import { readableTime, zoneName } from "@/lib/call-setup";
 import { canMove, icsLink, moveLink } from "@/lib/calls";
-import { VIDEO_ROOM_NOTE, isVideoRoom } from "@/lib/call-rooms";
+import { VIDEO_ROOM_NOTE, isVideoRoom, roomLabel } from "@/lib/call-rooms";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { renewPath } from "@/lib/membership-access";
 import { LicenceKeyBox } from "@/components/licence-key-box";
 import { readListing, readListings } from "@/lib/catalog";
 import { reviewable } from "@/lib/review-proof";
+import { type PurchaseItems } from "@/lib/buyer-orders";
+import { BundleDelivery } from "@/components/bundle-delivery";
 
 export const metadata: Metadata = {
   title: "Your purchases — Nimbus Labs",
@@ -99,7 +101,7 @@ function BookedCallCard({ call, store }: { call: BookedCall; store: Store }) {
       <div className="mt-4 space-y-3">
         {call.room ? (
           <a href={call.room} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn btn-block">
-            {video ? "Join the video room" : "The link to join"}
+            {roomLabel(call.room)}
           </a>
         ) : (
           <p className="st-muted text-sm">{`${store.name} sends you the link to join before the call.`}</p>
@@ -160,9 +162,14 @@ export default async function OrdersPage({ params, searchParams }: Params) {
   if (email && purchases) {
     const wanted: { slot: string; productId: string; reference: string }[] = [];
     for (const purchase of purchases) {
-      if (purchase.ended) continue;
+      // Nothing brought over from another platform was sold here, so no key is given for it.
+      if (purchase.ended || purchase.kind === "imported") continue;
       wanted.push({ slot: `${purchase.reference}|main`, productId: purchase.productId, reference: purchase.reference });
       if (purchase.bumpId) wanted.push({ slot: `${purchase.reference}|bump`, productId: purchase.bumpId, reference: purchase.reference });
+      // Each product of a bundle has its own key, under the same order.
+      for (const line of [...(purchase.items?.lines ?? []), ...(purchase.bumpItems?.lines ?? [])]) {
+        wanted.push({ slot: `${purchase.reference}|item|${line.productId}`, productId: line.productId, reference: purchase.reference });
+      }
     }
     await Promise.all(
       wanted.map(async ({ slot, productId, reference }) => {
@@ -178,12 +185,37 @@ export default async function OrdersPage({ params, searchParams }: Params) {
       }),
     );
   }
-  // Which of them can be reviewed, their products read in one go (lib/catalog.ts).
+  // Which of them can be reviewed, their products read in one go (lib/catalog.ts):
+  // what was bought, what was ticked with it and what a bundle held. Not what
+  // was brought over from another platform: no payment here proves it.
+  const inOrder = (purchase: Purchase) => [
+    purchase.productId,
+    ...(purchase.bumpId ? [purchase.bumpId] : []),
+    ...(purchase.items?.lines ?? []).map((line) => line.productId),
+    ...(purchase.bumpItems?.lines ?? []).map((line) => line.productId),
+  ];
   const canReview = new Set(
     email && purchases
-      ? (await readListings(store, purchases.map((purchase) => purchase.productId))).filter(reviewable).map((p) => p.id)
+      ? (await readListings(store, purchases.filter((p) => p.kind !== "imported").flatMap(inOrder))).filter(reviewable).map((p) => p.id)
       : [],
   );
+  const reviewableIn = (purchase: Purchase) => purchase.kind !== "imported" && inOrder(purchase).some((id) => canReview.has(id));
+  const contents = (purchase: Purchase, items: PurchaseItems | null, bump: boolean) =>
+    items ? (
+      <BundleDelivery
+        storeName={store.name}
+        missing={items.missing}
+        heading={bump ? `Inside ${purchase.bump?.title ?? "what you added"}` : "What is inside"}
+        lines={items.lines.map((line) => ({
+          product: { id: line.productId, title: line.title, link: line.delivery?.link ?? null },
+          download: line.delivery?.file
+            ? `/api/store/download?${new URLSearchParams({ handle: store.handle, ref: purchase.reference, token, pid: line.productId, ...(bump ? { item: "bump" } : {}) })}`
+            : null,
+          course: line.courseProduct ? { href: `/@${store.handle}/course/${line.courseProduct}` } : null,
+          keyBox: keyBox(`${purchase.reference}|item|${line.productId}`, line.title),
+        }))}
+      />
+    ) : null;
   const keyBox = (slot: string, title?: string) => {
     const found = keys.get(slot);
     if (!found) return null;
@@ -284,7 +316,11 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                             purchase.member ? "Membership, still running" : null,
                             purchase.ended ? "Membership, ended" : null,
                             purchase.kind === "upsell" ? "Added after paying" : null,
-                            purchase.paidAt ? `Bought on ${DATE.format(new Date(purchase.paidAt * 1000))}` : null,
+                            purchase.kind === "imported"
+                              ? `Brought over from another platform${purchase.paidAt ? ` on ${DATE.format(new Date(purchase.paidAt * 1000))}` : ""}`
+                              : purchase.paidAt
+                                ? `Bought on ${DATE.format(new Date(purchase.paidAt * 1000))}`
+                                : null,
                           ]
                             .filter(Boolean)
                             .join(" · ")}
@@ -312,16 +348,23 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                             <DeliveryButton handle={store.handle} token={token} purchase={purchase} delivery={purchase.bump} item="bump" />
                           ) : null}
                         </div>
+                        {purchase.kind === "imported" ? (
+                          <p className="st-muted mt-3 text-xs leading-relaxed">
+                            {`${store.name} moved this here from the platform you bought it on. Nothing was charged here and there is no receipt from this store for it.`}
+                          </p>
+                        ) : null}
+                        {contents(purchase, purchase.items, false)}
+                        {contents(purchase, purchase.bumpItems, true)}
                         {keyBox(`${purchase.reference}|main`, keys.has(`${purchase.reference}|bump`) ? purchase.title : undefined)}
                         {purchase.bump ? keyBox(`${purchase.reference}|bump`, purchase.bump.title) : null}
-                        {!purchase.ended && canReview.has(purchase.productId) ? (
+                        {!purchase.ended && reviewableIn(purchase) ? (
                           <p className="mt-4 text-sm">
                             <Link
                               prefetch={false}
                               href={`/@${store.handle}/review?${new URLSearchParams({ token, ref: purchase.reference })}`}
                               className="st-footer-link font-semibold underline underline-offset-4"
                             >
-                              {purchase.bump ? "Review what you bought" : `Review ${purchase.title}`}
+                              {purchase.bump || purchase.items ? "Review what you bought" : `Review ${purchase.title}`}
                             </Link>
                           </p>
                         ) : null}

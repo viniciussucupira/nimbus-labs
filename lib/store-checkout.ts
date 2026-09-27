@@ -27,6 +27,8 @@ import { readMoves } from "@/lib/call-records";
 import { applyRecovery, recoveryOn, refusedRecovery, withoutRecovery } from "@/lib/recovery-setting";
 import { isLive, membershipStatus, soldAMembership } from "@/lib/membership-access";
 import { refundedInFull } from "@/lib/refunds";
+import { MIN_BUNDLE_ITEMS, bundleFromMeta, bundleMeta, deliverableItems } from "@/lib/bundle-rules";
+import { type BundleContents, contentsOf } from "@/lib/bundles";
 
 /**
  * How long a paid link keeps working.
@@ -89,7 +91,12 @@ export function canSellProduct(store: Store, product: Listing): boolean {
   // Something free is never sold. It has its own door, and a checkout for
   // nothing would be a card form that cannot work.
   if (product.priceCents === 0) return false;
+  // A draft is not on sale until the creator publishes it.
+  if (product.hidden) return false;
   if (!canSell(store)) return false;
+  // A bundle hands over its products: it is ready once it holds two. Whether
+  // each can still be handed over is read when the checkout opens.
+  if (product.bundle) return product.options.length === 0 && product.recurring === null && product.bundle.length >= MIN_BUNDLE_ITEMS;
   // A call delivers a time, not a file: it is ready once it has hours set.
   if (product.call) return product.options.length === 0 && product.recurring === null;
   // A course delivers its lessons: it is ready once it has one.
@@ -147,6 +154,11 @@ export async function createCheckout(
   // A call is booked for a time, through its own door, never bought blind.
   if (product.call) throw new Error("A call is booked, not bought directly");
 
+  // A bundle's list is read now and written onto the checkout, so what this
+  // buyer gets is what it held when they paid, whatever it holds later.
+  const bundled = product.bundle ? deliverableItems(product, await readListings(store, product.bundle)) : null;
+  if (bundled && bundled.length < MIN_BUNDLE_ITEMS) throw new Error("This bundle holds too little that can be handed over right now");
+
   const offered = sellableOptions(product);
   let chosen: ProductOption | null = null;
   if (offered.length > 0) {
@@ -192,6 +204,9 @@ export async function createCheckout(
   // Which option was bought decides which file is handed over later, so it
   // travels with the charge rather than being worked out again afterwards.
   if (chosen) body.set("metadata[option]", chosen.id);
+  if (bundled) {
+    for (const [key, value] of Object.entries(bundleMeta("bundle", bundled.map((p) => p.id)))) body.set(`metadata[${key}]`, value);
+  }
 
   // Stripe's page shows the product's picture beside its name, when there is
   // one and it can be fetched from a public https address.
@@ -205,7 +220,14 @@ export async function createCheckout(
     extras.bump && !membership && !pwyw && product.bump
       ? activeBump(await readListings(store, [product.bump.productId]), product)
       : null;
-  if (bump) {
+  // A bundle ticked at checkout: its list is written down the same way.
+  const bumpBundled = bump?.target.bundle ? deliverableItems(bump.target, await readListings(store, bump.target.bundle)) : null;
+  // One that holds too little right now is left off, as a bump that cannot
+  // be handed over always is (lib/product-extras.ts).
+  if (bump && (!bumpBundled || bumpBundled.length >= MIN_BUNDLE_ITEMS)) {
+    if (bumpBundled) {
+      for (const [key, value] of Object.entries(bundleMeta("bump_bundle", bumpBundled.map((p) => p.id)))) body.set(`metadata[${key}]`, value);
+    }
     body.set("line_items[1][quantity]", "1");
     body.set("line_items[1][price_data][currency]", store.currency);
     body.set("line_items[1][price_data][unit_amount]", String(bump.bump.priceCents));
@@ -380,8 +402,16 @@ export type Order =
        * did — the buyer's own time zone, and how many times it was moved.
        */
       call: { start: number; end: number; buyerTz: string; moves: number } | null;
-      /** The product the buyer added at checkout, with what it delivers. */
-      bump: { product: Listing; file: ProductFile | null; link: string | null } | null;
+      /**
+       * The product the buyer added at checkout, with what it delivers — and,
+       * when it is a bundle, the products it hands over (lib/bundles.ts).
+       */
+      bump: { product: Listing; file: ProductFile | null; link: string | null; items: BundleContents | null } | null;
+      /**
+       * When the product bought is a bundle: the products it hands over, from
+       * the list written on this order when it was paid (lib/bundle-rules.ts).
+       */
+      items: BundleContents | null;
       /** When it was paid, in seconds since the epoch. */
       created: number;
       /** The fingerprint an upsell must be taken with, when one follows. */
@@ -467,9 +497,13 @@ export async function readOrder(
   // buyer was paying does not lose them their order.
   const handles = new Set([store.handle, ...store.previousHandles]);
   if (!handles.has(metadata?.store ?? "")) return { state: "invalid" };
-  const [product, added] = await Promise.all([
+  const mainList = bundleFromMeta(metadata, "bundle");
+  const bumpList = bundleFromMeta(metadata, "bump_bundle");
+  const [product, added, items, bumpItems] = await Promise.all([
     metadata?.product ? readListing(store, metadata.product) : null,
     metadata?.bump ? readListing(store, metadata.bump) : null,
+    mainList.length ? contentsOf(store, mainList) : null,
+    bumpList.length ? contentsOf(store, bumpList) : null,
   ]);
   if (!product) return { state: "invalid" };
 
@@ -522,7 +556,7 @@ export async function readOrder(
 
   // Delivered as it is now, like the product itself: the offer may since have
   // changed, but what was paid for was this product.
-  const bump = added ? { product: added, file: added.file, link: added.link } : null;
+  const bump = added ? { product: added, file: added.file, link: added.link, items: bumpItems } : null;
 
   let membership: "live" | "ended" | null = null;
   if (soldAMembership(product, { mode: session.mode, metadata })) {
@@ -540,6 +574,7 @@ export async function readOrder(
     reference: sessionId,
     call,
     bump,
+    items,
     created,
     upsellKey: typeof metadata?.upsell_key === "string" ? metadata.upsell_key : null,
     buyerKey: typeof metadata?.buyer_key === "string" ? metadata.buyer_key : null,

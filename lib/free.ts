@@ -29,6 +29,7 @@ import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { isPaidUp } from "@/lib/billing";
+import { csvCell } from "@/lib/csv";
 import { type Listing, type Store, isFree } from "@/lib/store";
 import {
   type AddResult,
@@ -104,6 +105,8 @@ const addressKey = async (email: string) =>
 export function canGiveProduct(store: Store, product: Listing): boolean {
   return (
     isFree(product) &&
+    // A draft is not given away until it is published.
+    !product.hidden &&
     product.recurring === null &&
     product.options.length === 0 &&
     (product.file !== null || product.link !== null) &&
@@ -313,12 +316,14 @@ export async function listSize(store: Store): Promise<ListSize> {
  * One spreadsheet cell.
  *
  * Quoted always, and a leading character a spreadsheet would read as a
- * formula is defused, because an address or a product name is text somebody
- * else typed and it must never run as a command on the creator's computer.
+ * formula is defused, because an address, a product name — or a name or a
+ * label an import brought from another platform's file (lib/imports.ts) — is
+ * text somebody else typed and it must never run as a command on the
+ * creator's computer. The rule is lib/csv.ts's, which also looks past
+ * leading spaces (" =HYPERLINK(…)").
  */
 function cell(value: string): string {
-  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
-  return `"${safe.replace(/"/g, '""')}"`;
+  return csvCell(value);
 }
 
 /**
@@ -330,7 +335,7 @@ function cell(value: string): string {
  */
 export async function listAsCsv(store: Store, onlyAgreed: boolean): Promise<string> {
   const rows = [
-    ["email", "agreed_to_emails", "agreed_at", "first_at", "last_at", "asked_for", "unsubscribed_at"]
+    ["email", "agreed_to_emails", "agreed_at", "first_at", "last_at", "asked_for", "unsubscribed_at", "name", "tags", "source", "imported_at"]
       .map(cell)
       .join(","),
   ];
@@ -359,6 +364,10 @@ export async function listAsCsv(store: Store, onlyAgreed: boolean): Promise<stri
           lead.lastAt,
           lead.titles.join("; "),
           lead.unsubAt,
+          lead.name,
+          lead.tags.join("; "),
+          lead.source,
+          lead.importedAt,
         ]
           .map(cell)
           .join(","),

@@ -49,6 +49,14 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
   pinfull: { text: "Three posts are pinned already. Unpin one first.", tone: "warn" },
   gone: { text: "That is not there any more.", tone: "warn" },
   forbidden: { text: "That is not yours to change.", tone: "warn" },
+  going: { text: "You are going. The way in shows on this page 15 minutes before the start." },
+  goingnomail: { text: "You are going. The way in shows on this page 15 minutes before the start. For an email a day and an hour before, tick the emails box on your You page." },
+  notgoing: { text: "Your RSVP is cancelled." },
+  eventfull: { text: "Every place is taken. If somebody cancels, a place opens here again.", tone: "warn" },
+  eventcancelled: { text: "This event was cancelled.", tone: "warn" },
+  eventover: { text: "This event is over.", tone: "warn" },
+  eventlocked: { text: "This event is for members who have one of the products named on it.", tone: "warn" },
+  host: { text: "You host this event, so there is no place for you to take.", tone: "warn" },
   nospace: { text: "There is no space to post in yet.", tone: "warn" },
   out: { text: "Your session here ended. Ask for a new link below.", tone: "warn" },
   off: { text: "This community is closed right now.", tone: "warn" },
@@ -80,7 +88,7 @@ export function communityImageUrl(store: Store, path: string): string {
   return `/api/store/community/image?h=${encodeURIComponent(store.handle)}&f=${communityImageFile(path)}`;
 }
 
-export type Tab = "feed" | "members" | "you";
+export type Tab = "feed" | "events" | "members" | "you";
 
 /** The bar across the top of every community page. */
 export function CommunityBar({
@@ -97,6 +105,7 @@ export function CommunityBar({
   const home = `/@${store.handle}/community`;
   const tabs: { id: Tab; label: string; href: string }[] = [
     { id: "feed", label: "Feed", href: home },
+    { id: "events", label: "Events", href: `${home}/events` },
     { id: "members", label: "Members", href: `${home}/members` },
     { id: "you", label: "You", href: `${home}/you` },
   ];

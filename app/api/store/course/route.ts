@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { del, head } from "@vercel/blob";
+import { del, head } from "@/lib/blob";
 import { setCourseLessons, setProductCourse, storeForEmail, storeFolder } from "@/lib/store";
 import { jsonAccess } from "@/lib/studio-route";
 import { guardStoreWrite, text } from "@/lib/store-request";

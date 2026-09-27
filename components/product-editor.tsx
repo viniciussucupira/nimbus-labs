@@ -2,8 +2,9 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CallEditor } from "@/components/call-editor";
+import { CallEditor, type MeetAccount } from "@/components/call-editor";
 import { CourseToggle } from "@/components/course-toggle";
+import { BundleToggle } from "@/components/bundle-toggle";
 import { CheckoutExtras, bumpChoices } from "@/components/checkout-extras";
 import type { BumpChoice, ProductPaging } from "@/lib/catalog";
 import { CheckoutFieldsEditor } from "@/components/checkout-fields-editor";
@@ -88,6 +89,7 @@ const MESSAGES: Record<string, string> = {
   unknown: "That is no longer on your store.",
   call: "This is a paid call, so it has one price, charged once, and delivers a time rather than a file. Stop selling it as a call first to change that.",
   course: "This is a course, so it is sold, and it delivers its lessons rather than one file. Its lessons are changed from its own page.",
+  bundle: "This is a bundle: one sale, at one price, of the products in it. It cannot be free, a membership, pay what you want, have several prices or a file of its own. Change what is in it on its bundle page.",
   too_big: `That file is over ${maxFileLabel()}, which is the most a store can hold.`,
   wrong_type: "That kind of file is not one a store can sell here.",
   none: "This account has no store yet.",
@@ -1136,6 +1138,8 @@ const SEARCH_ABOVE = 6;
 /** The few words that say what a closed row holds, so it need not be opened. */
 function badges(product: Product): string[] {
   const out: string[] = [];
+  if (product.hidden) out.push("Draft, not on your store");
+  if (product.bundle) out.push(`Bundle of ${product.bundle.length}`);
   if (product.call) out.push("Call");
   if (product.course) out.push("Course");
   if (product.recurring) {
@@ -1145,7 +1149,7 @@ function badges(product: Product): string[] {
   }
   if (product.pwyw) out.push("Pay what you want");
   if (product.options.length) out.push(`${product.options.length} prices`);
-  if (!isFree(product) && !product.call && !product.course && !product.file && !product.link && !product.options.some((o) => o.file || o.link)) {
+  if (!isFree(product) && !product.call && !product.course && !product.bundle && !product.file && !product.link && !product.options.some((o) => o.file || o.link)) {
     out.push("Nothing to hand over yet");
   }
   if (product.image) out.push(product.display === "preview" ? "Preview" : product.display === "callout" ? "Callout" : "Button");
@@ -1253,6 +1257,7 @@ export function ProductEditor({
   testMode,
   email,
   currency = "usd",
+  meetings = [],
 }: {
   /** The products shown: every one, or one page of a long list. */
   products: Product[];
@@ -1278,6 +1283,8 @@ export function ProductEditor({
   testMode: boolean;
   /** What the store charges in: every price here is written in it. */
   currency?: Currency;
+  /** The Google Calendar or Zoom accounts calls can make meetings on (lib/meet-connect.ts). */
+  meetings?: MeetAccount[];
 }) {
   const router = useRouter();
   const sid = useStudioStore();
@@ -1633,9 +1640,34 @@ export function ProductEditor({
                   >
                     Edit
                   </button>
-                  <a href={`/@${handle}/p/${product.id}`} target="_blank" rel="noopener noreferrer" className={quiet}>
-                    Its page
-                  </a>
+                  {product.hidden ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        run({ action: "visibility", id: product.id, hidden: false }, () => {}, "Published. It is on your store now.")
+                      }
+                      className="font-bold text-violet-deep underline underline-offset-4 transition hover:text-violet-ink disabled:opacity-40"
+                    >
+                      Publish it
+                    </button>
+                  ) : (
+                    <>
+                      <a href={`/@${handle}/p/${product.id}`} target="_blank" rel="noopener noreferrer" className={quiet}>
+                        Its page
+                      </a>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          run({ action: "visibility", id: product.id, hidden: true }, () => {}, "Taken off your store. It is kept here as a draft.")
+                        }
+                        className={quiet}
+                      >
+                        Unpublish
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     disabled={busy || index === 0}
@@ -1740,10 +1772,11 @@ export function ProductEditor({
                   would be one nobody is ever sent. So the block moves inside
                   the options rather than sitting above them unused.
                 */}
-                {product.course ? null : <CallEditor product={product} email={email} />}
-                {product.call ? null : <CourseToggle product={product} />}
+                {product.course || product.bundle ? null : <CallEditor product={product} email={email} meetings={meetings} />}
+                {product.call || product.bundle ? null : <CourseToggle product={product} />}
+                {product.call || product.course ? null : <BundleToggle product={product} />}
 
-                {product.call || product.course ? null : (
+                {product.call || product.course || product.bundle ? null : (
                 <>
                 {product.options.length === 0 ? (
                   <FileBlock

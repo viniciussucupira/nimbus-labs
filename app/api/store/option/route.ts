@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { del } from "@vercel/blob";
+import { del } from "@/lib/blob";
 import {
   addOption,
   editOption,
