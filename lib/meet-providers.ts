@@ -99,16 +99,25 @@ export function configuredProviders(): MeetProvider[] {
 /**
  * Zoom lets an app it has not yet published be added only from the account
  * that built it, so until the Marketplace listing is approved Zoom is offered
- * to the preview stores alone; ZOOM_LIVE=1 opens it to every store. A store
- * that already has Zoom connected keeps it either way (usableProviders).
+ * to the preview stores alone, and to stores signed in with a Zoom address,
+ * which is how Zoom's own reviewers test the app before approving it;
+ * ZOOM_LIVE=1 opens it to every store. A store that already has Zoom
+ * connected keeps it either way (usableProviders).
  */
 const ZOOM_PREVIEW_STORES = new Set(["dc83ed016f0d4a83b71461bca159d8f5"]);
+/** Zoom's App Marketplace reviewers sign up with their work address. */
+const ZOOM_REVIEWER = /@(zoom\.us|zoom\.com)$/i;
+
+/** A store, or just its id, as a studio page has it. */
+export type OfferedTo = { sid?: string | null; email?: string | null } | string | null | undefined;
 
 /** What a store's studio offers to connect: switched on, and Zoom only once it is open to that store. */
-export function offeredProviders(sid: string | null | undefined): MeetProvider[] {
-  return configuredProviders().filter(
-    (p) => p !== "zoom" || env("ZOOM_LIVE") === "1" || Boolean(sid && ZOOM_PREVIEW_STORES.has(sid)),
-  );
+export function offeredProviders(store: OfferedTo): MeetProvider[] {
+  const sid = typeof store === "string" ? store : (store?.sid ?? null);
+  const email = typeof store === "object" && store ? (store.email ?? "").trim() : "";
+  const zoomOpen =
+    env("ZOOM_LIVE") === "1" || Boolean(sid && ZOOM_PREVIEW_STORES.has(sid)) || ZOOM_REVIEWER.test(email);
+  return configuredProviders().filter((p) => p !== "zoom" || zoomOpen);
 }
 
 /** Why a request did not do what it was sent to do. */

@@ -23,14 +23,14 @@ export async function POST(request: NextRequest) {
   if (body.action !== "disconnect" || !isMeetProvider(provider) || !isConfigured(provider)) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
   }
-  if (!store.statsId) return Response.json({ ok: true, view: await meetView(null, store.sid ?? null) });
+  if (!store.statsId) return Response.json({ ok: true, view: await meetView(null, store) });
   if (!(await withinLimit("meet-manage", store.statsId, PER_MINUTE, 60))) {
     return Response.json({ ok: false, error: "limited" }, { status: 429 });
   }
   try {
     const was = await disconnect(store.statsId, provider);
     if (was) after(() => noticeCreator(store, { kind: "meeting-disconnected", name: ACCOUNT_NAMES[provider], account: was.account }));
-    return Response.json({ ok: true, view: await meetView(store.statsId, store.sid ?? null) });
+    return Response.json({ ok: true, view: await meetView(store.statsId, store) });
   } catch (error) {
     console.error("disconnecting a meeting account failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });

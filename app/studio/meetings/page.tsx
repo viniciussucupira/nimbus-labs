@@ -73,9 +73,9 @@ export default async function StudioMeetingsPage({ searchParams }: Params) {
   const { view: access } = found;
   const loaded = access.store;
   const store = loaded.statsId ? loaded : ((await ensureStatsId(access.ref)) ?? loaded);
-  const offered = offeredProviders(store.sid);
+  const offered = offeredProviders(store);
   if (offered.length === 0) notFound();
-  const view = await meetView(store.statsId, store.sid ?? null).catch((error) => {
+  const view = await meetView(store.statsId, store).catch((error) => {
     console.error("reading the meeting connections failed", error);
     return null;
   });

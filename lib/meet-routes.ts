@@ -38,7 +38,7 @@ export async function startConnect(request: NextRequest, provider: MeetProvider)
   const creator = await creatorFrom(request, "settings");
   if (creator instanceof Response) return creator;
   const { store, ref, email, origin } = creator;
-  if (!offeredProviders(store.sid).includes(provider)) return notFound();
+  if (!offeredProviders(store).includes(provider)) return notFound();
   const back = (query: string) => away(origin, studioPath(store, query, "meetings"));
   const named = store.statsId ? store : await ensureStatsId(ref);
   if (!named?.statsId || !store.sid) return back(`meet=error&p=${provider}`);

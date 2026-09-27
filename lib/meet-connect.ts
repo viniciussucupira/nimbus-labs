@@ -54,6 +54,7 @@ import {
   type Tokens,
   configuredProviders,
   offeredProviders,
+  type OfferedTo,
   consentUrl,
   exchangeCode,
   isConfigured,
@@ -153,7 +154,7 @@ function viewOf(c: Connection): ConnectionView {
 }
 
 /** Which accounts a store has connected, for the studio. Nothing is read when both are off. */
-export async function meetView(statsId: string | null, sid?: string | null): Promise<MeetView> {
+export async function meetView(statsId: string | null, sid?: OfferedTo): Promise<MeetView> {
   // A studio page names its store, and sees what that store is offered;
   // the booking side (usableProviders) reads every provider switched on.
   const providers = sid === undefined ? configuredProviders() : offeredProviders(sid);

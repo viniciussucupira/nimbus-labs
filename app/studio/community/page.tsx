@@ -82,8 +82,8 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
   // Google Calendar and Zoom (lib/meet-connect.ts): which accounts an event
   // can have a meeting made on, for the form. Nothing is read when the
   // deployment has neither.
-  const meetOn = offeredProviders(store.sid).length > 0;
-  const meet = id && meetOn && can(view.role, "events") ? await meetView(store.statsId, store.sid ?? null).catch(() => null) : null;
+  const meetOn = offeredProviders(store).length > 0;
+  const meet = id && meetOn && can(view.role, "events") ? await meetView(store.statsId, store).catch(() => null) : null;
   const meetAccounts: MeetAccount[] = meet
     ? meet.providers.flatMap((p) => {
         const c = meet.connected[p];

@@ -487,9 +487,9 @@ export default async function StudioPage({
   // Google Calendar and Zoom (lib/meet-connect.ts): which accounts calls can
   // make meetings on, for the call editor, and what was made for each booked
   // time, for the list below. Nothing is read when the deployment has neither.
-  const meetOn = store ? offeredProviders(store.sid).length > 0 : false;
+  const meetOn = store ? offeredProviders(store).length > 0 : false;
   const meet: MeetView | null =
-    store && meetOn && (may("products") || may("orders")) ? await meetView(store.statsId, store.sid ?? null).catch(() => null) : null;
+    store && meetOn && (may("products") || may("orders")) ? await meetView(store.statsId, store).catch(() => null) : null;
   const meetAccounts = meet
     ? meet.providers.flatMap((p) => {
         const c = meet.connected[p];
@@ -693,7 +693,7 @@ export default async function StudioPage({
                   : []),
                 // Only once the deployment has the Google or Zoom app's keys (lib/meet-providers.ts).
                 ...(may("settings") && meetOn
-                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${offeredProviders(store.sid).map((p) => MEET_NAMES[p]).join(" or ")} links, made for every booking and live event.`, icon: "video" as const }]
+                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${offeredProviders(store).map((p) => MEET_NAMES[p]).join(" or ")} links, made for every booking and live event.`, icon: "video" as const }]
                   : []),
                 // Everyone on the store, for their own devices (lib/phone-alerts.ts).
                 { href: studioPath(store, "", "phone"), title: "Phone notifications", text: "A buzz for each sale, booking and report, on your own devices.", icon: "phone" as const },
