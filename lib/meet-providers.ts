@@ -198,6 +198,8 @@ export function consentUrl(provider: MeetProvider, state: string, challenge: str
       state,
       code_challenge: challenge,
       code_challenge_method: "S256",
+      // The whole product is in English, so Google's pages are too.
+      hl: "en",
     });
     return `${GOOGLE.auth()}?${query}`;
   }
