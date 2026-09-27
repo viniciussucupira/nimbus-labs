@@ -81,6 +81,7 @@ const BUILT = [
   "Paid calls with a calendar: your weekly hours in your time zone, the free times shown to each buyer in theirs, the time held while they pay, and a calendar file emailed to both of you",
   "Group calls of up to 50 people, and live sessions on dates you set with up to 500 seats each, held on the meeting service whose link you give or in a video room made for them",
   "A private Jitsi Meet video room made for each booking if you choose it, in every email, reminder and calendar file, and a buyer's booked calls on their list of purchases",
+  "Google Meet links made for each booking and live event once you connect your own Google Calendar, with a call's buyers on its event's guest list",
   "Reminders before every booking, a day and an hour before, and buyers who move their own booking up to twice",
   "Pay what you want: your price as the minimum, a suggested price in the box, and Stripe refusing anything under it",
   "Up to three questions at checkout — a short answer, a number or a list — with the answers in your list of sales",
@@ -144,13 +145,13 @@ const DOMAIN_LINE =
 const NOT_BUILT = [
   "PayPal for Stripe accounts in the United States and outside Europe — through Stripe it is offered only in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein",
   "Live chat and private messages in the community",
-  "Writing bookings into your calendar as events: calendars are read for busy times, and bookings come as a feed you subscribe to",
+  "Writing every booking into your calendar as an event: only calls set to Google Meet are written there, other bookings come as a feed you subscribe to, and calendars are read for busy times",
   "Paying affiliates automatically: you pay them yourself",
   "One editor that chains several pages into a funnel, and a thanks page of your own",
   "Automatic replies on Instagram",
   "A public API to read or change your store: webhooks only send",
   "More than 2,000 products in one store",
-  "Zoom or Google Meet links made for each booking or live event",
+  "Zoom links made for each booking or live event",
   "An app in the App Store or Google Play",
   "Phone-number and checkbox questions at checkout",
   "Streaming or recording live sessions and events here, rather than on the service whose link you give or on Jitsi Meet",
@@ -166,7 +167,7 @@ const RELEASES: { date: string; items: string }[] = [
   { date: "21 September 2026", items: "Free products for an email address, members who cancel on their own, and cancelling the Nimbus plan in one click." },
   { date: "22 September 2026", items: "Paid calls, courses, numbers and ad pixels, offers before and after paying, payment plans, sales tax, yearly plans, email to your list and your own domain on Pro, and buyers getting any purchase again by email." },
   { date: "26 September 2026", items: "Up to 200 products with pictures and pages of their own, questions at checkout, pay what you want, free trials and fixed-length memberships, group calls and live sessions with reminders and self-serve moves, a confirmation email for every purchase, every store installable as its own app, 43 Stripe countries, and one reminder after an unpaid checkout. Then a community for your buyers, funnels of offers after paying, an affiliate programme, calendar sync, webhooks, course quizzes and certificates, licence keys, stamped PDFs, longer windows and exports for your numbers, and memberships whose access ends when they do." },
-  { date: "27 September 2026", items: "Up to 2,000 products, a private video room for each booking, up to five stores in one account and a team with roles for each, passkeys, 15 currencies and more ways to pay, sales and landing pages, reviews only buyers can write, Mailchimp, Kit, beehiiv and MailerLite built in, and notifications on your phone. Then live events in the community, bundles, drafts, and moving your list, products and past buyers from another platform." },
+  { date: "27 September 2026", items: "Up to 2,000 products, a private video room for each booking, up to five stores in one account and a team with roles for each, passkeys, 15 currencies and more ways to pay, sales and landing pages, reviews only buyers can write, Mailchimp, Kit, beehiiv and MailerLite built in, and notifications on your phone. Then live events in the community, bundles, drafts, moving your list, products and past buyers from another platform, and Google Meet links made on your own Google Calendar." },
 ];
 
 /* Facts a creator can check before trusting us with a store. */

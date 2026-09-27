@@ -183,7 +183,7 @@ const NOT_YET = [
   "Automatic replies on Instagram",
   "PayPal for creators in the United States",
   "An iPhone app from the App Store",
-  "Zoom or Google Meet links made for each booking",
+  "Zoom links made for each booking",
   "Paying your affiliates for you",
 ];
 
@@ -725,7 +725,7 @@ export default function Home() {
                   <p className="font-semibold text-ink">Where Stan is ahead today</p>
                   <p className="mt-3 text-[0.9375rem] text-ink-soft">
                     Stan has PayPal for creators in the United States, affiliates paid automatically, automatic Instagram
-                    replies, Zoom and Google Meet links made for each booking and webinar, and an iPhone app. We do not have those, and we say so on every page that could make you think otherwise.
+                    replies, Zoom links made for each booking and webinar, and an iPhone app. We do not have those, and we say so on every page that could make you think otherwise.
                   </p>
                 </div>
                 <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3">

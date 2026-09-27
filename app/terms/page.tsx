@@ -135,7 +135,7 @@ export default function TermsPage() {
         <p>
           <strong className="text-black">Services you choose to connect.</strong>{" "}
           If you connect an email platform (Mailchimp, Kit, beehiiv or
-          MailerLite) or, once it is offered, your Google Calendar or Zoom
+          MailerLite), your Google Calendar or, once it is offered, your Zoom
           account, or choose Jitsi Meet rooms or your own meeting link for
           your calls and live events, that is your choice. Those services are run by third parties under their own
           terms and privacy policies, your account with them is yours, and we

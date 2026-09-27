@@ -499,12 +499,13 @@ export default function PrivacyPage() {
           <strong className="text-black">
             Google Calendar or Zoom, if a creator connects it.
           </strong>{" "}
-          Once we switch it on in the studio, a creator will be able to
-          connect their own Google Calendar or Zoom account to their store,
-          so that a meeting is made on that account for each booked call and,
-          if they choose it, for a community&apos;s live event. This section
-          says what happens then. None of it happens unless a creator
-          connects one.
+          A creator can connect their own Google Calendar to their store, so
+          that an event with a Google Meet link is made on it for each booked
+          call set to Google Meet and, if they choose it, for a
+          community&apos;s live event. Zoom is not available yet; when it is,
+          a creator will be able to connect a Zoom account in the same way.
+          This section says what happens then. None of it happens unless a
+          creator connects one.
           Only the store&apos;s owner and its Admins can connect or disconnect
           it, and the owner is emailed each time.
         </p>
@@ -551,17 +552,17 @@ export default function PrivacyPage() {
           law requires it.
         </p>
         <p>
-          <strong className="text-black">Zoom.</strong> When a creator
-          connects Zoom, we ask for permission to create, read, change and
-          delete the meetings of the Zoom user who connects, and to read that
-          user&apos;s own profile for the name shown in the studio. What we
-          send Zoom: for a one-to-one call, a topic with the product and the
+          <strong className="text-black">Zoom.</strong> Zoom is not available
+          yet. When it is and a creator connects Zoom, we will ask for
+          permission to create, read, change and delete the meetings of the
+          Zoom user who connects, and to read that user&apos;s own profile for
+          the name shown in the studio. What we will send Zoom: for a one-to-one call, a topic with the product and the
           buyer&apos;s name (or their email address when there is no name),
           an agenda with the store&apos;s address and the buyer&apos;s email
           address, and the time; for a group call or a session on dates, the
           product&apos;s title and the time; for a live event, only its
           title, its time and the address of its page. The link that starts
-          a meeting as its host is asked of Zoom when the creator presses
+          a meeting as its host will be asked of Zoom when the creator presses
           Start, shown to them, and never stored.
         </p>
         <p>
@@ -731,7 +732,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-black">
-              Google or Zoom, when a creator connects their own account
+              Google, when a creator connects their own Google Calendar (and
+              Zoom, once it is available)
             </strong>
             , which receive what the section on Google Calendar and Zoom
             lists: for a call, its time, the buyer&apos;s name and email address
