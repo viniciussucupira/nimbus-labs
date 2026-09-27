@@ -29,6 +29,7 @@
  * version explicitly. The request and the version can then never disagree.
  */
 import { StripeError, onAccount } from "@/lib/stripe-account";
+import { type Currency, formatMoney, rangeWords } from "@/lib/money";
 
 /** Pinned, so the shape we send is the shape this version expects. */
 const API_VERSION = "2025-09-30.clover";
@@ -43,10 +44,13 @@ const API_VERSION = "2025-09-30.clover";
 export const CODE_PATTERN = /^[A-Z0-9-]{3,24}$/;
 export const MAX_CODES = 20;
 
-/** The two ways a code can take money off. */
+/**
+ * The two ways a code can take money off. An amount is in one currency,
+ * Stripe's rule for a coupon: it only comes off a checkout in that currency.
+ */
 export type Off =
   | { kind: "percent"; percent: number }
-  | { kind: "amount"; cents: number };
+  | { kind: "amount"; cents: number; currency: string };
 
 export type CodeProblem =
   /** Nothing was typed. */
@@ -69,6 +73,13 @@ export const CODE_PROBLEMS: Record<CodeProblem, string> = {
   uses: "Leave the limit empty, or type a whole number of uses above zero.",
 };
 
+/** The amount sentence for a store in another currency than the dollar. */
+export function amountProblem(currency: Currency): string {
+  return currency === "usd"
+    ? CODE_PROBLEMS.amount
+    : `Type an amount ${rangeWords(currency)}, in ${currency.toUpperCase()}${currency === "jpy" ? ", with no decimals" : ""}.`;
+}
+
 /** The code as it will be stored and shown: trimmed and upper case. */
 export function readCode(raw: string): string {
   return (raw ?? "").trim().toUpperCase();
@@ -80,11 +91,10 @@ export function codeProblem(code: string): CodeProblem | null {
   return null;
 }
 
-/** "20% off" / "$10 off" — how a code reads to a person. */
+/** "20% off" / "$10 off" / "€10 off" — how a code reads to a person. */
 export function offLabel(off: Off): string {
   if (off.kind === "percent") return `${off.percent}% off`;
-  const dollars = (off.cents / 100).toFixed(2).replace(/\.00$/, "");
-  return `$${dollars} off`;
+  return `${formatMoney(off.cents, off.currency)} off`;
 }
 
 /** One code as the studio shows it, read back from Stripe every time. */
@@ -120,7 +130,7 @@ export type CodeList =
 function readOff(row: Record<string, unknown>): Off | null {
   const promotion = row.promotion as { coupon?: unknown } | undefined;
   const raw = (promotion?.coupon ?? row.coupon) as
-    | { percent_off?: unknown; amount_off?: unknown }
+    | { percent_off?: unknown; amount_off?: unknown; currency?: unknown }
     | string
     | undefined;
   if (!raw || typeof raw === "string") return null;
@@ -129,7 +139,7 @@ function readOff(row: Record<string, unknown>): Off | null {
     return { kind: "percent", percent: raw.percent_off };
   }
   if (typeof raw.amount_off === "number" && raw.amount_off > 0) {
-    return { kind: "amount", cents: raw.amount_off };
+    return { kind: "amount", cents: raw.amount_off, currency: typeof raw.currency === "string" && raw.currency ? raw.currency : "usd" };
   }
   return null;
 }
@@ -211,7 +221,7 @@ export async function createCode(
     coupon.set("percent_off", String(off.percent));
   } else {
     coupon.set("amount_off", String(off.cents));
-    coupon.set("currency", "usd");
+    coupon.set("currency", off.currency);
   }
   if (maxRedemptions !== null) {
     coupon.set("max_redemptions", String(maxRedemptions));

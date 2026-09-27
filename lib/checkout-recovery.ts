@@ -51,7 +51,9 @@ import { type SessionRecord, fromStore, storeBase } from "@/lib/purchase-email";
 import { membershipPrice } from "@/lib/product-recurring";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { SITE_URL } from "@/lib/site-url";
-import { type Store, centsToPrice } from "@/lib/store";
+import type { Store } from "@/lib/store";
+import { readListing } from "@/lib/catalog";
+import { formatMoney } from "@/lib/money";
 
 /** A checkout that closed longer ago than this is left alone. */
 export const REMIND_WITHIN_SECONDS = 6 * 60 * 60;
@@ -177,7 +179,7 @@ export async function remindAbandoned(
   if (!email) return "skip";
 
   // Only something that can still be bought, and bought now.
-  const product = store.products.find((p) => p.id === meta.product);
+  const product = meta.product ? await readListing(store, meta.product) : null;
   if (!product || product.call || !canSellProduct(store, product)) return "skip";
   const left = await stockLeft(store, product).catch(() => null);
   if (left === 0) return "skip";
@@ -210,10 +212,10 @@ export async function remindAbandoned(
   const name = store.name;
   // The price as the store page says it: the floor of a price the buyer
   // chooses, and a membership's trial and set number of payments with it.
-  const price = `$${centsToPrice(fromPriceCents(product))}`;
+  const price = `${formatMoney(fromPriceCents(product), store.currency)}`;
   const from = product.options.length > 1 ? "from " : "";
   const priceWords = activePwyw(product)
-    ? `you choose it, from $${centsToPrice(product.priceCents)}`
+    ? `you choose it, from ${formatMoney(product.priceCents, store.currency)}`
     : product.recurring
       ? `${from}${membershipPrice(product.recurring, price)}`
       : `${from}${price}`;

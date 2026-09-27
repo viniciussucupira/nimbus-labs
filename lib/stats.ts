@@ -26,7 +26,9 @@
 import { createHash } from "node:crypto";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount } from "@/lib/stripe-account";
-import type { Store } from "@/lib/store";
+import type { Listing, Store } from "@/lib/store";
+import { listingFinder, productIds, recordListings } from "@/lib/catalog";
+import { plainAmount } from "@/lib/money";
 
 /** Days kept, a little over a year, so a year-on-year look is possible. */
 const TTL_SECONDS = 400 * 86400;
@@ -382,6 +384,12 @@ export type SalesStats = {
   totals: { d7: SalesWindow; d30: SalesWindow; d90: SalesWindow };
   /** True when there were more sales than one reading covers. */
   partial: boolean;
+  /**
+   * Sales in another currency than the store's, from before it changed:
+   * counted here and left out of every total above, because euros added to
+   * dollars make a number that means nothing. They are in the CSV.
+   */
+  elsewhere: number;
 };
 
 export type AllTimeSales = {
@@ -390,6 +398,10 @@ export type AllTimeSales = {
   /** The first sale read, as a date; empty when none. */
   since: string;
   partial: boolean;
+  /** What the totals are in: the store's currency when they were read. */
+  currency: string;
+  /** Sales in another currency, left out of the totals. */
+  elsewhere: number;
 };
 
 type Row = {
@@ -402,8 +414,14 @@ type Row = {
   metadata?: Record<string, string> | null;
 };
 
-/** One paid sale as read from Stripe: a checkout, or a one-click extra after one. */
-export type Sale = { created: number; product: string; cents: number; row: Record<string, unknown>; upsell: boolean };
+/**
+ * One paid sale as read from Stripe: a checkout, or a one-click extra after
+ * one, with the amount in the smallest unit of the currency it was paid in.
+ */
+export type Sale = { created: number; product: string; cents: number; currency: string; row: Record<string, unknown>; upsell: boolean };
+
+/** The currency Stripe reports on a checkout or a payment; US dollars when it says none. */
+const currencyOf = (row: { currency?: unknown }) => (typeof row.currency === "string" && row.currency ? row.currency.toLowerCase() : "usd");
 
 /**
  * Every paid sale of this store since `since` (seconds), newest first, read
@@ -411,7 +429,7 @@ export type Sale = { created: number; product: string; cents: number; row: Recor
  * were paid, and the one-click extras taken after them. At most `pages`
  * pages of a hundred of each are read; `partial` says when there were more.
  * Amounts are what the buyer paid, after any discount code and before
- * Stripe's fee or any refund, in US dollars.
+ * Stripe's fee or any refund, each in the currency it was paid in.
  */
 export async function readPaidSales(store: Store, since: number, pages: number): Promise<{ sales: Sale[]; partial: boolean }> {
   if (!store.stripeAccountId) return { sales: [], partial: false };
@@ -440,11 +458,11 @@ export async function readPaidSales(store: Store, since: number, pages: number):
     const meta = row.metadata ?? {};
     if (!handles.has(meta.store ?? "")) return;
     if (row.status !== "complete" || row.payment_status !== "paid") return;
-    if (typeof row.currency === "string" && row.currency !== "usd") return;
     sales.push({
       created: typeof row.created === "number" ? row.created * 1000 : Date.now(),
       product: meta.product ?? "",
       cents: typeof row.amount_total === "number" ? row.amount_total : 0,
+      currency: currencyOf(row),
       row: raw,
       upsell: false,
     });
@@ -457,6 +475,7 @@ export async function readPaidSales(store: Store, since: number, pages: number):
       created: typeof pi.created === "number" ? pi.created * 1000 : Date.now(),
       product: meta.product ?? "",
       cents: typeof pi.amount === "number" ? pi.amount : 0,
+      currency: currencyOf(pi),
       row: pi,
       upsell: true,
     });
@@ -473,8 +492,12 @@ export async function readSales(store: Store, now = Date.now()): Promise<SalesSt
   const cut7 = dayKey(now - 6 * 86400_000);
   const cut30 = dayKey(now - 29 * 86400_000);
   const zero = () => ({ sales: 0, cents: 0 });
-  const out: SalesStats = { byDay: {}, byProduct: {}, totals: { d7: zero(), d30: zero(), d90: zero() }, partial };
+  const out: SalesStats = { byDay: {}, byProduct: {}, totals: { d7: zero(), d30: zero(), d90: zero() }, partial, elsewhere: 0 };
   for (const sale of sales) {
+    if (sale.currency !== store.currency) {
+      out.elsewhere += 1;
+      continue;
+    }
     const day = dayKey(sale.created);
     const d = (out.byDay[day] ??= zero());
     d.sales += 1;
@@ -507,15 +530,21 @@ export async function readAllTimeSales(store: Store): Promise<AllTimeSales | nul
     const [cached] = await redisPipeline([["GET", allSalesKey(store.statsId)]]);
     if (typeof cached === "string" && cached) {
       try {
-        return JSON.parse(cached) as AllTimeSales;
+        const kept = JSON.parse(cached) as AllTimeSales;
+        // Read again when the store has changed its currency since.
+        if ((kept.currency ?? "usd") === store.currency) return { ...kept, currency: kept.currency ?? "usd", elsewhere: kept.elsewhere ?? 0 };
       } catch {
         // Read again below.
       }
     }
   }
   const { sales, partial } = await readPaidSales(store, 0, ALL_TIME_PAGES);
-  const out: AllTimeSales = { totals: { sales: 0, cents: 0 }, byProduct: {}, since: "", partial };
+  const out: AllTimeSales = { totals: { sales: 0, cents: 0 }, byProduct: {}, since: "", partial, currency: store.currency, elsewhere: 0 };
   for (const sale of sales) {
+    if (sale.currency !== store.currency) {
+      out.elsewhere += 1;
+      continue;
+    }
     out.totals.sales += 1;
     out.totals.cents += sale.cents;
     const p = (out.byProduct[sale.product] ??= { sales: 0, cents: 0 });
@@ -549,6 +578,10 @@ export type StatsData = {
   /** "none" when there is no Stripe account to read sales from yet. */
   sales: "ok" | "none" | "error";
   partial: boolean;
+  /** What the money in it is in: the store's currency. */
+  currency: string;
+  /** Sales in another currency, from before the store changed it: not in the totals. */
+  elsewhere: number;
   /** The first day all-time visits cover, or empty when unknown. */
   since: string;
 };
@@ -556,7 +589,33 @@ export type StatsData = {
 const EMPTY_WINDOW: WindowStats = { visitors: 0, views: 0, checkouts: 0, sources: [], mediums: [], campaigns: [], checkoutsByProduct: {}, linkClicks: {} };
 
 /** Visits and sales put together, the shape the studio's panel draws. */
-export function studioStats(store: Store, stats: Stats, sales: SalesStats | null, salesState: StatsData["sales"]): StatsData {
+/** Products listed in the numbers when none has any activity yet: the first ones in the store's order. */
+const QUIET_PRODUCTS = 50;
+
+/**
+ * Which products the numbers are about: every product anybody started a
+ * checkout for or bought in any window, and while there is none, the first
+ * QUIET_PRODUCTS of the store. Read with readListings and handed to studioStats.
+ */
+export function productsInStats(store: Store, stats: Stats, sales: SalesStats | null): string[] {
+  const active = new Set<string>();
+  for (const window of [...Object.values(stats.windows), ...(stats.life ? [stats.life] : [])]) {
+    for (const [id, count] of Object.entries(window.checkoutsByProduct)) if (count > 0) active.add(id);
+  }
+  for (const id of Object.keys(sales?.byProduct ?? {})) active.add(id);
+  const ids = productIds(store);
+  const named = ids.filter((id) => active.has(id));
+  return named.length ? named : ids.slice(0, QUIET_PRODUCTS);
+}
+
+export function studioStats(
+  store: Store,
+  stats: Stats,
+  sales: SalesStats | null,
+  salesState: StatsData["sales"],
+  /** The products to list (productsInStats), read by the caller; the store record's own when not given. */
+  listings: Listing[] = recordListings(store),
+): StatsData {
   const w: Record<RangeKey, WindowStats> = { ...stats.windows, all: stats.life ?? EMPTY_WINDOW };
   const days = stats.days.map((day) => ({ ...day, sales: sales?.byDay[day.date]?.sales ?? 0 }));
   const zero = { sales: 0, cents: 0 };
@@ -569,7 +628,7 @@ export function studioStats(store: Store, stats: Stats, sales: SalesStats | null
     sources: per((k) => w[k].sources),
     mediums: per((k) => w[k].mediums),
     campaigns: per((k) => w[k].campaigns),
-    products: store.products.map((product) => ({
+    products: listings.map((product) => ({
       id: product.id,
       title: product.title,
       ...per((k) => {
@@ -580,6 +639,8 @@ export function studioStats(store: Store, stats: Stats, sales: SalesStats | null
     links: store.links.map((link) => ({ id: link.id, title: link.title, ...per((k) => w[k].linkClicks[link.id] ?? 0) })),
     sales: salesState,
     partial: sales?.partial ?? false,
+    currency: store.currency,
+    elsewhere: sales?.elsewhere ?? 0,
     since: stats.life?.since ?? "",
   };
 }
@@ -601,7 +662,6 @@ export function csvRow(values: (string | number)[]): string {
   return values.map(csvCell).join(",");
 }
 
-const dollars = (cents: number) => (cents / 100).toFixed(2);
 
 /** The most pages of a hundred read for a sales file. */
 export const EXPORT_PAGES = 50;
@@ -612,7 +672,8 @@ export const EXPORT_PAGES = 50;
  */
 export async function salesCsv(store: Store, sinceSeconds: number): Promise<{ csv: string; rows: number; partial: boolean }> {
   const { sales, partial } = await readPaidSales(store, sinceSeconds, EXPORT_PAGES);
-  const title = (id: string, fallback: unknown) => store.products.find((p) => p.id === id)?.title ?? (typeof fallback === "string" ? fallback : "");
+  const find = listingFinder(store);
+  const title = async (id: string, fallback: unknown) => (await find(id))?.title ?? (typeof fallback === "string" ? fallback : "");
   const lines = [
     csvRow(["paid_at_utc", "stripe_id", "product_id", "product", "price_option", "order_bump", "kind", "amount", "discount", "tax", "currency", "buyer_email", "buyer_name", "buyer_country"]),
   ];
@@ -623,7 +684,7 @@ export async function salesCsv(store: Store, sinceSeconds: number): Promise<{ cs
     const totals = (row.total_details ?? {}) as { amount_discount?: unknown; amount_tax?: unknown };
     const text = (v: unknown) => (typeof v === "string" ? v : "");
     const cents = (v: unknown) => (typeof v === "number" ? v : 0);
-    const product = store.products.find((p) => p.id === sale.product);
+    const product = await find(sale.product);
     const option = product?.options.find((o) => o.id === meta.option)?.label ?? meta.option ?? "";
     const kind = sale.upsell
       ? "upsell"
@@ -639,14 +700,14 @@ export async function salesCsv(store: Store, sinceSeconds: number): Promise<{ cs
         new Date(sale.created).toISOString().replace(/\.\d{3}Z$/, "Z"),
         text(row.id),
         sale.product,
-        title(sale.product, meta.title),
+        await title(sale.product, meta.title),
         option,
-        meta.bump ? title(meta.bump, "") : "",
+        meta.bump ? await title(meta.bump, "") : "",
         kind,
-        dollars(sale.cents),
-        dollars(cents(totals.amount_discount)),
-        dollars(cents(totals.amount_tax)),
-        (text(row.currency) || "usd").toUpperCase(),
+        plainAmount(sale.cents, sale.currency),
+        plainAmount(cents(totals.amount_discount), sale.currency),
+        plainAmount(cents(totals.amount_tax), sale.currency),
+        sale.currency.toUpperCase(),
         text(details.email) || text(row.customer_email) || text(row.receipt_email),
         text(details.name),
         text(details.address?.country),

@@ -28,24 +28,33 @@
  * A one-click offer after paying, a limited quantity, sales tax, a course and
  * the questions at checkout all work with it unchanged.
  */
-import type { Product, Store } from "@/lib/store";
+import type { Listing, Store } from "@/lib/store";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount } from "@/lib/stripe-account";
+import { type Currency, currencyRule } from "@/lib/money";
 
 export type PayWhatYouWant = {
-  /** What the buyer's box starts at on Stripe's page, in cents. */
+  /** What the buyer's box starts at on Stripe's page, in the currency's smallest unit. */
   suggestedCents: number;
 };
 
-/** The same ceiling every other price here has: $5,000. */
-export const PWYW_MAX_CENTS = 500_000;
+/**
+ * The ceiling a buyer can type: the same ceiling every other price in the
+ * store's currency has ($5,000 for a store in dollars, lib/money.ts).
+ */
+export function pwywMaximum(currency: Currency): number {
+  return currencyRule(currency).maxPrice;
+}
 
-/** Whatever came back from storage, made safe to use. */
+/**
+ * Whatever came back from storage, made safe to use. The bounds here are the
+ * widest any currency allows; the store's own are checked when it is saved.
+ */
 export function parsePwyw(raw: unknown): PayWhatYouWant | null {
   if (!raw || typeof raw !== "object") return null;
   const value = (raw as Record<string, unknown>).suggestedCents;
   if (typeof value !== "number" || !Number.isInteger(value)) return null;
-  if (value < 100 || value > PWYW_MAX_CENTS) return null;
+  if (value < 100 || value > 10_000_000) return null;
   return { suggestedCents: value };
 }
 
@@ -54,21 +63,21 @@ export type PwywProblem = "free" | "recurring" | "options" | "call" | "plan" | "
 /**
  * Why this product cannot be sold at a price the buyer chooses, or null when
  * it can. `suggestedCents` is checked against the product's own price, which
- * is the floor.
+ * is the floor, and the ceiling of the store's currency.
  */
-export function pwywProblem(product: Product, suggestedCents: number): PwywProblem | null {
+export function pwywProblem(product: Listing, suggestedCents: number, currency: Currency): PwywProblem | null {
   if (product.priceCents === 0) return "free";
   if (product.recurring) return "recurring";
   if (product.options.length > 0) return "options";
   if (product.call) return "call";
   if (product.plan) return "plan";
   if (product.bump) return "bump";
-  if (suggestedCents < product.priceCents || suggestedCents > PWYW_MAX_CENTS) return "suggested";
+  if (suggestedCents < product.priceCents || suggestedCents > pwywMaximum(currency)) return "suggested";
   return null;
 }
 
 /** The choose-your-price setting a buyer meets on this product, or null. */
-export function activePwyw(product: Product): PayWhatYouWant | null {
+export function activePwyw(product: Listing): PayWhatYouWant | null {
   const pwyw = product.pwyw;
   if (!pwyw) return null;
   if (product.priceCents === 0 || product.recurring || product.call || product.options.length > 0) return null;
@@ -98,19 +107,22 @@ const KEEP_SECONDS = 365 * 24 * 60 * 60;
  */
 export async function pwywPriceId(
   store: Store,
-  product: Product,
+  product: Listing,
   pwyw: PayWhatYouWant,
   fresh = false,
 ): Promise<string> {
   const account = store.stripeAccountId;
   if (!account) throw new Error("This store has no account");
+  // The currency is part of what shapes the Price: a store that changes it
+  // is given a new one rather than a Price in the old currency.
   const shape = {
     product: product.id,
     title: product.title,
     minimum: product.priceCents,
     preset: pwyw.suggestedCents,
-    maximum: PWYW_MAX_CENTS,
+    maximum: Math.max(pwywMaximum(store.currency), pwyw.suggestedCents),
     tax: store.tax.enabled ? (store.tax.included ? "inclusive" : "exclusive") : "",
+    ...(store.currency === "usd" ? {} : { currency: store.currency }),
   };
   const print = await fingerprint(JSON.stringify(shape));
   const key = priceKey(account, print);
@@ -122,7 +134,7 @@ export async function pwywPriceId(
   }
 
   const body = new URLSearchParams({
-    currency: "usd",
+    currency: store.currency,
     "custom_unit_amount[enabled]": "true",
     "custom_unit_amount[minimum]": String(shape.minimum),
     "custom_unit_amount[preset]": String(shape.preset),

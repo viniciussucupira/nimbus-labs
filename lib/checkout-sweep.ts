@@ -14,12 +14,18 @@
  *   - a closed, unpaid one on a store with reminders on is offered to
  *     lib/checkout-recovery.ts, which sends only if the buyer agreed;
  *   - a settled one that came through an affiliate's link is written down
- *     for that affiliate (lib/affiliates.ts), once.
+ *     for that affiliate (lib/affiliates.ts), once;
+ *   - a settled one not yet told to the creator's phone or email platform
+ *     is told now (lib/sale-events.ts), once, on a store that connected
+ *     either.
  *
  * A store that hands out licence keys also has its refunds read, and the
  * key of every sale refunded in full is revoked (lib/licence-keys.ts), so
  * the creator's software hears about a refund within minutes, without the
- * creator having to go and revoke it by hand.
+ * creator having to go and revoke it by hand. A store whose buyers have
+ * written reviews has its refunds read in the same way, and each review a
+ * payment refunded in full paid for is marked "refunded", which takes its
+ * stars out of the average (lib/reviews.ts).
  *
  * Bounded three ways, so it can never run away with the job: a time budget
  * the caller sets, at most three pages of a hundred checkouts per store, and
@@ -35,26 +41,38 @@ import { CONFIRM_WITHIN_SECONDS, type SessionRecord, canConfirm, confirmPurchase
 import { remindAbandoned } from "@/lib/checkout-recovery";
 import { recoveryOn } from "@/lib/recovery-setting";
 import { type Store, storesAfter } from "@/lib/store";
+import { sellsThings } from "@/lib/catalog";
 import { affiliatesOn, noteSession } from "@/lib/affiliates";
 import { revokeRefunded, storeHasKeys } from "@/lib/licence-keys";
+import { markRefundedReviews, storeHasReviews } from "@/lib/review-proof";
+import { listensToSales, noteSales } from "@/lib/sale-events";
 
 const CURSOR_KEY = "nl:sweep:cursor";
 /** At most this many pages of a hundred checkouts are read per store per pass. */
 export const MAX_PAGES_PER_STORE = 3;
 
-export type SweepCounts = { stores: number; confirmed: number; reminded: number; failed: number; revoked: number };
+export type SweepCounts = {
+  stores: number;
+  confirmed: number;
+  reminded: number;
+  failed: number;
+  revoked: number;
+  /** Reviews marked refunded. */
+  unrated: number;
+};
 
 /** Whether a store has anything this pass could send about. */
 function worthAsking(store: Store): boolean {
   return (
-    (canConfirm(store) && store.products.some((product) => product.priceCents > 0 && !product.call)) ||
+    (canConfirm(store) && sellsThings(store)) ||
     (Boolean(store.stripeAccountId) && affiliatesOn(store)) ||
-    storeHasKeys(store)
+    storeHasKeys(store) ||
+    listensToSales(store)
   );
 }
 
 /** One store: its checkouts of the last day, each handed to what it needs. */
-async function sweepStore(store: Store, counts: SweepCounts, deadline: number): Promise<void> {
+async function sweepStore(store: Store, counts: SweepCounts, deadline: number, reviewed: boolean): Promise<void> {
   // Refunds first: a key that should no longer open anything matters more
   // than a reminder. One failing never stops the checkouts below.
   if (storeHasKeys(store)) {
@@ -64,6 +82,14 @@ async function sweepStore(store: Store, counts: SweepCounts, deadline: number): 
       console.error("reading a store's refunds failed", store.handle, error);
     }
   }
+  if (reviewed) {
+    try {
+      counts.unrated += await markRefundedReviews(store, deadline);
+    } catch (error) {
+      console.error("reading a store's refunds for reviews failed", store.handle, error);
+    }
+  }
+  if (!worthAsking(store)) return;
   const now = Math.floor(Date.now() / 1000);
   const since = now - CONFIRM_WITHIN_SECONDS;
   const reminding = recoveryOn(store);
@@ -83,6 +109,10 @@ async function sweepStore(store: Store, counts: SweepCounts, deadline: number): 
       for (const row of paid) {
         if (row.metadata?.via) await noteSession(store, row as Parameters<typeof noteSession>[1]);
       }
+    }
+    // The creator's phone and email platform, told of each sale once.
+    if (listensToSales(store)) {
+      await noteSales(store, paid).catch((error) => console.error("telling about sales failed", store.handle, error));
     }
     const confirming = canConfirm(store);
     const marks = paid.length && confirming
@@ -120,7 +150,7 @@ async function sweepStore(store: Store, counts: SweepCounts, deadline: number): 
  * starts the next one at the store after the last it finished.
  */
 export async function sweepCheckouts(deadline: number): Promise<SweepCounts> {
-  const counts: SweepCounts = { stores: 0, confirmed: 0, reminded: 0, failed: 0, revoked: 0 };
+  const counts: SweepCounts = { stores: 0, confirmed: 0, reminded: 0, failed: 0, revoked: 0, unrated: 0 };
   if (!isRedisConfigured() || !platformKey()) return counts;
 
   const [saved] = await redisPipeline([["GET", CURSOR_KEY]]);
@@ -137,10 +167,11 @@ export async function sweepCheckouts(deadline: number): Promise<SweepCounts> {
         continue;
       }
       if (Date.now() >= deadline) break;
-      if (worthAsking(store)) {
+      const reviewed = Boolean(store.stripeAccountId) && (await storeHasReviews(store).catch(() => false));
+      if (worthAsking(store) || reviewed) {
         counts.stores += 1;
         try {
-          await sweepStore(store, counts, deadline);
+          await sweepStore(store, counts, deadline, reviewed);
         } catch (error) {
           // One store's account refusing, or Stripe having a moment, does not
           // hold up everyone after it. It is reached again next time round.

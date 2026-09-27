@@ -1,11 +1,12 @@
 import type { NextRequest } from "next/server";
+import { readKind } from "@/lib/catalog";
 import { issueSignedToken } from "@vercel/blob";
 import {
   handleUploadPresigned,
   type HandleUploadPresignedBody,
 } from "@vercel/blob/client";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { ownsDeliveryId, storeForEmail, storeFolder } from "@/lib/store";
+import { studioAccess } from "@/lib/studio-route";
+import { ownsDeliveryId, storeFolder } from "@/lib/store";
 import {
   ALLOWED_CONTENT_TYPES,
   MAX_FILE_BYTES,
@@ -52,13 +53,11 @@ export async function POST(request: NextRequest) {
       // The docs are explicit that this is where a route like ours has to
       // prove who is asking. Everything below runs before any URL is signed.
       getSignedToken: async (pathname, clientPayload) => {
-        const email = await emailForSession(
-          request.cookies.get(SESSION_COOKIE)?.value,
-        );
-        if (!email) throw new Error("signed_out");
-
-        const store = await storeForEmail(email);
-        if (!store) throw new Error("none");
+        // Who, which store and whether their role has "products"
+        // (lib/studio-route.ts); the folder below is that store's own.
+        const access = await studioAccess(request, "products");
+        if (!access.ok) throw new Error(access.reason === "no_store" ? "none" : access.reason);
+        const { store, ref } = access.access;
 
         let productId = "";
         try {
@@ -73,13 +72,13 @@ export async function POST(request: NextRequest) {
         // is unique across the store, so one check covers both. A lesson of
         // one of the store's courses owns one too.
         if (!ownsDeliveryId(store, productId)) {
-          const courseIds = store.products.flatMap((p) => (p.course ? [p.course.id] : []));
+          const courseIds = (await readKind(store, "course")).flatMap((p) => (p.course ? [p.course.id] : []));
           const courses = ITEM_ID_PATTERN.test(productId) ? await readCourses(courseIds) : new Map();
           const isLesson = [...courses.values()].some((course) => findLesson(course, productId) !== null);
           if (!isLesson) throw new Error("unknown");
         }
 
-        const folder = await storeFolder(email);
+        const folder = await storeFolder(ref);
         if (!ownsPath(pathname, folder, productId)) throw new Error("invalid");
 
         return {
@@ -109,11 +108,11 @@ export async function POST(request: NextRequest) {
     return Response.json(answer);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "server_error";
-    const known = ["signed_out", "none", "unknown", "invalid"].includes(reason);
+    const known = ["signed_out", "none", "unknown", "invalid", "forbidden", "gone"].includes(reason);
     if (!known) console.error("signing an upload failed", error);
     return Response.json(
       { ok: false, error: known ? reason : "server_error" },
-      { status: reason === "signed_out" ? 401 : known ? 400 : 500 },
+      { status: reason === "signed_out" ? 401 : reason === "forbidden" || reason === "gone" ? 403 : known ? 400 : 500 },
     );
   }
 }

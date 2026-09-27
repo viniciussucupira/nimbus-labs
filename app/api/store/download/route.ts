@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { type Product, type Store, normaliseHandle, storeForHandle } from "@/lib/store";
+import { readListing } from "@/lib/catalog";
+import { type Listing, type Store, normaliseHandle, storeForHandle } from "@/lib/store";
 import { readOrder } from "@/lib/store-checkout";
 import { plain, serveFile } from "@/lib/serve-file";
 import { offerRefunded, upsellDelivery } from "@/lib/upsell";
@@ -39,7 +40,7 @@ const MESSAGES = {
 
 /** The file, stamped with its buyer's email when the product asks for it. */
 async function deliver(
-  product: Product,
+  product: Listing,
   file: ProductFile,
   sale: { reference: string; email: string | null; paidAt: number },
 ): Promise<Response> {
@@ -50,7 +51,7 @@ async function deliver(
   return serveFile(file);
 }
 
-function toRenew(request: NextRequest, store: Store, product: Pick<Product, "id">): Response {
+function toRenew(request: NextRequest, store: Store, product: Pick<Listing, "id">): Response {
   return new Response(null, {
     status: 303,
     headers: { Location: `${originFrom(request)}${renewPath(store, product)}`, "Cache-Control": "no-store" },
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
     if (!delivery.file) {
       return plain(409, "This one is not a download. Open your purchases again and use the link on it.");
     }
-    const owner = store.products.find((p) => p.id === (bumped ? purchase.bumpId : purchase.productId));
+    const owner = await readListing(store, bumped ? purchase.bumpId : purchase.productId);
     if (!owner) return serveFile(delivery.file);
     return deliver(owner, delivery.file, { reference: purchase.reference, email, paidAt: purchase.paidAt });
   }

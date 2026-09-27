@@ -1,0 +1,320 @@
+/**
+ * Proof that a review comes from a buyer: the order behind it, as the
+ * creator's own Stripe account tells it, every time a review is written,
+ * changed or deleted — and the refunds that take a review's stars back.
+ *
+ * Nothing about purchases is written down by Nimbus (lib/buyer-orders.ts),
+ * so a review is never checked against a list of ours. The buyer comes
+ * through one of three doors, each holding something only a buyer has, and
+ * the order that door names is then read from Stripe:
+ *
+ *   - the thanks page, by its checkout id, for the three days its download
+ *     works (the same window, lib/store-checkout.ts);
+ *   - the list of purchases, by the emailed link that opened it (24 hours)
+ *     and one of the orders on it (lib/buyer-orders.ts);
+ *   - the link in the one email that asks for a review (60 days), which
+ *     names one order and the address it went to.
+ *
+ * An order counts when it is this store's, paid (not merely free after a
+ * discount, and not a trial that has charged nothing yet), and not refunded
+ * in full — the rule every other door uses (lib/refunds.ts). A checkout
+ * counts for the product bought and the product ticked at checkout; an offer
+ * taken in one click after paying counts for what it added. Booked calls are
+ * not reviewed here.
+ *
+ * A refund that comes later is found by the five-minute job, which reads the
+ * refunds on the creator's account for stores that have reviews and marks
+ * each review that payment paid for (lib/reviews.ts, markRefunded).
+ *
+ *   nl:rev:link:<hash>             -> the order and address a review link is for, 60 days
+ *   nl:rev:refunds:since:<statsId> -> how far the refund pass has read
+ *   nl:rev:refunds:seen:<statsId>  -> refunds already handled
+ */
+import { createHash, randomBytes } from "node:crypto";
+import { normaliseEmail } from "@/lib/auth";
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { StripeError, onAccount } from "@/lib/stripe-account";
+import { isSettled } from "@/lib/instant-pay";
+import { refundedInFull } from "@/lib/refunds";
+import { ordersGrant } from "@/lib/buyer-orders";
+import { DOWNLOAD_WINDOW_SECONDS } from "@/lib/store-checkout";
+import { REVIEW_STORES_KEY, markRefunded } from "@/lib/reviews";
+import type { Listing, Store } from "@/lib/store";
+import { readListing, readListings } from "@/lib/catalog";
+
+const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
+const INTENT_ID = /^pi_[A-Za-z0-9]{10,200}$/;
+const INVOICE_ID = /^in_[A-Za-z0-9]{6,200}$/;
+export const REVIEW_LINK_PATTERN = /^[0-9a-f]{48}$/;
+/** How long the link in a review request keeps working. */
+export const REVIEW_LINK_SECONDS = 60 * 86_400;
+
+export type Proof = {
+  reference: string;
+  /** The address the order was paid with, as Stripe has it. */
+  email: string;
+  /** What this order paid for that can be reviewed here. */
+  products: Listing[];
+  /** The payment behind it, so a later refund can find the review. "" when Stripe did not say. */
+  pi: string;
+  /** When it was paid, in seconds. */
+  paidAt: number;
+  refunded: boolean;
+};
+
+export type ProofResult = { state: "ok"; proof: Proof } | { state: "no" | "expired" | "error" };
+
+/** A product that can be reviewed at all: still listed, paid, not a booked call. */
+export function reviewable(product: Listing | null | undefined): product is Listing {
+  return Boolean(product && product.priceCents > 0 && !product.call);
+}
+
+type Row = Record<string, unknown>;
+
+const idOf = (value: unknown): string =>
+  typeof value === "string" ? value : value && typeof value === "object" && typeof (value as Row).id === "string" ? ((value as Row).id as string) : "";
+
+/** The payment a membership's first invoice was paid with, whichever way this API version names it. */
+async function invoicePayment(account: string, invoice: unknown): Promise<string> {
+  const id = idOf(invoice);
+  if (!INVOICE_ID.test(id)) return "";
+  const read = invoice && typeof invoice === "object" ? (invoice as Row) : await onAccount("GET", account, `/invoices/${encodeURIComponent(id)}`);
+  const direct = idOf(read.payment_intent);
+  if (INTENT_ID.test(direct)) return direct;
+  try {
+    const listed = await onAccount("GET", account, `/invoice_payments?${new URLSearchParams({ invoice: id, limit: "1" })}`);
+    const first = Array.isArray(listed.data) ? (listed.data as Row[])[0] : undefined;
+    const payment = first?.payment && typeof first.payment === "object" ? (first.payment as Row) : null;
+    const pi = idOf(payment?.payment_intent);
+    return INTENT_ID.test(pi) ? pi : "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Reads one order from the creator's Stripe account and says whether it is
+ * a paid purchase from this store, what it can be reviewed for, and whether
+ * it was refunded in full.
+ */
+export async function provePurchase(store: Store, reference: string): Promise<ProofResult> {
+  const account = store.stripeAccountId;
+  if (!account) return { state: "no" };
+  const handles = new Set([store.handle, ...store.previousHandles]);
+  try {
+    if (SESSION_ID.test(reference)) {
+      const session = await onAccount(
+        "GET",
+        account,
+        `/checkout/sessions/${encodeURIComponent(reference)}?expand[]=payment_intent.latest_charge`,
+      );
+      const meta = (session.metadata ?? {}) as Record<string, string>;
+      if (!handles.has(meta.store ?? "") || meta.kind === "call") return { state: "no" };
+      if (!isSettled(session) || session.payment_status !== "paid") return { state: "no" };
+      if (typeof session.amount_total !== "number" || session.amount_total <= 0) return { state: "no" };
+      // Read by id (lib/catalog.ts), however many products the store has.
+      const products = (await readListings(store, [meta.product, meta.bump].filter((id): id is string => Boolean(id)))).filter(
+        reviewable,
+      );
+      const details = session.customer_details as { email?: unknown } | null;
+      const email =
+        typeof details?.email === "string" && details.email
+          ? details.email
+          : typeof session.customer_email === "string"
+            ? session.customer_email
+            : "";
+      if (!email || products.length === 0) return { state: "no" };
+      let pi = idOf(session.payment_intent);
+      let refunded = refundedInFull(session.payment_intent);
+      if (!INTENT_ID.test(pi) && session.mode === "subscription") {
+        pi = await invoicePayment(account, session.invoice);
+        if (pi) {
+          const intent = await onAccount("GET", account, `/payment_intents/${encodeURIComponent(pi)}?expand[]=latest_charge`);
+          refunded = refundedInFull(intent);
+        }
+      }
+      return {
+        state: "ok",
+        proof: {
+          reference,
+          email,
+          products,
+          pi: INTENT_ID.test(pi) ? pi : "",
+          paidAt: typeof session.created === "number" ? session.created : 0,
+          refunded,
+        },
+      };
+    }
+    if (INTENT_ID.test(reference)) {
+      const intent = await onAccount("GET", account, `/payment_intents/${encodeURIComponent(reference)}?expand[]=latest_charge`);
+      const meta = (intent.metadata ?? {}) as Record<string, string>;
+      if (meta.kind !== "upsell" || !handles.has(meta.store ?? "")) return { state: "no" };
+      if (intent.status !== "succeeded" || typeof intent.amount !== "number" || intent.amount <= 0) return { state: "no" };
+      const product = await readListing(store, meta.product);
+      if (!reviewable(product)) return { state: "no" };
+      let email = typeof intent.receipt_email === "string" ? intent.receipt_email : "";
+      if (!email && SESSION_ID.test(meta.parent ?? "")) {
+        const parent = await onAccount("GET", account, `/checkout/sessions/${encodeURIComponent(meta.parent)}`);
+        const details = parent.customer_details as { email?: unknown } | null;
+        email = typeof details?.email === "string" ? details.email : "";
+      }
+      if (!email) return { state: "no" };
+      return {
+        state: "ok",
+        proof: {
+          reference,
+          email,
+          products: [product],
+          pi: reference,
+          paidAt: typeof intent.created === "number" ? intent.created : 0,
+          refunded: refundedInFull(intent),
+        },
+      };
+    }
+    return { state: "no" };
+  } catch (error) {
+    if (error instanceof StripeError && error.status === 404) return { state: "no" };
+    console.error("reading an order for a review failed", error);
+    return { state: "error" };
+  }
+}
+
+/** What a buyer holds that lets them write about one order. */
+export type Door =
+  | { via: "session"; session: string }
+  | { via: "orders"; token: string; reference: string }
+  | { via: "ask"; token: string };
+
+const sha = (value: string) => createHash("sha256").update(value).digest("hex");
+const linkKey = (token: string) => `nl:rev:link:${sha(`nimbus-review-link:${token}`).slice(0, 40)}`;
+
+type LinkGrant = { s: string; r: string; e: string };
+
+/** A link for the review request: one order, one address, 60 days. */
+export async function mintReviewLink(store: Store, reference: string, email: string): Promise<string> {
+  const token = randomBytes(24).toString("hex");
+  const grant: LinkGrant = { s: store.statsId ?? "", r: reference, e: email };
+  await redisPipeline([["SET", linkKey(token), JSON.stringify(grant), "EX", REVIEW_LINK_SECONDS]]);
+  return token;
+}
+
+async function readLink(store: Store, token: string): Promise<LinkGrant | null> {
+  if (!REVIEW_LINK_PATTERN.test(token) || !isRedisConfigured()) return null;
+  const [raw] = await redisPipeline([["GET", linkKey(token)]]);
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    const grant = JSON.parse(raw) as Partial<LinkGrant>;
+    if (grant.s !== store.statsId || typeof grant.r !== "string" || typeof grant.e !== "string") return null;
+    return { s: grant.s, r: grant.r, e: grant.e };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The order a door opens, proved, and only for the buyer who holds it. The
+ * address a link was sent to has to be the address the order was paid with.
+ */
+export async function openDoor(store: Store, door: Door, nowSeconds = Date.now() / 1000): Promise<ProofResult> {
+  if (door.via === "session") {
+    if (!SESSION_ID.test(door.session)) return { state: "no" };
+    const result = await provePurchase(store, door.session);
+    if (result.state !== "ok") return result;
+    return nowSeconds - result.proof.paidAt > DOWNLOAD_WINDOW_SECONDS ? { state: "expired" } : result;
+  }
+  const expected = door.via === "orders" ? await ordersGrant(store, door.token) : null;
+  const link = door.via === "ask" ? await readLink(store, door.token) : null;
+  const email = door.via === "orders" ? expected : link?.e ?? null;
+  const reference = door.via === "orders" ? door.reference : link?.r ?? "";
+  if (!email || !reference) return { state: "expired" };
+  const result = await provePurchase(store, reference);
+  if (result.state !== "ok") return result;
+  return normaliseEmail(result.proof.email) === normaliseEmail(email) ? result : { state: "no" };
+}
+
+/** The door as the hidden fields of a form carry it, and back. */
+export function doorFields(door: Door): Record<string, string> {
+  if (door.via === "session") return { session_id: door.session };
+  if (door.via === "orders") return { token: door.token, ref: door.reference };
+  return { ask: door.token };
+}
+
+export function readDoor(get: (name: string) => string): Door | null {
+  const ask = get("ask").slice(0, 60);
+  if (REVIEW_LINK_PATTERN.test(ask)) return { via: "ask", token: ask };
+  const token = get("token").slice(0, 80);
+  const ref = get("ref").slice(0, 220);
+  if (/^[0-9a-f]{64}$/.test(token) && (SESSION_ID.test(ref) || INTENT_ID.test(ref))) return { via: "orders", token, reference: ref };
+  const session = get("session_id").slice(0, 220);
+  if (SESSION_ID.test(session)) return { via: "session", session };
+  return null;
+}
+
+// ---------------------------------------------------------------- refunds
+
+const REFUND_LOOKBACK_SECONDS = 30 * 86_400;
+const REFUND_PAGES = 3;
+const anchorKey = (statsId: string) => `nl:rev:refunds:since:${statsId}`;
+const seenKey = (statsId: string) => `nl:rev:refunds:seen:${statsId}`;
+
+/** Whether a store has any review, so the refund pass is worth a call to Stripe. */
+export async function storeHasReviews(store: Store): Promise<boolean> {
+  if (!store.statsId || !isRedisConfigured()) return false;
+  const [member] = await redisPipeline([["SISMEMBER", REVIEW_STORES_KEY, store.statsId]]);
+  return Number(member) === 1;
+}
+
+/**
+ * Reads the refunds made on the creator's account since the last pass and
+ * marks every review a fully refunded payment paid for. A partial refund
+ * changes nothing. Returns how many reviews it marked.
+ */
+export async function markRefundedReviews(store: Store, deadline: number): Promise<number> {
+  if (!store.stripeAccountId || !store.statsId || !isRedisConfigured()) return 0;
+  const statsId = store.statsId;
+  const now = Math.floor(Date.now() / 1000);
+  const [anchorRaw] = await redisPipeline([["GET", anchorKey(statsId)]]);
+  const anchor = Number(anchorRaw) > 0 ? Number(anchorRaw) : now - REFUND_LOOKBACK_SECONDS;
+  const since = Math.max(0, anchor - 300);
+  let newest = anchor;
+  let marked = 0;
+  let after = "";
+  let complete = false;
+  for (let page = 0; page < REFUND_PAGES && Date.now() < deadline; page += 1) {
+    const query = new URLSearchParams({ limit: "100", "created[gte]": String(since) });
+    query.append("expand[]", "data.charge");
+    if (after) query.set("starting_after", after);
+    const listed = await onAccount("GET", store.stripeAccountId, `/refunds?${query}`);
+    const rows = Array.isArray(listed.data) ? (listed.data as Row[]) : [];
+    for (const refund of rows) {
+      const id = typeof refund.id === "string" ? refund.id : "";
+      const created = typeof refund.created === "number" ? refund.created : 0;
+      if (!id) continue;
+      if (refund.status !== "succeeded" && refund.status !== "pending") continue;
+      if (!refundedInFull(refund.charge)) continue;
+      const pi = idOf(refund.payment_intent);
+      const [seen] = await redisPipeline([["SISMEMBER", seenKey(statsId), id]]);
+      if (Number(seen) !== 1 && INTENT_ID.test(pi)) marked += await markRefunded(statsId, pi);
+      await redisPipeline([
+        ["SADD", seenKey(statsId), id],
+        ["EXPIRE", seenKey(statsId), REFUND_LOOKBACK_SECONDS + 86_400],
+      ]);
+      newest = Math.max(newest, created);
+    }
+    const last = rows[rows.length - 1];
+    if (listed.has_more !== true || !last || typeof last.id !== "string") {
+      complete = true;
+      break;
+    }
+    after = last.id;
+  }
+  if (complete && Date.now() < deadline) {
+    await redisPipeline([["SET", anchorKey(statsId), String(Math.max(newest, anchor)), "EX", REFUND_LOOKBACK_SECONDS * 2]]);
+  }
+  return marked;
+}
+
+/** A short form of an order reference, for the studio: enough to find it in Stripe. */
+export function shortReference(reference: string): string {
+  return reference.length > 16 ? `${reference.slice(0, 8)}…${reference.slice(-6)}` : reference;
+}

@@ -1,0 +1,115 @@
+import type { NextRequest } from "next/server";
+import { originFrom } from "@/lib/request-origin";
+import { ensureStatsId, normaliseHandle, setReviewed, storeForHandle, storeRef } from "@/lib/store";
+import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
+import { type Door, doorFields, openDoor, readDoor } from "@/lib/review-proof";
+import { deleteReview, markOneRefunded, readRating, readReview, reviewId, saveReview } from "@/lib/reviews";
+
+const MAX_BODY_BYTES = 6_000;
+/** Reviews sent from one connection to one store in an hour. */
+const IP_LIMIT = 20;
+/** Changes to reviews of one order in an hour. */
+const ORDER_LIMIT = 10;
+
+/**
+ * A buyer writes, changes or deletes their review of something they bought.
+ *
+ * A plain HTML form, from the thanks page, the review page reached from the
+ * list of purchases, or the link in the email that asks for a review. What
+ * proves the order travels in hidden fields (lib/review-proof.ts) and is
+ * checked with Stripe on every request: the order has to be this store's,
+ * paid, not refunded, and hold the product being reviewed. Nothing the form
+ * sends can say who the buyer is; the review's id is made from the address
+ * Stripe has for that order.
+ *
+ * The answer is always a page, back where the buyer was, with a word on
+ * what happened.
+ */
+export async function POST(request: NextRequest) {
+  const origin = originFrom(request);
+  if (fromAnotherSite(request)) return new Response("forbidden", { status: 403 });
+
+  let form: FormData;
+  try {
+    form = await (await limited(request, MAX_BODY_BYTES)).formData();
+  } catch {
+    return new Response("Bad request", { status: 400 });
+  }
+  const read = (name: string) => {
+    const value = form.get(name);
+    return typeof value === "string" ? value : "";
+  };
+  const handle = normaliseHandle(read("handle").slice(0, 40));
+  const productId = read("product").slice(0, 40);
+  const action = read("action") === "delete" ? "delete" : "save";
+  const back = read("back") === "thanks" ? "thanks" : "review";
+  const door = readDoor(read);
+  if (!handle || !productId || !door) return new Response("Bad request", { status: 400 });
+
+  const found = await storeForHandle(handle);
+  if (!found) return new Response("No such store.", { status: 404 });
+  let store = found;
+
+  const answer = (status: string, where: Door = door) => {
+    const path =
+      back === "thanks" && where.via === "session"
+        ? `/@${store.handle}/thanks?${new URLSearchParams({ session_id: where.session, review: status, product: productId })}#r-${productId}`
+        : `/@${store.handle}/review?${new URLSearchParams({ ...doorFields(where), status, product: productId })}#r-${productId}`;
+    return new Response(null, { status: 303, headers: { Location: `${origin}${path}`, "Cache-Control": "no-store" } });
+  };
+
+  // A field no person can see: whatever filled it in is told it worked.
+  if (read("website").trim()) return answer("saved");
+
+  if (!(await withinLimit("review", `${clientAddress(request)}|${store.handle}`, IP_LIMIT, 3600))) return answer("slow");
+
+  const opened = await openDoor(store, door);
+  if (opened.state !== "ok") return answer(opened.state === "error" ? "error" : opened.state);
+  const proof = opened.proof;
+  if (!proof.products.some((p) => p.id === productId)) return answer("no");
+  if (!(await withinLimit("review-order", proof.reference, ORDER_LIMIT, 3600))) return answer("slow");
+
+  if (!store.statsId) {
+    // By the key the store is kept under: an account's other stores are not
+    // kept under the owner's address (lib/store.ts).
+    const given = await ensureStatsId(storeRef(store));
+    if (!given?.statsId) return answer("error");
+    store = given;
+  }
+  const statsId = store.statsId as string;
+  const id = reviewId(statsId, productId, proof.email);
+
+  try {
+    if (action === "delete") {
+      const done = await deleteReview(statsId, productId, id);
+      return answer(done === "busy" ? "busy" : "deleted");
+    }
+    if (proof.refunded) {
+      // Whatever this buyer wrote from this order no longer counts.
+      const before = await readReview(statsId, productId, id);
+      if (before && before.reference === proof.reference && !before.refunded) await markOneRefunded(statsId, productId, id);
+      return answer("refunded");
+    }
+    const rating = readRating(read("rating"));
+    if (rating === null) return answer("rating");
+    const saved = await saveReview(statsId, {
+      productId,
+      email: proof.email,
+      reference: proof.reference,
+      pi: proof.pi,
+      rating,
+      text: read("text"),
+      name: read("name"),
+    });
+    // The store page reads ratings only once a store has any (lib/store.ts, reviewed).
+    if ((saved.state === "created" || saved.state === "updated") && !store.reviewed) {
+      await setReviewed(storeRef(store)).catch((error: unknown) => console.error("noting a store's first review failed", error));
+    }
+    if (saved.state === "created") return answer("saved");
+    if (saved.state === "updated") return answer("updated");
+    return answer(saved.state === "invalid" ? "rating" : saved.state);
+  } catch (error) {
+    console.error("saving a review failed", error);
+    return answer("error");
+  }
+}

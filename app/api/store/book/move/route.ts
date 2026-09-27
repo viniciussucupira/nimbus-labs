@@ -4,6 +4,7 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { readOrder } from "@/lib/store-checkout";
 import { isCallProduct, moveBooking } from "@/lib/calls";
 import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
+import { readListing } from "@/lib/catalog";
 
 const MAX_BODY_BYTES = 1_000;
 
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   const store = await storeForHandle(handle);
   if (!store) return new Response("No such store.", { status: 404 });
-  const product = store.products.find((item) => item.id === productId);
+  const product = await readListing(store, productId);
   if (!product || !isCallProduct(product)) {
     return new Response(null, { status: 303, headers: { Location: `${origin}/@${store.handle}` } });
   }

@@ -20,12 +20,12 @@ import { guardStoreWrite } from "@/lib/store-request";
  */
 export async function POST(request: NextRequest) {
   // Base64 is a third bigger than the bytes it carries, plus the JSON around it.
-  const guarded = await guardStoreWrite(request, Math.ceil(MAX_PHOTO_BYTES * 1.4) + 1_000);
+  const guarded = await guardStoreWrite(request, "page", Math.ceil(MAX_PHOTO_BYTES * 1.4) + 1_000);
   if (!guarded.ok) return guarded.response;
 
   try {
     if (guarded.body.remove === true) {
-      const result = await setPhotoId(guarded.email, null);
+      const result = await setPhotoId(guarded.ref, null);
       if (!result.ok) {
         return Response.json({ ok: false, error: result.reason }, { status: 400 });
       }
@@ -43,12 +43,12 @@ export async function POST(request: NextRequest) {
 
     // Checked before anything is written, so a signed-in account without a
     // store cannot fill Redis with pictures that belong to nothing.
-    if (!(await storeForEmail(guarded.email))) {
+    if (!(await storeForEmail(guarded.ref))) {
       return Response.json({ ok: false, error: "none" }, { status: 400 });
     }
 
     const id = await writePhoto(decoded.bytes, decoded.type);
-    const result = await setPhotoId(guarded.email, id);
+    const result = await setPhotoId(guarded.ref, id);
     if (!result.ok) {
       await deletePhoto(id);
       return Response.json({ ok: false, error: result.reason }, { status: 400 });

@@ -4,6 +4,7 @@ import { STOP_TOKEN, readStopToken } from "@/lib/checkout-recovery";
 import { COMMUNITY_UNSUB, readCommunityUnsub } from "@/lib/community-mail";
 import { readConfig } from "@/lib/community";
 import { storeForHandle } from "@/lib/store";
+import { REVIEW_STOP, readReviewStop } from "@/lib/review-requests";
 
 export const metadata: Metadata = {
   title: "Unsubscribe — Nimbus Labs",
@@ -25,6 +26,8 @@ export default async function UnsubscribePage({
   const query = await searchParams;
   const reminder = typeof query.r === "string" ? query.r.slice(0, 60) : "";
   if (reminder) return <StopReminders token={reminder} done={query.done === "1"} />;
+  const review = typeof query.v === "string" ? query.v.slice(0, 60) : "";
+  if (review) return <StopReviewRequests token={review} done={query.done === "1"} />;
   const community = typeof query.c === "string" ? query.c.slice(0, 60) : "";
   if (community) return <StopAnnouncements token={community} done={query.done === "1"} />;
   const token = typeof query.t === "string" ? query.t.slice(0, 60) : "";
@@ -134,6 +137,43 @@ async function StopReminders({ token, done }: { token: string; done: boolean }) 
             <form action={`/api/mail/unsubscribe?r=${token}`} method="post" className="mt-6">
               <input type="hidden" name="from" value="page" />
               <button type="submit" className="btn btn-primary btn-block">Stop reminders</button>
+            </form>
+          </>
+        )}
+        <p className="mt-6 text-sm text-ink-mute">Emails sent with Nimbus Labs, on behalf of the store that sent them.</p>
+      </div>
+    </main>
+  );
+}
+
+/** The same one button, for a store's emails asking for a review. */
+async function StopReviewRequests({ token, done }: { token: string; done: boolean }) {
+  const found = REVIEW_STOP.test(token) ? await readReviewStop(token) : null;
+  const who = found?.storeName || "this store";
+  return (
+    <main id="content" className="min-h-screen bg-paper px-4 py-20 text-ink">
+      <div className="card mx-auto max-w-md p-7 sm:p-9">
+        {!found ? (
+          <>
+            <h1 className="t-h3">This link is not one we know</h1>
+            <p className="mt-3 text-ink-soft">
+              Open the link from the email itself, or use your mail app&apos;s own unsubscribe button.
+            </p>
+          </>
+        ) : done || found.stopped ? (
+          <>
+            <h1 className="t-h3">No more review requests</h1>
+            <p className="mt-3 text-ink-soft">
+              {`${found.email} will not be asked for a review by ${who} again. Nothing else is needed.`}
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="t-h3">{`Stop review requests from ${who}?`}</h1>
+            <p className="mt-3 text-ink-soft">{`For ${found.email}. One press, and it is kept for good. A review you already wrote stays as it is.`}</p>
+            <form action={`/api/mail/unsubscribe?v=${token}`} method="post" className="mt-6">
+              <input type="hidden" name="from" value="page" />
+              <button type="submit" className="btn btn-primary btn-block">Stop review requests</button>
             </form>
           </>
         )}

@@ -92,10 +92,12 @@ const GROUPS: Group[] = [
     items: [
       { title: "Files and links", body: "PDFs, videos, presets and templates up to 5 GB, or a link to where it lives." },
       { title: "Courses", body: "Modules and lessons that can open over time, with free previews." },
-      { title: "Paid calls", body: "One to one, groups of up to 50, or live sessions, around your calendar's busy times." },
+      { title: "Paid calls", body: "One to one, groups of up to 50, or live sessions, with your meeting link or a private video room." },
       { title: "Memberships", body: "Weekly, monthly or yearly, with a free trial if you want one." },
       { title: "Free products", body: "Given for an email address, each one confirmed by its owner." },
       { title: "A community", body: "Posts and comments, open only to the buyers you choose." },
+      { title: "Sales and landing pages", body: "Up to 30 blocks for any product, with video and your buyers' reviews." },
+      { title: "Up to 2,000 products", body: "And 100 links, on one page that shows them 24 at a time." },
     ],
   },
   {
@@ -112,6 +114,7 @@ const GROUPS: Group[] = [
       { title: "Payment plans", body: "Two to twelve payments that end by themselves after the last." },
       { title: "Offers before and after paying", body: "A box at checkout, and up to five one-click offers after, on the same card." },
       { title: "Discount codes and sales tax", body: "Codes and Stripe Tax, both on your own account." },
+      { title: "15 currencies, more ways to pay", body: "Apple Pay, Google Pay, Klarna, Affirm and the others you switch on in Stripe." },
     ],
   },
   {
@@ -142,6 +145,8 @@ const GROUPS: Group[] = [
     items: [
       { title: "Email to your list", body: "One-off emails and sequences, only to people who agreed.", pro: true },
       ...(DOMAINS ? [{ title: "Your own domain", body: "shop.yourname.com opens your store, certificate included.", pro: true }] : []),
+      { title: "Verified reviews", body: "Only from buyers who paid. You can answer them, never edit them." },
+      { title: "Your email platform", body: "Mailchimp, Kit, beehiiv or MailerLite, fed only with people who agreed." },
       { title: "Affiliates", body: "A link and a page for each one. You pay them yourself." },
       { title: "Ad pixels", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount." },
       { title: "Webhooks", body: "Sales, leads and bookings, sent to Zapier, Make or your own server." },
@@ -160,18 +165,25 @@ const GROUPS: Group[] = [
     items: [
       { title: "Your numbers", body: "Visitors, where they came from, checkouts and sales, from 7 days to all time, as CSV files too." },
       { title: "Every sale, from Stripe", body: "With the buyer's address, so you can answer them." },
-      { title: "No password, ever", body: "Log in with a link sent to your email. Nothing for us to lose." },
+      { title: "No password, ever", body: "Log in with a link sent to your email, or a passkey. Nothing for us to lose." },
+      { title: "A team, and more stores", body: "Up to five people per store with their own roles, and up to five stores." },
+      { title: "Sales on your phone", body: "A notification for every sale and booking, from the studio on your home screen." },
     ],
   },
 ];
 
-const NEXT_ALL = [
-  "Your own domain, on Pro",
-  "Several stores in one account, on Pro",
+/*
+ * What a creator may come looking for and will not find, said beside what is
+ * live. Not a promise of when: each is a line where Stan is ahead today, and
+ * the feature-by-feature page has the rest.
+ */
+const NOT_YET = [
+  "Automatic replies on Instagram",
+  "PayPal for creators in the United States",
+  "An iPhone app from the App Store",
+  "Zoom or Google Meet links made for each booking",
+  "Paying your affiliates for you",
 ];
-
-/** Built lines move from "next" to "live" on the deployment where they work. */
-const NEXT = DOMAINS ? NEXT_ALL.filter((line) => !line.startsWith("Your own domain")) : NEXT_ALL;
 
 /*
  * Four kinds of creator, each shown at work rather than posed.
@@ -459,22 +471,22 @@ export default function Home() {
                   );
                 })}
                 <div className="card-flat flex flex-col p-6 sm:p-7">
-                  <span className="tag tag-next self-start">Next on the list</span>
+                  <span className="tag tag-next self-start">Not here yet</span>
                   <p className="mt-4 text-[0.9375rem] text-ink-soft">
-                    Not built yet, so not sold yet. This is the order we are building them in.
+                    Not built, so not sold. Stan has each of these today, and we do not.
                   </p>
-                  <ol className="mt-5 space-y-3">
-                    {NEXT.map((n, i) => (
+                  <ul className="mt-5 space-y-3">
+                    {NOT_YET.map((n) => (
                       <li key={n} className="flex gap-3 text-ink">
-                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sand text-[0.75rem] font-semibold text-ink-soft">
-                          {i + 1}
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sand text-ink-soft">
+                          <Icon name="minus" size={14} />
                         </span>
                         <span className="text-[0.9375rem]">{n}</span>
                       </li>
                     ))}
-                  </ol>
-                  <Link href="/mission" className="link-arrow mt-auto pt-6 text-[0.9375rem]">
-                    The whole plan
+                  </ul>
+                  <Link href="/proof/everything" className="link-arrow mt-auto pt-6 text-[0.9375rem]">
+                    Feature by feature
                     <Icon name="arrow-right" size={16} className="arrow" />
                   </Link>
                 </div>
@@ -710,9 +722,9 @@ export default function Home() {
                 <div>
                   <p className="font-semibold text-ink">Where Stan is ahead today</p>
                   <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                    Stan has PayPal, affiliates paid automatically, automatic Instagram replies, webinars inside its
-                    community, funnel pages before the checkout and an iPhone app. We do not have those, and we say so on
-                    every page that could make you think otherwise.
+                    Stan has PayPal for creators in the United States, affiliates paid automatically, automatic Instagram
+                    replies, webinars inside its community, Zoom and Google Meet links made for each booking and an iPhone
+                    app. We do not have those, and we say so on every page that could make you think otherwise.
                   </p>
                 </div>
                 <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3">
@@ -737,7 +749,7 @@ export default function Home() {
               <p className="eyebrow">Pricing</p>
               <h2 className="t-h2 balance mt-4">Two plans. Your sales stay yours.</h2>
               <p className="mt-5 text-ink-soft">
-                {`The same $${PRICE} and $${PLAN_PRICES.pro.month / 100} a month as Stan's two plans, with 0% of your sales and the sale itself landing in your own Stripe account. The $${PRICE} plan holds what Stan keeps for its $${PLAN_PRICES.pro.month / 100} one: discount codes, pixels, order bumps, upsells and payment plans.`}
+                {`The same $${PRICE} and $${PLAN_PRICES.pro.month / 100} a month as Stan's two plans, with 0% of your sales and the sale itself landing in your own Stripe account. The $${PRICE} plan holds what Stan keeps for its $${PLAN_PRICES.pro.month / 100} one: discount codes, pixels, landing pages, order bumps, upsells and payment plans.`}
               </p>
             </div>
             <div className="reveal mx-auto mt-12 max-w-5xl">

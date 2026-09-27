@@ -18,12 +18,12 @@ import { limited } from "@/lib/request-guard";
  * nothing in the form names which subscription to touch.
  */
 export async function POST(request: NextRequest) {
-  const creator = await creatorFrom(request);
+  const creator = await creatorFrom(request, "billing");
   if (creator instanceof Response) return creator;
-  const { email, store, origin } = creator;
+  const { ref, store, origin, studio } = creator;
 
-  if (!isBillingConfigured()) return away(origin, "/studio?billing=unavailable");
-  if (!store.subscriptionId) return away(origin, "/studio?billing=none");
+  if (!isBillingConfigured()) return away(origin, studio("billing=unavailable"));
+  if (!store.subscriptionId) return away(origin, studio("billing=none"));
 
   let intent = "";
   try {
@@ -33,19 +33,16 @@ export async function POST(request: NextRequest) {
     intent = "";
   }
   if (intent !== "cancel" && intent !== "resume") {
-    return away(origin, "/studio?billing=cancel-error");
+    return away(origin, studio("billing=cancel-error"));
   }
 
   try {
     const state = await setCancelAtPeriodEnd(store.subscriptionId, intent === "cancel");
     if (state.state !== "active") {
-      await setSubscription(email, { active: false });
-      return away(origin, "/studio?billing=ended");
+      await setSubscription(ref, { active: false });
+      return away(origin, studio("billing=ended"));
     }
-    return away(
-      origin,
-      intent === "cancel" ? "/studio?billing=cancelling" : "/studio?billing=resumed",
-    );
+    return away(origin, studio(intent === "cancel" ? "billing=cancelling" : "billing=resumed"));
   } catch (error) {
     // Stripe refuses to change a subscription that is already over. Ask what
     // it is doing before saying so, because a refusal for any other reason
@@ -53,11 +50,11 @@ export async function POST(request: NextRequest) {
     if (error instanceof BillingError && (error.status === 400 || error.status === 404)) {
       const now = await readSubscription(store.subscriptionId);
       if (now.state === "inactive") {
-        await setSubscription(email, { active: false });
-        return away(origin, "/studio?billing=ended");
+        await setSubscription(ref, { active: false });
+        return away(origin, studio("billing=ended"));
       }
     }
     console.error("changing the cancellation failed", error);
-    return away(origin, "/studio?billing=cancel-error");
+    return away(origin, studio("billing=cancel-error"));
   }
 }

@@ -3,7 +3,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
-import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForPage } from "@/lib/store";
+import { formatMoney } from "@/lib/money";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canSellProduct } from "@/lib/store-checkout";
@@ -15,6 +16,7 @@ import { heldBack, passedQuizzes, requiredQuizLessons } from "@/lib/quiz";
 import { MAX_CERT_NAME, MIN_CERT_NAME, certificateOf, hasFinished } from "@/lib/certificate";
 import { canManage } from "@/lib/membership-manage";
 import { CourseOutline } from "@/components/course-outline";
+import { readListing } from "@/lib/catalog";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -50,9 +52,9 @@ export default async function CoursePage({ params, searchParams }: Params) {
   const { handle: raw, product: productId } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const product = store.products.find((item) => item.id === productId);
+  const product = await readListing(store, productId);
   if (!product?.course) redirect(`/@${store.handle}`);
   const course = await readCourse(product.course.id);
   if (!course) redirect(`/@${store.handle}`);
@@ -94,10 +96,10 @@ export default async function CoursePage({ params, searchParams }: Params) {
   // Said with every term the checkout will apply: a trial, a set number of
   // payments, a price the buyer chooses.
   const price = product.recurring
-    ? membershipPrice(product.recurring, `$${centsToPrice(product.priceCents)}`)
+    ? membershipPrice(product.recurring, `${formatMoney(product.priceCents, store.currency)}`)
     : activePwyw(product)
-      ? `$${centsToPrice(product.priceCents)} or more, you choose`
-      : `$${centsToPrice(product.priceCents)}`;
+      ? `${formatMoney(product.priceCents, store.currency)} or more, you choose`
+      : `${formatMoney(product.priceCents, store.currency)}`;
 
   return (
     <div

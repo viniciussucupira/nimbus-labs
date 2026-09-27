@@ -31,7 +31,11 @@ import { isSettled } from "@/lib/instant-pay";
 import type { ProductFile } from "@/lib/product-file";
 import { isLive, soldAMembership } from "@/lib/membership-access";
 import { refundedInFull } from "@/lib/refunds";
-import type { Product, Store } from "@/lib/store";
+import type { Listing, Store } from "@/lib/store";
+import { listingFinder, readListings, sellsAny, sellsThings } from "@/lib/catalog";
+import { paidCalls } from "@/lib/calls";
+import { roomsFor } from "@/lib/call-rooms";
+import type { CallSetup } from "@/lib/call-setup";
 
 /** How long the emailed link opens the list. */
 export const ORDERS_LINK_SECONDS = 24 * 60 * 60;
@@ -94,12 +98,64 @@ export function canRecover(store: Store): boolean {
   );
 }
 
-/** Whether the store sells anything a buyer would come back for. */
-export function sellsDeliverables(store: Store): boolean {
-  return store.products.some((p) => p.priceCents > 0 && !p.call);
+/** One booked call still to come, as the buyer's list shows it. */
+export type BookedCall = {
+  /** The checkout session that paid for it: the key to its calendar file and its move page. */
+  session: string;
+  productId: string;
+  title: string;
+  start: number;
+  end: number;
+  /** The buyer's own time zone, as they booked in it. */
+  buyerTz: string;
+  moves: number;
+  setup: CallSetup;
+  /** Where to join: the room made for it, the creator's own link, or null when they send one. */
+  room: string | null;
+};
+
+/**
+ * The calls this address booked here that have not ended yet, soonest
+ * first, each with where to join. Read from the creator's Stripe account, the
+ * ledger, with any move applied.
+ */
+export async function callsFor(store: Store, email: string): Promise<BookedCall[]> {
+  if (!store.stripeAccountId || !sellsAny(store, "call")) return [];
+  const who = normaliseEmail(email);
+  const now = Date.now();
+  const mine = (await paidCalls(store))
+    .filter((call) => call.email !== null && normaliseEmail(call.email) === who && call.end > now)
+    .sort((a, b) => a.start - b.start)
+    .slice(0, MAX_LISTED);
+  if (mine.length === 0) return [];
+  const listings = await readListings(store, mine.map((call) => call.product));
+  const known = mine.flatMap((call) => {
+    const setup = listings.find((p) => p.id === call.product)?.call;
+    return setup ? [{ call, setup, title: listings.find((p) => p.id === call.product)!.title }] : [];
+  });
+  const rooms = await roomsFor(
+    store.callsId,
+    known.map(({ call, setup }) => ({ product: call.product, setup, session: call.session, start: call.start, end: call.end })),
+  );
+  return known.map(({ call, setup, title }, i) => ({
+    session: call.session,
+    productId: call.product,
+    title,
+    start: call.start,
+    end: call.end,
+    buyerTz: call.buyerTz,
+    moves: call.moves,
+    setup,
+    room: rooms[i],
+  }));
 }
 
-function deliveryOf(product: Product, optionId: string | undefined): { delivery: Delivery | null; option: string | null } {
+/** Whether the store sells anything a buyer would come back for: a thing, or a call to join. */
+export function sellsDeliverables(store: Store): boolean {
+  return sellsThings(store) || sellsAny(store, "call");
+}
+
+function deliveryOf(product: Listing, optionId: string | undefined): { delivery: Delivery | null; option: string | null } {
   if (product.options.length > 0) {
     const option = product.options.find((o) => o.id === optionId) ?? null;
     if (!option) return { delivery: null, option: null };
@@ -128,6 +184,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
   const account = store.stripeAccountId;
   if (!account) return [];
   const handles = new Set([store.handle, ...store.previousHandles]);
+  const find = listingFinder(store);
   const found = new Map<string, Purchase>();
   const customers = new Set<string>();
 
@@ -145,7 +202,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       if (!handles.has(meta.store ?? "")) continue;
       if (!isSettled(session)) continue;
       if (meta.kind === "call") continue;
-      const product = store.products.find((p) => p.id === meta.product);
+      const product = await find(meta.product);
       if (!product || product.call) continue;
       if (refunded(session.payment_intent)) continue;
 
@@ -173,7 +230,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       }
 
       const { delivery, option } = deliveryOf(product, meta.option);
-      const added = meta.bump ? store.products.find((p) => p.id === meta.bump) ?? null : null;
+      const added = meta.bump ? await find(meta.bump) : null;
       const bump = added && (added.file || added.link) ? { title: added.title, file: added.file, link: added.link } : null;
       const courseProduct = product.course ? product.id : null;
       if (!delivery && !bump && !courseProduct) continue;
@@ -208,7 +265,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       const meta = (intent.metadata ?? {}) as Record<string, string>;
       if (meta.kind !== "upsell" || !handles.has(meta.store ?? "")) continue;
       if (intent.status !== "succeeded" || refunded(intent)) continue;
-      const product = store.products.find((p) => p.id === meta.product);
+      const product = await find(meta.product);
       if (!product || !(product.file || product.link)) continue;
       found.set(id, {
         reference: id,
@@ -290,8 +347,8 @@ export async function requestOrdersLink(input: {
   if (!(await within(ipKey(ip, store.handle), IP_LIMIT))) return "limited";
   if (!(await within(addressKey(email), ADDRESS_LIMIT))) return "limited";
 
-  const purchases = await purchasesFor(store, raw);
-  if (purchases.length === 0) return "sent";
+  const [purchases, calls] = await Promise.all([purchasesFor(store, raw), callsFor(store, raw)]);
+  if (purchases.length === 0 && calls.length === 0) return "sent";
 
   const token = randomBytes(32).toString("hex");
   // Kept as typed: Stripe matches the address as it was written at checkout.
@@ -299,7 +356,7 @@ export async function requestOrdersLink(input: {
   await redisPipeline([["SET", tokenKey(token), JSON.stringify(grant), "EX", ORDERS_LINK_SECONDS]]);
 
   const name = store.name;
-  const count = purchases.length;
+  const count = purchases.length + calls.length;
   const link = `${origin}/@${store.handle}/orders?token=${token}`;
   const sent = await sendEmail({
     from: `"${displayName(name)} via Nimbus Labs" <${senderAddress()}>`,

@@ -25,6 +25,7 @@ import {
   safeFileName,
 } from "@/lib/product-file";
 import { LINK_PROBLEMS, type LinkProblem } from "@/lib/product-link";
+import { useStudioHref } from "@/components/studio-store-pin";
 
 const MESSAGES: Record<string, string> = {
   too_many: "That is as many as a course holds: 30 modules and 200 lessons.",
@@ -65,6 +66,7 @@ const small = "text-ink-soft underline underline-offset-4 transition hover:text-
 
 /** Building a course: modules, lessons, and what each lesson holds. */
 export function CourseEditor({ productId, initial, folder }: { productId: string; initial: Course; folder: string }) {
+  const studioHref = useStudioHref();
   const router = useRouter();
   const [course, setCourse] = useState<Course>(initial);
   const [busy, setBusy] = useState(false);
@@ -142,7 +144,7 @@ export function CourseEditor({ productId, initial, folder }: { productId: string
               const answer = await run({ action: "disable" });
               if (answer.ok) {
                 toast("It's an ordinary product again.");
-                router.push("/studio");
+                router.push(studioHref("/studio"));
               }
             }}
           >

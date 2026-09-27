@@ -13,8 +13,27 @@ import { MAX_MAIL_BODY, MAX_SUBJECT, fromLine, monthlyAllowance, render, reserve
 import { sendBatch } from "@/lib/email";
 import { advanceBroadcast, cancelBroadcast, createBroadcast } from "@/lib/broadcasts";
 import { removeFlow, saveFlow } from "@/lib/flows";
+import { removeDraft, saveDraft } from "@/lib/mail-drafts";
+import type { Permission } from "@/lib/team-roles";
 
 export const maxDuration = 60;
+
+/**
+ * Which part of a role each action needs (lib/team-roles.ts): writing and
+ * trying out an email is drafting; anything that reaches the list is sending.
+ */
+const MAIL_PERMISSIONS: Record<string, Permission> = {
+  settings: "settings",
+  import: "send",
+  count: "draft",
+  test: "draft",
+  "draft-save": "draft",
+  "draft-remove": "draft",
+  broadcast: "send",
+  cancel: "send",
+  flow: "send",
+  "flow-remove": "send",
+};
 
 /**
  * Everything the studio does with email:
@@ -23,22 +42,31 @@ export const maxDuration = 60;
  *   { action: "import", text, confirm: true }
  *   { action: "count", productId }
  *   { action: "test", subject, body }
- *   { action: "broadcast", subject, body, productId, sendAt }
+ *   { action: "draft-save", id?, subject, body, productId }  /  { action: "draft-remove", id }
+ *   { action: "broadcast", subject, body, productId, sendAt, draftId? }
  *   { action: "cancel", id }
  *   { action: "flow", flow: {...} }  /  { action: "flow-remove", id }
  *
- * Only the signed-in creator's own store is ever touched: nothing in the
- * request names a list or a store.
+ * Only the store settled by lib/studio-route.ts is ever touched: nothing in
+ * the body names a list or a store. What each action needs of a role is in
+ * MAIL_PERMISSIONS above.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request, 400_000);
+  const guarded = await guardStoreWrite(
+    request,
+    (body) => {
+      const action = text(body.action, 20);
+      return Object.hasOwn(MAIL_PERMISSIONS, action) ? MAIL_PERMISSIONS[action] : null;
+    },
+    400_000,
+  );
   if (!guarded.ok) return guarded.response;
-  const { email, body } = guarded;
+  const { email, ref, body } = guarded;
   const action = text(body.action, 20);
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
 
   try {
-    let store = await storeForEmail(email);
+    let store = await storeForEmail(ref);
     if (!store) return fail("none");
 
     if (action === "settings") {
@@ -46,7 +74,7 @@ export async function POST(request: NextRequest) {
       const address = text(body.address, 1000).replace(/\s+/g, " ").trim().slice(0, MAX_MAIL_ADDRESS);
       if (!fromName) return fail("from_name");
       if (address.length < 10) return fail("address");
-      await setMailSettings(email, { fromName, address });
+      await setMailSettings(ref, { fromName, address });
       return Response.json({ ok: true });
     }
 
@@ -58,7 +86,7 @@ export async function POST(request: NextRequest) {
       const { emails, skipped } = readAddresses(text(body.text, 390_000));
       if (emails.length === 0) return fail("no_addresses");
       if (emails.length > MAX_IMPORT) return fail("too_many");
-      store = (await ensureListId(email)) ?? store;
+      store = (await ensureListId(ref)) ?? store;
       const { added, already, full } = await importContacts(store.listId as string, emails);
       return Response.json({ ok: true, added, already, skipped, full, counts: await listCounts(store.listId) });
     }
@@ -79,14 +107,32 @@ export async function POST(request: NextRequest) {
       if (reserved !== "ok") return fail(reserved === "month" ? "allowance" : "day");
       const r = render(store, `[Test] ${subject}`, content, null);
       const outcome = await sendBatch(
-        [{ from: fromLine(store), to: store.email, subject: r.subject, text: r.text, html: r.html, replyTo: store.email }],
+        // To whoever pressed it: the owner, or the person on their team who is
+        // writing the draft.
+        [{ from: fromLine(store), to: email, subject: r.subject, text: r.text, html: r.html, replyTo: store.email }],
         `test:${store.handle}:${Date.now()}`,
       );
       if (outcome !== "sent") {
         await release(store, 1);
         return fail("send", 502);
       }
-      return Response.json({ ok: true, to: store.email });
+      return Response.json({ ok: true, to: email });
+    }
+
+    if (action === "draft-save") {
+      store = (await ensureListId(ref)) ?? store;
+      const result = await saveDraft(store, email, {
+        id: text(body.id, 40) || undefined,
+        subject: text(body.subject, 400),
+        body: text(body.body, MAX_MAIL_BODY * 2),
+        productId: text(body.productId, 40),
+      });
+      return result.ok ? Response.json({ ok: true, draft: result.draft }) : fail(result.reason);
+    }
+
+    if (action === "draft-remove") {
+      const done = await removeDraft(store, text(body.id, 40));
+      return done ? Response.json({ ok: true }) : fail("unknown", 404);
     }
 
     if (action === "broadcast") {
@@ -98,6 +144,9 @@ export async function POST(request: NextRequest) {
       });
       if (!created.ok) return fail(created.reason);
       const id = created.broadcast.id;
+      // A draft that has now been sent or scheduled is done with.
+      const fromDraft = text(body.draftId, 40);
+      if (fromDraft) await removeDraft(store, fromDraft);
       if (created.broadcast.sendAt <= Math.floor(Date.now() / 1000) + 60) {
         // Starts as soon as the studio has its answer; the scheduled job
         // finishes anything this run does not.

@@ -3,6 +3,8 @@
 import { useState } from "react";
 
 import type { AllTimeSales, Ranked, RangeKey, StatsData } from "@/lib/stats";
+import { StoreField } from "@/components/studio-store-pin";
+import { formatMoney } from "@/lib/money";
 
 const SOURCE_NAMES: Record<string, string> = {
   instagram: "Instagram",
@@ -30,8 +32,6 @@ const RANGES: { key: RangeKey; label: string }[] = [
   { key: "all", label: "All time" },
 ];
 
-const money = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 
 const count = (n: number) => n.toLocaleString("en-US");
 
@@ -78,7 +78,7 @@ function Breakdown({ title, rows, named = false }: { title: string; rows: Ranked
 }
 
 /** A store's visits, checkouts and sales, for the last week, month, quarter or all time. */
-export function StatsPanel({ data }: { data: StatsData }) {
+export function StatsPanel({ data, canExport = true }: { data: StatsData; canExport?: boolean }) {
   const [range, setRange] = useState<RangeKey>("d7");
   const [all, setAll] = useState<{ state: "idle" | "loading" | "error" } | { state: "ok"; sales: AllTimeSales }>({ state: "idle" });
   const salesKnown = data.sales === "ok";
@@ -103,6 +103,10 @@ export function StatsPanel({ data }: { data: StatsData }) {
   // All-time sales arrive when asked for; until then they are shown as coming.
   const allSales = all.state === "ok" ? all.sales : null;
   const salesHere = salesKnown && (range !== "all" || allSales !== null);
+  // Every amount here is in the store's currency (lib/stats.ts leaves sales in
+  // any other out of the totals and counts them).
+  const money = (cents: number) => formatMoney(cents, data.currency ?? "usd");
+  const elsewhere = range === "all" ? allSales?.elsewhere ?? 0 : data.elsewhere ?? 0;
   const totals =
     range === "all" && allSales ? { ...data.totals.all, sales: allSales.totals.sales, cents: allSales.totals.cents } : data.totals[range];
   const days = range === "d7" ? data.days.slice(-7) : range === "d30" ? data.days.slice(-30) : data.days;
@@ -177,6 +181,11 @@ export function StatsPanel({ data }: { data: StatsData }) {
               : "No sales on your Stripe account yet."
             : null}
           {allSales?.partial ? " Your store has more sales than one reading covers (3,000 checkouts), so the oldest are left out." : ""}
+        </p>
+      ) : null}
+      {salesHere && elsewhere > 0 ? (
+        <p className="mt-3 text-sm text-ink-soft">
+          {`${count(elsewhere)} ${elsewhere === 1 ? "sale was" : "sales were"} paid in another currency, from before your store charged in ${(data.currency ?? "usd").toUpperCase()}. ${elsewhere === 1 ? "It is" : "They are"} left out of these numbers, because amounts in two currencies do not add up, and ${elsewhere === 1 ? "it is" : "they are"} in the sales download with ${elsewhere === 1 ? "its" : "their"} own currency.`}
         </p>
       ) : null}
 
@@ -315,8 +324,10 @@ export function StatsPanel({ data }: { data: StatsData }) {
         <p className="mt-1 text-xs text-ink-soft">CSV files that open in Excel, Numbers and Google Sheets.</p>
         {/* Plain GET forms rather than links, so nothing prefetches a file that reads Stripe. */}
         <div className="mt-3 flex flex-wrap items-end gap-3">
-          {salesKnown ? (
+          {/* The sales file carries buyers' addresses: only for a role that may take them. */}
+          {salesKnown && canExport ? (
             <form action="/api/store/export" method="get" className="flex flex-wrap items-end gap-2">
+              <StoreField />
               <input type="hidden" name="what" value="sales" />
               <label className="text-sm">
                 <span className="field-label">Sales</span>
@@ -332,12 +343,14 @@ export function StatsPanel({ data }: { data: StatsData }) {
             </form>
           ) : null}
           <form action="/api/store/export" method="get">
+            <StoreField />
             <input type="hidden" name="what" value="visits" />
             <button type="submit" className="btn btn-secondary btn-sm">
               Visits by day
             </button>
           </form>
           <form action="/api/store/export" method="get">
+            <StoreField />
             <input type="hidden" name="what" value="sources" />
             <button type="submit" className="btn btn-secondary btn-sm">
               Sources and campaigns
@@ -345,6 +358,7 @@ export function StatsPanel({ data }: { data: StatsData }) {
           </form>
         </div>
         <p className="mt-3 text-xs text-ink-soft">
+          {canExport ? null : "Downloading sales, which carry buyers' addresses, is for the owner and Admins. "}
           The sales file has one row per paid checkout or one-click extra, with the buyer&apos;s email and name, and reads up
           to 5,000 of each from your Stripe account. Visits go back as far as they are kept, 400 days.
         </p>

@@ -1,10 +1,12 @@
-import type { NextRequest } from "next/server";
+import { type NextRequest, after } from "next/server";
 import { isFree, storeForHandle } from "@/lib/store";
 import { recordLead, spendClaim } from "@/lib/free";
 import { enroll } from "@/lib/flows";
 import { emitEvent } from "@/lib/webhooks";
+import { queuePerson } from "@/lib/email-sync";
 import { plain, serveFile } from "@/lib/serve-file";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
+import { readListing } from "@/lib/catalog";
 
 /**
  * Hands over a free copy, from the link that was emailed.
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
   // Looked up again rather than trusted from the claim: a product the creator
   // has since removed, or started charging for, is not handed out for free
   // on the strength of an old email.
-  const product = store.products.find((item) => item.id === claim.p);
+  const product = await readListing(store, claim.p);
   if (!product || !isFree(product)) {
     return plain(410, "This is no longer offered for free.");
   }
@@ -64,6 +66,21 @@ export async function POST(request: NextRequest) {
     product: { id: product.id, title: product.title },
     requested_at: claim.at || null,
   }).catch((error) => console.error("queueing the lead.captured webhook failed", error));
+  // The creator's own email platform, when they connected one and take free
+  // sign-ups there: only someone who ticked the box is sent (lib/email-sync.ts).
+  // After the file is on its way, so it never waits on another company.
+  // The sign-up happens now, when the address is confirmed.
+  const confirmedAt = Date.now();
+  after(() =>
+    queuePerson(store, {
+      source: "free",
+      email: claim.e,
+      products: [{ id: product.id, title: product.title }],
+      consent: claim.c,
+      seed: `${claim.e}|${claim.p}|${claim.at}`,
+      at: confirmedAt,
+    }).catch((error) => console.error("sending a sign-up to an email platform failed", error)),
+  );
 
   if (product.link) {
     return new Response(null, {

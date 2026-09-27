@@ -3,50 +3,104 @@
  *
  * Two records in Redis, both plain and both small:
  *
- *   nl:store:handle:<handle>  -> the owner's email, written with NX so a
+ *   nl:store:handle:<handle>  -> the store's key (below), written with NX so a
  *                                handle can never be taken twice
  *   nl:store:owner:<hash>     -> the store itself, as JSON
  *
  * The handle record is the lock. It is written first and only if free, so two
  * people asking for the same name at the same moment cannot both win.
+ *
+ * One account may run up to five stores. Every store is found by its key:
+ *
+ *   - an account's first store by its owner's sign-in email, exactly as every
+ *     store was before there could be more than one, so a store made then
+ *     is read, written and moved the way it always was;
+ *   - every other store by "#" and an id of its own, which no email can be,
+ *     so the two kinds of key never meet. It does not change when the owner
+ *     moves to another address, because nothing in it is the address.
+ *
+ * Three small records tie them together:
+ *
+ *   nl:account:stores:<hash>  -> the ids of an account's other stores (a set)
+ *   nl:store:id:<id>          -> the key of the store with that id, so a store
+ *                                can be named in a cookie or a link by an id
+ *                                that says nothing about who owns it
+ *
+ * Each store keeps its own handle, its own Stripe account, its own plan and
+ * its own folders of files; nothing is shared between two stores but the
+ * person who owns them. Every function below that takes a store's key calls
+ * it `email` for the first kind and works the same for the second.
  */
+import { cache } from "react";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
-import { type ProductFile, parseProductFile } from "@/lib/product-file";
+import { type Held, LockBusyError, holdLock, releaseLock, setIfHeld, takeLock } from "@/lib/redis-lock";
+import { type ProductFile } from "@/lib/product-file";
 import {
   MAX_OPTIONS,
   MAX_OPTION_LABEL_LENGTH,
   type ProductOption,
-  parseOptions,
 } from "@/lib/product-option";
-import { MAX_LINK_LENGTH } from "@/lib/product-link";
-import { type Recurring, parseRecurring } from "@/lib/product-recurring";
+import { type Recurring } from "@/lib/product-recurring";
 import { type StoreLook, DEFAULT_LOOK, parseLook } from "@/lib/store-look";
 import { PHOTO_ID_PATTERN } from "@/lib/photo-limits";
-import { type CallSetup, parseSetup } from "@/lib/call-setup";
+import { type CallSetup } from "@/lib/call-setup";
 import { type Pixels, NO_PIXELS, parsePixels } from "@/lib/pixels";
 import { type TaxSetting, NO_TAX, parseTax } from "@/lib/tax";
 import { type RecoverySetting, NO_RECOVERY, parseRecovery } from "@/lib/recovery-setting";
 import { type Cycle, type Tier, parseCycle, parseTier } from "@/lib/plan";
-import { COURSE_ID_PATTERN } from "@/lib/course";
 import { COMMUNITY_ID } from "@/lib/community-text";
-import { type Bump, type Plan, canBeBumped, isOneOff, parseBump, parsePlan, parseStock } from "@/lib/product-extras";
-import { type Funnel, type FunnelProblem, funnelFromUpsell, funnelProblem, parseFunnel } from "@/lib/funnel";
+import { type Bump, type Plan, canBeBumped, isOneOff } from "@/lib/product-extras";
+import { type Funnel, type FunnelProblem, funnelProblem } from "@/lib/funnel";
 import { type AffiliateSetting, parseAffiliateSetting } from "@/lib/affiliate-setting";
-import { type PayWhatYouWant, type PwywProblem, parsePwyw, pwywProblem } from "@/lib/pay-what-you-want";
-import { type CheckoutField, parseFields } from "@/lib/checkout-fields";
-import { type KeySetup, canHaveKeys, parseKeySetup } from "@/lib/licence-keys";
-import {
-  type DisplayStyle,
-  type ProductImage,
-  parseDisplay,
-  parseProductImage,
-} from "@/lib/product-image";
+import { type ReviewAsk, parseReviewAsk } from "@/lib/review-ask";
+import { type PwywProblem, pwywProblem } from "@/lib/pay-what-you-want";
+import { type CheckoutField } from "@/lib/checkout-fields";
+import { type Currency, DEFAULT_CURRENCY, currencyRule, parseCurrency, priceInRange, readMoney } from "@/lib/money";
+import { type KeySetup, canHaveKeys } from "@/lib/key-setup";
+import { type DisplayStyle, type ProductImage } from "@/lib/product-image";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
   type StoreLink,
   parseStoreLinks,
 } from "@/lib/store-link";
+import {
+  type Catalog,
+  type CourseRef,
+  type Item,
+  type Listing,
+  type Product,
+  KIND,
+  MAX_PRODUCTS,
+  MAX_SUMMARY_LENGTH,
+  MAX_TITLE_LENGTH,
+  StoreFullError,
+  buildHead,
+  catalogRecord,
+  emptyCatalog,
+  headFrom,
+  itemOf,
+  listingOf,
+  parseCatalog,
+  productDrops,
+  productCount,
+  productIdFor,
+  productIds,
+  productWrites,
+  movedMark,
+  movedCount,
+  readDelivery,
+  readListing,
+  readListings,
+  readProduct,
+  readProducts,
+  runWrites,
+  usedIds,
+} from "@/lib/catalog";
+
+// What the rest of the site has always imported from here.
+export { MAX_PRODUCTS, MAX_SUMMARY_LENGTH, MAX_TITLE_LENGTH, StoreFullError };
+export type { CourseRef, Listing, Product };
 
 /**
  * What an address may look like: 3 to 24 characters, starting and ending with
@@ -122,32 +176,12 @@ export const RELEASE_QUARANTINE_DAYS = 30;
 /** Marks a name that was let go and is not owned by anyone yet. */
 const RELEASED_PREFIX = "released:";
 
-/**
- * How many things one store may list.
- *
- * Two hundred, which no creator selling to their own audience comes near —
- * Stan says unlimited, and in practice this is the same promise — while the
- * store stays one small record. That record is read whole on every visit to
- * the page, so its size is a cost every visitor pays. A product with a
- * picture, three prices, three questions and every offer switched on is
- * about three kilobytes, so two hundred of them are well under the ceiling
- * below; the long descriptions live in records of their own
- * (lib/product-about.ts) for the same reason.
+/*
+ * Prices are held as whole numbers of the store's currency's smallest unit
+ * (priceCents is cents for a store in dollars, yen for one in yen), so no
+ * amount is ever a rounded float. What may be typed, and how it is written,
+ * is the currency's own rule, in lib/money.ts.
  */
-export const MAX_PRODUCTS = 200;
-export const MAX_TITLE_LENGTH = 80;
-export const MAX_SUMMARY_LENGTH = 300;
-
-/**
- * The price, in cents, and the two ends of what may be typed.
- *
- * Prices are held as whole cents so no amount is ever a rounded float, and
- * every store here charges in US dollars. A store that needs another currency
- * cannot be served honestly yet, and the studio says so rather than pretending
- * the field is neutral.
- */
-export const MIN_PRICE_CENTS = 100;
-export const MAX_PRICE_CENTS = 500_000;
 
 /**
  * A price of exactly nothing is the one amount below the minimum that is
@@ -169,100 +203,14 @@ export function newListId(): string {
 /**
  * The most one store's record may weigh, in bytes.
  *
- * Every limit above keeps a store far under this, but they multiply: two
- * hundred products, each with the longest lists of choices Stripe allows in
- * its questions, would not be. This is the backstop for that one case. A
- * change that would take the record past it, and make it bigger than it was,
- * is refused with a sentence the creator can act on; a change that makes it
- * smaller is never refused, so a full store can always be tidied.
+ * The products live in records of their own (lib/catalog.ts), so the store
+ * record carries only their index, a page of cards and the store's own
+ * settings, and every limit keeps it far under this. It stays as the
+ * backstop it always was: a change that would take the record past it, and
+ * make it bigger than it was, is refused with a sentence the creator can act
+ * on; a change that makes it smaller is never refused.
  */
 export const MAX_STORE_BYTES = 1_000_000;
-
-/** Thrown by a write that would take a store past MAX_STORE_BYTES. */
-export class StoreFullError extends Error {
-  constructor() {
-    super("store_full");
-  }
-}
-
-/** One thing a store offers. */
-export type Product = {
-  id: string;
-  title: string;
-  summary: string;
-  priceCents: number;
-  createdAt: string;
-  /** The file the buyer gets, once the creator has put one there. */
-  file: ProductFile | null;
-  /**
-   * Where the buyer is sent instead, when the product lives somewhere else.
-   *
-   * A product delivers one or the other, never both: a buyer who has paid
-   * should be shown one thing to open, not asked to choose. Setting a link
-   * clears the file and setting a file clears the link, and that rule lives
-   * in the two setters below rather than in whatever screen calls them.
-   */
-  link: string | null;
-  /**
-   * The schedule this is charged on, when it is a membership rather than a
-   * one-off. Null is a single sale, which is what most products are.
-   */
-  recurring: Recurring | null;
-  /**
-   * Several prices under one product card, each delivering its own thing.
-   *
-   * Empty is the ordinary case: the product has the one price and the one
-   * delivery above. When this is not empty those two are not charged and not
-   * handed over — the option the buyer picked is.
-   */
-  options: ProductOption[];
-  /**
-   * When this is a paid call rather than a thing: how long it lasts and when
-   * it can be booked. A call delivers a time in the creator's calendar, so it
-   * carries no file, no link, no options and no schedule of payments.
-   */
-  call: CallSetup | null;
-  /** How many can ever be sold, when the creator limits it. Null is no limit. */
-  stock: number | null;
-  /** Another product offered in a box at checkout, at a price of its own. */
-  bump: Bump | null;
-  /**
-   * What is offered after paying, one offer at a time, each added in one
-   * click (lib/funnel.ts). A product saved when there was a single upsell
-   * reads back as a funnel of that one offer.
-   */
-  funnel: Funnel | null;
-  /** Paying in a fixed number of payments instead of at once. */
-  plan: Plan | null;
-  /**
-   * When this is a course: which course record holds its lessons, and how
-   * many lessons it has, kept here so a store page knows without reading it.
-   */
-  course: CourseRef | null;
-  /** The product's picture, shown on the store page and its own page. */
-  image: ProductImage | null;
-  /** How its card is drawn on the store page. */
-  display: DisplayStyle;
-  /** Questions asked on Stripe's checkout, answered before paying. */
-  fields: CheckoutField[];
-  /**
-   * The buyer chooses the price, from the product's own price up. Null is the
-   * ordinary case: the price is the price.
-   */
-  pwyw: PayWhatYouWant | null;
-  /** Whether it has a long description, kept in a record of its own. */
-  about: boolean;
-  /**
-   * Whether each sale hands the buyer a unique licence key, and where the
-   * keys come from (lib/licence-keys.ts). Null is no keys.
-   */
-  keys: KeySetup | null;
-  /**
-   * Whether a PDF it delivers is stamped with the buyer's email on every
-   * page when it is downloaded (lib/pdf-stamp.ts).
-   */
-  stamp: boolean;
-};
 
 /** What every email to a creator's list carries, as the law asks. */
 export type MailSettings = {
@@ -303,9 +251,6 @@ function parseDomain(raw: unknown): StoreDomain | null {
   };
 }
 
-/** The part of a course a store record carries. */
-export type CourseRef = { id: string; lessons: number };
-
 /**
  * The part of a store's community its record carries: where the community
  * is kept (lib/community.ts) and whether it is open. Everything else about it
@@ -321,19 +266,23 @@ function parseCommunityRef(raw: unknown): CommunityRef | null {
   return { id: value.id, on: value.on === true };
 }
 
-function parseCourseRef(raw: unknown): CourseRef | null {
-  if (!raw || typeof raw !== "object") return null;
-  const value = raw as Record<string, unknown>;
-  if (typeof value.id !== "string" || !COURSE_ID_PATTERN.test(value.id)) return null;
-  const lessons = Number(value.lessons);
-  return { id: value.id, lessons: Number.isInteger(lessons) && lessons >= 0 ? lessons : 0 };
-}
-
 export type Store = {
   handle: string;
   name: string;
   bio: string;
+  /** The owner's sign-in address, whichever of their stores this is. */
   email: string;
+  /**
+   * The store's own id: 32 hex characters. What names it in a cookie, a link
+   * or a team record. A store made before there were several has none until
+   * its owner next opens the studio (ensureStoreId), and needs none till then.
+   */
+  sid: string;
+  /**
+   * Whether this is one of an account's other stores, kept under "#<sid>"
+   * rather than under the owner's address (see the top of this file).
+   */
+  extra: boolean;
   createdAt: string;
   /** Addresses this store used before. They lead here until it lets them go. */
   previousHandles: string[];
@@ -378,8 +327,12 @@ export type Store = {
   mail: MailSettings | null;
   /** The creator's own domain for the store, when they added one. */
   domain: StoreDomain | null;
-  /** What the store lists, in the order the creator put them in. */
-  products: Product[];
+  /**
+   * What the store lists, in the order the creator put them in: an index and
+   * the first page, with each product in records of its own
+   * (lib/catalog.ts). Read them with readListings and readProducts there.
+   */
+  catalog: Catalog;
   /**
    * Links that are not for sale: the rest of the creator's life, in the order
    * they chose. Shown under what is for sale, because somebody who came to
@@ -445,7 +398,62 @@ export type Store = {
    * switches it on. The money itself never passes through here.
    */
   affiliates: AffiliateSetting;
+  /**
+   * What every price in the store is written and charged in (lib/money.ts).
+   * Stores written before there was a choice read back as US dollars, which
+   * is what they always charged in.
+   */
+  currency: Currency;
+  /**
+   * Whether buyers are emailed once, some days after buying, to ask for a
+   * review (lib/review-requests.ts). Off until the creator switches it on.
+   */
+  reviewAsk: ReviewAsk;
+  /**
+   * Whether a buyer has ever reviewed anything here (lib/reviews.ts). Set once,
+   * by the first review, so the store page reads the ratings only for a store
+   * that has some, and a store without any keeps the store page's round trips
+   * of lib/catalog.ts exactly as they were.
+   */
+  reviewed: boolean;
+  /**
+   * Whether buyers who agree to hear from the creator are sent on to the
+   * creator's own email platform (lib/email-sync.ts), and for which products.
+   * Only this much is kept here, so a store page can offer the box without
+   * reading anything else; the platform, its key and the rest of the settings
+   * live in their own record. Null when no platform takes buyers.
+   */
+  emailSync: EmailSyncRef | null;
+  /**
+   * Whether some device of someone who runs this store wants a notification
+   * for each sale (lib/phone-alerts.ts), so the five-minute job looks for
+   * sales on this store even when nothing else would have it look.
+   */
+  phoneSales: boolean;
 };
+
+/** The part of the email platform settings a store record carries. */
+export type EmailSyncRef = { buyers: "all" | "some"; products: string[] };
+
+function parseEmailSyncRef(raw: unknown): EmailSyncRef | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  if (value.buyers !== "all" && value.buyers !== "some") return null;
+  const products = Array.isArray(value.products)
+    ? value.products.filter((id): id is string => typeof id === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(id)).slice(0, MAX_PRODUCTS)
+    : [];
+  return { buyers: value.buyers, products };
+}
+
+/**
+ * Whether a buyer of this product who ticks the box to hear from the creator
+ * is sent on to the creator's email platform. The checkout offers the box
+ * when this is true, as it does when the creator writes to their list here.
+ */
+export function syncTakesBuyer(store: Pick<Store, "emailSync">, productId: string): boolean {
+  const ref = store.emailSync;
+  return ref !== null && (ref.buyers === "all" || ref.products.includes(productId));
+}
 
 /** The shape Stripe gives a connected account: acct_ and then base62. */
 export const STRIPE_ACCOUNT_PATTERN = /^acct_[A-Za-z0-9]{8,64}$/;
@@ -479,12 +487,44 @@ const ownerKey = async (email: string) =>
 
 const handleKey = (handle: string) => `nl:store:handle:${handle}`;
 
+/** The ids of an account's other stores. Deliberately not under nl:store:owner:. */
+const accountKey = async (email: string) =>
+  `nl:account:stores:${(await sha256Hex(`nimbus-account-stores:${email.toLowerCase()}`)).slice(0, 40)}`;
+
+const storeIdKey = (sid: string) => `nl:store:id:${sid}`;
+
+/** A store's own id: the same shape as the other ids a store carries. */
+export const STORE_ID_PATTERN = /^[0-9a-f]{32}$/;
+
 /**
- * The folder in the file store that belongs to one account.
+ * How many stores one account may run, the first one included.
  *
- * Derived from the email, so it cannot be guessed from a store address, and
- * salted differently from the Redis key so that seeing one never gives the
- * other.
+ * Each is a subscription of its own, so the ceiling is not about money. It
+ * is about what one person can look after: a sixth store is usually a store
+ * nobody is answering buyers for.
+ */
+export const MAX_STORES_PER_ACCOUNT = 5;
+
+/** What an account's other stores are kept under: "#" and the store's id. */
+function extraRef(sid: string): string {
+  return `#${sid}`;
+}
+
+/**
+ * The key a store is kept under (see the top of this file): its owner's
+ * address for an account's first store, "#<id>" for any other.
+ */
+export function storeRef(store: Pick<Store, "email" | "sid" | "extra">): string {
+  return store.extra && STORE_ID_PATTERN.test(store.sid) ? extraRef(store.sid) : store.email;
+}
+
+/**
+ * The folder in the file store that belongs to one store.
+ *
+ * Derived from the store's key — the owner's email for an account's first
+ * store, "#<id>" for its others — so it cannot be guessed from a store
+ * address, two stores of one owner never share a folder, and it is salted
+ * differently from the Redis key so that seeing one never gives the other.
  */
 export async function storeFolder(email: string): Promise<string> {
   return (await sha256Hex(`nimbus-files:${email.toLowerCase()}`)).slice(0, 32);
@@ -501,64 +541,21 @@ export async function imageFolder(email: string): Promise<string> {
   return (await sha256Hex(`nimbus-images:${email.toLowerCase()}`)).slice(0, 24);
 }
 
-function parseProducts(raw: unknown): Product[] {
-  if (!Array.isArray(raw)) return [];
-  const products: Product[] = [];
-  for (const entry of raw) {
-    if (!entry || typeof entry !== "object") continue;
-    const value = entry as Partial<Product>;
-    if (typeof value.id !== "string" || !value.id) continue;
-    if (typeof value.title !== "string" || !value.title) continue;
-    if (typeof value.priceCents !== "number") continue;
-    if (!Number.isInteger(value.priceCents) || value.priceCents < 0) continue;
-    products.push({
-      id: value.id,
-      title: value.title.slice(0, MAX_TITLE_LENGTH),
-      summary:
-        typeof value.summary === "string"
-          ? value.summary.slice(0, MAX_SUMMARY_LENGTH)
-          : "",
-      priceCents: value.priceCents,
-      createdAt: typeof value.createdAt === "string" ? value.createdAt : "",
-      file: parseProductFile(value.file),
-      // Records written before links existed simply have no link, which is
-      // the same as not having one now.
-      link:
-        typeof value.link === "string" && value.link
-          ? value.link.slice(0, MAX_LINK_LENGTH)
-          : null,
-      recurring: parseRecurring(value.recurring),
-      options: parseOptions(value.options),
-      call: parseSetup(value.call),
-      stock: parseStock(value.stock),
-      bump: parseBump(value.bump),
-      funnel: parseFunnel((value as { funnel?: unknown }).funnel) ?? funnelFromUpsell(parseBump((value as { upsell?: unknown }).upsell)),
-      plan: parsePlan(value.plan),
-      course: parseCourseRef(value.course),
-      image: parseProductImage(value.image),
-      display: parseDisplay(value.display),
-      fields: parseFields(value.fields),
-      pwyw: parsePwyw(value.pwyw),
-      about: value.about === true,
-      // Products written before keys and stamping existed have neither.
-      keys: parseKeySetup(value.keys),
-      stamp: value.stamp === true,
-    });
-    if (products.length >= MAX_PRODUCTS) break;
-  }
-  return products;
-}
-
 function parseStore(raw: unknown): Store | null {
   if (typeof raw !== "string" || !raw) return null;
   try {
     const value = JSON.parse(raw) as Partial<Store>;
     if (!value.handle || !value.name || !value.email) return null;
+    // Stores from before there could be several have neither: each of them
+    // is its owner's first store, kept under the owner's address.
+    const sid = typeof value.sid === "string" && STORE_ID_PATTERN.test(value.sid) ? value.sid : "";
     return {
       handle: value.handle,
       name: value.name,
       bio: value.bio ?? "",
       email: value.email,
+      sid,
+      extra: value.extra === true && sid !== "",
       createdAt: value.createdAt ?? "",
       previousHandles: Array.isArray(value.previousHandles)
         ? value.previousHandles.filter((h) => typeof h === "string")
@@ -589,7 +586,9 @@ function parseStore(raw: unknown): Store | null {
       trialEnds: typeof value.trialEnds === "number" && value.trialEnds > 0 ? value.trialEnds : 0,
       mail: parseMail(value.mail),
       domain: parseDomain(value.domain),
-      products: parseProducts(value.products),
+      // A record from before products had records of their own still
+      // carries them itself, and is read from them until it is moved.
+      catalog: parseCatalog((value as { catalog?: unknown }).catalog, (value as { products?: unknown }).products),
       // Stores written before links existed simply have none, which is the
       // same as a store nobody has added one to yet.
       links: parseStoreLinks(value.links),
@@ -619,6 +618,14 @@ function parseStore(raw: unknown): Store | null {
       // Stores written before communities existed simply have none.
       community: parseCommunityRef(value.community),
       affiliates: parseAffiliateSetting(value.affiliates),
+      currency: parseCurrency(value.currency),
+      // Stores written before review requests existed do not send them.
+      reviewAsk: parseReviewAsk(value.reviewAsk),
+      // Stores written before reviews existed have none.
+      reviewed: value.reviewed === true,
+      // Stores written before either existed send nothing anywhere.
+      emailSync: parseEmailSyncRef(value.emailSync),
+      phoneSales: value.phoneSales === true,
     };
   } catch {
     return null;
@@ -626,33 +633,9 @@ function parseStore(raw: unknown): Store | null {
 }
 
 /**
- * Reads a typed price into whole cents.
- *
- * Only a plain amount is accepted — 27, 27.5, 27.50 — with no currency sign,
- * no thousands separator and no more than two decimals, because every one of
- * those is a way for what the creator meant and what the page charges to drift
- * apart. Returns null when the text is not one unambiguous amount.
+ * The store kept under one key (see the top of this file): an account's first
+ * store when given the owner's address, any store when given "#<id>".
  */
-export function priceToCents(raw: string): number | null {
-  const text = raw.trim();
-  if (!/^\d{1,7}(\.\d{1,2})?$/.test(text)) return null;
-  const [whole, fraction = ""] = text.split(".");
-  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
-  return Number.isSafeInteger(cents) ? cents : null;
-}
-
-/**
- * The price as a person reads it: 2700 becomes "27" and 2750 becomes "27.50".
- *
- * The round amount loses its two zeros because that is how a price is written
- * on a page, and feeding this back into priceToCents gives the same cents, so
- * the editor can show it in the field the creator typed it into.
- */
-export function centsToPrice(cents: number): string {
-  return (cents / 100).toFixed(2).replace(/\.00$/, "");
-}
-
-/** The store belonging to a signed-in creator, or null if they have none. */
 export async function storeForEmail(
   email: string | null,
 ): Promise<Store | null> {
@@ -674,6 +657,129 @@ export async function storeForHandle(handle: string): Promise<Store | null> {
 }
 
 /**
+ * The store behind a public address, read once per page view: the layout,
+ * the page's head and the page itself ask for it, and all three are given
+ * the one answer. Only for pages; anything that writes reads afresh.
+ */
+export const storeForPage = cache(storeForHandle);
+
+/**
+ * The store with this id, or null. The id comes from a cookie, a link or a
+ * team record, so the store found is checked to carry that very id.
+ */
+export async function storeForId(sid: string): Promise<Store | null> {
+  if (!STORE_ID_PATTERN.test(sid) || !isRedisConfigured()) return null;
+  const [ref] = await redisPipeline([["GET", storeIdKey(sid)]]);
+  if (typeof ref !== "string" || !ref) return null;
+  const store = await storeForEmail(ref);
+  return store && store.sid === sid ? store : null;
+}
+
+/**
+ * Every store an account owns, its first store first and the others in the
+ * order they were made. A store whose record says it belongs to someone
+ * else — which only a half-finished move could leave — is not listed.
+ */
+export async function accountStores(email: string): Promise<Store[]> {
+  if (!isRedisConfigured()) return [];
+  const address = email.toLowerCase();
+  const [first, members] = await redisPipeline([
+    ["GET", await ownerKey(address)],
+    ["SMEMBERS", await accountKey(address)],
+  ]);
+  const ids = Array.isArray(members)
+    ? members.filter((id): id is string => typeof id === "string" && STORE_ID_PATTERN.test(id))
+    : [];
+  const others = ids.length
+    ? (await redisPipeline(await Promise.all(ids.map(async (id) => ["GET", await ownerKey(extraRef(id))]))))
+        .map(parseStore)
+        .filter((store): store is Store => store !== null && store.extra && store.email.toLowerCase() === address)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    : [];
+  const main = parseStore(first);
+  return main ? [main, ...others] : others;
+}
+
+/**
+ * Gives a store its own id, if it has none yet, and returns it. Called from
+ * the owner's own studio and before a store is first named anywhere by id,
+ * so a store made before there could be several gets one the first time it
+ * needs one and never a second.
+ */
+export async function ensureStoreId(email: string): Promise<Store | null> {
+  const store = await storeForEmail(email);
+  if (!store || store.sid) return store;
+  return withStore(email, async (current, save) => {
+    // Another request may have named it while this one waited for the lock.
+    if (current.sid) return current;
+    const next = await save({ ...current, sid: newListId() });
+    await redisPipeline([["SET", storeIdKey(next.sid), storeRef(next)]]);
+    return next;
+  });
+}
+
+/**
+ * One store at no setting at all: what a new store is before its creator
+ * touches anything. The first store of an account and every other one start
+ * from exactly the same place.
+ */
+async function freshStore(fields: {
+  handle: string;
+  name: string;
+  bio: string;
+  email: string;
+  sid: string;
+  extra: boolean;
+}): Promise<Store> {
+  const createdAt = new Date().toISOString();
+  // Where its product records go (lib/catalog.ts), derived from the key the
+  // store is kept under, so an account's stores never share one.
+  const ref = fields.extra ? extraRef(fields.sid) : fields.email;
+  return {
+    handle: fields.handle,
+    name: fields.name.trim().slice(0, MAX_NAME_LENGTH) || fields.handle,
+    bio: fields.bio.trim().slice(0, MAX_BIO_LENGTH),
+    email: fields.email.toLowerCase(),
+    sid: fields.sid,
+    extra: fields.extra,
+    createdAt,
+    previousHandles: [],
+    renamedAt: "",
+    stripeAccountId: null,
+    stripeChargesEnabled: false,
+    stripeCheckedAt: "",
+    stripeCustomerId: null,
+    subscriptionId: null,
+    subscriptionActive: false,
+    subscriptionCheckedAt: "",
+    tier: "creator",
+    cycle: "month",
+    trialEnds: 0,
+    mail: null,
+    domain: null,
+    // A new store starts in the layout of lib/catalog.ts: nothing to move.
+    catalog: emptyCatalog(await catalogIdFor(ref, createdAt)),
+    links: [],
+    hasDiscounts: false,
+    listId: newListId(),
+    look: { ...DEFAULT_LOOK },
+    photoId: null,
+    callsId: null,
+    statsId: newListId(),
+    pixels: { ...NO_PIXELS },
+    tax: { ...NO_TAX },
+    recovery: { ...NO_RECOVERY },
+    community: null,
+    affiliates: parseAffiliateSetting(null),
+    currency: DEFAULT_CURRENCY,
+    reviewAsk: parseReviewAsk(null),
+    reviewed: false,
+    emailSync: null,
+    phoneSales: false,
+  };
+}
+
+/**
  * One step through every store, for a scheduled job that has to look at all
  * of them. `cursor` is Redis's own: "0" to begin, and "0" comes back once the
  * last store has been read. A store can be seen twice while it moves between
@@ -691,15 +797,295 @@ export async function storesAfter(cursor: string): Promise<{ stores: Store[]; ne
   return { stores, next };
 }
 
+// ---- Writing a store, one writer at a time ---------------------------------
+
+/**
+ * How long one write may hold its store, and how long another waits for it.
+ *
+ * Every write below reads the store, changes it and writes it back, and now
+ * that a product's change touches its own records as well as the store's,
+ * two writes at the same instant — two tabs, or an upload finishing while a
+ * price is saved — must not interleave. Each takes the store's lock first;
+ * the next one waits its turn rather than overwriting the first. A lock left
+ * by a request that died is gone after LOCK_SECONDS.
+ */
+const LOCK_SECONDS = 15;
+const LOCK_WAIT_MS = 8_000;
+
+/**
+ * Thrown when a store stayed locked by another write for longer than we
+ * wait, or when this write's lock ran out before it could land (a write held
+ * up past LOCK_SECONDS is refused rather than written over a newer one).
+ */
+export class StoreBusyError extends Error {
+  constructor() {
+    super("store_busy");
+  }
+}
+
+/**
+ * Thrown instead of writing a store record whose product index would lose
+ * products nobody asked to remove — an empty index over a full one, above
+ * all. A store record is the only list of what a store sells; nothing may
+ * shrink it but an explicit removal (ProductChange.drop).
+ */
+export class CatalogGuardError extends Error {
+  constructor(message: string) {
+    super(`catalog_guard: ${message}`);
+  }
+}
+
+/** How long the record a store had before its move to product records is kept. */
+const BEFORE_MOVE_SECONDS = 30 * 24 * 60 * 60;
+
+const lockKeyOf = (owner: string) => owner.replace("nl:store:owner:", "nl:store:lock:");
+const beforeMoveKeyOf = (owner: string) => owner.replace("nl:store:owner:", "nl:store:before-catalog:");
+
+/** Where a store's product records are kept: derived, so moving it twice writes the same records. */
+async function catalogIdFor(email: string, createdAt: string): Promise<string> {
+  return (await sha256Hex(`nimbus-catalog:${email.toLowerCase()}:${createdAt}`)).slice(0, 32);
+}
+
+/** The store record as it is written: the catalog as its index and head, never inline. */
+function recordJson(store: Store): string {
+  return JSON.stringify({ ...store, catalog: catalogRecord(store.catalog) });
+}
+
+function byteLength(text: string): number {
+  return new TextEncoder().encode(text).length;
+}
+
+/** What a write did to the products, besides the store record itself. */
+type ProductChange = {
+  /** Products added or changed, written in full. A new one goes to the end. */
+  put?: Product[];
+  /** Products taken off. Their records are forgotten once the store no longer lists them. */
+  drop?: string[];
+};
+
+type Save = (next: Store, change?: ProductChange) => Promise<Store>;
+
+/**
+ * The checks every store record passes before it is written over `before`:
+ * the same catalog, and no product gone from its index unless it was named
+ * in `drop`. So no path — a bug in a setter, a record read half, a move to
+ * another address — can write an empty index over a full one.
+ */
+function guardRecord(before: Store, next: Store, drop: Set<string> = new Set()): void {
+  const id = before.catalog.id;
+  if (!id) throw new Error("the store has not been moved to product records");
+  if (next.catalog.id !== id) throw new CatalogGuardError("another catalog");
+  const kept = new Set(next.catalog.items.map((item) => item.id));
+  const lost = before.catalog.items.filter((item) => !kept.has(item.id) && !drop.has(item.id));
+  if (lost.length > 0) {
+    console.error("refused a store write that would drop products from its index", { catalog: id, lost: lost.length });
+    throw new CatalogGuardError(`${lost.length} product(s) would leave the index`);
+  }
+}
+
+/**
+ * Moves a store written before products had records of their own to the
+ * layout of lib/catalog.ts. Called with the store's lock held.
+ *
+ * Nothing is lost at any step. The product records are written first, then
+ * the old record is kept aside for thirty days, and only then is the store
+ * record replaced, in a single write. A failure before that last write
+ * leaves the old record exactly as it was, still the whole store, and the
+ * next attempt writes the same records again under the same id.
+ */
+async function moveToRecords(owner: string, store: Store, raw: string, held: Held): Promise<Store> {
+  const inline = store.catalog.inline ?? [];
+  const id = await catalogIdFor(storeRef(store), store.createdAt);
+  // A store that was moved once already and now reads as one from before has
+  // lost its index: its record was written back by code that does not know
+  // product records (a rollback to an earlier deployment). Moving it "again"
+  // would write an index of only what that record still lists — usually
+  // nothing — over the products it has. Refused, loudly, when it lists fewer
+  // than the index did, for a person to restore from the product records.
+  const listed = await movedCount(id);
+  if (listed !== null && inline.length < listed) {
+    console.error("a store moved to product records has lost its index; refusing to write it", { catalog: id, listed, found: inline.length });
+    throw new CatalogGuardError("lost index");
+  }
+  if (!(await holdLock(held))) throw new StoreBusyError();
+  await runWrites(inline.flatMap((product) => productWrites(id, product)));
+  const items = inline.map(itemOf);
+  const head = headFrom(items, new Map(inline.map((product) => [product.id, listingOf(product)])));
+  const moved: Store = { ...store, catalog: { id, items, head, inline: null } };
+  await redisPipeline([["SET", beforeMoveKeyOf(owner), raw, "EX", BEFORE_MOVE_SECONDS]]);
+  if (!(await setIfHeld(held, owner, recordJson(moved)))) throw new StoreBusyError();
+  await redisPipeline([movedMark(id, items.length)]);
+  return moved;
+}
+
+/**
+ * Writes one change: the products it touches, then the store record with its
+ * index and head brought up to date — the record only while the store's lock
+ * is still this write's (lib/redis-lock.ts), and never with an index that
+ * lost a product nobody removed.
+ */
+async function commit(owner: string, held: Held, before: Store, next: Store, change: ProductChange): Promise<Store> {
+  const id = before.catalog.id;
+  if (!id) throw new Error("the store has not been moved to product records");
+  if (next.catalog.id && next.catalog.id !== id) throw new CatalogGuardError("another catalog");
+  const put = change.put ?? [];
+  const drop = new Set(change.drop ?? []);
+  // Refused before anything is written, like the record's own ceiling below.
+  const writes = put.flatMap((product) => productWrites(id, product));
+
+  const items: Item[] = next.catalog.items.filter((item) => !drop.has(item.id));
+  for (const product of put) {
+    const at = items.findIndex((item) => item.id === product.id);
+    if (at >= 0) items[at] = itemOf(product);
+    else items.push(itemOf(product));
+  }
+  // Nothing leaves the index unless it was asked to (guardRecord).
+  guardRecord(before, { ...next, catalog: { ...next.catalog, id, items } }, drop);
+  // The head is built from what was just written and, for the rest of the
+  // first page, from the records themselves, so it can never keep a stale
+  // card from an earlier write.
+  const head = await buildHead(id, items, new Map(put.map((product) => [product.id, listingOf(product)])));
+  const saved: Store = { ...next, catalog: { id, items, head, inline: null } };
+  const json = recordJson(saved);
+  // Only a write that makes the record bigger is weighed, so a store at the
+  // ceiling can always remove, shorten and reorder.
+  if (byteLength(json) > MAX_STORE_BYTES && byteLength(json) > byteLength(recordJson(before))) {
+    throw new StoreFullError();
+  }
+  // The lock is made to last another term before anything is written, and
+  // the record is written only while it is still ours: a write held up past
+  // its lock is refused rather than landed over whatever came after it.
+  if (!(await holdLock(held))) throw new StoreBusyError();
+  await runWrites(writes);
+  if (!(await setIfHeld(held, owner, json))) throw new StoreBusyError();
+  if (items.length !== before.catalog.items.length) await redisPipeline([movedMark(id, items.length)]);
+  // Forgotten once nothing lists them; a failure here leaves records nobody reads.
+  if (drop.size) await runWrites([...drop].flatMap((gone) => productDrops(id, gone))).catch(() => {});
+  return saved;
+}
+
+/**
+ * Runs one write on a store, with its lock held: reads the store, moves it
+ * to product records first if it has not been yet, and hands `work` the store
+ * and the way to save it. Returns null when the address has no store.
+ */
+async function withStore<T>(email: string, work: (store: Store, save: Save, held: Held) => Promise<T>): Promise<T | null> {
+  if (!email || !isRedisConfigured()) return null;
+  const owner = await ownerKey(email);
+  let held: Held;
+  try {
+    held = await takeLock(lockKeyOf(owner), LOCK_SECONDS, LOCK_WAIT_MS);
+  } catch (error) {
+    if (error instanceof LockBusyError) throw new StoreBusyError();
+    throw error;
+  }
+  try {
+    const [raw] = await redisPipeline([["GET", owner]]);
+    let store = parseStore(raw);
+    if (!store) return null;
+    if (!store.catalog.id) store = await moveToRecords(owner, store, raw as string, held);
+    let current = store;
+    const save: Save = async (next, change = {}) => {
+      current = await commit(owner, held, current, next, change);
+      return current;
+    };
+    return await work(store, save, held);
+  } finally {
+    // Let go only of our own lock, in one step (lib/redis-lock.ts): one that
+    // ran out and was taken by the next write is theirs.
+    await releaseLock(held);
+  }
+}
+
+/**
+ * Holds the locks of several stores at once, one inside the other, and hands
+ * `work` the stores as they are with all of them held. A key with no store
+ * behind it is left out. Only for a change that has to write several stores
+ * in one go: moving an account's stores to a new address.
+ */
+async function withStores<T>(
+  refs: string[],
+  work: (stores: { store: Store; held: Held }[]) => Promise<T>,
+  taken: { store: Store; held: Held }[] = [],
+): Promise<T> {
+  if (refs.length === 0) return work(taken);
+  const [first, ...rest] = refs;
+  const inner = await withStore(first, (store, _save, held) => withStores(rest, work, [...taken, { store, held }]));
+  return inner === null ? withStores(rest, work, taken) : inner;
+}
+
+/** A write that changes the store record only. */
+async function patchStore(email: string, change: (store: Store) => Partial<Store> | null): Promise<Store | null> {
+  return withStore(email, async (store, save) => {
+    const patch = change(store);
+    return patch === null ? store : save({ ...store, ...patch });
+  });
+}
+
+/**
+ * Moves a store to product records now, if it has not been moved yet. Safe
+ * to call again and again: a store already moved is left as it is. Returns
+ * whether this call moved it.
+ */
+export async function moveStoreToRecords(email: string): Promise<boolean> {
+  const before = await storeForEmail(email);
+  if (!before || before.catalog.id) return false;
+  await withStore(email, async (store) => store);
+  return true;
+}
+
+/** Where the daily job's walk through the stores stopped, when its time ran out. */
+const MOVE_CURSOR_KEY = "nl:catalog:move:cursor";
+
+export type MoveCounts = { seen: number; moved: number; failed: number; complete: boolean };
+
+/**
+ * The one-time move of every store to product records, a step of which runs
+ * with the daily job (app/api/cron/plans). Each store is also moved the
+ * first time it is written, so this only reaches the ones nobody touches.
+ * Stops at `deadline` and carries on from there the next day; a store seen
+ * twice, or already moved, is left alone.
+ */
+export async function moveAllStores(deadline: number): Promise<MoveCounts> {
+  const counts: MoveCounts = { seen: 0, moved: 0, failed: 0, complete: false };
+  if (!isRedisConfigured()) return counts;
+  const [saved] = await redisPipeline([["GET", MOVE_CURSOR_KEY]]);
+  let cursor = typeof saved === "string" && /^\d+$/.test(saved) ? saved : "0";
+  for (let step = 0; step < 10_000; step += 1) {
+    if (Date.now() >= deadline) {
+      await redisPipeline([["SET", MOVE_CURSOR_KEY, cursor, "EX", 7 * 86_400]]);
+      return counts;
+    }
+    const { stores, next } = await storesAfter(cursor);
+    for (const store of stores) {
+      counts.seen += 1;
+      if (store.catalog.id) continue;
+      try {
+        // An account's other stores are kept under "#<id>", not the address.
+        if (await moveStoreToRecords(storeRef(store))) counts.moved += 1;
+      } catch (error) {
+        counts.failed += 1;
+        console.error("moving a store to product records failed", error);
+      }
+    }
+    cursor = next;
+    if (cursor === "0") break;
+  }
+  await redisPipeline([["DEL", MOVE_CURSOR_KEY]]);
+  counts.complete = true;
+  return counts;
+}
+
 export type ClaimResult =
   | { ok: true; store: Store }
   | { ok: false; reason: "taken" | "reserved" | "shape" | "already" };
 
 /**
- * Reserves a handle for a creator and creates their store.
+ * Reserves a handle for a creator and creates their first store.
  *
- * One store per account, and the handle is the address other people will
- * bookmark, so neither is handed out twice.
+ * The handle is the address other people will bookmark, so it is never handed
+ * out twice. An account that already has its first store makes the others
+ * with createStore, below.
  */
 export async function claimHandle(
   email: string,
@@ -719,44 +1105,12 @@ export async function claimHandle(
   ]);
   if (taken === null) return { ok: false, reason: "taken" };
 
-  const store: Store = {
-    handle,
-    name: rawName.trim().slice(0, MAX_NAME_LENGTH) || handle,
-    bio: rawBio.trim().slice(0, MAX_BIO_LENGTH),
-    email: email.toLowerCase(),
-    createdAt: new Date().toISOString(),
-    previousHandles: [],
-    renamedAt: "",
-    stripeAccountId: null,
-    stripeChargesEnabled: false,
-    stripeCheckedAt: "",
-    stripeCustomerId: null,
-    subscriptionId: null,
-    subscriptionActive: false,
-    subscriptionCheckedAt: "",
-    tier: "creator",
-    cycle: "month",
-    trialEnds: 0,
-    mail: null,
-    domain: null,
-    products: [],
-    links: [],
-    hasDiscounts: false,
-    listId: newListId(),
-    look: { ...DEFAULT_LOOK },
-    photoId: null,
-    callsId: null,
-    statsId: newListId(),
-    pixels: { ...NO_PIXELS },
-    tax: { ...NO_TAX },
-    recovery: { ...NO_RECOVERY },
-    community: null,
-    affiliates: parseAffiliateSetting(null),
-  };
+  const store = await freshStore({ handle, name: rawName, bio: rawBio, email, sid: newListId(), extra: false });
 
   try {
     await redisPipeline([
-      ["SET", await ownerKey(email), JSON.stringify(store)],
+      ["SET", await ownerKey(email), recordJson(store)],
+      ["SET", storeIdKey(store.sid), email.toLowerCase()],
     ]);
   } catch (error) {
     // Give the name back rather than leaving it locked to a store that does
@@ -766,6 +1120,101 @@ export async function claimHandle(
   }
 
   return { ok: true, store };
+}
+
+export type CreateResult =
+  | { ok: true; store: Store }
+  | { ok: false; reason: "taken" | "reserved" | "shape" | "first" | "too_many"; limit?: number };
+
+/**
+ * Makes another store for an account that already has its first.
+ *
+ * It starts as empty as a first store does, with a handle, a folder, a list
+ * and a subscription of its own; nothing is copied from the other stores.
+ * The count is taken after the new id is added, so two stores made at the
+ * same instant cannot both slip under the ceiling.
+ */
+export async function createStore(
+  email: string,
+  rawHandle: string,
+  rawName: string,
+  rawBio: string,
+): Promise<CreateResult> {
+  const handle = normaliseHandle(rawHandle);
+  const problem = handleProblem(handle);
+  if (problem) return { ok: false, reason: problem };
+  if (!(await storeForEmail(email))) return { ok: false, reason: "first" };
+
+  const sid = newListId();
+  const ref = extraRef(sid);
+  const account = await accountKey(email);
+  const [, count] = await redisPipeline([
+    ["SADD", account, sid],
+    ["SCARD", account],
+  ]);
+  if (Number(count) + 1 > MAX_STORES_PER_ACCOUNT) {
+    await redisPipeline([["SREM", account, sid]]);
+    return { ok: false, reason: "too_many", limit: MAX_STORES_PER_ACCOUNT };
+  }
+
+  const [taken] = await redisPipeline([["SET", handleKey(handle), ref, "NX"]]);
+  if (taken === null) {
+    await redisPipeline([["SREM", account, sid]]);
+    return { ok: false, reason: "taken" };
+  }
+
+  const store = await freshStore({ handle, name: rawName, bio: rawBio, email, sid, extra: true });
+  try {
+    await redisPipeline([
+      ["SET", await ownerKey(ref), recordJson(store)],
+      ["SET", storeIdKey(sid), ref],
+    ]);
+  } catch (error) {
+    await redisPipeline([
+      ["DEL", handleKey(handle)],
+      ["SREM", account, sid],
+    ]).catch(() => {});
+    throw error;
+  }
+  return { ok: true, store };
+}
+
+export type DeleteResult =
+  | { ok: true; store: Store }
+  | { ok: false; reason: "none" | "first" | "products" | "paying" | "domain" };
+
+/**
+ * Deletes one of an account's other stores, while there is nothing in it to
+ * lose.
+ *
+ * Only a store with no products, no subscription in good standing and no
+ * domain of its own can go: a store that has sold something has buyers who
+ * will come back to it, and a store that is paying would be deleted with
+ * money still running. Its addresses are let go the way a released address
+ * is — dark for a month before anyone else may take them — so a link
+ * already shared leads nowhere rather than to a stranger. An account's first
+ * store is its home, and is never deleted here.
+ */
+export async function deleteStore(email: string): Promise<DeleteResult> {
+  // Under the store's lock, so a product added in the same instant is either
+  // seen here or never written.
+  const result = await withStore<DeleteResult>(email, async (store) => {
+    if (!store.extra) return { ok: false, reason: "first" };
+    if (productCount(store) > 0) return { ok: false, reason: "products" };
+    if (store.subscriptionActive) return { ok: false, reason: "paying" };
+    if (store.domain) return { ok: false, reason: "domain" };
+
+    const released = `${RELEASED_PREFIX}${new Date().toISOString()}`;
+    const handles = [store.handle, ...store.previousHandles];
+    await redisPipeline([
+      ...handles.map((handle) => ["SET", handleKey(handle), released, "EX", RELEASE_QUARANTINE_DAYS * 24 * 60 * 60]),
+      ["DEL", await ownerKey(storeRef(store))],
+      ["DEL", storeIdKey(store.sid)],
+      ["SREM", await accountKey(store.email), store.sid],
+    ]);
+    return { ok: true, store };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 export type RenameResult =
@@ -796,38 +1245,35 @@ export async function renameHandle(
   const problem = handleProblem(handle);
   if (problem) return { ok: false, reason: problem };
 
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  if (store.handle === handle) return { ok: false, reason: "same" };
+  const result = await withStore<RenameResult>(email, async (store, save) => {
+    if (store.handle === handle) return { ok: false, reason: "same" };
 
-  // Going back to an address this store already owns costs nothing: no new
-  // lock, and no room on the shelf, because it never stopped being theirs.
-  if (!store.previousHandles.includes(handle)) {
-    if (store.previousHandles.length + 2 > MAX_ADDRESSES) {
-      return { ok: false, reason: "too_many", limit: MAX_ADDRESSES };
+    // Going back to an address this store already owns costs nothing: no new
+    // lock, and no room on the shelf, because it never stopped being theirs.
+    if (!store.previousHandles.includes(handle)) {
+      if (store.previousHandles.length + 2 > MAX_ADDRESSES) {
+        return { ok: false, reason: "too_many", limit: MAX_ADDRESSES };
+      }
+      const [taken] = await redisPipeline([
+        ["SET", handleKey(handle), email.toLowerCase(), "NX"],
+      ]);
+      if (taken === null) return { ok: false, reason: "taken" };
     }
-    const [taken] = await redisPipeline([
-      ["SET", handleKey(handle), email.toLowerCase(), "NX"],
-    ]);
-    if (taken === null) return { ok: false, reason: "taken" };
-  }
 
-  const next: Store = {
-    ...store,
-    handle,
-    previousHandles: [
-      ...store.previousHandles.filter((old) => old !== handle),
-      store.handle,
-    ].slice(-20),
-    renamedAt: new Date().toISOString(),
-  };
-
-  await redisPipeline([
-    ["SET", await ownerKey(email), JSON.stringify(next)],
+    const next = await save({
+      ...store,
+      handle,
+      previousHandles: [
+        ...store.previousHandles.filter((old) => old !== handle),
+        store.handle,
+      ].slice(-20),
+      renamedAt: new Date().toISOString(),
+    });
     // The store's own domain follows it to the new address.
-    ...(next.domain ? [["SET", `nl:domain:${next.domain.name}`, handle]] : []),
-  ]);
-  return { ok: true, store: next };
+    if (next.domain) await redisPipeline([["SET", `nl:domain:${next.domain.name}`, handle]]);
+    return { ok: true, store: next };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 export type StripeAccountResult =
@@ -848,16 +1294,12 @@ export async function setStripeAccount(
   if (!STRIPE_ACCOUNT_PATTERN.test(accountId)) {
     return { ok: false, reason: "shape" };
   }
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const next: Store = {
-    ...store,
+  const next = await patchStore(email, () => ({
     stripeAccountId: accountId,
     stripeChargesEnabled: chargesEnabled,
     stripeCheckedAt: new Date().toISOString(),
-  };
-  await saveStore(next);
-  return { ok: true, store: next };
+  }));
+  return next ? { ok: true, store: next } : { ok: false, reason: "none" };
 }
 
 /**
@@ -878,53 +1320,50 @@ export async function setSubscription(
     trialEnds?: number;
   },
 ): Promise<Store | null> {
-  const store = await storeForEmail(email);
-  if (!store) return null;
+  const result = await withStore<Store | null>(email, async (store, save) => {
+    const customerId =
+      fields.customerId === undefined ? store.stripeCustomerId : fields.customerId;
+    const subscriptionId =
+      fields.subscriptionId === undefined
+        ? store.subscriptionId
+        : fields.subscriptionId;
 
-  const customerId =
-    fields.customerId === undefined ? store.stripeCustomerId : fields.customerId;
-  const subscriptionId =
-    fields.subscriptionId === undefined
-      ? store.subscriptionId
-      : fields.subscriptionId;
+    // A malformed id is refused rather than written down, for the same reason a
+    // malformed account id is: a bad id here means every later question about
+    // this store's subscription asks Stripe about something that is not it.
+    if (customerId !== null && !CUSTOMER_PATTERN.test(customerId)) return null;
+    if (subscriptionId !== null && !SUBSCRIPTION_PATTERN.test(subscriptionId)) {
+      return null;
+    }
 
-  // A malformed id is refused rather than written down, for the same reason a
-  // malformed account id is: a bad id here means every later question about
-  // this store's subscription asks Stripe about something that is not it.
-  if (customerId !== null && !CUSTOMER_PATTERN.test(customerId)) return null;
-  if (subscriptionId !== null && !SUBSCRIPTION_PATTERN.test(subscriptionId)) {
-    return null;
-  }
-
-  const next: Store = {
-    ...store,
-    stripeCustomerId: customerId,
-    subscriptionId,
-    subscriptionActive: fields.active,
-    subscriptionCheckedAt: new Date().toISOString(),
-    tier: fields.tier ?? store.tier,
-    cycle: fields.cycle ?? store.cycle,
-    trialEnds: fields.trialEnds ?? store.trialEnds,
-  };
-  await saveStore(next);
-  return next;
+    return save({
+      ...store,
+      stripeCustomerId: customerId,
+      subscriptionId,
+      subscriptionActive: fields.active,
+      subscriptionCheckedAt: new Date().toISOString(),
+      tier: fields.tier ?? store.tier,
+      cycle: fields.cycle ?? store.cycle,
+      trialEnds: fields.trialEnds ?? store.trialEnds,
+    });
+  });
+  return result ?? null;
 }
 
 /** Forgets the connection here. Returns the account that was let go. */
 export async function clearStripeAccount(
   email: string,
 ): Promise<{ store: Store; was: string | null } | null> {
-  const store = await storeForEmail(email);
-  if (!store) return null;
-  const was = store.stripeAccountId;
-  const next: Store = {
-    ...store,
-    stripeAccountId: null,
-    stripeChargesEnabled: false,
-    stripeCheckedAt: "",
-  };
-  await saveStore(next);
-  return { store: next, was };
+  return withStore(email, async (store, save) => {
+    const was = store.stripeAccountId;
+    const next = await save({
+      ...store,
+      stripeAccountId: null,
+      stripeChargesEnabled: false,
+      stripeCheckedAt: "",
+    });
+    return { store: next, was };
+  });
 }
 
 export type MoveResult =
@@ -939,11 +1378,15 @@ export type MoveResult =
  * the inside: they move the store while they can still sign in.
  *
  * The new record is written before the old one is deleted, so an interrupted
- * move leaves the store findable rather than gone.
+ * move leaves the store findable rather than gone. The products stay where
+ * they are: their records are filed under the catalog's own id, which the
+ * record carries along.
  *
  * Files already attached keep working. Their paths were written down when they
  * were uploaded and are read back as written, so they stay reachable in the
- * folder of the old address; only new uploads land in the new one.
+ * folder of the old address; only new uploads land in the new one. The
+ * account's other stores keep their folders as they are, because their keys
+ * never held the address.
  */
 export async function moveAccount(
   fromEmail: string,
@@ -954,23 +1397,64 @@ export async function moveAccount(
   if (from === to) return { ok: false, reason: "same" };
   if (!isRedisConfigured()) return { ok: false, reason: "none" };
 
-  const store = await storeForEmail(from);
-  if (!store) return { ok: false, reason: "none" };
+  const result = await withStore<MoveResult>(from, async (store, _save, held) => {
+    // The address it is moving to must not already own a store of its own.
+    const [existing, theirs] = await redisPipeline([
+      ["GET", await ownerKey(to)],
+      ["SCARD", await accountKey(to)],
+    ]);
+    if ((typeof existing === "string" && existing) || Number(theirs) > 0) {
+      return { ok: false, reason: "taken" };
+    }
 
-  // The address it is moving to must not already own a store of its own.
-  const [existing] = await redisPipeline([["GET", await ownerKey(to)]]);
-  if (typeof existing === "string" && existing) {
-    return { ok: false, reason: "taken" };
-  }
-
-  const next: Store = { ...store, email: to };
-  const handles = [store.handle, ...store.previousHandles];
-  await redisPipeline([
-    ["SET", await ownerKey(to), JSON.stringify(next)],
-    ...handles.map((handle) => ["SET", handleKey(handle), to]),
-    ["DEL", await ownerKey(from)],
-  ]);
-  return { ok: true, store: next };
+    // The account's other stores go with it. Their keys do not contain the
+    // address, so only the owner written inside each one changes — each read
+    // and written under its own lock, taken inside this one, so a change
+    // made to one of them in the same instant is neither lost nor undone.
+    const refs = (await accountStores(from)).filter((other) => other.extra).map(storeRef);
+    return withStores(refs, async (others) => {
+      const next: Store = { ...store, email: to };
+      const moved = others.map(({ store: other, held: lock }) => ({ before: other, next: { ...other, email: to }, lock }));
+      // The same checks as every other write (guardRecord), before anything is
+      // written: each record keeps its catalog and every product in it.
+      guardRecord(store, next);
+      for (const one of moved) guardRecord(one.before, one.next);
+      // Every lock made to last another term, then each record written only
+      // while its lock is still ours (lib/redis-lock.ts). The new address's
+      // record only where there is none: a store made there in the meantime
+      // is never written over. A write refused here leaves the old records
+      // as they were, still the account, at its old address.
+      for (const lock of [held, ...moved.map((one) => one.lock)]) {
+        if (!(await holdLock(lock))) throw new StoreBusyError();
+      }
+      if (!(await setIfHeld(held, await ownerKey(to), recordJson(next), { absent: true }))) {
+        return { ok: false, reason: "taken" };
+      }
+      const written: typeof moved = [];
+      for (const one of moved) {
+        if (!(await setIfHeld(one.lock, await ownerKey(storeRef(one.before)), recordJson(one.next)))) {
+          // Everything written so far is taken back, so the account is not
+          // left half at each address.
+          for (const done of written) {
+            await setIfHeld(done.lock, await ownerKey(storeRef(done.before)), recordJson(done.before)).catch(() => false);
+          }
+          await redisPipeline([["DEL", await ownerKey(to)]]).catch(() => {});
+          throw new StoreBusyError();
+        }
+        written.push(one);
+      }
+      const handles = [store.handle, ...store.previousHandles];
+      await redisPipeline([
+        ...handles.map((handle) => ["SET", handleKey(handle), to]),
+        ...(store.sid ? [["SET", storeIdKey(store.sid), to]] : []),
+        ...(moved.length ? [["SADD", await accountKey(to), ...moved.map((one) => one.before.sid)]] : []),
+        ["DEL", await accountKey(from)],
+        ["DEL", await ownerKey(from)],
+      ]);
+      return { ok: true, store: next };
+    });
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 export type ReleaseResult =
@@ -997,54 +1481,29 @@ export async function releaseHandle(
 ): Promise<ReleaseResult> {
   const handle = normaliseHandle(rawHandle);
 
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  if (store.handle === handle) return { ok: false, reason: "current" };
-  if (!store.previousHandles.includes(handle)) {
-    return { ok: false, reason: "unknown" };
-  }
+  const result = await withStore<ReleaseResult>(email, async (store, save) => {
+    if (store.handle === handle) return { ok: false, reason: "current" };
+    if (!store.previousHandles.includes(handle)) {
+      return { ok: false, reason: "unknown" };
+    }
 
-  await redisPipeline([
-    [
-      "SET",
-      handleKey(handle),
-      `${RELEASED_PREFIX}${new Date().toISOString()}`,
-      "EX",
-      RELEASE_QUARANTINE_DAYS * 24 * 60 * 60,
-    ],
-  ]);
+    await redisPipeline([
+      [
+        "SET",
+        handleKey(handle),
+        `${RELEASED_PREFIX}${new Date().toISOString()}`,
+        "EX",
+        RELEASE_QUARANTINE_DAYS * 24 * 60 * 60,
+      ],
+    ]);
 
-  const next: Store = {
-    ...store,
-    previousHandles: store.previousHandles.filter((old) => old !== handle),
-  };
-  await redisPipeline([["SET", await ownerKey(email), JSON.stringify(next)]]);
-
-  return { ok: true, store: next };
-}
-
-/**
- * Writes a store back under its owner.
- *
- * Everything below reads the store, changes one thing and writes the whole
- * record back. Two edits fired at the very same instant from two open tabs
- * would leave only the second one, which is the honest cost of keeping the
- * store in a single small record. One person editing their own store does not
- * meet that case; if stores ever gain collaborators, this is the line that has
- * to change first.
- */
-async function saveStore(store: Store, before?: Store): Promise<void> {
-  const json = JSON.stringify(store);
-  // Only a write that makes the record bigger is weighed, so a store at the
-  // ceiling can always remove, shorten and reorder.
-  if (before && byteLength(json) > MAX_STORE_BYTES && byteLength(json) > byteLength(JSON.stringify(before))) {
-    throw new StoreFullError();
-  }
-  await redisPipeline([["SET", await ownerKey(store.email), json]]);
-}
-
-function byteLength(text: string): number {
-  return new TextEncoder().encode(text).length;
+    const next = await save({
+      ...store,
+      previousHandles: store.previousHandles.filter((old) => old !== handle),
+    });
+    return { ok: true, store: next };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 export type DetailsResult =
@@ -1064,21 +1523,43 @@ export async function updateDetails(
 ): Promise<DetailsResult> {
   const name = rawName.trim().slice(0, MAX_NAME_LENGTH);
   if (!name) return { ok: false, reason: "name" };
+  const next = await patchStore(email, () => ({ name, bio: rawBio.trim().slice(0, MAX_BIO_LENGTH) }));
+  return next ? { ok: true, store: next } : { ok: false, reason: "none" };
+}
 
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
+// ---- Changing one product ---------------------------------------------------
 
-  const next: Store = {
-    ...store,
-    name,
-    bio: rawBio.trim().slice(0, MAX_BIO_LENGTH),
-  };
-  await saveStore(next);
-  return { ok: true, store: next };
+type Refusal<R extends string> = { ok: false; reason: R };
+
+function refused<R extends string>(value: unknown): value is Refusal<R> {
+  return typeof value === "object" && value !== null && (value as { ok?: unknown }).ok === false;
+}
+
+/**
+ * Reads one product in full under the store's lock, lets `change` rewrite it
+ * or refuse, and saves it. `extra` changes the store record in the same
+ * write. What comes back is the store and the product as saved, and the
+ * product as it was.
+ */
+async function onProduct<R extends string>(
+  email: string,
+  id: string,
+  change: (product: Product, store: Store) => Product | Refusal<R> | Promise<Product | Refusal<R>>,
+  extra: (store: Store, product: Product) => Partial<Store> = () => ({}),
+): Promise<{ ok: true; store: Store; product: Product; before: Product } | Refusal<R | "none" | "unknown">> {
+  const result = await withStore(email, async (store, save) => {
+    const product = await readProduct(store, id);
+    if (!product) return { ok: false as const, reason: "unknown" as const };
+    const changed = await change(product, store);
+    if (refused<R>(changed)) return changed;
+    const saved = await save({ ...store, ...extra(store, changed) }, { put: [changed] });
+    return { ok: true as const, store: saved, product: changed, before: product };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 export type CallResult =
-  | { ok: true; store: Store }
+  | { ok: true; store: Store; product: Product }
   | { ok: false; reason: "none" | "unknown" | "free" | "recurring" | "options" | "delivery" | "course" | "pwyw" };
 
 /**
@@ -1094,28 +1575,22 @@ export async function setProductCall(
   id: string,
   setup: CallSetup | null,
 ): Promise<CallResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const at = store.products.findIndex((product) => product.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
-  const product = store.products[at];
-  if (setup) {
-    if (isFree(product)) return { ok: false, reason: "free" };
-    if (product.recurring) return { ok: false, reason: "recurring" };
-    if (product.options.length > 0) return { ok: false, reason: "options" };
-    if (product.file || product.link) return { ok: false, reason: "delivery" };
-    if (product.course) return { ok: false, reason: "course" };
-    if (product.pwyw) return { ok: false, reason: "pwyw" };
-  }
-  const products = [...store.products];
-  products[at] = { ...product, call: setup };
-  const next: Store = {
-    ...store,
-    products,
-    callsId: store.callsId ?? (setup ? newListId() : null),
-  };
-  await saveStore(next);
-  return { ok: true, store: next };
+  return onProduct<"free" | "recurring" | "options" | "delivery" | "course" | "pwyw">(
+    email,
+    id,
+    (product) => {
+      if (setup) {
+        if (isFree(product)) return { ok: false, reason: "free" };
+        if (product.recurring) return { ok: false, reason: "recurring" };
+        if (product.options.length > 0) return { ok: false, reason: "options" };
+        if (product.file || product.link) return { ok: false, reason: "delivery" };
+        if (product.course) return { ok: false, reason: "course" };
+        if (product.pwyw) return { ok: false, reason: "pwyw" };
+      }
+      return { ...product, call: setup };
+    },
+    (store) => ({ callsId: store.callsId ?? (setup ? newListId() : null) }),
+  );
 }
 
 export type CourseResult =
@@ -1136,36 +1611,28 @@ export async function setProductCourse(
   id: string,
   course: CourseRef | null,
 ): Promise<CourseResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const at = store.products.findIndex((product) => product.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
-  const product = store.products[at];
-  if (course) {
-    if (isFree(product)) return { ok: false, reason: "free" };
-    if (product.options.length > 0) return { ok: false, reason: "options" };
-    if (product.file || product.link) return { ok: false, reason: "delivery" };
-    if (product.call) return { ok: false, reason: "call" };
-  } else if (product.course && product.course.lessons > 0) {
-    return { ok: false, reason: "not_empty" };
-  }
-  const products = [...store.products];
-  products[at] = { ...product, course };
-  const next: Store = { ...store, products };
-  await saveStore(next);
-  return { ok: true, store: next, product: products[at] };
+  return onProduct<"free" | "options" | "delivery" | "call" | "not_empty">(email, id, (product) => {
+    if (course) {
+      if (isFree(product)) return { ok: false, reason: "free" };
+      if (product.options.length > 0) return { ok: false, reason: "options" };
+      if (product.file || product.link) return { ok: false, reason: "delivery" };
+      if (product.call) return { ok: false, reason: "call" };
+    } else if (product.course && product.course.lessons > 0) {
+      return { ok: false, reason: "not_empty" };
+    }
+    return { ...product, course };
+  });
 }
 
-/** Keeps the lesson count a store record carries in step with its course. */
+/** Keeps the lesson count a product carries in step with its course. */
 export async function setCourseLessons(email: string, id: string, lessons: number): Promise<void> {
   const store = await storeForEmail(email);
   if (!store) return;
-  const at = store.products.findIndex((product) => product.id === id);
-  if (at < 0 || !store.products[at].course) return;
-  if (store.products[at].course?.lessons === lessons) return;
-  const products = [...store.products];
-  products[at] = { ...products[at], course: { id: products[at].course!.id, lessons } };
-  await saveStore({ ...store, products });
+  const current = await readListing(store, id);
+  if (!current?.course || current.course.lessons === lessons) return;
+  await onProduct<never>(email, id, (product) =>
+    product.course ? { ...product, course: { id: product.course.id, lessons } } : product,
+  );
 }
 
 /**
@@ -1173,43 +1640,30 @@ export async function setCourseLessons(email: string, id: string, lessons: numbe
  * once and kept, so switching off and on again finds every post where it was.
  */
 export async function setCommunity(email: string, on: boolean): Promise<Store | null> {
-  const store = await storeForEmail(email);
-  if (!store) return null;
-  const id = store.community?.id ?? crypto.randomUUID().replace(/-/g, "");
-  const next: Store = { ...store, community: { id, on } };
-  await saveStore(next);
-  return next;
+  return patchStore(email, (store) => ({
+    community: { id: store.community?.id ?? crypto.randomUUID().replace(/-/g, ""), on },
+  }));
 }
 
 /** Saves how the creator's emails are signed. */
 export async function setMailSettings(email: string, mail: MailSettings): Promise<Store | null> {
-  const store = await storeForEmail(email);
-  if (!store) return null;
-  const next: Store = { ...store, mail, listId: store.listId ?? newListId() };
-  await saveStore(next);
-  return next;
+  return patchStore(email, (store) => ({ mail, listId: store.listId ?? newListId() }));
+}
+
+/** Records the store's own domain, or takes it off (null). */
+export async function setDomain(email: string, domain: StoreDomain | null): Promise<Store | null> {
+  return patchStore(email, () => ({ domain }));
 }
 
 /** Gives a store its list, the first time something needs one. */
-/** Records the store's own domain, or takes it off (null). */
-export async function setDomain(email: string, domain: StoreDomain | null): Promise<Store | null> {
-  const store = await storeForEmail(email);
-  if (!store) return null;
-  const next: Store = { ...store, domain };
-  await saveStore(next);
-  return next;
-}
-
 export async function ensureListId(email: string): Promise<Store | null> {
   const store = await storeForEmail(email);
   if (!store || store.listId) return store;
-  const next: Store = { ...store, listId: newListId() };
-  await saveStore(next);
-  return next;
+  return patchStore(email, (current) => (current.listId ? null : { listId: newListId() }));
 }
 
 export type ExtrasResult =
-  | { ok: true; store: Store }
+  | { ok: true; store: Store; product: Product }
   | { ok: false; reason: "none" | "unknown" | "kind" | "target" | "price" };
 
 /**
@@ -1224,40 +1678,39 @@ export async function setProductExtras(
   id: string,
   change: { stock?: number | null; bump?: Bump | null; plan?: Plan | null },
 ): Promise<ExtrasResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const at = store.products.findIndex((product) => product.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
-  const product = store.products[at];
-  const next: Product = { ...product };
-
-  if (change.stock !== undefined) {
-    if (change.stock !== null && !isOneOff(product)) return { ok: false, reason: "kind" };
-    next.stock = change.stock;
-  }
-  if (change.bump !== undefined) {
-    if (change.bump !== null) {
-      // The amount a buyer chooses has to be the checkout's only line.
-      if (!isOneOff(product) || product.pwyw) return { ok: false, reason: "kind" };
-      const target = store.products.find((p) => p.id === change.bump!.productId);
-      if (!target || target.id === product.id || !canBeBumped(target)) return { ok: false, reason: "target" };
-      if (change.bump.priceCents > target.priceCents) return { ok: false, reason: "price" };
-    }
-    next.bump = change.bump;
-  }
-  if (change.plan !== undefined) {
-    if (change.plan !== null) {
-      if (!isOneOff(product) || product.options.length > 0 || product.pwyw) return { ok: false, reason: "kind" };
-      if (change.plan.payments * change.plan.amountCents < product.priceCents) return { ok: false, reason: "price" };
-    }
-    next.plan = change.plan;
-  }
-
-  const products = [...store.products];
-  products[at] = next;
-  const saved: Store = { ...store, products, statsId: store.statsId ?? newListId() };
-  await saveStore(saved, store);
-  return { ok: true, store: saved };
+  return onProduct<"kind" | "target" | "price">(
+    email,
+    id,
+    async (product, store) => {
+      const next: Product = { ...product };
+      if (change.stock !== undefined) {
+        if (change.stock !== null && !isOneOff(product)) return { ok: false, reason: "kind" };
+        next.stock = change.stock;
+      }
+      if (change.bump !== undefined) {
+        if (change.bump !== null) {
+          // The amount a buyer chooses has to be the checkout's only line.
+          if (!isOneOff(product) || product.pwyw) return { ok: false, reason: "kind" };
+          const target = await readListing(store, change.bump.productId);
+          if (!target || target.id === product.id || !canBeBumped(target)) return { ok: false, reason: "target" };
+          if (change.bump.priceCents > target.priceCents) return { ok: false, reason: "price" };
+          // Stripe's smallest charge in the store's currency (lib/money.ts).
+          if (change.bump.priceCents < currencyRule(store.currency).minCharge) return { ok: false, reason: "price" };
+        }
+        next.bump = change.bump;
+      }
+      if (change.plan !== undefined) {
+        if (change.plan !== null) {
+          if (!isOneOff(product) || product.options.length > 0 || product.pwyw) return { ok: false, reason: "kind" };
+          if (change.plan.payments * change.plan.amountCents < product.priceCents) return { ok: false, reason: "price" };
+          if (change.plan.amountCents < currencyRule(store.currency).minCharge) return { ok: false, reason: "price" };
+        }
+        next.plan = change.plan;
+      }
+      return next;
+    },
+    (store) => ({ statsId: store.statsId ?? newListId() }),
+  );
 }
 
 /** Switches sales tax on or off for the store's checkouts. */
@@ -1265,11 +1718,8 @@ export async function setTax(
   email: string,
   tax: TaxSetting,
 ): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const next: Store = { ...store, tax: parseTax(tax) };
-  await saveStore(next);
-  return { ok: true, store: next };
+  const next = await patchStore(email, () => ({ tax: parseTax(tax) }));
+  return next ? { ok: true, store: next } : { ok: false, reason: "none" };
 }
 
 /**
@@ -1280,15 +1730,12 @@ export async function setRecovery(
   email: string,
   recovery: RecoverySetting,
 ): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const next: Store = { ...store, recovery: parseRecovery(recovery), statsId: store.statsId ?? newListId() };
-  await saveStore(next);
-  return { ok: true, store: next };
+  const next = await patchStore(email, (store) => ({ recovery: parseRecovery(recovery), statsId: store.statsId ?? newListId() }));
+  return next ? { ok: true, store: next } : { ok: false, reason: "none" };
 }
 
 export type FunnelResult =
-  | { ok: true; store: Store }
+  | { ok: true; store: Store; product: Product }
   | { ok: false; reason: "none" | "unknown" | FunnelProblem };
 
 /**
@@ -1297,20 +1744,113 @@ export type FunnelResult =
  * be shown to a buyer is refused here rather than skipped on the thanks page.
  */
 export async function setProductFunnel(email: string, id: string, funnel: Funnel | null): Promise<FunnelResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const at = store.products.findIndex((product) => product.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
-  const product = store.products[at];
-  if (funnel) {
-    const problem = funnelProblem(funnel, store.products, product);
-    if (problem) return { ok: false, reason: problem };
+  return onProduct<FunnelProblem>(email, id, async (product, store) => {
+    if (funnel) {
+      const offered = await readListings(store, funnel.steps.map((step) => step.productId));
+      const problem = funnelProblem(funnel, offered, product);
+      if (problem) return { ok: false, reason: problem };
+      // Each offer is a charge of its own: not under Stripe's smallest one in
+      // the store's currency (lib/money.ts).
+      const least = currencyRule(store.currency).minCharge;
+      if (funnel.steps.some((step) => step.priceCents < least)) return { ok: false, reason: "price" };
+    }
+    return { ...product, funnel };
+  });
+}
+
+/**
+ * How many products have a price. Everything else that carries an amount —
+ * a price option, an offer at checkout or after paying, a plan's payment, a
+ * suggested price — is only live on a product with a price, so a free
+ * product counts for nothing. Answered from the store record's index
+ * (lib/catalog.ts): a product with price options is always a paid one.
+ */
+export function pricedProducts(store: Store): number {
+  return store.catalog.items.filter((item) => (item.kind & KIND.paid) !== 0 || item.options.length > 0).length;
+}
+
+/** One amount that would fall below the smallest charge of the currency a store is moving to. */
+export type CurrencyShortfall = {
+  productId: string;
+  /** The product it is on. */
+  title: string;
+  /**
+   * What it is: the product's price, the floor of a price the buyer chooses,
+   * a price option, the offer at checkout, an offer after paying, or one
+   * payment of a payment plan.
+   */
+  what: "price" | "minimum" | "option" | "bump" | "offer" | "plan";
+  /** The option's label, or the title of the product offered; "" otherwise. */
+  label: string;
+  /** In the smallest unit, the same number in either currency. */
+  amount: number;
+};
+
+/**
+ * Every amount of these products that would be a charge Stripe refuses in
+ * `currency` (lib/money.ts, minCharge): a price, a pay-what-you-want floor
+ * (the product's price), a price option, the offer at checkout, each offer
+ * after paying and each payment of a plan. Free products and free options
+ * are not charges and are left out.
+ */
+export function chargesBelow(products: Product[], currency: Currency): CurrencyShortfall[] {
+  const least = currencyRule(currency).minCharge;
+  const titles = new Map(products.map((p) => [p.id, p.title]));
+  const out: CurrencyShortfall[] = [];
+  for (const p of products) {
+    const on = (what: CurrencyShortfall["what"], label: string, amount: number) =>
+      out.push({ productId: p.id, title: p.title, what, label, amount });
+    if (p.priceCents > 0 && p.priceCents < least) on(p.pwyw ? "minimum" : "price", "", p.priceCents);
+    for (const option of p.options) if (option.priceCents > 0 && option.priceCents < least) on("option", option.label, option.priceCents);
+    if (p.bump && p.bump.priceCents < least) on("bump", titles.get(p.bump.productId) ?? "", p.bump.priceCents);
+    for (const step of p.funnel?.steps ?? []) if (step.priceCents < least) on("offer", titles.get(step.productId) ?? "", step.priceCents);
+    if (p.plan && p.plan.amountCents < least) on("plan", "", p.plan.amountCents);
   }
-  const products = [...store.products];
-  products[at] = { ...product, funnel };
-  const saved: Store = { ...store, products };
-  await saveStore(saved, store);
-  return { ok: true, store: saved };
+  return out;
+}
+
+export type CurrencyResult =
+  | { ok: true; store: Store }
+  | { ok: false; reason: "none" | "decimals" }
+  | { ok: false; reason: "minimum"; items: CurrencyShortfall[] };
+
+/**
+ * Changes what the store charges in.
+ *
+ * Every saved amount keeps its number: a product at 49 is 49 in the new
+ * currency, which the studio says in plain words before the creator agrees.
+ * That only holds between two currencies written with the same decimals. A
+ * price of 49.99 has no meaning in yen, and 4999 yen read back as dollars
+ * would be a price a hundred times what was meant, so a store with prices
+ * cannot move between the yen and a two-decimal currency: it is refused
+ * rather than rounded behind the creator's back. A free product may still
+ * hold an offer, a plan or a suggested price from when it had one; on such a
+ * move they are dropped, so none comes back to life in the wrong scale — each
+ * such product read and written in its own record, under the store's lock.
+ * Between two currencies with the same decimals, a move is refused while any
+ * amount would fall below the new currency's smallest charge (chargesBelow):
+ * 5.00 is a fine price in dollars and a charge Stripe refuses in kronor, and
+ * the creator fixes those first rather than meeting it at a buyer's checkout.
+ * The route asks the rest — the creator's agreement, and that no membership
+ * or plan is running on Stripe in the old currency (app/api/store/currency).
+ */
+export async function setCurrency(email: string, currency: Currency): Promise<CurrencyResult> {
+  const result = await withStore<CurrencyResult>(email, async (store, save) => {
+    if (store.currency === currency) return { ok: true, store };
+    const rescaled = currencyRule(store.currency).decimals !== currencyRule(currency).decimals;
+    if (rescaled && pricedProducts(store) > 0) return { ok: false, reason: "decimals" };
+    if (!rescaled && pricedProducts(store) > 0) {
+      const items = chargesBelow(await readProducts(store), currency);
+      if (items.length) return { ok: false, reason: "minimum", items };
+    }
+    const put = rescaled
+      ? (await readProducts(store))
+          .filter((p) => p.bump || p.plan || p.funnel || p.pwyw)
+          .map((p) => ({ ...p, bump: null, plan: null, funnel: null, pwyw: null }))
+      : [];
+    return { ok: true, store: await save({ ...store, currency }, { put }) };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 /**
@@ -1321,14 +1861,13 @@ export async function setAffiliateSetting(
   email: string,
   setting: AffiliateSetting,
 ): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const known = new Set(store.products.map((p) => p.id));
-  const parsed = parseAffiliateSetting(setting);
-  const rates = Object.fromEntries(Object.entries(parsed.rates).filter(([id]) => known.has(id)));
-  const next: Store = { ...store, affiliates: { ...parsed, rates }, statsId: store.statsId ?? newListId() };
-  await saveStore(next, store);
-  return { ok: true, store: next };
+  const next = await patchStore(email, (store) => {
+    const known = new Set(productIds(store));
+    const parsed = parseAffiliateSetting(setting);
+    const rates = Object.fromEntries(Object.entries(parsed.rates).filter(([id]) => known.has(id)));
+    return { affiliates: { ...parsed, rates }, statsId: store.statsId ?? newListId() };
+  });
+  return next ? { ok: true, store: next } : { ok: false, reason: "none" };
 }
 
 /** Saves the creator's ad pixels. */
@@ -1336,11 +1875,21 @@ export async function setPixels(
   email: string,
   pixels: Pixels,
 ): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const next: Store = { ...store, pixels: parsePixels(pixels) };
-  await saveStore(next);
-  return { ok: true, store: next };
+  const next = await patchStore(email, () => ({ pixels: parsePixels(pixels) }));
+  return next ? { ok: true, store: next } : { ok: false, reason: "none" };
+}
+
+/** Keeps the store's copy of which buyers go to its email platform (lib/email-sync.ts). */
+export async function setEmailSyncRef(email: string, ref: EmailSyncRef | null): Promise<Store | null> {
+  return patchStore(email, (store) => {
+    const emailSync = parseEmailSyncRef(ref);
+    return JSON.stringify(emailSync) === JSON.stringify(store.emailSync) ? null : { emailSync };
+  });
+}
+
+/** Keeps the store's note of whether a device wants each sale (lib/phone-alerts.ts). */
+export async function setPhoneSales(email: string, on: boolean): Promise<Store | null> {
+  return patchStore(email, (store) => (store.phoneSales === on ? null : { phoneSales: on }));
 }
 
 /**
@@ -1351,9 +1900,7 @@ export async function ensureStatsId(email: string): Promise<Store | null> {
   const store = await storeForEmail(email);
   if (!store) return null;
   if (store.statsId) return store;
-  const next: Store = { ...store, statsId: newListId() };
-  await saveStore(next);
-  return next;
+  return patchStore(email, (current) => (current.statsId ? null : { statsId: newListId() }));
 }
 
 /** Changes the theme and the colour of the public page. */
@@ -1361,11 +1908,8 @@ export async function updateLook(
   email: string,
   look: StoreLook,
 ): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const next: Store = { ...store, look: parseLook(look) };
-  await saveStore(next);
-  return { ok: true, store: next };
+  const next = await patchStore(email, () => ({ look: parseLook(look) }));
+  return next ? { ok: true, store: next } : { ok: false, reason: "none" };
 }
 
 /**
@@ -1376,15 +1920,15 @@ export async function setPhotoId(
   email: string,
   photoId: string | null,
 ): Promise<{ ok: true; store: Store; was: string | null } | { ok: false; reason: "none" }> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const next: Store = { ...store, photoId };
-  await saveStore(next);
-  return { ok: true, store: next, was: store.photoId };
+  const result = await withStore(email, async (store, save) => {
+    const next = await save({ ...store, photoId });
+    return { ok: true as const, store: next, was: store.photoId };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 export type ProductResult =
-  | { ok: true; store: Store }
+  | { ok: true; store: Store; product: Product }
   | {
       ok: false;
       reason: "none" | "title" | "price" | "free" | "too_many" | "unknown" | "call" | "course" | "pwyw";
@@ -1397,14 +1941,9 @@ export type ProductResult =
 function freshId(store: Store): string {
   // Products and links are separate lists, but an id is read from a form and
   // an id shared between the two is an accident waiting to be found by
-  // somebody else. Both lists are counted.
-  const taken = new Set([
-    ...store.products.map((product) => product.id),
-    ...store.products.flatMap((product) =>
-      product.options.map((option) => option.id),
-    ),
-    ...store.links.map((link) => link.id),
-  ]);
+  // somebody else. Products, their options and links are all counted.
+  const taken = usedIds(store);
+  for (const link of store.links) taken.add(link.id);
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const id = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
     if (!taken.has(id)) return id;
@@ -1412,23 +1951,35 @@ function freshId(store: Store): string {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
 
-/** Checks a title and a typed price, and returns the price in cents. */
+/**
+ * Checks a title and a typed price, and returns the price in the smallest
+ * unit of the store's currency.
+ */
 function readFields(
   rawTitle: string,
   rawPrice: string,
+  currency: Currency,
 ): { title: string; priceCents: number } | "title" | "price" {
   const title = rawTitle.trim().slice(0, MAX_TITLE_LENGTH);
   if (!title) return "title";
-  const priceCents = priceToCents(rawPrice);
+  const priceCents = readMoney(rawPrice, currency);
   if (priceCents === null) return "price";
   // Zero is allowed and means free. Anything between zero and the minimum is
   // not: Stripe will not charge it, and a buyer would meet a card form that
   // cannot work.
   if (priceCents === 0) return { title, priceCents };
-  if (priceCents < MIN_PRICE_CENTS || priceCents > MAX_PRICE_CENTS) {
-    return "price";
-  }
+  if (!priceInRange(priceCents, currency)) return "price";
   return { title, priceCents };
+}
+
+/**
+ * The suggested price of a product whose buyer chooses what to pay, as
+ * typed, read in the store's currency. Null when nothing was sent.
+ */
+function readSuggested(raw: string | null, currency: Currency): number | null | "bad" {
+  if (raw === null) return null;
+  const amount = readMoney(raw, currency);
+  return amount === null ? "bad" : amount;
 }
 
 /** Adds something to the store, at the end of the list. */
@@ -1438,61 +1989,68 @@ export async function addProduct(
   rawSummary: string,
   rawPrice: string,
   recurring: Recurring | null = null,
-  /** The suggested price, when the buyer chooses what to pay. */
-  pwywCents: number | null = null,
+  /** The suggested price as typed, when the buyer chooses what to pay. */
+  rawSuggested: string | null = null,
 ): Promise<ProductResult> {
-  const fields = readFields(rawTitle, rawPrice);
-  if (typeof fields === "string") return { ok: false, reason: fields };
-  // Something given away is given once. A membership that charges nothing
-  // would be a subscription to nothing, so the two cannot be combined.
-  if (fields.priceCents === 0 && recurring) return { ok: false, reason: "free" };
+  const result = await withStore<ProductResult>(email, async (store, save) => {
+    // Read in the store's own currency, as the store is under the lock:
+    // "27.50" is cents for dollars, and not a price at all for yen.
+    const fields = readFields(rawTitle, rawPrice, store.currency);
+    if (typeof fields === "string") return { ok: false, reason: fields };
+    // Something given away is given once. A membership that charges nothing
+    // would be a subscription to nothing, so the two cannot be combined.
+    if (fields.priceCents === 0 && recurring) return { ok: false, reason: "free" };
+    const pwywCents = readSuggested(rawSuggested, store.currency);
+    if (pwywCents === "bad") return { ok: false, reason: "pwyw", pwyw: "suggested" };
 
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  if (store.products.length >= MAX_PRODUCTS) {
-    return { ok: false, reason: "too_many", limit: MAX_PRODUCTS };
-  }
+    if (store.catalog.items.length >= MAX_PRODUCTS) {
+      return { ok: false, reason: "too_many", limit: MAX_PRODUCTS };
+    }
 
-  const product: Product = {
-    id: freshId(store),
-    title: fields.title,
-    summary: rawSummary.trim().slice(0, MAX_SUMMARY_LENGTH),
-    priceCents: fields.priceCents,
-    createdAt: new Date().toISOString(),
-    file: null,
-    link: null,
-    recurring,
-    options: [],
-    call: null,
-    stock: null,
-    bump: null,
-    funnel: null,
-    plan: null,
-    course: null,
-    image: null,
-    display: "button",
-    fields: [],
-    pwyw: null,
-    about: false,
-    keys: null,
-    stamp: false,
-  };
-  if (pwywCents !== null) {
-    const problem = pwywProblem(product, pwywCents);
-    if (problem) return { ok: false, reason: "pwyw", pwyw: problem };
-    product.pwyw = { suggestedCents: pwywCents };
-  }
+    const product: Product = {
+      id: freshId(store),
+      title: fields.title,
+      summary: rawSummary.trim().slice(0, MAX_SUMMARY_LENGTH),
+      priceCents: fields.priceCents,
+      createdAt: new Date().toISOString(),
+      file: null,
+      link: null,
+      recurring,
+      options: [],
+      call: null,
+      stock: null,
+      bump: null,
+      funnel: null,
+      plan: null,
+      course: null,
+      image: null,
+      display: "button",
+      fields: [],
+      pwyw: null,
+      about: false,
+      keys: null,
+      stamp: false,
+      page: false,
+    };
+    if (pwywCents !== null) {
+      const problem = pwywProblem(product, pwywCents, store.currency);
+      if (problem) return { ok: false, reason: "pwyw", pwyw: problem };
+      product.pwyw = { suggestedCents: pwywCents };
+    }
 
-  const next: Store = {
-    ...store,
-    products: [...store.products, product],
-    // Stores opened before free products existed get their list the first
-    // time they give something away, in the creator's own write, so no
-    // visitor's request ever has to write the store record.
-    listId: store.listId ?? (fields.priceCents === 0 ? newListId() : null),
-  };
-  await saveStore(next, store);
-  return { ok: true, store: next };
+    const next = await save(
+      {
+        ...store,
+        // Stores opened before free products existed get their list the first
+        // time they give something away, in the creator's own write, so no
+        // visitor's request ever has to write the store record.
+        listId: store.listId ?? (fields.priceCents === 0 ? newListId() : null),
+      },
+      { put: [product] },
+    );
+    return { ok: true, store: next, product };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 /** Changes something already on the store, keeping its place in the list. */
@@ -1503,72 +2061,78 @@ export async function editProduct(
   rawSummary: string,
   rawPrice: string,
   recurring: Recurring | null = null,
-  pwywCents: number | null = null,
+  rawSuggested: string | null = null,
 ): Promise<ProductResult> {
-  const fields = readFields(rawTitle, rawPrice);
-  if (typeof fields === "string") return { ok: false, reason: fields };
-  if (fields.priceCents === 0 && recurring) return { ok: false, reason: "free" };
-
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const at = store.products.findIndex((product) => product.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
-  // A product with several prices cannot become free: the buyer would be
-  // shown prices for a thing the page says costs nothing. Take the options
-  // off first, and the choice is the creator's rather than ours.
-  if (fields.priceCents === 0 && store.products[at].options.length > 0) {
-    return { ok: false, reason: "free" };
+  let pwywWhy: PwywProblem | undefined;
+  let refusal: "title" | "price" | null = null;
+  // Written only when the product is changed, so the store's own list id is
+  // what a free product gets (below) whatever the price turned out to be.
+  let freeNow = false;
+  const result = await onProduct<"free" | "call" | "course" | "pwyw" | "title" | "price">(
+    email,
+    id,
+    (product, store) => {
+      // Read in the store's own currency, as the store is under the lock.
+      const fields = readFields(rawTitle, rawPrice, store.currency);
+      if (typeof fields === "string") {
+        refusal = fields;
+        return { ok: false, reason: fields };
+      }
+      if (fields.priceCents === 0 && recurring) return { ok: false, reason: "free" };
+      const pwywCents = readSuggested(rawSuggested, store.currency);
+      if (pwywCents === "bad") {
+        pwywWhy = "suggested";
+        return { ok: false, reason: "pwyw" };
+      }
+      freeNow = fields.priceCents === 0;
+      // A product with several prices cannot become free: the buyer would be
+      // shown prices for a thing the page says costs nothing. Take the options
+      // off first, and the choice is the creator's rather than ours.
+      if (fields.priceCents === 0 && product.options.length > 0) return { ok: false, reason: "free" };
+      // A call is one paid booking. It cannot be given away or charged monthly.
+      if (product.call && (fields.priceCents === 0 || recurring)) return { ok: false, reason: "call" };
+      // A course is sold. Giving lessons away for an email address is not built.
+      if (product.course && fields.priceCents === 0) return { ok: false, reason: "course" };
+      const next: Product = {
+        ...product,
+        title: fields.title,
+        summary: rawSummary.trim().slice(0, MAX_SUMMARY_LENGTH),
+        priceCents: fields.priceCents,
+        recurring,
+        pwyw: null,
+      };
+      if (pwywCents !== null) {
+        const problem = pwywProblem(next, pwywCents, store.currency);
+        if (problem) {
+          pwywWhy = problem;
+          return { ok: false, reason: "pwyw" };
+        }
+        next.pwyw = { suggestedCents: pwywCents };
+      }
+      return next;
+    },
+    (store) => ({ listId: store.listId ?? (freeNow ? newListId() : null) }),
+  );
+  if (!result.ok) {
+    if (result.reason === "pwyw") return { ok: false, reason: "pwyw", pwyw: pwywWhy };
+    if (refusal) return { ok: false, reason: refusal };
+    return result;
   }
-  // A call is one paid booking. It cannot be given away or charged monthly.
-  if (store.products[at].call && (fields.priceCents === 0 || recurring)) {
-    return { ok: false, reason: "call" };
-  }
-  // A course is sold. Giving lessons away for an email address is not built.
-  if (store.products[at].course && fields.priceCents === 0) {
-    return { ok: false, reason: "course" };
-  }
-
-  const products = [...store.products];
-  products[at] = {
-    ...products[at],
-    title: fields.title,
-    summary: rawSummary.trim().slice(0, MAX_SUMMARY_LENGTH),
-    priceCents: fields.priceCents,
-    recurring,
-    pwyw: null,
-  };
-  if (pwywCents !== null) {
-    const problem = pwywProblem(products[at], pwywCents);
-    if (problem) return { ok: false, reason: "pwyw", pwyw: problem };
-    products[at].pwyw = { suggestedCents: pwywCents };
-  }
-
-  const next: Store = {
-    ...store,
-    products,
-    listId: store.listId ?? (fields.priceCents === 0 ? newListId() : null),
-  };
-  await saveStore(next, store);
-  return { ok: true, store: next };
+  return { ok: true, store: result.store, product: result.product };
 }
 
-/** Takes something off the store. */
+/** Takes something off the store. Returns the product as it was, for its files. */
 export async function removeProduct(
   email: string,
   id: string,
-): Promise<ProductResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  if (!store.products.some((product) => product.id === id)) {
-    return { ok: false, reason: "unknown" };
-  }
-
-  const next: Store = {
-    ...store,
-    products: store.products.filter((product) => product.id !== id),
-  };
-  await saveStore(next);
-  return { ok: true, store: next };
+): Promise<{ ok: true; store: Store; product: Product } | { ok: false; reason: "none" | "unknown" }> {
+  const result = await withStore(email, async (store, save) => {
+    const product = await readProduct(store, id);
+    if (!product) return { ok: false as const, reason: "unknown" as const };
+    const next = await save(store, { drop: [id] });
+    return { ok: true as const, store: next, product };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 /**
@@ -1581,25 +2145,25 @@ export async function moveProduct(
   email: string,
   id: string,
   direction: "up" | "down" | "top" | "bottom",
-): Promise<ProductResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const at = store.products.findIndex((product) => product.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
+): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" | "unknown" }> {
+  const result = await withStore(email, async (store, save) => {
+    const items = store.catalog.items;
+    const at = items.findIndex((item) => item.id === id);
+    if (at < 0) return { ok: false as const, reason: "unknown" as const };
 
-  // With a long list, one place at a time is a lot of presses to reach the
-  // top, so the two ends are one press each.
-  const to =
-    direction === "top" ? 0 : direction === "bottom" ? store.products.length - 1 : direction === "up" ? at - 1 : at + 1;
-  if (to < 0 || to >= store.products.length || to === at) return { ok: true, store };
+    // With a long list, one place at a time is a lot of presses to reach the
+    // top, so the two ends are one press each.
+    const to =
+      direction === "top" ? 0 : direction === "bottom" ? items.length - 1 : direction === "up" ? at - 1 : at + 1;
+    if (to < 0 || to >= items.length || to === at) return { ok: true as const, store };
 
-  const products = [...store.products];
-  const [moving] = products.splice(at, 1);
-  products.splice(to, 0, moving);
-
-  const next: Store = { ...store, products };
-  await saveStore(next);
-  return { ok: true, store: next };
+    const moved = [...items];
+    const [moving] = moved.splice(at, 1);
+    moved.splice(to, 0, moving);
+    const next = await save({ ...store, catalog: { ...store.catalog, items: moved } });
+    return { ok: true as const, store: next };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 export type FileResult =
@@ -1610,64 +2174,60 @@ export type FileResult =
 export type Delivery = { file: ProductFile | null; link: string | null };
 
 /**
- * The delivery an id names: a product's own, or one of its options'.
+ * Whether this store owns that id, asked before any upload is signed.
  *
  * Option ids are unique across the whole store, so one id is enough to find
- * either, and the screens above never have to say which kind they mean. That
- * is also what lets an option's file live under the same folder rule a
- * product's does, with no second path shape to get wrong.
+ * either a product or one of its options, and the store record's index
+ * answers without reading either.
  */
-export function deliveryAt(
-  store: Store,
-  id: string,
-): { product: Product; option: ProductOption | null } | null {
-  for (const product of store.products) {
-    if (product.id === id) return { product, option: null };
-    const option = product.options.find((entry) => entry.id === id);
-    if (option) return { product, option };
-  }
-  return null;
-}
-
-/** Whether this store owns that id, asked before any upload is signed. */
 export function ownsDeliveryId(store: Store, id: string): boolean {
-  return deliveryAt(store, id) !== null;
+  return productIdFor(store, id) !== null;
 }
 
 /**
- * Rewrites the delivery an id names, wherever it hangs.
- *
- * Returns the new product list and what was there before, so the caller can
- * release the storage the old file used once the record that replaced it is
- * safely written.
+ * Rewrites the delivery an id names on its product: the product's own, or
+ * one of its options'. Returns the product as changed and what was there
+ * before, so the caller can release the storage the old file used once the
+ * record that replaced it is safely written.
  */
 function rewriteDelivery(
-  products: Product[],
+  product: Product,
   id: string,
   change: (current: Delivery) => Delivery,
-): { products: Product[]; previous: Delivery } | null {
-  for (let i = 0; i < products.length; i += 1) {
-    const product = products[i];
-
-    if (product.id === id) {
-      const previous: Delivery = { file: product.file, link: product.link };
-      const copy = [...products];
-      copy[i] = { ...product, ...change(previous) };
-      return { products: copy, previous };
-    }
-
-    const at = product.options.findIndex((option) => option.id === id);
-    if (at >= 0) {
-      const option = product.options[at];
-      const previous: Delivery = { file: option.file, link: option.link };
-      const options = [...product.options];
-      options[at] = { ...option, ...change(previous) };
-      const copy = [...products];
-      copy[i] = { ...product, options };
-      return { products: copy, previous };
-    }
+): { product: Product; previous: Delivery } | null {
+  if (product.id === id) {
+    const previous: Delivery = { file: product.file, link: product.link };
+    return { product: { ...product, ...change(previous) }, previous };
   }
-  return null;
+  const at = product.options.findIndex((option) => option.id === id);
+  if (at < 0) return null;
+  const option = product.options[at];
+  const previous: Delivery = { file: option.file, link: option.link };
+  const options = [...product.options];
+  options[at] = { ...option, ...change(previous) };
+  return { product: { ...product, options }, previous };
+}
+
+/** Changes the delivery an id names, under the lock, with the rules both setters share. */
+async function changeDelivery(
+  email: string,
+  id: string,
+  giving: boolean,
+  change: (current: Delivery) => Delivery,
+): Promise<{ ok: true; store: Store; previous: Delivery } | { ok: false; reason: "none" | "unknown" | "call" | "course" }> {
+  const result = await withStore(email, async (store, save) => {
+    const owner = productIdFor(store, id);
+    const product = owner ? await readProduct(store, owner) : null;
+    if (!product) return { ok: false as const, reason: "unknown" as const };
+    // A call delivers a booking, and a course its lessons, not a file or a link.
+    if (giving && product.id === id && product.call) return { ok: false as const, reason: "call" as const };
+    if (giving && product.id === id && product.course) return { ok: false as const, reason: "course" as const };
+    const done = rewriteDelivery(product, id, change);
+    if (!done) return { ok: false as const, reason: "unknown" as const };
+    const next = await save(store, { put: [done.product] });
+    return { ok: true as const, store: next, previous: done.previous };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 /**
@@ -1684,26 +2244,13 @@ export async function setProductFile(
   id: string,
   file: ProductFile | null,
 ): Promise<FileResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  // A call delivers a booking, not a file.
-  if (file && store.products.some((product) => product.id === id && product.call)) {
-    return { ok: false, reason: "call" };
-  }
-  // A course delivers its lessons, each with files of its own.
-  if (file && store.products.some((product) => product.id === id && product.course)) {
-    return { ok: false, reason: "course" };
-  }
   // A file replaces a link. One thing is delivered, never two.
-  const done = rewriteDelivery(store.products, id, (current) => ({
+  const done = await changeDelivery(email, id, file !== null, (current) => ({
     file,
     link: file ? null : current.link,
   }));
-  if (!done) return { ok: false, reason: "unknown" };
-
-  const next: Store = { ...store, products: done.products };
-  await saveStore(next);
-  return { ok: true, store: next, removed: done.previous.file };
+  if (!done.ok) return done;
+  return { ok: true, store: done.store, removed: done.previous.file };
 }
 
 /**
@@ -1718,24 +2265,13 @@ export async function setProductLink(
   id: string,
   link: string | null,
 ): Promise<FileResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  if (link && store.products.some((product) => product.id === id && product.call)) {
-    return { ok: false, reason: "call" };
-  }
-  if (link && store.products.some((product) => product.id === id && product.course)) {
-    return { ok: false, reason: "course" };
-  }
-  const done = rewriteDelivery(store.products, id, (current) => ({
+  const done = await changeDelivery(email, id, link !== null, (current) => ({
     link,
     file: link ? null : current.file,
   }));
-  if (!done) return { ok: false, reason: "unknown" };
-
-  const next: Store = { ...store, products: done.products };
-  await saveStore(next);
+  if (!done.ok) return done;
   // Taking a link off displaces nothing; putting one on displaces the file.
-  return { ok: true, store: next, removed: link ? done.previous.file : null };
+  return { ok: true, store: done.store, removed: link ? done.previous.file : null };
 }
 
 /**
@@ -1747,17 +2283,17 @@ export async function setProductLink(
 export async function productFile(
   email: string,
   id: string,
-): Promise<{ product: Product; file: ProductFile } | null> {
+): Promise<{ product: Listing; file: ProductFile } | null> {
   const store = await storeForEmail(email);
   if (!store) return null;
-  const found = deliveryAt(store, id);
+  const found = await readDelivery(store, id);
   if (!found) return null;
   const file = found.option ? found.option.file : found.product.file;
   return file ? { product: found.product, file } : null;
 }
 
 /** Every file a product holds, its options included. Read before removing it. */
-export function filesOnProduct(product: Product): ProductFile[] {
+export function filesOnProduct(product: Listing): ProductFile[] {
   const files = product.file ? [product.file] : [];
   for (const option of product.options) {
     if (option.file) files.push(option.file);
@@ -1789,22 +2325,19 @@ export async function addStoreLink(
   const title = rawTitle.trim().slice(0, MAX_LINK_TITLE_LENGTH);
   if (!title) return { ok: false, reason: "title" };
 
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  if (store.links.length >= MAX_STORE_LINKS) {
-    return { ok: false, reason: "too_many", limit: MAX_STORE_LINKS };
-  }
-
-  const link: StoreLink = {
-    id: freshId(store),
-    title,
-    url,
-    addedAt: new Date().toISOString(),
-  };
-
-  const next: Store = { ...store, links: [...store.links, link] };
-  await saveStore(next, store);
-  return { ok: true, store: next };
+  const result = await withStore<LinkResult>(email, async (store, save) => {
+    if (store.links.length >= MAX_STORE_LINKS) {
+      return { ok: false, reason: "too_many", limit: MAX_STORE_LINKS };
+    }
+    const link: StoreLink = {
+      id: freshId(store),
+      title,
+      url,
+      addedAt: new Date().toISOString(),
+    };
+    return { ok: true, store: await save({ ...store, links: [...store.links, link] }) };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 /** Changes a link already on the page, keeping its place in the list. */
@@ -1817,17 +2350,14 @@ export async function editStoreLink(
   const title = rawTitle.trim().slice(0, MAX_LINK_TITLE_LENGTH);
   if (!title) return { ok: false, reason: "title" };
 
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const at = store.links.findIndex((link) => link.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
-
-  const links = [...store.links];
-  links[at] = { ...links[at], title, url };
-
-  const next: Store = { ...store, links };
-  await saveStore(next, store);
-  return { ok: true, store: next };
+  const result = await withStore<LinkResult>(email, async (store, save) => {
+    const at = store.links.findIndex((link) => link.id === id);
+    if (at < 0) return { ok: false, reason: "unknown" };
+    const links = [...store.links];
+    links[at] = { ...links[at], title, url };
+    return { ok: true, store: await save({ ...store, links }) };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 /** Takes a link off the page. Nothing else changes. */
@@ -1835,18 +2365,13 @@ export async function removeStoreLink(
   email: string,
   id: string,
 ): Promise<LinkResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  if (!store.links.some((link) => link.id === id)) {
-    return { ok: false, reason: "unknown" };
-  }
-
-  const next: Store = {
-    ...store,
-    links: store.links.filter((link) => link.id !== id),
-  };
-  await saveStore(next);
-  return { ok: true, store: next };
+  const result = await withStore<LinkResult>(email, async (store, save) => {
+    if (!store.links.some((link) => link.id === id)) {
+      return { ok: false, reason: "unknown" };
+    }
+    return { ok: true, store: await save({ ...store, links: store.links.filter((link) => link.id !== id) }) };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 /** Moves a link one place up or down, the way a product moves. */
@@ -1855,20 +2380,16 @@ export async function moveStoreLink(
   id: string,
   direction: "up" | "down",
 ): Promise<LinkResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const at = store.links.findIndex((link) => link.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
-
-  const to = direction === "up" ? at - 1 : at + 1;
-  if (to < 0 || to >= store.links.length) return { ok: true, store };
-
-  const links = [...store.links];
-  [links[at], links[to]] = [links[to], links[at]];
-
-  const next: Store = { ...store, links };
-  await saveStore(next);
-  return { ok: true, store: next };
+  const result = await withStore<LinkResult>(email, async (store, save) => {
+    const at = store.links.findIndex((link) => link.id === id);
+    if (at < 0) return { ok: false, reason: "unknown" };
+    const to = direction === "up" ? at - 1 : at + 1;
+    if (to < 0 || to >= store.links.length) return { ok: true, store };
+    const links = [...store.links];
+    [links[at], links[to]] = [links[to], links[at]];
+    return { ok: true, store: await save({ ...store, links }) };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 export type OptionResult =
@@ -1879,18 +2400,17 @@ export type OptionResult =
       limit?: number;
     };
 
-/** Checks a label and a typed price for one option. */
+/** Checks a label and a typed price for one option, in the store's currency. */
 function readOption(
   rawLabel: string,
   rawPrice: string,
+  currency: Currency,
 ): { label: string; priceCents: number } | "label" | "price" {
   const label = rawLabel.trim().slice(0, MAX_OPTION_LABEL_LENGTH);
   if (!label) return "label";
-  const priceCents = priceToCents(rawPrice);
+  const priceCents = readMoney(rawPrice, currency);
   if (priceCents === null) return "price";
-  if (priceCents < MIN_PRICE_CENTS || priceCents > MAX_PRICE_CENTS) {
-    return "price";
-  }
+  if (!priceInRange(priceCents, currency)) return "price";
   return { label, priceCents };
 }
 
@@ -1901,40 +2421,51 @@ export async function addOption(
   rawLabel: string,
   rawPrice: string,
 ): Promise<OptionResult> {
-  const fields = readOption(rawLabel, rawPrice);
-  if (typeof fields === "string") return { ok: false, reason: fields };
+  const result = await withStore<OptionResult>(email, async (store, save) => {
+    const fields = readOption(rawLabel, rawPrice, store.currency);
+    if (typeof fields === "string") return { ok: false, reason: fields };
+    const product = await readProduct(store, productId);
+    if (!product) return { ok: false, reason: "unknown" };
+    // Several prices on something given away would put a price on it.
+    if (isFree(product)) return { ok: false, reason: "free" };
+    if (product.call) return { ok: false, reason: "call" };
+    if (product.course) return { ok: false, reason: "course" };
+    // The buyer would be choosing a price twice.
+    if (product.pwyw) return { ok: false, reason: "pwyw" };
+    if (product.options.length >= MAX_OPTIONS) {
+      return { ok: false, reason: "too_many", limit: MAX_OPTIONS };
+    }
+    const option: ProductOption = {
+      id: freshId(store),
+      label: fields.label,
+      priceCents: fields.priceCents,
+      file: null,
+      link: null,
+    };
+    const next = await save(store, { put: [{ ...product, options: [...product.options, option] }] });
+    return { ok: true, store: next, removed: [] };
+  });
+  return result ?? { ok: false, reason: "none" };
+}
 
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const at = store.products.findIndex((product) => product.id === productId);
-  if (at < 0) return { ok: false, reason: "unknown" };
-  // Several prices on something given away would put a price on it.
-  if (isFree(store.products[at])) return { ok: false, reason: "free" };
-  if (store.products[at].call) return { ok: false, reason: "call" };
-  if (store.products[at].course) return { ok: false, reason: "course" };
-  // The buyer would be choosing a price twice.
-  if (store.products[at].pwyw) return { ok: false, reason: "pwyw" };
-  if (store.products[at].options.length >= MAX_OPTIONS) {
-    return { ok: false, reason: "too_many", limit: MAX_OPTIONS };
-  }
-
-  const option: ProductOption = {
-    id: freshId(store),
-    label: fields.label,
-    priceCents: fields.priceCents,
-    file: null,
-    link: null,
-  };
-
-  const products = [...store.products];
-  products[at] = {
-    ...products[at],
-    options: [...products[at].options, option],
-  };
-
-  const next: Store = { ...store, products };
-  await saveStore(next, store);
-  return { ok: true, store: next, removed: [] };
+/** Reads the product an option id belongs to, under the lock, with the option. */
+async function onOption(
+  email: string,
+  id: string,
+  change: (product: Product, at: number, store: Store) => { product: Product; removed: ProductFile[] } | OptionResult | null,
+): Promise<OptionResult> {
+  const result = await withStore<OptionResult>(email, async (store, save) => {
+    const owner = productIdFor(store, id);
+    const product = owner && owner !== id ? await readProduct(store, owner) : null;
+    const at = product ? product.options.findIndex((option) => option.id === id) : -1;
+    if (!product || at < 0) return { ok: false, reason: "unknown" };
+    const done = change(product, at, store);
+    if (!done) return { ok: true, store, removed: [] };
+    if ("ok" in done) return done;
+    const next = await save(store, { put: [done.product] });
+    return { ok: true, store: next, removed: done.removed };
+  });
+  return result ?? { ok: false, reason: "none" };
 }
 
 /** Changes an option's label or price, keeping its place and its delivery. */
@@ -1944,29 +2475,14 @@ export async function editOption(
   rawLabel: string,
   rawPrice: string,
 ): Promise<OptionResult> {
-  const fields = readOption(rawLabel, rawPrice);
-  if (typeof fields === "string") return { ok: false, reason: fields };
-
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const found = deliveryAt(store, id);
-  if (!found || !found.option) return { ok: false, reason: "unknown" };
-
-  const products = store.products.map((product) => {
-    if (product.id !== found.product.id) return product;
-    return {
-      ...product,
-      options: product.options.map((option) =>
-        option.id === id
-          ? { ...option, label: fields.label, priceCents: fields.priceCents }
-          : option,
-      ),
-    };
+  return onOption(email, id, (product, at, store) => {
+    // Read in the store's own currency, as the store is under the lock.
+    const fields = readOption(rawLabel, rawPrice, store.currency);
+    if (typeof fields === "string") return { ok: false, reason: fields };
+    const options = [...product.options];
+    options[at] = { ...options[at], label: fields.label, priceCents: fields.priceCents };
+    return { product: { ...product, options }, removed: [] };
   });
-
-  const next: Store = { ...store, products };
-  await saveStore(next);
-  return { ok: true, store: next, removed: [] };
 }
 
 /**
@@ -1980,24 +2496,13 @@ export async function removeOption(
   email: string,
   id: string,
 ): Promise<OptionResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const found = deliveryAt(store, id);
-  if (!found || !found.option) return { ok: false, reason: "unknown" };
-
-  const removed = found.option.file ? [found.option.file] : [];
-  const products = store.products.map((product) =>
-    product.id === found.product.id
-      ? {
-          ...product,
-          options: product.options.filter((option) => option.id !== id),
-        }
-      : product,
-  );
-
-  const next: Store = { ...store, products };
-  await saveStore(next);
-  return { ok: true, store: next, removed };
+  return onOption(email, id, (product, at) => {
+    const option = product.options[at];
+    return {
+      product: { ...product, options: product.options.filter((entry) => entry.id !== id) },
+      removed: option.file ? [option.file] : [],
+    };
+  });
 }
 
 /** Moves an option one place up or down within its own product. */
@@ -2006,26 +2511,13 @@ export async function moveOption(
   id: string,
   direction: "up" | "down",
 ): Promise<OptionResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const found = deliveryAt(store, id);
-  if (!found || !found.option) return { ok: false, reason: "unknown" };
-
-  const current = found.product.options;
-  const at = current.findIndex((option) => option.id === id);
-  const to = direction === "up" ? at - 1 : at + 1;
-  if (to < 0 || to >= current.length) return { ok: true, store, removed: [] };
-
-  const options = [...current];
-  [options[at], options[to]] = [options[to], options[at]];
-
-  const products = store.products.map((product) =>
-    product.id === found.product.id ? { ...product, options } : product,
-  );
-
-  const next: Store = { ...store, products };
-  await saveStore(next);
-  return { ok: true, store: next, removed: [] };
+  return onOption(email, id, (product, at) => {
+    const to = direction === "up" ? at - 1 : at + 1;
+    if (to < 0 || to >= product.options.length) return null;
+    const options = [...product.options];
+    [options[at], options[to]] = [options[to], options[at]];
+    return { product: { ...product, options }, removed: [] };
+  });
 }
 
 /**
@@ -2042,10 +2534,7 @@ export async function setHasDiscounts(
   const store = await storeForEmail(email);
   if (!store) return null;
   if (store.hasDiscounts === hasDiscounts) return store;
-
-  const next: Store = { ...store, hasDiscounts };
-  await saveStore(next);
-  return next;
+  return patchStore(email, (current) => (current.hasDiscounts === hasDiscounts ? null : { hasDiscounts }));
 }
 
 export type ProductPartResult =
@@ -2059,15 +2548,8 @@ async function changeProduct(
   change: (product: Product) => Product,
   extra: (store: Store) => Partial<Store> = () => ({}),
 ): Promise<ProductPartResult> {
-  const store = await storeForEmail(email);
-  if (!store) return { ok: false, reason: "none" };
-  const at = store.products.findIndex((product) => product.id === id);
-  if (at < 0) return { ok: false, reason: "unknown" };
-  const products = [...store.products];
-  products[at] = change(products[at]);
-  const next: Store = { ...store, ...extra(store), products };
-  await saveStore(next, store);
-  return { ok: true, store: next, product: products[at] };
+  const done = await onProduct<never>(email, id, (product) => change(product), (store) => extra(store));
+  return done.ok ? { ok: true, store: done.store, product: done.product } : done;
 }
 
 /**
@@ -2080,20 +2562,16 @@ export async function setProductImage(
   id: string,
   image: ProductImage | null,
 ): Promise<{ ok: true; store: Store; removed: ProductImage | null } | { ok: false; reason: "none" | "unknown" }> {
-  let removed: ProductImage | null = null;
-  const done = await changeProduct(email, id, (product) => {
-    removed = product.image;
-    return {
-      ...product,
-      image,
-      // A picture added to a product still drawn as a plain card shows as a
-      // callout, which is where a picture earns its place. Taking the picture
-      // off puts the plain card back.
-      display: image && !product.image && product.display === "button" ? "callout" : image ? product.display : "button",
-    };
-  });
+  const done = await onProduct<never>(email, id, (product) => ({
+    ...product,
+    image,
+    // A picture added to a product still drawn as a plain card shows as a
+    // callout, which is where a picture earns its place. Taking the picture
+    // off puts the plain card back.
+    display: image && !product.image && product.display === "button" ? "callout" : image ? product.display : "button",
+  }));
   if (!done.ok) return done;
-  return { ok: true, store: done.store, removed };
+  return { ok: true, store: done.store, removed: done.before.image };
 }
 
 /** Changes the words a screen reader says instead of the picture. */
@@ -2137,18 +2615,48 @@ export type KeysResult =
  * store is given the id its keys are kept under, if it has none yet.
  */
 export async function setProductKeys(email: string, id: string, keys: KeySetup | null): Promise<KeysResult> {
-  const store = await storeForEmail(email);
-  const product = store?.products.find((p) => p.id === id);
-  if (store && product && keys && !canHaveKeys(product)) return { ok: false, reason: "kind" };
+  const done = await onProduct<"kind">(
+    email,
+    id,
+    (product) => (keys && !canHaveKeys(product) ? { ok: false, reason: "kind" } : { ...product, keys }),
+    (store) => ({ statsId: store.statsId ?? newListId() }),
+  );
+  return done.ok ? { ok: true, store: done.store, product: done.product } : done;
+}
+
+/**
+ * Marks whether a product's page is built from blocks. The blocks themselves
+ * are written by lib/sales-page-store.ts under the store's statsId, which is
+ * made here for a store written before it had one.
+ */
+export async function setProductPage(email: string, id: string, has: boolean): Promise<ProductPartResult> {
   return changeProduct(
     email,
     id,
-    (current) => ({ ...current, keys }),
-    (current) => ({ statsId: current.statsId ?? newListId() }),
+    (product) => ({ ...product, page: has }),
+    (store) => ({ statsId: store.statsId ?? newListId() }),
   );
+}
+
+/**
+ * Switches the review-request email on (3 to 30 days after buying) or off
+ * (0). The store is given the id its reviews are kept under, if it has none.
+ */
+export async function setReviewAsk(email: string, ask: ReviewAsk): Promise<Store | null> {
+  return patchStore(email, (store) => ({ reviewAsk: parseReviewAsk(ask), statsId: store.statsId ?? newListId() }));
+}
+
+/**
+ * Notes that the store has a review, the first time one is written. A buyer's
+ * request writes the store record here, once in the store's life, under its
+ * lock; every later review finds it set and writes nothing.
+ */
+export async function setReviewed(email: string): Promise<Store | null> {
+  return patchStore(email, (store) => (store.reviewed ? null : { reviewed: true }));
 }
 
 /** Switches stamping the buyer's email into a product's PDFs on or off. */
 export async function setProductStamp(email: string, id: string, on: boolean): Promise<ProductPartResult> {
   return changeProduct(email, id, (product) => ({ ...product, stamp: on }));
 }
+

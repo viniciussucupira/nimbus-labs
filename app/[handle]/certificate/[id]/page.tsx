@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { SITE_URL } from "@/lib/site-url";
@@ -9,6 +9,7 @@ import { storeKey } from "@/lib/learn";
 import { CERT_ID_PATTERN, type Certificate, readCertificate } from "@/lib/certificate";
 import { readCourse } from "@/lib/course";
 import { CertificateActions } from "@/components/certificate-actions";
+import { readCourseListing } from "@/lib/catalog";
 
 type Params = {
   params: Promise<{ handle: string; id: string }>;
@@ -20,12 +21,12 @@ const DATE = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", y
 async function load(rawHandle: string, id: string, product: string | undefined) {
   const decoded = decodeURIComponent(rawHandle);
   if (!decoded.startsWith("@")) return null;
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) return null;
   // The sample a creator looks at before any student has finished: the
   // course's real title and the creator's name, a placeholder for the rest.
   if (id === "sample") {
-    const found = store.products.find((p) => p.id === product && p.course);
+    const found = await readCourseListing(store, product);
     const course = found?.course ? await readCourse(found.course.id) : null;
     if (!found || !course?.certificate) return null;
     const sample: Certificate = {

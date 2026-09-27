@@ -20,12 +20,13 @@
  *
  * Pure, so the studio and the server apply the same rules.
  */
-import type { Product } from "@/lib/store";
+import type { Listing } from "@/lib/store";
+import { formatMoney } from "@/lib/money";
 
 export type Bump = {
   /** Another product of the same store. */
   productId: string;
-  /** What it costs when added this way, in cents. */
+  /** What it costs when added this way, in the store currency's smallest unit. */
   priceCents: number;
   /** One line under the box, in the creator's words. */
   pitch: string;
@@ -33,7 +34,12 @@ export type Bump = {
 
 export const MAX_PITCH_LENGTH = 140;
 export const MAX_STOCK = 100_000;
-/** Stripe will not charge less than fifty cents in dollars. */
+/**
+ * The lowest any currency lets a single charge be, in its smallest unit: the
+ * floor a stored amount is read back with. The store's own currency sets the
+ * real floor when it is saved (lib/money.ts, minCharge): fifty cents for the
+ * dollar, as it always was.
+ */
 export const MIN_BUMP_CENTS = 50;
 
 export function parseStock(raw: unknown): number | null {
@@ -53,7 +59,7 @@ export function parseBump(raw: unknown): Bump | null {
 }
 
 /** Whether a product is a plain one-off sale: the only kind these apply to. */
-export function isOneOff(product: Product): boolean {
+export function isOneOff(product: Listing): boolean {
   return product.priceCents > 0 && product.recurring === null && product.call === null;
 }
 
@@ -62,7 +68,7 @@ export function isOneOff(product: Product): boolean {
  * delivery, so the buyer who ticks the box gets exactly one clear thing. A
  * product whose buyers choose the price has no one price to offer it at.
  */
-export function canBeBumped(product: Product): boolean {
+export function canBeBumped(product: Listing): boolean {
   return (
     isOneOff(product) &&
     product.options.length === 0 &&
@@ -72,7 +78,7 @@ export function canBeBumped(product: Product): boolean {
 }
 
 /** The bump a buyer may be offered on this product right now, or null. */
-export function activeBump(products: Product[], product: Product): { bump: Bump; target: Product } | null {
+export function activeBump(products: Listing[], product: Listing): { bump: Bump; target: Listing } | null {
   // Stripe lets a chosen amount be the only line of its checkout.
   if (!product.bump || !isOneOff(product) || product.pwyw) return null;
   const target = products.find((p) => p.id === product.bump!.productId);
@@ -83,7 +89,7 @@ export function activeBump(products: Product[], product: Product): { bump: Bump;
 }
 
 /** Whether a product's quantity is limited right now. */
-export function limitedStock(product: Product): number | null {
+export function limitedStock(product: Listing): number | null {
   return product.stock !== null && isOneOff(product) ? product.stock : null;
 }
 
@@ -91,7 +97,7 @@ export type Plan = {
   /** How many payments in all, the first one today. */
   payments: number;
   interval: "week" | "month";
-  /** Each payment, in cents. */
+  /** Each payment, in the store currency's smallest unit. */
   amountCents: number;
 };
 
@@ -113,15 +119,14 @@ export function parsePlan(raw: unknown): Plan | null {
  * The plan a buyer may choose for this product, or null. A plan never adds up
  * to less than paying at once, and it is offered on a product with one price.
  */
-export function activePlan(product: Product): Plan | null {
+export function activePlan(product: Listing): Plan | null {
   const plan = product.plan;
   if (!plan || !isOneOff(product) || product.options.length > 0 || product.pwyw) return null;
   if (plan.payments * plan.amountCents < product.priceCents) return null;
   return plan;
 }
 
-/** "3 monthly payments of $110". */
-export function planWords(plan: Plan): string {
-  const each = plan.amountCents % 100 ? (plan.amountCents / 100).toFixed(2) : String(plan.amountCents / 100);
-  return `${plan.payments} ${plan.interval === "week" ? "weekly" : "monthly"} payments of $${each}`;
+/** "3 monthly payments of $110", in the store's currency. */
+export function planWords(plan: Plan, currency: string): string {
+  return `${plan.payments} ${plan.interval === "week" ? "weekly" : "monthly"} payments of ${formatMoney(plan.amountCents, currency)}`;
 }

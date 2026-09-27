@@ -32,7 +32,8 @@ type PixelWindow = Window & {
 };
 
 export type PixelEvent =
-  | { type: "purchase"; id: string; value: number; productId: string; title: string }
+  /** `value` is in the currency's own units (27.5 dollars, 2700 yen); `currency` is its ISO code. */
+  | { type: "purchase"; id: string; value: number; currency?: string; productId: string; title: string }
   | { type: "lead"; productId: string }
   | null;
 
@@ -161,7 +162,7 @@ function startPinterest(w: PixelWindow, id: string) {
 function track(w: PixelWindow, pixels: Pixels, event: Exclude<PixelEvent, null> | { type: "checkout" }) {
   const ttq = w.ttq as (Record<string, (...args: unknown[]) => void>) | undefined;
   if (event.type === "purchase") {
-    const money = { value: event.value, currency: "USD" };
+    const money = { value: event.value, currency: (event.currency ?? "usd").toUpperCase() };
     if (pixels.meta && w.fbq) w.fbq("track", "Purchase", { ...money, content_ids: [event.productId], content_type: "product" }, { eventID: event.id });
     if (pixels.google && w.gtag) w.gtag("event", "purchase", { ...money, transaction_id: event.id, items: [{ item_id: event.productId, item_name: event.title }] });
     if (pixels.tiktok && ttq) ttq.track("CompletePayment", { ...money, contents: [{ content_id: event.productId, content_name: event.title }], content_type: "product" });

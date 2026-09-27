@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   const domains = isDomainsConfigured();
   return (
-    <LegalPage title="Terms of Service" lastUpdated="September 26, 2026">
+    <LegalPage title="Terms of Service" lastUpdated="September 27, 2026">
       <p>
         These Terms of Service (“Terms”) govern your access to and use of the
         websites, products, and subscription services operated by Nimbus Labs
@@ -43,6 +43,18 @@ export default function TermsPage() {
             support@nimbuslabsai.com
           </a>{" "}
           if you believe your account has been compromised.
+        </p>
+        <p>
+          <strong className="text-black">Several stores and a team.</strong>{" "}
+          One account may run up to five stores. Each store is a subscription
+          of its own; the free trial applies to an account&apos;s first store
+          only. The owner of a store may invite up to five people to its team.
+          Team members sign in with their own email address and act on the
+          owner&apos;s behalf, within the role the owner gives them: what they
+          do in the studio is done for the owner, and the owner remains
+          responsible for the store and for what the team does in it under
+          these Terms. Only the owner pays for the store, connects its Stripe
+          account, manages its team and deletes it.
         </p>
         <p>
           We may suspend or terminate accounts that violate these Terms or that
@@ -111,6 +123,24 @@ export default function TermsPage() {
           you agreed is yours too: we keep the record, and we never hold or
           pay out that money. If you run a community, what is posted in it is
           yours to moderate, and the rules in section 4 apply to it.
+        </p>
+        <p>
+          <strong className="text-black">Reviews.</strong> Reviews on your
+          store come only from buyers whose payment your Stripe account
+          confirms. You may answer a review and hide one. You may not offer
+          anything in return for a review, or present as a review anything a
+          buyer did not write. A hidden review still counts
+          in your average, and your page says how many are hidden.
+        </p>
+        <p>
+          <strong className="text-black">Services you choose to connect.</strong>{" "}
+          If you connect an email platform (Mailchimp, Kit, beehiiv or
+          MailerLite) or choose Jitsi Meet rooms for your calls, that is your
+          choice. Those services are run by third parties under their own
+          terms and privacy policies, your account with them is yours, and we
+          are not responsible for what they do or for their being available.
+          Send to an email platform only people who agreed to hear from you;
+          the Services send only those who did.
         </p>
         <p>
           <strong className="text-black">What you may not sell.</strong>{" "}

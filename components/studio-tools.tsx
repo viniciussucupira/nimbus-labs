@@ -39,13 +39,17 @@ export function StudioTools({ tools }: { tools: StudioTool[] }) {
                 </span>
                 {tool.tag ? <span className="tag tag-brand">{tool.tag}</span> : null}
               </span>
-              <span className="flex items-center gap-1 font-semibold text-ink">
-                {tool.title}
-                <Icon
-                  name="arrow-right"
-                  size={15}
-                  className="text-ink-mute transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
-                />
+              {/* The arrow follows the last word, so a title that wraps keeps it beside it. */}
+              <span className="font-semibold text-ink">
+                {tool.title.includes(" ") ? `${tool.title.slice(0, tool.title.lastIndexOf(" "))} ` : ""}
+                <span className="whitespace-nowrap">
+                  {tool.title.slice(tool.title.lastIndexOf(" ") + 1)}
+                  <Icon
+                    name="arrow-right"
+                    size={15}
+                    className="ml-1 inline-block align-[-2px] text-ink-mute transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+                  />
+                </span>
               </span>
               <span className="text-sm leading-snug text-ink-soft">{tool.text}</span>
             </Link>

@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Logo } from "@/components/logo";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { storeFolder, storeForEmail } from "@/lib/store";
+import { storeFolder } from "@/lib/store";
+import { studioPath, studioView } from "@/lib/studio-route";
+import { StudioHeader } from "@/components/studio-header";
+import { StudioStorePin } from "@/components/studio-store-pin";
 import { lessonCount, lessonsInOrder, readCourse } from "@/lib/course";
 import { emailKey, studentsOf } from "@/lib/learn";
 import { canSellProduct } from "@/lib/store-checkout";
@@ -17,6 +18,7 @@ import {
   StudentAccess,
   WithdrawCertificate,
 } from "@/components/course-editor";
+import { readListing } from "@/lib/catalog";
 
 export const metadata: Metadata = {
   title: "Your course — Nimbus Labs",
@@ -29,17 +31,28 @@ function day(seconds: number): string {
 }
 
 /** Where a creator builds a course: modules, lessons, and who is taking it. */
-export default async function StudioCoursePage({ params }: { params: Promise<{ product: string }> }) {
+export default async function StudioCoursePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ product: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { product: productId } = await params;
-  const cookieStore = await cookies();
-  const email = await emailForSession(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!email) redirect("/signin");
-  const store = await storeForEmail(email);
-  const product = store?.products.find((p) => p.id === productId);
-  if (!store || !product?.course) redirect("/studio");
+  const query = await searchParams;
+  // Which store, and whether this person's role there has "products" (lib/studio-route.ts).
+  const found = await studioView(await cookies(), typeof query.store === "string" ? query.store : undefined, "products");
+  if (!found.ok) {
+    if (found.reason === "signed_out") redirect("/signin");
+    redirect(found.store ? studioPath(found.store, "team=forbidden") : "/studio");
+  }
+  const { view } = found;
+  const { store } = view;
+  const product = await readListing(store, productId);
+  if (!product?.course) redirect(studioPath(store));
   const course = await readCourse(product.course.id);
-  if (!course) redirect("/studio");
-  const folder = await storeFolder(email);
+  if (!course) redirect(studioPath(store));
+  const folder = await storeFolder(view.ref);
   const { students, total } = await studentsOf(course, 500);
   const lessons = lessonCount(course);
   const finished = students.filter((s) => lessons > 0 && s.done >= lessons).length;
@@ -52,14 +65,14 @@ export default async function StudioCoursePage({ params }: { params: Promise<{ p
 
   return (
     <div className="min-h-screen bg-paper text-ink">
-      <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
-        <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-3">
-          <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Nimbus Labs, home">
-            <Logo />
-          </Link>
-          <Link href="/studio" className="btn btn-secondary btn-sm">Back to the studio</Link>
-        </div>
-      </header>
+      <StudioHeader
+        current={store}
+        role={view.role}
+        stores={view.stores}
+        owned={view.owned}
+        action={{ href: `${studioPath(store)}#products`, label: "Back to the studio", short: "Studio" }}
+      />
+      <StudioStorePin sid={store.sid}>
 
       <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
         <p className="eyebrow">Course</p>
@@ -70,9 +83,12 @@ export default async function StudioCoursePage({ params }: { params: Promise<{ p
           email the day it does.
         </p>
         <div className="mt-5 flex flex-wrap items-center gap-4 text-sm font-bold">
-          <Link href={`/@${store.handle}/course/${product.id}`} className="text-ink-soft underline underline-offset-4 hover:text-violet-deep">
-            See it as a student does
-          </Link>
+          {/* The course opens whole only for the store's owner (lib/learn.ts); a team member would be asked to buy it. */}
+          {view.role === "owner" ? (
+            <Link href={`/@${store.handle}/course/${product.id}`} className="text-ink-soft underline underline-offset-4 hover:text-violet-deep">
+              See it as a student does
+            </Link>
+          ) : null}
           <span className="text-ink-mute">
             {selling
               ? "On sale on your store."
@@ -215,6 +231,7 @@ export default async function StudioCoursePage({ params }: { params: Promise<{ p
           )}
         </section>
       </main>
+      </StudioStorePin>
     </div>
   );
 }

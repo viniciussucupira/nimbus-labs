@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { setHasDiscounts, storeForEmail } from "@/lib/store";
-import { MIN_PRICE_CENTS, MAX_PRICE_CENTS, priceToCents } from "@/lib/store";
+import { priceInRange, readMoney } from "@/lib/money";
 import { canSell } from "@/lib/store-checkout";
 import {
   type Off,
@@ -23,17 +23,17 @@ const ACTIONS = new Set(["list", "add", "stop"]);
  * side is the one bit the buyer's checkout needs: whether to show a box at all.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "settings");
   if (!guarded.ok) return guarded.response;
 
-  const { email, body } = guarded;
+  const { ref, body } = guarded;
   const action = text(body.action, 10);
   if (!ACTIONS.has(action)) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
   }
 
   try {
-    const store = await storeForEmail(email);
+    const store = await storeForEmail(ref);
     if (!store) {
       return Response.json({ ok: false, error: "none" }, { status: 400 });
     }
@@ -56,18 +56,15 @@ export async function POST(request: NextRequest) {
 
       let off: Off;
       if (text(body.kind, 10) === "amount") {
-        const cents = priceToCents(text(body.amount, 20));
-        if (
-          cents === null ||
-          cents < MIN_PRICE_CENTS ||
-          cents > MAX_PRICE_CENTS
-        ) {
+        // In the store's currency, and within its price range (lib/money.ts).
+        const cents = readMoney(text(body.amount, 20), store.currency);
+        if (cents === null || !priceInRange(cents, store.currency)) {
           return Response.json(
             { ok: false, error: "code", reason: "amount" },
             { status: 400 },
           );
         }
-        off = { kind: "amount", cents };
+        off = { kind: "amount", cents, currency: store.currency };
       } else {
         const percent = Number(text(body.percent, 10));
         if (!Number.isInteger(percent) || percent < 1 || percent > 100) {
@@ -99,7 +96,7 @@ export async function POST(request: NextRequest) {
           { status: made.reason === "taken" ? 409 : 502 },
         );
       }
-      await setHasDiscounts(email, true);
+      await setHasDiscounts(ref, true);
     } else if (action === "stop") {
       const id = text(body.id, 80);
       if (!id) {
@@ -117,7 +114,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ ok: false, error: "stripe" }, { status: 502 });
     }
     await setHasDiscounts(
-      email,
+      ref,
       list.codes.some((entry) => entry.active),
     );
 

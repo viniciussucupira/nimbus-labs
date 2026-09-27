@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { StoreFullError, priceToCents, setAffiliateSetting, storeForEmail } from "@/lib/store";
+import { StoreFullError, setAffiliateSetting, storeForEmail } from "@/lib/store";
+import { readMoney } from "@/lib/money";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { parseAffiliateSetting } from "@/lib/affiliate-setting";
 import { MAX_REFERENCE_LENGTH, addPayout, decide, removePayout } from "@/lib/affiliates";
@@ -16,7 +17,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  * `{ action: "unpay", payout }`, to take back one written down by mistake.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request, 16_000);
+  const guarded = await guardStoreWrite(request, "settings", 16_000);
   if (!guarded.ok) return guarded.response;
   const body = guarded.body;
   const action = text(body.action, 20);
@@ -30,12 +31,12 @@ export async function POST(request: NextRequest) {
       if (Number(body.days) !== setting.days) return fail("days");
       const asked = body.rates && typeof body.rates === "object" ? Object.keys(body.rates as object).length : 0;
       if (asked !== Object.keys(setting.rates).length) return fail("rate");
-      const result = await setAffiliateSetting(guarded.email, setting);
+      const result = await setAffiliateSetting(guarded.ref, setting);
       if (!result.ok) return fail(result.reason);
       return Response.json({ ok: true });
     }
 
-    const store = await storeForEmail(guarded.email);
+    const store = await storeForEmail(guarded.ref);
     if (!store) return fail("none");
     if (!store.statsId) return fail("unknown");
 
@@ -44,13 +45,15 @@ export async function POST(request: NextRequest) {
       return done ? Response.json({ ok: true }) : fail("unknown");
     }
     if (action === "payout") {
-      const cents = priceToCents(text(body.amount, 12));
+      // In the store's currency, which is what the payout is written down in.
+      const cents = readMoney(text(body.amount, 12), store.currency);
       if (cents === null || cents < 1) return fail("amount");
       const date = text(body.date, 10);
       if (!DATE.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`))) return fail("date");
       const payout = await addPayout(store, {
         aff: text(body.id, 20),
         cents,
+        currency: store.currency,
         date,
         reference: text(body.reference, MAX_REFERENCE_LENGTH * 2),
       });

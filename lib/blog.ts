@@ -582,6 +582,10 @@ export const BLOG_POSTS: BlogPost[] = [
         type: "note",
         text: "Updated on 26 September 2026, when Nimbus added a community, funnels of offers after the checkout, an affiliate programme you pay out yourself, calendar sync and webhooks. The lines below say where that leaves each of us.",
       },
+      {
+        type: "note",
+        text: "Updated again on 27 September 2026, when Nimbus added sales and landing pages, reviews only buyers can write, 15 currencies and the ways to pay a creator switches on in Stripe, Mailchimp, Kit, beehiiv and MailerLite built in, up to five stores and a team with roles, a video room for each booking, phone notifications and up to 2,000 products.",
+      },
       { type: "h2", text: "What Stan is" },
       {
         type: "p",
@@ -609,9 +613,9 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "Range: automated Instagram replies, PayPal, affiliates paid automatically, webinars inside the community and funnel pages before the checkout. We have none of those. Our affiliates are paid by you, our funnels are offers after the checkout, and webinars we sell as live sessions on dates you set, held on the meeting service whose link you give.",
+          "Range: automated Instagram replies, PayPal for creators in the United States, affiliates paid automatically, webinars inside the community, Zoom and Google Meet links made for each booking, and stores with no limit on products. We have none of those. PayPal reaches our checkout only through Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein; our affiliates are paid by you; our funnels are pages and offers you connect rather than one builder; our video rooms are Jitsi Meet rooms, where the first person in may have to sign in to Jitsi; and a store holds up to 2,000 products.",
           "Years of running: their support library is deep, and ours is a few pages.",
-          "An installable creator app: their help centre states their creator app is currently available on iPhone and iPad. We do not have a native app at all — our store installs to the home screen from the browser, on both iPhone and Android, which is a different trade-off, not a better one in every case.",
+          "An installable creator app: their help centre states their creator app is currently available on iPhone and iPad. We do not have a native app at all — our studio and every store install to the home screen from the browser, on both iPhone and Android, and the studio can send notifications of sales, which is a different trade-off, not a better one in every case.",
           "Integrations with third-party tools, which they list on their site. We have webhooks that Zapier, Make or your own server can catch, and no app of our own in anyone's directory.",
         ],
       },
@@ -621,6 +625,9 @@ export const BLOG_POSTS: BlogPost[] = [
         items: [
           "The money lands in your own Stripe account, so payouts, receipts and refunds are yours.",
           "Price options on a single product, with the right file delivered for the tier that was paid for.",
+          "Reviews only buyers can write, checked against the payment. Stan's help centre says reviews there are added by the creator.",
+          "A team with roles, each person signing in with their own email. Stan's help centre says the only way there is to share your login.",
+          "Sales pages, landing pages, discount codes, payment plans and offers after paying on the $29 plan, and a store in any of 15 currencies.",
           "A live demo store anyone can buy from with a test card, before signing up for anything.",
           "Prices and terms published as pages on the site, not as PDFs you have to download.",
         ],
@@ -685,7 +692,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "The honest cost" },
       {
         type: "p",
-        text: "Installing from a browser is less discoverable than a store listing: on iPhone it lives behind the share menu, and on Android behind the browser menu. A native app can also do things a web page cannot, such as rich notifications on every platform.",
+        text: "Installing from a browser is less discoverable than a store listing: on iPhone it lives behind the share menu, and on Android behind the browser menu. A native app can also do things a web page cannot. Since 27 September 2026 the studio itself installs and sends notifications of sales and bookings, but on iPhone only from iOS 16.4 and only once it is on the home screen.",
       },
       {
         type: "note",

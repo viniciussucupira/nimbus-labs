@@ -217,9 +217,14 @@ function writeInline(body: URLSearchParams, tier: Tier, cycle: Cycle): void {
  * free store for as long as anyone cared to keep doing it. The studio reads
  * the same answer, so the button never promises a trial the checkout does not
  * open with.
+ *
+ * And once per account: the trial is for an account's first store, the one
+ * that decides whether we are worth paying for. Every other store an account
+ * makes is a subscription of its own from its first day — five stores are
+ * not five trials in a row.
  */
-export function trialOffered(store: Pick<Store, "stripeCustomerId" | "subscriptionId">): boolean {
-  return !store.stripeCustomerId && !store.subscriptionId;
+export function trialOffered(store: Pick<Store, "stripeCustomerId" | "subscriptionId" | "extra">): boolean {
+  return !store.extra && !store.stripeCustomerId && !store.subscriptionId;
 }
 
 /**
@@ -231,7 +236,9 @@ export function trialOffered(store: Pick<Store, "stripeCustomerId" | "subscripti
  * over it.
  *
  * `customerId` is the customer this store already paid us from, when there is
- * one, so a returning creator stays one customer with one history.
+ * one, so a returning creator stays one customer with one history — and, for
+ * an account's other stores, the customer its first store pays from, so one
+ * person with several stores is one customer with several subscriptions.
  */
 export async function createBillingCheckout(
   store: Store,
@@ -250,8 +257,10 @@ export async function createBillingCheckout(
     "subscription_data[metadata][store]": store.handle,
     "subscription_data[metadata][tier]": tier,
     "metadata[store]": store.handle,
-    success_url: `${origin}/api/billing/return?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/studio?billing=cancelled`,
+    // The store rides along, so an owner of several comes back to the one
+    // they were paying for, and the way back writes it down on that one.
+    success_url: `${origin}/api/billing/return?session_id={CHECKOUT_SESSION_ID}${store.sid ? `&store=${store.sid}` : ""}`,
+    cancel_url: `${origin}/studio?${store.sid ? `store=${store.sid}&` : ""}billing=cancelled`,
   });
   if (customerId && CUSTOMER_PATTERN.test(customerId)) {
     body.set("customer", customerId);

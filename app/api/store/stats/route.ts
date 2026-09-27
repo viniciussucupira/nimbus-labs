@@ -1,6 +1,5 @@
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { storeForEmail } from "@/lib/store";
+import { jsonAccess } from "@/lib/studio-route";
 import { readAllTimeSales } from "@/lib/stats";
 
 /**
@@ -9,10 +8,9 @@ import { readAllTimeSales } from "@/lib/stats";
  * to it — and kept ten minutes.
  */
 export async function GET(request: NextRequest) {
-  const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
-  if (!email) return Response.json({ ok: false, error: "signed_out" }, { status: 401 });
-  const store = await storeForEmail(email);
-  if (!store) return Response.json({ ok: false, error: "none" }, { status: 400 });
+  const access = await jsonAccess(request, "stats");
+  if (access instanceof Response) return access;
+  const store = access.store;
   if (!store.stripeAccountId) return Response.json({ ok: false, error: "stripe" }, { status: 400 });
   try {
     const sales = await readAllTimeSales(store);

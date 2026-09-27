@@ -30,7 +30,7 @@ import {
   startedFrom,
   stateOf,
 } from "@/lib/billing";
-import { type Store, setSubscription, storeForHandle, storesAfter } from "@/lib/store";
+import { type Store, setSubscription, storeForHandle, storeRef, storesAfter } from "@/lib/store";
 
 const MAX_PAGES = 50;
 const MAX_SCAN_STEPS = 500;
@@ -67,7 +67,7 @@ export async function recordState(store: Store, state: SubscriptionState): Promi
   ) {
     return false;
   }
-  return (await setSubscription(store.email, { active, ...(plan ?? {}) })) !== null;
+  return (await setSubscription(storeRef(store), { active, ...(plan ?? {}) })) !== null;
 }
 
 /** Brings the store named by one listed subscription in line with it. */
@@ -95,7 +95,7 @@ async function applyListed(subscription: Record<string, unknown>, counts: SyncCo
     console.error(`store ${store.handle} has a second subscription in good standing: ${id}`);
     return;
   }
-  if (await setSubscription(store.email, started)) counts.adopted += 1;
+  if (await setSubscription(storeRef(store), started)) counts.adopted += 1;
 }
 
 /** Step 1: every subscription on our account, newest first. */

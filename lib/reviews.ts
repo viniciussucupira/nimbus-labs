@@ -1,0 +1,477 @@
+/**
+ * Reviews that only buyers can write.
+ *
+ * On Stan a creator types their reviews in themselves. Here a review can only
+ * come from somebody who paid: it is written from the thanks page, from the
+ * list of purchases or from the link in the one email that asks for it, and
+ * every one of those doors first asks the creator's own Stripe account
+ * whether that order was paid and not refunded (lib/review-proof.ts). Each
+ * review keeps the order it came from, so the creator can find the payment
+ * behind any review in their own Stripe dashboard.
+ *
+ * The rules, all kept here so every page applies the same ones:
+ *
+ *   - One review per buyer per product: the id is made from the store, the
+ *     product and the buyer's address, so buying twice is still one voice.
+ *     The buyer can change it or delete it, through the same doors.
+ *   - Stars from 1 to 5 and up to 1,000 characters, with the name the buyer
+ *     chooses to show (or "Verified buyer"). Their email is never shown.
+ *   - The creator can answer in public, and can hide a review. They cannot
+ *     change a word of it, and there is no field for anything given in
+ *     return for writing one.
+ *   - Hiding takes a review's words off the page, never its stars out of the
+ *     average: the average and the count include hidden reviews, and the
+ *     page says how many are hidden ("2 reviews hidden by the creator"). So
+ *     hiding can tidy a page but can never lift a rating.
+ *   - A refund in full marks the review "refunded" and takes its stars out of
+ *     the average and the count, because it no longer comes from a buyer who
+ *     kept what they paid for. Its words stay, marked as such.
+ *   - Stars show only when at least one review is on the page and at least
+ *     one counts. New reviews go live at once; the creator's queue in the
+ *     studio lists what arrived since they last looked.
+ *
+ * Records in Redis, all under the store's statsId:
+ *
+ *   nl:rev:<s>:<product>      -> hash: review id -> the review, as JSON
+ *   nl:rev:vis:<s>:<product>  -> sorted set of the ids on the page, by date
+ *   nl:rev:sum:<s>            -> hash: product -> the numbers the pages show
+ *   nl:rev:all:<s>            -> sorted set of "<product>|<id>", by date (studio)
+ *   nl:rev:new:<s>            -> sorted set of the same, not seen yet (the queue)
+ *   nl:rev:pay:<s>            -> hash: payment -> the reviews it paid for (refunds)
+ *   nl:rev:stores             -> set of statsIds with any review (the refund pass)
+ */
+import { createHash } from "node:crypto";
+import { normaliseEmail } from "@/lib/auth";
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import {
+  EMPTY_SUMMARY,
+  MAX_REPLY_TEXT,
+  MAX_REVIEW_NAME,
+  MAX_REVIEW_TEXT,
+  MAX_REVIEWS_PER_PRODUCT,
+  REVIEWS_ON_PAGE,
+  REVIEW_ID_PATTERN,
+  type Review,
+  type Summary,
+  summarise,
+} from "@/lib/review-summary";
+
+export * from "@/lib/review-summary";
+
+const PRODUCT_ID_PATTERN = /^[a-z0-9]{6,40}$/;
+const STATS_ID_PATTERN = /^[0-9a-f]{32}$/;
+
+const productKey = (s: string, p: string) => `nl:rev:${s}:${p}`;
+const visibleKey = (s: string, p: string) => `nl:rev:vis:${s}:${p}`;
+const summaryKey = (s: string) => `nl:rev:sum:${s}`;
+const allKey = (s: string) => `nl:rev:all:${s}`;
+const newKey = (s: string) => `nl:rev:new:${s}`;
+const payKey = (s: string) => `nl:rev:pay:${s}`;
+const lockKey = (s: string, p: string) => `nl:rev:lock:${s}:${p}`;
+export const REVIEW_STORES_KEY = "nl:rev:stores";
+
+/** One buyer's review of one product, always the same id, whatever order they write it from. */
+export function reviewId(statsId: string, productId: string, email: string): string {
+  return createHash("sha256")
+    .update(`nimbus-review:${statsId}|${productId}|${normaliseEmail(email)}`)
+    .digest("hex")
+    .slice(0, 24);
+}
+
+/**
+ * The characters that turn the direction of text around (bidirectional
+ * overrides and isolates). A buyer's name or words with one of them in can
+ * be made to read differently from what was typed — or to spill into the
+ * "Verified buyer" and the answer drawn next to them — so they are taken out.
+ */
+const DIRECTION_MARKS = /[\u202a-\u202e\u2066-\u2069]/g;
+
+/** One line: control characters and runs of space made one space. */
+function oneLine(value: unknown, max: number): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(DIRECTION_MARKS, "")
+    .replace(/[\u0000-\u001f\u007f\u2028\u2029]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+/** Text as a message box writes it: line breaks kept, one blank line at most, the length capped. */
+export function cleanReviewText(value: unknown, max = MAX_REVIEW_TEXT): string {
+  if (typeof value !== "string") return "";
+  return value
+    .replace(DIRECTION_MARKS, "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f\u2028\u2029]/g, " ")
+    .split("\n")
+    .map((row) => row.replace(/\s+$/, ""))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, max);
+}
+
+export function cleanReviewName(value: unknown): string {
+  return oneLine(value, MAX_REVIEW_NAME);
+}
+
+/** A whole number of stars from 1 to 5, or null. */
+export function readRating(value: unknown): number | null {
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
+}
+
+/** Whatever came back from storage, made safe to use; null when it cannot be a review. */
+export function parseReview(raw: unknown): Review | null {
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    const rating = readRating(value.rating);
+    if (typeof value.id !== "string" || !REVIEW_ID_PATTERN.test(value.id) || rating === null) return null;
+    if (typeof value.productId !== "string" || !PRODUCT_ID_PATTERN.test(value.productId)) return null;
+    const reply =
+      value.reply && typeof value.reply === "object" && typeof (value.reply as { text?: unknown }).text === "string"
+        ? {
+            text: cleanReviewText((value.reply as { text: string }).text, MAX_REPLY_TEXT),
+            at: Number((value.reply as { at?: unknown }).at) || 0,
+          }
+        : null;
+    return {
+      id: value.id,
+      productId: value.productId,
+      reference: typeof value.reference === "string" ? value.reference.slice(0, 220) : "",
+      pi: typeof value.pi === "string" ? value.pi.slice(0, 220) : "",
+      rating,
+      text: cleanReviewText(value.text),
+      name: cleanReviewName(value.name),
+      createdAt: Number(value.createdAt) || 0,
+      editedAt: Number(value.editedAt) || 0,
+      hidden: value.hidden === true,
+      refunded: value.refunded === true,
+      reply: reply && reply.text ? reply : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parseSummary(raw: unknown): Summary {
+  if (typeof raw !== "string" || !raw) return { ...EMPTY_SUMMARY, dist: [0, 0, 0, 0, 0] };
+  try {
+    const value = JSON.parse(raw) as Partial<Summary>;
+    const n = (x: unknown) => (typeof x === "number" && Number.isInteger(x) && x >= 0 ? x : 0);
+    const dist = Array.isArray(value.dist) && value.dist.length === 5 ? value.dist.map(n) : [0, 0, 0, 0, 0];
+    return {
+      count: n(value.count),
+      stars: n(value.stars),
+      visible: n(value.visible),
+      hidden: n(value.hidden),
+      refunded: n(value.refunded),
+      dist: dist as Summary["dist"],
+    };
+  } catch {
+    return { ...EMPTY_SUMMARY, dist: [0, 0, 0, 0, 0] };
+  }
+}
+
+/** The numbers of every product of a store that has reviews, in one read. */
+export async function summaries(statsId: string | null): Promise<Map<string, Summary>> {
+  const out = new Map<string, Summary>();
+  if (!statsId || !STATS_ID_PATTERN.test(statsId) || !isRedisConfigured()) return out;
+  const [raw] = await redisPipeline([["HGETALL", summaryKey(statsId)]]);
+  const flat = Array.isArray(raw) ? (raw as unknown[]) : [];
+  for (let i = 0; i + 1 < flat.length; i += 2) {
+    if (typeof flat[i] === "string") out.set(flat[i] as string, parseSummary(flat[i + 1]));
+  }
+  return out;
+}
+
+export async function summaryOf(statsId: string | null, productId: string): Promise<Summary> {
+  if (!statsId || !STATS_ID_PATTERN.test(statsId) || !isRedisConfigured()) return { ...EMPTY_SUMMARY, dist: [0, 0, 0, 0, 0] };
+  const [raw] = await redisPipeline([["HGET", summaryKey(statsId), productId]]);
+  return parseSummary(raw);
+}
+
+/** The reviews on a product's page, newest first. */
+export async function visibleReviews(statsId: string | null, productId: string, offset = 0, limit = REVIEWS_ON_PAGE): Promise<Review[]> {
+  if (!statsId || !STATS_ID_PATTERN.test(statsId) || !isRedisConfigured()) return [];
+  const [ids] = await redisPipeline([
+    ["ZREVRANGEBYSCORE", visibleKey(statsId, productId), "+inf", "-inf", "LIMIT", offset, limit],
+  ]);
+  const list = Array.isArray(ids) ? (ids as string[]).filter((id) => REVIEW_ID_PATTERN.test(id)) : [];
+  if (list.length === 0) return [];
+  const [rows] = await redisPipeline([["HMGET", productKey(statsId, productId), ...list]]);
+  return (Array.isArray(rows) ? rows : []).map(parseReview).filter((r): r is Review => r !== null && !r.hidden);
+}
+
+/** One review, when it exists. */
+export async function readReview(statsId: string, productId: string, id: string): Promise<Review | null> {
+  if (!REVIEW_ID_PATTERN.test(id) || !PRODUCT_ID_PATTERN.test(productId) || !isRedisConfigured()) return null;
+  const [raw] = await redisPipeline([["HGET", productKey(statsId, productId), id]]);
+  return parseReview(raw);
+}
+
+/**
+ * Runs `work` holding the product's lock, so two changes at once cannot count
+ * the numbers from two different moments. "busy" when it could not be had.
+ */
+async function locked<T>(statsId: string, productId: string, work: () => Promise<T>): Promise<T | "busy"> {
+  const key = lockKey(statsId, productId);
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const [got] = await redisPipeline([["SET", key, "1", "NX", "EX", 10]]);
+    if (got !== null) {
+      try {
+        return await work();
+      } finally {
+        await redisPipeline([["DEL", key]]).catch(() => {});
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 60 + attempt * 40));
+  }
+  return "busy";
+}
+
+/** Counts a product's numbers again from its reviews, and keeps them. */
+async function recount(statsId: string, productId: string): Promise<Summary> {
+  const [raw] = await redisPipeline([["HGETALL", productKey(statsId, productId)]]);
+  const flat = Array.isArray(raw) ? (raw as unknown[]) : [];
+  const reviews: Review[] = [];
+  for (let i = 1; i < flat.length; i += 2) {
+    const review = parseReview(flat[i]);
+    if (review) reviews.push(review);
+  }
+  const summary = summarise(reviews);
+  await redisPipeline([
+    reviews.length ? ["HSET", summaryKey(statsId), productId, JSON.stringify(summary)] : ["HDEL", summaryKey(statsId), productId],
+  ]);
+  return summary;
+}
+
+async function write(statsId: string, review: Review): Promise<void> {
+  const member = `${review.productId}|${review.id}`;
+  await redisPipeline([
+    ["HSET", productKey(statsId, review.productId), review.id, JSON.stringify(review)],
+    review.hidden
+      ? ["ZREM", visibleKey(statsId, review.productId), review.id]
+      : ["ZADD", visibleKey(statsId, review.productId), review.createdAt, review.id],
+    ["ZADD", allKey(statsId), review.createdAt, member],
+  ]);
+}
+
+export type SaveInput = {
+  productId: string;
+  email: string;
+  reference: string;
+  pi: string;
+  rating: number;
+  text: string;
+  name: string;
+};
+
+export type SaveResult = { state: "created" | "updated"; review: Review } | { state: "full" | "busy" | "invalid" };
+
+/**
+ * Writes a buyer's review, or changes the one they wrote. The caller has
+ * already proved the order is theirs, paid and not refunded. An edit keeps
+ * the review's first date (its place on the page) and the creator's choice
+ * to hide it; the creator's answer stays, and the edit goes back into the
+ * creator's queue so they see what changed.
+ */
+export async function saveReview(statsId: string, input: SaveInput, now = Date.now()): Promise<SaveResult> {
+  const rating = readRating(input.rating);
+  if (!STATS_ID_PATTERN.test(statsId) || !PRODUCT_ID_PATTERN.test(input.productId) || rating === null) return { state: "invalid" };
+  const id = reviewId(statsId, input.productId, input.email);
+  const result = await locked(statsId, input.productId, async (): Promise<SaveResult> => {
+    const [raw, size] = await redisPipeline([
+      ["HGET", productKey(statsId, input.productId), id],
+      ["HLEN", productKey(statsId, input.productId)],
+    ]);
+    const before = parseReview(raw);
+    if (!before && Number(size) >= MAX_REVIEWS_PER_PRODUCT) return { state: "full" };
+    const review: Review = {
+      id,
+      productId: input.productId,
+      reference: input.reference,
+      pi: input.pi,
+      rating,
+      text: cleanReviewText(input.text),
+      name: cleanReviewName(input.name),
+      createdAt: before?.createdAt || now,
+      editedAt: before ? now : 0,
+      hidden: before?.hidden ?? false,
+      refunded: false,
+      reply: before?.reply ?? null,
+    };
+    await write(statsId, review);
+    const pays: (string | number)[][] = [];
+    if (review.pi) pays.push(["HSET", payKey(statsId), review.pi, await payEntry(statsId, review.pi, `${review.productId}|${id}`)]);
+    await redisPipeline([
+      ["ZADD", newKey(statsId), now, `${review.productId}|${id}`],
+      ["SADD", REVIEW_STORES_KEY, statsId],
+      ...pays,
+    ]);
+    await recount(statsId, input.productId);
+    return { state: before ? "updated" : "created", review };
+  });
+  return result === "busy" ? { state: "busy" } : result;
+}
+
+/** The reviews a payment paid for, with one more added. */
+async function payEntry(statsId: string, pi: string, member: string): Promise<string> {
+  const [raw] = await redisPipeline([["HGET", payKey(statsId), pi]]);
+  const list = typeof raw === "string" && raw ? raw.split(";").filter(Boolean) : [];
+  if (!list.includes(member)) list.push(member);
+  return list.slice(-20).join(";");
+}
+
+/** Deletes a buyer's own review. Its stars leave the average with it. */
+export async function deleteReview(statsId: string, productId: string, id: string): Promise<"deleted" | "missing" | "busy"> {
+  if (!REVIEW_ID_PATTERN.test(id) || !PRODUCT_ID_PATTERN.test(productId)) return "missing";
+  const result = await locked(statsId, productId, async () => {
+    const [raw] = await redisPipeline([["HGET", productKey(statsId, productId), id]]);
+    if (!parseReview(raw)) return "missing" as const;
+    await redisPipeline([
+      ["HDEL", productKey(statsId, productId), id],
+      ["ZREM", visibleKey(statsId, productId), id],
+      ["ZREM", allKey(statsId), `${productId}|${id}`],
+      ["ZREM", newKey(statsId), `${productId}|${id}`],
+    ]);
+    await recount(statsId, productId);
+    return "deleted" as const;
+  });
+  return result;
+}
+
+/** Changes one review as the creator may: hide or show it, or answer it. Never its words or its stars. */
+async function creatorChange(
+  statsId: string,
+  productId: string,
+  id: string,
+  change: (review: Review) => Review,
+): Promise<Review | "missing" | "busy"> {
+  if (!REVIEW_ID_PATTERN.test(id) || !PRODUCT_ID_PATTERN.test(productId)) return "missing";
+  return locked(statsId, productId, async () => {
+    const [raw] = await redisPipeline([["HGET", productKey(statsId, productId), id]]);
+    const before = parseReview(raw);
+    if (!before) return "missing" as const;
+    const after = change(before);
+    await write(statsId, after);
+    await recount(statsId, productId);
+    return after;
+  });
+}
+
+export function setHidden(statsId: string, productId: string, id: string, hidden: boolean) {
+  return creatorChange(statsId, productId, id, (review) => ({ ...review, hidden }));
+}
+
+/** The creator's public answer; empty text takes it away. */
+export function setReply(statsId: string, productId: string, id: string, text: string, now = Date.now()) {
+  const clean = cleanReviewText(text, MAX_REPLY_TEXT);
+  return creatorChange(statsId, productId, id, (review) => ({
+    ...review,
+    reply: clean ? { text: clean, at: review.reply?.text === clean ? review.reply.at : now } : null,
+  }));
+}
+
+/**
+ * Marks as refunded every review a payment paid for, once Stripe says the
+ * payment was given back in full. Returns how many changed.
+ */
+export async function markRefunded(statsId: string, pi: string): Promise<number> {
+  if (!STATS_ID_PATTERN.test(statsId) || !pi) return 0;
+  const [raw] = await redisPipeline([["HGET", payKey(statsId), pi]]);
+  const members = typeof raw === "string" && raw ? raw.split(";").filter(Boolean) : [];
+  let changed = 0;
+  for (const member of members) {
+    const [productId, id] = member.split("|");
+    if (!productId || !id) continue;
+    // Only while the review still rests on that payment: a buyer who wrote it
+    // again from a later order that was kept is a buyer who kept one.
+    let hit = false;
+    await creatorChange(statsId, productId, id, (review) => {
+      if (review.pi !== pi || review.refunded) return review;
+      hit = true;
+      return { ...review, refunded: true };
+    });
+    if (hit) changed += 1;
+  }
+  return changed;
+}
+
+/** Marks a review refunded found some other way (an edit that found the order refunded). */
+export async function markOneRefunded(statsId: string, productId: string, id: string): Promise<void> {
+  await creatorChange(statsId, productId, id, (review) => ({ ...review, refunded: true }));
+}
+
+/** Takes reviews out of the creator's queue: those named, or all of them. */
+export async function markSeen(statsId: string, members: string[] | "all"): Promise<void> {
+  if (!STATS_ID_PATTERN.test(statsId)) return;
+  if (members === "all") {
+    await redisPipeline([["DEL", newKey(statsId)]]);
+    return;
+  }
+  const valid = members.filter((m) => /^[a-z0-9]{6,40}\|[0-9a-f]{24}$/.test(m)).slice(0, 200);
+  if (valid.length) await redisPipeline([["ZREM", newKey(statsId), ...valid]]);
+}
+
+export type StudioRow = Review & { unseen: boolean };
+
+/**
+ * What the studio lists: the queue (reviews not seen yet), or every review,
+ * newest first, one page at a time.
+ */
+export async function studioReviews(
+  statsId: string | null,
+  options: { queue: boolean; offset: number; limit: number },
+): Promise<{ rows: StudioRow[]; total: number; unseen: number }> {
+  if (!statsId || !STATS_ID_PATTERN.test(statsId) || !isRedisConfigured()) return { rows: [], total: 0, unseen: 0 };
+  const source = options.queue ? newKey(statsId) : allKey(statsId);
+  const [members, total, unseen] = await redisPipeline([
+    ["ZREVRANGEBYSCORE", source, "+inf", "-inf", "LIMIT", options.offset, options.limit],
+    ["ZCARD", source],
+    ["ZCARD", newKey(statsId)],
+  ]);
+  const list = Array.isArray(members) ? (members as string[]) : [];
+  const byProduct = new Map<string, string[]>();
+  for (const member of list) {
+    const [productId, id] = member.split("|");
+    if (!productId || !id) continue;
+    byProduct.set(productId, [...(byProduct.get(productId) ?? []), id]);
+  }
+  const products = [...byProduct.entries()];
+  const read = products.length
+    ? await redisPipeline(products.map(([productId, ids]) => ["HMGET", productKey(statsId, productId), ...ids]))
+    : [];
+  const found = new Map<string, Review>();
+  read.forEach((rows) => {
+    for (const row of Array.isArray(rows) ? rows : []) {
+      const review = parseReview(row);
+      if (review) found.set(`${review.productId}|${review.id}`, review);
+    }
+  });
+  // Which of these are still in the queue: one score each, in one round trip.
+  const flags = options.queue || list.length === 0 ? [] : await redisPipeline(list.map((member) => ["ZSCORE", newKey(statsId), member]));
+  const rows: StudioRow[] = [];
+  list.forEach((member, i) => {
+    const review = found.get(member);
+    if (!review) return;
+    rows.push({ ...review, unseen: options.queue ? true : flags[i] !== null && flags[i] !== undefined });
+  });
+  return { rows, total: Number(total) || 0, unseen: Number(unseen) || 0 };
+}
+
+/** Forgets every review of a product that is gone. */
+export async function dropReviews(statsId: string | null, productId: string): Promise<void> {
+  if (!statsId || !STATS_ID_PATTERN.test(statsId) || !isRedisConfigured()) return;
+  const [raw] = await redisPipeline([["HKEYS", productKey(statsId, productId)]]);
+  const ids = Array.isArray(raw) ? (raw as string[]) : [];
+  const members = ids.map((id) => `${productId}|${id}`);
+  await redisPipeline([
+    ["DEL", productKey(statsId, productId)],
+    ["DEL", visibleKey(statsId, productId)],
+    ["HDEL", summaryKey(statsId), productId],
+    ...(members.length ? [["ZREM", allKey(statsId), ...members], ["ZREM", newKey(statsId), ...members]] : []),
+  ]);
+}

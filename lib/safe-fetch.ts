@@ -3,7 +3,12 @@
  *
  * Two features send requests to addresses a creator gives us: the calendars
  * read for busy times (lib/calendar-sync.ts) and the webhooks sent when
- * something happens in a store (lib/webhooks.ts). An address typed into a
+ * something happens in a store (lib/webhooks.ts). Two more go through here
+ * although their hosts are fixed lists of our own choosing: the email
+ * platforms a creator connects (lib/email-platforms.ts) and the push
+ * services a phone subscribed through (lib/web-push.ts), because the address
+ * of a push subscription is written by a browser, which a person controls.
+ * An address typed into a
  * form is an address anybody could have typed, and a server that fetches it
  * without looking is a server that can be asked to fetch its own insides —
  * a cloud's metadata service, a database on the private network, a port on
@@ -64,7 +69,8 @@ export type Resolver = (host: string) => Promise<{ address: string; family: numb
 export type SafeFetchOptions = {
   method?: "GET" | "POST";
   headers?: Record<string, string>;
-  body?: string;
+  /** Text, or bytes (an encrypted push message). */
+  body?: string | Buffer;
   /** The largest answer read, in bytes. */
   maxBytes: number;
   /** The whole exchange, redirects included, in milliseconds. */

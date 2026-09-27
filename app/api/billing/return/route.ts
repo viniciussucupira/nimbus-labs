@@ -12,19 +12,19 @@ import { setSubscription } from "@/lib/store";
  * door was walked through, nothing more.
  */
 export async function GET(request: NextRequest) {
-  const creator = await creatorFrom(request, { checkOrigin: false });
+  const creator = await creatorFrom(request, "billing", { checkOrigin: false });
   if (creator instanceof Response) return creator;
-  const { email, store, origin } = creator;
+  const { ref, store, origin, studio } = creator;
 
-  if (!isBillingConfigured()) return away(origin, "/studio?billing=unavailable");
+  if (!isBillingConfigured()) return away(origin, studio("billing=unavailable"));
 
   const sessionId = request.nextUrl.searchParams.get("session_id") ?? undefined;
 
   try {
     const started = await readStartedSubscription(store, sessionId);
-    if (!started) return away(origin, "/studio?billing=unfinished");
+    if (!started) return away(origin, studio("billing=unfinished"));
 
-    const saved = await setSubscription(email, {
+    const saved = await setSubscription(ref, {
       customerId: started.customerId,
       subscriptionId: started.subscriptionId,
       active: started.active,
@@ -32,15 +32,15 @@ export async function GET(request: NextRequest) {
       cycle: started.cycle,
       trialEnds: started.trialEnds,
     });
-    if (!saved) return away(origin, "/studio?billing=error");
+    if (!saved) return away(origin, studio("billing=error"));
 
-    return away(origin, `/studio?billing=${started.active ? "on" : "pending"}`);
+    return away(origin, studio(`billing=${started.active ? "on" : "pending"}`));
   } catch (error) {
     // Stripe did not answer just now. The payment, if there was one, is not
     // lost: it is found by the store's address, when the creator presses
     // start again and by the daily job (lib/billing-sync.ts). So the creator
     // is told that, rather than that nothing was charged.
     console.error("billing return failed", error);
-    return away(origin, "/studio?billing=unconfirmed");
+    return away(origin, studio("billing=unconfirmed"));
   }
 }

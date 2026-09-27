@@ -1,19 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { type Product, centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
+import { type Listing, normaliseHandle, storeForPage } from "@/lib/store";
+import { formatMoney, toMajor } from "@/lib/money";
 import { linkHost } from "@/lib/product-link";
 import { everyLabel } from "@/lib/product-recurring";
-import { DOWNLOAD_WINDOW_SECONDS, readOrder } from "@/lib/store-checkout";
+import { DOWNLOAD_WINDOW_SECONDS, type Order, readOrder } from "@/lib/store-checkout";
 import { lookStyle } from "@/lib/store-look";
 import { canManage } from "@/lib/membership-manage";
 import { canMove, confirmBooking, moveLink } from "@/lib/calls";
-import { readableTime, roomFor, zoneName } from "@/lib/call-setup";
+import { readableTime, zoneName } from "@/lib/call-setup";
+import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
 import { SITE_URL } from "@/lib/site-url";
 import { StoreTracking } from "@/components/store-tracking";
 import { confirmStock } from "@/lib/stock";
 import { finishPlan } from "@/lib/plans";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { clientAddress, withinLimit } from "@/lib/request-guard";
 import { UPSELL_COOKIE, funnelView, settleUpsells } from "@/lib/upsell";
 import { imageUrl } from "@/lib/product-image";
 import { noteSession } from "@/lib/affiliates";
@@ -27,11 +30,18 @@ import { readConfig } from "@/lib/community";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { renewPath } from "@/lib/membership-access";
 import { LicenceKeyBox } from "@/components/licence-key-box";
+import { reviewable } from "@/lib/review-proof";
+import { type Review, readReview, reviewId } from "@/lib/reviews";
+import { REVIEW_NOTICES, ReviewForm } from "@/components/review-form";
+import { type SaleRecord, noteSale } from "@/lib/sale-events";
 
 export const metadata: Metadata = {
   title: "Your order — Nimbus Labs",
   robots: { index: false, follow: false },
 };
+
+/** Openings of this page with an order in it, from one connection to one store, in ten minutes. */
+const VIEWS_PER_TEN_MINUTES = 60;
 
 type Params = {
   params: Promise<{ handle: string }>;
@@ -63,6 +73,10 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     title: "We could not check this order",
     body: "Nothing is lost. Try the link again in a moment.",
   },
+  slow: {
+    title: "Give it a moment",
+    body: "This page was opened a great many times in a few minutes, so it is resting. Nothing is wrong with your order and nothing is lost: open your link again in a few minutes, or use the link in the email you were sent.",
+  },
   refunded: {
     title: "This order was refunded",
     body: "The payment was given back in full, so what it bought no longer opens here. If you think this is a mistake, reply to the receipt you were emailed when you paid.",
@@ -80,13 +94,20 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   const { handle: raw } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
 
   const query = await searchParams;
   const sessionId =
     typeof query.session_id === "string" ? query.session_id : undefined;
-  const order = await readOrder(store, sessionId);
+  // Each opening with an order in it asks the creator's Stripe account, so
+  // one connection gets 60 in ten minutes per store: far more than a buyer
+  // reloading, sharing and coming back ever makes, and short of a script
+  // spending the creator's allowance with Stripe on made-up order numbers.
+  const allowed = sessionId
+    ? await withinLimit("thanks-view", `${clientAddress({ headers: await headers() })}|${store.handle}`, VIEWS_PER_TEN_MINUTES, 600)
+    : true;
+  const order: Order | { state: "slow" } = allowed ? await readOrder(store, sessionId) : { state: "slow" };
 
   // A paid call: the time is written down and the two emails go out, once,
   // however many times this page is opened.
@@ -95,7 +116,16 @@ export default async function ThanksPage({ params, searchParams }: Params) {
       ? {
           ...order.call,
           setup: order.product.call,
-          room: roomFor(order.product.call, order.call.start),
+          room:
+            sessionId
+              ? await roomOf(store.callsId, {
+                  product: order.product.id,
+                  setup: order.product.call,
+                  session: sessionId,
+                  start: order.call.start,
+                  end: order.call.end,
+                })
+              : null,
           minutes: Math.round((order.call.end - order.call.start) / 60_000),
         }
       : null;
@@ -110,6 +140,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
       buyerTz: booked.buyerTz,
       moves: booked.moves,
       answers: order.answers,
+      amountCents: order.amount,
       origin: SITE_URL,
     }).catch((error) => console.error("confirming a booking failed", error));
   }
@@ -172,6 +203,14 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     );
   }
 
+  // The creator's phone and email platform hear of the sale, once, after the
+  // page is on its way (lib/sale-events.ts); the five-minute job does the
+  // same for a buyer who never comes back here.
+  if (order.state === "paid") {
+    const record = order.record as SaleRecord;
+    after(() => noteSale(store, record).catch((error) => console.error("telling about a sale failed", error)));
+  }
+
   // A limited product's unit becomes a sale the moment its buyer is back.
   if (order.state === "paid" && sessionId && order.product.stock !== null) {
     await confirmStock(store, order.product, sessionId).catch((error) => console.error("confirming stock failed", error));
@@ -200,7 +239,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
           session: sessionId,
           product: order.product,
           alsoOwned: order.bump ? [order.bump.product.id] : [],
-          eligible: order.amount > 0 && !order.plan,
+          // Paid in one go, in the store's currency, with a method a one-click
+          // charge can reach again (a saved card, Apple Pay, Google Pay):
+          // anything else — Klarna, iDEAL and the like — skips the offers.
+          eligible: order.amount > 0 && !order.plan && order.reusable && order.currency === store.currency,
           created: order.created,
           secret: upsellSecret,
           upsellKey: order.upsellKey,
@@ -227,7 +269,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   // Each licence key this order earns: given here if the five-minute job
   // that sends the confirmation has not given it already. A sale only ever
   // gets one key, however many times this page is opened.
-  const keyOf = async (product: Product, reference: string): Promise<SaleKey | null | "error"> => {
+  const keyOf = async (product: Listing, reference: string): Promise<SaleKey | null | "error"> => {
     if (order.state !== "paid" || ended || !activeKeys(product)) return null;
     try {
       return await keyForSale(store, product, reference, order.email ?? "");
@@ -255,6 +297,26 @@ export default async function ThanksPage({ params, searchParams }: Params) {
         waiting={found !== "error" && found.state === "waiting"}
       />
     );
+
+  // What this order can be reviewed for, from right here: what was paid
+  // for, by this checkout, with money (lib/review-proof.ts has the rule the
+  // form is checked against again when it is sent).
+  const toReview =
+    order.state === "paid" && sessionId && !booked && !ended && order.amount > 0 && order.email
+      ? [order.product, ...(order.bump ? [order.bump.product] : [])].filter(reviewable)
+      : [];
+  const reviewed = new Map<string, Review | null>();
+  if (toReview.length && store.statsId && order.state === "paid" && order.email) {
+    const statsId = store.statsId;
+    const email = order.email;
+    await Promise.all(
+      toReview.map(async (p) => {
+        reviewed.set(p.id, await readReview(statsId, p.id, reviewId(statsId, p.id, email)).catch(() => null));
+      }),
+    );
+  }
+  const reviewStatus = typeof query.review === "string" && REVIEW_NOTICES[query.review] ? query.review : "";
+  const reviewProduct = typeof query.product === "string" ? query.product : "";
 
   const notice = order.state !== "paid" ? NOTICES[order.state] : null;
   const hours = order.state === "paid" ? Math.floor(order.secondsLeft / 3600) : 0;
@@ -299,10 +361,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   ? ". Nothing was charged today"
                   : ` for ${
                       order.product.recurring
-                        ? `$${centsToPrice(order.amount)} ${everyLabel(order.product.recurring.interval)}`
+                        ? `${formatMoney(order.amount, order.currency)} ${everyLabel(order.product.recurring.interval)}`
                         : order.plan
-                          ? `$${centsToPrice(order.amount)} today`
-                          : `$${centsToPrice(order.amount)}`
+                          ? `${formatMoney(order.amount, order.currency)} today`
+                          : formatMoney(order.amount, order.currency)
                     }`}
                 .
               </p>
@@ -311,7 +373,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   className="mt-3 rounded-2xl px-4 py-3 text-sm"
                   style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
                 >
-                  {`Your first payment of $${centsToPrice(order.option ? order.option.priceCents : order.product.priceCents)}${store.tax.enabled && !store.tax.included ? " plus any sales tax" : ""} is taken when the ${order.trialDays}-day trial ends, on ${new Date((order.created + order.trialDays * 86400) * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}, from the card you gave. Cancel before then and you are not charged at all.`}
+                  {`Your first payment of ${formatMoney(order.option ? order.option.priceCents : order.product.priceCents, order.currency)}${store.tax.enabled && !store.tax.included ? " plus any sales tax" : ""} is taken when the ${order.trialDays}-day trial ends, on ${new Date((order.created + order.trialDays * 86400) * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}, from the card you gave. Cancel before then and you are not charged at all.`}
                 </p>
               ) : null}
               {order.plan ? (
@@ -374,7 +436,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                         target="_blank"
                         className="btn st-btn"
                       >
-                        The link to join
+                        {isVideoRoom(booked.room) ? "Join the video room" : "The link to join"}
                       </a>
                     ) : null}
                     <a
@@ -388,6 +450,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     {booked.room
                       ? `Join at that time with the link above. It is also in your confirmation email, with a calendar file.`
                       : `${store.name} will send you the link to join before the call.`}
+                    {isVideoRoom(booked.room) ? ` ${VIDEO_ROOM_NOTE}` : ""}
                     {order.email
                       ? ` A confirmation is on its way to ${order.email}, and a reminder follows a day and an hour before; to cancel, reply to it.`
                       : ""}
@@ -569,20 +632,20 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     <input type="hidden" name="step" value={offer.step.id} />
                     <p className="st-label">{offer.afterNo ? "Before you go" : "One more thing"}</p>
                     <h2 id="offer-title" className="mt-1 text-xl font-semibold leading-snug tracking-[-0.01em]">
-                      {offer.step.headline || `${offer.target.title} for $${centsToPrice(offer.step.priceCents)}`}
+                      {offer.step.headline || `${offer.target.title} for ${formatMoney(offer.step.priceCents, store.currency)}`}
                     </h2>
                     {offer.step.headline ? (
                       <p className="mt-1 text-sm font-semibold">
-                        {`${offer.target.title} for $${centsToPrice(offer.step.priceCents)}`}
+                        {`${offer.target.title} for ${formatMoney(offer.step.priceCents, store.currency)}`}
                       </p>
                     ) : null}
                     {offer.step.text ? <p className="mt-2 text-sm leading-relaxed">{offer.step.text}</p> : null}
                     {offer.step.priceCents < offer.target.priceCents ? (
-                      <p className="st-muted mt-1 text-xs">{`$${centsToPrice(offer.target.priceCents)} on its own`}</p>
+                      <p className="st-muted mt-1 text-xs">{`${formatMoney(offer.target.priceCents, store.currency)} on its own`}</p>
                     ) : null}
                     <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
                       <button type="submit" name="answer" value="yes" className="btn st-btn">
-                        {`Yes, add it for $${centsToPrice(offer.step.priceCents)}`}
+                        {`Yes, add it for ${formatMoney(offer.step.priceCents, store.currency)}`}
                       </button>
                       <button
                         type="submit"
@@ -648,7 +711,8 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   ? {
                       type: "purchase",
                       id: sessionId,
-                      value: order.amount / 100,
+                      value: toMajor(order.amount, order.currency),
+                      currency: order.currency,
                       productId: order.product.id,
                       title: order.product.title,
                     }
@@ -657,6 +721,31 @@ export default async function ThanksPage({ params, searchParams }: Params) {
             />
           </div>
         </div>
+
+        {toReview.length > 0 && sessionId ? (
+          <section id="review" aria-labelledby="review-title" className="st-card mt-6 scroll-mt-6 p-7 sm:p-10">
+            <h2 id="review-title" className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em]">
+              {toReview.length === 1 ? `How is ${toReview[0].title}?` : "How is what you bought?"}
+            </h2>
+            <p className="st-muted mt-2 text-sm leading-relaxed">
+              {`Whenever you are ready: now, or later from the list of your purchases. Only buyers can review ${store.name}'s products, and yours shows as a verified purchase.`}
+            </p>
+            <div className="mt-6 space-y-10">
+              {toReview.map((product) => (
+                <ReviewForm
+                  key={product.id}
+                  handle={store.handle}
+                  door={{ session_id: sessionId }}
+                  product={{ id: product.id, title: product.title }}
+                  existing={reviewed.get(product.id) ?? null}
+                  storeName={store.name}
+                  back="thanks"
+                  notice={reviewProduct === product.id ? reviewStatus || null : null}
+                />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </main>
     </div>
   );

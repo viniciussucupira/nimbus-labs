@@ -1,8 +1,9 @@
 import type { NextRequest } from "next/server";
+import { hasProduct } from "@/lib/catalog";
 import { issueSignedToken } from "@vercel/blob";
 import { handleUploadPresigned, type HandleUploadPresignedBody } from "@vercel/blob/client";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { imageFolder, storeForEmail } from "@/lib/store";
+import { studioAccess } from "@/lib/studio-route";
+import { imageFolder } from "@/lib/store";
 import { IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES, ownsImagePath } from "@/lib/product-image";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
 
@@ -37,10 +38,11 @@ export async function POST(request: NextRequest) {
       body,
       request,
       getSignedToken: async (pathname, clientPayload) => {
-        const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
-        if (!email) throw new Error("signed_out");
-        const store = await storeForEmail(email);
-        if (!store) throw new Error("none");
+        // Who, which store and whether their role has "products"
+        // (lib/studio-route.ts); the folder below is that store's own.
+        const access = await studioAccess(request, "products");
+        if (!access.ok) throw new Error(access.reason === "no_store" ? "none" : access.reason);
+        const { store, ref } = access.access;
 
         let productId = "";
         try {
@@ -50,8 +52,8 @@ export async function POST(request: NextRequest) {
           throw new Error("invalid");
         }
         // A picture belongs to a product of this store, never to an option.
-        if (!store.products.some((product) => product.id === productId)) throw new Error("unknown");
-        if (!ownsImagePath(pathname, await imageFolder(email))) throw new Error("invalid");
+        if (!hasProduct(store, productId)) throw new Error("unknown");
+        if (!ownsImagePath(pathname, await imageFolder(ref))) throw new Error("invalid");
 
         const rules = {
           allowedContentTypes: [...IMAGE_CONTENT_TYPES],
@@ -67,11 +69,11 @@ export async function POST(request: NextRequest) {
     return Response.json(answer);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "server_error";
-    const known = ["signed_out", "none", "unknown", "invalid"].includes(reason);
+    const known = ["signed_out", "none", "unknown", "invalid", "forbidden", "gone"].includes(reason);
     if (!known) console.error("signing a picture upload failed", error);
     return Response.json(
       { ok: false, error: known ? reason : "server_error" },
-      { status: reason === "signed_out" ? 401 : known ? 400 : 500 },
+      { status: reason === "signed_out" ? 401 : reason === "forbidden" || reason === "gone" ? 403 : known ? 400 : 500 },
     );
   }
 }

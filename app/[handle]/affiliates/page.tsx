@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { readListings } from "@/lib/catalog";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForPage } from "@/lib/store";
+import { formatMoney } from "@/lib/money";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { commissionRate } from "@/lib/affiliate-setting";
@@ -63,7 +65,8 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   },
 };
 
-const money = (cents: number) => `${cents < 0 ? "-" : ""}$${centsToPrice(Math.abs(cents))}`;
+/** In the currency it was paid in; totals are in the store's (lib/affiliates.ts, readBook). */
+const money = (cents: number, currency: string) => `${cents < 0 ? "-" : ""}${formatMoney(Math.abs(cents), currency)}`;
 const day = (seconds: number) =>
   new Date(seconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 
@@ -77,7 +80,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
   const { handle: raw } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
 
   const query = await searchParams;
@@ -92,7 +95,8 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
   const row = book?.rows[0] ?? null;
   const notice = token && !linkFor ? NOTICES.expired : NOTICES[status] ?? null;
   // Products that earn differently from the store-wide share, by name.
-  const different = store.products
+  // Only products with a rate of their own can differ, so only those are read.
+  const different = (await readListings(store, Object.keys(terms.rates)))
     .filter((p) => p.priceCents > 0 && p.recurring === null && commissionRate(terms, p.id) !== terms.percent)
     .map((p) => ({ title: p.title, rate: commissionRate(terms, p.id) }));
 
@@ -234,8 +238,8 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                     {[
                       { label: "Clicks", value: row.clicks.toLocaleString("en-US") },
                       { label: "Sales", value: row.sales.toLocaleString("en-US") },
-                      { label: "Earned", value: money(row.earned) },
-                      { label: row.owed < 0 ? "Paid ahead" : "Owed to you", value: money(Math.abs(row.owed)) },
+                      { label: "Earned", value: money(row.earned, book.currency) },
+                      { label: row.owed < 0 ? "Paid ahead" : "Owed to you", value: money(Math.abs(row.owed), book.currency) },
                     ].map((tile) => (
                       <div key={tile.label} className="rounded-2xl px-4 py-3" style={{ background: "var(--st-accent-soft)" }}>
                         <dt className="st-muted text-xs font-semibold">{tile.label}</dt>
@@ -246,7 +250,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                     ))}
                   </dl>
                   <p className="st-muted mt-3 text-sm">
-                    {`Paid to you so far: ${money(row.paid)}. ${store.name} pays you directly, not Nimbus Labs, which never holds this money: ask them how and when they pay.`}
+                    {`Paid to you so far: ${money(row.paid, book.currency)}. ${store.name} pays you directly, not Nimbus Labs, which never holds this money: ask them how and when they pay.`}
                   </p>
                   {!book.refundsChecked ? (
                     <p className="st-note mt-4 text-sm" role="status">
@@ -265,10 +269,10 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                           <span className="min-w-0">
                             <span className="block font-semibold">{line.title || "A product"}</span>
                             <span className="st-muted block text-xs">
-                              {`${day(line.at)} · ${money(line.base)} before tax · ${line.rate}%${line.status === "earned" ? "" : ` · ${line.status}`}`}
+                              {`${day(line.at)} · ${money(line.base, line.currency)} before tax · ${line.rate}%${line.status === "earned" ? "" : ` · ${line.status}`}`}
                             </span>
                           </span>
-                          <span className="font-semibold tabular-nums">{money(line.commission)}</span>
+                          <span className="font-semibold tabular-nums">{money(line.commission, line.currency)}</span>
                         </li>
                       ))}
                     </ul>
@@ -280,7 +284,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                         {book.payouts.map((payout) => (
                           <li key={payout.id} className="flex flex-wrap justify-between gap-x-4">
                             <span>{`${payout.date}${payout.reference ? ` · ${payout.reference}` : ""}`}</span>
-                            <span className="font-semibold tabular-nums">{money(payout.cents)}</span>
+                            <span className="font-semibold tabular-nums">{money(payout.cents, payout.currency)}</span>
                           </li>
                         ))}
                       </ul>

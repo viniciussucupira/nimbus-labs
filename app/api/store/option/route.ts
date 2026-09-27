@@ -29,10 +29,10 @@ const STATUS: Record<string, number> = {
  * an option holds one exactly as a product does.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "products");
   if (!guarded.ok) return guarded.response;
 
-  const { email, body } = guarded;
+  const { ref, body } = guarded;
   const action = text(body.action, 10);
   if (!ACTIONS.has(action)) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
@@ -51,14 +51,14 @@ export async function POST(request: NextRequest) {
   try {
     let result: OptionResult;
     if (action === "add") {
-      result = await addOption(email, id, label, price);
+      result = await addOption(ref, id, label, price);
     } else if (action === "edit") {
-      result = await editOption(email, id, label, price);
+      result = await editOption(ref, id, label, price);
     } else if (action === "remove") {
-      result = await removeOption(email, id);
+      result = await removeOption(ref, id);
     } else {
       const direction = body.direction === "up" ? "up" : "down";
-      result = await moveOption(email, id, direction);
+      result = await moveOption(ref, id, direction);
     }
 
     if (!result.ok) {
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       await dropStamped(file);
     }
 
-    return Response.json({ ok: true, products: result.store.products });
+    return Response.json({ ok: true });
   } catch (error) {
     if (error instanceof StoreFullError) {
       return Response.json({ ok: false, error: "store_full" }, { status: 409 });

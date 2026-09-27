@@ -1,13 +1,16 @@
 import type { NextRequest } from "next/server";
 import { originFrom } from "@/lib/request-origin";
 import {
-  SESSION_COOKIE,
-  SESSION_COOKIE_OPTIONS,
   endAllSessions,
+  moveDevices,
   openSession,
+  sessionCookie,
   spendMoveLink,
 } from "@/lib/auth";
 import { moveAccount } from "@/lib/store";
+import { moveMemberships } from "@/lib/team";
+import { movePasskeys } from "@/lib/passkeys";
+import { movePhoneDevices } from "@/lib/phone-alerts";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 /**
@@ -51,6 +54,16 @@ export async function POST(request: NextRequest) {
   try {
     const result = await moveAccount(moved.from, moved.to);
     if (!result.ok) return away(`/signin?status=move-${result.reason}`);
+    // What belongs to the person rather than to a store goes with them: the
+    // teams they are on, their passkeys, the browsers they sign in from.
+    await Promise.all([
+      moveMemberships(moved.from, moved.to),
+      movePasskeys(moved.from, moved.to),
+      moveDevices(moved.from, moved.to),
+    ]).catch((error) => console.error("moving what belongs to the account failed", error));
+    // Phones follow once the memberships have: an owner's stay the owner's,
+    // a team member's become the new address's (lib/phone-alerts.ts).
+    await movePhoneDevices(moved.from, moved.to).catch((error) => console.error("moving phone devices failed", error));
     await endAllSessions(moved.from);
     sessionId = await openSession(moved.to);
   } catch (error) {
@@ -59,19 +72,6 @@ export async function POST(request: NextRequest) {
   }
 
   const response = away("/studio?address=moved");
-  const options = SESSION_COOKIE_OPTIONS;
-  response.headers.append(
-    "Set-Cookie",
-    [
-      `${SESSION_COOKIE}=${sessionId}`,
-      `Path=${options.path}`,
-      `Max-Age=${options.maxAge}`,
-      "HttpOnly",
-      "SameSite=Lax",
-      options.secure ? "Secure" : "",
-    ]
-      .filter(Boolean)
-      .join("; "),
-  );
+  response.headers.append("Set-Cookie", sessionCookie(sessionId));
   return response;
 }

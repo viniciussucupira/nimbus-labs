@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { del, head } from "@vercel/blob";
 import { setCourseLessons, setProductCourse, storeForEmail, storeFolder } from "@/lib/store";
+import { jsonAccess } from "@/lib/studio-route";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { readLink } from "@/lib/product-link";
 import { ownsPath, safeFileName, type ProductFile } from "@/lib/product-file";
@@ -21,9 +22,10 @@ import {
   saveCourse,
 } from "@/lib/course";
 import { emailKey, registerDrip, setBlocked } from "@/lib/learn";
-import { EMAIL_PATTERN, SESSION_COOKIE, emailForSession } from "@/lib/auth";
+import { EMAIL_PATTERN } from "@/lib/auth";
 import { dropQuiz, readQuiz, readQuizFor, resetTries, saveQuiz, setupOf } from "@/lib/quiz";
 import { CERT_ID_PATTERN, withdrawCertificate } from "@/lib/certificate";
+import { readListing } from "@/lib/catalog";
 
 const OPS = new Set([
   "module-add",
@@ -42,12 +44,12 @@ const OPS = new Set([
  * studio to edit. The creator's own courses only.
  */
 export async function GET(request: NextRequest) {
-  const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
-  if (!email) return Response.json({ ok: false, error: "signed_out" }, { status: 401 });
+  const access = await jsonAccess(request, "products");
+  if (access instanceof Response) return access;
   const id = request.nextUrl.searchParams.get("id") ?? "";
   const lessonId = request.nextUrl.searchParams.get("lessonId") ?? "";
-  const store = await storeForEmail(email);
-  const product = store?.products.find((p) => p.id === id);
+  const store = access.store;
+  const product = await readListing(store, id);
   const course = product?.course ? await readCourse(product.course.id) : null;
   if (!course || !findLesson(course, lessonId)) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
   if (request.nextUrl.searchParams.get("quiz") === "1") {
@@ -74,23 +76,23 @@ export async function GET(request: NextRequest) {
  * creator's own store, so nothing here can reach anyone else's course.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request, MAX_BODY_LENGTH * 4 + 4_000);
+  const guarded = await guardStoreWrite(request, "products", MAX_BODY_LENGTH * 4 + 4_000);
   if (!guarded.ok) return guarded.response;
-  const { email, body } = guarded;
+  const { ref, body } = guarded;
   const action = text(body.action, 10);
   const id = text(body.id, 40);
   if (!id) return Response.json({ ok: false, error: "unknown" }, { status: 400 });
 
   try {
-    const store = await storeForEmail(email);
+    const store = await storeForEmail(ref);
     if (!store) return Response.json({ ok: false, error: "none" }, { status: 400 });
-    const product = store.products.find((p) => p.id === id);
+    const product = await readListing(store, id);
     if (!product) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
 
     if (action === "enable") {
       if (product.course) return Response.json({ ok: true, courseId: product.course.id });
       const course = emptyCourse();
-      const result = await setProductCourse(email, id, { id: course.id, lessons: 0 });
+      const result = await setProductCourse(ref, id, { id: course.id, lessons: 0 });
       if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
       await saveCourse(course);
       return Response.json({ ok: true, courseId: course.id });
@@ -102,7 +104,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "disable") {
       if (lessonCount(course) > 0) return Response.json({ ok: false, error: "not_empty" }, { status: 400 });
-      const result = await setProductCourse(email, id, null);
+      const result = await setProductCourse(ref, id, null);
       if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
       await dropCourse(course);
       await registerDrip(store, product, { ...course, modules: [] });
@@ -187,7 +189,7 @@ export async function POST(request: NextRequest) {
       if (!findLesson(course, lessonId)) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
       // The file has to sit in this account's folder for this very lesson,
       // and what it is is read from storage, not from the browser.
-      const folder = await storeFolder(email);
+      const folder = await storeFolder(ref);
       if (!ownsPath(pathname, folder, lessonId)) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
       const found = await head(pathname);
       const file: ProductFile = {
@@ -229,7 +231,7 @@ export async function POST(request: NextRequest) {
     }
     await saveCourse(result.course);
     const lessons = lessonCount(result.course);
-    if (lessons !== product.course.lessons) await setCourseLessons(email, id, lessons);
+    if (lessons !== product.course.lessons) await setCourseLessons(ref, id, lessons);
     if (edit.op === "lesson-remove") {
       await dropBody(course.id, edit.lessonId);
       await dropQuiz(course.id, edit.lessonId);

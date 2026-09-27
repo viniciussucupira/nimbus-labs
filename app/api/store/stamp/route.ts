@@ -1,8 +1,9 @@
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { filesOnProduct, setProductStamp, storeForEmail } from "@/lib/store";
+import { filesOnProduct, setProductStamp } from "@/lib/store";
+import { jsonAccess } from "@/lib/studio-route";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { stampProblems } from "@/lib/pdf-stamp";
+import { readListing } from "@/lib/catalog";
 
 /**
  * Stamping a product's PDFs with each buyer's email.
@@ -12,12 +13,12 @@ import { stampProblems } from "@/lib/pdf-stamp";
  * POST `{ id, on }`: switches it on or off.
  */
 export async function GET(request: NextRequest) {
-  const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
-  if (!email) return Response.json({ ok: false, error: "signed_out" }, { status: 401 });
+  const access = await jsonAccess(request, "products");
+  if (access instanceof Response) return access;
   const id = request.nextUrl.searchParams.get("id") ?? "";
   try {
-    const store = await storeForEmail(email);
-    const product = store?.products.find((p) => p.id === id);
+    const store = access.store;
+    const product = await readListing(store, id);
     if (!store || !product) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
     const files = filesOnProduct(product);
     const problems = await stampProblems(files);
@@ -37,12 +38,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "products");
   if (!guarded.ok) return guarded.response;
   const id = text(guarded.body.id, 40);
   if (!id) return Response.json({ ok: false, error: "unknown" }, { status: 400 });
   try {
-    const result = await setProductStamp(guarded.email, id, guarded.body.on === true);
+    const result = await setProductStamp(guarded.ref, id, guarded.body.on === true);
     if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: result.reason === "unknown" ? 404 : 400 });
     return Response.json({ ok: true });
   } catch (error) {

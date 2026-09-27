@@ -4,6 +4,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { settlePlans } from "@/lib/plans";
 import { isBillingConfigured } from "@/lib/billing";
 import { syncSubscriptions } from "@/lib/billing-sync";
+import { moveAllStores } from "@/lib/store";
 
 export const maxDuration = 60;
 
@@ -17,6 +18,12 @@ export const maxDuration = 60;
  *     at Stripe (lib/billing-sync.ts), so a store that stopped paying us
  *     stops selling, and one that paid while its way back got lost is
  *     written down.
+ *
+ * And, with the time left, one piece of upkeep: every store written before
+ * products had records of their own is moved to them (lib/catalog.ts). A
+ * store is also moved the first time it is written, so this reaches the
+ * ones nobody touches; a store already moved is passed over, and a walk the
+ * clock cuts short carries on the next day.
  *
  * Safe to run more than once: each job only writes what is still wrong, and
  * one run at a time.
@@ -48,8 +55,14 @@ export async function GET(request: NextRequest) {
         console.error("settling store subscriptions failed", error);
       }
     }
+    let catalogs = null;
+    try {
+      catalogs = await moveAllStores(deadline);
+    } catch (error) {
+      console.error("moving stores to product records failed", error);
+    }
     const ok = plans !== null && (billing !== null || !isBillingConfigured());
-    return Response.json({ ok, ...(plans ?? {}), billing }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ok, ...(plans ?? {}), billing, catalogs }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
   } finally {
     await redisPipeline([["DEL", "nl:plans:lock"]]).catch(() => {});
   }

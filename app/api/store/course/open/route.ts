@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { originFrom } from "@/lib/request-origin";
 import { storeForHandle } from "@/lib/store";
 import { mintPass, openCourseLink, passCookie, storeKey } from "@/lib/learn";
+import { readListing } from "@/lib/catalog";
 
 /**
  * The link from the email. Whoever holds it has read that inbox, so this
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
       { status: 410, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } },
     );
   }
-  const product = store.products.find((p) => p.id === grant.p);
+  const product = await readListing(store, grant.p);
   const pass = await mintPass(store, grant.e, "all");
   const headers = new Headers({
     Location: `${origin}/@${store.handle}${product ? `/course/${product.id}` : ""}`,

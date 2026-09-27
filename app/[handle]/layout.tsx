@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { cache } from "react";
-import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForPage } from "@/lib/store";
 import { iconUrl, shortName, themeColour } from "@/lib/store-app";
 import { StoreApp } from "@/components/store-app";
 
@@ -16,7 +16,8 @@ import { StoreApp } from "@/components/store-app";
 const loadStore = cache(async (raw: string) => {
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) return null;
-  return storeForHandle(normaliseHandle(decoded)).catch(() => null);
+  // The same read the page makes (storeForPage), so a visit asks Redis once.
+  return storeForPage(normaliseHandle(decoded)).catch(() => null);
 });
 
 export async function generateMetadata({ params }: LayoutProps<"/[handle]">): Promise<Metadata> {

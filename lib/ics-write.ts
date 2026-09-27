@@ -8,7 +8,7 @@
 
 /** A text value, with the characters the format reserves escaped. */
 export function icsText(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
 }
 
 /** An instant in UTC, as the format writes it: 20260926T140000Z. */

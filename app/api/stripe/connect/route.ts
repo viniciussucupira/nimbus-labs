@@ -19,11 +19,11 @@ import { limited } from "@/lib/request-guard";
  * here knows about.
  */
 export async function POST(request: NextRequest) {
-  const creator = await creatorFrom(request);
+  const creator = await creatorFrom(request, "payments");
   if (creator instanceof Response) return creator;
-  const { email, store, origin } = creator;
+  const { ref, store, origin, studio } = creator;
 
-  if (!isConnectConfigured()) return away(origin, "/studio?stripe=unavailable");
+  if (!isConnectConfigured()) return away(origin, studio("stripe=unavailable"));
 
   let country = "";
   try {
@@ -37,33 +37,33 @@ export async function POST(request: NextRequest) {
   // Only needed the first time: after that the account exists and its country
   // is fixed, so asking again would suggest it can still be changed.
   if (!store.stripeAccountId && !country) {
-    return away(origin, "/studio?stripe=country");
+    return away(origin, studio("stripe=country"));
   }
 
   try {
     let accountId = store.stripeAccountId;
     if (!accountId) {
       accountId = await createConnectedAccount({
-        email,
+        email: store.email,
         country,
         displayName: store.name || store.handle,
       });
-      const saved = await setStripeAccount(email, accountId);
-      if (!saved.ok) return away(origin, "/studio?stripe=error");
+      const saved = await setStripeAccount(ref, accountId);
+      if (!saved.ok) return away(origin, studio("stripe=error"));
       // Where sales are paid is the setting worth stealing a session for, so
       // the creator is told at their sign-in address (lib/account-notice.ts).
       after(() => noticeCreator(store, { kind: "stripe-connected" }));
     }
 
-    const link = await createOnboardingLink(accountId, origin);
+    const link = await createOnboardingLink(accountId, origin, store.sid);
     return new Response(null, { status: 303, headers: { Location: link } });
   } catch (error) {
     console.error("stripe connect failed", error);
     // Worth its own answer: nothing the creator does will fix this one, and a
     // vague "try again" would have them trying forever.
     if (error instanceof StripeConnectError && error.isCrossBorderRefusal) {
-      return away(origin, "/studio?stripe=country-unsupported");
+      return away(origin, studio("stripe=country-unsupported"));
     }
-    return away(origin, "/studio?stripe=error");
+    return away(origin, studio("stripe=error"));
   }
 }

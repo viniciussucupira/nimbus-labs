@@ -21,7 +21,7 @@
  *
  * Pure, so the studio and the server apply the same rules.
  */
-import type { Product } from "@/lib/store";
+import type { Listing, Product } from "@/lib/store";
 import { type Bump, MIN_BUMP_CENTS, canBeBumped, isOneOff } from "@/lib/product-extras";
 
 export type FunnelStep = {
@@ -29,9 +29,9 @@ export type FunnelStep = {
   id: string;
   /** The product offered: another product of the same store. */
   productId: string;
-  /** What it costs in this offer, in cents. Never more than on its own. */
+  /** What it costs in this offer, in the store currency's smallest unit. Never more than on its own. */
   priceCents: number;
-  /** The big line, in the creator's words. Empty uses "<title> for $<price>". */
+  /** The big line, in the creator's words. Empty uses "<title> for <price>", in the store's currency. */
   headline: string;
   /** A few sentences under it. */
   text: string;
@@ -138,7 +138,7 @@ export type FunnelProblem = "kind" | "target" | "price" | "repeat" | "shape";
  * more when it is saved, so the creator hears about a problem in the studio
  * and not from a buyer.
  */
-export function funnelProblem(funnel: Funnel, products: Product[], owner: Product): FunnelProblem | null {
+export function funnelProblem(funnel: Funnel, products: Listing[], owner: Listing): FunnelProblem | null {
   if (!isOneOff(owner)) return "kind";
   if (funnel.steps.length === 0 || funnel.steps.length > MAX_FUNNEL_STEPS) return "shape";
   for (const step of funnel.steps) {
@@ -154,7 +154,7 @@ export function funnelProblem(funnel: Funnel, products: Product[], owner: Produc
 }
 
 /** Whether an offer can be shown right now, as the store stands. */
-export function stepOffered(products: Product[], step: FunnelStep): Product | null {
+export function stepOffered(products: Listing[], step: FunnelStep): Listing | null {
   const target = products.find((p) => p.id === step.productId);
   if (!target || !canBeBumped(target)) return null;
   if (step.priceCents < MIN_BUMP_CENTS || step.priceCents > target.priceCents) return null;
@@ -162,7 +162,7 @@ export function stepOffered(products: Product[], step: FunnelStep): Product | nu
 }
 
 /** The funnel that follows paying for this product, or null. */
-export function activeFunnel(products: Product[], product: Product): Funnel | null {
+export function activeFunnel(products: Listing[], product: Listing & Pick<Product, "funnel">): Funnel | null {
   if (!product.funnel || !isOneOff(product)) return null;
   // At least one offer has to be showable, or nothing follows at all.
   const any = product.funnel.steps.some((step) => step.productId !== product.id && stepOffered(products, step));
@@ -188,7 +188,7 @@ export type StepAnswer = "paid" | "declined" | "failed" | "pending";
 
 export type FunnelPosition =
   /** This offer is the one to show. */
-  | { kind: "offer"; step: FunnelStep; target: Product; index: number }
+  | { kind: "offer"; step: FunnelStep; target: Listing; index: number }
   /** An answer is still waiting on Stripe or the bank: nothing more is shown yet. */
   | { kind: "waiting"; step: FunnelStep }
   /** The card turned an offer down: nothing more is offered. */
@@ -206,7 +206,7 @@ export type FunnelPosition =
  */
 export function funnelPosition(
   funnel: Funnel,
-  products: Product[],
+  products: Listing[],
   answers: Map<string, StepAnswer>,
   owned: Set<string>,
 ): FunnelPosition {
@@ -244,4 +244,10 @@ export function stepLabel(funnel: Funnel, id: string | null): string {
   if (id === null) return "The end";
   const index = funnel.steps.findIndex((s) => s.id === id);
   return index < 0 ? "The end" : `Offer ${index + 1}`;
+}
+
+/** Every product a funnel names: those it offers and those whose pictures it shows. */
+export function funnelProductIds(funnel: Funnel | null): string[] {
+  if (!funnel) return [];
+  return [...new Set(funnel.steps.flatMap((step) => [step.productId, ...(step.imageFrom ? [step.imageFrom] : [])]))];
 }

@@ -12,17 +12,17 @@ import { clearStripeAccount } from "@/lib/store";
  * that this product should not have.
  */
 export async function POST(request: NextRequest) {
-  const creator = await creatorFrom(request);
+  const creator = await creatorFrom(request, "payments");
   if (creator instanceof Response) return creator;
-  const { email, origin, store } = creator;
+  const { ref, store, origin, studio } = creator;
 
   try {
-    const result = await clearStripeAccount(email);
-    if (!result) return away(origin, "/studio?stripe=nostore");
+    const result = await clearStripeAccount(ref);
+    if (!result) return away(origin, studio("stripe=nostore"));
     if (store.stripeAccountId) after(() => noticeCreator(store, { kind: "stripe-disconnected" }));
-    return away(origin, "/studio?stripe=forgotten");
+    return away(origin, studio("stripe=forgotten"));
   } catch (error) {
     console.error("stripe disconnect failed", error);
-    return away(origin, "/studio?stripe=error");
+    return away(origin, studio("stripe=error"));
   }
 }

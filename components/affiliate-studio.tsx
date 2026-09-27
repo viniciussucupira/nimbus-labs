@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { toast } from "@/components/toast";
+import { StoreCurrency, useStoreCurrency } from "@/components/store-currency";
+import { type Currency, fieldPrefix, formatMoney, moneyField } from "@/lib/money";
 import {
   type AffiliateSetting,
   MAX_COMMISSION,
@@ -12,6 +14,7 @@ import {
   MIN_COOKIE_DAYS,
 } from "@/lib/affiliate-setting";
 import type { Affiliate, AffiliateStatus, LineStatus, Payout } from "@/lib/affiliates";
+import { StoreField } from "@/components/studio-store-pin";
 
 const MESSAGES: Record<string, string> = {
   percent: `Type a whole share from ${MIN_COMMISSION} to ${MAX_COMMISSION} percent.`,
@@ -47,13 +50,12 @@ type LineView = {
   rate: number;
   commission: number;
   status: LineStatus;
+  /** What the sale was paid in. */
+  currency: string;
 };
 
-const money = (cents: number) => {
-  const abs = Math.abs(cents);
-  return `${cents < 0 ? "-" : ""}$${abs % 100 ? (abs / 100).toFixed(2) : String(abs / 100)}`;
-};
-const dollarsField = (cents: number) => (cents % 100 ? (cents / 100).toFixed(2) : String(cents / 100));
+/** An amount in the currency it was paid in (lib/money.ts). */
+const money = (cents: number, currency: string) => `${cents < 0 ? "-" : ""}${formatMoney(Math.abs(cents), currency)}`;
 const day = (seconds: number) =>
   new Date(seconds * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 const dayMs = (ms: number) => day(Math.floor(ms / 1000));
@@ -90,6 +92,8 @@ export function AffiliateStudio({
   payouts,
   refundsChecked,
   today,
+  currency = "usd",
+  elsewhere = 0,
 }: {
   handle: string;
   setting: AffiliateSetting;
@@ -99,6 +103,10 @@ export function AffiliateStudio({
   payouts: Payout[];
   refundsChecked: boolean;
   today: string;
+  /** The store's currency: what the totals and new payouts are in. */
+  currency?: Currency;
+  /** Sales and payouts in another currency, left out of the totals. */
+  elsewhere?: number;
 }) {
   const router = useRouter();
   const pending = rows.filter((r) => r.affiliate.status === "pending");
@@ -130,6 +138,7 @@ export function AffiliateStudio({
     ) : null;
 
   return (
+    <StoreCurrency value={currency}>
     <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
       <div className="min-w-0 space-y-6">
         <Terms
@@ -156,13 +165,19 @@ export function AffiliateStudio({
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <form action="/api/store/affiliates/export" method="get">
+              <StoreField />
               <button type="submit" className="btn btn-secondary btn-sm">
                 <Icon name="download" size={16} />
                 Download everything (CSV)
               </button>
             </form>
-            <span className="text-sm text-ink-soft">{`Owed now, in all: ${money(owedTotal)}`}</span>
+            <span className="text-sm text-ink-soft">{`Owed now, in all: ${money(owedTotal, currency)}`}</span>
           </div>
+          {elsewhere > 0 ? (
+            <p className="mt-3 text-xs text-ink-soft">
+              {`${elsewhere} ${elsewhere === 1 ? "sale or payout is" : "sales and payouts are"} in another currency, from before your store charged in ${currency.toUpperCase()}. ${elsewhere === 1 ? "It is" : "They are"} listed with ${elsewhere === 1 ? "its" : "their"} own currency and left out of these totals, because amounts in two currencies do not add up.`}
+            </p>
+          ) : null}
         </section>
       </div>
 
@@ -246,12 +261,12 @@ export function AffiliateStudio({
                   <span className="min-w-0">
                     <span className="block font-semibold text-ink">{line.title}</span>
                     <span className="block text-xs text-ink-soft [overflow-wrap:anywhere]">
-                      {`${day(line.at)} · ${who.get(line.aff)?.email ?? "A removed affiliate"} · ${money(line.base)} before tax · ${line.rate}%`}
-                      {line.refunded ? ` · ${money(line.refunded)} refunded` : ""}
+                      {`${day(line.at)} · ${who.get(line.aff)?.email ?? "A removed affiliate"} · ${money(line.base, line.currency)} before tax · ${line.rate}%`}
+                      {line.refunded ? ` · ${money(line.refunded, line.currency)} refunded` : ""}
                     </span>
                   </span>
                   <span className="text-right">
-                    <span className="block font-semibold tabular-nums text-ink">{money(line.commission)}</span>
+                    <span className="block font-semibold tabular-nums text-ink">{money(line.commission, line.currency)}</span>
                     {line.status !== "earned" ? (
                       <span className="block text-xs font-semibold text-ink-soft">{line.status === "own purchase" ? "Their own purchase" : line.status === "refunded" ? "Refunded" : "Partly refunded"}</span>
                     ) : null}
@@ -273,7 +288,7 @@ export function AffiliateStudio({
                     <span className="block text-xs text-ink-soft">{`${payout.date}${payout.reference ? ` · ${payout.reference}` : ""}`}</span>
                   </span>
                   <span className="flex items-center gap-3">
-                    <span className="font-semibold tabular-nums text-ink">{money(payout.cents)}</span>
+                    <span className="font-semibold tabular-nums text-ink">{money(payout.cents, payout.currency)}</span>
                     <button
                       type="button"
                       className="min-h-[36px] text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
@@ -291,6 +306,7 @@ export function AffiliateStudio({
         ) : null}
       </div>
     </div>
+    </StoreCurrency>
   );
 }
 
@@ -470,9 +486,10 @@ function Member({
   error: React.ReactNode;
 }) {
   const { affiliate } = row;
+  const currency = useStoreCurrency();
   const where = `m-${affiliate.id}`;
   const [paying, setPaying] = useState(false);
-  const [amount, setAmount] = useState(row.owed > 0 ? dollarsField(row.owed) : "");
+  const [amount, setAmount] = useState(row.owed > 0 ? moneyField(row.owed, currency) : "");
   const [date, setDate] = useState(today);
   const [reference, setReference] = useState("");
   const tag = STATUS_TAG[affiliate.status];
@@ -490,9 +507,9 @@ function Member({
         {[
           { label: "Clicks", value: row.clicks.toLocaleString("en-US") },
           { label: "Sales", value: row.sales.toLocaleString("en-US") },
-          { label: "Earned", value: money(row.earned) },
-          { label: "Paid", value: money(row.paid) },
-          { label: row.owed < 0 ? "Paid ahead" : "Owed", value: money(Math.abs(row.owed)), strong: row.owed > 0 },
+          { label: "Earned", value: money(row.earned, currency) },
+          { label: "Paid", value: money(row.paid, currency) },
+          { label: row.owed < 0 ? "Paid ahead" : "Owed", value: money(Math.abs(row.owed), currency), strong: row.owed > 0 },
         ].map((tile) => (
           <div key={tile.label} className={`rounded-xl px-2 py-2 ${tile.strong ? "bg-lilac" : "bg-paper"}`}>
             <dt className="text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-ink-mute">{tile.label}</dt>
@@ -512,8 +529,8 @@ function Member({
         >
           <div className="grid gap-3 sm:grid-cols-[8rem_10rem_minmax(0,1fr)]">
             <label className="block" htmlFor={`${where}-a`}>
-              <span className="field-label">Amount, $</span>
-              <input id={`${where}-a`} type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="field" required />
+              <span className="field-label">{`Amount, ${currency === "usd" ? "$" : fieldPrefix(currency)}`}</span>
+              <input id={`${where}-a`} type="text" inputMode={currency === "jpy" ? "numeric" : "decimal"} value={amount} onChange={(e) => setAmount(e.target.value)} className="field" required />
             </label>
             <label className="block" htmlFor={`${where}-d`}>
               <span className="field-label">Paid on</span>

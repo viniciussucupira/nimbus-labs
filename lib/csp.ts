@@ -12,7 +12,13 @@
  *     slips through the escaping, because it would not carry the nonce. The
  *     creator's own ad pixels are started by our code, so they load under the
  *     same rule, and only the addresses those four platforms send their
- *     measurements to are added to what a page may connect to.
+ *     measurements to are added to what a page may connect to. The three
+ *     video players a product's page may show (lib/sales-page.ts) are the
+ *     only other addresses such a page may put in a frame, and only their
+ *     embed hosts — YouTube's privacy-enhanced one, Vimeo's player and
+ *     Loom's embed — never the sites themselves. Both lists are given to a
+ *     store's own pages only; the studio, signing in and unsubscribing get
+ *     neither.
  *
  *   - The pages built once, ahead of time — the home page, the help, the
  *     blog, the comparison pages — have no request to make a nonce for, so
@@ -30,6 +36,8 @@
  * site on a local http address and adds nothing to a site that only answers
  * on https and says so with Strict-Transport-Security.
  */
+
+import { VIDEO_FRAME_ORIGINS } from "./sales-page";
 
 /** Where the ad platforms' own scripts send what they measure. */
 const PIXEL_CONNECT = [
@@ -83,16 +91,29 @@ const shared = (): Record<string, string[]> => ({
   "frame-ancestors": ["'self'"],
 });
 
-/** The policy for a page rendered for this one response, with its nonce. */
-export function dynamicPolicy(nonce: string): string {
+/**
+ * The policy for a page rendered for this one response, with its nonce.
+ *
+ * `store` is a store's own page. Only those may reach the ad platforms and
+ * frame the three video players: the studio, signing in and unsubscribing
+ * run none of that, so for them the list of other addresses stays at the
+ * file storage the studio uploads to.
+ */
+export function dynamicPolicy(nonce: string, options: { store?: boolean } = {}): string {
+  const store = options.store !== false;
   return join({
     ...shared(),
     // 'self', https: and 'unsafe-inline' are only for browsers too old to
     // know nonces; every current one ignores them when a nonce is present.
     "script-src": [`'nonce-${nonce}'`, "'strict-dynamic'", "'self'", "https:", "'unsafe-inline'", ...(dev() ? ["'unsafe-eval'"] : [])],
-    "connect-src": ["'self'", BLOB_API, BLOB_FILES, ...PIXEL_CONNECT],
-    "frame-src": ["'self'", ...PIXEL_FRAMES],
+    "connect-src": ["'self'", BLOB_API, BLOB_FILES, ...(store ? PIXEL_CONNECT : [])],
+    "frame-src": ["'self'", ...(store ? [...PIXEL_FRAMES, ...VIDEO_FRAME_ORIGINS] : [])],
   });
+}
+
+/** Whether a page rendered per visit is a store's own page (under /@, or the demo store's thanks page). */
+export function isStorePage(pathname: string): boolean {
+  return /^\/(?:@|%40)/i.test(pathname) || /^\/demo\/thanks(\/|$)/.test(pathname);
 }
 
 /** The policy for a page built ahead of time, which has no nonce to carry. */

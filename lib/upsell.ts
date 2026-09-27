@@ -8,6 +8,13 @@
  *
  *   - the card is saved only for payments made while the buyer is there
  *     (setup_future_usage "on_session"), never to be charged behind their back;
+ *   - only a card is asked to be saved, so the checkout still offers every
+ *     other way to pay; a buyer who paid with one that cannot be charged again
+ *     in one click (Klarna, iDEAL and the like) meets no offer at all
+ *     (lib/instant-pay.ts, reusableMethod);
+ *   - each offer is charged in the currency of the order it follows, which
+ *     is the store's; an order in another currency, from before the store
+ *     changed it, is followed by no offer;
  *   - the offers only work in the browser that paid: a secret cookie is set
  *     when the checkout opens and its fingerprint travels with the charge, so
  *     a thanks-page link that is forwarded cannot be used to charge the card;
@@ -48,8 +55,12 @@ import {
 } from "@/lib/funnel";
 import { funnelRate, noteCharge } from "@/lib/affiliates";
 import { confirmOffer } from "@/lib/purchase-email";
+import { noteOfferSale } from "@/lib/sale-events";
 import { refundedInFull } from "@/lib/refunds";
-import type { Product, Store } from "@/lib/store";
+import { methodId, reusableMethod } from "@/lib/instant-pay";
+import type { Listing, Product, Store } from "@/lib/store";
+import { listingFinder, readListing, readListings, readProduct } from "@/lib/catalog";
+import { funnelProductIds } from "@/lib/funnel";
 import type { ProductFile } from "@/lib/product-file";
 import type { ProductImage } from "@/lib/product-image";
 
@@ -168,6 +179,7 @@ type SessionView = {
   payment_status?: unknown;
   created?: unknown;
   customer?: unknown;
+  currency?: unknown;
   metadata?: Record<string, string> | null;
   customer_details?: { email?: unknown } | null;
   payment_intent?: { id?: unknown; payment_method?: unknown } | string | null;
@@ -181,14 +193,14 @@ async function paidSession(store: Store, session: string): Promise<{ view: Sessi
     view = (await onAccount(
       "GET",
       store.stripeAccountId,
-      `/checkout/sessions/${encodeURIComponent(session)}?expand[]=payment_intent`,
+      `/checkout/sessions/${encodeURIComponent(session)}?expand[]=payment_intent.payment_method`,
     )) as SessionView;
   } catch {
     return null;
   }
   if (view.status !== "complete" || view.payment_status !== "paid") return null;
   if (view.metadata?.store !== store.handle) return null;
-  const product = store.products.find((p) => p.id === view.metadata?.product);
+  const product = view.metadata?.product ? await readProduct(store, view.metadata.product) : null;
   return product ? { view, product } : null;
 }
 
@@ -224,16 +236,22 @@ export async function takeUpsell(input: {
   if (!found) return { kind: "unavailable" };
   const { view, product } = found;
   // A one-click charge cannot carry Stripe Tax, so with tax on there is none.
-  const funnel = store.tax.enabled ? null : activeFunnel(store.products, product);
+  const offered = await readListings(store, funnelProductIds(product.funnel));
+  const funnel = store.tax.enabled ? null : activeFunnel(offered, product);
   if (!funnel) return { kind: "unavailable" };
   const created = typeof view.created === "number" ? view.created : 0;
   if (!offerOpen(created, secret, view.metadata?.upsell_key)) return { kind: "unavailable" };
+  // Paid with something a one-click charge cannot reach again, or in another
+  // currency than the store's offers are priced in: there is no offer.
+  if (!reusableMethod(view) || (typeof view.currency === "string" ? view.currency : "usd") !== store.currency) {
+    return { kind: "unavailable" };
+  }
 
   // Where the buyer is, worked out from what they already answered: only
   // that offer can be answered now.
   const owned = new Set([product.id, ...(view.metadata?.bump ? [view.metadata.bump] : [])]);
   const records = await readAnswers(session);
-  const position = funnelPosition(funnel, store.products, toAnswers(records), owned);
+  const position = funnelPosition(funnel, offered, toAnswers(records), owned);
   if (position.kind !== "offer" || position.step.id !== input.step) {
     const asked = funnel.steps.find((s) => s.id === input.step);
     const record = asked ? records.get(stepSlot(funnel, asked)) : undefined;
@@ -263,8 +281,7 @@ export async function takeUpsell(input: {
   }
   if (slot) await redisPipeline([["SADD", slotsKey(session), slot], ["EXPIRE", slotsKey(session), RECORD_SECONDS]]);
 
-  const intent = typeof view.payment_intent === "object" && view.payment_intent ? view.payment_intent : null;
-  const method = typeof intent?.payment_method === "string" ? intent.payment_method : null;
+  const method = methodId(view);
   const customer = typeof view.customer === "string" ? view.customer : null;
   if (!method || !customer) {
     await writeUpsell(session, slot, { state: "failed", product: target.id, at: Date.now() });
@@ -279,7 +296,7 @@ export async function takeUpsell(input: {
   const email = typeof view.customer_details?.email === "string" ? view.customer_details.email : "";
   const body = new URLSearchParams({
     amount: String(step.priceCents),
-    currency: "usd",
+    currency: store.currency,
     customer,
     payment_method: method,
     confirm: "true",
@@ -353,16 +370,19 @@ export async function takeUpsell(input: {
 
 /**
  * What follows an offer being paid, wherever that is learned: the affiliate
- * the order came through is credited, and the buyer gets its confirmation.
- * Neither can undo the payment, so neither failing is passed on.
+ * the order came through is credited, the buyer gets its confirmation, and
+ * the creator's phone hears of the sale (lib/sale-events.ts). None can undo
+ * the payment, so none failing is passed on.
  */
-async function afterPaid(store: Store, session: string, target: Product, pi: Record<string, unknown>, email: string): Promise<void> {
+async function afterPaid(store: Store, session: string, target: Listing, pi: Record<string, unknown>, email: string): Promise<void> {
   await noteCharge(store, pi).catch((error) => console.error("noting an affiliate sale failed", error));
   const reference = typeof pi.id === "string" ? pi.id : "";
   const amountCents = typeof pi.amount === "number" ? pi.amount : 0;
-  await confirmOffer(store, { reference, parent: session, product: target, email, amountCents }).catch((error) =>
+  const currency = typeof pi.currency === "string" && pi.currency ? pi.currency : store.currency;
+  await confirmOffer(store, { reference, parent: session, product: target, email, amountCents, currency }).catch((error) =>
     console.error("sending an offer's confirmation failed", error),
   );
+  await noteOfferSale(store, target, pi).catch((error) => console.error("telling about an offer's sale failed", error));
 }
 
 /** One offer's charge for this order, found among the customer's payments. */
@@ -414,7 +434,7 @@ async function settleOne(store: Store, session: string, slot: string, record: Up
     }
     if (pi.status === "succeeded") {
       await writeUpsell(session, slot, { ...record, pi: id, state: "paid" });
-      const target = store.products.find((p) => p.id === record.product);
+      const target = await readListing(store, record.product);
       const email = typeof pi.receipt_email === "string" ? pi.receipt_email : "";
       if (target) await afterPaid(store, session, target, pi, email);
       else await noteCharge(store, pi).catch((error) => console.error("noting an affiliate sale failed", error));
@@ -521,10 +541,10 @@ export async function upsellDelivery(
   store: Store,
   session: string,
   slot = "",
-): Promise<{ product: Product; file: ProductFile | null; link: string | null; reference: string; paidAt: number } | null> {
+): Promise<{ product: Listing; file: ProductFile | null; link: string | null; reference: string; paidAt: number } | null> {
   const record = await readUpsell(session, slot);
   if (!record || record.state !== "paid") return null;
-  const product = store.products.find((p) => p.id === record.product);
+  const product = await readListing(store, record.product);
   // Its own payment's id, when Stripe gave one: the same reference the
   // buyer's list of purchases shows it under, so a licence key or a stamped
   // copy made for it is found again from either page.
@@ -538,13 +558,13 @@ export type FunnelView = {
   /** The offer to show now, when there is one. */
   offer: {
     step: FunnelStep;
-    target: Product;
+    target: Listing;
     image: ProductImage | null;
     /** Reached by saying no to an earlier offer. */
     afterNo: boolean;
   } | null;
   /** What was added and paid for, each with the slot its download is asked by. */
-  taken: { slot: string; product: Product; reference: string }[];
+  taken: { slot: string; product: Listing; reference: string }[];
   /** An offer still waiting on the bank or Stripe, or one the card turned down. */
   notes: { state: "checking" | "unconfirmed" | "declined"; title: string }[];
 };
@@ -557,7 +577,8 @@ export type FunnelView = {
 export async function funnelView(input: {
   store: Store;
   session: string;
-  product: Product;
+  /** The product bought; its funnel is read here. */
+  product: Listing;
   /** What else this order holds: what was ticked at checkout. */
   alsoOwned: string[];
   /** Whether this order can be followed by offers at all. */
@@ -570,23 +591,26 @@ export async function funnelView(input: {
   const records = await readAnswers(session);
   const taken: FunnelView["taken"] = [];
   const notes: FunnelView["notes"] = [];
+  const find = listingFinder(store);
   for (const [slot, record] of records) {
-    const known = store.products.find((p) => p.id === record.product);
+    const known = await find(record.product);
     const title = known?.title ?? "The product you were offered";
     if (record.state === "paid" && known) taken.push({ slot, product: known, reference: upsellReference(session, slot, record) });
     if (record.state === "pending") notes.push({ state: record.pi ? "unconfirmed" : "checking", title });
     if (record.state === "failed") notes.push({ state: "declined", title });
   }
 
-  const funnel = input.eligible && !store.tax.enabled ? activeFunnel(store.products, product) : null;
-  if (!funnel || !offerOpen(input.created, input.secret, input.upsellKey ?? undefined)) {
-    return { offer: null, taken, notes };
-  }
+  // The funnel and what it names are read only when an offer could follow.
+  const open = input.eligible && !store.tax.enabled && offerOpen(input.created, input.secret, input.upsellKey ?? undefined);
+  const full = open ? await readProduct(store, product.id) : null;
+  const offered = full ? await readListings(store, funnelProductIds(full.funnel)) : [];
+  const funnel = full ? activeFunnel(offered, full) : null;
+  if (!funnel) return { offer: null, taken, notes };
   const owned = new Set([product.id, ...input.alsoOwned]);
-  const position = funnelPosition(funnel, store.products, toAnswers(records), owned);
+  const position = funnelPosition(funnel, offered, toAnswers(records), owned);
   if (position.kind !== "offer") return { offer: null, taken, notes };
   const { step, target } = position;
-  const pictured = step.imageFrom ? store.products.find((p) => p.id === step.imageFrom) ?? null : null;
+  const pictured = step.imageFrom ? offered.find((p) => p.id === step.imageFrom) ?? null : null;
   const afterNo = funnel.steps.some((s) => s.no === step.id && records.get(stepSlot(funnel, s))?.state === "declined");
   return {
     offer: {

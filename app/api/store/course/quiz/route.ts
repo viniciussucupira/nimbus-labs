@@ -7,6 +7,7 @@ import { findLesson, isOpen, readCourse } from "@/lib/course";
 import { courseAccess, emailKey, markLesson } from "@/lib/learn";
 import { heldBack, passedQuizzes, readAnswers, readQuizFor, submitQuiz } from "@/lib/quiz";
 import { limited } from "@/lib/request-guard";
+import { readCourseListing } from "@/lib/catalog";
 
 /**
  * "Check my answers": marks one try at a lesson's quiz and goes back to the
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
   const productId = String(form.get("product") ?? "").slice(0, 40);
   const lessonId = String(form.get("lesson") ?? "").slice(0, 20);
   const store = handle ? await storeForHandle(handle) : null;
-  const product = store?.products.find((p) => p.id === productId && p.course);
+  const product = await readCourseListing(store, productId);
   if (!store || !product?.course) return new Response("Not found.", { status: 404 });
   const base = `${origin}/@${store.handle}/course/${product.id}`;
   const away = (path: string) => new Response(null, { status: 303, headers: { Location: path, "Cache-Control": "no-store" } });

@@ -5,6 +5,7 @@ import { findLesson, isOpen, readCourse } from "@/lib/course";
 import { courseAccess, emailKey } from "@/lib/learn";
 import { heldBack, passedQuizzes } from "@/lib/quiz";
 import { plain, serveFile } from "@/lib/serve-file";
+import { readCourseListing } from "@/lib/catalog";
 
 /**
  * A lesson's download: a worksheet, the slides. Handed over only to someone
@@ -13,7 +14,7 @@ import { plain, serveFile } from "@/lib/serve-file";
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams;
   const store = await storeForHandle(normaliseHandle(q.get("h") ?? ""));
-  const product = store?.products.find((p) => p.id === q.get("p") && p.course);
+  const product = await readCourseListing(store, q.get("p"));
   if (!store || !product?.course) return plain(404, "Not found.");
   const course = await readCourse(product.course.id);
   const found = course ? findLesson(course, q.get("l") ?? "") : null;

@@ -1,0 +1,73 @@
+import type { NextRequest } from "next/server";
+import { setReviewAsk } from "@/lib/store";
+import { guardStoreWrite, text } from "@/lib/store-request";
+import { MAX_REPLY_TEXT, REVIEW_ID_PATTERN, markSeen, setHidden, setReply } from "@/lib/reviews";
+import { MAX_ASK_DAYS, MIN_ASK_DAYS } from "@/lib/review-ask";
+import { canWrite } from "@/lib/mail";
+
+const PRODUCT_ID = /^[a-z0-9]{6,40}$/;
+
+/**
+ * What a creator may do with their buyers' reviews, from the studio:
+ *
+ *   { action: "hide", product, id, hidden }   take a review's words off the page, or put them back
+ *   { action: "reply", product, id, text }    answer it in public; empty text takes the answer away
+ *   { action: "seen", items | all }           take reviews out of the queue of new ones
+ *   { action: "ask", days }                   the review-request email: 3 to 30 days, or 0 for off
+ *
+ * There is no action that changes what a buyer wrote or the stars they gave,
+ * and none that deletes a review: only its buyer can (lib/reviews.ts).
+ */
+export async function POST(request: NextRequest) {
+  // Moderating is for everyone on the team who answers buyers (lib/team-roles.ts,
+  // "reviews"); the email that asks buyers for a review is a store setting.
+  const guarded = await guardStoreWrite(request, (sent) => (sent.action === "ask" ? "settings" : "reviews"), 8_000);
+  if (!guarded.ok) return guarded.response;
+  const body = guarded.body;
+  const store = guarded.store;
+  const action = text(body.action, 10);
+
+  try {
+    if (action === "ask") {
+      const days = Number(body.days);
+      if (!Number.isInteger(days) || (days !== 0 && (days < MIN_ASK_DAYS || days > MAX_ASK_DAYS))) {
+        return Response.json({ ok: false, error: "days" }, { status: 400 });
+      }
+      // Switching it on needs what every email to people needs here.
+      if (days > 0 && !canWrite(store)) return Response.json({ ok: false, error: "email" }, { status: 400 });
+      await setReviewAsk(guarded.ref, { days });
+      return Response.json({ ok: true });
+    }
+
+    const statsId = store.statsId;
+    if (!statsId) return Response.json({ ok: false, error: "missing" }, { status: 400 });
+
+    if (action === "seen") {
+      if (body.all === true) {
+        await markSeen(statsId, "all");
+      } else {
+        const items = Array.isArray(body.items) ? body.items.filter((i): i is string => typeof i === "string").slice(0, 200) : [];
+        await markSeen(statsId, items);
+      }
+      return Response.json({ ok: true });
+    }
+
+    const productId = text(body.product, 40);
+    const id = text(body.id, 24);
+    if (!PRODUCT_ID.test(productId) || !REVIEW_ID_PATTERN.test(id)) return Response.json({ ok: false, error: "missing" }, { status: 400 });
+
+    const done =
+      action === "hide"
+        ? await setHidden(statsId, productId, id, body.hidden === true)
+        : action === "reply"
+          ? await setReply(statsId, productId, id, text(body.text, MAX_REPLY_TEXT + 200))
+          : null;
+    if (done === null) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
+    if (done === "busy") return Response.json({ ok: false, error: "busy" }, { status: 409 });
+    if (done === "missing") return Response.json({ ok: false, error: "missing" }, { status: 404 });
+    return Response.json({ ok: true });
+  } catch (error) {
+    console.error("changing a review failed", error);
+    return Response.json({ ok: false, error: "server_error" }, { status: 500 });
+  }
+}

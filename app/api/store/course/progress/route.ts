@@ -7,6 +7,7 @@ import { ITEM_ID_PATTERN, findLesson, isOpen, readCourse } from "@/lib/course";
 import { courseAccess, emailKey, markLesson } from "@/lib/learn";
 import { heldBack, passedQuizzes } from "@/lib/quiz";
 import { limited } from "@/lib/request-guard";
+import { readCourseListing } from "@/lib/catalog";
 
 /** "Mark as done", and on to the next lesson. A plain form, no script needed. */
 export async function POST(request: NextRequest) {
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     return new Response("Bad request", { status: 400 });
   }
   const store = handle ? await storeForHandle(handle) : null;
-  const product = store?.products.find((p) => p.id === productId && p.course);
+  const product = await readCourseListing(store, productId);
   if (!store || !product?.course) return new Response("Not found.", { status: 404 });
   const base = `${origin}/@${store.handle}/course/${product.id}`;
 

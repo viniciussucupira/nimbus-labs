@@ -43,8 +43,12 @@ import { canManage } from "@/lib/membership-manage";
 import { everyLabel } from "@/lib/product-recurring";
 import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-store";
 import { SITE_URL } from "@/lib/site-url";
-import { type Product, type Store, centsToPrice } from "@/lib/store";
+import type { Listing, Store } from "@/lib/store";
+import { listingsNamed, recordListings } from "@/lib/catalog";
+import { formatMoney } from "@/lib/money";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
+import { refundedInFull } from "@/lib/refunds";
+import { scheduleReviewAsk } from "@/lib/review-ask";
 
 const SESSION_ID_PATTERN = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
 const INTENT_ID_PATTERN = /^pi_[A-Za-z0-9]{10,200}$/;
@@ -74,6 +78,7 @@ export type SessionRecord = {
   expires_at?: unknown;
   amount_total?: unknown;
   amount_subtotal?: unknown;
+  currency?: unknown;
   customer_email?: unknown;
   metadata?: Record<string, string> | null;
   customer_details?: { email?: unknown } | null;
@@ -120,8 +125,9 @@ export function canConfirm(store: Store): boolean {
   );
 }
 
-function money(cents: number): string {
-  return `$${centsToPrice(cents)}`;
+/** An amount in the currency it was charged in (lib/money.ts). */
+function money(cents: number, currency: string): string {
+  return formatMoney(cents, currency);
 }
 
 export type Confirmation = { to: string; subject: string; text: string };
@@ -138,6 +144,8 @@ export function confirmationFor(
   session: SessionRecord,
   nowSeconds = Date.now() / 1000,
   keys: KeyLine[] = [],
+  /** The product and what was added, read by the caller; the store record's own when not given. */
+  listings: Listing[] = recordListings(store),
 ): Confirmation | null {
   const id = typeof session.id === "string" ? session.id : "";
   if (!SESSION_ID_PATTERN.test(id)) return null;
@@ -146,7 +154,7 @@ export function confirmationFor(
   const handles = new Set([store.handle, ...store.previousHandles]);
   if (!handles.has(meta.store ?? "")) return null;
   if (meta.kind === "call") return null;
-  const product = store.products.find((p) => p.id === meta.product);
+  const product = listings.find((p) => p.id === meta.product);
   if (!product || product.call) return null;
   const created = typeof session.created === "number" ? session.created : 0;
   if (nowSeconds - created > CONFIRM_WITHIN_SECONDS) return null;
@@ -155,12 +163,14 @@ export function confirmationFor(
   if (!email) return null;
 
   const option = product.options.find((entry) => entry.id === meta.option) ?? null;
-  const bump = meta.bump ? store.products.find((p) => p.id === meta.bump) ?? null : null;
+  const bump = meta.bump ? listings.find((p) => p.id === meta.bump) ?? null : null;
   const plan =
     meta.kind === "plan" && Number(meta.plan_payments) >= 2
       ? { payments: Number(meta.plan_payments), weekly: meta.plan_interval === "week" }
       : null;
   const amount = typeof session.amount_total === "number" ? session.amount_total : 0;
+  // What Stripe charged it in; the store's own currency for a record that says none.
+  const currency = typeof session.currency === "string" && session.currency ? session.currency : store.currency;
   const title = option ? `${product.title} (${option.label})` : product.title;
   const base = storeBase(store);
   const name = store.name;
@@ -170,7 +180,7 @@ export function confirmationFor(
   const trialDays = product.recurring ? wholeNumber(meta.trial_days) : 0;
   const endsAfter = product.recurring ? wholeNumber(meta.ends_after) : 0;
 
-  const paid = paidLine(product, amount, plan, trialDays, endsAfter);
+  const paid = paidLine(product, amount, currency, plan, trialDays, endsAfter);
   const lines: string[] = [
     `Thank you for buying from ${name}. This is your confirmation.`,
     "",
@@ -224,7 +234,7 @@ export function confirmationFor(
       });
       lines.push(
         "",
-        `Nothing was charged today. Your first payment of ${money(firstCents)}${tax} is taken when the ${trialDays}-day trial ends, on ${firstOn}, from the card you gave. Cancel before then and you are not charged at all.`,
+        `Nothing was charged today. Your first payment of ${money(firstCents, currency)}${tax} is taken when the ${trialDays}-day trial ends, on ${firstOn}, from the card you gave. Cancel before then and you are not charged at all.`,
       );
     }
     const schedule =
@@ -261,20 +271,21 @@ function wholeNumber(raw: string | undefined): number {
 }
 
 function paidLine(
-  product: Product,
+  product: Listing,
   amount: number,
+  currency: string,
   plan: { payments: number; weekly: boolean } | null,
   trialDays: number,
   endsAfter: number,
 ): string {
-  if (trialDays > 0 && amount === 0) return `$0 today. Your ${trialDays}-day free trial has started.`;
-  if (amount === 0) return "$0. A discount code covered the whole price.";
-  if (plan) return `${money(amount)} today`;
+  if (trialDays > 0 && amount === 0) return `${money(0, currency)} today. Your ${trialDays}-day free trial has started.`;
+  if (amount === 0) return `${money(0, currency)}. A discount code covered the whole price.`;
+  if (plan) return `${money(amount, currency)} today`;
   if (product.recurring) {
-    const every = `${money(amount)} ${everyLabel(product.recurring.interval)}`;
+    const every = `${money(amount, currency)} ${everyLabel(product.recurring.interval)}`;
     return endsAfter > 0 ? `${every}, ${endsAfter} payments in all` : every;
   }
-  return money(amount);
+  return money(amount, currency);
 }
 
 export type ConfirmOutcome = "sent" | "already" | "skip" | "failed";
@@ -310,8 +321,9 @@ export async function confirmPurchase(
     }
   }
   if (session.id !== sessionId) return "skip";
-  if (!confirmationFor(store, session)) return "skip";
-  const letter = confirmationFor(store, session, Date.now() / 1000, await keysFor(store, session));
+  const listings = await listingsNamed(store, session.metadata);
+  if (!confirmationFor(store, session, Date.now() / 1000, [], listings)) return "skip";
+  const letter = confirmationFor(store, session, Date.now() / 1000, await keysFor(store, session, listings), listings);
   if (!letter) return "skip";
 
   const [claimed] = await redisPipeline([["SET", key, "sending", "NX", "EX", SENDING_MARK_SECONDS]]);
@@ -332,6 +344,14 @@ export async function confirmPurchase(
     // pass of the job, or the next open of the thanks page, tries again.
     await redisPipeline(sent ? [["SET", key, "sent", "EX", SENT_MARK_SECONDS]] : [["DEL", key]]);
   }
+  // A paid order confirmed while the store asks for reviews goes on the list
+  // to be asked, once (lib/review-ask.ts). Nothing is asked of a trial that
+  // charged nothing or of an order paid in full by a discount, and an offer
+  // taken after paying is not asked about on its own: one email per order.
+  if (sent && typeof session.amount_total === "number" && session.amount_total > 0) {
+    const paidAt = typeof session.created === "number" ? session.created : Math.floor(Date.now() / 1000);
+    await scheduleReviewAsk(store, sessionId, paidAt).catch((error) => console.error("putting an order on the review list failed", error));
+  }
   return sent ? "sent" : "failed";
 }
 
@@ -341,9 +361,11 @@ export type TakenOffer = {
   reference: string;
   /** The checkout it followed, whose thanks page delivers it. */
   parent: string;
-  product: Product;
+  product: Listing;
   email: string;
   amountCents: number;
+  /** What Stripe charged it in. */
+  currency: string;
 };
 
 /** The email for an offer taken after paying, with its licence key when it has one. */
@@ -355,7 +377,7 @@ export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleK
     `You added something to your order from ${name}. This is your confirmation.`,
     "",
     `What you added: ${offer.product.title}`,
-    `Paid: ${money(offer.amountCents)}, charged once to the card you had just paid with`,
+    `Paid: ${money(offer.amountCents, offer.currency)}, charged once to the card you had just paid with`,
     `Reference: ${offer.reference}`,
     "",
     `Open it: ${base}/thanks?session_id=${offer.parent}`,
@@ -431,14 +453,14 @@ export async function confirmOffer(store: Store, offer: TakenOffer): Promise<Con
  * rather than holding the email back; it is still on the thanks page and on
  * the buyer's list of purchases.
  */
-async function keysFor(store: Store, session: SessionRecord): Promise<KeyLine[]> {
+async function keysFor(store: Store, session: SessionRecord, listings: Listing[]): Promise<KeyLine[]> {
   const meta = session.metadata ?? {};
   const id = typeof session.id === "string" ? session.id : "";
   const typed = session.customer_details?.email;
   const email = typeof typed === "string" ? typed : "";
   const products = [meta.product, meta.bump]
-    .map((pid) => (pid ? store.products.find((p) => p.id === pid) : undefined))
-    .filter((p): p is Product => Boolean(p && activeKeys(p)));
+    .map((pid) => (pid ? listings.find((p) => p.id === pid) : undefined))
+    .filter((p): p is Listing => Boolean(p && activeKeys(p)));
   const lines: KeyLine[] = [];
   for (const product of products) {
     try {
@@ -449,4 +471,48 @@ async function keysFor(store: Store, session: SessionRecord): Promise<KeyLine[]>
     }
   }
   return lines;
+}
+
+export type ResendOutcome = "sent" | "unknown" | "call" | "refunded" | "failed";
+
+/**
+ * Sends a buyer their purchase email again, when the creator — or someone on
+ * their team who answers buyers — asks from the studio's list of sales.
+ *
+ * The same email as the first, read afresh from the checkout on the
+ * creator's own Stripe account, whatever its age, with one line on top saying
+ * it is a copy sent at the store's request. The licence key in it is the one
+ * the sale already has; a sale never gets a second. A checkout that is not
+ * this store's, a booked call (which has its own confirmation) and a sale
+ * refunded in full are refused rather than sent.
+ */
+export async function resendPurchase(store: Store, sessionId: string): Promise<ResendOutcome> {
+  if (!canConfirm(store) || !SESSION_ID_PATTERN.test(sessionId)) return "unknown";
+  let session: SessionRecord & { payment_intent?: unknown };
+  try {
+    session = (await onAccount(
+      "GET",
+      store.stripeAccountId as string,
+      `/checkout/sessions/${encodeURIComponent(sessionId)}?expand[]=payment_intent.latest_charge`,
+    )) as SessionRecord & { payment_intent?: unknown };
+  } catch (error) {
+    if (error instanceof StripeError && error.status === 404) return "unknown";
+    throw error;
+  }
+  if (session.id !== sessionId) return "unknown";
+  if (session.metadata?.kind === "call") return "call";
+  if (refundedInFull(session.payment_intent)) return "refunded";
+  const created = typeof session.created === "number" ? session.created : 0;
+  // Read by id, so a sale of any product of a store of any size is found.
+  const listings = await listingsNamed(store, session.metadata);
+  const letter = confirmationFor(store, session, created, await keysFor(store, session, listings), listings);
+  if (!letter) return "unknown";
+  const sent = await sendEmail({
+    from: fromStore(store),
+    to: letter.to,
+    subject: letter.subject,
+    text: [`${senderName(store.name)} asked us to send you this again. It is a copy of your confirmation.`, "", letter.text].join("\n"),
+    replyTo: store.email,
+  });
+  return sent ? "sent" : "failed";
 }

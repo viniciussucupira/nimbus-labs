@@ -26,6 +26,7 @@ import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { StripeError, onAccount, platformKey } from "@/lib/stripe-account";
 import type { Store } from "@/lib/store";
+import { sellsAny } from "@/lib/catalog";
 
 /** How long the emailed link keeps working. */
 export const MANAGE_LINK_SECONDS = 60 * 60;
@@ -92,7 +93,7 @@ export function canManage(store: Store): boolean {
 
 /** Whether this store sells anything that renews. */
 export function sellsMemberships(store: Store): boolean {
-  return store.products.some((product) => product.recurring !== null);
+  return sellsAny(store, "recurring");
 }
 
 type Listed = { data?: unknown };

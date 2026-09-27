@@ -2,18 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
-import { type Product, type Store, centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
+import { type Store, normaliseHandle, storeForPage } from "@/lib/store";
+import { formatMoney } from "@/lib/money";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canSellProduct } from "@/lib/store-checkout";
-import { canMove, catchUpBookings, icsLink, isCallProduct, slotsForMove, slotsForProduct, whyNotMove } from "@/lib/calls";
-import { type CallSetup, MAX_MOVES, movableUntil, readableTime, roomFor, zoneName } from "@/lib/call-setup";
+import { type CallListing, canMove, catchUpBookings, icsLink, isCallProduct, slotsForMove, slotsForProduct, whyNotMove } from "@/lib/calls";
+import { type CallSetup, MAX_MOVES, movableUntil, readableTime, zoneName } from "@/lib/call-setup";
+import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
 import { readOrder } from "@/lib/store-checkout";
 import { SITE_URL } from "@/lib/site-url";
 import { imageUrl } from "@/lib/product-image";
 import { SlotPicker } from "@/components/slot-picker";
 import { SessionPicker } from "@/components/session-picker";
 import { StoreTracking } from "@/components/store-tracking";
+import { readListing } from "@/lib/catalog";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -24,8 +27,8 @@ type Params = {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { handle, product: productId } = await params;
   const decoded = decodeURIComponent(handle);
-  const store = decoded.startsWith("@") ? await storeForHandle(normaliseHandle(decoded)).catch(() => null) : null;
-  const product = store?.products.find((item) => item.id === productId);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  const product = (store ? await readListing(store, productId) : null);
   const title =
     store && product?.call
       ? `${product.call.kind === "live" ? "Pick a session" : "Pick a time"}: ${product.title} — ${store.name}`
@@ -82,9 +85,9 @@ export default async function BookPage({ params, searchParams }: Params) {
   const { handle: raw, product: productId } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const product = store.products.find((item) => item.id === productId);
+  const product = await readListing(store, productId);
   if (!product || !isCallProduct(product)) redirect(`/@${store.handle}`);
 
   const query = await searchParams;
@@ -127,7 +130,7 @@ export default async function BookPage({ params, searchParams }: Params) {
               <h1 className="font-display min-w-0 text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">
                 {product.title}
               </h1>
-              <p className="st-price text-base">${centsToPrice(product.priceCents)}</p>
+              <p className="st-price text-base">{formatMoney(product.priceCents, store.currency)}</p>
             </div>
             <p className="st-muted mt-2 text-sm font-semibold">{callLine(setup)}</p>
             {product.summary ? <p className="st-muted mt-3 leading-relaxed">{product.summary}</p> : null}
@@ -155,7 +158,7 @@ export default async function BookPage({ params, searchParams }: Params) {
                 creatorTz={setup.tz}
                 handle={store.handle}
                 productId={product.id}
-                price={centsToPrice(product.priceCents)}
+                price={formatMoney(product.priceCents, store.currency)}
               />
             ) : (
               <SlotPicker
@@ -164,7 +167,7 @@ export default async function BookPage({ params, searchParams }: Params) {
                 handle={store.handle}
                 productId={product.id}
                 minutes={setup.minutes}
-                price={centsToPrice(product.priceCents)}
+                price={formatMoney(product.priceCents, store.currency)}
                 left={setup.seats > 1 ? read.left : undefined}
               />
             )}
@@ -211,10 +214,19 @@ function Shell({ store, children }: { store: Store; children: React.ReactNode })
 
 /** The line under a call's title: how long, how many, and where. */
 function callLine(setup: CallSetup): string {
-  if (setup.kind === "live") return "Live session \u00b7 online, the link is sent when you book";
+  if (setup.kind === "live") {
+    return setup.video
+      ? "Live session \u00b7 online, in a private video room sent when you book"
+      : "Live session \u00b7 online, the link is sent when you book";
+  }
   const who = setup.seats > 1 ? `Group call, up to ${setup.seats} people` : `${setup.minutes}-minute call`;
   const length = setup.seats > 1 ? ` \u00b7 ${setup.minutes} minutes` : "";
-  return `${who}${length}${setup.room ? " \u00b7 online, the link is sent when you book" : " \u00b7 online"}`;
+  const where = setup.video
+    ? " \u00b7 online, in a private video room sent when you book"
+    : setup.room
+      ? " \u00b7 online, the link is sent when you book"
+      : " \u00b7 online";
+  return `${who}${length}${where}`;
 }
 
 /**
@@ -232,7 +244,7 @@ async function MovePage({
   status,
 }: {
   store: Store;
-  product: Product & { call: CallSetup };
+  product: CallListing;
   session: string;
   status: string;
 }) {
@@ -259,7 +271,7 @@ async function MovePage({
   }
 
   const tz = booking.buyerTz;
-  const room = roomFor(setup, booking.start);
+  const room = await roomOf(store.callsId, { product: product.id, setup, session, start: booking.start, end: booking.end });
   const moved = status === "moved";
   const notice = moved ? null : MOVE_NOTICES[status] ?? null;
   const blocked = whyNotMove(setup, booking.start, booking.moves);
@@ -289,7 +301,7 @@ async function MovePage({
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {room ? (
                 <a href={room} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn">
-                  The link to join
+                  {isVideoRoom(room) ? "Join the video room" : "The link to join"}
                 </a>
               ) : null}
               <a href={icsLink("", store, session)} className="btn btn-secondary">
@@ -298,6 +310,7 @@ async function MovePage({
             </div>
             <p className="st-muted mt-5 text-sm">
               {`${store.name} has been told, and an email with the new time and a calendar file is on its way to you. The old time is free again for somebody else.`}
+              {isVideoRoom(room) ? ` ${VIDEO_ROOM_NOTE}` : ""}
               {canMove(setup, booking.start, booking.moves)
                 ? ` You can move it ${leftMoves === 1 ? "once more" : `${leftMoves} more times`} from this page.`
                 : ""}
@@ -336,7 +349,7 @@ async function MovePage({
                 creatorTz={setup.tz}
                 handle={store.handle}
                 productId={product.id}
-                price={centsToPrice(product.priceCents)}
+                price={formatMoney(product.priceCents, store.currency)}
                 move={session}
               />
             ) : (
@@ -346,7 +359,7 @@ async function MovePage({
                 handle={store.handle}
                 productId={product.id}
                 minutes={setup.minutes}
-                price={centsToPrice(product.priceCents)}
+                price={formatMoney(product.priceCents, store.currency)}
                 left={setup.seats > 1 ? offer.left : undefined}
                 move={session}
               />

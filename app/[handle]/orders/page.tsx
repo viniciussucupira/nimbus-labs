@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { type Store, normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { linkHost } from "@/lib/product-link";
-import { type Delivery, type Purchase, canRecover, ordersGrant, purchasesFor } from "@/lib/buyer-orders";
+import { type BookedCall, type Delivery, type Purchase, callsFor, canRecover, ordersGrant, purchasesFor } from "@/lib/buyer-orders";
+import { readableTime, zoneName } from "@/lib/call-setup";
+import { canMove, icsLink, moveLink } from "@/lib/calls";
+import { VIDEO_ROOM_NOTE, isVideoRoom } from "@/lib/call-rooms";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { renewPath } from "@/lib/membership-access";
 import { LicenceKeyBox } from "@/components/licence-key-box";
+import { readListing, readListings } from "@/lib/catalog";
+import { reviewable } from "@/lib/review-proof";
 
 export const metadata: Metadata = {
   title: "Your purchases — Nimbus Labs",
@@ -78,6 +83,44 @@ function DeliveryButton({
 }
 
 /**
+ * A call still to come: when, in the buyer's own time zone, where to join,
+ * and the calendar file and the way to move it, as in the booking email.
+ */
+function BookedCallCard({ call, store }: { call: BookedCall; store: Store }) {
+  const video = isVideoRoom(call.room);
+  const minutes = Math.round((call.end - call.start) / 60_000);
+  return (
+    <li className="rounded-2xl p-5" style={{ border: "1px solid var(--st-line)" }}>
+      <p className="font-semibold">{call.title}</p>
+      <p className="mt-1 text-sm font-semibold" style={{ color: "var(--st-text)" }}>
+        {readableTime(call.start, call.buyerTz)}
+      </p>
+      <p className="st-muted text-sm">{`${zoneName(call.start, call.buyerTz)} \u00b7 ${minutes} minutes`}</p>
+      <div className="mt-4 space-y-3">
+        {call.room ? (
+          <a href={call.room} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn btn-block">
+            {video ? "Join the video room" : "The link to join"}
+          </a>
+        ) : (
+          <p className="st-muted text-sm">{`${store.name} sends you the link to join before the call.`}</p>
+        )}
+        {video ? <p className="st-muted text-xs leading-relaxed">{VIDEO_ROOM_NOTE}</p> : null}
+        <a href={icsLink("", store, call.session)} className="btn btn-secondary btn-block">
+          Add it to your calendar
+        </a>
+        {canMove(call.setup, call.start, call.moves) ? (
+          <p className="text-center text-sm">
+            <a href={moveLink("", store, call.productId, call.session)} className="st-footer-link font-semibold">
+              Move it to another time
+            </a>
+          </p>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
+/**
  * Where a buyer gets back what they bought, without an account.
  *
  * Two visits to the same page. The first asks for the address they paid with.
@@ -89,7 +132,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
   const { handle: raw } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
 
   const query = await searchParams;
@@ -99,10 +142,11 @@ export default async function OrdersPage({ params, searchParams }: Params) {
   const available = canRecover(store);
 
   let purchases: Purchase[] | null = null;
+  let calls: BookedCall[] = [];
   let failed = false;
   if (email) {
     try {
-      purchases = await purchasesFor(store, email);
+      [purchases, calls] = await Promise.all([purchasesFor(store, email), callsFor(store, email)]);
     } catch (error) {
       console.error("listing purchases failed", error);
       failed = true;
@@ -122,7 +166,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
     }
     await Promise.all(
       wanted.map(async ({ slot, productId, reference }) => {
-        const product = store.products.find((p) => p.id === productId);
+        const product = await readListing(store, productId);
         if (!product || !activeKeys(product)) return;
         try {
           const key = await keyForSale(store, product, reference, email);
@@ -134,6 +178,12 @@ export default async function OrdersPage({ params, searchParams }: Params) {
       }),
     );
   }
+  // Which of them can be reviewed, their products read in one go (lib/catalog.ts).
+  const canReview = new Set(
+    email && purchases
+      ? (await readListings(store, purchases.map((purchase) => purchase.productId))).filter(reviewable).map((p) => p.id)
+      : [],
+  );
   const keyBox = (slot: string, title?: string) => {
     const found = keys.get(slot);
     if (!found) return null;
@@ -203,7 +253,19 @@ export default async function OrdersPage({ params, searchParams }: Params) {
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">
                 Your purchases
               </h1>
-              {purchases.length === 0 ? (
+              {calls.length > 0 ? (
+                <section aria-labelledby="calls-title" className="mt-6">
+                  <h2 id="calls-title" className="font-display text-xl font-semibold">
+                    {calls.length === 1 ? "Your booked call" : "Your booked calls"}
+                  </h2>
+                  <ul className="mt-4 space-y-4">
+                    {calls.map((call) => (
+                      <BookedCallCard key={call.session} call={call} store={store} />
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+              {purchases.length === 0 && calls.length > 0 ? null : purchases.length === 0 ? (
                 <p className="st-muted mt-4 text-lg leading-relaxed">
                   {`There is nothing to open here any more. A purchase that was refunded is no longer listed. If something is missing, reply to the receipt you were emailed when you paid, and it reaches ${store.name}.`}
                 </p>
@@ -252,6 +314,17 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                         </div>
                         {keyBox(`${purchase.reference}|main`, keys.has(`${purchase.reference}|bump`) ? purchase.title : undefined)}
                         {purchase.bump ? keyBox(`${purchase.reference}|bump`, purchase.bump.title) : null}
+                        {!purchase.ended && canReview.has(purchase.productId) ? (
+                          <p className="mt-4 text-sm">
+                            <Link
+                              prefetch={false}
+                              href={`/@${store.handle}/review?${new URLSearchParams({ token, ref: purchase.reference })}`}
+                              className="st-footer-link font-semibold underline underline-offset-4"
+                            >
+                              {purchase.bump ? "Review what you bought" : `Review ${purchase.title}`}
+                            </Link>
+                          </p>
+                        ) : null}
                       </li>
                     ))}
                   </ul>

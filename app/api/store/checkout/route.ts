@@ -1,11 +1,11 @@
 import { type NextRequest, after } from "next/server";
 import { linkOrigin, originFrom } from "@/lib/request-origin";
-import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForHandle, syncTakesBuyer } from "@/lib/store";
 import { canSellProduct, createCheckout } from "@/lib/store-checkout";
 import { countHit } from "@/lib/visit";
 import { releaseStockHold, withStockHold } from "@/lib/stock";
 import { activePlan } from "@/lib/product-extras";
-import { activeFunnel } from "@/lib/funnel";
+import { activeFunnel, funnelProductIds } from "@/lib/funnel";
 import { affiliateCookieName, attributionFor } from "@/lib/affiliates";
 import { viaCookieName } from "@/lib/affiliate-setting";
 import { rememberPlan } from "@/lib/plans";
@@ -15,6 +15,7 @@ import { BUYER_COOKIE, BUYER_COOKIE_SECONDS, newBuyerKey } from "@/lib/learn";
 import { canWrite } from "@/lib/mail";
 import { outOfKeys } from "@/lib/licence-keys";
 import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
+import { readListings, readProduct } from "@/lib/catalog";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -71,7 +72,8 @@ export async function POST(request: NextRequest) {
   const store = await storeForHandle(handle);
   if (!store) return new Response("No such store.", { status: 404 });
 
-  const product = store.products.find((item) => item.id === productId);
+  // In full: the checkout asks its questions and may be followed by offers.
+  const product = await readProduct(store, productId);
   if (!product) return away(`/@${store.handle}`);
 
   // Each press opens a checkout on the creator's Stripe account and may hold
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
     // When offers follow the payment, this browser gets a secret, and only
     // its fingerprint travels with the charge.
     const inPlan = plan && activePlan(product) !== null;
-    const upsell = !inPlan && !store.tax.enabled && activeFunnel(store.products, product) ? newUpsellKey() : null;
+    const upsell = !inPlan && !store.tax.enabled && activeFunnel(await readListings(store, funnelProductIds(product.funnel)), product) ? newUpsellKey() : null;
     // Sent by an affiliate within the store's window: credited to them. A
     // lookup that fails never stops the sale; it is only not credited.
     const via = await attributionFor(store, product.id, {
@@ -116,7 +118,9 @@ export async function POST(request: NextRequest) {
         upsellKey: upsell?.fingerprint,
         plan: inPlan,
         buyerKey: buyer?.fingerprint,
-        news: news && canWrite(store),
+        // Kept only where the box was offered: the creator writes to their
+        // list here, or sends this product's buyers to their email platform.
+        news: news && (canWrite(store) || syncTakesBuyer(store, product.id)),
         via,
       }),
     );

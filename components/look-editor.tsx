@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { formatMoney } from "@/lib/money";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { toast } from "@/components/toast";
@@ -90,11 +91,14 @@ export function LookEditor({
   photoId,
   name,
   handle,
+  currency = "usd",
 }: {
   look: StoreLook;
   photoId: string | null;
   name: string;
   handle: string;
+  /** The store's currency, so the sample price reads like the real ones. */
+  currency?: string;
 }) {
   const router = useRouter();
   const [theme, setTheme] = useState<ThemeId>(look.theme);
@@ -384,9 +388,9 @@ export function LookEditor({
               <div className="st-card p-3">
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-sm font-semibold">Your product</span>
-                  <span className="st-price text-xs">$27</span>
+                  <span className="st-price text-xs">{formatMoney(2700, currency)}</span>
                 </div>
-                <span className="btn st-btn btn-block btn-sm mt-3 text-sm">Buy for $27</span>
+                <span className="btn st-btn btn-block btn-sm mt-3 text-sm">{`Buy for ${formatMoney(2700, currency)}`}</span>
               </div>
               <div className="st-card px-3 py-2.5 text-center text-sm font-semibold">A link of yours</div>
             </div>

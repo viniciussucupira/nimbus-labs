@@ -59,9 +59,9 @@ async function firstBytes(path: string): Promise<Uint8Array | null> {
  * replaced it is written.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request, 2_000);
+  const guarded = await guardStoreWrite(request, "products", 2_000);
   if (!guarded.ok) return guarded.response;
-  const { email, body } = guarded;
+  const { ref, body } = guarded;
   const action = text(body.action, 10);
   const id = text(body.id, 40);
   if (!ACTIONS.has(action) || !id) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
@@ -70,23 +70,23 @@ export async function POST(request: NextRequest) {
 
   try {
     if (action === "alt") {
-      const done = await setImageAlt(email, id, alt);
+      const done = await setImageAlt(ref, id, alt);
       if (!done.ok) return Response.json({ ok: false, error: done.reason }, { status: 400 });
       return Response.json({ ok: true });
     }
     if (action === "display") {
       if (!isDisplayStyle(body.display)) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
-      const done = await setProductDisplay(email, id, body.display);
+      const done = await setProductDisplay(ref, id, body.display);
       if (!done.ok) return Response.json({ ok: false, error: done.reason }, { status: 400 });
       return Response.json({ ok: true });
     }
 
     let image: ProductImage | null = null;
     if (action === "attach") {
-      const store = await storeForEmail(email);
+      const store = await storeForEmail(ref);
       if (!store) return Response.json({ ok: false, error: "none" }, { status: 400 });
       const path = text(body.path, 200);
-      if (!ownsImagePath(path, await imageFolder(email))) {
+      if (!ownsImagePath(path, await imageFolder(ref))) {
         return Response.json({ ok: false, error: "invalid" }, { status: 400 });
       }
       const found = await head(path);
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
       image = { path, width, height, alt, bytes: found.size };
     }
 
-    const result = await setProductImage(email, id, image);
+    const result = await setProductImage(ref, id, image);
     if (!result.ok) {
       if (image) await del(image.path).catch(() => {});
       return Response.json({ ok: false, error: result.reason }, { status: result.reason === "unknown" ? 404 : 400 });

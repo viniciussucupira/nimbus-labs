@@ -53,6 +53,7 @@ import { onAccount } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
 import { SafeFetchError, checkUrl, problemWords, safeFetch } from "@/lib/safe-fetch";
 import { type Store, storeForHandle } from "@/lib/store";
+import { readListing } from "@/lib/catalog";
 import { SITE_URL } from "@/lib/site-url";
 
 export const WEBHOOK_EVENTS = [
@@ -531,8 +532,8 @@ async function fromStripe(store: Store, event: StripeEvent, lookups: { left: num
   const previous = event.data?.previous_attributes ?? {};
   const handles = new Set([store.handle, ...store.previousHandles]);
   let meta = (object.metadata ?? {}) as Record<string, string>;
-  const product = (id: string | undefined) => {
-    const found = store.products.find((p) => p.id === id);
+  const product = async (id: string | undefined) => {
+    const found = id ? await readListing(store, id) : null;
     return { id: id ?? null, title: found?.title ?? meta.title ?? null };
   };
   const created = typeof event.created === "number" ? event.created * 1000 : Date.now();
@@ -549,9 +550,9 @@ async function fromStripe(store: Store, event: StripeEvent, lookups: { left: num
     await emitEvent(store, "sale.completed", session, {
       checkout_session: session,
       kind,
-      product: product(meta.product),
+      product: await product(meta.product),
       option: meta.option ?? null,
-      order_bump: meta.bump ? product(meta.bump) : null,
+      order_bump: meta.bump ? await product(meta.bump) : null,
       amount_cents: num(object.amount_total),
       discount_cents: num(totals.amount_discount),
       currency: str(object.currency) ?? "usd",
@@ -562,7 +563,7 @@ async function fromStripe(store: Store, event: StripeEvent, lookups: { left: num
       await emitEvent(store, "membership.started", str(object.subscription) ?? session, {
         subscription: str(object.subscription),
         checkout_session: session,
-        product: product(meta.product),
+        product: await product(meta.product),
         amount_cents: num(object.amount_total),
         currency: str(object.currency) ?? "usd",
         trial_days: Number(meta.trial_days) || 0,
@@ -580,7 +581,7 @@ async function fromStripe(store: Store, event: StripeEvent, lookups: { left: num
     await emitEvent(store, "sale.completed", intent, {
       payment_intent: intent,
       kind: "upsell",
-      product: product(meta.product),
+      product: await product(meta.product),
       after_checkout: meta.parent ?? null,
       // Which offer of the funnel was taken: its id and its place (1 to 5).
       // An offer charged before this was recorded carries its id only when
@@ -626,7 +627,7 @@ async function fromStripe(store: Store, event: StripeEvent, lookups: { left: num
     }
     await emitEvent(store, "membership.canceled", `${id}|${num(object.canceled_at) || num(object.cancel_at) || num(event.created)}`, {
       subscription: id,
-      product: product(meta.product),
+      product: await product(meta.product),
       status: ended ? "ended" : "ending",
       ends_at: ended ? iso(object.ended_at) ?? iso(event.created) : iso(endsAt),
       reason: ended && meta.ends_after ? "completed" : str(details.reason) ?? "cancellation_requested",
@@ -657,7 +658,7 @@ async function fromStripe(store: Store, event: StripeEvent, lookups: { left: num
     await emitEvent(store, "refund.issued", `${charge}|${total}`, {
       charge,
       payment_intent: intent,
-      product: product(meta.product),
+      product: await product(meta.product),
       amount_refunded_cents: Math.max(0, total - before),
       total_refunded_cents: total,
       amount_cents: num(object.amount),

@@ -1,9 +1,12 @@
 import type { NextRequest } from "next/server";
 import { originFrom } from "@/lib/request-origin";
 import {
+  DEVICE_COOKIE,
   SESSION_COOKIE,
-  SESSION_COOKIE_OPTIONS,
+  emailForSession,
   endSession,
+  noteSignIn,
+  sessionCookie,
   spendSignInLink,
 } from "@/lib/auth";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
@@ -70,19 +73,15 @@ export async function POST(request: NextRequest) {
   if (previous && previous !== sessionId) await endSession(previous);
 
   const response = redirectTo(origin, "/studio");
-  const options = SESSION_COOKIE_OPTIONS;
-  response.headers.append(
-    "Set-Cookie",
-    [
-      `${SESSION_COOKIE}=${sessionId}`,
-      `Path=${options.path}`,
-      `Max-Age=${options.maxAge}`,
-      "HttpOnly",
-      "SameSite=Lax",
-      options.secure ? "Secure" : "",
-    ]
-      .filter(Boolean)
-      .join("; "),
-  );
+  response.headers.append("Set-Cookie", sessionCookie(sessionId));
+  // A browser this account has never signed in from is worth an email
+  // (lib/auth.ts, noteSignIn); the cookie that names the browser goes back.
+  const email = await emailForSession(sessionId);
+  if (email) {
+    response.headers.append(
+      "Set-Cookie",
+      await noteSignIn(email, request.cookies.get(DEVICE_COOKIE)?.value, "link", request.headers.get("user-agent") ?? ""),
+    );
+  }
   return response;
 }

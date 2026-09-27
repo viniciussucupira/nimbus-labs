@@ -36,7 +36,8 @@ import { isLive } from "@/lib/membership-access";
 import { refundedInFull } from "@/lib/refunds";
 import { recordDelivery } from "@/lib/delivery";
 import type { ProductFile } from "@/lib/product-file";
-import type { Product, Store } from "@/lib/store";
+import type { Listing, Store } from "@/lib/store";
+import { readKind, readListing } from "@/lib/catalog";
 import { type Course, type CourseModule, lessonsInOrder, opensAt } from "@/lib/course";
 
 /** The secret a course checkout leaves in the buyer's browser. */
@@ -174,7 +175,7 @@ async function paidAtStripe(store: Store, email: string): Promise<Ledger> {
   const account = store.stripeAccountId;
   if (!account) return { paid: found, ended, refunded };
   const handles = new Set([store.handle, ...store.previousHandles]);
-  const courses = new Map(store.products.filter((p) => p.course).map((p) => [p.id, p]));
+  const courses = new Map((await readKind(store, "course")).filter((p) => p.course).map((p) => [p.id, p]));
   if (courses.size === 0) return { paid: found, ended, refunded };
 
   // Stripe keeps the address as it was typed at checkout.
@@ -272,7 +273,8 @@ async function courseLedger(store: Store, email: string): Promise<Ledger> {
     for (const [k, v] of Object.entries(ledger as Record<string, string>)) recorded.set(k, Number(v));
   }
 
-  for (const product of store.products) {
+  const courses = await readKind(store, "course");
+  for (const product of courses) {
     if (!product.course) continue;
     // A one-off sale written down on the thanks page stands on its own,
     // unless Stripe now says it was refunded in full.
@@ -284,8 +286,8 @@ async function courseLedger(store: Store, email: string): Promise<Ledger> {
 
   // A student the creator took off the course stays off it.
   const withCourse = [...result.keys()]
-    .map((id) => store.products.find((p) => p.id === id))
-    .filter((p): p is Product => Boolean(p?.course));
+    .map((id) => courses.find((p) => p.id === id))
+    .filter((p): p is Listing => Boolean(p?.course));
   if (withCourse.length) {
     const flags = await redisPipeline(withCourse.map((p) => ["SISMEMBER", blockedKey(p.course!.id), emailKey(email)]));
     withCourse.forEach((p, i) => {
@@ -303,7 +305,7 @@ export type CourseAccess =
   | { state: "ended"; learner: Learner };
 
 /** Whether this browser may take this course, and from when. */
-export async function courseAccess(store: Store, product: Product, cookies: CookieJar): Promise<CourseAccess> {
+export async function courseAccess(store: Store, product: Listing, cookies: CookieJar): Promise<CourseAccess> {
   const learner = await learnerFrom(store, cookies);
   if (!learner || !product.course) return { state: "closed", learner };
   if (learner.owner) return { state: "open", learner, start: Math.floor(Date.now() / 1000) - 400 * 86_400 };
@@ -456,7 +458,7 @@ export type LinkRequest = "sent" | "email" | "limited" | "error";
  */
 export async function requestCourseLink(input: {
   store: Store;
-  product: Product;
+  product: Listing;
   email: string;
   ip: string;
   origin: string;
@@ -474,7 +476,7 @@ export async function requestCourseLink(input: {
 }
 
 /** Sends the link itself. Also used when a buyer pays in another browser. */
-export async function sendCourseLink(store: Store, product: Product, email: string, origin: string): Promise<boolean> {
+export async function sendCourseLink(store: Store, product: Listing, email: string, origin: string): Promise<boolean> {
   const token = randomBytes(32).toString("hex");
   const grant: LinkGrant = { e: normaliseEmail(email), k: storeKey(store), h: store.handle, p: product.id };
   await redisPipeline([["SET", linkKey(token), JSON.stringify(grant), "EX", LINK_SECONDS]]);
@@ -521,7 +523,7 @@ const dripMailKey = (courseId: string, email: string, moduleId: string) =>
   `nl:course:${courseId}:dripmail:${emailKey(email)}:${moduleId}`;
 
 /** Remembers that this course opens modules over time, for the daily job. */
-export async function registerDrip(store: Store, product: Product, course: Course): Promise<void> {
+export async function registerDrip(store: Store, product: Listing, course: Course): Promise<void> {
   const member = `${course.id}|${store.handle}|${product.id}`;
   const drips = course.modules.some((m) => m.dripDays > 0);
   await redisPipeline([[drips ? "SADD" : "SREM", DRIP_SET, member]]);
@@ -545,7 +547,7 @@ export async function sendDripEmails(
   for (const member of members) {
     const [courseId, handle, productId] = member.split("|");
     const store = await load(handle);
-    const product = store?.products.find((p) => p.id === productId);
+    const product = store ? await readListing(store, productId) : null;
     const course = product?.course?.id === courseId ? await loadCourse(courseId) : null;
     if (!store || !product || !course) {
       await redisPipeline([["SREM", DRIP_SET, member]]);
@@ -571,7 +573,7 @@ export async function sendDripEmails(
   return counts;
 }
 
-async function sendDripEmail(store: Store, product: Product, unit: CourseModule, email: string, origin: string): Promise<boolean> {
+async function sendDripEmail(store: Store, product: Listing, unit: CourseModule, email: string, origin: string): Promise<boolean> {
   return sendEmail({
     from: `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`,
     to: email,

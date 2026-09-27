@@ -7,7 +7,8 @@
  * and leaves Nimbus with nothing to hold, skim or lose. The 0% on the home
  * page is this file.
  */
-import type { Product, Store } from "@/lib/store";
+import type { Listing, Product, Store } from "@/lib/store";
+import { readListing, readListings } from "@/lib/catalog";
 import type { ProductFile } from "@/lib/product-file";
 import {
   type ProductOption,
@@ -18,7 +19,7 @@ import { isPaidUp } from "@/lib/billing";
 import { StripeError, checkoutClosesAt, onAccount, platformKey } from "@/lib/stripe-account";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { applyTax } from "@/lib/tax";
-import { inTheCurrencyShown, isSettled, onlyInstantMethods } from "@/lib/instant-pay";
+import { inTheCurrencyShown, isSettled, onlyInstantMethods, reusableMethod, saveCardForOffers } from "@/lib/instant-pay";
 import { activePwyw, pwywPriceId } from "@/lib/pay-what-you-want";
 import { type Answer, applyCheckoutFields, readAnswers } from "@/lib/checkout-fields";
 import { imageUrl } from "@/lib/product-image";
@@ -70,7 +71,7 @@ export function canSell(store: Store): boolean {
  * apologised for afterwards. The creator is told about it in the studio, which
  * is where it can be fixed; the buyer never meets it.
  */
-export function sellableOptions(product: Product): ProductOption[] {
+export function sellableOptions(product: Listing): ProductOption[] {
   return product.options.filter(optionDelivers);
 }
 
@@ -84,7 +85,7 @@ export function sellableOptions(product: Product): ProductOption[] {
  * With price options the same question is asked of them instead of the
  * product: at least one has to be ready, because that is what the buyer picks.
  */
-export function canSellProduct(store: Store, product: Product): boolean {
+export function canSellProduct(store: Store, product: Listing): boolean {
   // Something free is never sold. It has its own door, and a checkout for
   // nothing would be a card form that cannot work.
   if (product.priceCents === 0) return false;
@@ -98,7 +99,7 @@ export function canSellProduct(store: Store, product: Product): boolean {
 }
 
 /** The figure a product card leads with: the cheapest way in. */
-export function fromPriceCents(product: Product): number {
+export function fromPriceCents(product: Listing): number {
   return lowestPriceCents(sellableOptions(product), product.priceCents);
 }
 
@@ -162,7 +163,7 @@ export async function createCheckout(
   const recurring = membership !== null || plan !== null;
   const priceCents = plan ? plan.amountCents : chosen ? chosen.priceCents : product.priceCents;
   const baseName = chosen ? `${product.title} (${chosen.label})` : product.title;
-  const name = plan ? `${baseName} (${planWords(plan)})` : baseName;
+  const name = plan ? `${baseName} (${planWords(plan, store.currency)})` : baseName;
   // The buyer names the amount on Stripe's page, from the creator's floor up.
   // Only a single one-off line can carry that, which activePwyw has checked.
   const pwyw = !chosen && !plan && !membership ? activePwyw(product) : null;
@@ -173,7 +174,9 @@ export async function createCheckout(
     // whatever language Stripe guesses from the browser.
     locale: "en",
     "line_items[0][quantity]": "1",
-    "line_items[0][price_data][currency]": "usd",
+    // The store's own currency (lib/money.ts): every amount saved in it is in
+    // that currency's smallest unit, which is what Stripe counts in.
+    "line_items[0][price_data][currency]": store.currency,
     "line_items[0][price_data][unit_amount]": String(priceCents),
     "line_items[0][price_data][product_data][name]": name,
     "metadata[store]": store.handle,
@@ -198,10 +201,13 @@ export async function createCheckout(
 
   // The product the buyer chose to add, at the price the creator set for it
   // here — read from the store's record, never from the form.
-  const bump = extras.bump && !membership && !pwyw ? activeBump(store.products, product) : null;
+  const bump =
+    extras.bump && !membership && !pwyw && product.bump
+      ? activeBump(await readListings(store, [product.bump.productId]), product)
+      : null;
   if (bump) {
     body.set("line_items[1][quantity]", "1");
-    body.set("line_items[1][price_data][currency]", "usd");
+    body.set("line_items[1][price_data][currency]", store.currency);
     body.set("line_items[1][price_data][unit_amount]", String(bump.bump.priceCents));
     body.set("line_items[1][price_data][product_data][name]", bump.target.title);
     body.set("metadata[bump]", bump.target.id);
@@ -213,12 +219,14 @@ export async function createCheckout(
   // checkout closes before the hold does. The time is set just before the
   // checkout is made, below, because Stripe counts its minimum from then.
 
-  // An upsell follows: the buyer becomes a customer of the creator and the
+  // An upsell follows: the buyer becomes a customer of the creator and a
   // card is kept for payments they make while present — the one-click offer
-  // on the thanks page — and never for charging them when they are not.
+  // on the thanks page — and never for charging them when they are not. Only
+  // a card is asked to be kept, so every other way to pay stays on offer; a
+  // buyer who pays another way meets no offer (lib/instant-pay.ts).
   if (extras.upsellKey && !recurring) {
     body.set("customer_creation", "always");
-    body.set("payment_intent_data[setup_future_usage]", "on_session");
+    saveCardForOffers(body);
     body.set("metadata[upsell_key]", extras.upsellKey);
   }
 
@@ -275,7 +283,7 @@ export async function createCheckout(
     body.set("subscription_data[metadata][kind]", "plan");
     body.set("subscription_data[metadata][plan_payments]", String(plan.payments));
     body.set("subscription_data[metadata][plan_interval]", plan.interval);
-    body.set("subscription_data[description]", `${product.title}: ${planWords(plan)}`.slice(0, 500));
+    body.set("subscription_data[description]", `${product.title}: ${planWords(plan, store.currency)}`.slice(0, 500));
   } else {
     body.set("payment_intent_data[metadata][store]", store.handle);
     body.set("payment_intent_data[metadata][product]", product.id);
@@ -355,7 +363,8 @@ export async function createCheckout(
 export type Order =
   | {
       state: "paid";
-      product: Product;
+      /** The product as listed; read it in full (readProduct) for its funnel. */
+      product: Listing;
       /** The price option that was bought, when the product has any. */
       option: ProductOption | null;
       /** What to hand over: the option's if there was one, else the product's. */
@@ -372,7 +381,7 @@ export type Order =
        */
       call: { start: number; end: number; buyerTz: string; moves: number } | null;
       /** The product the buyer added at checkout, with what it delivers. */
-      bump: { product: Product; file: ProductFile | null; link: string | null } | null;
+      bump: { product: Listing; file: ProductFile | null; link: string | null } | null;
       /** When it was paid, in seconds since the epoch. */
       created: number;
       /** The fingerprint an upsell must be taken with, when one follows. */
@@ -402,6 +411,14 @@ export type Order =
       membership: "live" | "ended" | null;
       /** The checkout's own id, which a licence key and a stamped copy are kept under. */
       reference: string;
+      /** What it was charged in, as Stripe says: the store's currency when it was bought. */
+      currency: string;
+      /**
+       * Whether the buyer paid with a method a one-click offer can charge
+       * (lib/instant-pay.ts): a saved card, Apple Pay or Google Pay. A buyer
+       * who paid with Klarna, iDEAL or the like is shown no offer.
+       */
+      reusable: boolean;
     }
   /** Refunded in full: what it bought is closed, on every page (lib/refunds.ts). */
   | { state: "unpaid" | "processing" | "expired" | "invalid" | "unavailable" | "error" | "refunded" };
@@ -435,7 +452,7 @@ export async function readOrder(
     session = await onAccount(
       "GET",
       store.stripeAccountId as string,
-      `/checkout/sessions/${encodeURIComponent(sessionId)}?expand[]=subscription&expand[]=payment_intent.latest_charge`,
+      `/checkout/sessions/${encodeURIComponent(sessionId)}?expand[]=subscription&expand[]=payment_intent.latest_charge&expand[]=payment_intent.payment_method`,
     );
   } catch (error) {
     if (error instanceof StripeError && error.status === 404) {
@@ -450,7 +467,10 @@ export async function readOrder(
   // buyer was paying does not lose them their order.
   const handles = new Set([store.handle, ...store.previousHandles]);
   if (!handles.has(metadata?.store ?? "")) return { state: "invalid" };
-  const product = store.products.find((p) => p.id === metadata?.product);
+  const [product, added] = await Promise.all([
+    metadata?.product ? readListing(store, metadata.product) : null,
+    metadata?.bump ? readListing(store, metadata.bump) : null,
+  ]);
   if (!product) return { state: "invalid" };
 
   // The option is read from the charge, not from anything the visitor sends.
@@ -502,7 +522,6 @@ export async function readOrder(
 
   // Delivered as it is now, like the product itself: the offer may since have
   // changed, but what was paid for was this product.
-  const added = metadata?.bump ? store.products.find((p) => p.id === metadata.bump) ?? null : null;
   const bump = added ? { product: added, file: added.file, link: added.link } : null;
 
   let membership: "live" | "ended" | null = null;
@@ -538,6 +557,8 @@ export async function readOrder(
     file: option ? option.file : product.options.length > 0 ? null : product.file,
     link: option ? option.link : product.options.length > 0 ? null : product.link,
     amount: typeof session.amount_total === "number" ? session.amount_total : 0,
+    currency: typeof session.currency === "string" && session.currency ? session.currency : store.currency,
+    reusable: reusableMethod(session),
     email,
     secondsLeft: Math.max(0, Math.floor(DOWNLOAD_WINDOW_SECONDS - age)),
   };
@@ -551,6 +572,8 @@ export type Sale = {
   reference: string;
   title: string;
   amount: number;
+  /** What it was paid in, as Stripe says. */
+  currency: string;
   email: string | null;
   /** Seconds since the epoch, as Stripe counts them. */
   paidAt: number;
@@ -577,6 +600,7 @@ type SessionRecord = {
   payment_status?: unknown;
   created?: unknown;
   amount_total?: unknown;
+  currency?: unknown;
   metadata?: Record<string, string> | null;
   customer_details?: { email?: unknown } | null;
   custom_fields?: unknown;
@@ -612,6 +636,7 @@ export async function listSales(store: Store): Promise<SaleList> {
   const rows = Array.isArray(page.data) ? (page.data as SessionRecord[]) : [];
   const now = Date.now() / 1000;
 
+  const titles = new Map((await listingsNamedIn(store, rows)).map((p) => [p.id, p.title]));
   const sales = rows
     .filter(
       (row) =>
@@ -620,7 +645,7 @@ export async function listSales(store: Store): Promise<SaleList> {
     )
     .map((row): Sale => {
       const paidAt = typeof row.created === "number" ? row.created : 0;
-      const known = store.products.find((p) => p.id === row.metadata?.product);
+      const known = row.metadata?.product ? { title: titles.get(row.metadata.product) } : null;
       const email = row.customer_details?.email;
       return {
         reference: typeof row.id === "string" ? row.id : "",
@@ -631,6 +656,7 @@ export async function listSales(store: Store): Promise<SaleList> {
           known?.title ||
           "A product that is no longer listed",
         amount: typeof row.amount_total === "number" ? row.amount_total : 0,
+        currency: typeof row.currency === "string" && row.currency ? row.currency : "usd",
         email: typeof email === "string" && email ? email : null,
         paidAt,
         stillDownloadable: now - paidAt <= DOWNLOAD_WINDOW_SECONDS,
@@ -663,6 +689,7 @@ export async function listSales(store: Store): Promise<SaleList> {
           reference: typeof pi.id === "string" ? pi.id : "",
           title: `${meta.title || "A product that is no longer listed"} (added after paying)`,
           amount: typeof pi.amount === "number" ? pi.amount : 0,
+          currency: typeof pi.currency === "string" && pi.currency ? pi.currency : "usd",
           email: typeof pi.receipt_email === "string" && pi.receipt_email ? pi.receipt_email : null,
           paidAt,
           stillDownloadable: now - paidAt <= DOWNLOAD_WINDOW_SECONDS,
@@ -679,4 +706,10 @@ export async function listSales(store: Store): Promise<SaleList> {
 
   const all = [...sales, ...added].sort((a, b) => b.paidAt - a.paidAt).slice(0, ORDERS_PAGE_SIZE);
   return { state: "ok", sales: all };
+}
+
+/** The listings of the products a page of checkouts names, read at once. */
+async function listingsNamedIn(store: Store, rows: SessionRecord[]): Promise<Listing[]> {
+  const ids = rows.map((row) => row.metadata?.product).filter((id): id is string => typeof id === "string" && id !== "");
+  return ids.length ? readListings(store, ids) : [];
 }

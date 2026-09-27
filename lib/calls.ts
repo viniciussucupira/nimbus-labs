@@ -38,7 +38,12 @@ import { HOLD_SECONDS, checkoutClosesAt, onAccount } from "@/lib/stripe-account"
 import { applyTax } from "@/lib/tax";
 import { inTheCurrencyShown, isSettled, onlyInstantMethods } from "@/lib/instant-pay";
 import { type Answer, applyCheckoutFields, readAnswers } from "@/lib/checkout-fields";
-import type { Product, Store } from "@/lib/store";
+import type { Listing, Product, Store } from "@/lib/store";
+import { idsOfKind, listingFinder, readListing, readListings, sellsAny } from "@/lib/catalog";
+
+/** A product that is a call, as listed: all a booking needs but its checkout questions. */
+export type CallListing = Listing & { call: CallSetup };
+import { formatMoney } from "@/lib/money";
 import {
   type Busy,
   type CallSetup,
@@ -51,7 +56,6 @@ import {
   openSessions,
   openSlots,
   readableTime,
-  roomFor,
   seatsTaken,
   zoneName,
 } from "@/lib/call-setup";
@@ -59,6 +63,8 @@ import { planCheck, planReminders, readMoves, unplanReminders, writeMove } from 
 import { calendarBusy } from "@/lib/calendar-sync";
 import { fold, icsText, icsTime } from "@/lib/ics-write";
 import { emitEvent } from "@/lib/webhooks";
+import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
+import { alertCreator } from "@/lib/phone-alerts";
 
 /** How far back Stripe is read for paid bookings. Longer than any horizon. */
 const LOOKBACK_DAYS = 120;
@@ -119,6 +125,7 @@ type SessionRow = {
   customer_details?: { email?: unknown; name?: unknown } | null;
   created?: unknown;
   custom_fields?: unknown;
+  amount_total?: unknown;
 };
 
 /**
@@ -140,6 +147,8 @@ export async function paidCalls(store: Store): Promise<
     moves: number;
     /** What the buyer answered to the creator's questions at checkout. */
     answers: Answer[];
+    /** What was paid, in cents. */
+    amount: number;
   }[]
 > {
   if (!store.stripeAccountId) return [];
@@ -174,6 +183,7 @@ export async function paidCalls(store: Store): Promise<
         buyerTz: isTimeZone(meta.tz) ? meta.tz : "UTC",
         moves: 0,
         answers: readAnswers(row),
+        amount: typeof row.amount_total === "number" ? row.amount_total : 0,
       });
     }
     if (list.has_more !== true || rows.length === 0) break;
@@ -194,14 +204,22 @@ export type PaidCall = Awaited<ReturnType<typeof paidCalls>>[number];
  * Everything that makes a seat or a time unavailable, the paid calls behind
  * it, and the times the creator's own calendars say they are busy.
  */
-async function readBusy(store: Store, now: number): Promise<{ busy: Busy[]; paid: PaidCall[]; blocked: Busy[] }> {
+async function readBusy(
+  store: Store,
+  now: number,
+): Promise<{ busy: Busy[]; paid: PaidCall[]; blocked: Busy[]; sessions: Busy[] }> {
   const local = store.callsId && isRedisConfigured() ? await heldAndBooked(store.callsId, now) : [];
   let paid: PaidCall[] = [];
   // Read alongside Stripe, and never a reason to fail: a calendar that does
   // not answer blocks nothing.
-  const calendar = store.products.some((p) => p.call?.kind === "weekly")
+  const weekly = sellsAny(store, "weekly");
+  const calendar = weekly
     ? calendarBusy(store, now).catch(() => ({ busy: [] as Busy[] }))
     : Promise.resolve({ busy: [] as Busy[] });
+  // The creator's dated sessions count against weekly hours only.
+  const sessions = weekly ? readListings(store, idsOfKind(store, "call")).then((calls) => sessionTimes(calls, now)) : Promise.resolve([]);
+  // Awaited below; marked here so a failure while Stripe is being read is not left unheard.
+  sessions.catch(() => {});
   try {
     paid = await paidCalls(store);
   } catch (error) {
@@ -217,7 +235,7 @@ async function readBusy(store: Store, now: number): Promise<{ busy: Busy[]; paid
     ...local.filter((b) => !b.session || !fromStripe.has(b.session)),
     ...paid.map((c) => ({ start: c.start, end: c.end, product: c.product, session: c.session })),
   ];
-  return { busy, paid, blocked: (await calendar).busy };
+  return { busy, paid, blocked: (await calendar).busy, sessions: await sessions };
 }
 
 /** Every seat taken or held in this store, right now. */
@@ -230,9 +248,9 @@ export async function busyTimes(store: Store, now = Date.now()): Promise<Busy[]>
  * a weekly call. A session keeps its time whether or not anybody booked it:
  * the creator put it in their diary.
  */
-function sessionTimes(store: Store, now: number): Busy[] {
+function sessionTimes(calls: Listing[], now: number): Busy[] {
   const out: Busy[] = [];
-  for (const product of store.products) {
+  for (const product of calls) {
     if (!product.call || product.call.kind !== "live") continue;
     for (const session of product.call.sessions) {
       const end = session.start + session.minutes * 60_000;
@@ -246,8 +264,8 @@ function sessionTimes(store: Store, now: number): Busy[] {
  * What a product is checked against: its seats, and for weekly hours the
  * creator's dated sessions and the busy times of their own calendars too.
  */
-function against(store: Store, product: Product & { call: CallSetup }, busy: Busy[], now: number, blocked: Busy[] = []): Busy[] {
-  return product.call.kind === "weekly" ? [...busy, ...sessionTimes(store, now), ...blocked] : busy;
+function against(product: CallListing, busy: Busy[], sessions: Busy[], blocked: Busy[] = []): Busy[] {
+  return product.call.kind === "weekly" ? [...busy, ...sessions, ...blocked] : busy;
 }
 
 /**
@@ -299,10 +317,11 @@ export async function catchUpBookings(store: Store, paid: PaidCall[], origin: st
   const due = paid.filter((c) => c.session && c.end > now).slice(0, 20);
   if (!due.length) return;
   const seen = await redisPipeline(due.map((c) => ["EXISTS", confirmedKey(c.session)]));
+  const find = listingFinder(store);
   for (let i = 0; i < due.length; i += 1) {
     if (Number(seen[i]) === 1) continue;
     const call = due[i];
-    const product = store.products.find((item) => item.id === call.product);
+    const product = await find(call.product);
     if (!product || !isCallProduct(product)) continue;
     await confirmBooking({
       store,
@@ -315,13 +334,14 @@ export async function catchUpBookings(store: Store, paid: PaidCall[], origin: st
       buyerTz: call.buyerTz,
       moves: call.moves,
       answers: call.answers,
+      amountCents: call.amount,
       origin,
     }).catch((error) => console.error("catching up a booking failed", error));
   }
 }
 
 /** Whether a product can be booked right now. */
-export function isCallProduct(product: Product): product is Product & { call: CallSetup } {
+export function isCallProduct<T extends Listing>(product: T): product is T & { call: CallSetup } {
   return product.call !== null;
 }
 
@@ -351,7 +371,7 @@ export async function checkCallChange(
   next: CallSetup,
   now = Date.now(),
 ): Promise<CallSetup | ChangeProblem> {
-  const before = store.products.find((p) => p.id === productId)?.call ?? null;
+  const before = (await readListing(store, productId))?.call ?? null;
   const was = before && before.kind === "live" ? before.sessions : [];
   const byId = new Map(was.map((s) => [s.id, s]));
 
@@ -456,7 +476,7 @@ export async function holdAndCheckout(input: {
     let busy: Busy[];
     try {
       const read = await readBusy(store, now);
-      busy = against(store, product, read.busy, now, read.blocked);
+      busy = against(product, read.busy, read.sessions, read.blocked);
     } catch {
       return { ok: false, reason: "error" };
     }
@@ -469,7 +489,8 @@ export async function holdAndCheckout(input: {
       mode: "payment",
       locale: "en",
       "line_items[0][quantity]": "1",
-      "line_items[0][price_data][currency]": "usd",
+      // In the store's own currency (lib/money.ts), like every price it has.
+      "line_items[0][price_data][currency]": store.currency,
       "line_items[0][price_data][unit_amount]": String(product.priceCents),
       "line_items[0][price_data][product_data][name]": name.slice(0, 250),
       "metadata[store]": store.handle,
@@ -535,16 +556,10 @@ export type Offer = {
   sessions: ReturnType<typeof openSessions>;
 };
 
-function offerFrom(
-  store: Store,
-  product: Product & { call: CallSetup },
-  now: number,
-  seats: Busy[],
-  blocked: Busy[],
-): Offer {
+function offerFrom(product: CallListing, now: number, seats: Busy[], sessions: Busy[], blocked: Busy[]): Offer {
   const setup = product.call;
   if (setup.kind === "live") return { days: [], left: {}, sessions: openSessions(setup, now, seats, product.id) };
-  const days = openSlots(setup, now, against(store, product, seats, now, blocked), product.id);
+  const days = openSlots(setup, now, against(product, seats, sessions, blocked), product.id);
   const left: Record<string, number> = {};
   if (setup.seats > 1) {
     for (const day of days) {
@@ -558,11 +573,11 @@ function offerFrom(
  * Every open time or session for a call product, or null when it cannot be
  * read, and the paid calls read on the way, for catchUpBookings.
  */
-export async function slotsForProduct(store: Store, product: Product & { call: CallSetup }) {
+export async function slotsForProduct(store: Store, product: CallListing) {
   try {
     const now = Date.now();
-    const { busy, paid, blocked } = await readBusy(store, now);
-    return { ...offerFrom(store, product, now, busy, blocked), paid };
+    const { busy, paid, blocked, sessions } = await readBusy(store, now);
+    return { ...offerFrom(product, now, busy, sessions, blocked), paid };
   } catch {
     return null;
   }
@@ -575,14 +590,14 @@ export async function slotsForProduct(store: Store, product: Product & { call: C
  */
 export async function slotsForMove(
   store: Store,
-  product: Product & { call: CallSetup },
+  product: CallListing,
   session: string,
   current: number,
 ): Promise<Offer | null> {
   try {
     const now = Date.now();
-    const { busy, blocked } = await readBusy(store, now);
-    const offer = offerFrom(store, product, now, busy.filter((b) => b.session !== session), blocked);
+    const { busy, blocked, sessions } = await readBusy(store, now);
+    const offer = offerFrom(product, now, busy.filter((b) => b.session !== session), sessions, blocked);
     return {
       days: offer.days
         .map((day) => ({ ...day, starts: day.starts.filter((start) => start !== current) }))
@@ -642,7 +657,7 @@ export type MoveResult =
  */
 export async function moveBooking(input: {
   store: Store;
-  product: Product & { call: CallSetup };
+  product: CallListing;
   session: string;
   booked: { start: number; end: number; email: string | null; buyerTz: string };
   start: number;
@@ -670,12 +685,13 @@ export async function moveBooking(input: {
 
     let busy: Busy[];
     let blocked: Busy[];
+    let sessions: Busy[];
     try {
-      ({ busy, blocked } = await readBusy(store, now));
+      ({ busy, blocked, sessions } = await readBusy(store, now));
     } catch {
       return { ok: false, reason: "error" };
     }
-    const others = against(store, product, busy.filter((b) => b.session !== session), now, blocked);
+    const others = against(product, busy.filter((b) => b.session !== session), sessions, blocked);
     if (!isBookable(setup, now, others, start, product.id)) return { ok: false, reason: "taken" };
 
     await writeMove(session, { s: start, e: end, n: from.moves + 1 });
@@ -724,7 +740,7 @@ export async function moveBooking(input: {
 
 async function tellMoved(input: {
   store: Store;
-  product: Product & { call: CallSetup };
+  product: CallListing;
   session: string;
   from: { start: number; end: number };
   start: number;
@@ -738,7 +754,10 @@ async function tellMoved(input: {
   const { store, product, session, from, start, end, moves, email, origin } = input;
   const setup = product.call;
   const buyerTz = isTimeZone(input.buyerTz) ? input.buyerTz : setup.tz;
-  const room = roomFor(setup, start);
+  // A one-to-one booking keeps its video room when it moves; a seat in a
+  // group moves into the room of its new time (lib/call-rooms.ts).
+  const room = await roomOf(store.callsId, { product: product.id, setup, session, start, end });
+  const video = isVideoRoom(room);
   const invite = (note: string) =>
     Buffer.from(
       callInvite({ uid: session, start, end, title: product.title, storeName: store.name, room, note, sequence: moves }),
@@ -759,6 +778,7 @@ async function tellMoved(input: {
         `Was: ${at(from.start, buyerTz)}`,
         "",
         room ? `Join here at the new time: ${room}` : `${store.name} will send you the link to join before the call.`,
+        ...(video ? [VIDEO_ROOM_NOTE] : []),
         "",
         "The calendar file attached has the new time. If your calendar still shows the old one as well, delete the old one.",
         again
@@ -767,7 +787,7 @@ async function tellMoved(input: {
         `To cancel, reply to this email; the reply goes to ${store.name}.`,
       ].join("\n"),
       replyTo: store.email,
-      attachments: [{ filename: "call.ics", content: invite(room ? `Join: ${room}` : `${store.name} will send the link to join.`) }],
+      attachments: [{ filename: "call.ics", content: invite(room ? `Join: ${room}${video ? `\n\n${VIDEO_ROOM_NOTE}` : ""}` : `${store.name} will send the link to join.`) }],
     });
   }
 
@@ -782,10 +802,11 @@ async function tellMoved(input: {
       `Was: ${at(from.start, setup.tz)}`,
       "",
       "The old time is free again for somebody else. The calendar file attached has the new time; delete the old event from your calendar if it is still there.",
+      ...(room ? ["", `${video ? "The video room" : "The meeting link"}: ${room}`, ...(video ? [VIDEO_ROOM_NOTE] : [])] : []),
       "Every booking is also in your studio, under Upcoming calls.",
     ].join("\n"),
     ...(email ? { replyTo: email } : {}),
-    attachments: [{ filename: "call.ics", content: invite(`With ${email ?? "your buyer"}.${room ? ` Join: ${room}` : ""}`) }],
+    attachments: [{ filename: "call.ics", content: invite(`With ${email ?? "your buyer"}.${room ? ` Join: ${room}` : ""}${video ? `\n\n${VIDEO_ROOM_NOTE}` : ""}`) }],
   });
 }
 
@@ -864,7 +885,7 @@ export function storeSender(store: Store): string {
  */
 export async function confirmBooking(input: {
   store: Store;
-  product: Product & { call: CallSetup };
+  product: CallListing;
   session: string;
   start: number;
   end: number;
@@ -876,6 +897,8 @@ export async function confirmBooking(input: {
   moves?: number;
   /** The buyer's answers to the creator's questions, told to the creator. */
   answers?: Answer[];
+  /** What was paid, in cents, for the creator's phone; left out when not known. */
+  amountCents?: number | null;
   origin: string;
 }): Promise<void> {
   const { store, product, session, start, end, buyerEmail, origin } = input;
@@ -897,11 +920,27 @@ export async function confirmBooking(input: {
     buyer: { email: buyerEmail, name: input.buyerName ?? null, timezone: input.buyerTz },
     answers: (input.answers ?? []).map((answer) => ({ question: answer.label, answer: answer.value })),
   }).catch((error) => console.error("queueing the call.booked webhook failed", error));
+  // The creator's phone, when a device of theirs asked for bookings
+  // (lib/phone-alerts.ts): what, when in their own time zone, and what was paid.
+  // In the store's currency (lib/money.ts), which is what its calls are charged in.
+  const paid = typeof input.amountCents === "number" && input.amountCents > 0 ? formatMoney(input.amountCents, store.currency) : "";
+  await alertCreator(
+    store,
+    "booking",
+    {
+      title: paid ? `New booking: ${paid}` : "New booking",
+      body: `${product.title} · ${readableTime(start, product.call.tz)}`,
+      url: store.sid ? `/studio?store=${store.sid}` : "/studio",
+    },
+    { seed: session },
+  ).catch((error) => console.error("a booking notification failed", error));
   if (!isSenderConfigured()) return;
 
   const setup = product.call;
   const buyerTz = isTimeZone(input.buyerTz) ? input.buyerTz : setup.tz;
-  const room = roomFor(setup, start);
+  // Made here, the first time it is needed, when the product makes rooms.
+  const room = await roomOf(store.callsId, { product: product.id, setup, session, start, end });
+  const video = isVideoRoom(room);
   const invite = (note: string) =>
     Buffer.from(
       callInvite({ uid: session, start, end, title: product.title, storeName: store.name, room, note, sequence: input.moves ?? 0 }),
@@ -923,6 +962,7 @@ export async function confirmBooking(input: {
         room
           ? `Join here at that time: ${room}`
           : `${store.name} will send you the link to join before the call.`,
+        ...(video ? [VIDEO_ROOM_NOTE] : []),
         "",
         "The calendar file attached adds it to your calendar. You will get a reminder a day before and an hour before.",
         ...(canMove(setup, start, input.moves ?? 0)
@@ -937,7 +977,7 @@ export async function confirmBooking(input: {
       // Replies reach the creator, which the studio tells them before they
       // offer a single call.
       replyTo: store.email,
-      attachments: [{ filename: "call.ics", content: invite(room ? `Join: ${room}` : `${store.name} will send the link to join.`) }],
+      attachments: [{ filename: "call.ics", content: invite(room ? `Join: ${room}${video ? `\n\n${VIDEO_ROOM_NOTE}` : ""}` : `${store.name} will send the link to join.`) }],
     });
   }
 
@@ -954,12 +994,14 @@ export async function confirmBooking(input: {
       `${readableTime(start, setup.tz)} (${zoneName(start, setup.tz)}, your time zone)`,
       "",
       room
-        ? `They were given your meeting link: ${room}`
+        ? video
+          ? `A private video room was made for ${setup.kind === "live" || setup.seats > 1 ? "this time" : "this booking"}, and they were given it: ${room}\n${VIDEO_ROOM_NOTE} Open it a few minutes early and sign in, so they are not left waiting.`
+          : `They were given your meeting link: ${room}`
         : `You have not set a meeting link, so send them one before the call${buyerEmail ? ` at ${buyerEmail}` : ""}.`,
       "",
       "The calendar file attached adds it to your calendar. Every booking is also in your studio, under Upcoming calls, and you get a reminder with everyone booked a day and an hour before.",
     ].join("\n"),
     ...(buyerEmail ? { replyTo: buyerEmail } : {}),
-    attachments: [{ filename: "call.ics", content: invite(`With ${buyerEmail ?? "your buyer"}.${room ? ` Join: ${room}` : ""}`) }],
+    attachments: [{ filename: "call.ics", content: invite(`With ${buyerEmail ?? "your buyer"}.${room ? ` Join: ${room}` : ""}${video ? `\n\n${VIDEO_ROOM_NOTE}` : ""}`) }],
   });
 }

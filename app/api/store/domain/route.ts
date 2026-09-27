@@ -22,20 +22,20 @@ import {
  * names a store.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request, 2_000);
+  const guarded = await guardStoreWrite(request, "settings", 2_000);
   if (!guarded.ok) return guarded.response;
-  const { email, body } = guarded;
+  const { ref, body } = guarded;
   const action = text(body.action, 20);
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
 
   try {
-    const store = await storeForEmail(email);
+    const store = await storeForEmail(ref);
     if (!store) return fail("none");
 
     if (action === "remove") {
       if (!store.domain) return Response.json({ ok: true });
       if (!(await disconnectDomain(store.domain.name))) return fail("unavailable", 502);
-      await setDomain(email, null);
+      await setDomain(ref, null);
       const name = store.domain.name;
       after(() => noticeCreator(store, { kind: "domain-removed", name }));
       return Response.json({ ok: true });
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       const result = await connectDomain(store, text(body.name, 300));
       if (!result.ok) return fail(result.reason);
       const now = new Date().toISOString();
-      await setDomain(email, { name: result.name, addedAt: now, liveAt: "" });
+      await setDomain(ref, { name: result.name, addedAt: now, liveAt: "" });
       // A domain decides where buyers land; the creator hears of every one.
       after(() => noticeCreator(store, { kind: "domain-added", name: result.name }));
       const status = await domainStatus(result.name);
@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
       }
       if (!status) return fail("unavailable", 502);
       if (status.live && !store.domain.liveAt) {
-        await setDomain(email, { ...store.domain, liveAt: new Date().toISOString() });
+        await setDomain(ref, { ...store.domain, liveAt: new Date().toISOString() });
       } else if (!status.live && store.domain.liveAt) {
-        await setDomain(email, { ...store.domain, liveAt: "" });
+        await setDomain(ref, { ...store.domain, liveAt: "" });
       }
       return Response.json({ ok: true, status });
     }

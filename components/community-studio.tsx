@@ -93,6 +93,8 @@ export function CommunityStudio({
   members,
   totals,
   canEmail,
+  canSettings = true,
+  isOwner = true,
 }: {
   handle: string;
   address: string;
@@ -103,6 +105,14 @@ export function CommunityStudio({
   members: StudioMember[];
   totals: { members: number; listed: number; posts: number; reach: number };
   canEmail: boolean;
+  /**
+   * Whether this person may set the community up (lib/team-roles.ts,
+   * "settings"). Without it, only the reports and the members are shown:
+   * moderating, which Editors and Support do too.
+   */
+  canSettings?: boolean;
+  /** The store's owner, who also moderates from inside the community itself. */
+  isOwner?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -126,6 +136,15 @@ export function CommunityStudio({
     error?.where === where ? (
       <p className="notice notice-error mt-4" role="alert">{error.text}</p>
     ) : null;
+
+  if (!config && !canSettings) {
+    return (
+      <section className="card mt-8 p-6 sm:p-8" aria-labelledby="cm-none-title">
+        <h2 id="cm-none-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">No community yet</h2>
+        <p className="mt-2 text-ink-soft">The store&apos;s owner or an Admin sets it up. Once it has members, reports and members show up here to moderate.</p>
+      </section>
+    );
+  }
 
   if (!config) {
     return (
@@ -152,10 +171,14 @@ export function CommunityStudio({
   return (
     <div className="mt-8 grid items-start gap-x-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="min-w-0">
-        <Basics handle={handle} address={address} on={on} config={config} busy={busy} run={run} problem={problem} totals={totals} canEmail={canEmail} />
-        <Access config={config} products={products} busy={busy} run={run} problem={problem} />
-        <Spaces config={config} busy={busy} run={run} problem={problem} />
-        <Queue queue={queue} busy={busy} run={run} problem={problem} />
+        {canSettings ? (
+          <>
+            <Basics handle={handle} address={address} on={on} config={config} busy={busy} run={run} problem={problem} totals={totals} canEmail={canEmail} />
+            <Access config={config} products={products} busy={busy} run={run} problem={problem} />
+            <Spaces config={config} busy={busy} run={run} problem={problem} />
+          </>
+        ) : null}
+        <Queue queue={queue} busy={busy} run={run} problem={problem} isOwner={isOwner} />
         <Members members={members} total={totals.members} busy={busy} run={run} problem={problem} />
       </div>
       <Limits />
@@ -509,7 +532,19 @@ function Spaces({ config, busy, run, problem }: { config: CommunityConfig; busy:
   );
 }
 
-function Queue({ queue, busy, run, problem }: { queue: QueueRow[]; busy: string | null; run: Runner; problem: Problem }) {
+function Queue({
+  queue,
+  busy,
+  run,
+  problem,
+  isOwner,
+}: {
+  queue: QueueRow[];
+  busy: string | null;
+  run: Runner;
+  problem: Problem;
+  isOwner: boolean;
+}) {
   return (
     <section className="card mt-8 p-6 sm:p-8" aria-labelledby="cm-queue-title">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -517,8 +552,9 @@ function Queue({ queue, busy, run, problem }: { queue: QueueRow[]; busy: string 
         <span className={`tag ${queue.length ? "tag-brand" : ""}`}>{queue.length ? `${queue.length} waiting` : "Nothing waiting"}</span>
       </div>
       <p className="mt-2 text-ink-soft">
-        Posts and comments members reported. Nobody is told who reported what. You can also hide, delete or mute from
-        the ⋯ menu on any post.
+        {isOwner
+          ? "Posts and comments members reported. Nobody is told who reported what. You can also hide, delete or mute from the ⋯ menu on any post."
+          : "Posts and comments members reported. Nobody is told who reported what."}
       </p>
       {queue.length === 0 ? (
         <p className="mt-4 rounded-[var(--r-md)] bg-sand p-4 text-sm text-ink-soft">No reports. When a member reports something, it waits here.</p>

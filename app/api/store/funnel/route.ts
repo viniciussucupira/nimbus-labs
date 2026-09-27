@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { StoreFullError, priceToCents, setProductFunnel } from "@/lib/store";
+import { StoreFullError, setProductFunnel } from "@/lib/store";
+import { currencyRule, readMoney } from "@/lib/money";
 import { MAX_FUNNEL_STEPS, parseFunnel } from "@/lib/funnel";
 import { guardStoreWrite, text } from "@/lib/store-request";
 
@@ -12,7 +13,7 @@ import { guardStoreWrite, text } from "@/lib/store-request";
  * page applies is checked again here (lib/funnel.ts) before it is saved.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request, 8_000);
+  const guarded = await guardStoreWrite(request, "products", 8_000);
   if (!guarded.ok) return guarded.response;
   const body = guarded.body;
   const id = text(body.id, 40);
@@ -20,13 +21,15 @@ export async function POST(request: NextRequest) {
 
   let funnel = null;
   if (body.funnel !== null) {
+    // Typed in the store's own currency (lib/money.ts).
+    const currency = guarded.store.currency;
     const raw = body.funnel && typeof body.funnel === "object" ? (body.funnel as { steps?: unknown }) : {};
     const list = Array.isArray(raw.steps) ? raw.steps.slice(0, MAX_FUNNEL_STEPS + 1) : [];
     if (list.length === 0 || list.length > MAX_FUNNEL_STEPS) return Response.json({ ok: false, error: "shape" }, { status: 400 });
     const steps = [];
     for (const entry of list) {
       const step = entry && typeof entry === "object" ? (entry as Record<string, unknown>) : {};
-      const cents = priceToCents(text(step.price, 12));
+      const cents = readMoney(text(step.price, 12), currency);
       if (cents === null) return Response.json({ ok: false, error: "price" }, { status: 400 });
       steps.push({
         id: text(step.id, 12),
@@ -42,13 +45,13 @@ export async function POST(request: NextRequest) {
     funnel = parseFunnel({ steps });
     // A price too low for Stripe reads as a price problem, not a shape one.
     if (!funnel) {
-      const low = steps.some((s) => s.priceCents < 50);
+      const low = steps.some((s) => s.priceCents < currencyRule(currency).minCharge);
       return Response.json({ ok: false, error: low ? "price" : "shape" }, { status: 400 });
     }
   }
 
   try {
-    const result = await setProductFunnel(guarded.email, id, funnel);
+    const result = await setProductFunnel(guarded.ref, id, funnel);
     if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
     return Response.json({ ok: true });
   } catch (error) {

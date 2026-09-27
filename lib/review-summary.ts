@@ -1,0 +1,100 @@
+/**
+ * The parts of reviews a page draws, and nothing that talks to storage, so
+ * the studio's preview in the browser can use them too (lib/reviews.ts has
+ * the rules in full and the records).
+ */
+
+export const MAX_REVIEW_TEXT = 1_000;
+export const MAX_REVIEW_NAME = 40;
+export const MAX_REPLY_TEXT = 1_000;
+/** The most reviews one product keeps; a product past it takes no new ones. */
+export const MAX_REVIEWS_PER_PRODUCT = 2_000;
+/** Shown on a product's own page; the rest are on its reviews page. */
+export const REVIEWS_ON_PAGE = 10;
+export const REVIEWS_PER_PAGE = 30;
+
+/** The rule for hidden reviews, in the words the studio and the pages use. */
+export const HIDDEN_RULE =
+  "Hiding takes a review's words off your page, never its stars out of the average: the average and the count include hidden reviews, and your page says how many are hidden.";
+
+export const REVIEW_ID_PATTERN = /^[0-9a-f]{24}$/;
+
+export type Review = {
+  id: string;
+  productId: string;
+  /** The order it came from: a checkout (cs_…) or an offer taken after paying (pi_…). */
+  reference: string;
+  /** The payment behind that order, read when the review was written, for refunds. */
+  pi: string;
+  rating: number;
+  text: string;
+  /** What the buyer chose to be called; empty shows "Verified buyer". */
+  name: string;
+  createdAt: number;
+  /** When the buyer last changed it; 0 when never. */
+  editedAt: number;
+  hidden: boolean;
+  refunded: boolean;
+  reply: { text: string; at: number } | null;
+};
+
+/** The numbers a product's page and its card show, kept up to date on every change. */
+export type Summary = {
+  /** Reviews whose stars count: every one not refunded, hidden or not. */
+  count: number;
+  /** The sum of those stars. */
+  stars: number;
+  /** Reviews on the page (refunded ones included, marked). */
+  visible: number;
+  /** Reviews the creator hid. */
+  hidden: number;
+  /** Reviews whose purchase was refunded in full. */
+  refunded: number;
+  /** How many counted reviews gave 1, 2, 3, 4 and 5 stars. */
+  dist: [number, number, number, number, number];
+};
+
+export const EMPTY_SUMMARY: Summary = { count: 0, stars: 0, visible: 0, hidden: 0, refunded: 0, dist: [0, 0, 0, 0, 0] };
+
+/** The numbers, counted afresh from every review of a product. */
+export function summarise(reviews: Review[]): Summary {
+  const summary: Summary = { ...EMPTY_SUMMARY, dist: [0, 0, 0, 0, 0] };
+  for (const review of reviews) {
+    if (review.hidden) summary.hidden += 1;
+    else summary.visible += 1;
+    if (review.refunded) {
+      summary.refunded += 1;
+      continue;
+    }
+    summary.count += 1;
+    summary.stars += review.rating;
+    summary.dist[review.rating - 1] += 1;
+  }
+  return summary;
+}
+
+/**
+ * Whether a page shows stars at all: at least one review on the page, and at
+ * least one whose stars count. A product with only hidden reviews shows no
+ * stars, and still says how many are hidden.
+ */
+export function showsRating(summary: Summary): boolean {
+  return summary.visible >= 1 && summary.count >= 1;
+}
+
+/** The average, to one decimal, as the page prints it and the search data states it. */
+export function average(summary: Summary): number {
+  return summary.count ? Math.round((summary.stars / summary.count) * 10) / 10 : 0;
+}
+
+/** "4.8", "5.0". */
+export function averageText(summary: Summary): string {
+  return average(summary).toFixed(1);
+}
+
+/** "1 review hidden by the creator", "3 reviews hidden by the creator", or "". */
+export function hiddenLine(summary: Summary): string {
+  if (!summary.hidden) return "";
+  return `${summary.hidden} ${summary.hidden === 1 ? "review" : "reviews"} hidden by the creator`;
+}
+

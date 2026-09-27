@@ -29,7 +29,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "sell",
     menu: { label: "Store page", description: "Your photo, your links and everything you sell, at one address.", icon: "store" },
-    related: ["price-options", "insights", "domain", "your-stripe"],
+    related: ["sales-pages", "price-options", "reviews", "domain"],
     blocks: [
       {
         kind: "how",
@@ -45,9 +45,10 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What the page carries",
         items: [
           { icon: "user", title: "You, at the top", body: "Your photo, your name and a line about you, on every theme — not locked behind one." },
-          { icon: "file", title: "Up to 200 products", body: "Each with its price, what the buyer gets and the button that buys it, in the order you choose, and up to 100 links beside them." },
+          { icon: "file", title: "Up to 2,000 products", body: "Each with its price, what the buyer gets and the button that buys it, in the order you choose, and up to 100 links beside them. A long store shows 24 products a page, and your studio finds any product by name." },
           { icon: "camera", title: "A picture on each product", body: "Shown three ways, product by product: small beside the title, beside the title and the summary, or across the top of the card." },
-          { icon: "eye", title: "A page for each product", body: "At /@you/p/<product>: the picture, a long description of up to 5,000 characters, and a title and preview card of its own for search engines and shared links." },
+          { icon: "eye", title: "A page for each product", body: "At /@you/p/<product>: the picture, a long description of up to 5,000 characters, and a title and preview card of its own for search engines and shared links. Or a sales page you build from blocks.", href: "/platform/sales-pages" },
+          { icon: "star", title: "Stars from real buyers", body: "Reviews only people who paid can write, with the average on the product's card and page.", href: "/platform/reviews" },
           { icon: "gift", title: "Free things, for an email", body: "Price something at 0 and it is handed out for a confirmed email address that joins your list." },
           { icon: "link", title: "Links with no price", body: "Your channel, your podcast, your booking page — with the site each one leads to printed under it." },
           { icon: "palette", title: "Colours that stay readable", body: "Every colour is checked for contrast before your page uses it, so your words never disappear into it." },
@@ -71,9 +72,10 @@ export const FEATURE_PAGES: TopicPage[] = [
         intro: "Said here so nobody signs up expecting it.",
         items: [
           "There is one layout: you choose the theme, the colour and the order, not the arrangement of blocks on the page.",
-          "200 products and 100 links per store. There are no categories or search for a big catalogue.",
+          "Up to 2,000 products and 100 links per store. Stan says unlimited; we say the number we can stand behind.",
+          "No categories, and no search on the store page itself: buyers page through 24 products at a time. Search is in your studio.",
           "No custom code on the page, and the store cannot be embedded in another website.",
-          "Buyers pay by card through Stripe. PayPal is not offered.",
+          "Buyers pay through Stripe, with the ways to pay your own Stripe account has on. PayPal is among them only for Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein: not for a Stripe account in the United States.",
         ],
       },
       {
@@ -84,6 +86,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { q: "Is the page up before I connect Stripe?", a: "Yes. The page, the editor and your address are free and stay free. Taking a card needs two things: Stripe has cleared your account, and your plan or its 14-day trial is running. Until then the page says plainly that it cannot take a payment." },
           { q: "Can I use my own domain?", a: DOMAINS ? "Yes, on the $99 Pro plan. You add one record where you bought the domain, and the certificate is made for you. Your nimbuslabsai.com address keeps working as well." : "Not yet. It is planned for the Pro plan, and this page will say so on the day it works." },
           { q: "How do I see what the page looks like before I save?", a: "The studio shows the page with your photo, theme and colour as you change them, before anything is saved." },
+          { q: "Can one account run more than one store?", a: "Yes, up to five, each with its own address, products, Stripe account and plan. You switch between them at the top of your studio." }
         ],
       },
     ],
@@ -300,7 +303,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Sell your time,",
     highlight: "booked and paid in one go",
     intro:
-      "One person at a time, a group of up to 50, or live sessions on dates you set. Buyers see the free times in their own time zone, pick one and pay on your Stripe account, and you both get the invitation.",
+      "One person at a time, a group of up to 50, or live sessions on dates you set. Buyers see the free times in their own time zone, pick one and pay on your Stripe account, and you both get the invitation, with your own meeting link or a private video room made for the booking.",
     badge: WORKING,
     accent: "from-mint-brand to-sky-brand",
     visual: "calls",
@@ -315,7 +318,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { title: "Set your hours once", body: "How long a call lasts, your time zone, and the hours you take calls each day — up to two stretches a day." },
           { title: "The buyer picks a time", body: "Free times are shown in the buyer's own time zone. The time is kept for them for 30 minutes while they pay." },
-          { title: "Paid, then booked", body: "You both get an email with a calendar file and your meeting link. The call appears in your studio under Upcoming calls." },
+          { title: "Paid, then booked", body: "You both get an email with a calendar file and the link to meet. The call appears in your studio under Upcoming calls, and in the buyer's list of purchases." },
         ],
       },
       {
@@ -327,6 +330,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "calendar", title: "How far ahead", body: "From a week to three months of free times on show." },
           { icon: "minus", title: "A gap between calls", body: "Up to an hour between one call and the next." },
           { icon: "video", title: "Your meeting link", body: "Zoom, Google Meet, Whereby — the link you already use goes into every invitation." },
+          { icon: "video", title: "Or a private video room", body: "Switch it on and each booking gets its own Jitsi Meet room, a link nobody can guess, with nothing to set up. A group call or a live session has one room per time, shared by everyone booked into it." },
           { icon: "shield", title: "Never booked twice", body: "A time being paid for is held, so two people can never pay for the same hour, or the last seat." },
           { icon: "users", title: "Group calls", body: "Up to 50 people at each time. Buyers see how many seats are left." },
           { icon: "video", title: "Live sessions on dates", body: "Up to 50 dates per product, each with 1 to 500 seats, its own length and its own link. Sales close when you say, up to 72 hours before." },
@@ -350,7 +354,9 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           "Your calendars are read for busy times, not written to. Bookings reach your calendar as a feed you subscribe to, and a new busy time can take about ten minutes to close a slot.",
           "Buyers move a booking themselves, but cancelling is a reply to their confirmation email, which reaches you; a refund is made from your Stripe dashboard.",
-          "The call or the session itself happens on the service whose link you give. Nothing is streamed or recorded here.",
+          "Nothing makes a Zoom or Google Meet link for you: you type your own, or choose a Jitsi Meet room. Stan creates Zoom and Google Meet links automatically.",
+          "Jitsi Meet is a free service run by a third party, not by us. Nobody needs an account to join, but the first person to open a room may be asked to sign in to Jitsi to start it, and the others wait until then.",
+          "The call or the session itself happens on that service. Nothing is streamed or recorded here.",
           "No reminder is sent to a buyer who left the checkout of a call without paying.",
         ],
       },
@@ -361,6 +367,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { q: "What if two people try to book the same time?", a: "The first to reach payment holds it for 30 minutes. The second no longer sees it. If the first does not pay, the time comes back." },
           { q: "Can a call be paid in instalments?", a: "No. A call is paid in full when it is booked. Instalments are for products with one price." },
           { q: "Is sales tax added to calls?", a: "When you switch Stripe Tax on, it is added to calls as it is to everything else, on your own account." },
+          { q: "Where is the video room, and who runs it?", a: "At meet.jit.si, the free Jitsi Meet service run by 8x8, not by us. Its link is in the booking and reminder emails, the calendar file, your bookings feed and the buyer's list of purchases. Open it a few minutes early: the first person in may be asked to sign in to Jitsi with a Google, GitHub or Facebook account to start the meeting." },
         ],
       },
     ],
@@ -379,7 +386,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "paid",
     menu: { label: "Checkout tools", description: "Codes, add-ons, one-click offers, instalments and tax.", icon: "percent" },
-    related: ["funnels", "price-options", "your-stripe", "insights"],
+    related: ["funnels", "currencies-and-ways-to-pay", "sales-pages", "price-options"],
     blocks: [
       {
         kind: "features",
@@ -388,11 +395,12 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "percent", title: "Discount codes", body: "A word you choose, a percentage or an amount off, and a cap on uses if you want one. Up to twenty codes, kept as coupons on your own Stripe." },
           { icon: "plus", title: "Add it at checkout", body: "A box under the buy button offers another of your products at a price of your own. Never ticked for the buyer." },
-          { icon: "bolt", title: "One click after paying", body: "The thanks page offers one more product, or up to five in a row as a funnel, charged to the card just used. Only in that browser, for an hour.", href: "/platform/funnels" },
+          { icon: "bolt", title: "One click after paying", body: "The thanks page offers one more product, or up to five in a row as a funnel, charged to the card just used. Only in that browser, for an hour, and only after a card, Apple Pay or Google Pay payment.", href: "/platform/funnels" },
           { icon: "calendar", title: "Payment plans", body: "Two to twelve weekly or monthly payments. The buyer gets it after the first, and it ends by itself after the last." },
           { icon: "list", title: "Limited quantity", body: "Sell fifty and stop. The count shown is the real one, and a unit being paid for is held so the last one is never sold twice." },
           { icon: "receipt", title: "Sales tax and VAT", body: "Stripe Tax works it out from each buyer's address, on your account, once your Stripe tax setup is complete." },
-          { icon: "tag", title: "Pay what you want", body: "Your price becomes the minimum, at least $1, with a suggested price already in the box. Stripe refuses anything under the minimum." },
+          { icon: "tag", title: "Pay what you want", body: "Your price becomes the minimum, at least $1 or the smallest price your store's currency allows, with a suggested price already in the box. Stripe refuses anything under the minimum." },
+          { icon: "card", title: "The ways to pay your Stripe has on", body: "Apple Pay, Google Pay, Link, Klarna, Afterpay, Affirm, iDEAL, Bancontact and others you switch on in your own Stripe account, in any of 15 currencies.", href: "/platform/currencies-and-ways-to-pay" },
           { icon: "type", title: "Questions at checkout", body: "Up to three, on Stripe's page before paying: a short answer, a number or a list to choose from. The answers are in your list of sales." },
           { icon: "mail", title: "One reminder after a checkout left unpaid", body: "Only to a buyer who agreed on Stripe's page, about an hour later, once. Off until you switch it on." },
         ],
@@ -413,6 +421,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           "A discount code comes off the payment it is typed into. On a membership, that is the first charge.",
           "One product can be offered in the box under each product, and up to five after paying.",
           "While sales tax is on, offers after paying are paused, because tax cannot be added to a one-click charge.",
+          "Offers after paying are shown only to a buyer who paid by card, Apple Pay or Google Pay. A buyer who paid with Klarna, Link or a bank goes straight to what they bought.",
           "A payment plan cannot be cancelled from your page; a buyer who needs to change something replies to their receipt, which reaches you.",
           "Pay what you want is for a product with one price, sold once: not with memberships, price options, payment plans, the box at checkout, calls or discount codes.",
           "Questions are short answers, numbers or lists: no phone-number or checkbox question, and none on free products.",
@@ -444,7 +453,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "paid",
     menu: { label: "Your own Stripe", description: "The money lands in your account, not in ours.", icon: "bank" },
-    related: ["checkout", "memberships", "instant-delivery", "insights"],
+    related: ["currencies-and-ways-to-pay", "checkout", "memberships", "instant-delivery"],
     blocks: [
       {
         kind: "how",
@@ -480,7 +489,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "The honest limits",
         items: [
-          "Stripe only. PayPal is not offered: Stripe does not make it available to platforms like ours, and a second, separate integration means a second checkout to keep working.",
+          "Stripe only. Buyers meet the ways to pay your Stripe account has on, and PayPal can be one of them only for Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein. A creator in the United States cannot take PayPal here; Stan offers it to everyone.",
           "You need a Stripe account in one of the 43 countries the studio offers — the United States, Canada, the United Kingdom, Australia, Japan, Singapore, Mexico and most of Europe among them, but not everywhere.",
           "Because we never touch your money, we cannot advance it, split it with an affiliate automatically, or refund a buyer for you.",
         ],
@@ -491,6 +500,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "What do I pay Nimbus?", a: "Your plan — $29 a month, or $99 on Pro — and nothing from your sales. The first 14 days are free, and you cancel in one click from your studio." },
           { q: "Who handles refunds and disputes?", a: "You do, in your own Stripe dashboard, with the same tools any business has. A refund is a refund you issue, not a request you file with us." },
+          { q: "Can I charge in euros or pounds?", a: "Yes. Each store charges in one of 15 currencies, chosen in your studio, among the ones your Stripe account can charge in. The ways to pay are the ones you switch on in Stripe." },
           { q: "What happens to my money if Nimbus closes?", a: "Nothing. It was never here. Your Stripe account, your customers and your payouts carry on without us." },
         ],
       },
@@ -530,6 +540,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "download", title: "200 GB of downloads a month", body: "Published, and shown in your studio as it is used. Going over never cuts a buyer off; we write to you instead." },
           { icon: "shield", title: "Nothing that runs", body: "Programs, installers and scripts are refused, so a taken-over account cannot hand out malware." },
           { icon: "mail", title: "A confirmation email", body: "Every buyer gets one from your store's name: what they bought, what they paid and the way back to it. Replies reach you." },
+          { icon: "refresh", title: "Sent again from your studio", body: "A buyer who cannot find it? Send the purchase email again from your list of sales. It goes only to the address they paid with." },
           { icon: "key", title: "A licence key with each sale", body: "One key per buyer, never given twice, on the thanks page, in the email and in their list of purchases.", href: "/platform/licence-keys" },
           { icon: "file", title: "The buyer's email on their PDF", body: "Switch on stamping and every page of the PDF they download carries their email, the date and their order.", href: "/platform/pdf-stamping" },
         ],
@@ -577,7 +588,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "pro",
     group: "grow",
     menu: { label: "Email to your list", description: "Broadcasts and sequences, only to people who agreed. Pro.", icon: "mail" },
-    related: ["store-page", "courses", "memberships", "domain"],
+    related: ["email-platforms", "reviews", "memberships", "domain"],
     blocks: [
       {
         kind: "how",
@@ -597,6 +608,8 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "pin", title: "Your postal address", body: "And why the reader is getting it — what the law in the United States asks of every commercial email." },
           { icon: "download", title: "Your list is yours", body: "Download it as a CSV any time, from any plan. Bring one in, confirming each time that those people agreed." },
           { icon: "chat", title: "Announcements to your community", body: "A post in your community can also go by email to the members who asked for it, counted in the same monthly emails.", href: "/platform/community" },
+          { icon: "star", title: "One email that asks for a review", body: "Switch it on and each buyer is asked once, 3 to 30 days after buying, for an honest review. Counted in the same monthly emails.", href: "/platform/reviews" },
+          { icon: "type", title: "Drafts your team can write", body: "Up to 20 drafts per store. An Editor writes one; you or an Admin reads it and sends it.", href: "/platform/teams-and-stores" },
         ],
       },
       {
@@ -624,7 +637,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Why is email on Pro and not on $29?", a: "Because it costs us money for every email sent, and the $29 plan is priced to cover a store, not a mailing list. Stan puts email on its $99 plan as well — read on its pricing page on 20 September 2026." },
           { q: "Can I import the list I already have?", a: "Yes, as long as those people agreed to hear from you. You confirm that each time you import, and anyone who unsubscribed here stays unsubscribed." },
-          { q: "Can I email people on the $29 plan at all?", a: "Your list downloads as a CSV on every plan, and every email tool imports it. Writing to it from Nimbus is what Pro adds." },
+          { q: "Can I email people on the $29 plan at all?", a: "Your list downloads as a CSV on every plan, and on the $29 plan your store can send the people who agree straight to your own Mailchimp, Kit, beehiiv or MailerLite. Writing to them from Nimbus is what Pro adds." },
         ],
       },
     ],
@@ -802,7 +815,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         intro: "Said here so nobody signs up expecting it.",
         items: [
           "No live chat, private messages, or video inside it. Posts and comments appear when a page is opened, not as they are written.",
-          "No webinars inside the community: sell those as live sessions, held on the meeting service whose link you give.",
+          "No webinars inside the community: sell those as live sessions, held on the meeting service whose link you give or in a Jitsi Meet room made for them.",
           "No search, mentions, polls, or emails about replies. Posts cannot be edited once written.",
           "One community per store, and every space is open to every member: a space cannot be kept for the buyers of one product.",
           "Up to 10,000 posts and 50,000 members in one community.",
@@ -834,7 +847,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "paid",
     menu: { label: "Funnels", description: "Up to five one-click offers after paying.", icon: "ladder" },
-    related: ["checkout", "your-stripe", "price-options", "insights"],
+    related: ["sales-pages", "checkout", "your-stripe", "insights"],
     blocks: [
       {
         kind: "how",
@@ -847,7 +860,7 @@ export const FEATURE_PAGES: TopicPage[] = [
       },
       {
         kind: "lead",
-        text: "On Stan, funnels are on the $99 plan. Here, offers after paying are on the $29 plan. The difference in shape is real too: ours start after the checkout, and Stan's can include pages before it.",
+        text: "On Stan, funnels are on the $99 plan. Here, every part of one is on the $29 plan: a landing page that asks for an email for something free, a sales page built from blocks, a box at checkout, and up to five offers after paying. They are separate steps you connect, not one builder of up to 20 pages like Stan's.",
       },
       {
         kind: "features",
@@ -859,13 +872,15 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "check", title: "Nothing sold twice", body: "The product just bought is never offered again, and anything already in the order is passed over." },
           { icon: "lock", title: "Only for the buyer who paid", body: "The offers show only in the browser that paid, within an hour of paying." },
           { icon: "mail", title: "A receipt for each", body: "Every offer taken is delivered on the thanks page and gets its own confirmation email." },
+          { icon: "layout", title: "And pages before it", body: "A landing page that gives something free for an email and shows a paid product next, and a sales page that leads to the checkout.", href: "/platform/sales-pages" },
         ],
       },
       {
         kind: "limits",
         title: "What it does not do yet",
         items: [
-          "No landing or opt-in pages before the checkout. A funnel starts after someone pays.",
+          "Pages before the checkout are one per product: a landing page for something free, which can show one paid product next, and a sales page for something paid. There is no editor that chains pages together, and no thanks page of your own.",
+          "Offers are shown only after a card, Apple Pay or Google Pay payment.",
           "Up to five offers after each product.",
           "Offers are one-off products with one price: not memberships, payment plans or calls.",
           "While sales tax is on, offers after paying are paused, because tax cannot be added to a one-click charge.",
@@ -1220,6 +1235,385 @@ export const FEATURE_PAGES: TopicPage[] = [
     ],
   },
   {
+    slug: "sales-pages",
+    section: "platform",
+    eyebrow: "Sales and landing pages",
+    title: "A page that sells it,",
+    highlight: "built from blocks",
+    intro:
+      "Any product's own page can be laid out by you: a headline with a picture or a video, what the buyer gets, what is inside, who made it, questions, your guarantee, buttons and real buyers' reviews. For something free, the same page asks for an email.",
+    badge: WORKING,
+    accent: "from-pink-brand to-violet-brand",
+    plan: "creator",
+    group: "sell",
+    menu: { label: "Sales pages", description: "Up to 30 blocks per product, and landing pages for free ones.", icon: "layout" },
+    related: ["reviews", "funnels", "checkout", "store-page"],
+    blocks: [
+      {
+        kind: "how",
+        title: "From a product to a page",
+        items: [
+          { title: "Open the product's page", body: "In your studio, under Sales pages. A product without blocks keeps the plain page it always had." },
+          { title: "Stack the blocks", body: "Up to 30, in the order you want, with a preview beside them before anything is saved." },
+          { title: "Share one link", body: "Your store address, /p/ and the product. The buy button on the page opens the same checkout the store page does." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "Nine kinds of block",
+        items: [
+          { icon: "type", title: "Hero", body: "A headline of up to 120 characters and a line under it, beside the product's picture or a video." },
+          { icon: "play", title: "Video that waits", body: "From YouTube, Vimeo or Loom. Nothing from them loads until the visitor presses play, and YouTube plays from its privacy-enhanced address." },
+          { icon: "list", title: "Benefits and what is inside", body: "Up to 12 points with a tick, and up to 20 numbered parts, each with a line about it." },
+          { icon: "user", title: "About you", body: "Who made it, with your store photo." },
+          { icon: "chat", title: "Questions", body: "Up to 15 questions and answers that open and close." },
+          { icon: "shield", title: "Your guarantee", body: "Your refund promise, in your own words." },
+          { icon: "bolt", title: "Buttons", body: "Anywhere on the page, each leading to the checkout, or to the sign-up form on a free product." },
+          { icon: "star", title: "Reviews", body: "Where your buyers' verified reviews sit on the page.", href: "/platform/reviews" },
+          { icon: "globe", title: "Search and sharing", body: "A title of up to 70 characters and a description of up to 160 for search engines, and a share picture drawn for you from the product's picture, name, price and stars." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "Landing pages for free products",
+        items: [
+          { icon: "gift", title: "The page asks for the email", body: "The same blocks, with the sign-up form where the buttons are. Every address is confirmed from its own inbox before it joins your list." },
+          { icon: "ladder", title: "One paid product next", body: "After someone asks for the free one, the page can show one of your paid products, with a link to its own page. Nothing is charged or added for them." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do yet",
+        intro: "Said here so nobody signs up expecting it.",
+        items: [
+          "No custom code, HTML or styles: every block is plain text, drawn in your store's theme and colour. Blocks stack in the order you set; there are no columns or free layout.",
+          "Pictures are the product's own and your store photo. Videos come only from YouTube, Vimeo or Loom.",
+          "A button cannot state a price or a deal of its own: it leads to the checkout with the prices the store page shows.",
+          "One page per product. There is no editor that chains several pages into a funnel, and no thanks page of your own.",
+          "No A/B tests of a page.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about sales pages",
+        items: [
+          { q: "Which plan is it on?", a: "Every plan, the $29 one included. On Stan, landing pages come with its funnels, on its $99 plan, by our reading of Stan on 27 September 2026." },
+          { q: "Who in my team can edit them?", a: "You, an Admin and an Editor. Support cannot." },
+          { q: "Can I put a testimonial I collected on the page?", a: "In a text block, in your own words, yes. The Reviews block shows only reviews written by people who paid, and nothing you type can appear as one." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "reviews",
+    section: "platform",
+    eyebrow: "Verified reviews",
+    title: "Reviews only a buyer",
+    highlight: "can write",
+    intro:
+      "Stars and words from people your own Stripe account says paid. You can answer a review and hide one, but never change a word of it, and hiding one never lifts your average.",
+    badge: WORKING,
+    accent: "from-amber-brand to-pink-brand",
+    plan: "creator",
+    group: "grow",
+    menu: { label: "Verified reviews", description: "Only from people who paid. You cannot edit them.", icon: "star" },
+    related: ["sales-pages", "email", "store-page", "security"],
+    blocks: [
+      {
+        kind: "how",
+        title: "Where a review comes from",
+        items: [
+          { title: "A buyer pays", body: "For a file, a course, a membership that has charged, or an offer taken after paying." },
+          { title: "They write it", body: "From their thanks page, from their list of purchases, or from the one email that asks. Each door checks the order on your Stripe account first." },
+          { title: "It goes live", body: "At once, with 1 to 5 stars, up to 1,000 characters, and the name they choose or “Verified buyer”. Your studio lists what arrived since you last looked." },
+        ],
+      },
+      {
+        kind: "lead",
+        text: "On Stan, reviews are added by the creator: its help centre, read on 27 September 2026, says there is no way for customers to write one on a Stan store. Here, only customers can.",
+      },
+      {
+        kind: "features",
+        title: "The rules, and why they help you",
+        items: [
+          { icon: "check", title: "One voice per buyer", body: "One review per buyer and product, whatever they bought twice. They can change it or delete it." },
+          { icon: "eye", title: "Hiding is said out loud", body: "A hidden review's words leave the page, but its stars stay in the average and the count, and the page says how many are hidden." },
+          { icon: "ban", title: "A refund takes its stars back", body: "A payment refunded in full takes that review's stars out of the average. Its words stay, marked as refunded." },
+          { icon: "chat", title: "Your answer, in public", body: "Up to 1,000 characters under any review." },
+          { icon: "user", title: "Their email is never shown", body: "Only the name they chose. Each review keeps its order reference, so you can find the payment in your Stripe dashboard." },
+          { icon: "mail", title: "One email that asks, on Pro", body: "Off until you switch it on: each order is asked once, 3 to 30 days after buying, never offering anything in return. It counts in your monthly emails.", href: "/platform/email" },
+          { icon: "star", title: "Stars where buyers decide", body: "The average on the product's card, on its page and on the picture a shared link unfolds into. Ten reviews on the page, the rest on a page of their own." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        items: [
+          "You cannot edit or delete a buyer's review, or add one of your own. Only its buyer can change or delete it; deleting the whole product deletes its reviews.",
+          "Booked calls and free products are not reviewed.",
+          "The email that asks for reviews needs Pro, like all email to people from Nimbus. On the $29 plan, buyers review from their thanks page and their list of purchases.",
+          "No photos in reviews, and no reviews imported from another platform.",
+          "Up to 2,000 reviews per product.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about reviews",
+        items: [
+          { q: "Why can I not delete a bad review?", a: "Because a rating you could clean up would be worth nothing to a buyer. You can hide its words, answer it, or refund the order in full, which takes its stars out." },
+          { q: "Who in my team can moderate them?", a: "You, an Admin, an Editor and Support can hide and answer reviews. Switching on the email that asks is a setting, for you and Admins." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "currencies-and-ways-to-pay",
+    section: "platform",
+    eyebrow: "Currencies and ways to pay",
+    title: "Your currency, and",
+    highlight: "the ways your buyers pay",
+    intro:
+      "Each store charges in one of 15 currencies. At checkout, buyers meet the ways to pay you switched on in your own Stripe account: Apple Pay, Google Pay, Link, Klarna, Afterpay, Affirm, iDEAL, Bancontact and more, where they fit the buyer and the amount.",
+    badge: WORKING,
+    accent: "from-mint-brand to-sky-brand",
+    plan: "creator",
+    group: "paid",
+    menu: { label: "Currencies and ways to pay", description: "15 currencies, and the ways to pay your Stripe has on.", icon: "card" },
+    related: ["your-stripe", "checkout", "funnels", "memberships"],
+    blocks: [
+      {
+        kind: "how",
+        title: "How it is set",
+        items: [
+          { title: "Pick the currency", body: "US, Canadian, Australian, New Zealand, Singapore and Hong Kong dollars, euros, pounds, Swiss francs, Swedish, Norwegian and Danish kronor, Polish zloty, Japanese yen or Mexican pesos — among those your Stripe account can charge in." },
+          { title: "Switch ways to pay on in Stripe", body: "Your studio lists what your Stripe account has on, read from Stripe each time, and links straight to the page in Stripe where you switch more on." },
+          { title: "Stripe shows what fits", body: "Each buyer meets the ways that fit their country, the currency and the amount. Memberships and payment plans show only the ways Stripe can charge again each period." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "What it gives your buyers",
+        items: [
+          { icon: "phone", title: "Wallets", body: "Apple Pay, Google Pay and Link, and others such as Revolut Pay where your account has them." },
+          { icon: "calendar", title: "Pay later", body: "Klarna, Afterpay or Clearpay, Affirm and the rest: the buyer pays in instalments, and you are paid in full." },
+          { icon: "bank", title: "Bank payments confirmed on the spot", body: "iDEAL, Bancontact, BLIK, Przelewy24 and others that confirm while the buyer waits." },
+          { icon: "globe", title: "Prices written their way", body: "Every page, email, spreadsheet and number in your studio writes money in your store's currency: ¥2,700, not $27.00." },
+          { icon: "bolt", title: "Delivery that stays instant", body: "Ways to pay that settle days later are left out, so nobody pays and then meets a page saying nothing was paid." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        intro: "Said here so nobody signs up expecting it.",
+        items: [
+          "PayPal through Stripe is offered only to Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein. A creator in the United States cannot take PayPal here. Stan offers PayPal to every creator, so for US creators Stan is ahead.",
+          "Slow bank debits and vouchers — ACH, SEPA and Bacs Direct Debit, bank transfers, Boleto, OXXO, Konbini, Multibanco — and stablecoins are left out on purpose, because they settle days after the checkout.",
+          "One-click offers after paying are shown only to buyers who paid by card, Apple Pay or Google Pay.",
+          "One currency per store at a time. Changing it keeps every price's number — 49 dollars becomes 49 euros — so check your prices; it waits while a membership or payment plan is still running, and moving between the yen and a currency with cents is refused while the store has prices.",
+          "Which ways to pay exist is up to Stripe and your country. We switch nothing on or off for you.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about currencies and ways to pay",
+        items: [
+          { q: "Does Nimbus take a cut of Klarna or other methods?", a: "No. 0%, as on every sale. Stripe charges its own fee for each method on your account, published on its pricing page." },
+          { q: "What does Stan offer?", a: "Stan offers Stripe and PayPal, and a single currency, by our reading on 27 September 2026. We are ahead on currencies, and behind on PayPal for creators in the United States." },
+          { q: "Who can change the currency?", a: "You and an Admin. You are emailed whenever it changes." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "email-platforms",
+    section: "platform",
+    eyebrow: "Your email platform",
+    title: "Your list, sent straight to",
+    highlight: "the email tool you use",
+    intro:
+      "Connect Mailchimp, Kit, beehiiv or MailerLite, and the people who agree to hear from you are added there as they come in: free sign-ups once they confirm, buyers once they have paid, with the tags you choose. On the $29 plan, with no Zapier in between.",
+    badge: WORKING,
+    accent: "from-violet-brand to-sky-brand",
+    plan: "creator",
+    group: "grow",
+    menu: { label: "Email platforms", description: "Mailchimp, Kit, beehiiv or MailerLite, built in.", icon: "mail" },
+    related: ["email", "webhooks", "store-page", "insights"],
+    blocks: [
+      {
+        kind: "how",
+        title: "Connected in a minute",
+        items: [
+          { title: "Paste an API key", body: "From your own account on the platform. It is checked with the platform, encrypted and kept; your studio shows only its last four characters." },
+          { title: "Pick where people go", body: "The audience, form, publication or group, read fresh from your account." },
+          { title: "Choose who is sent", body: "Free sign-ups, buyers of every product or of some, and up to three tags per product — groups, on MailerLite." },
+        ],
+      },
+      {
+        kind: "lead",
+        text: "Stan has Mailchimp built in and reaches the others through Zapier, by our reading of Stan on 27 September 2026. Here all four are built in, on the $29 plan.",
+      },
+      {
+        kind: "features",
+        title: "What it respects",
+        items: [
+          { icon: "check", title: "Only people who agreed", body: "A free sign-up who ticked the box, or a buyer who ticked “Also send me emails” or agreed on Stripe's page. Anyone else is never sent, whatever the setting." },
+          { icon: "ban", title: "Unsubscribed stays unsubscribed", body: "Mailchimp and beehiiv never subscribe again someone who left, and MailerLite is never asked to change anyone's status." },
+          { icon: "refresh", title: "Tried again", body: "When the platform does not answer, a person is tried again over about forty hours, seven tries in all." },
+          { icon: "list", title: "A log you can read", body: "The last 50 people, each for up to a week, with what the platform did, or why someone was not sent." },
+          { icon: "mail", title: "An email when it changes", body: "You are told when a platform is connected or disconnected. Disconnecting deletes the key." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        items: [
+          "One platform per store at a time.",
+          "It only adds people. An unsubscribe or a change on the platform is not read back, and nothing is removed there.",
+          "People who joined before you connected are not sent: download your list as a CSV and import it there.",
+          "Only an email address, a first name when there is one, and tags are sent: no order amounts or other details.",
+          "Other platforms can be reached with webhooks and Zapier, not built in.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about email platforms",
+        items: [
+          { q: "Do I still need Pro?", a: "No. Connecting a platform is on every plan. Pro is for writing to your list from Nimbus itself." },
+          { q: "What starts on the platform?", a: "Whatever you set up there. On Kit, people are added to the form you pick, which starts what you attached to it." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "teams-and-stores",
+    section: "platform",
+    eyebrow: "Teams and stores",
+    title: "Help to run it,",
+    highlight: "without sharing your login",
+    intro:
+      "Up to five stores in one account, and up to five people on each store's team as Admin, Editor or Support, each signing in with their own email. What each role may do is checked on our server for every request.",
+    badge: WORKING,
+    accent: "from-sky-brand to-violet-brand",
+    plan: "creator",
+    group: "grow",
+    menu: { label: "Teams and stores", description: "Five stores per account, five people per store.", icon: "users" },
+    related: ["security", "phone-notifications", "email", "store-page"],
+    blocks: [
+      {
+        kind: "how",
+        title: "How someone joins",
+        items: [
+          { title: "Invite them by email", body: "With a role. The link works once, for seven days." },
+          { title: "They tap it", body: "That proves the inbox is theirs. From then on they sign in the way you do, and find your store in their studio." },
+          { title: "You are told", body: "An email when someone joins and when a role changes. Taking someone off counts from their next click." },
+        ],
+      },
+      {
+        kind: "lead",
+        text: "Stan's help centre, read on 27 September 2026, says there is no way to give a team member access without sharing your login. Here each person has their own.",
+      },
+      {
+        kind: "features",
+        title: "Three roles, and the owner",
+        items: [
+          { icon: "user", title: "Owner", body: "Everything. Only the owner pays for the store, connects its Stripe account, manages the team and deletes the store." },
+          { icon: "shield", title: "Admin", body: "Everything else: the address, domain, pixels, tax, webhooks, discounts, affiliates, sending email and downloading buyers' data." },
+          { icon: "type", title: "Editor", body: "Products, courses, calls, sales pages, the store page, and moderating the community and reviews. Writes email drafts but does not send them." },
+          { icon: "chat", title: "Support", body: "Reads orders and bookings, sends a buyer their purchase email again, and moderates the community and reviews. Edits nothing else." },
+          { icon: "list", title: "An activity log", body: "Every change and download the people you invited make, and every change to the team: the last 500 lines." },
+          { icon: "mail", title: "Email drafts", body: "Up to 20 per store, written by you, an Admin or an Editor, and sent only by you or an Admin." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "Your account, and more than one store",
+        items: [
+          { icon: "store", title: "Up to five stores", body: "Each with its own address, products, buyers, Stripe account and plan. You switch between them at the top of your studio." },
+          { icon: "key", title: "Passkeys, if you want them", body: "Sign in with your phone or laptop's face, fingerprint or PIN. Up to ten per account, and the emailed link keeps working." },
+          { icon: "alert", title: "A new browser, an email", body: "After your first sign-in, signing in from a browser your account has not used before sends you an email saying when, how and in which browser." },
+          { icon: "refresh", title: "Purchase emails sent again", body: "From your list of sales, to the address the buyer paid with, never to one typed in." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        items: [
+          "Five people per store, invitations still waiting included. Roles are the three above: no custom roles, and no role for one product only.",
+          "Each extra store is a plan of its own, from its first day. The free trial is for an account's first store.",
+          "A store can be deleted from the studio only while it has no products; your first store stays with your account.",
+          "A booked call's confirmation cannot be sent again from the studio.",
+          "Passkeys sign you in on nimbuslabsai.com, where the studio is, not on a store's own domain.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about teams and stores",
+        items: [
+          { q: "Does a team member need a plan?", a: "No. The store's plan covers its team." },
+          { q: "Can Support see my buyers' addresses?", a: "Yes, in orders and bookings, because answering buyers is the job. Support cannot download your list or sales as files." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "phone-notifications",
+    section: "platform",
+    eyebrow: "Phone notifications",
+    title: "A sale, and your phone",
+    highlight: "tells you",
+    intro:
+      "Turn notifications on in your studio, on your phone or your computer: every sale, every booking, a report in your community and a new affiliate application, the moment they happen.",
+    badge: WORKING,
+    accent: "from-pink-brand to-amber-brand",
+    plan: "creator",
+    group: "grow",
+    menu: { label: "Phone notifications", description: "Sales and bookings on your lock screen.", icon: "phone" },
+    related: ["teams-and-stores", "calls", "community", "affiliates"],
+    blocks: [
+      {
+        kind: "how",
+        title: "How it works",
+        items: [
+          { title: "On iPhone, install the studio", body: "In Safari: Share, then “Add to Home Screen”. On Android and on a computer, notifications come straight from the browser, and the studio can be installed there too." },
+          { title: "Turn notifications on", body: "From the studio, choosing which of the four you want on that device, and send yourself a test." },
+          { title: "It arrives as it happens", body: "Sent the moment the sale or the booking is confirmed, without making any buyer wait for it." },
+        ],
+      },
+      {
+        kind: "features",
+        title: "What it tells you",
+        items: [
+          { icon: "receipt", title: "Sales", body: "The product and the amount, for every paid order and every one-click offer taken after it." },
+          { icon: "calendar", title: "Bookings", body: "The product, the time and what was paid." },
+          { icon: "alert", title: "Reports", body: "A member reported a post or a comment in your community." },
+          { icon: "handshake", title: "Affiliate applications", body: "Someone confirmed an application to your programme." },
+          { icon: "lock", title: "Written for a lock screen", body: "Amounts, titles and times: never a buyer's name or email address." },
+          { icon: "users", title: "Each person their own", body: "Up to ten devices each. Your team members see only their own devices, and hear only what their role may see." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        intro: "Said here so nobody signs up expecting it.",
+        items: [
+          "It is not an app from the App Store or Google Play: it is the studio installed from the browser. Stan has a native iPhone app.",
+          "On iPhone and iPad it needs iOS 16.4 or later and the studio added to the home screen.",
+          "It uses the browser's own Web Push, so a browser or phone setting that blocks notifications blocks these too.",
+          "Reports and affiliate applications are sent at most 20 an hour per store; sales and bookings are never held back.",
+          "Notifications only tell you: answering and changing things happens in the studio.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about phone notifications",
+        items: [
+          { q: "Which plan is it on?", a: "Every plan, the $29 one included." },
+          { q: "Does a new device get notifications without me knowing?", a: "No. You are emailed each time notifications are turned on for a new device." },
+        ],
+      },
+    ],
+  },
+  {
     slug: "security",
     section: "platform",
     eyebrow: "Security",
@@ -1241,6 +1635,8 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "bank", title: "Sales on your own Stripe", body: "The buyer pays on Stripe's own checkout, on your account. We never see a card number and never hold a balance of yours." },
           { icon: "tag", title: "Prices worked out on our side", body: "What a buyer is charged is read on our server from what you saved, never from anything the page sends." },
           { icon: "key", title: "No password to steal", body: "You sign in with a link sent to your email. It works once, stops working after 15 minutes, and how often links can be asked for is limited." },
+          { icon: "phone", title: "Passkeys, if you want them", body: "Optional: sign in with the face, fingerprint or PIN that unlocks your phone or laptop. We keep only the public half of the key, and the emailed link keeps working." },
+          { icon: "users", title: "Team roles checked on our server", body: "What an Admin, an Editor or Support may do is checked on the server for every request, not only hidden on the screen." },
           { icon: "refresh", title: "A fresh session every time", body: "Each sign-in starts a new session, and a session the browser held before is closed." },
           { icon: "door", title: "Log out of all devices", body: "One button at the foot of your studio closes every session you have open, everywhere." },
           { icon: "mail", title: "An email when something important changes", body: "Whenever your Stripe account, your domain or your webhooks change, we write to your sign-in address saying what changed and when." },
@@ -1266,6 +1662,8 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "ban", title: "A full refund closes the door", body: "Refund a payment in full on your Stripe account and its download stops at once, its course closes within 10 minutes, the community within 5, and its licence key is revoked within about 5. A partial refund keeps access." },
           { icon: "clock", title: "Limits that stop bots", body: "Checkouts are limited to 20 per 10 minutes per connection per store, and bookings and every form that sends an email have limits of their own, so a script cannot sit on your limited stock or your call times." },
           { icon: "plug", title: "Signed webhooks, guarded addresses", body: "Webhooks are signed with HMAC-SHA256, and a calendar or webhook address that points into a private network is refused." },
+          { icon: "lock", title: "Email platform keys kept encrypted", body: "The API key of your Mailchimp, Kit, beehiiv or MailerLite is encrypted before it is stored, and never shown again." },
+          { icon: "star", title: "Reviews only from paying buyers", body: "A review can be written only for an order your own Stripe account says was paid and not refunded in full." },
         ],
       },
       {
@@ -1350,7 +1748,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         items: [
           "Calls read your calendar's busy times but do not write bookings into it: you subscribe to a feed of them instead.",
           "Clients move their own booking up to twice, but cancelling is a reply to the confirmation email, and a refund is yours to make in Stripe.",
-          "Group calls and live sessions happen on the meeting service whose link you give. Your community holds posts and comments, not live video.",
+          "Calls happen on the meeting service whose link you give, or in a Jitsi Meet room made for each booking. No Zoom or Google Meet link is made for you. Your community holds posts and comments, not live video.",
         ],
       },
       {
@@ -1358,7 +1756,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         title: "Questions coaches ask",
         items: [
           { q: "Can I sell a package of several calls?", a: "Not as one booking. Each call is booked and paid on its own. A programme with a set of calls can be sold as a course or a file, with your booking arrangement inside it." },
-          { q: "Where does the video call happen?", a: "On the service whose link you give — Zoom, Google Meet or any other. The link goes into every invitation." },
+          { q: "Where does the video call happen?", a: "On the service whose link you give — Zoom, Google Meet or any other — or in a private Jitsi Meet room made for each booking. The link goes into every invitation." },
           { q: "Can I see who finished the programme?", a: "Yes. Your studio shows each student and how many lessons they marked done." },
         ],
       },
@@ -1543,6 +1941,7 @@ export const CREATOR_PAGES: TopicPage[] = [
           { icon: "globe", title: "Your own domain", body: "shop.yourstudio.com on Pro, with the certificate made for you.", href: "/platform/domain" },
           { icon: "key", title: "Licence keys", body: "A unique key with each sale, for plugins and apps, checked by your software through a public address.", href: "/platform/licence-keys" },
           { icon: "file", title: "Stamped PDFs", body: "The buyer's email on every page of a guide or a colour book, to make sharing it a second thought.", href: "/platform/pdf-stamping" },
+          { icon: "star", title: "Reviews from real buyers", body: "Stars and words only people who paid can leave, on the product's card and its page.", href: "/platform/reviews" },
         ],
       },
       {
@@ -1551,7 +1950,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         items: [
           "Stamping works on PDFs only: presets, brushes and images are handed over as uploaded.",
           "No marketplace that sends you buyers: people arrive from your own links.",
-          "No reviews or ratings on products.",
+          "Reviews come only from buyers, so a new product starts with none. You cannot add a testimonial of your own as a review.",
         ],
       },
       {

@@ -38,7 +38,9 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { type Busy, isTimeZone, roomFor, seatsAt } from "@/lib/call-setup";
 import { SafeFetchError, checkUrl, problemWords, safeFetch } from "@/lib/safe-fetch";
 import { type Interval, looksLikeCalendar, parseIcs } from "@/lib/ics-parse";
-import type { Store } from "@/lib/store";
+import type { Listing, Store } from "@/lib/store";
+import { idsOfKind, readListing, recordListings } from "@/lib/catalog";
+import { type RoomAsk, VIDEO_ROOM_NOTE, isVideoRoom, roomsFor } from "@/lib/call-rooms";
 import { SITE_URL } from "@/lib/site-url";
 import { fold, icsText, icsTime } from "@/lib/ics-write";
 
@@ -117,8 +119,9 @@ async function writeConfig(store: Store, config: Config): Promise<void> {
 }
 
 /** The zone for all-day and floating times, when a calendar names none. */
-function homeZone(store: Store): string {
-  const tz = store.products.find((p) => p.call)?.call?.tz;
+async function homeZone(store: Store): Promise<string> {
+  const first = idsOfKind(store, "call")[0];
+  const tz = first ? (await readListing(store, first))?.call?.tz : undefined;
   return tz && isTimeZone(tz) ? tz : "UTC";
 }
 
@@ -189,7 +192,7 @@ export async function calendarBusy(
     return { busy: [], failing: 0 };
   }
   if (!config || !config.feeds.length) return { busy: [], failing: 0 };
-  const fallbackTz = homeZone(store);
+  const fallbackTz = await homeZone(store);
   const cached = await redisPipeline(config.feeds.flatMap((f) => [["GET", busyKey(f.id)], ["GET", goodKey(f.id)]])).catch(() => null);
   let failing = 0;
   const lists = await Promise.all(
@@ -306,7 +309,7 @@ export async function addFeed(store: Store, raw: string, now = Date.now(), hooks
   if (config.feeds.some((f) => f.url === url)) return { ok: false, reason: "duplicate", message: "That calendar is already added." };
   let reading: Reading;
   try {
-    reading = await readFeed(url, homeZone(store), now, hooks);
+    reading = await readFeed(url, await homeZone(store), now, hooks);
   } catch (error) {
     return { ok: false, reason: "invalid", message: error instanceof Error ? error.message : "The calendar could not be read." };
   }
@@ -395,7 +398,15 @@ export type BookedCall = {
  * listed. Every event id ends in @nimbuslabsai.com, which is also how a
  * calendar read back in (above) knows these are ours and not busy time.
  */
-export function bookedCalendar(store: Store, calls: BookedCall[], now = Date.now()): string {
+export function bookedCalendar(
+  store: Store,
+  calls: BookedCall[],
+  now = Date.now(),
+  /** The store's calls, read by the caller (readKind); the store record's own when not given. */
+  listings: Listing[] = recordListings(store),
+  /** The room of each booked time (slotRooms), by "<product>|<start>". */
+  rooms: Map<string, string | null> = new Map(),
+): string {
   const since = now - 7 * 86_400_000;
   const slots = new Map<string, { product: string; start: number; end: number; people: BookedCall[] }>();
   for (const call of calls) {
@@ -405,7 +416,7 @@ export function bookedCalendar(store: Store, calls: BookedCall[], now = Date.now
     slot.people.push(call);
     slots.set(key, slot);
   }
-  for (const product of store.products) {
+  for (const product of listings) {
     if (product.call?.kind !== "live") continue;
     for (const session of product.call.sessions) {
       const key = `${product.id}|${session.start}`;
@@ -425,12 +436,16 @@ export function bookedCalendar(store: Store, calls: BookedCall[], now = Date.now
     "X-PUBLISHED-TTL:PT15M",
   ];
   for (const slot of [...slots.values()].sort((a, b) => a.start - b.start)) {
-    const product = store.products.find((p) => p.id === slot.product);
+    const product = listings.find((p) => p.id === slot.product);
     const title = product?.title ?? "A call that is no longer listed";
     const setup = product?.call ?? null;
     const seats = setup ? seatsAt(setup, slot.start) : 1;
     const group = setup !== null && (setup.kind === "live" || seats > 1);
-    const room = setup ? roomFor(setup, slot.start) : null;
+    const key = `${slot.product}|${slot.start}`;
+    // A booked time has the room its bookings were given; an empty session
+    // that makes rooms gets one when somebody books it.
+    const room = rooms.has(key) ? rooms.get(key) ?? null : setup && !setup.video ? roomFor(setup, slot.start) : null;
+    const video = isVideoRoom(room);
     const single = !group && slot.people.length === 1 ? slot.people[0] : null;
     const summary = single
       ? `${title} with ${single.name ?? single.email ?? "a buyer"}`
@@ -440,6 +455,8 @@ export function bookedCalendar(store: Store, calls: BookedCall[], now = Date.now
     const description = [
       ...(slot.people.length ? [slot.people.length === 1 ? "Booked by:" : "Booked:", ...slot.people.map(who)] : ["Nobody has booked this yet."]),
       ...(room ? ["", `Join: ${room}`] : []),
+      ...(video ? [VIDEO_ROOM_NOTE] : []),
+      ...(!room && setup?.video ? ["", "A private video room is made for it when the first person books."] : []),
       "",
       "From your Nimbus Labs studio.",
     ].join("\n");
@@ -460,6 +477,25 @@ export function bookedCalendar(store: Store, calls: BookedCall[], now = Date.now
   }
   lines.push("END:VCALENDAR");
   return `${lines.map(fold).join("\r\n")}\r\n`;
+}
+
+/**
+ * The room of every booked time in a list of bookings, by "<product>|<start>",
+ * for bookedCalendar: one question to Redis for all of them (lib/call-rooms.ts).
+ */
+export async function slotRooms(store: Store, calls: BookedCall[], listings: Listing[]): Promise<Map<string, string | null>> {
+  const firsts = new Map<string, BookedCall>();
+  for (const call of calls) {
+    const key = `${call.product}|${call.start}`;
+    if (!firsts.has(key)) firsts.set(key, call);
+  }
+  const asks: { key: string; ask: RoomAsk }[] = [];
+  for (const [key, call] of firsts) {
+    const setup = listings.find((p) => p.id === call.product)?.call;
+    if (setup) asks.push({ key, ask: { product: call.product, setup, session: call.session, start: call.start, end: call.end } });
+  }
+  const rooms = await roomsFor(store.callsId, asks.map((a) => a.ask));
+  return new Map(asks.map((a, i) => [a.key, rooms[i]]));
 }
 
 /** The subscription file, made at most every five minutes per store. */

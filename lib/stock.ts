@@ -14,7 +14,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { HOLD_SECONDS, onAccount } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
 import { limitedStock } from "@/lib/product-extras";
-import type { Product, Store } from "@/lib/store";
+import type { Listing, Store } from "@/lib/store";
 
 const HOLD_MS = HOLD_SECONDS * 1000;
 const MAX_CHECKS = 5;
@@ -24,7 +24,7 @@ type Entry = { until: number; paid?: boolean };
 const stockKey = (id: string, productId: string) => `nl:stock:${id}:${productId}`;
 const lockKey = (id: string, productId: string) => `nl:stock:lock:${id}:${productId}`;
 
-async function readEntries(store: Store, product: Product): Promise<Map<string, Entry>> {
+async function readEntries(store: Store, product: Listing): Promise<Map<string, Entry>> {
   const [raw] = await redisPipeline([["HGETALL", stockKey(store.statsId!, product.id)]]);
   const flat = Array.isArray(raw) ? (raw as string[]) : [];
   const entries = new Map<string, Entry>();
@@ -45,7 +45,7 @@ async function readEntries(store: Store, product: Product): Promise<Map<string, 
  * are handed back. When Stripe cannot be asked, a hold stays counted — the
  * safe way to be wrong is to show one unit too few, never to sell one too many.
  */
-export async function stockLeft(store: Store, product: Product, now = Date.now()): Promise<number | null> {
+export async function stockLeft(store: Store, product: Listing, now = Date.now()): Promise<number | null> {
   const limit = limitedStock(product);
   if (limit === null) return null;
   if (!store.statsId || !isRedisConfigured()) return limit;
@@ -92,7 +92,7 @@ export type StockHold<T> = { ok: true; value: T } | { ok: false; reason: "soldou
  */
 export async function withStockHold<T extends { id: string }>(
   store: Store,
-  product: Product,
+  product: Listing,
   open: (held: boolean) => Promise<T>,
 ): Promise<StockHold<T>> {
   if (limitedStock(product) === null || !store.statsId || !isRedisConfigured()) {
@@ -121,7 +121,7 @@ export async function withStockHold<T extends { id: string }>(
 }
 
 /** Marks a limited product's checkout as sold, once the buyer is back. */
-export async function confirmStock(store: Store, product: Product, session: string): Promise<void> {
+export async function confirmStock(store: Store, product: Listing, session: string): Promise<void> {
   if (limitedStock(product) === null || !store.statsId || !isRedisConfigured()) return;
   await redisPipeline([
     ["HSET", stockKey(store.statsId, product.id), session, JSON.stringify({ until: 0, paid: true })],
@@ -133,7 +133,7 @@ export async function confirmStock(store: Store, product: Product, session: stri
  * page and press buy again: the old checkout is closed at Stripe first, so it
  * can never be paid as well. A paid checkout cannot be closed, and stays sold.
  */
-export async function releaseStockHold(store: Store, product: Product, session: string): Promise<void> {
+export async function releaseStockHold(store: Store, product: Listing, session: string): Promise<void> {
   if (limitedStock(product) === null || !store.statsId || !store.stripeAccountId || !isRedisConfigured()) return;
   if (!/^cs_(test|live)_[A-Za-z0-9]{8,200}$/.test(session)) return;
   const entries = await readEntries(store, product);

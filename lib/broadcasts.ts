@@ -17,6 +17,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { audience } from "@/lib/contacts";
 import { BATCH_SIZE, MAX_MAIL_BODY, MAX_SUBJECT, monthlyAllowance, sendTo, usedThisMonth } from "@/lib/mail";
 import type { Store } from "@/lib/store";
+import { hasProduct } from "@/lib/catalog";
 
 export type BroadcastStatus = "scheduled" | "sending" | "sent" | "waiting" | "cancelled" | "failed";
 
@@ -95,7 +96,7 @@ export async function createBroadcast(
   if (!subject) return { ok: false, reason: "subject" };
   if (!body) return { ok: false, reason: "body" };
   const productId = typeof input.productId === "string" && input.productId ? input.productId : null;
-  if (productId && !store.products.some((p) => p.id === productId)) return { ok: false, reason: "product" };
+  if (productId && !hasProduct(store, productId)) return { ok: false, reason: "product" };
   const now = Math.floor(Date.now() / 1000);
   let sendAt = now;
   if (input.sendAt !== undefined && input.sendAt !== null && input.sendAt !== "") {

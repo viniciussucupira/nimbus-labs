@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
 import type { Flow } from "@/lib/flows";
 import type { MailSettings } from "@/lib/store";
+import { StoreField } from "@/components/studio-store-pin";
 
 const MESSAGES: Record<string, string> = {
   from_name: "Type the name your emails are from.",
@@ -29,6 +30,9 @@ const MESSAGES: Record<string, string> = {
   send: "The email service did not take it just now. Nothing was sent; try again in a moment.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Email is not switched on yet, so nothing was sent.",
+  full: "A store keeps 20 drafts at most. Send or delete one first.",
+  list: "This store has no list yet, so there is nowhere to keep a draft.",
+  role: "Your role on this store does not include this.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
@@ -62,6 +66,7 @@ type BroadcastRow = {
   productId: string | null;
 };
 type FlowRow = Flow & { stats: { started: number; sent: number } };
+export type DraftRow = { id: string; subject: string; body: string; productId: string | null; by: string; savedAt: string };
 
 const TIME: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
 
@@ -82,6 +87,12 @@ function Feedback({ error, done }: { error: string | null; done: string | null }
   return null;
 }
 
+/**
+ * The studio's email page. What a role may do here is decided by the server
+ * (lib/team-roles.ts); these switches only leave out what it may not, so an
+ * Editor sees a composer that keeps drafts, and the owner or an Admin sends
+ * them.
+ */
 export function EmailStudio(props: {
   email: string;
   name: string;
@@ -93,22 +104,44 @@ export function EmailStudio(props: {
   products: { id: string; title: string }[];
   broadcasts: BroadcastRow[];
   flows: FlowRow[];
+  drafts: DraftRow[];
+  canSend: boolean;
+  canSettings: boolean;
+  canExport: boolean;
 }) {
   const ready = props.mail !== null;
+  // The draft open in the composer; a new key starts the composer afresh.
+  const [open, setOpen] = useState<DraftRow | null>(null);
   return (
     <div className="mt-8 grid items-start gap-x-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
       <div className="min-w-0">
         {ready ? (
           <>
-            <Compose {...props} />
-            <History broadcasts={props.broadcasts} products={props.products} />
-            <Flows flows={props.flows} products={props.products} />
+            <Compose
+              key={open ? `${open.id}-${open.savedAt}` : "new"}
+              email={props.email}
+              products={props.products}
+              counts={props.counts}
+              canSend={props.canSend}
+              draft={open}
+              onDone={() => setOpen(null)}
+            />
+            <Drafts drafts={props.drafts} products={props.products} open={open} onOpen={setOpen} />
+            <History broadcasts={props.broadcasts} products={props.products} canSend={props.canSend} />
+            {props.canSend ? <Flows flows={props.flows} products={props.products} /> : null}
           </>
-        ) : (
+        ) : props.canSettings ? (
           <div className="card p-6 sm:p-8">
             <p className="text-lg font-semibold tracking-[-0.02em] text-ink">First, how your emails are signed</p>
             <p className="mt-2 text-ink-soft">One minute, once. Then you can write.</p>
             <Settings name={props.name} mail={props.mail} />
+          </div>
+        ) : (
+          <div className="card p-6 sm:p-8">
+            <p className="text-lg font-semibold tracking-[-0.02em] text-ink">Not set up yet</p>
+            <p className="mt-2 text-ink-soft">
+              The store&apos;s owner or an Admin first saves the name and postal address its emails carry. Then you can write here.
+            </p>
           </div>
         )}
       </div>
@@ -122,8 +155,8 @@ export function EmailStudio(props: {
               : "emails sent, one-off and sequences together. The count starts again on the first of the month."}
           </p>
         </div>
-        <ListCard counts={props.counts} />
-        {ready ? (
+        <ListCard counts={props.counts} canExport={props.canExport} canImport={props.canSend} />
+        {ready && props.canSettings ? (
           <div className="card mt-8 p-6 sm:p-8">
             <p className="text-lg font-semibold tracking-[-0.02em] text-ink">How your emails are signed</p>
             <Settings name={props.name} mail={props.mail} />
@@ -173,7 +206,15 @@ function Settings({ name, mail }: { name: string; mail: MailSettings | null }) {
   );
 }
 
-function ListCard({ counts }: { counts: { total: number; agreed: number; left: number; mailable: number } }) {
+function ListCard({
+  counts,
+  canExport,
+  canImport,
+}: {
+  counts: { total: number; agreed: number; left: number; mailable: number };
+  canExport: boolean;
+  canImport: boolean;
+}) {
   const router = useRouter();
   const [text, setText] = useState("");
   const [confirm, setConfirm] = useState(false);
@@ -186,10 +227,14 @@ function ListCard({ counts }: { counts: { total: number; agreed: number; left: n
       <p className="mt-2 text-ink-soft">
         {`${n(counts.mailable)} ${counts.mailable === 1 ? "person" : "people"} you can write to. ${n(counts.left)} left through the unsubscribe link, and ${n(counts.total - counts.agreed)} gave their address for one thing only and are never written to.`}
       </p>
-      <form action="/api/store/leads" method="get" className="mt-4">
-        <input type="hidden" name="who" value="agreed" />
-        <button type="submit" className="btn btn-secondary btn-sm">Download the people you can write to</button>
-      </form>
+      {canExport ? (
+        <form action="/api/store/leads" method="get" className="mt-4">
+          <StoreField />
+          <input type="hidden" name="who" value="agreed" />
+          <button type="submit" className="btn btn-secondary btn-sm">Download the people you can write to</button>
+        </form>
+      ) : null}
+      {canImport ? (
       <details className="mt-5">
         <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">Import addresses</summary>
         <form
@@ -233,6 +278,7 @@ function ListCard({ counts }: { counts: { total: number; agreed: number; left: n
           <button type="submit" disabled={busy || !text.trim()} className="btn btn-secondary btn-sm">Import</button>
         </form>
       </details>
+      ) : null}
       <Feedback error={error} done={done} />
     </div>
   );
@@ -242,11 +288,16 @@ function Compose(props: {
   email: string;
   products: { id: string; title: string }[];
   counts: { mailable: number };
+  canSend: boolean;
+  /** A draft opened into the composer, or null for a new email. */
+  draft: DraftRow | null;
+  onDone: () => void;
 }) {
   const router = useRouter();
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [productId, setProductId] = useState("");
+  const [subject, setSubject] = useState(props.draft?.subject ?? "");
+  const [body, setBody] = useState(props.draft?.body ?? "");
+  const [productId, setProductId] = useState(props.draft?.productId ?? "");
+  const [draftId, setDraftId] = useState(props.draft?.id ?? "");
   const [later, setLater] = useState(false);
   const [at, setAt] = useState("");
   const [reach, setReach] = useState<number>(props.counts.mailable);
@@ -278,9 +329,33 @@ function Compose(props: {
     return true;
   }
 
+  async function keep() {
+    setBusy(true);
+    setError(null);
+    const a = await call({ action: "draft-save", id: draftId || undefined, subject, body, productId });
+    setBusy(false);
+    if (!a.ok) {
+      setError(message(a));
+      return;
+    }
+    const saved = a.draft as DraftRow | undefined;
+    if (saved) setDraftId(saved.id);
+    toast("Draft saved.");
+    router.refresh();
+  }
+
   return (
     <section className="card p-6 sm:p-8" aria-labelledby="compose-title">
-      <h2 id="compose-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">New email</h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="compose-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">
+          {draftId ? "Draft" : "New email"}
+        </h2>
+        {draftId ? (
+          <button type="button" className="text-sm font-bold text-ink-soft underline underline-offset-4" onClick={props.onDone}>
+            Start a new one instead
+          </button>
+        ) : null}
+      </div>
       <div className="mt-4 space-y-4">
         <label className="block">
           <span className="field-label">Subject</span>
@@ -303,6 +378,7 @@ function Compose(props: {
           </select>
         </label>
         <p className="text-sm font-semibold text-ink" role="status">{`${n(reach)} ${reach === 1 ? "person" : "people"}`}</p>
+        {props.canSend ? (
         <fieldset>
           <legend className="field-label">When</legend>
           <div className="mt-2 flex flex-wrap gap-4 text-sm">
@@ -320,6 +396,7 @@ function Compose(props: {
             </label>
           ) : null}
         </fieldset>
+        ) : null}
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -329,7 +406,16 @@ function Compose(props: {
           >
             Send me a test
           </button>
-          {confirming ? (
+          <button
+            type="button"
+            aria-busy={busy}
+            disabled={busy || !subject.trim() || !body.trim()}
+            className="btn btn-secondary"
+            onClick={() => void keep()}
+          >
+            {draftId ? "Save the draft" : "Save as a draft"}
+          </button>
+          {!props.canSend ? null : confirming ? (
             <>
               <button
                 type="button"
@@ -338,12 +424,14 @@ function Compose(props: {
                 onClick={async () => {
                   const sendAt = later && at ? new Date(at).getTime() : undefined;
                   const ok = await send(
-                    { action: "broadcast", subject, body, productId, sendAt },
+                    { action: "broadcast", subject, body, productId, sendAt, draftId: draftId || undefined },
                     later ? "Your email is scheduled." : "Your email is on its way.",
                   );
                   if (ok) {
                     setSubject("");
                     setBody("");
+                    setDraftId("");
+                    props.onDone();
                     router.refresh();
                   }
                 }}
@@ -365,8 +453,81 @@ function Compose(props: {
             </button>
           )}
         </div>
+        {props.canSend ? null : (
+          <p className="text-sm text-ink-soft">
+            Sending to the list is for the store&apos;s owner and Admins. Save it as a draft and they can read it, send it or
+            schedule it from this page.
+          </p>
+        )}
         <Feedback error={error} done={null} />
       </div>
+    </section>
+  );
+}
+
+/** The store's drafts: open one into the composer, or throw it away. */
+function Drafts({
+  drafts,
+  products,
+  open,
+  onOpen,
+}: {
+  drafts: DraftRow[];
+  products: { id: string; title: string }[];
+  open: DraftRow | null;
+  onOpen: (draft: DraftRow | null) => void;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  if (!drafts.length) return null;
+  return (
+    <section className="card mt-8 p-6 sm:p-8" aria-labelledby="drafts-title">
+      <h2 id="drafts-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Drafts</h2>
+      <ul className="mt-4 divide-y divide-line">
+        {drafts.map((d) => (
+          <li key={d.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3">
+            <span className="min-w-0">
+              <span className="block break-words font-semibold text-ink">{d.subject}</span>
+              <span className="block text-sm text-ink-soft">
+                {`${d.productId ? `To those who got ${products.find((p) => p.id === d.productId)?.title ?? "a product"}` : "To everyone you can write to"} · saved by ${d.by || "someone"}, `}
+                <When seconds={Math.floor(new Date(d.savedAt).getTime() / 1000)} />
+              </span>
+            </span>
+            <span className="flex items-center gap-4">
+              <button
+                type="button"
+                className="inline-flex min-h-6 items-center text-sm font-bold text-violet-deep underline underline-offset-4"
+                aria-current={open?.id === d.id ? "true" : undefined}
+                onClick={() => {
+                  onOpen(d);
+                  document.getElementById("compose-title")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                {open?.id === d.id ? "Open above" : "Open"}
+              </button>
+              <button
+                type="button"
+                disabled={busy !== null}
+                aria-busy={busy === d.id}
+                className="inline-flex min-h-6 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
+                onClick={async () => {
+                  if (!window.confirm("Delete this draft?")) return;
+                  setBusy(d.id);
+                  const a = await call({ action: "draft-remove", id: d.id });
+                  setBusy(null);
+                  if (a.ok) {
+                    toast("Draft deleted.");
+                    if (open?.id === d.id) onOpen(null);
+                    router.refresh();
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -380,7 +541,15 @@ const STATUS: Record<string, string> = {
   failed: "Stopped",
 };
 
-function History({ broadcasts, products }: { broadcasts: BroadcastRow[]; products: { id: string; title: string }[] }) {
+function History({
+  broadcasts,
+  products,
+  canSend,
+}: {
+  broadcasts: BroadcastRow[];
+  products: { id: string; title: string }[];
+  canSend: boolean;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   if (!broadcasts.length) return null;
@@ -414,7 +583,7 @@ function History({ broadcasts, products }: { broadcasts: BroadcastRow[]; product
               )}
             </p>
             {b.note ? <p className="mt-1 text-sm text-ink-soft">{b.note}</p> : null}
-            {b.status === "scheduled" ? (
+            {b.status === "scheduled" && canSend ? (
               <button
                 type="button"
                 aria-busy={busy} disabled={busy}

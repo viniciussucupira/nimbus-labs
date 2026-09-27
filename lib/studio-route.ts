@@ -5,12 +5,41 @@
  * away before we look at the cookie, and the cookie is settled before any
  * network call goes out. Nothing reaches Stripe on behalf of someone who has
  * not proved they hold the session.
+ *
+ * Then two questions, answered here and nowhere else:
+ *
+ *   - Which store? A person can own up to five stores and help run others
+ *     (lib/team.ts), so "the store for this session" is a choice. A studio
+ *     page tells every request it makes which store it was drawn for — the
+ *     x-nimbus-store header on a fetch (components/studio-store-pin.tsx),
+ *     `?store=` on a form or a link — and that store is the one acted on, so
+ *     two tabs open on two stores each keep editing their own. A request
+ *     that names no store gets the one chosen last in the switcher (the
+ *     nl_store cookie), and without that the person's own first store: for
+ *     an account with one store, exactly what it always got.
+ *
+ *   - May they? Every route names the one permission it needs
+ *     (lib/team-roles.ts), and the person's role on that store is read from
+ *     the store's own records on every request. A store the request names
+ *     that the person cannot open is refused outright, never swapped for
+ *     another one, so nothing meant for one store can land in a different
+ *     store.
+ *
+ * What someone on a team changes is written into the store's activity log
+ * here too (lib/team.ts), so no route can forget to.
  */
 import type { NextRequest } from "next/server";
 import { originFrom } from "@/lib/request-origin";
 import { fromAnotherSite as crossSite } from "@/lib/request-guard";
 import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { storeForEmail, type Store } from "@/lib/store";
+import { type Store, STORE_ID_PATTERN, accountStores, ensureStoreId, storeForEmail, storeForId, storeRef } from "@/lib/store";
+import { type Permission, type Role, PERMISSION_WORDS, can } from "@/lib/team-roles";
+import { logTeam, memberStores, roleIn } from "@/lib/team";
+
+/** The store last chosen in the studio's switcher: only a preference. */
+export const STORE_COOKIE = "nl_store";
+/** The store a studio page was drawn for, sent with each of its requests. */
+export const PIN_HEADER = "x-nimbus-store";
 
 export function away(origin: string, path: string): Response {
   return new Response(null, {
@@ -28,16 +57,151 @@ export function fromAnotherSite(request: NextRequest): boolean {
   return crossSite(request);
 }
 
-export type Creator = { email: string; store: Store; origin: string };
+/** One person, on one store, in one role. */
+export type Access = {
+  /** Who is signed in. */
+  email: string;
+  store: Store;
+  /** The key the store is kept under (lib/store.ts), for its setters. */
+  ref: string;
+  role: Role;
+};
+
+/** The same, with what a route needs to answer. */
+export type Creator = Access & {
+  origin: string;
+  /** "/studio?store=<id>" and the query given, for sending the person back to this store. */
+  studio: (query?: string) => string;
+};
+
+export type Refusal = "signed_out" | "no_store" | "forbidden" | "gone";
 
 /**
- * Resolves the creator behind a request, or the response to send instead.
+ * What a check asks of a role: one permission, or "member" — any role at all
+ * on the store, for what is the person's own business there, such as choosing
+ * it in the switcher or leaving its team.
+ */
+export type Need = Permission | "member";
+
+/**
+ * The studio's own address for one store — a page of it when `page` is given
+ * ("funnels", "team"…) — with a query.
+ */
+export function studioPath(store: Pick<Store, "sid">, query = "", page = ""): string {
+  const parts = [store.sid ? `store=${store.sid}` : "", query.replace(/^[?&]/, "")].filter(Boolean);
+  const base = page ? `/studio/${page}` : "/studio";
+  return parts.length ? `${base}?${parts.join("&")}` : base;
+}
+
+/**
+ * Settles which store a signed-in person is acting on, and in what role.
  *
- * `needsStore` is the common case: a route that acts on a store has nothing to
- * act on until the creator has taken an address.
+ * `pinned` is the store the request names; when it names one the person
+ * cannot open, the answer is "gone", never another store. `remembered` is the
+ * switcher's cookie, only a preference: when it no longer fits, the person's
+ * own first store is used, then their first store as one of a team.
+ */
+export async function resolveAccess(
+  email: string,
+  wanted: { pinned?: string | null; remembered?: string | null },
+  need: Need | null,
+): Promise<{ ok: true; access: Access } | { ok: false; reason: Refusal; store?: Store }> {
+  const pick = async (sid: string): Promise<Access | null> => {
+    const store = await storeForId(sid);
+    if (!store) return null;
+    const role = await roleIn(store, email);
+    return role ? { email, store, ref: storeRef(store), role } : null;
+  };
+
+  let access: Access | null = null;
+  const pinned = wanted.pinned ?? "";
+  if (pinned) {
+    if (!STORE_ID_PATTERN.test(pinned)) return { ok: false, reason: "gone" };
+    access = await pick(pinned);
+    if (!access) return { ok: false, reason: "gone" };
+  } else {
+    const remembered = wanted.remembered ?? "";
+    if (STORE_ID_PATTERN.test(remembered)) access = await pick(remembered);
+    if (!access) {
+      const own = await storeForEmail(email);
+      if (own) access = { email, store: own, ref: storeRef(own), role: "owner" };
+    }
+    if (!access) {
+      const owned = await accountStores(email);
+      if (owned[0]) access = { email, store: owned[0], ref: storeRef(owned[0]), role: "owner" };
+    }
+    if (!access) {
+      const [first] = await memberStores(email);
+      if (first) access = { email, store: first.store, ref: storeRef(first.store), role: first.role };
+    }
+  }
+  if (!access) return { ok: false, reason: "no_store" };
+  if (need && need !== "member" && !can(access.role, need)) return { ok: false, reason: "forbidden", store: access.store };
+  return { ok: true, access };
+}
+
+/** The store a request names: its header first, then `?store=`. */
+export function pinnedStore(request: NextRequest): string | null {
+  return request.headers.get(PIN_HEADER) || request.nextUrl.searchParams.get("store") || null;
+}
+
+/**
+ * The central check, for a route: who, which store, and whether their role
+ * has `need`. A write by someone on the team is written into the store's
+ * activity log, as is any download of buyers' data.
+ */
+export async function studioAccess(
+  request: NextRequest,
+  need: Need,
+  action = "",
+): Promise<{ ok: true; access: Access } | { ok: false; reason: Refusal; store?: Store }> {
+  const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
+  if (!email) return { ok: false, reason: "signed_out" };
+  const result = await resolveAccess(
+    email,
+    { pinned: pinnedStore(request), remembered: request.cookies.get(STORE_COOKIE)?.value ?? null },
+    need,
+  );
+  if (!result.ok) return result;
+  const { access } = result;
+  const reading = request.method === "GET" || request.method === "HEAD";
+  // The team's own route writes its lines itself, in words of its own.
+  // Counting who an email would reach changes nothing, and would fill the log.
+  const selfLogged = request.nextUrl.pathname === "/api/store/team" || action === "count";
+  if (access.role !== "owner" && !selfLogged && (!reading || need === "export")) {
+    const route = request.nextUrl.pathname.replace(/^\/api\/(store\/)?/, "");
+    const detail = action || request.nextUrl.searchParams.get("what") || request.nextUrl.searchParams.get("who") || "";
+    await logTeam(access.store.sid, {
+      who: access.email,
+      role: access.role,
+      what: `${need === "member" ? "Team" : PERMISSION_WORDS[need]}: ${route}${detail ? ` (${detail.slice(0, 40)})` : ""}`,
+    });
+  }
+  return result;
+}
+
+/** The sentence a refused request is answered with, for a route that answers in JSON. */
+export function refusedJson(reason: Refusal): Response {
+  switch (reason) {
+    case "signed_out":
+      return Response.json({ ok: false, error: "signed_out" }, { status: 401 });
+    case "no_store":
+      return Response.json({ ok: false, error: "none" }, { status: 400 });
+    case "forbidden":
+      return Response.json({ ok: false, error: "role" }, { status: 403 });
+    case "gone":
+      return Response.json({ ok: false, error: "store_gone" }, { status: 409 });
+  }
+}
+
+/**
+ * Resolves the creator behind a request, or the response to send instead:
+ * for the routes that are reached by a form or a link and answer by sending
+ * the person somewhere.
  */
 export async function creatorFrom(
   request: NextRequest,
+  need: Need,
   options: { checkOrigin?: boolean } = {},
 ): Promise<Creator | Response> {
   const origin = originFrom(request);
@@ -46,11 +210,80 @@ export async function creatorFrom(
     return new Response("forbidden", { status: 403 });
   }
 
-  const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
-  if (!email) return away(origin, "/signin?status=expired");
+  const result = await studioAccess(request, need);
+  if (!result.ok) {
+    if (result.reason === "signed_out") return away(origin, "/signin?status=expired");
+    if (result.reason === "no_store") return away(origin, "/studio?stripe=nostore");
+    if (result.reason === "gone") return away(origin, "/studio?team=gone");
+    return away(origin, studioPath(result.store ?? { sid: "" }, "team=forbidden"));
+  }
+  const { access } = result;
+  return { ...access, origin, studio: (query = "") => studioPath(access.store, query) };
+}
 
-  const store = await storeForEmail(email);
-  if (!store) return away(origin, "/studio?stripe=nostore");
+/** The same, for a route that is read by the studio's own code and answers in JSON. */
+export async function jsonAccess(request: NextRequest, need: Need): Promise<Access | Response> {
+  const result = await studioAccess(request, need);
+  return result.ok ? result.access : refusedJson(result.reason);
+}
 
-  return { email, store, origin };
+type CookieJar = { get(name: string): { value: string } | undefined };
+
+/** Everything a studio page needs to know about who is looking at which store. */
+export type StudioView = Access & {
+  /** Every store this person can open, for the switcher: their own first. */
+  stores: { store: Store; role: Role }[];
+  /** How many stores this person owns. */
+  owned: number;
+};
+
+/**
+ * The same questions for a studio page: `?store=` first, then the switcher's
+ * cookie, then the person's own first store. A page is allowed to fall back
+ * where a route is not, because drawing a page changes nothing — but it says
+ * so, with `fellBack`, when the store asked for could not be opened.
+ */
+export async function studioView(
+  cookies: CookieJar,
+  asked: string | undefined,
+  need: Need | null,
+): Promise<
+  | { ok: true; view: StudioView; fellBack: boolean }
+  | { ok: false; reason: Refusal; email: string | null; store?: Store }
+> {
+  const email = await emailForSession(cookies.get(SESSION_COOKIE)?.value);
+  if (!email) return { ok: false, reason: "signed_out", email: null };
+
+  const pinned = typeof asked === "string" && STORE_ID_PATTERN.test(asked) ? asked : null;
+  let result = await resolveAccess(email, { pinned, remembered: cookies.get(STORE_COOKIE)?.value ?? null }, need);
+  let fellBack = false;
+  if (!result.ok && result.reason === "gone") {
+    result = await resolveAccess(email, { remembered: cookies.get(STORE_COOKIE)?.value ?? null }, need);
+    fellBack = true;
+  }
+  if (!result.ok) return { ok: false, reason: result.reason, email, store: result.store };
+
+  let { access } = result;
+  // A store from before there could be several gets its id the first time
+  // its owner opens the studio, so everything drawn below can name it.
+  if (access.role === "owner" && !access.store.sid) {
+    const named = await ensureStoreId(access.ref);
+    if (named) access = { ...access, store: named, ref: storeRef(named) };
+  }
+  const [owned, member] = await Promise.all([accountStores(email), memberStores(email)]);
+  const stores = [
+    ...owned.map((store) => ({ store: store.sid === access.store.sid ? access.store : store, role: "owner" as Role })),
+    ...member.map((m) => ({ store: m.store, role: m.role as Role })),
+  ];
+  return { ok: true, view: { ...access, stores, owned: owned.length }, fellBack };
+}
+
+/**
+ * The switcher's cookie, set to one store. Only a preference, so it is kept a
+ * year and read by nothing but the studio; http-only all the same, because
+ * nothing in a page needs to read it.
+ */
+export function storeCookie(sid: string, request: { nextUrl: { protocol: string } }): string {
+  const secure = request.nextUrl.protocol === "https:" || process.env.NODE_ENV === "production";
+  return `${STORE_COOKIE}=${sid}; Path=/; Max-Age=${365 * 24 * 60 * 60}; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`;
 }

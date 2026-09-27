@@ -9,12 +9,12 @@ import { MAX_FEED_URL, addFeed, newFeedToken, removeFeed } from "@/lib/calendar-
  * calendar's address back — only which service it is and how it went.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "settings");
   if (!guarded.ok) return guarded.response;
 
   try {
-    const loaded = await storeForEmail(guarded.email);
-    const store = loaded && !loaded.statsId ? await ensureStatsId(guarded.email) : loaded;
+    const loaded = await storeForEmail(guarded.ref);
+    const store = loaded && !loaded.statsId ? await ensureStatsId(guarded.ref) : loaded;
     if (!store || !store.statsId) return Response.json({ ok: false, error: "none" }, { status: 400 });
 
     const action = text(guarded.body.action, 20);

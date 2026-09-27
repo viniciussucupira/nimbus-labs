@@ -33,7 +33,7 @@
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount } from "@/lib/stripe-account";
-import type { Product, Store } from "@/lib/store";
+import type { Listing, Store } from "@/lib/store";
 
 /** The states in which a membership still hands over what it sells. */
 export const LIVE_STATES = new Set(["active", "trialing", "past_due"]);
@@ -53,7 +53,7 @@ export function isLive(status: unknown): boolean {
  * payment plan. A plan is also a subscription, but it pays for something
  * already handed over and ends by itself; it never closes anything.
  */
-export function soldAMembership(product: Product, session: { mode?: unknown; metadata?: Record<string, string> | null }): boolean {
+export function soldAMembership(product: Listing, session: { mode?: unknown; metadata?: Record<string, string> | null }): boolean {
   return product.recurring !== null && session.mode === "subscription" && session.metadata?.kind !== "plan";
 }
 
@@ -83,6 +83,6 @@ export async function membershipStatus(store: Store, subscription: unknown): Pro
 }
 
 /** The page that tells a member their membership ended, and how to renew. */
-export function renewPath(store: Store, product: Pick<Product, "id">): string {
+export function renewPath(store: Store, product: Pick<Listing, "id">): string {
   return `/@${store.handle}/renew/${product.id}`;
 }

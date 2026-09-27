@@ -64,6 +64,8 @@ import {
   readViaCookie,
 } from "@/lib/affiliate-setting";
 import type { Store } from "@/lib/store";
+import { plainAmount } from "@/lib/money";
+import { alertCreator } from "@/lib/phone-alerts";
 
 /** How long the emailed link to apply or sign in keeps working. */
 export const AFFILIATE_LINK_SECONDS = 24 * 60 * 60;
@@ -127,10 +129,15 @@ export type Referral = {
   at: number;
   product: string;
   title: string;
-  /** What was paid before tax, in cents: what the share is taken of. */
+  /** What was paid before tax, in the currency's smallest unit: what the share is taken of. */
   base: number;
-  /** What was paid in all, tax included, in cents. */
+  /** What was paid in all, tax included, in the currency's smallest unit. */
   total: number;
+  /**
+   * What it was paid in, as Stripe says. Sales written down before stores
+   * had a choice have none, and were in US dollars.
+   */
+  currency: string;
   /** The share it earns, in percent, as it was when the buyer paid. */
   rate: number;
   /** Paid with the affiliate's own address: written down, earns nothing. */
@@ -140,7 +147,10 @@ export type Referral = {
 export type Payout = {
   id: string;
   aff: string;
+  /** In the currency's smallest unit. */
   cents: number;
+  /** The store's currency when it was written down; US dollars before there was a choice. */
+  currency: string;
   /** The day the creator paid it, as they typed it: YYYY-MM-DD. */
   date: string;
   /** Their own note of it: a PayPal id, a bank reference, "cash". */
@@ -195,6 +205,7 @@ function parseReferral(raw: unknown): Referral | null {
       title: typeof value.title === "string" ? value.title : "",
       base: n(value.base),
       total: n(value.total),
+      currency: readCurrencyCode(value.currency),
       rate: n(value.rate),
       self: value.self === true,
     };
@@ -212,6 +223,7 @@ function parsePayout(raw: unknown): Payout | null {
       id: value.id,
       aff: value.aff,
       cents: value.cents,
+      currency: readCurrencyCode(value.currency),
       date: typeof value.date === "string" ? value.date : "",
       reference: typeof value.reference === "string" ? value.reference : "",
       at: typeof value.at === "number" ? value.at : 0,
@@ -219,6 +231,11 @@ function parsePayout(raw: unknown): Payout | null {
   } catch {
     return null;
   }
+}
+
+/** A three-letter currency code as Stripe writes it; US dollars when absent. */
+function readCurrencyCode(raw: unknown): string {
+  return typeof raw === "string" && /^[a-z]{3}$/.test(raw) ? raw : "usd";
 }
 
 /** A Redis hash reply, as pairs. */
@@ -267,7 +284,6 @@ function senderAddress(): string {
   return (match ? match[1] : NIMBUS_FROM).trim();
 }
 
-const dollars = (cents: number) => (cents % 100 ? (cents / 100).toFixed(2) : String(cents / 100));
 
 /** The address an affiliate shares: the store's own domain when it has one live. */
 export function affiliateLink(store: Store, code: string): string {
@@ -427,6 +443,16 @@ export async function openAffiliateLink(store: Store, token: string): Promise<Op
       ].join("\n"),
     }).catch((error) => console.error("telling a creator about an application failed", error));
   }
+  // And their phone, when a device of theirs asked for applications
+  // (lib/phone-alerts.ts): no address on a lock screen, only that one came.
+  if (created) {
+    await alertCreator(
+      store,
+      "affiliate",
+      { title: "New affiliate application", body: `Someone applied to promote ${store.name}. Approve or decline them in your studio.`, url: store.sid ? `/studio/affiliates?store=${store.sid}` : "/studio/affiliates" },
+      { seed: affiliate.id },
+    ).catch((error) => console.error("an application notification failed", error));
+  }
   return { ok: true, session, affiliate, created };
 }
 
@@ -484,13 +510,14 @@ export async function decide(store: Store, id: string, decision: Decision): Prom
 
 export async function addPayout(
   store: Store,
-  input: { aff: string; cents: number; date: string; reference: string },
+  input: { aff: string; cents: number; currency: string; date: string; reference: string },
 ): Promise<Payout | null> {
   if (!(await readAffiliate(store, input.aff))) return null;
   const payout: Payout = {
     id: randomBytes(6).toString("hex"),
     aff: input.aff,
     cents: input.cents,
+    currency: input.currency,
     date: input.date,
     reference: input.reference.replace(/\s+/g, " ").trim().slice(0, MAX_REFERENCE_LENGTH),
     at: Date.now(),
@@ -592,6 +619,7 @@ type SessionLike = {
   payment_status?: unknown;
   created?: unknown;
   amount_total?: unknown;
+  currency?: unknown;
   total_details?: { amount_tax?: unknown } | null;
   payment_intent?: unknown;
   metadata?: Record<string, string> | null;
@@ -628,6 +656,7 @@ export async function noteSession(store: Store, session: SessionLike): Promise<v
     title: (meta.title ?? "").slice(0, 200),
     base: Math.max(0, total - tax),
     total,
+    currency: readCurrencyCode(session.currency),
     rate: Number(meta.via_rate) || 0,
     self: await isSelf(store, aff, buyer),
   });
@@ -650,6 +679,7 @@ export async function noteCharge(store: Store, pi: Record<string, unknown>): Pro
     // A one-click charge never carries tax: the whole amount is the base.
     base: amount,
     total: amount,
+    currency: readCurrencyCode(pi.currency),
     rate: Number(meta.via_rate) || 0,
     self: await isSelf(store, aff, buyer),
   });
@@ -682,6 +712,15 @@ export type Book = {
   rows: Row[];
   lines: Line[];
   payouts: Payout[];
+  /**
+   * What the rows' totals are in: the store's currency. Sales and payouts in
+   * another one — from before the store changed its currency — are listed
+   * with their own currency and left out of the totals, because adding euros
+   * to dollars gives a number that means nothing.
+   */
+  currency: string;
+  /** How many sales and payouts are in another currency, and so not in the totals. */
+  elsewhere: number;
   /** False when Stripe could not be asked about refunds, or not all of them. */
   refundsChecked: boolean;
 };
@@ -735,7 +774,7 @@ export function settleLine(referral: Referral, refunded: number): Line {
  * with what each earns after refunds, and what the creator says they paid.
  */
 export async function readBook(store: Store, only?: string): Promise<Book> {
-  if (!store.statsId || !isRedisConfigured()) return { rows: [], lines: [], payouts: [], refundsChecked: true };
+  if (!store.statsId || !isRedisConfigured()) return { rows: [], lines: [], payouts: [], refundsChecked: true, currency: store.currency, elsewhere: 0 };
   const statsId = store.statsId;
   const [people, clicks, sales, payouts] = await redisPipeline([
     ["HGETALL", peopleKey(statsId)],
@@ -772,9 +811,9 @@ export async function readBook(store: Store, only?: string): Promise<Book> {
 
   const rows = affiliates
     .map((affiliate): Row => {
-      const own = lines.filter((l) => l.aff === affiliate.id);
+      const own = lines.filter((l) => l.aff === affiliate.id && l.currency === store.currency);
       const earned = own.reduce((sum, l) => sum + l.commission, 0);
-      const out = paid.filter((p) => p.aff === affiliate.id).reduce((sum, p) => sum + p.cents, 0);
+      const out = paid.filter((p) => p.aff === affiliate.id && p.currency === store.currency).reduce((sum, p) => sum + p.cents, 0);
       return {
         affiliate,
         clicks: clickCount.get(affiliate.id) ?? 0,
@@ -785,7 +824,9 @@ export async function readBook(store: Store, only?: string): Promise<Book> {
       };
     })
     .sort((a, b) => b.owed - a.owed || b.affiliate.appliedAt - a.affiliate.appliedAt);
-  return { rows, lines, payouts: paid, refundsChecked };
+  const elsewhere =
+    lines.filter((l) => l.currency !== store.currency).length + paid.filter((p) => p.currency !== store.currency).length;
+  return { rows, lines, payouts: paid, refundsChecked, currency: store.currency, elsewhere };
 }
 
 const csvCell = (value: string | number) => {
@@ -806,13 +847,14 @@ export function bookCsv(book: Book, all: Affiliate[]): string {
     "affiliate_code",
     "reference",
     "product",
-    "paid_before_tax_usd",
-    "refunded_usd",
+    "paid_before_tax",
+    "refunded",
     "commission_rate_percent",
-    "commission_usd",
+    "commission",
     "status",
-    "payout_usd",
+    "payout",
     "payout_reference",
+    "currency",
   ];
   const rows: (string | number)[][] = [
     ...book.lines.map((l) => [
@@ -822,13 +864,14 @@ export function bookCsv(book: Book, all: Affiliate[]): string {
       who.get(l.aff)?.code ?? "",
       l.ref,
       l.title,
-      dollars(l.base),
-      dollars(l.refunded),
+      plainAmount(l.base, l.currency),
+      plainAmount(l.refunded, l.currency),
       l.rate,
-      dollars(l.commission),
+      plainAmount(l.commission, l.currency),
       l.status,
       "",
       "",
+      l.currency.toUpperCase(),
     ]),
     ...book.payouts.map((p) => [
       "payout",
@@ -842,8 +885,9 @@ export function bookCsv(book: Book, all: Affiliate[]): string {
       "",
       "",
       "paid by you",
-      dollars(p.cents),
+      plainAmount(p.cents, p.currency),
       p.reference,
+      p.currency.toUpperCase(),
     ]),
   ];
   return [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n") + "\r\n";

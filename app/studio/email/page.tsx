@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { readAllListings } from "@/lib/catalog";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Logo } from "@/components/logo";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { storeForEmail } from "@/lib/store";
+import { studioPath, studioView } from "@/lib/studio-route";
+import { StudioHeader } from "@/components/studio-header";
+import { StudioStorePin } from "@/components/studio-store-pin";
 import { listCounts } from "@/lib/contacts";
 import { listBroadcasts } from "@/lib/broadcasts";
 import { flowStats, readFlows } from "@/lib/flows";
 import { inTrial, monthlyAllowance, usedThisMonth } from "@/lib/mail";
 import { PRO_MONTHLY_EMAILS, TRIAL_DAYS, TRIAL_MONTHLY_EMAILS, priceWords, yearSaving } from "@/lib/plan";
 import { EmailStudio } from "@/components/email-studio";
+import { listDrafts } from "@/lib/mail-drafts";
+import { can } from "@/lib/team-roles";
+import { trialOffered } from "@/lib/billing";
+
+type Params = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
 export const metadata: Metadata = {
   title: "Email — Nimbus Labs",
@@ -18,33 +23,41 @@ export const metadata: Metadata = {
 };
 
 /** Writing to the people who agreed to hear from the creator. */
-export default async function StudioEmailPage() {
-  const cookieStore = await cookies();
-  const email = await emailForSession(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!email) redirect("/signin");
-  const store = await storeForEmail(email);
-  if (!store) redirect("/studio");
+export default async function StudioEmailPage({ searchParams }: Params) {
+  const query = await searchParams;
+  // Which store, and whether this person's role there has "draft" (lib/studio-route.ts).
+  const found = await studioView(await cookies(), typeof query.store === "string" ? query.store : undefined, "draft");
+  if (!found.ok) {
+    if (found.reason === "signed_out") redirect("/signin");
+    redirect(found.store ? studioPath(found.store, "team=forbidden") : "/studio");
+  }
+  const { view } = found;
+  const { store } = view;
 
   const allowance = monthlyAllowance(store);
-  const [counts, used, broadcasts, flows] = await Promise.all([
+  const [counts, used, broadcasts, flows, listings, drafts] = await Promise.all([
     listCounts(store.listId),
     usedThisMonth(store.listId),
     listBroadcasts(store.listId),
     readFlows(store.listId),
+    // Every card, for the products a flow or a broadcast can be about.
+    readAllListings(store),
+    listDrafts(store.listId),
   ]);
+  const role = view.role;
   const stats = await flowStats(flows);
   const trial = allowance > 0 && inTrial(store);
 
   return (
     <div className="min-h-screen bg-paper text-ink">
-      <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
-        <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-3">
-          <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Nimbus Labs, home">
-            <Logo />
-          </Link>
-          <Link href="/studio" className="btn btn-secondary btn-sm">Back to the studio</Link>
-        </div>
-      </header>
+      <StudioHeader
+        current={store}
+        role={view.role}
+        stores={view.stores}
+        owned={view.owned}
+        action={{ href: studioPath(store), label: "Back to the studio", short: "Studio" }}
+      />
+      <StudioStorePin sid={store.sid}>
 
       <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
         <p className="eyebrow">Email</p>
@@ -71,17 +84,23 @@ export default async function StudioEmailPage() {
             <p className="mt-4 text-sm text-ink-soft">
               {`${priceWords("pro", "month")}, or ${priceWords("pro", "year")} — $${yearSaving("pro") / 100} less. Everything else in your store stays exactly as it is.`}
             </p>
-            {store.subscriptionActive ? (
-              <form action="/api/billing/switch" method="post" className="mt-5">
+            {!can(role, "billing") ? (
+              <p className="mt-5 rounded-[var(--r-md)] bg-sand p-4 text-sm text-ink-soft">
+                The store&apos;s owner chooses its plan. When they move it to Pro, email opens here for you too.
+              </p>
+            ) : store.subscriptionActive ? (
+              <form action={`/api/billing/switch?store=${store.sid}`} method="post" className="mt-5">
                 <input type="hidden" name="tier" value="pro" />
                 <input type="hidden" name="cycle" value={store.cycle} />
                 <button type="submit" className="btn btn-primary">Move up to Pro</button>
               </form>
             ) : (
-              <form action="/api/billing/checkout" method="post" className="mt-5 flex flex-col items-start gap-3">
+              <form action={`/api/billing/checkout?store=${store.sid}`} method="post" className="mt-5 flex flex-col items-start gap-3">
                 <input type="hidden" name="tier" value="pro" />
                 <button type="submit" name="cycle" value="month" className="btn btn-primary btn-wrap">
-                  {`Start the ${TRIAL_DAYS}-day trial on Pro — ${priceWords("pro", "month")} after that`}
+                  {trialOffered(store)
+                    ? `Start the ${TRIAL_DAYS}-day trial on Pro — ${priceWords("pro", "month")} after that`
+                    : `Start Pro — ${priceWords("pro", "month")}, from today`}
                 </button>
                 <button type="submit" name="cycle" value="year" className="btn btn-secondary btn-wrap">
                   {`Or Pro yearly: ${priceWords("pro", "year")}`}
@@ -94,14 +113,18 @@ export default async function StudioEmailPage() {
           </div>
         ) : (
           <EmailStudio
-            email={store.email}
+            email={view.email}
+            canSend={can(role, "send")}
+            canSettings={can(role, "settings")}
+            canExport={can(role, "export")}
+            drafts={drafts.map(({ id, subject, body, productId, by, savedAt }) => ({ id, subject, body, productId, by, savedAt }))}
             name={store.name}
             mail={store.mail}
             counts={counts}
             used={used}
             allowance={allowance}
             trial={trial}
-            products={store.products.map((p) => ({ id: p.id, title: p.title }))}
+            products={listings.map((p) => ({ id: p.id, title: p.title }))}
             broadcasts={broadcasts.map((b) => ({
               id: b.id,
               subject: b.subject,
@@ -117,6 +140,7 @@ export default async function StudioEmailPage() {
           />
         )}
       </main>
+      </StudioStorePin>
     </div>
   );
 }

@@ -1,0 +1,215 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { productIds, readListings } from "@/lib/catalog";
+import { studioPath, studioView } from "@/lib/studio-route";
+import { can } from "@/lib/team-roles";
+import { StudioHeader } from "@/components/studio-header";
+import { StudioStorePin } from "@/components/studio-store-pin";
+import { canWrite } from "@/lib/mail";
+import { HIDDEN_RULE, type StudioRow, averageText, showsRating, studioReviews, summaries } from "@/lib/reviews";
+import { ReviewAskEditor, ReviewRow, SeenAllButton, type StudioReview } from "@/components/review-studio";
+import { Stars } from "@/components/review-stars";
+
+export const metadata: Metadata = {
+  title: "Reviews — Nimbus Labs",
+  robots: { index: false, follow: false },
+};
+
+type Params = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
+
+const PAGE_SIZE = 20;
+const DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/**
+ * The buyers' reviews of a store: the queue of what arrived since the
+ * creator last looked, every review, the numbers per product, and the one
+ * email that asks for them. On every plan; the email is Pro, like all email.
+ */
+export default async function StudioReviewsPage({ searchParams }: Params) {
+  const query = await searchParams;
+  // Which store, and whether this person's role there has "reviews" (lib/studio-route.ts):
+  // the owner, Admins, Editors and Support all answer buyers.
+  const found = await studioView(await cookies(), typeof query.store === "string" ? query.store : undefined, "reviews");
+  if (!found.ok) {
+    if (found.reason === "signed_out") redirect("/signin");
+    redirect(found.store ? studioPath(found.store, "team=forbidden") : "/studio");
+  }
+  const { view } = found;
+  const { store } = view;
+
+  const queue = query.view !== "all";
+  const asked = Number(typeof query.page === "string" ? query.page : "1");
+  const page = Number.isInteger(asked) && asked >= 1 ? asked : 1;
+  const [list, numbers] = await Promise.all([
+    studioReviews(store.statsId, { queue, offset: (page - 1) * PAGE_SIZE, limit: PAGE_SIZE }),
+    summaries(store.statsId),
+  ]);
+  // Only the products that have reviews, or are on this page of them, are
+  // read (lib/catalog.ts), in the store's own order.
+  const wanted = new Set([...numbers.keys(), ...list.rows.map((r: StudioRow) => r.productId)]);
+  const named = await readListings(store, productIds(store).filter((id) => wanted.has(id)));
+  const titles = new Map(named.map((p) => [p.id, p.title]));
+  const rows: StudioReview[] = list.rows.map((r: StudioRow) => ({
+    id: r.id,
+    productId: r.productId,
+    productTitle: titles.get(r.productId) ?? "A product no longer in the store",
+    reference: r.reference,
+    rating: r.rating,
+    text: r.text,
+    name: r.name,
+    date: DATE.format(new Date(r.createdAt)),
+    edited: r.editedAt ? DATE.format(new Date(r.editedAt)) : "",
+    hidden: r.hidden,
+    refunded: r.refunded,
+    reply: r.reply?.text ?? "",
+    unseen: r.unseen,
+  }));
+  const pages = Math.max(1, Math.ceil(list.total / PAGE_SIZE));
+  const reviewed = named.filter((p) => (numbers.get(p.id)?.visible ?? 0) + (numbers.get(p.id)?.hidden ?? 0) > 0);
+  const tab = (view: "new" | "all", label: string) => (
+    <Link
+      href={studioPath(store, view === "new" ? "" : "view=all", "reviews")}
+      aria-current={(view === "new") === queue ? "page" : undefined}
+      className={`inline-flex min-h-[40px] items-center rounded-full px-4 text-sm font-semibold ${
+        (view === "new") === queue ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-ink-soft hover:text-ink"
+      }`}
+    >
+      {label}
+    </Link>
+  );
+
+  return (
+    <div className="min-h-screen bg-paper text-ink">
+      <StudioHeader
+        current={store}
+        role={view.role}
+        stores={view.stores}
+        owned={view.owned}
+        action={{ href: studioPath(store), label: "Back to the studio", short: "Studio" }}
+      />
+      <StudioStorePin sid={store.sid}>
+      <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
+        <p className="eyebrow">Reviews</p>
+        <h1 className="t-h2 mt-3">What your buyers say</h1>
+        <p className="mt-3 max-w-2xl text-ink-soft">
+          Only people who paid can review, from their thanks page, their list of purchases or the one email that asks. Each
+          review is checked against its order with Stripe and keeps that order, so you can find the payment behind it. Reviews
+          go on your product&apos;s page and store card as they arrive; a refund in full takes a review&apos;s stars out of
+          the average.
+        </p>
+
+        <div className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+          <section aria-labelledby="queue-title" className="min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 id="queue-title" className="sr-only">
+                {queue ? "New reviews" : "Every review"}
+              </h2>
+              <div className="inline-flex rounded-full bg-sand/60 p-1 ring-1 ring-line">
+                {tab("new", list.unseen ? `New (${list.unseen})` : "New")}
+                {tab("all", "Every review")}
+              </div>
+              {queue ? <SeenAllButton count={list.unseen} /> : null}
+            </div>
+
+            {rows.length === 0 ? (
+              <div className="card mt-5 p-6 sm:p-8">
+                <p className="text-lg font-semibold tracking-[-0.02em] text-ink">{queue ? "Nothing new" : "No reviews yet"}</p>
+                <p className="mt-2 text-ink-soft">
+                  {queue
+                    ? "Every review has been seen. New ones, and reviews their buyers change, come back here."
+                    : "When a buyer reviews something, it appears here and on the product's page at the same moment."}
+                </p>
+              </div>
+            ) : (
+              <ul className="mt-5 space-y-3">
+                {rows.map((review) => (
+                  <ReviewRow key={`${review.productId}|${review.id}`} review={review} />
+                ))}
+              </ul>
+            )}
+
+            {pages > 1 ? (
+              <nav aria-label="Pages" className="mt-6 flex items-center justify-between gap-3 text-sm font-semibold">
+                {page > 1 ? (
+                  <Link href={studioPath(store, new URLSearchParams({ ...(queue ? {} : { view: "all" }), page: String(page - 1) }).toString(), "reviews")} className="btn btn-secondary btn-sm">
+                    Newer
+                  </Link>
+                ) : (
+                  <span />
+                )}
+                <span className="text-ink-soft">{`Page ${page} of ${pages}`}</span>
+                {page < pages ? (
+                  <Link href={studioPath(store, new URLSearchParams({ ...(queue ? {} : { view: "all" }), page: String(page + 1) }).toString(), "reviews")} className="btn btn-secondary btn-sm">
+                    Older
+                  </Link>
+                ) : (
+                  <span />
+                )}
+              </nav>
+            ) : null}
+          </section>
+
+          <aside className="min-w-0 space-y-6 lg:sticky lg:top-24">
+            <div className="card p-5 sm:p-6">
+              <p className="font-semibold text-ink">Hiding, honestly</p>
+              <p className="mt-2 text-sm text-ink-soft">{HIDDEN_RULE}</p>
+              <p className="mt-2 text-sm text-ink-soft">
+                You can reply in public and hide a review. You cannot change a word of it or delete it: only its buyer can.
+              </p>
+            </div>
+
+            <div className="card p-5 sm:p-6">
+              <p className="font-semibold text-ink">By product</p>
+              {reviewed.length === 0 ? (
+                <p className="mt-2 text-sm text-ink-soft">No reviews yet.</p>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {reviewed.map((p) => {
+                    const n = numbers.get(p.id)!;
+                    return (
+                      <li key={p.id} className="text-sm">
+                        <p className="truncate font-semibold text-ink">{p.title}</p>
+                        <p className="mt-0.5 flex flex-wrap items-center gap-2 text-ink-soft">
+                          {showsRating(n) ? (
+                            <>
+                              <span className="text-violet-deep">
+                                <Stars value={n.stars / n.count} size={13} />
+                              </span>
+                              <span className="font-semibold text-ink">{averageText(n)}</span>
+                            </>
+                          ) : null}
+                          <span>{`${n.count} counted`}</span>
+                          {n.hidden ? <span>{`· ${n.hidden} hidden`}</span> : null}
+                          {n.refunded ? <span>{`· ${n.refunded} refunded`}</span> : null}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="card p-5 sm:p-6">
+              <p className="font-semibold text-ink">Asking for reviews</p>
+              <div className="mt-3">
+                {/* The email is a store setting (lib/team-roles.ts): the owner and Admins switch it. */}
+                {can(view.role, "settings") ? (
+                  <ReviewAskEditor days={store.reviewAsk.days} canEmail={canWrite(store)} />
+                ) : (
+                  <p className="text-sm text-ink-soft">
+                    {store.reviewAsk.days > 0
+                      ? `Buyers are emailed once, ${store.reviewAsk.days} days after buying, to ask for a review. The store's owner or an Admin changes this.`
+                      : "Buyers are not emailed to ask for a review. The store's owner or an Admin can switch it on."}
+                  </p>
+                )}
+              </div>
+            </div>
+          </aside>
+        </div>
+      </main>
+      </StudioStorePin>
+    </div>
+  );
+}

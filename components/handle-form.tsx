@@ -14,12 +14,18 @@ const MESSAGES: Record<string, string> = {
   reserved: "That name belongs to the site itself. Pick another one.",
   taken: "Someone already has that address. Pick another one.",
   already: "This account already has a store.",
+  too_many: "An account runs five stores at most.",
+  first: "Make your first store before another one.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
-export function HandleForm() {
+/**
+ * Taking an address and making a store under it: the account's first, or,
+ * with `another`, one more (app/api/store/claim). The studio opens on it.
+ */
+export function HandleForm({ another = false }: { another?: boolean }) {
   const router = useRouter();
   const [handle, setHandle] = useState("");
   const [name, setName] = useState("");
@@ -37,11 +43,12 @@ export function HandleForm() {
       const response = await fetch("/api/store/claim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ handle, name, bio }),
+        body: JSON.stringify({ handle, name, bio, another }),
       });
-      const data = (await response.json()) as { ok?: boolean; error?: string };
+      const data = (await response.json()) as { ok?: boolean; error?: string; store?: string };
       if (data.ok) {
-        router.refresh();
+        if (another && data.store) router.push(`/studio?store=${data.store}`);
+        else router.refresh();
         return;
       }
       setState({
@@ -129,7 +136,7 @@ export function HandleForm() {
         disabled={state.kind === "saving"}
         className="btn btn-primary btn-lg btn-block"
       >
-        {state.kind === "saving" ? "Creating…" : "Create my store"}
+        {state.kind === "saving" ? "Creating…" : another ? "Create this store" : "Create my store"}
       </button>
     </form>
   );

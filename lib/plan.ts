@@ -50,9 +50,11 @@ export const PLAN_NAMES: Record<Tier, string> = {
  *
  * Pro is what costs us money to run for a creator. Two things are built and
  * in it today: email to their list, and their own domain. Nothing else is
- * part of it until it exists in the code — several stores and an API are not
- * built, and are not sold. Funnels and affiliates are built and are on every
- * plan, not only Pro. It went on sale with the first of
+ * part of it until it exists in the code — an API is not built, and is not
+ * sold. Several stores per account are built, and are not a Pro feature: an
+ * account runs up to five (lib/store.ts, MAX_STORES_PER_ACCOUNT), each on a
+ * plan of its own, Creator or Pro. Funnels and affiliates are built and are
+ * on every plan, not only Pro. It went on sale with the first of
  * those two, and not a day before: a plan that costs more and adds nothing
  * yet is not something we will take money for.
  */
@@ -67,8 +69,10 @@ export const PRO_MONTHLY_EMAILS = 50_000;
 export const TRIAL_MONTHLY_EMAILS = 1_000;
 
 /**
- * What only Pro switches on. "email" and "domain" are the ones built; the
- * others are names kept for when they are, and nothing reads them yet.
+ * What only Pro switches on. "email" and "domain" are the ones built. "api"
+ * is a name kept for when it is, and "stores" one kept from when several
+ * stores were planned for Pro: they are built and on every plan (above), and
+ * nothing reads either name.
  */
 export type ProFeature = "email" | "domain" | "stores" | "api";
 

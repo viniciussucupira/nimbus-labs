@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { readAllListings } from "@/lib/catalog";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Logo } from "@/components/logo";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { storeForEmail } from "@/lib/store";
+import { studioPath, studioView } from "@/lib/studio-route";
+import { StudioHeader } from "@/components/studio-header";
+import { StudioStorePin } from "@/components/studio-store-pin";
 import { affiliateLink, readBook } from "@/lib/affiliates";
 import { isSenderConfigured } from "@/lib/email";
 import { canSell } from "@/lib/store-checkout";
 import { AffiliateStudio } from "@/components/affiliate-studio";
+
+type Params = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
 export const metadata: Metadata = {
   title: "Affiliates — Nimbus Labs",
@@ -20,29 +22,35 @@ export const metadata: Metadata = {
  * what, and a record of what the creator paid them. On every plan. The money
  * never passes through Nimbus: the creator pays their affiliates themselves.
  */
-export default async function StudioAffiliatesPage() {
-  const cookieStore = await cookies();
-  const email = await emailForSession(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!email) redirect("/signin");
-  const store = await storeForEmail(email);
-  if (!store) redirect("/studio");
+export default async function StudioAffiliatesPage({ searchParams }: Params) {
+  const query = await searchParams;
+  // Which store, and whether this person's role there has "settings" (lib/studio-route.ts).
+  const found = await studioView(await cookies(), typeof query.store === "string" ? query.store : undefined, "settings");
+  if (!found.ok) {
+    if (found.reason === "signed_out") redirect("/signin");
+    redirect(found.store ? studioPath(found.store, "team=forbidden") : "/studio");
+  }
+  const { view } = found;
+  const { store } = view;
 
   const book = await readBook(store).catch((error) => {
     console.error("reading the affiliate book failed", error);
     return null;
   });
-  const titles = new Map(store.products.map((p) => [p.id, p.title]));
+  // Every card, read once for the lists on this page.
+  const listings = await readAllListings(store);
+  const titles = new Map(listings.map((p) => [p.id, p.title]));
 
   return (
     <div className="min-h-screen bg-paper text-ink">
-      <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
-        <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-3">
-          <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Nimbus Labs, home">
-            <Logo />
-          </Link>
-          <Link href="/studio" className="btn btn-secondary btn-sm">Back to the studio</Link>
-        </div>
-      </header>
+      <StudioHeader
+        current={store}
+        role={view.role}
+        stores={view.stores}
+        owned={view.owned}
+        action={{ href: studioPath(store), label: "Back to the studio", short: "Studio" }}
+      />
+      <StudioStorePin sid={store.sid}>
 
       <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
         <p className="eyebrow">Affiliates</p>
@@ -77,7 +85,7 @@ export default async function StudioAffiliatesPage() {
         <AffiliateStudio
           handle={store.handle}
           setting={store.affiliates}
-          products={store.products
+          products={listings
             .filter((p) => p.priceCents > 0)
             .map((p) => ({ id: p.id, title: p.title, credited: p.recurring === null }))}
           rows={(book?.rows ?? []).map((row) => ({
@@ -93,13 +101,17 @@ export default async function StudioAffiliatesPage() {
             refunded: line.refunded,
             rate: line.rate,
             commission: line.commission,
+            currency: line.currency,
             status: line.status,
           }))}
           payouts={book?.payouts ?? []}
           refundsChecked={book?.refundsChecked ?? true}
           today={new Date().toISOString().slice(0, 10)}
+          currency={store.currency}
+          elsewhere={book?.elsewhere ?? 0}
         />
       </main>
+      </StudioStorePin>
     </div>
   );
 }

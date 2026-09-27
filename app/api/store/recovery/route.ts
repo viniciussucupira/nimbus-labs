@@ -14,7 +14,7 @@ import { guardStoreWrite, text } from "@/lib/store-request";
  * would ever be sent. Off always works, for anyone.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "settings");
   if (!guarded.ok) return guarded.response;
   const enabled = guarded.body.enabled === true;
   const address = text(guarded.body.address, MAX_RECOVERY_ADDRESS + 50).replace(/\s+/g, " ").trim();
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       if (!address) return Response.json({ ok: false, error: "address" }, { status: 400 });
       if (address.length > MAX_RECOVERY_ADDRESS) return Response.json({ ok: false, error: "address_long" }, { status: 400 });
       if (!isSenderConfigured()) return Response.json({ ok: false, error: "unavailable" }, { status: 503 });
-      const store = await storeForEmail(guarded.email);
+      const store = await storeForEmail(guarded.ref);
       if (!store) return Response.json({ ok: false, error: "none" }, { status: 400 });
       if (!store.stripeAccountId) return Response.json({ ok: false, error: "stripe" }, { status: 400 });
       const country = await accountCountry(store);
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         return Response.json({ ok: false, error: "country", country: country.country }, { status: 400 });
       }
     }
-    const result = await setRecovery(guarded.email, { enabled, address });
+    const result = await setRecovery(guarded.ref, { enabled, address });
     if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
     return Response.json({ ok: true, recovery: result.store.recovery });
   } catch (error) {

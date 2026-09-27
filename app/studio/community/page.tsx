@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { readAllListings } from "@/lib/catalog";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Logo } from "@/components/logo";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { centsToPrice, isFree, storeForEmail } from "@/lib/store";
+import { studioPath, studioView } from "@/lib/studio-route";
+import { StudioHeader } from "@/components/studio-header";
+import { StudioStorePin } from "@/components/studio-store-pin";
+import { isFree } from "@/lib/store";
+import { formatMoney } from "@/lib/money";
 import { SITE_URL } from "@/lib/site-url";
 import {
   type Member,
@@ -18,7 +20,10 @@ import {
   reportQueue,
 } from "@/lib/community";
 import { announcementReach, canAnnounceByEmail } from "@/lib/community-mail";
+import { can } from "@/lib/team-roles";
 import { CommunityStudio, type QueueRow, type StudioMember } from "@/components/community-studio";
+
+type Params = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
 export const metadata: Metadata = {
   title: "Community — Nimbus Labs",
@@ -34,12 +39,16 @@ function excerpt(text: string): string {
 }
 
 /** Where a creator runs their community: on or off, who gets in, spaces, reports, members. */
-export default async function StudioCommunityPage() {
-  const cookieStore = await cookies();
-  const email = await emailForSession(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!email) redirect("/signin");
-  const store = await storeForEmail(email);
-  if (!store) redirect("/studio");
+export default async function StudioCommunityPage({ searchParams }: Params) {
+  const query = await searchParams;
+  // Which store, and whether this person's role there has "community" (lib/studio-route.ts).
+  const found = await studioView(await cookies(), typeof query.store === "string" ? query.store : undefined, "community");
+  if (!found.ok) {
+    if (found.reason === "signed_out") redirect("/signin");
+    redirect(found.store ? studioPath(found.store, "team=forbidden") : "/studio");
+  }
+  const { view } = found;
+  const { store } = view;
 
   const id = store.community?.id ?? null;
   const config = id ? await readConfig(id) : null;
@@ -101,31 +110,33 @@ export default async function StudioCommunityPage() {
     }));
   }
 
-  const products = store.products.map((p) => ({
+  // Every card, read once for the lists on this page.
+  const listings = await readAllListings(store);
+  const products = listings.map((p) => ({
     id: p.id,
     title: p.title,
     free: isFree(p),
     kind: isFree(p)
       ? "Free, for a confirmed address"
       : p.recurring
-        ? `Membership · $${centsToPrice(p.priceCents)} — while it is paid`
+        ? `Membership · ${formatMoney(p.priceCents, store.currency)} — while it is paid`
         : p.course
-          ? `Course · $${centsToPrice(p.priceCents)}`
+          ? `Course · ${formatMoney(p.priceCents, store.currency)}`
           : p.call
-            ? `Call · $${centsToPrice(p.priceCents)}`
-            : `$${centsToPrice(p.priceCents)}`,
+            ? `Call · ${formatMoney(p.priceCents, store.currency)}`
+            : formatMoney(p.priceCents, store.currency),
   }));
 
   return (
     <div className="min-h-screen bg-paper text-ink">
-      <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
-        <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-3">
-          <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Nimbus Labs, home">
-            <Logo />
-          </Link>
-          <Link href="/studio" className="btn btn-secondary btn-sm">Back to the studio</Link>
-        </div>
-      </header>
+      <StudioHeader
+        current={store}
+        role={view.role}
+        stores={view.stores}
+        owned={view.owned}
+        action={{ href: studioPath(store), label: "Back to the studio", short: "Studio" }}
+      />
+      <StudioStorePin sid={store.sid}>
 
       <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
         <p className="eyebrow">Community</p>
@@ -147,8 +158,11 @@ export default async function StudioCommunityPage() {
           members={members}
           totals={totals}
           canEmail={canAnnounceByEmail(store)}
+          canSettings={can(view.role, "settings")}
+          isOwner={view.role === "owner"}
         />
       </main>
+      </StudioStorePin>
     </div>
   );
 }

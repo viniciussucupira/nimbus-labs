@@ -1,0 +1,126 @@
+/**
+ * A private video room for each booking, with nothing to set up.
+ *
+ * A creator selling calls either types the meeting link they already use —
+ * Zoom, Google Meet, whatever — or asks for a room to be made for every
+ * booking. The room is a Jitsi Meet address (https://meet.jit.si/<name>)
+ * whose name is 24 random letters and digits, 120 bits drawn from the
+ * system's secure random source, so nobody finds it by guessing. Jitsi Meet
+ * is a free service run by a third party (8x8), with no account to open and
+ * no key for us to hold: a room exists the moment somebody opens its
+ * address.
+ *
+ * One thing about it has to be said wherever it is offered: since August
+ * 2023 meet.jit.si asks the first person who opens a room to sign in (with a
+ * Google, GitHub or Facebook account, the ones it accepts today) before the
+ * meeting starts, and that person becomes its moderator; the others wait
+ * until then and need no account. The studio says so, and so does every
+ * email that carries a room.
+ *
+ * Which room a booking has:
+ *
+ *   - a one-to-one call: one room per booking, filed under its checkout
+ *     session, so a booking its buyer moves keeps its room;
+ *   - a group call or a dated live session: one room per time, shared by
+ *     everyone booked into it — a group has to meet in the same place — so a
+ *     booking moved to another time joins the room of that time.
+ *
+ * A room is made the first time anything asks for it — the booking email,
+ * usually — with SET NX, so two buyers of the same group time at the same
+ * instant still get the same room. Once made it stays the booking's room even
+ * if the creator later switches back to their own link; a booking made
+ * before rooms were switched on keeps the link it was given.
+ */
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { type CallSetup, isGroup, roomFor } from "@/lib/call-setup";
+
+export const VIDEO_ROOM_BASE = "https://meet.jit.si/";
+
+/** 32 letters and digits: 256 divides by 32, so each is exactly as likely. */
+const ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789";
+export const ROOM_NAME_LENGTH = 24;
+const ROOM_PATTERN = /^https:\/\/meet\.jit\.si\/[a-z0-9]{24}$/;
+
+/** How long a room is remembered after its call: long enough for a late look at an old email. */
+const KEEP_AFTER_MS = 60 * 86_400_000;
+
+/** A new room address nobody else has. */
+export function newVideoRoom(): string {
+  const bytes = new Uint8Array(ROOM_NAME_LENGTH);
+  crypto.getRandomValues(bytes);
+  return VIDEO_ROOM_BASE + [...bytes].map((b) => ALPHABET[b % ALPHABET.length]).join("");
+}
+
+/** Whether an address is one of the rooms made here. */
+export function isVideoRoom(url: string | null | undefined): boolean {
+  return typeof url === "string" && ROOM_PATTERN.test(url);
+}
+
+const bookingKey = (callsId: string, session: string) => `nl:call:room:${callsId}:b:${session}`;
+const timeKey = (callsId: string, product: string, start: number) => `nl:call:room:${callsId}:t:${product}:${start}`;
+
+/** One booked seat, as much of it as picks its room. */
+export type RoomAsk = {
+  product: string;
+  setup: CallSetup;
+  /** The checkout session that paid for it. */
+  session: string;
+  start: number;
+  end: number;
+};
+
+/**
+ * The room of each booking asked about, in order: a room already made for
+ * it (or for its time, in a group), else a new one when its product makes
+ * rooms, else the creator's own link. Two round trips at most, however many.
+ */
+export async function roomsFor(callsId: string | null, asks: RoomAsk[]): Promise<(string | null)[]> {
+  if (!callsId || !isRedisConfigured() || asks.length === 0) return asks.map((a) => roomFor(a.setup, a.start));
+  const read = await redisPipeline(
+    asks.flatMap((a) => [["GET", bookingKey(callsId, a.session)], ["GET", timeKey(callsId, a.product, a.start)]]),
+  );
+  const found: (string | null)[] = asks.map((_, i) => {
+    const own = read[i * 2];
+    const shared = read[i * 2 + 1];
+    if (isVideoRoom(own as string)) return own as string;
+    if (isVideoRoom(shared as string)) return shared as string;
+    return null;
+  });
+  // Rooms still to make, one per key, so a group asked about twice gets one.
+  const making = new Map<string, { at: number[]; ttl: number }>();
+  asks.forEach((a, i) => {
+    if (found[i] || !a.setup.video) return;
+    const key = isGroup(a.setup) ? timeKey(callsId, a.product, a.start) : bookingKey(callsId, a.session);
+    const ttl = Math.max(3600, Math.ceil((a.end + KEEP_AFTER_MS - Date.now()) / 1000));
+    const entry = making.get(key) ?? { at: [], ttl };
+    entry.at.push(i);
+    making.set(key, entry);
+  });
+  if (making.size) {
+    const keys = [...making.keys()];
+    const made = await redisPipeline(
+      keys.flatMap((key) => [
+        ["SET", key, newVideoRoom(), "NX", "EX", making.get(key)!.ttl],
+        // Whoever won the race, this is the room.
+        ["GET", key],
+      ]),
+    );
+    keys.forEach((key, k) => {
+      const room = made[k * 2 + 1];
+      for (const i of making.get(key)!.at) found[i] = isVideoRoom(room as string) ? (room as string) : null;
+    });
+  }
+  return asks.map((a, i) => found[i] ?? roomFor(a.setup, a.start));
+}
+
+/** The room of one booking (roomsFor, for one). */
+export async function roomOf(callsId: string | null, ask: RoomAsk): Promise<string | null> {
+  return (await roomsFor(callsId, [ask]))[0];
+}
+
+/**
+ * What a buyer or the creator is told next to a room made here, so nobody
+ * is surprised at the door.
+ */
+export const VIDEO_ROOM_NOTE =
+  "This is a private Jitsi Meet room (a free video service run by a third party). Nobody needs an account to join, but the first person to open it may be asked to sign in to Jitsi with a Google, GitHub or Facebook account to start the meeting; everyone else waits until then.";

@@ -48,7 +48,8 @@ import { isLive } from "@/lib/membership-access";
 import { refundedInFull } from "@/lib/refunds";
 import { leadsKey, parseContact } from "@/lib/contacts";
 import { type Learner, TOKEN_PATTERN, emailKey, learnerFrom, storeKey } from "@/lib/learn";
-import { type Product, type Store, isFree } from "@/lib/store";
+import type { Listing, Store } from "@/lib/store";
+import { KIND, itemFor, readListings } from "@/lib/catalog";
 import {
   CREATOR,
   type CommunityConfig,
@@ -74,9 +75,8 @@ const linkKey = (token: string) => `nl:cm:link:${sha(`nimbus-community:${token}`
 const opensKey = (token: string) => `${linkKey(token)}:opens`;
 
 /** The products of this store that the settings let in, as they are now. */
-export function accessProducts(store: Store, config: CommunityConfig): Product[] {
-  const chosen = new Set(config.access);
-  return store.products.filter((p) => chosen.has(p.id));
+export async function accessProducts(store: Store, config: CommunityConfig): Promise<Listing[]> {
+  return readListings(store, config.access);
 }
 
 type Row = Record<string, unknown>;
@@ -154,7 +154,11 @@ async function gotFree(store: Store, email: string, ids: Set<string>): Promise<b
 export async function holdsTicket(store: Store, config: CommunityConfig, email: string): Promise<boolean> {
   const id = store.community?.id;
   if (!id || !isRedisConfigured()) return false;
-  const products = accessProducts(store, config);
+  // Which products let in, and whether each is free, is in the store record.
+  const products = config.access.flatMap((pid) => {
+    const item = itemFor(store, pid);
+    return item ? [{ id: item.id, free: (item.kind & KIND.free) !== 0 }] : [];
+  });
   if (products.length === 0) return false;
   const [cached] = await redisPipeline([["GET", okKey(id, email)]]);
   if (typeof cached === "string") {
@@ -163,8 +167,8 @@ export async function holdsTicket(store: Store, config: CommunityConfig, email: 
       if (value.v === config.v && typeof value.ok === "boolean") return value.ok;
     } catch {}
   }
-  const free = new Set(products.filter((p) => isFree(p)).map((p) => p.id));
-  const paid = new Set(products.filter((p) => !isFree(p)).map((p) => p.id));
+  const free = new Set(products.filter((p) => p.free).map((p) => p.id));
+  const paid = new Set(products.filter((p) => !p.free).map((p) => p.id));
   let ok = false;
   try {
     ok = (await gotFree(store, email, free)) || (await paidForAny(store, email, paid));

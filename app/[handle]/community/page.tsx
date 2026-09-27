@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { feed, postNumbers, readMembers, readPosts } from "@/lib/community";
 import { accessProducts, communityViewer } from "@/lib/community-access";
@@ -34,7 +34,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
   const { handle: raw } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
   const viewer = await communityViewer(store, await cookies());
   if (viewer.state === "off" || !store.community) redirect(`/@${store.handle}`);
@@ -44,7 +44,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
   const notice = NOTICES[word] ?? null;
 
   if (viewer.state !== "in") {
-    const products = accessProducts(store, viewer.config).map((p) => ({ id: p.id, title: p.title, kind: ticketKind(p) }));
+    const products = (await accessProducts(store, viewer.config)).map((p) => ({ id: p.id, title: p.title, kind: ticketKind(p, store.currency) }));
     return (
       <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
         <CommunityBar store={store} config={viewer.config} tab={null} signedIn={false} />
@@ -77,7 +77,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
   const reach = owner ? await announcementReach(id) : 0;
   const home = `/@${store.handle}/community`;
   const from = space ? "space" : "feed";
-  const openTo = accessProducts(store, config);
+  const openTo = await accessProducts(store, config);
 
   return (
     <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>

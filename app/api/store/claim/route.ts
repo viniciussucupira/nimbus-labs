@@ -4,13 +4,22 @@ import {
   MAX_BIO_LENGTH,
   MAX_NAME_LENGTH,
   claimHandle,
+  createStore,
 } from "@/lib/store";
+import { storeCookie } from "@/lib/studio-route";
 import { isRedisConfigured } from "@/lib/redis";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 const MAX_BODY_BYTES = 2_000;
 
-/** Takes a handle for the signed-in creator and creates their store. */
+/**
+ * Takes a handle for the signed-in creator and creates a store under it: their
+ * first, or — with `another: true` — one more of the five an account may run
+ * (lib/store.ts). A store is always its owner's own: this makes a store for
+ * the person signed in, whatever store their studio has open.
+ *
+ * The new store becomes the one the studio opens next.
+ */
 export async function POST(request: NextRequest) {
   // Refused before anything else is read: another site, by Origin or by
   // Sec-Fetch-Site (lib/request-guard.ts).
@@ -49,14 +58,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await claimHandle(email, handle, name, bio);
+    const result =
+      body.another === true ? await createStore(email, handle, name, bio) : await claimHandle(email, handle, name, bio);
     if (!result.ok) {
       return Response.json(
-        { ok: false, error: result.reason },
-        { status: result.reason === "already" ? 409 : 400 },
+        { ok: false, error: result.reason, limit: "limit" in result ? result.limit : undefined },
+        { status: result.reason === "already" || result.reason === "too_many" ? 409 : 400 },
       );
     }
-    return Response.json({ ok: true, handle: result.store.handle });
+    const response = Response.json({ ok: true, handle: result.store.handle, store: result.store.sid });
+    response.headers.append("Set-Cookie", storeCookie(result.store.sid, request));
+    return response;
   } catch (error) {
     console.error("claiming a handle failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });

@@ -5,7 +5,7 @@ import { guardStoreWrite } from "@/lib/store-request";
 
 /** Changes the theme and the colour of the creator's public page. */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "page");
   if (!guarded.ok) return guarded.response;
 
   const theme = guarded.body.theme;
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await updateLook(guarded.email, { theme, accent });
+    const result = await updateLook(guarded.ref, { theme, accent });
     if (!result.ok) {
       return Response.json({ ok: false, error: result.reason }, { status: 400 });
     }

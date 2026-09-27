@@ -9,15 +9,17 @@ const EXPORTS_PER_WINDOW = 10;
 /**
  * The store's numbers as files: its sales (read from its own Stripe account,
  * for the last 30 or 90 days or all of them), its visits day by day, and
- * where its visitors came from. Only the signed-in owner reaches it, and the
- * store is read from their session, never from the request.
+ * where its visitors came from. Only someone whose role on the store has the
+ * permission reaches it (sales need "export", the rest "stats"), and the
+ * store is settled by lib/studio-route.ts, never read from the query alone.
  */
 export async function GET(request: NextRequest) {
-  const creator = await creatorFrom(request);
-  if (creator instanceof Response) return creator;
-  const { store } = creator;
   const params = request.nextUrl.searchParams;
   const what = params.get("what") ?? "";
+  // Sales carry buyers' addresses; visits and sources are only counts.
+  const creator = await creatorFrom(request, what === "sales" ? "export" : "stats");
+  if (creator instanceof Response) return creator;
+  const { store } = creator;
   const range = params.get("range") ?? "";
   const plain = (status: number, body: string) =>
     new Response(body, { status, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });

@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { toast } from "@/components/toast";
+import { StoreCurrency, useStoreCurrency } from "@/components/store-currency";
+import { type Currency, currencyRule, fieldPrefix, formatMoney, moneyField, readMoney } from "@/lib/money";
 import {
   type Funnel,
   MAX_FUNNEL_STEPS,
@@ -13,7 +15,6 @@ import {
 
 const MESSAGES: Record<string, string> = {
   target: "Pick a product for every offer: another product of yours with one price and a file or a link on it.",
-  price: "Each offer needs a price of at least $0.50, and no more than that product costs on its own.",
   repeat: "An offer that follows a yes cannot offer the same product again: the buyer already has it.",
   shape: `Keep between 1 and ${MAX_FUNNEL_STEPS} offers, each leading only to an offer further down the list.`,
   kind: "Offers follow one-off paid products only.",
@@ -39,7 +40,15 @@ type Draft = {
   no: string;
 };
 
-const dollars = (cents: number) => (cents % 100 ? (cents / 100).toFixed(2) : String(cents / 100));
+/** The price sentence, in the store's currency: its smallest charge is its own (lib/money.ts). */
+const priceMessage = (currency: Currency) =>
+  `Each offer needs a price of at least ${formatMoney(currencyRule(currency).minCharge, currency)}, and no more than that product costs on its own.`;
+
+/** A typed price as the page will write it, or as typed while it is not one yet. */
+const typedPrice = (price: string, currency: Currency) => {
+  const amount = readMoney(price, currency);
+  return amount === null ? `${fieldPrefix(currency)} ${price || "\u2026"}` : formatMoney(amount, currency);
+};
 
 function newId(): string {
   const letters = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -50,11 +59,11 @@ function newId(): string {
   return out;
 }
 
-function toDrafts(funnel: Funnel | null): Draft[] {
+function toDrafts(funnel: Funnel | null, currency: Currency): Draft[] {
   return (funnel?.steps ?? []).map((s) => ({
     id: s.id,
     productId: s.productId,
-    price: dollars(s.priceCents),
+    price: moneyField(s.priceCents, currency),
     headline: s.headline,
     text: s.text,
     imageFrom: s.imageFrom ?? "",
@@ -89,19 +98,22 @@ export function FunnelEditor({
   offerable,
   pictures,
   ownerPrice,
+  currency = "usd",
 }: {
   owner: { id: string; title: string; priceCents: number };
   initial: Funnel | null;
   offerable: Offerable[];
   pictures: Picture[];
   ownerPrice: string;
+  /** What the store charges in; every price here is typed in it. */
+  currency?: Currency;
 }) {
   const router = useRouter();
-  const [steps, setSteps] = useState<Draft[]>(() => toDrafts(initial));
+  const [steps, setSteps] = useState<Draft[]>(() => toDrafts(initial, currency));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
-  const saved = JSON.stringify(toDrafts(initial));
+  const saved = JSON.stringify(toDrafts(initial, currency));
   const dirty = JSON.stringify(steps) !== saved;
   const lost = useMemo(() => unreached(steps), [steps]);
 
@@ -119,7 +131,7 @@ export function FunnelEditor({
     const id = newId();
     setSteps((all) => [
       ...all,
-      { id, productId: pick.id, price: dollars(pick.priceCents), headline: "", text: "", imageFrom: "", yes: "", no: "" },
+      { id, productId: pick.id, price: moneyField(pick.priceCents, currency), headline: "", text: "", imageFrom: "", yes: "", no: "" },
     ]);
   }
 
@@ -148,7 +160,7 @@ export function FunnelEditor({
         router.refresh();
         return;
       }
-      setError(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
+      setError(data.error === "price" ? priceMessage(currency) : MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
     } catch {
       setError(MESSAGES.server_error);
     } finally {
@@ -179,6 +191,7 @@ export function FunnelEditor({
   }
 
   return (
+    <StoreCurrency value={currency}>
     <section aria-labelledby="funnel-title" className="card min-w-0 p-5 sm:p-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -221,8 +234,8 @@ export function FunnelEditor({
       <ol className="mt-6 space-y-4">
         {steps.map((step, index) => {
           const chosen = product(step.productId);
-          const cents = Number.parseFloat(step.price);
-          const tooHigh = chosen !== null && Number.isFinite(cents) && Math.round(cents * 100) > chosen.priceCents;
+          const cents = readMoney(step.price, currency);
+          const tooHigh = chosen !== null && cents !== null && cents > chosen.priceCents;
           const later = steps.slice(index + 1);
           const base = `step-${step.id}`;
           return (
@@ -255,18 +268,18 @@ export function FunnelEditor({
                     value={step.productId}
                     onChange={(e) => {
                       const next = product(e.target.value);
-                      change(index, { productId: e.target.value, ...(next ? { price: dollars(next.priceCents) } : {}) });
+                      change(index, { productId: e.target.value, ...(next ? { price: moneyField(next.priceCents, currency) } : {}) });
                     }}
                     className="field"
                   >
                     {chosen ? null : <option value={step.productId}>A product that is no longer offerable</option>}
                     {offerable.map((p) => (
-                      <option key={p.id} value={p.id}>{`${p.title} ($${dollars(p.priceCents)})`}</option>
+                      <option key={p.id} value={p.id}>{`${p.title} (${formatMoney(p.priceCents, currency)})`}</option>
                     ))}
                   </select>
                 </label>
                 <label className="block" htmlFor={`${base}-c`}>
-                  <span className="field-label">For, in dollars</span>
+                  <span className="field-label">{currency === "usd" ? "For, in dollars" : `For, ${fieldPrefix(currency)}`}</span>
                   <input
                     id={`${base}-c`}
                     type="text"
@@ -280,7 +293,7 @@ export function FunnelEditor({
                 </label>
                 {tooHigh && chosen ? (
                   <p id={`${base}-ch`} className="text-sm font-semibold text-danger sm:col-span-2">
-                    {`No more than $${dollars(chosen.priceCents)}, what it costs on its own.`}
+                    {`No more than ${formatMoney(chosen.priceCents, currency)}, what it costs on its own.`}
                   </p>
                 ) : null}
                 <label className="block sm:col-span-2" htmlFor={`${base}-h`}>
@@ -290,7 +303,7 @@ export function FunnelEditor({
                     type="text"
                     maxLength={MAX_HEADLINE_LENGTH}
                     value={step.headline}
-                    placeholder={chosen ? `${chosen.title} for $${step.price || "…"}` : ""}
+                    placeholder={chosen ? `${chosen.title} for ${typedPrice(step.price, currency)}` : ""}
                     onChange={(e) => change(index, { headline: e.target.value })}
                     className="field"
                   />
@@ -393,7 +406,7 @@ export function FunnelEditor({
           {busy ? "Saving…" : "Save the funnel"}
         </button>
         {dirty ? (
-          <button type="button" className="btn btn-ghost" onClick={() => { setSteps(toDrafts(initial)); setError(null); }}>
+          <button type="button" className="btn btn-ghost" onClick={() => { setSteps(toDrafts(initial, currency)); setError(null); }}>
             Undo changes
           </button>
         ) : null}
@@ -416,6 +429,7 @@ export function FunnelEditor({
         ) : null}
       </div>
     </section>
+    </StoreCurrency>
   );
 }
 
@@ -470,6 +484,7 @@ function FlowNode({
   numberOf: (id: string) => number;
   depth: number;
 }) {
+  const currency = useStoreCurrency();
   const step = steps.find((s) => s.id === id);
   if (!step || depth > MAX_FUNNEL_STEPS) return null;
   const chosen = product(step.productId);
@@ -482,7 +497,7 @@ function FlowNode({
             {numberOf(step.id)}
           </span>
           <span className="min-w-0 truncate font-semibold text-ink">{chosen?.title ?? "A product that is no longer offerable"}</span>
-          <span className="shrink-0 text-ink-soft">{`$${step.price || "…"}`}</span>
+          <span className="shrink-0 text-ink-soft">{typedPrice(step.price, currency)}</span>
         </div>
       </div>
       <div className="ml-3 mt-1 space-y-1 border-l-2 border-line pl-3 sm:ml-4 sm:pl-4">

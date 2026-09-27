@@ -48,8 +48,8 @@ const SECTIONS: Section[] = [
         q: "Can I put my own products on my store?",
         a: [
           "Yes. On your account page you write the name of the store, the line under it, and each thing you sell with what the buyer gets and the price. It is on your page the moment you save it, and you can reorder or remove any of it.",
-          "A store holds up to 200 things and up to 100 links, priced in US dollars — one price each, up to three if you want the buyer to choose, or a price the buyer chooses above your minimum. You can also put the file itself on each one, and open it again to check it is the right one.",
-          "Each product can have a picture, shown on its card in one of three ways, and a page of its own at your store address followed by /p/ and the product, with a long description of up to 5,000 characters. That page has its own title and preview card, so a link to one product shared anywhere unfolds into that product.",
+          "A store holds up to 2,000 things and up to 100 links, priced in your store's currency — one of 15, US dollars unless you choose another — with one price each, up to three if you want the buyer to choose, or a price the buyer chooses above your minimum. You can also put the file itself on each one, and open it again to check it is the right one. A long store shows 24 products a page, and your studio finds any product by name.",
+          "Each product can have a picture, shown on its card in one of three ways, and a page of its own at your store address followed by /p/ and the product, with a long description of up to 5,000 characters. That page has its own title and preview card, so a link to one product shared anywhere unfolds into that product. You can also build it as a sales page, from blocks.",
           "Your page can take a card as soon as two things are true: Stripe has cleared your connected account, and your subscription is running — the trial counts. Until then the page says so plainly, to you and to anyone who opens it.",
         ],
       },
@@ -83,6 +83,14 @@ const SECTIONS: Section[] = [
           "Yes to both, from your studio. Moving up to Pro while you pay charges the difference that day, less what is left of what you already paid; going back to $29 keeps what is left of Pro as credit on your account. Inside the trial, neither charges anything.",
           "Yes, from your studio, whenever you like. Monthly to yearly charges the year that day, less what is left of the month you already paid for. Yearly to monthly keeps what is left of your year as credit on your account, and that credit pays your months until it runs out. Inside the trial, switching charges nothing.",
           "On a yearly plan we email you about a month before it renews, with the date, the amount and the link to cancel.",
+        ],
+      },
+      {
+        q: "Can I run more than one store, or have someone help me?",
+        a: [
+          "Both. One account runs up to five stores, each with its own address, products, buyers, Stripe account and plan, and you switch between them at the top of your studio. The 14-day free trial is for an account's first store; each other store is charged from the day its plan starts, and cancelling one touches no other.",
+          "Each store can have a team of up to five people, invitations still waiting included, each signing in with their own email: an Admin runs everything except the plan, the Stripe connection, the team and deleting the store; an Editor looks after products, courses, calls, sales pages and the store page and writes email drafts without sending them; Support reads orders and bookings, sends purchase emails again and moderates the community and reviews. What each role may do is checked on our server for every request. You are emailed when someone joins or changes role, and the activity log shows the last 500 changes and downloads your team made.",
+          "Stan's help centre, read on 27 September 2026, says the only way to give a team member access there is to share your login.",
         ],
       },
       {
@@ -160,9 +168,17 @@ const SECTIONS: Section[] = [
       {
         q: "Can my buyers pay with PayPal?",
         a: [
-          "No. Nimbus runs on Stripe and only Stripe. Stan and Beacons both let you take PayPal as well, and on this one we are behind them.",
-          "The reason is not laziness. Stripe's own documentation says PayPal through Stripe is not available to platforms that onboard other businesses to accept payments directly, which is exactly what we are. The other road is a second, separate integration with PayPal, and a second integration means a second checkout, a second refund path and a second dispute queue to keep working. We would rather have one that never breaks than two that sometimes do.",
-          "Two things follow from that, and you should know them before you sign up. You need a Stripe account in one of the 43 countries the studio offers \u2014 the United States, Canada, the United Kingdom, Australia, Japan, Singapore, Mexico and most of Europe among them, but not everywhere. And a buyer who has only a PayPal balance and no card cannot buy from you here.",
+          "Only if your Stripe account is in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein. Nimbus runs on Stripe and only Stripe, and your buyers meet the ways to pay you switch on in your own Stripe account. Stripe offers PayPal to accounts in those countries, and there you switch it on in the same place as the rest.",
+          "For a Stripe account in the United States, or anywhere else, PayPal is not available here. Stan lets every creator take PayPal, Beacons offers it too, and on this one we are behind them. The other road would be a second, separate integration with PayPal, which means a second checkout, a second refund path and a second dispute queue to keep working. We would rather have one that never breaks than two that sometimes do.",
+          "Two things follow from that, and you should know them before you sign up. You need a Stripe account in one of the 43 countries the studio offers \u2014 the United States, Canada, the United Kingdom, Australia, Japan, Singapore, Mexico and most of Europe among them, but not everywhere. And where PayPal is not on, a buyer who has only a PayPal balance and no card, wallet or other way to pay cannot buy from you here.",
+        ],
+      },
+      {
+        q: "Which currencies and ways to pay can I offer?",
+        a: [
+          "Your store charges in one of 15 currencies: US, Canadian, Australian, New Zealand, Singapore and Hong Kong dollars, euros, pounds, Swiss francs, Swedish, Norwegian and Danish kronor, Polish zloty, Japanese yen or Mexican pesos, among those your Stripe account can charge in. You or an Admin choose it in your studio, and you are emailed when it changes. Changing it keeps every price's number, so check your prices; it waits while a membership or payment plan is still running.",
+          "The ways to pay are the ones you switch on in your own Stripe account: cards, Apple Pay, Google Pay, Link, and where they fit the buyer and the amount, Klarna, Afterpay or Clearpay, Affirm, iDEAL, Bancontact and others. Your studio lists what is on, read from Stripe, and links to where you switch more on. Memberships and payment plans show only the ways Stripe can charge again each period.",
+          "Ways to pay that settle days later \u2014 ACH, SEPA and Bacs Direct Debit, bank transfers, Boleto, OXXO, Konbini, Multibanco, stablecoins \u2014 are left out on purpose, because what your buyers pay for is handed over the moment the payment is confirmed. And one-click offers after paying are shown only to buyers who paid by card, Apple Pay or Google Pay.",
         ],
       },
       {
@@ -223,12 +239,12 @@ const SECTIONS: Section[] = [
       {
         q: "Can I sell paid calls?",
         a: [
-          "Yes. Any one-off product with a price can be sold as a call. You pick how long it lasts, your time zone and the hours you take calls on each day of the week, with up to two stretches a day. You also choose how much notice you need, how far ahead people can book, a gap between calls, and the meeting link you already use.",
+          "Yes. Any one-off product with a price can be sold as a call. You pick how long it lasts, your time zone and the hours you take calls on each day of the week, with up to two stretches a day. You also choose how much notice you need, how far ahead people can book, a gap between calls, and where the call happens: the meeting link you already use, or a private Jitsi Meet room made for each booking.",
           "A call can take one person at each time, or a group of up to 50. Or sell live sessions on dates you set instead of weekly hours: up to 50 dates on one product, each with 1 to 500 seats, its own length and its own link, with sales closing when you say, up to 72 hours before. Buyers see how many seats are left.",
-          "The buyer sees the free times in their own time zone, picks one and pays on your own Stripe account. The time is held for them for 30 minutes while they pay, so two people can never pay for the same time. Once it is paid, you both get an email with a calendar file, the call appears in your studio under Upcoming calls, and the buyer's thanks page has the link to join.",
+          "The buyer sees the free times in their own time zone, picks one and pays on your own Stripe account. The time is held for them for 30 minutes while they pay, so two people can never pay for the same time. Once it is paid, you both get an email with a calendar file, the call appears in your studio under Upcoming calls, and the buyer's thanks page and list of purchases have the link to join.",
           "Every buyer gets a reminder a day before and an hour before, in their time zone, with the link to join; you get one for each time, listing everyone booked. A buyer can move their booking to another open time themselves, up to twice, from the link in their email, until the notice you set before the call.",
           "Your own calendars can close times too. Paste the private iCal address of up to three calendars \u2014 Google's secret address, an Outlook calendar published as ICS, an iCloud public calendar \u2014 and the times you are busy there, up to 120 days ahead, stop being offered, usually within about ten minutes. Only the busy times are kept, never a title or a guest. The other way round, your studio gives you a private calendar address that lists your upcoming bookings, for Google, Outlook or Apple Calendar to subscribe to.",
-          "What it does not do, said plainly. Nothing is written into your calendar as an event: bookings arrive through the feed you subscribe to, which your calendar app refreshes on its own schedule. There is no sign-in with Google or Microsoft. And a buyer cannot cancel on their own: they reply to their confirmation email, which reaches you, and a refund is made from your own Stripe dashboard. The call itself happens on the service whose link you give; nothing is streamed or recorded here.",
+          "What it does not do, said plainly. Nothing is written into your calendar as an event: bookings arrive through the feed you subscribe to, which your calendar app refreshes on its own schedule. There is no sign-in with Google or Microsoft. And a buyer cannot cancel on their own: they reply to their confirmation email, which reaches you, and a refund is made from your own Stripe dashboard. Nothing makes a Zoom or Google Meet link for you, as Stan does: you type your own, or choose a Jitsi Meet room. Jitsi Meet is a free service run by a third party, not by us; nobody needs an account to join, but the first person to open a room may be asked to sign in to Jitsi to start it, so open it a few minutes early. The call itself happens on that service; nothing is streamed or recorded here.",
         ],
       },
       {
@@ -236,7 +252,7 @@ const SECTIONS: Section[] = [
         a: [
           "Both. Under any one-off product you can offer another of your products at a price of your own: the buyer sees a box under the buy button, ticks it if they want it, and the button says the new total. It is never ticked for them. Both are paid in one checkout and both are delivered on the thanks page.",
           "Or offer it right after they pay: the thanks page shows it, and one press charges the card they just used, on your own Stripe account. It only works in the browser that paid, for an hour, so a forwarded link can never charge anyone. If the bank wants the buyer to confirm, they confirm it, and nothing is handed over until the payment is through.",
-          "After a product you can line up to five such offers, shown one at a time: a funnel. For each one you choose where yes leads and where no thanks leads, so a no can meet the same product for less. Each offer has its own headline, text, picture and price, never above the product's own price, and each one taken gets its own confirmation email. A funnel starts after the checkout: there are no landing pages before it, and while sales tax is on, offers after paying are paused.",
+          "After a product you can line up to five such offers, shown one at a time: a funnel. For each one you choose where yes leads and where no thanks leads, so a no can meet the same product for less. Each offer has its own headline, text, picture and price, never above the product's own price, and each one taken gets its own confirmation email. Offers after paying are shown only to buyers who paid by card, Apple Pay or Google Pay, and while sales tax is on, they are paused. Before the checkout, a sales page or a landing page for something free can lead the way, but there is no editor that chains pages into one funnel.",
           "You can also limit how many of a product can be sold. Your page shows how many are left, counted from real payments, and stops selling at zero. A buyer who is paying right now holds one for up to 30 minutes, so the last one is never sold to two people; if they do not pay, it comes back.",
         ],
       },
@@ -250,7 +266,7 @@ const SECTIONS: Section[] = [
       {
         q: "Can the buyer choose the price?",
         a: [
-          "Yes, on a product with one price, sold once. Your price becomes the minimum \u2014 at least $1 \u2014 and you add a suggested price, which is already in the box on Stripe's page. The buyer types what they want to pay, and Stripe refuses anything under the minimum.",
+          "Yes, on a product with one price, sold once. Your price becomes the minimum \u2014 at least $1, or the smallest price in your store's currency \u2014 and you add a suggested price, which is already in the box on Stripe's page. The buyer types what they want to pay, and Stripe refuses anything under the minimum.",
           "It does not mix with a membership, price options, a payment plan, the box at checkout, a call or discount codes: the buyer already names the price. A one-click offer after paying, a limited quantity, sales tax and a course all work with it.",
         ],
       },
@@ -305,6 +321,28 @@ const SECTIONS: Section[] = [
           "Yes, on Pro. From your studio you write one-off emails to everyone who agreed to hear from you, or only to those who got one product, and send them now or at a time you choose. Sequences go out by themselves: a welcome when someone joins, a few emails in the days after someone buys. Each person goes through a sequence once.",
           "Only people who agreed are ever written to: those who ticked the box when they got something free or bought from you, and those you import, where you confirm each time that they agreed. Every email carries a one-click unsubscribe, why the reader is getting it and your postal address, which the law in the United States asks for; anyone who leaves is never written to again, whatever a later import says.",
           "Emails go out under your name, and replies come to you. Pro sends up to 50,000 a month, one-off emails, sequences and community announcements together; during the free trial a store sends up to 1,000, and the full 50,000 opens with the first payment. Your list stays downloadable as a file at any time.",
+          "Someone on your team with the Editor role can write drafts, up to 20 per store; you or an Admin read them and send them. And, if you switch it on, one email asks each buyer for a review, 3 to 30 days after buying, counted in the same monthly emails.",
+        ],
+      },
+      {
+        q: "Can I send my list to Mailchimp, Kit, beehiiv or MailerLite?",
+        a: [
+          "Yes, on every plan. Paste an API key from your account on the platform, pick the audience, form, publication or group, and choose who is sent: free sign-ups once they confirm, buyers of every product or of some, with up to three tags per product. Only people who agreed to hear from you are ever sent, and someone who unsubscribed on Mailchimp or beehiiv is never subscribed again.",
+          "The key is checked, encrypted and kept; your studio shows only its last four characters, and disconnecting deletes it. What is sent is an email address, a first name when there is one, and the tags. One platform per store; it only adds people, reads nothing back, and does not send those who joined before you connected it, so download your list and import it for them. Stan has Mailchimp built in and reaches the others through Zapier; here all four are built in.",
+        ],
+      },
+      {
+        q: "Can buyers leave reviews?",
+        a: [
+          "Yes, and only buyers can. A review is written from the thanks page, the buyer's list of purchases or the one email that asks, and each of those first checks the order on your own Stripe account: paid, and not refunded in full. One review per buyer and product, 1 to 5 stars and up to 1,000 characters, under the name they choose or \u201cVerified buyer\u201d; their email is never shown.",
+          "You can answer a review in public and hide one, but you cannot change a word of it or delete it. Hiding takes its words off the page but never its stars out of the average, and the page says how many are hidden. A refund in full takes its stars out. Booked calls and free products are not reviewed. On Stan, by its help centre read on 27 September 2026, reviews are added by the creator and customers cannot write one.",
+        ],
+      },
+      {
+        q: "Can I build a sales page or a landing page?",
+        a: [
+          "Yes, on every plan. Any product's own page can be built from up to 30 blocks: a hero with the product's picture or a video from YouTube, Vimeo or Loom, text, benefits, what is inside, about you, questions, your guarantee, buttons and reviews. It has its own title and description for search engines, and a share picture drawn from the product's picture, name, price and stars. For a free product the page asks for the email, and afterwards can show one of your paid products next.",
+          "Every block is plain text in your store's theme: no custom code or styles. A button leads to the checkout the store already has, so a page can never state a price of its own.",
         ],
       },
       {
@@ -312,7 +350,7 @@ const SECTIONS: Section[] = [
         a: [
           "A community, yes, one per store. You choose which products open it: any paid product, a membership while it is being paid for, and free products if you want. Members come in with a link emailed to the address they bought with, and that browser stays in for 90 days. Who bought what is checked against your own Stripe account on every visit, so a membership that ends loses the door within five minutes.",
           "Inside: up to 20 spaces, posts with a title, up to 5,000 characters and one picture, comments and one level of replies, likes, up to three pinned posts and a Start here post. Members choose the name they are seen by and whether to appear in the directory; other members never see their email address. They can report a post or a comment, and you hide or delete it, mute a member or take them out. Your announcements can also go by email to members who asked for them, on Pro.",
-          "What it does not have: live chat, private messages, video, search, mentions, polls, editing a post after it is written, or spaces for one product only. A webinar you sell as a live session on the dates you set, with up to 500 seats each, held on the meeting service whose link you give. Stan can hold webinars inside its community; ours cannot.",
+          "What it does not have: live chat, private messages, video, search, mentions, polls, editing a post after it is written, or spaces for one product only. A webinar you sell as a live session on the dates you set, with up to 500 seats each, held on the meeting service whose link you give or in a Jitsi Meet room made for each session. Stan can hold webinars inside its community; ours cannot.",
         ],
       },
       {
@@ -347,6 +385,7 @@ const SECTIONS: Section[] = [
         q: "Does it work on a phone?",
         a: [
           "That is the case it is designed for. Your store installs to the home screen on both iPhone and Android as an app of its own, with its name, its icon and its colour, straight from the browser, with no app store in between. It opens on your store, not on ours.",
+          "Your studio installs the same way, and from it you can turn on notifications of every sale, booking, community report and affiliate application, on Android and on a computer, and on iPhone and iPad with iOS 16.4 or later once it is on the home screen. It is not an app from the App Store or Google Play; Stan has a native iPhone app, and we do not.",
         ],
       },
       {
@@ -410,13 +449,13 @@ const SECTIONS: Section[] = [
       {
         q: "What do you store about me?",
         a: [
-          "For your store: the email address that logs you in, the store you build, and the Stripe account id you connect. If you ask a store for something free: your email address, what you asked for, and whether you ticked the box to hear from that store \u2014 kept for that store and nobody else. If you join a store's community or its affiliate programme: your email address, the name you chose and what you write or earn there, for that store. For the research form: what you typed in it and, if you ticked the box, your email address. The privacy page lists it in full.",
+          "For your store: the email address that logs you in, the store you build, and the Stripe account id you connect. If you ask a store for something free: your email address, what you asked for, and whether you ticked the box to hear from that store \u2014 kept for that store and nobody else. If you join a store's community or its affiliate programme: your email address, the name you chose and what you write or earn there, for that store. If you review something you bought: your stars, your words, the name you chose and the order they came from. If you are on a store's team: your email address, your role and the changes you make there. For the research form: what you typed in it and, if you ticked the box, your email address. The privacy page lists it in full.",
         ],
       },
       {
         q: "How are my store and my buyers protected?",
         a: [
-          "Sales are charged on Stripe's own checkout, on your own Stripe account, and what a buyer is charged is worked out on our server from what you saved. You sign in with a link sent to your email that works once and stops working after 15 minutes, each sign-in starts a fresh session, and \u201cLog out of all devices\u201d at the foot of your studio closes every session at once. When your Stripe account, your domain or your webhooks change, we email you saying what changed.",
+          "Sales are charged on Stripe's own checkout, on your own Stripe account, and what a buyer is charged is worked out on our server from what you saved. You sign in with a link sent to your email that works once and stops working after 15 minutes, or with a passkey if you add one, each sign-in starts a fresh session, and \u201cLog out of all devices\u201d at the foot of your studio closes every session at once. When your Stripe account, your domain or your webhooks change, we email you saying what changed. What each role on your team may do is checked on our server for every request, the API key of an email platform you connect is stored encrypted, and reviews can be written only for orders your Stripe account says were paid.",
           "Store pages, on our address and on your own domain, the studio and signing in carry a strict Content-Security-Policy with a new nonce on every response, so text somebody typed cannot run as a script. Your ad pixels load only after consent where the law asks for it. Every request that changes something must come from this site, our cookies are HttpOnly and SameSite, and pages carry HSTS, nosniff, a referrer policy, Cross-Origin-Opener-Policy and a Permissions-Policy, and cannot be framed by other sites. Links we email point only at nimbuslabsai.com or your store's own domain.",
           "Files are handed over as downloads that cannot run anything in the browser. A full refund on your Stripe account closes what it paid for by itself: the download at once, the course within 10 minutes, the community within 5, and the licence key within about 5; a partial refund keeps access. Checkouts are limited to 20 per 10 minutes per connection per store, and bookings and forms that send an email have limits too, so a script cannot sit on your limited stock or call times. Webhooks are signed, and calendar and webhook addresses cannot reach private networks.",
           "What it does not do: there is no two-factor sign-in, because there are no passwords, so keep your email inbox safe. A refund on a payment plan is not detected, and a refunded membership closes when its subscription is cancelled. If our database cannot be reached, the limits let requests through rather than stop a buyer from paying.",
@@ -460,7 +499,7 @@ export default function HelpPage() {
             </p>
             <p className="mt-3 flex items-center gap-2 text-sm text-ink-mute">
               <Icon name="check" size={15} className="text-mint-deep" />
-              Checked against the product on 26 September 2026.
+              Checked against the product on 27 September 2026.
             </p>
             <HelpSearch />
           </div>

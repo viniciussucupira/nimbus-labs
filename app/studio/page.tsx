@@ -5,28 +5,28 @@ import { Icon } from "@/components/icons";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import {
-  centsToPrice,
-  isFree,
+  pricedProducts,
   ensureStatsId,
   imageFolder,
+  isFree,
   setSubscription,
-  storeForEmail,
   storeFolder,
-  type Product,
+  type Listing,
 } from "@/lib/store";
+import { productCount, readKind, readListings, sellsAny, studioShelf } from "@/lib/catalog";
 import { HandleForm } from "@/components/handle-form";
 import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
 import { DetailsForm } from "@/components/details-form";
 import { LookEditor } from "@/components/look-editor";
 import { type PaidCall, catchUpBookings, paidCalls } from "@/lib/calls";
-import { readSales, readStats, studioStats } from "@/lib/stats";
+import { productsInStats, readSales, readStats, studioStats } from "@/lib/stats";
 import { StatsPanel } from "@/components/stats-panel";
 import { CalendarEditor } from "@/components/calendar-editor";
 import { WebhookEditor } from "@/components/webhook-editor";
-import { calendarBusy, calendarView, ensureFeedToken, overlaps } from "@/lib/calendar-sync";
+import { calendarBusy, calendarView, ensureFeedToken, overlaps, slotRooms } from "@/lib/calendar-sync";
+import { isVideoRoom } from "@/lib/call-rooms";
 import { keepHandle, webhooksView } from "@/lib/webhooks";
 import { PixelEditor } from "@/components/pixel-editor";
 import { TaxEditor } from "@/components/tax-editor";
@@ -35,6 +35,9 @@ import { taxStatus } from "@/lib/tax";
 import { SITE_URL } from "@/lib/site-url";
 import { readableTime, roomFor, seatsAt, zoneName } from "@/lib/call-setup";
 import { ProductEditor } from "@/components/product-editor";
+import { PaymentsPanel } from "@/components/payments-panel";
+import { chargeableCurrencies, readWaysToPay } from "@/lib/payment-methods";
+import { formatMoney } from "@/lib/money";
 import { LinkEditor } from "@/components/link-editor";
 import { DiscountEditor } from "@/components/discount-editor";
 import { DomainEditor } from "@/components/domain-editor";
@@ -57,25 +60,32 @@ import {
   trialOffered,
 } from "@/lib/billing";
 import { PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, priceWords, yearSaving } from "@/lib/plan";
+import { studioPath, studioView } from "@/lib/studio-route";
+import { type Permission, type Role, ROLE_NAMES, ROLE_SUMMARIES, can } from "@/lib/team-roles";
+import { readTeam } from "@/lib/team";
+import { listPasskeys } from "@/lib/passkeys";
+import { SESSION_COOKIE, isFreshSession } from "@/lib/auth";
+import { StudioHeader } from "@/components/studio-header";
+import { StudioStorePin } from "@/components/studio-store-pin";
+import { PasskeyManager } from "@/components/passkey-manager";
+import { ResendPurchase } from "@/components/resend-purchase";
+import { LeaveTeam } from "@/components/team-manager";
 
 export const metadata: Metadata = {
   title: "Your account — Nimbus Labs",
   robots: { index: false, follow: false },
 };
 
-const NEXT_WHEN_SELLING = [
-  ...(isDomainsConfigured() ? [] : ["Your own domain, on Pro"]),
-  "Several stores in one account, on Pro",
-];
+const NEXT_WHEN_SELLING = [...(isDomainsConfigured() ? [] : ["Your own domain, on Pro"])];
 /** One time on the creator's calendar, with everyone booked into it. */
-type CallSlot = { key: string; product: Product | undefined; start: number; people: PaidCall[] };
+type CallSlot = { key: string; product: Listing | undefined; start: number; people: PaidCall[] };
 
 /**
  * Calls that have not ended yet, soonest first, one row per time: a group
  * call or a live session shows everyone booked into it together, and a
  * dated session nobody has booked yet is listed too, at nought seats.
  */
-function upcoming(list: PaidCall[], products: Product[]): CallSlot[] {
+function upcoming(list: PaidCall[], products: Listing[]): CallSlot[] {
   const now = Date.now();
   const slots = new Map<string, CallSlot>();
   for (const call of list) {
@@ -276,26 +286,89 @@ const ADDRESS_NOTICES: Record<string, { title: string; body: string }> = {
   },
 };
 
+const TEAM_NOTICES: Record<string, { title: string; body: string }> = {
+  forbidden: {
+    title: "Your role on this store does not include that",
+    body: "Nothing was changed. The store's owner decides each person's role, on the Team page.",
+  },
+  gone: {
+    title: "That store is not one you can open",
+    body: "It was deleted, or you are no longer on its team. Here is a store you can open.",
+  },
+  joined: {
+    title: "You joined the team",
+    body: "This store is open in your studio with your role. Switch between stores from the top of the page.",
+  },
+  left: {
+    title: "You left that store's team",
+    body: "It is no longer in your studio. The owner can invite you again.",
+  },
+};
+
+const STORES_NOTICES: Record<string, { title: string; body: string }> = {
+  deleted: {
+    title: "The store was deleted",
+    body: "Its addresses answer nothing for a month, and then anyone may take them. Your other stores are as they were.",
+  },
+  confirm: {
+    title: "Type the store's address to delete it",
+    body: "Nothing was deleted: the address typed did not match this store's.",
+  },
+  products: {
+    title: "A store with products cannot be deleted",
+    body: "Its buyers may come back to it. Remove its products first. Nothing was deleted.",
+  },
+  paying: {
+    title: "This store still has a plan running",
+    body: "Cancel its plan below, and delete it once the plan has ended. Nothing was deleted.",
+  },
+  domain: {
+    title: "This store still has its own domain",
+    body: "Remove the domain first. Nothing was deleted.",
+  },
+  first: {
+    title: "An account's first store cannot be deleted",
+    body: "It is the home of your account. Nothing was deleted.",
+  },
+  error: {
+    title: "Something went wrong on our side",
+    body: "Nothing was deleted. Try again in a moment.",
+  },
+};
+
 export default async function StudioPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const cookieStore = await cookies();
-  const email = await emailForSession(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!email) redirect("/signin");
-
-  const loaded = await storeForEmail(email);
-  // A store from before visits were counted gets its counter the first time
-  // its owner opens the studio.
-  const store = loaded && !loaded.statsId ? ((await ensureStatsId(email)) ?? loaded) : loaded;
-  const folder = store ? await storeFolder(email) : "";
-  const pictures = store ? await imageFolder(email) : "";
   const params = await searchParams;
+  // Which store, and in what role (lib/studio-route.ts): the one this page was
+  // asked for, else the one last chosen, else the person's own first store.
+  const found = await studioView(cookieStore, typeof params.store === "string" ? params.store : undefined, null);
+  if (!found.ok && found.reason === "signed_out") redirect("/signin");
+  const view = found.ok ? found.view : null;
+  const email = view?.email ?? (found.ok ? "" : (found.email ?? ""));
+  const role: Role = view?.role ?? "owner";
+  /** Whether this person's role on this store has a permission (lib/team-roles.ts). */
+  const may = (permission: Permission) => can(role, permission);
+  const ref = view?.ref ?? "";
+
+  const loaded = view?.store ?? null;
+  // A store from before visits were counted gets its counter the first time
+  // its studio is opened.
+  const store = loaded && !loaded.statsId ? ((await ensureStatsId(ref)) ?? loaded) : loaded;
+  const folder = store ? await storeFolder(ref) : "";
+  const pictures = store ? await imageFolder(ref) : "";
+  /** Carried on the forms below that post to the studio's routes, so each acts on this store. */
+  const pin = store?.sid ? `?store=${store.sid}` : "";
   const notice =
     ADDRESS_NOTICES[typeof params.address === "string" ? params.address : ""] ??
     STRIPE_NOTICES[typeof params.stripe === "string" ? params.stripe : ""] ??
-    BILLING_NOTICES[typeof params.billing === "string" ? params.billing : ""];
+    BILLING_NOTICES[typeof params.billing === "string" ? params.billing : ""] ??
+    TEAM_NOTICES[typeof params.team === "string" ? params.team : ""] ??
+    STORES_NOTICES[typeof params.stores === "string" ? params.stores : ""] ??
+    (found.ok && found.fellBack ? TEAM_NOTICES.gone : undefined);
   // The snapshot the public store page trusts is refreshed here, because this
   // is the page the creator opens and therefore the moment they would notice
   // it being wrong. A store that never started a subscription is not asked
@@ -322,7 +395,7 @@ export default async function StudioPage({
     (paid !== store.subscriptionActive ||
       (plan && (plan.tier !== store.tier || plan.cycle !== store.cycle || plan.trialEnds !== store.trialEnds)))
   ) {
-    await setSubscription(email, { active: paid, ...(plan ?? {}) });
+    await setSubscription(ref, { active: paid, ...(plan ?? {}) });
   }
   // Everything below reads this, not the record we loaded, so one page never
   // shows two different answers to the same question.
@@ -331,6 +404,10 @@ export default async function StudioPage({
   // The trial is once per store. A store starting again is told, on every
   // button, that it pays from today — the same rule the checkout opens with.
   const withTrial = store ? trialOffered(store) : true;
+  // One of an account's other stores that has never had a plan: it is not
+  // "starting again", it starts for the first time, without the trial that
+  // belongs to the account's first store (lib/billing.ts, trialOffered).
+  const extraFirstPlan = Boolean(store?.extra && !store.stripeCustomerId && !store.subscriptionId);
   // Read from Stripe on this page load. When Stripe could not be asked, the
   // cancel button still shows: the route asks again before it does anything.
   const cancelling = live?.state === "active" && live.cancelsAtEnd;
@@ -362,35 +439,40 @@ export default async function StudioPage({
   // Only asked for when there is a store that can actually have sold
   // something, so a creator who has not connected Stripe never waits on a
   // request that could only come back empty.
+  // What each part below reads is only read for a role that is shown it
+  // (lib/team-roles.ts), so nothing a role may not see reaches the page.
   const sold =
-    current && current.stripeAccountId ? await listSales(current) : null;
+    current && current.stripeAccountId && may("orders") ? await listSales(current) : null;
 
   // What this store has sent out this month, so the one cost that scales with
   // use is visible to the creator before it is visible on our bill.
-  const delivery = store ? await deliveredThisMonth(folder) : null;
+  const delivery = store && may("settings") ? await deliveredThisMonth(folder) : null;
   // The list is shown once there is something that fills it, or once it holds
   // anybody — a creator who stops giving things away still owns what came in.
-  const list = store ? await listSize(store) : null;
-  const givesAway = store ? store.products.some((product) => isFree(product)) : false;
+  const list = store && may("export") ? await listSize(store) : null;
+  const givesAway = store ? sellsAny(store, "free") : false;
   // Booked calls are read from the creator's Stripe account, the ledger, and
   // only asked for when the store sells calls at all.
-  const callProducts = store ? store.products.filter((product) => product.call) : [];
+  const callProducts = store ? await readKind(store, "call") : [];
   const paidList =
-    current && current.stripeAccountId && callProducts.length > 0
+    current && current.stripeAccountId && callProducts.length > 0 && may("orders")
       ? await paidCalls(current).catch(() => null)
       : null;
-  const calls = paidList && store ? upcoming(paidList, store.products) : null;
+  const calls = paidList && store ? upcoming(paidList, callProducts) : null;
+  // The room of each booked time: the one made for it, or the creator's own link.
+  const callRooms =
+    calls && store ? await slotRooms(store, calls.flatMap((slot) => slot.people), callProducts).catch(() => null) : null;
   // The creator's calendars: the private subscription address is made the
   // first time there is a call to put in it, and the busy times are read (from
   // the ten-minute copy, usually) to point out a dated session that clashes.
-  if (current && callProducts.length > 0) await ensureFeedToken(current).catch(() => {});
+  if (current && callProducts.length > 0 && may("settings")) await ensureFeedToken(current).catch(() => {});
   const [calendar, calendarBusyTimes, hooks] = current
     ? await Promise.all([
-        callProducts.length > 0 ? calendarView(current).catch(() => null) : Promise.resolve(null),
-        callProducts.some((p) => p.call?.kind === "live")
+        callProducts.length > 0 && may("settings") ? calendarView(current).catch(() => null) : Promise.resolve(null),
+        callProducts.some((p) => p.call?.kind === "live") && may("orders")
           ? calendarBusy(current).then((r) => r.busy, () => [])
           : Promise.resolve([]),
-        webhooksView(current).catch(() => null),
+        may("settings") ? webhooksView(current).catch(() => null) : Promise.resolve(null),
       ])
     : [null, [], null];
   if (current) after(() => keepHandle(current));
@@ -398,7 +480,7 @@ export default async function StudioPage({
   // and so does the creator, the next time the creator looks.
   if (current && paidList && paidList.length) after(() => catchUpBookings(current, paidList, SITE_URL));
   // Visits from Redis and sales from the creator's Stripe, read side by side.
-  const [visits, salesRead] = current
+  const [visits, salesRead] = current && may("stats")
     ? await Promise.all([
         readStats(current).catch(() => null),
         current.stripeAccountId
@@ -410,9 +492,36 @@ export default async function StudioPage({
       ])
     : [null, null];
   const numbers =
-    current && visits && salesRead ? studioStats(current, visits, salesRead.value, salesRead.state) : null;
+    current && visits && salesRead
+      ? studioStats(
+          current,
+          visits,
+          salesRead.value,
+          salesRead.state,
+          await readListings(current, productsInStats(current, visits, salesRead.value)),
+        )
+      : null;
+  // The list of products: all of a short one, a page of a long one, found by
+  // name when the creator searched (lib/catalog.ts reads only that page in full).
+  const shelf = store ? await studioShelf(store, params) : null;
   // Asked of Stripe each time, because the setup is the creator's and lives there.
-  const tax = current?.stripeAccountId ? await taxStatus(current) : null;
+  // Stripe's answers about the creator's own account, asked side by side: the
+  // tax setup, the ways to pay it offers, and the currencies it can charge in.
+  // All three are settings (lib/team-roles.ts): only read for a role that has them.
+  const [tax, ways, currencies] = current?.stripeAccountId && may("settings")
+    ? await Promise.all([
+        taxStatus(current),
+        readWaysToPay(current),
+        chargeableCurrencies(current).catch(() => null),
+      ])
+    : [null, { state: "none" as const }, null];
+  // The person's own passkeys, and — for the owner — how many are on the team.
+  // Adding a passkey needs a login from the last fifteen minutes (lib/auth.ts).
+  const [passkeys, team, freshLogin] = await Promise.all([
+    email ? listPasskeys(email).catch(() => []) : Promise.resolve([]),
+    store?.sid && may("team") ? readTeam(store.sid).catch(() => null) : Promise.resolve(null),
+    isFreshSession(cookieStore.get(SESSION_COOKIE)?.value).catch(() => false),
+  ]);
   const connectReady = isConnectConfigured();
   const billingReadyForSteps = isBillingConfigured();
   // The first steps of a store, each ticked from what the store really has.
@@ -421,7 +530,7 @@ export default async function StudioPage({
         { key: "address", title: "Your address", hint: `nimbuslabsai.com/@${store.handle} is yours.`, done: true, href: "#details" },
         { key: "details", title: "Say what your store is", hint: "One line under your name tells a visitor why they are here.", done: Boolean(store.bio), href: "#details" },
         { key: "look", title: "Add your photo and colour", hint: "A face and a colour make the page yours.", done: Boolean(store.photoId), href: "#look" },
-        { key: "product", title: "Put up the first thing to sell", hint: "A file, a course, a call, a membership, or something free for an email.", done: store.products.length > 0, href: "#products" },
+        { key: "product", title: "Put up the first thing to sell", hint: "A file, a course, a call, a membership, or something free for an email.", done: productCount(store) > 0, href: "#products" },
         ...(connectReady
           ? [{ key: "stripe", title: "Connect your Stripe account", hint: "Where your buyers' money goes: yours, not ours.", done: store.stripeChargesEnabled, href: "#stripe" }]
           : []),
@@ -448,33 +557,43 @@ export default async function StudioPage({
 
   return (
     <div className="min-h-screen bg-paper text-ink">
-      <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
-        <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-3">
-          <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Nimbus Labs, home">
-            <Logo />
-          </Link>
-          <div className="flex items-center gap-3">
+      {store && view ? (
+        <StudioHeader
+          current={store}
+          role={role}
+          stores={view.stores}
+          owned={view.owned}
+          action={{ href: `/@${store.handle}`, label: role === "owner" ? "View my store" : "View the store", short: "Store", icon: "arrow-up-right" }}
+        />
+      ) : (
+        <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
+          <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-3">
+            <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Nimbus Labs, home">
+              <Logo />
+            </Link>
             <span className="hidden max-w-[16rem] truncate text-sm text-ink-mute md:inline">{email}</span>
-            {store ? (
-              <Link href={`/@${store.handle}`} className="btn btn-secondary btn-sm">
-                <span className="hidden min-[400px]:inline">View my store</span>
-                <span className="min-[400px]:hidden">My store</span>
-                <Icon name="arrow-up-right" size={16} />
-              </Link>
-            ) : null}
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
+      <StudioStorePin sid={store?.sid ?? ""}>
       <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
         <p className="eyebrow">Studio</p>
-        <h1 className="t-h2 mt-3">
-          {store ? "Your store" : "You are logged in"}
+        <h1 className="t-h2 mt-3 break-words">
+          {!store ? "You are logged in" : role === "owner" ? (view && view.owned > 1 ? store.name : "Your store") : store.name}
         </h1>
-        <p className="mt-3 text-ink-soft">
-          As <strong className="text-ink [overflow-wrap:anywhere]">{email}</strong>. No password was
-          created, and none is stored.
-        </p>
+        {store && role !== "owner" ? (
+          <p className="mt-3 text-ink-soft">
+            {"As "}
+            <strong className="text-ink [overflow-wrap:anywhere]">{email}</strong>
+            {`, ${ROLE_NAMES[role]} on this store. ${ROLE_SUMMARIES[role]}`}
+          </p>
+        ) : (
+          <p className="mt-3 text-ink-soft">
+            As <strong className="text-ink [overflow-wrap:anywhere]">{email}</strong>. No password was
+            created, and none is stored.
+          </p>
+        )}
 
         {notice ? (
           <div className="notice notice-warn mt-6">
@@ -491,23 +610,53 @@ export default async function StudioPage({
               items={[
                 { href: "#details", label: "Store" },
                 ...(numbers ? [{ href: "#numbers", label: "Numbers" }] : []),
-                { href: "#look", label: "Look" },
-                { href: "#products", label: "Products" },
+                ...(may("page") ? [{ href: "#look", label: "Look" }] : []),
+                ...(may("products") ? [{ href: "#products", label: "Products" }] : []),
                 ...(calendar ? [{ href: "#calendar", label: "Calendar" }] : []),
                 ...(hooks ? [{ href: "#webhooks", label: "Webhooks" }] : []),
-                { href: "#stripe", label: "Payments" },
-                ...(billingReady ? [{ href: "#billing", label: "Plan" }] : []),
+                ...(sold ? [{ href: "#sales", label: "Sales" }] : []),
+                ...(may("payments") ? [{ href: "#stripe", label: "Payments" }] : []),
+                ...(billingReady && may("billing") ? [{ href: "#billing", label: "Plan" }] : []),
                 { href: "#account", label: "Account" },
               ]}
             />
-            <StudioStart steps={startSteps} />
+            {role === "owner" ? <StudioStart steps={startSteps} /> : null}
             <StudioTools
               tools={[
-                { href: "/studio/funnels", title: "Funnels", text: "Up to five one-click offers after paying.", icon: "ladder" },
-                { href: "/studio/affiliates", title: "Affiliates", text: "People who share your store, for a share you set.", icon: "handshake" },
-                { href: "/studio/community", title: "Community", text: "A members-only space for your buyers.", icon: "users" },
-                ...(PRO_ON_SALE
-                  ? [{ href: "/studio/email", title: "Email", text: "One-off emails and sequences to your list.", icon: "mail" as const, tag: "Pro" }]
+                ...(may("products")
+                  ? [
+                      { href: studioPath(store, "", "pages"), title: "Sales pages", text: "Build each product's page from blocks, or a landing page for something free.", icon: "layout" as const },
+                      { href: studioPath(store, "", "funnels"), title: "Funnels", text: "Up to five one-click offers after paying.", icon: "ladder" as const },
+                    ]
+                  : []),
+                ...(may("reviews")
+                  ? [{ href: studioPath(store, "", "reviews"), title: "Reviews", text: "Verified reviews from buyers, and your replies.", icon: "star" as const }]
+                  : []),
+                ...(may("settings")
+                  ? [{ href: studioPath(store, "", "affiliates"), title: "Affiliates", text: "People who share your store, for a share you set.", icon: "handshake" as const }]
+                  : []),
+                ...(may("community")
+                  ? [{ href: studioPath(store, "", "community"), title: "Community", text: "A members-only space for your buyers.", icon: "users" as const }]
+                  : []),
+                ...(may("settings")
+                  ? [{ href: studioPath(store, "", "integrations"), title: "Email platforms", text: "Mailchimp, Kit, beehiiv or MailerLite, kept fed.", icon: "plug" as const }]
+                  : []),
+                // Everyone on the store, for their own devices (lib/phone-alerts.ts).
+                { href: studioPath(store, "", "phone"), title: "Phone notifications", text: "A buzz for each sale, booking and report, on your own devices.", icon: "phone" as const },
+                ...(PRO_ON_SALE && may("draft")
+                  ? [{ href: studioPath(store, "", "email"), title: "Email", text: "One-off emails and sequences to your list.", icon: "mail" as const, tag: "Pro" }]
+                  : []),
+                ...(may("team")
+                  ? [
+                      {
+                        href: studioPath(store, "", "team"),
+                        title: "Team",
+                        text: team && team.members.length
+                          ? `${team.members.length} ${team.members.length === 1 ? "person helps" : "people help"} run this store.`
+                          : "Invite up to five people, each with a role.",
+                        icon: "user" as const,
+                      },
+                    ]
                   : []),
               ]}
             />
@@ -520,11 +669,13 @@ export default async function StudioPage({
               {store.bio ? (
                 <p className="mt-2 text-ink-soft">{store.bio}</p>
               ) : null}
-              <div className="mt-3">
-                <DetailsForm name={store.name} bio={store.bio} />
-              </div>
+              {may("page") ? (
+                <div className="mt-3">
+                  <DetailsForm name={store.name} bio={store.bio} />
+                </div>
+              ) : null}
 
-              <p className="mt-5 text-sm font-bold text-ink">Your address</p>
+              <p className="mt-5 text-sm font-bold text-ink">{role === "owner" ? "Your address" : "Its address"}</p>
               <p className="mt-1 break-all rounded-[8px] bg-paper px-3 py-2 font-mono text-[0.9375rem] text-violet-deep ring-1 ring-line">
                 nimbuslabsai.com/@{store.handle}
               </p>
@@ -533,42 +684,89 @@ export default async function StudioPage({
                   href={`/@${store.handle}`}
                   className="btn btn-primary"
                 >
-                  Open my store
+                  {role === "owner" ? "Open my store" : "Open the store"}
                 </Link>
-                <RenameForm current={store.handle} />
+                {may("settings") ? <RenameForm current={store.handle} /> : null}
               </div>
 
-              <OldAddresses handles={store.previousHandles} />
+              {may("settings") ? <OldAddresses handles={store.previousHandles} /> : null}
             </div>
 
             {numbers ? (
               <div id="numbers" className="scroll-mt-32">
-                <StatsPanel data={numbers} />
+                <StatsPanel data={numbers} canExport={may("export")} />
               </div>
             ) : null}
 
-            <div id="look" className="scroll-mt-32">
-              <LookEditor
-                look={store.look}
-                photoId={store.photoId}
-                name={store.name}
-                handle={store.handle}
-              />
-            </div>
+            {may("page") ? (
+              <div id="look" className="scroll-mt-32">
+                <LookEditor
+                  look={store.look}
+                  photoId={store.photoId}
+                  name={store.name}
+                  handle={store.handle}
+                  currency={store.currency}
+                />
+              </div>
+            ) : null}
 
-            <div id="products" className="scroll-mt-32">
-              <ProductEditor
-                products={store.products}
-                folder={folder}
-                imageFolder={pictures}
-                handle={store.handle}
-                selling={current ? canSell(current) : false}
-                testMode={isConnectInTestMode()}
-                email={email}
-              />
-            </div>
+            {may("products") ? (
+              <div id="products" className="scroll-mt-32">
+                <ProductEditor
+                  products={shelf?.products ?? []}
+                  total={productCount(store)}
+                  positions={shelf?.positions}
+                  paging={shelf?.paging ?? null}
+                  choices={shelf?.choices}
+                  named={shelf?.named}
+                  folder={folder}
+                  imageFolder={pictures}
+                  handle={store.handle}
+                  selling={current ? canSell(current) : false}
+                  testMode={isConnectInTestMode()}
+                  email={email}
+                  currency={store.currency}
+                />
+              </div>
+            ) : (
+              <section className="card mt-8 p-6 sm:p-8" aria-labelledby="catalogue-title">
+                <h2 id="catalogue-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">
+                  What the store sells
+                </h2>
+                <p className="mt-2 text-sm text-ink-soft">For answering buyers. Your role reads the products; it does not edit them.</p>
+                {productCount(store) === 0 ? (
+                  <p className="mt-4 rounded-[var(--r-md)] bg-sand p-5 text-sm text-ink-soft">Nothing listed yet.</p>
+                ) : (
+                  <>
+                    <ul className="mt-4 divide-y divide-line">
+                      {(shelf?.products ?? []).map((product) => (
+                        <li key={product.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5">
+                          <Link href={`/@${store.handle}/p/${product.id}`} className="min-w-0 break-words font-semibold text-ink underline-offset-4 hover:underline">
+                            {product.title}
+                          </Link>
+                          <span className="shrink-0 text-sm tabular-nums text-ink-soft">
+                            {isFree(product) ? "Free" : `${formatMoney(product.priceCents, store.currency)}${product.recurring ? " · membership" : product.call ? " · call" : product.course ? " · course" : ""}`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    {shelf?.paging && shelf.paging.pages > 1 ? (
+                      <nav aria-label="Pages of products" className="mt-4 flex flex-wrap items-center gap-3 text-sm text-ink-soft">
+                        <span>{`${(shelf.paging.from + 1).toLocaleString("en-US")}–${(shelf.paging.from + shelf.products.length).toLocaleString("en-US")} of ${shelf.paging.matches.toLocaleString("en-US")}`}</span>
+                        {shelf.paging.page > 1 ? (
+                          <Link href={studioPath(store, `pp=${shelf.paging.page - 1}`)} className="font-bold underline underline-offset-4 hover:text-violet-deep">Previous</Link>
+                        ) : null}
+                        {shelf.paging.page < shelf.paging.pages ? (
+                          <Link href={studioPath(store, `pp=${shelf.paging.page + 1}`)} className="font-bold underline underline-offset-4 hover:text-violet-deep">Next</Link>
+                        ) : null}
+                      </nav>
+                    ) : null}
+                  </>
+                )}
+              </section>
+            )}
 
-            {callProducts.length > 0 ? (
+            {callProducts.length > 0 && may("orders") ? (
               <section className="card mt-8 p-6 sm:p-8" aria-labelledby="calls-title">
                 <h2 id="calls-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">
                   Upcoming calls
@@ -591,7 +789,8 @@ export default async function StudioPage({
                       const product = slot.product;
                       const setup = product?.call ?? null;
                       const tz = setup?.tz ?? callProducts[0].call?.tz ?? "UTC";
-                      const room = setup ? roomFor(setup, slot.start) : null;
+                      const room =
+                        callRooms?.get(slot.key) ?? (setup && !setup.video ? roomFor(setup, slot.start) : null);
                       const seats = setup ? seatsAt(setup, slot.start) : 1;
                       const group = setup !== null && (setup.kind === "live" || seats > 1);
                       const emails = slot.people.map((c) => c.email).filter((e): e is string => Boolean(e));
@@ -624,7 +823,7 @@ export default async function StudioPage({
                             </span>
                             {room ? (
                               <a href={room} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4">
-                                Join
+                                {isVideoRoom(room) ? "Join the video room" : "Join"}
                               </a>
                             ) : null}
                           </div>
@@ -670,19 +869,23 @@ export default async function StudioPage({
 
             {calendar ? <CalendarEditor view={calendar} weekly={callProducts.some((p) => p.call?.kind === "weekly")} /> : null}
 
-            <LinkEditor links={store.links} />
+            {may("page") ? <LinkEditor links={store.links} /> : null}
 
-            <DiscountEditor selling={current ? canSell(current) : false} />
+            {may("settings") ? (
+              <>
+                <DiscountEditor selling={current ? canSell(current) : false} currency={store.currency} />
 
-            <PixelEditor pixels={store.pixels} />
+                <PixelEditor pixels={store.pixels} />
 
-            <TaxEditor tax={store.tax} status={tax ? tax.state : "unknown"} connected={Boolean(current?.stripeAccountId)} />
+                <TaxEditor tax={store.tax} status={tax ? tax.state : "unknown"} connected={Boolean(current?.stripeAccountId)} />
 
-            <RecoveryEditor
-              recovery={store.recovery}
-              suggestedAddress={store.mail?.address ?? ""}
-              connected={Boolean(current?.stripeAccountId)}
-            />
+                <RecoveryEditor
+                  recovery={store.recovery}
+                  suggestedAddress={store.mail?.address ?? ""}
+                  connected={Boolean(current?.stripeAccountId)}
+                />
+              </>
+            ) : null}
 
             {hooks ? <WebhookEditor view={hooks} /> : null}
 
@@ -707,6 +910,7 @@ export default async function StudioPage({
                     read the whole list. A form is only sent when pressed. */}
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <form action="/api/store/leads" method="get" className="max-w-full">
+                    <input type="hidden" name="store" value={store.sid} />
                     <input type="hidden" name="who" value="agreed" />
                     <button
                       type="submit"
@@ -716,6 +920,7 @@ export default async function StudioPage({
                     </button>
                   </form>
                   <form action="/api/store/leads" method="get" className="max-w-full">
+                    <input type="hidden" name="store" value={store.sid} />
                     <input type="hidden" name="who" value="everyone" />
                     <button
                       type="submit"
@@ -749,7 +954,7 @@ export default async function StudioPage({
               </div>
             ) : null}
 
-            {domainsOn ? (
+            {domainsOn && may("settings") ? (
               <div className="card mt-8 p-6 sm:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-lg font-semibold tracking-[-0.02em] text-ink">Your own domain</p>
@@ -778,7 +983,7 @@ export default async function StudioPage({
               </div>
             ) : null}
 
-            {PRO_ON_SALE ? (
+            {PRO_ON_SALE && may("draft") ? (
               <div className="card mt-8 p-6 sm:p-8">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-lg font-semibold tracking-[-0.02em] text-ink">Email your list</p>
@@ -789,7 +994,7 @@ export default async function StudioPage({
                     ? "Write to the people who agreed to hear from you: one-off emails, emails scheduled for later, and sequences that go out by themselves after someone joins or buys."
                     : `One-off emails, emails scheduled for later, and sequences that go out by themselves after someone joins or buys. Part of Pro, at ${priceWords("pro", "month")}.`}
                 </p>
-                <Link href="/studio/email" className="btn btn-primary mt-5">
+                <Link href={studioPath(store, "", "email")} className="btn btn-primary mt-5">
                   {paid && tier === "pro" ? "Open Email" : "See what it does"}
                 </Link>
               </div>
@@ -797,6 +1002,7 @@ export default async function StudioPage({
 
             </div>
             <div className="min-w-0">
+            {may("payments") ? (
             <div id="stripe" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
               <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                 Where the money goes
@@ -817,7 +1023,7 @@ export default async function StudioPage({
                 </p>
               ) : !store.stripeAccountId ? (
                 <>
-                  <form action="/api/stripe/connect" method="post" className="mt-5">
+                  <form action={`/api/stripe/connect${pin}`} method="post" className="mt-5">
                     <label
                       htmlFor="stripe-country"
                       className="field-label"
@@ -896,7 +1102,7 @@ export default async function StudioPage({
 
                   <div className="mt-5 flex flex-wrap items-center gap-3">
                     {!store.stripeChargesEnabled ? (
-                      <form action="/api/stripe/connect" method="post">
+                      <form action={`/api/stripe/connect${pin}`} method="post">
                         <button
                           type="submit"
                           className="btn btn-primary"
@@ -905,7 +1111,7 @@ export default async function StudioPage({
                         </button>
                       </form>
                     ) : null}
-                    <form action="/api/stripe/check" method="post">
+                    <form action={`/api/stripe/check${pin}`} method="post">
                       <button
                         type="submit"
                         className="btn btn-secondary"
@@ -913,7 +1119,7 @@ export default async function StudioPage({
                         Ask Stripe again
                       </button>
                     </form>
-                    <form action="/api/stripe/disconnect" method="post">
+                    <form action={`/api/stripe/disconnect${pin}`} method="post">
                       <button
                         type="submit"
                         className="btn btn-ghost"
@@ -932,6 +1138,16 @@ export default async function StudioPage({
                 </p>
               ) : null}
             </div>
+            ) : null}
+
+            {may("settings") ? (
+              <PaymentsPanel
+                ways={ways}
+                currency={store.currency}
+                allowed={currencies}
+                priced={pricedProducts(store)}
+              />
+            ) : null}
 
             {delivery ? (
               <div className="card mt-8 p-6 sm:p-8">
@@ -984,7 +1200,7 @@ export default async function StudioPage({
               </div>
             ) : null}
 
-            {billingReady ? (
+            {billingReady && may("billing") ? (
               <div id="billing" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
                 <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                   What you pay us
@@ -1003,7 +1219,7 @@ export default async function StudioPage({
                         ? `Cancelled inside the trial. Your card will not be charged, and your store keeps taking payments until ${endsOn ?? "the trial ends"}.`
                         : `Cancelled. Nothing more will be charged, and your store keeps taking payments until ${endsOn ?? "the end of the period you paid for"}.`}
                     </p>
-                    <form action="/api/billing/cancel" method="post" className="mt-4">
+                    <form action={`/api/billing/cancel${pin}`} method="post" className="mt-4">
                       <input type="hidden" name="intent" value="resume" />
                       <button
                         type="submit"
@@ -1035,7 +1251,7 @@ export default async function StudioPage({
                             ? `Nothing is charged now. When the trial ends you pay ${priceWords(tier, "month")} instead of ${priceWords(tier, "year")}.`
                             : `From today you pay ${priceWords(tier, "month")}. What is left of the year you paid for is kept as credit on your account and pays the months until it runs out, so nothing is charged until then. Monthly costs $${yearSaving(tier) / 100} more over a year.`}
                         </p>
-                        <form action="/api/billing/switch" method="post" className="mt-3">
+                        <form action={`/api/billing/switch${pin}`} method="post" className="mt-3">
                           <input type="hidden" name="cycle" value="month" />
                           <button type="submit" className="btn btn-secondary btn-sm">
                             Switch to monthly
@@ -1052,7 +1268,7 @@ export default async function StudioPage({
                             ? `Nothing is charged now. When the trial ends you pay $${PLAN_PRICES[tier].year / 100} for the year, instead of ${priceWords(tier, "month")} — $${yearSaving(tier) / 100} less over the year.`
                             : `You are charged $${PLAN_PRICES[tier].year / 100} today, less what is left of the month you already paid for, and the year starts today. That is $${yearSaving(tier) / 100} less than twelve monthly payments. If your bank asks you to confirm, you are sent to confirm it, and nothing changes until it is paid.`}
                         </p>
-                        <form action="/api/billing/switch" method="post" className="mt-3">
+                        <form action={`/api/billing/switch${pin}`} method="post" className="mt-3">
                           <input type="hidden" name="cycle" value="year" />
                           <button type="submit" className="btn btn-primary btn-sm">
                             Switch to yearly
@@ -1071,7 +1287,7 @@ export default async function StudioPage({
                             ? "Nothing is charged now. When the trial ends you pay the Pro price instead."
                             : "You are charged the Pro price today, less what is left of what you already paid for. If your bank asks you to confirm, you are sent to confirm it, and nothing changes until it is paid."}
                         </p>
-                        <form action="/api/billing/switch" method="post" className="mt-3">
+                        <form action={`/api/billing/switch${pin}`} method="post" className="mt-3">
                           <input type="hidden" name="tier" value="pro" />
                           <input type="hidden" name="cycle" value={billedYearly ? "year" : "month"} />
                           <button type="submit" className="btn btn-primary btn-sm">
@@ -1090,7 +1306,7 @@ export default async function StudioPage({
                             ? "Nothing is charged now, and email to your list switches off."
                             : "Email to your list switches off from today. What is left of what you paid for Pro is kept as credit on your account and pays your next charges until it runs out."}
                         </p>
-                        <form action="/api/billing/switch" method="post" className="mt-3">
+                        <form action={`/api/billing/switch${pin}`} method="post" className="mt-3">
                           <input type="hidden" name="tier" value="creator" />
                           <input type="hidden" name="cycle" value={billedYearly ? "year" : "month"} />
                           <button type="submit" className="btn btn-secondary btn-sm">
@@ -1108,7 +1324,7 @@ export default async function StudioPage({
                           ? `Your store keeps taking payments until ${endsOn ?? "the trial ends"}, and your card is never charged.`
                           : `Your store keeps taking payments until ${endsOn ?? "the end of the period you already paid for"}, and nothing more is charged.`}
                       </p>
-                      <form action="/api/billing/cancel" method="post" className="mt-3">
+                      <form action={`/api/billing/cancel${pin}`} method="post" className="mt-3">
                         <input type="hidden" name="intent" value="cancel" />
                         <button
                           type="submit"
@@ -1132,7 +1348,7 @@ export default async function StudioPage({
                       is the till: taking a card for what you sell, and handing
                       out what you give away for an email address.
                     </p>
-                    <form action="/api/billing/checkout" method="post" className="mt-5 flex flex-col items-start gap-3">
+                    <form action={`/api/billing/checkout${pin}`} method="post" className="mt-5 flex flex-col items-start gap-3">
                       <button
                         type="submit"
                         name="cycle"
@@ -1145,7 +1361,9 @@ export default async function StudioPage({
                             that searches the page for the sentence. */}
                         {withTrial
                           ? `Start the ${TRIAL_DAYS}-day trial \u2014 ${priceWords("creator", "month")} after that`
-                          : `Start again \u2014 ${priceWords("creator", "month")}, from today`}
+                          : extraFirstPlan
+                            ? `Start this store's plan \u2014 ${priceWords("creator", "month")}, from today`
+                            : `Start again \u2014 ${priceWords("creator", "month")}, from today`}
                       </button>
                       <button
                         type="submit"
@@ -1165,6 +1383,10 @@ export default async function StudioPage({
                         something real and decide with an answer instead of a
                         guess. We email you a week before that first charge.
                       </p>
+                    ) : extraFirstPlan ? (
+                      <p className="mt-3 text-sm text-ink-soft">
+                        {`Each store is a subscription of its own. The ${TRIAL_DAYS}-day free trial is for an account's first store, so this one's first payment is taken at checkout, today. Cancelling is one click on this page, touches no other store, and nothing more is charged after the period you paid for.`}
+                      </p>
                     ) : (
                       <p className="mt-3 text-sm text-ink-soft">
                         This store has had its free trial, so this time the first
@@ -1179,7 +1401,7 @@ export default async function StudioPage({
                         <p className="mt-1 text-sm text-ink-soft">
                           {`Everything above, plus email to your list: one-off emails, emails scheduled for later and automatic sequences, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month.${withTrial ? ` The same ${TRIAL_DAYS}-day trial.` : ""}`}
                         </p>
-                        <form action="/api/billing/checkout" method="post" className="mt-4 flex flex-col items-start gap-3">
+                        <form action={`/api/billing/checkout${pin}`} method="post" className="mt-4 flex flex-col items-start gap-3">
                           <input type="hidden" name="tier" value="pro" />
                           <button type="submit" name="cycle" value="month" className="btn btn-secondary btn-wrap">
                             {withTrial
@@ -1198,9 +1420,9 @@ export default async function StudioPage({
             ) : null}
 
             {sold ? (
-              <div className="card mt-8 p-6 sm:p-8">
+              <div id="sales" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
                 <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
-                  What you have sold
+                  {role === "owner" ? "What you have sold" : "What the store has sold"}
                 </p>
                 <p className="mt-2 text-ink-soft">
                   Read from your own Stripe account each time you open this
@@ -1236,7 +1458,7 @@ export default async function StudioPage({
                           <div className="flex flex-wrap items-baseline justify-between gap-2">
                             <p className="font-bold text-ink">{sale.title}</p>
                             <p className="font-display font-semibold text-ink">
-                              ${centsToPrice(sale.amount)}
+                              {formatMoney(sale.amount, sale.currency)}
                             </p>
                           </div>
                           <p className="mt-1 text-sm text-ink-soft">
@@ -1283,6 +1505,12 @@ export default async function StudioPage({
                                 : "Their download link has expired — send them the file yourself if they ask."}{" "}
                             Stripe reference {sale.reference}
                           </p>
+                          {/* A booked call has its own confirmation, and a one-click extra is part of its checkout's. */}
+                          {!sale.isCall && sale.email && sale.reference.startsWith("cs_") ? (
+                            <p className="mt-2">
+                              <ResendPurchase reference={sale.reference} email={sale.email} />
+                            </p>
+                          ) : null}
                         </li>
                       ))}
                     </ul>
@@ -1300,10 +1528,18 @@ export default async function StudioPage({
               <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
                 The email that logs you in
               </p>
+              {view && view.owned === 0 ? (
+                <p className="mt-2 text-ink-soft">
+                  {"You log in as "}
+                  <strong className="text-ink [overflow-wrap:anywhere]">{email}</strong>
+                  {". It is your own address, not this store's: the store's owner never sees a password of yours, because there is none."}
+                </p>
+              ) : (
+              <>
               <p className="mt-2 text-ink-soft">
-                Your store lives behind this address, so losing the inbox would
-                mean losing the store. Move it to another one while you still
-                can — when you change jobs, or leave a provider behind.
+                {view && view.owned > 1
+                  ? "Your stores live behind this address, so losing the inbox would mean losing them. Move it to another one while you still can — when you change jobs, or leave a provider behind. All your stores move with it."
+                  : "Your store lives behind this address, so losing the inbox would mean losing the store. Move it to another one while you still can — when you change jobs, or leave a provider behind."}
               </p>
               <form
                 action="/api/store/address"
@@ -1334,6 +1570,50 @@ export default async function StudioPage({
                 that a move you did not ask for reaches you while the account is
                 still yours.
               </p>
+              </>
+              )}
+
+              <PasskeyManager
+                initial={passkeys.map(({ id, name, createdAt, lastUsedAt, synced }) => ({ id, name, createdAt, lastUsedAt, synced }))}
+                fresh={freshLogin}
+              />
+
+              {role !== "owner" ? (
+                <section aria-labelledby="leave-title" className="mt-8 border-t border-line pt-6">
+                  <h3 id="leave-title" className="font-semibold text-ink">Leaving this store</h3>
+                  <p className="mt-2 text-sm text-ink-soft">
+                    {`You help run ${store.name} as ${ROLE_NAMES[role]}. Leaving takes it out of your studio; its owner can invite you again.`}
+                  </p>
+                  <div className="mt-3">
+                    <LeaveTeam store={store.name} />
+                  </div>
+                </section>
+              ) : null}
+
+              {store.extra && may("delete") ? (
+                <details className="mt-8 border-t border-line pt-6">
+                  <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
+                    Delete this store
+                  </summary>
+                  <p className="mt-3 text-sm text-ink-soft">
+                    {productCount(store) > 0 || paid || store.domain
+                      ? "A store can be deleted while it has no products, no plan running and no domain of its own, so nothing a buyer paid for is lost with it. Remove those first."
+                      : `Its address, nimbuslabsai.com/@${store.handle}, answers nothing for a month and then anyone may take it. Your other stores are not touched. This cannot be undone.`}
+                  </p>
+                  {productCount(store) === 0 && !paid && !store.domain ? (
+                    <form action={`/api/store/stores${pin}`} method="post" className="mt-4 flex flex-wrap items-end gap-3">
+                      <input type="hidden" name="action" value="delete" />
+                      <label className="flex-1 basis-56 text-sm font-bold text-ink">
+                        {`Type ${store.handle} to confirm`}
+                        <input name="confirm" required autoComplete="off" spellCheck={false} className="field mt-1" />
+                      </label>
+                      <button type="submit" className="btn btn-danger">
+                        Delete it
+                      </button>
+                    </form>
+                  ) : null}
+                </details>
+              ) : null}
             </div>
             </div>
             </div>
@@ -1352,6 +1632,7 @@ export default async function StudioPage({
           </div>
         )}
 
+        {NEXT.length > 0 && role === "owner" ? (
         <div className="card mt-8 p-6 sm:p-8">
           <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
             What is not here yet
@@ -1380,6 +1661,7 @@ export default async function StudioPage({
             </p>
           )}
         </div>
+        ) : null}
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link
@@ -1412,6 +1694,7 @@ export default async function StudioPage({
           </form>
         </div>
       </main>
+      </StudioStorePin>
     </div>
   );
 }

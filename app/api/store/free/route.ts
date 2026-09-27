@@ -4,6 +4,7 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { requestCopy } from "@/lib/free";
 import { countHit } from "@/lib/visit";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
+import { readListing } from "@/lib/catalog";
 
 const MAX_BODY_BYTES = 2_000;
 
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   const store = await storeForHandle(handle);
   if (!store) return new Response("No such store.", { status: 404 });
-  const product = store.products.find((item) => item.id === productId);
+  const product = await readListing(store, productId);
   if (!product) return away(`/@${store.handle}`);
 
   const page = `/@${store.handle}/free?product=${encodeURIComponent(product.id)}`;

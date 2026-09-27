@@ -1,6 +1,7 @@
 import { storeForHandle } from "@/lib/store";
 import { paidCalls } from "@/lib/calls";
-import { bookedCalendar, cachedBookedCalendar, storeIdForToken } from "@/lib/calendar-sync";
+import { bookedCalendar, cachedBookedCalendar, slotRooms, storeIdForToken } from "@/lib/calendar-sync";
+import { readKind } from "@/lib/catalog";
 
 /**
  * A store's bookings as a calendar to subscribe to, at its private address
@@ -23,7 +24,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
   if (!store || store.statsId !== owner.statsId) return missing();
 
   try {
-    const ics = await cachedBookedCalendar(owner.statsId, async () => bookedCalendar(store, store.stripeAccountId ? await paidCalls(store) : []));
+    const ics = await cachedBookedCalendar(owner.statsId, async () => {
+      const calls = store.stripeAccountId ? await paidCalls(store) : [];
+      const listings = await readKind(store, "call");
+      return bookedCalendar(store, calls, Date.now(), listings, await slotRooms(store, calls, listings));
+    });
     return new Response(ics, {
       headers: {
         "Content-Type": "text/calendar; charset=utf-8",

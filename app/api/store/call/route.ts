@@ -14,7 +14,7 @@ import { guardStoreWrite, text } from "@/lib/store-request";
  */
 export async function POST(request: NextRequest) {
   // Fifty dated sessions, each with its own meeting link, fit well inside this.
-  const guarded = await guardStoreWrite(request, 40_000);
+  const guarded = await guardStoreWrite(request, "products", 40_000);
   if (!guarded.ok) return guarded.response;
 
   const id = text(guarded.body.id, 40);
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   try {
     if (setup) {
-      const store = await storeForEmail(guarded.email);
+      const store = await storeForEmail(guarded.ref);
       if (store) {
         const checked = await checkCallChange(store, id, setup);
         if (typeof checked === "string") {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         setup = checked;
       }
     }
-    const result = await setProductCall(guarded.email, id, setup);
+    const result = await setProductCall(guarded.ref, id, setup);
     if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
     return Response.json({ ok: true, store: result.store });
   } catch (error) {

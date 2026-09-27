@@ -349,14 +349,18 @@ export function HeroFlow() {
 const INCLUDED = [
   "Your own store address, live the moment you take it",
   "Buyers pay into your own Stripe account",
-  "Files, courses, memberships, paid calls and live sessions",
+  "Up to 2,000 products: files, courses, memberships, paid calls and live sessions",
+  "Sales pages and landing pages built from blocks, and reviews only buyers can write",
   "A community for your buyers, with spaces, posts, comments and moderation",
   "Up to three prices on any product, pay what you want, discount codes and payment plans",
+  "15 currencies, and Apple Pay, Google Pay, Klarna and the other ways to pay you switch on in Stripe",
   "Offers before and after paying: a box at checkout, and up to five one-click offers after",
   "An affiliate programme with a page for each affiliate; you pay them yourself",
   "Ad pixels, and your own numbers counted without cookies, as CSV files too",
   "Licence keys, stamped PDFs, course quizzes and certificates",
-  "Calendar sync for your calls, and webhooks for Zapier or Make",
+  "A private video room for each booking if you want one, and calendar sync for your calls",
+  "Mailchimp, Kit, beehiiv or MailerLite built in, and webhooks for Zapier or Make",
+  "A team of up to five per store with roles, and notifications of sales on your phone",
   "Sign-in without passwords, and a full refund that closes access by itself",
   "Free products that build an email list you can download",
 ];
@@ -368,6 +372,7 @@ const PRO_INCLUDED = [
   `Up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month (${TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")} during the free trial), from your name, with replies coming to you`,
   "Import the list you already have; one-click unsubscribe in every email",
   "Community announcements emailed to the members who asked for them, from the same monthly emails",
+  "One email that asks each buyer for a review, 3 to 30 days after buying",
 ];
 
 function PlanCard({

@@ -4,14 +4,14 @@ import { guardStoreWrite, text } from "@/lib/store-request";
 
 /** Changes the name and the description shown on the creator's public page. */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "page");
   if (!guarded.ok) return guarded.response;
 
   const name = text(guarded.body.name, MAX_NAME_LENGTH);
   const bio = text(guarded.body.bio, MAX_BIO_LENGTH);
 
   try {
-    const result = await updateDetails(guarded.email, name, bio);
+    const result = await updateDetails(guarded.ref, name, bio);
     if (!result.ok) {
       return Response.json({ ok: false, error: result.reason }, { status: 400 });
     }

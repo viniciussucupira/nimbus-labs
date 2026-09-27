@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Product } from "@/lib/store";
+import { useStudioHref } from "@/components/studio-store-pin";
 
 const MESSAGES: Record<string, string> = {
   free: "A course is sold. Give it a price first.",
@@ -16,6 +17,7 @@ const MESSAGES: Record<string, string> = {
 
 /** Turning a product into a course, and the way to its lessons once it is one. */
 export function CourseToggle({ product }: { product: Product }) {
+  const studioHref = useStudioHref();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export function CourseToggle({ product }: { product: Product }) {
         <p className="mt-1 text-sm text-ink-soft">
           {n === 0 ? "Add the first lesson and it goes on sale." : "Buyers open it with their email address, on any device, with no password."}
         </p>
-        <Link href={`/studio/course/${product.id}`} className="btn btn-primary btn-sm mt-3">
+        <Link href={studioHref(`/studio/course/${product.id}`)} className="btn btn-primary btn-sm mt-3">
           {n === 0 ? "Add lessons" : "Edit the course"}
         </Link>
       </div>
@@ -53,7 +55,7 @@ export function CourseToggle({ product }: { product: Product }) {
             });
             const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
             if (data.ok) {
-              router.push(`/studio/course/${product.id}`);
+              router.push(studioHref(`/studio/course/${product.id}`));
               return;
             }
             setError(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);

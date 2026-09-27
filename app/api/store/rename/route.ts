@@ -1,47 +1,21 @@
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { renameHandle } from "@/lib/store";
-import { isRedisConfigured } from "@/lib/redis";
-import { fromAnotherSite, limited } from "@/lib/request-guard";
+import { guardStoreWrite } from "@/lib/store-request";
 
 const MAX_BODY_BYTES = 2_000;
 
 /** Moves the signed-in creator's store to a new address. */
 export async function POST(request: NextRequest) {
-  // Refused before anything else is read: another site, by Origin or by
-  // Sec-Fetch-Site (lib/request-guard.ts).
-  if (fromAnotherSite(request)) return Response.json({ ok: false, error: "forbidden" }, { status: 403 });
-
-  if (Number(request.headers.get("content-length") ?? "0") > MAX_BODY_BYTES) {
-    return Response.json({ ok: false, error: "invalid" }, { status: 413 });
-  }
-
-  const email = await emailForSession(
-    request.cookies.get(SESSION_COOKIE)?.value,
-  );
-  if (!email) {
-    return Response.json({ ok: false, error: "signed_out" }, { status: 401 });
-  }
-
-  let body: Record<string, unknown>;
-  try {
-    const parsed: unknown = await (await limited(request, MAX_BODY_BYTES)).json();
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return Response.json({ ok: false, error: "invalid" }, { status: 400 });
-    }
-    body = parsed as Record<string, unknown>;
-  } catch {
-    return Response.json({ ok: false, error: "invalid" }, { status: 400 });
-  }
-
-  if (!isRedisConfigured()) {
-    return Response.json({ ok: false, error: "unavailable" }, { status: 503 });
-  }
+  // Another site, the size of the body, the session, the store the studio
+  // page was drawn for, and the role's "settings" (lib/store-request.ts).
+  const guarded = await guardStoreWrite(request, "settings", MAX_BODY_BYTES);
+  if (!guarded.ok) return guarded.response;
+  const { ref, body } = guarded;
 
   const handle = typeof body.handle === "string" ? body.handle : "";
 
   try {
-    const result = await renameHandle(email, handle);
+    const result = await renameHandle(ref, handle);
     if (!result.ok) {
       return Response.json(
         { ok: false, error: result.reason, limit: result.limit },

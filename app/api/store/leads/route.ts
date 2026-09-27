@@ -10,11 +10,12 @@ import { listAsCsv } from "@/lib/free";
  * list that keeps them here, and that is the kind of lock this company does
  * not build.
  *
- * Only the signed-in owner reaches it: the list id is read from their own
- * store record, and nothing in the request names which list to read.
+ * Only the owner, and an Admin, reach it (lib/team-roles.ts, "export"): the
+ * list id is read from the store's own record, and nothing in the request
+ * names which list to read.
  */
 export async function GET(request: NextRequest) {
-  const creator = await creatorFrom(request);
+  const creator = await creatorFrom(request, "export");
   if (creator instanceof Response) return creator;
   const { store } = creator;
 

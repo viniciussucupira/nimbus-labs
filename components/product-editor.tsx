@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CallEditor } from "@/components/call-editor";
 import { CourseToggle } from "@/components/course-toggle";
-import { CheckoutExtras } from "@/components/checkout-extras";
+import { CheckoutExtras, bumpChoices } from "@/components/checkout-extras";
+import type { BumpChoice, ProductPaging } from "@/lib/catalog";
 import { CheckoutFieldsEditor } from "@/components/checkout-fields-editor";
 import { ProductImageEditor } from "@/components/product-image-editor";
 import { LicenceKeyEditor } from "@/components/licence-key-editor";
@@ -15,10 +16,11 @@ import {
   MAX_PRODUCTS,
   MAX_SUMMARY_LENGTH,
   MAX_TITLE_LENGTH,
-  centsToPrice,
   isFree,
   type Product,
 } from "@/lib/store";
+import { type Currency, fieldPrefix, formatMoney, moneyField, priceExample, priceBounds, rangeWords, readMoney } from "@/lib/money";
+import { StoreCurrency, useStoreCurrency } from "@/components/store-currency";
 import {
   ACCEPT_ATTRIBUTE,
   MAX_FILE_BYTES,
@@ -48,10 +50,19 @@ import {
 } from "@/lib/product-recurring";
 import { MAX_ABOUT_LENGTH } from "@/lib/product-about";
 import { imageUrl } from "@/lib/product-image";
+import { StoreField, useStudioHref, useStudioStore } from "@/components/studio-store-pin";
+
+/** The sentences about amounts, in the store's own currency (lib/money.ts). */
+const optionPrice = (currency: Currency) => `Type an amount ${rangeWords(currency)}, like ${priceExample(currency, 39)}.`;
+const productPrice = (currency: Currency) =>
+  `Type 0 to give it away, or an amount ${rangeWords(currency)}, like ${priceExample(currency)}.`;
+const pwywFree = (currency: Currency) =>
+  `Something free has no price to choose. Give it a lowest price of at least ${formatMoney(priceBounds(currency).min, currency)}.`;
+const pwywSuggested = (currency: Currency) =>
+  `Type a suggested price between the lowest price and ${formatMoney(priceBounds(currency).max, currency)}, like ${priceExample(currency, 15)}.`;
 
 /** What to say when a price option is refused, over and above the shared set. */
 const OPTION_MESSAGES: Record<string, string> = {
-  price: "Type an amount between 1 and 5000, like 39 or 39.50.",
   free: "This one is free, so it has no prices to add. Give it a price first.",
   unknown: "That price is no longer on this product.",
   none: "This account has no store yet.",
@@ -61,13 +72,11 @@ const OPTION_MESSAGES: Record<string, string> = {
 
 /** Why a price the buyer chooses was refused, in words the creator can act on. */
 const PWYW_MESSAGES: Record<string, string> = {
-  free: "Something free has no price to choose. Give it a lowest price of at least $1.",
   recurring: "A membership charges the same amount each time, so its buyers cannot choose it. Stripe lets a buyer choose the amount of a one-off payment only.",
   options: "This product has several prices already. Take them off first: the buyer would be choosing twice.",
   call: "A paid call is booked for a time at a set price, so it cannot be pay what you want.",
   plan: "This product offers a payment plan. Stop offering it first: a plan needs a set total to divide.",
   bump: "This product offers another one at checkout. Stop offering it first: Stripe lets a chosen amount be the only thing in its checkout.",
-  suggested: "Type a suggested price between the lowest price and 5000, like 15 or 15.50.",
 };
 
 const MESSAGES: Record<string, string> = {
@@ -75,7 +84,6 @@ const MESSAGES: Record<string, string> = {
   trial: `Type a free trial of ${MIN_TRIAL_DAYS} to ${MAX_TRIAL_DAYS} days, or leave it empty for none.`,
   payments: `Type ${MIN_MEMBER_PAYMENTS} to ${MAX_MEMBER_PAYMENTS} payments, or leave it empty for a membership that runs until it is cancelled.`,
   store_full: "Your store has reached the most it can hold. Remove something, or shorten a long list of choices, to make room.",
-  price: "Type 0 to give it away, or an amount between 1 and 5000, like 27 or 27.50.",
   free: "Something free is given once, for an email address, so it cannot be a membership or have several prices. Take those off first.",
   unknown: "That is no longer on your store.",
   call: "This is a paid call, so it has one price, charged once, and delivers a time rather than a file. Stop selling it as a call first to change that.",
@@ -137,7 +145,7 @@ function typedFree(price: string): boolean {
   return /^0+(\.0{1,2})?$/.test(price.trim());
 }
 
-async function send(payload: Record<string, unknown>): Promise<string | null> {
+async function send(payload: Record<string, unknown>, currency: Currency): Promise<string | null> {
   try {
     const response = await fetch("/api/store/product", {
       method: "POST",
@@ -159,11 +167,14 @@ async function send(payload: Record<string, unknown>): Promise<string | null> {
       );
     }
     if (data.error === "too_many") {
-      return `A store lists up to ${data.limit ?? MAX_PRODUCTS} things, and yours is full. Remove one to add another.`;
+      return `A store lists up to ${(data.limit ?? MAX_PRODUCTS).toLocaleString("en-US")} things, and yours is full. Remove one to add another.`;
     }
     if (data.error === "pwyw") {
-      return PWYW_MESSAGES[(data as { pwyw?: string }).pwyw ?? ""] ?? PWYW_MESSAGES.suggested;
+      const why = (data as { pwyw?: string }).pwyw ?? "";
+      if (why === "free") return pwywFree(currency);
+      return why === "suggested" || !PWYW_MESSAGES[why] ? pwywSuggested(currency) : PWYW_MESSAGES[why];
     }
+    if (data.error === "price") return productPrice(currency);
     return MESSAGES[data.error ?? ""] ?? MESSAGES.server_error;
   } catch {
     return MESSAGES.server_error;
@@ -195,6 +206,8 @@ function ProductForm({
   loadingAbout?: boolean;
 }) {
   const id = product?.id ?? "new";
+  const currency = useStoreCurrency();
+  const prefix = fieldPrefix(currency);
   const free = typedFree(draft.price);
   // Said before the box is ticked rather than after saving: what else on the
   // product would stop a buyer from choosing the price.
@@ -295,12 +308,12 @@ function ProductForm({
           {draft.pwyw && !draft.every && !free ? "Lowest price" : "Price"}
         </label>
         <div className="card mt-2 flex items-center pl-4 transition focus-within:border-violet-brand">
-          <span className="whitespace-nowrap text-ink-soft">USD $</span>
+          <span className="whitespace-nowrap text-ink-soft">{prefix}</span>
           <input
             id={`product-price-${id}`}
             name="price"
             type="text"
-            inputMode="decimal"
+            inputMode={currency === "jpy" ? "numeric" : "decimal"}
             required
             value={draft.price}
             onChange={(event) =>
@@ -313,14 +326,14 @@ function ProductForm({
                 pwyw: typedFree(event.target.value) ? false : draft.pwyw,
               })
             }
-            placeholder="27"
+            placeholder={currency === "jpy" ? "2700" : "27"}
             className="w-full rounded-r-2xl bg-transparent px-2 py-3 text-ink outline-none placeholder:text-ink-soft/50"
           />
         </div>
         <p className="mt-1 text-sm text-ink-soft">
           {typedFree(draft.price)
             ? "Free. A visitor types their email and we send them a link to it; their address joins your list once they use that link, marked with whether they agreed to hear from you."
-            : "Every store here charges in US dollars. No other currency is handled yet. Type 0 to give it away for an email address instead."}
+            : `Your store charges in ${currency.toUpperCase()}: buyers pay exactly this, in ${currency.toUpperCase()}. The currency is chosen under Payments. Type 0 to give it away for an email address instead.`}
         </p>
       </div>
 
@@ -356,19 +369,19 @@ function ProductForm({
                 Suggested price
               </label>
               <div className="card mt-2 flex max-w-[14rem] items-center pl-4 transition focus-within:border-violet-brand">
-                <span className="whitespace-nowrap text-ink-soft">USD $</span>
+                <span className="whitespace-nowrap text-ink-soft">{prefix}</span>
                 <input
                   id={`product-suggested-${id}`}
                   type="text"
-                  inputMode="decimal"
+                  inputMode={currency === "jpy" ? "numeric" : "decimal"}
                   value={draft.suggested}
                   onChange={(event) => setDraft({ ...draft, suggested: event.target.value })}
-                  placeholder="15"
+                  placeholder={currency === "jpy" ? "1500" : "15"}
                   className="w-full rounded-r-2xl bg-transparent px-2 py-3 text-ink outline-none placeholder:text-ink-soft/50"
                 />
               </div>
               <p className="mt-2 text-sm text-ink-soft">
-                What the amount box starts at. Buyers can pay up to $5,000. Discount codes are not offered on it, and it
+                {`What the amount box starts at. Buyers can pay up to ${formatMoney(priceBounds(currency).max, currency)}.`} Discount codes are not offered on it, and it
                 cannot have several prices, a payment plan or a product offered at checkout: Stripe lets a buyer choose
                 the amount of one item, paid once. A limited quantity, an offer after paying, sales tax and questions at
                 checkout all work with it.
@@ -464,7 +477,10 @@ function ProductForm({
                     trialDays: Number(draft.trial.trim()) || 0,
                     payments: Number(draft.payments.trim()) || 0,
                   },
-                  `$${draft.price.trim() || "0"}`,
+                  (() => {
+                    const typed = readMoney(draft.price, currency);
+                    return typed === null ? `${prefix} ${draft.price.trim() || "0"}` : formatMoney(typed, currency);
+                  })(),
                 )}.`}
               </p>
             ) : null}
@@ -531,6 +547,7 @@ function OptionsBlock({
   onUnlink: (id: string) => void;
 }) {
   const router = useRouter();
+  const currency = useStoreCurrency();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -559,7 +576,9 @@ function OptionsBlock({
             ? `A product carries up to ${data.limit ?? MAX_OPTIONS} prices.`
             : data.error === "label"
               ? "Give this price a name the buyer will read, like “5 weeks”."
-              : (OPTION_MESSAGES[data.error ?? ""] ?? MESSAGES.server_error),
+              : data.error === "price"
+                ? optionPrice(currency)
+                : (OPTION_MESSAGES[data.error ?? ""] ?? MESSAGES.server_error),
         );
         return;
       }
@@ -606,16 +625,16 @@ function OptionsBlock({
             htmlFor={`option-price-${product.id}`}
             className="field-label"
           >
-            Price
+            {`Price, ${fieldPrefix(currency)}`}
           </label>
           <input
             id={`option-price-${product.id}`}
             type="text"
-            inputMode="decimal"
+            inputMode={currency === "jpy" ? "numeric" : "decimal"}
             required
             value={price}
             onChange={(event) => setPrice(event.target.value)}
-            placeholder="39"
+            placeholder={currency === "jpy" ? "3900" : "39"}
             className="field mt-1"
           />
         </div>
@@ -699,7 +718,7 @@ function OptionsBlock({
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-bold text-ink">{option.label}</p>
                   <p className="font-semibold tabular-nums text-ink">
-                    {`$${centsToPrice(option.priceCents)}`}
+                    {formatMoney(option.priceCents, currency)}
                   </p>
                 </div>
 
@@ -720,7 +739,7 @@ function OptionsBlock({
                     type="button"
                     onClick={() => {
                       setLabel(option.label);
-                      setPrice(centsToPrice(option.priceCents));
+                      setPrice(moneyField(option.priceCents, currency));
                       setError(null);
                       setAdding(false);
                       setEditingId(option.id);
@@ -902,6 +921,7 @@ function FileBlock({
   /** Sold as a membership: a file closes when it ends, a link cannot. */
   membership?: boolean;
 }) {
+  const studioHref = useStudioHref();
   const input = useRef<HTMLInputElement>(null);
   const [typing, setTyping] = useState(false);
   const [url, setUrl] = useState("");
@@ -949,7 +969,7 @@ function FileBlock({
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
             <a
-              href={`/api/store/file/download?id=${encodeURIComponent(target.id)}`}
+              href={studioHref(`/api/store/file/download?id=${encodeURIComponent(target.id)}`)}
               className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
             >
               Open it to check
@@ -1135,16 +1155,116 @@ function badges(product: Product): string[] {
 }
 
 /** The list of what the store offers, and every way to change it. */
+/** The studio's list at one page, found by one search, on the store this page is for. */
+function pageHref(page: number, query: string, sid: string): string {
+  const params = new URLSearchParams();
+  if (sid) params.set("store", sid);
+  if (query) params.set("q", query);
+  if (page > 1) params.set("pp", String(page));
+  const search = params.toString();
+  return `/studio${search ? `?${search}` : ""}#products`;
+}
+
+/**
+ * Finding one product in a long list, and moving through it a page at a
+ * time. A plain form and plain links: the search runs on the server over
+ * every product's name, so nothing depends on which page is open.
+ */
+function PagedSearch({ paging, total }: { paging: ProductPaging; total: number }) {
+  const { query, matches, from, size } = paging;
+  const upTo = Math.min(from + size, matches);
+  const sid = useStudioStore();
+  return (
+    <div className="mt-5">
+      <form action="/studio#products" method="get" role="search" className="flex flex-wrap items-center gap-3">
+        <label htmlFor="product-find" className="sr-only">
+          Find a product by its name
+        </label>
+        <StoreField />
+        <input
+          id="product-find"
+          type="search"
+          name="q"
+          defaultValue={query}
+          maxLength={80}
+          placeholder="Find a product by its name"
+          className="field field-search min-w-[12rem] flex-1"
+        />
+        <button type="submit" className="btn btn-secondary btn-sm">
+          Find
+        </button>
+        {query ? (
+          <a href={pageHref(1, "", sid)} className="text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep">
+            Show all
+          </a>
+        ) : null}
+      </form>
+      <p className="mt-2 text-sm text-ink-soft" role="status">
+        {query
+          ? matches === 0
+            ? `Nothing on your store has “${query}” in its name.`
+            : `${matches.toLocaleString("en-US")} ${matches === 1 ? "has" : "have"} “${query}” in the name. Showing ${from + 1}–${upTo}. Moving one moves it in the whole list.`
+          : `Showing ${from + 1}–${upTo} of ${total.toLocaleString("en-US")}, in the order your store shows them.`}
+      </p>
+      <Pager paging={paging} />
+    </div>
+  );
+}
+
+/** Previous and next page of the studio's list, when there is more than one. */
+function Pager({ paging }: { paging: ProductPaging }) {
+  const sid = useStudioStore();
+  if (paging.pages <= 1) return null;
+  const link =
+    "inline-flex min-h-[44px] items-center gap-1 rounded-full border border-line bg-white px-4 text-sm font-bold text-ink transition hover:border-violet-brand focus-visible:outline-2 focus-visible:outline-violet-brand";
+  const off = "inline-flex min-h-[44px] items-center gap-1 rounded-full px-4 text-sm font-bold text-ink-mute opacity-50";
+  return (
+    <nav aria-label="Pages of your products" className="mt-3 flex items-center justify-between gap-3">
+      {paging.page > 1 ? (
+        <a href={pageHref(paging.page - 1, paging.query, sid)} rel="prev" className={link}>
+          <span aria-hidden="true">&larr;</span> Previous
+        </a>
+      ) : (
+        <span className={off} aria-hidden="true">&larr; Previous</span>
+      )}
+      <p className="text-sm font-semibold text-ink-soft" aria-current="page">{`Page ${paging.page} of ${paging.pages}`}</p>
+      {paging.page < paging.pages ? (
+        <a href={pageHref(paging.page + 1, paging.query, sid)} rel="next" className={link}>
+          Next <span aria-hidden="true">&rarr;</span>
+        </a>
+      ) : (
+        <span className={off} aria-hidden="true">Next &rarr;</span>
+      )}
+    </nav>
+  );
+}
+
 export function ProductEditor({
   products,
+  total: totalGiven,
+  positions,
+  paging = null,
+  choices,
+  named = {},
   folder,
   imageFolder,
   handle,
   selling,
   testMode,
   email,
+  currency = "usd",
 }: {
+  /** The products shown: every one, or one page of a long list. */
   products: Product[];
+  /** How many products the store has in all. */
+  total?: number;
+  /** Where each product shown stands in the store's whole list, from 0. */
+  positions?: Record<string, number>;
+  paging?: ProductPaging | null;
+  /** Every product another can offer in a box at checkout (lib/product-extras.ts). */
+  choices?: BumpChoice[];
+  /** The names of the products the ones shown offer at checkout now. */
+  named?: Record<string, string>;
   folder: string;
   /** The store's own folder for product pictures (lib/store.ts imageFolder). */
   imageFolder: string;
@@ -1156,8 +1276,11 @@ export function ProductEditor({
   selling: boolean;
   /** Whether the platform is pointed at Stripe's test mode. */
   testMode: boolean;
+  /** What the store charges in: every price here is written in it. */
+  currency?: Currency;
 }) {
   const router = useRouter();
+  const sid = useStudioStore();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -1170,16 +1293,21 @@ export function ProductEditor({
     null,
   );
 
-  const full = products.length >= MAX_PRODUCTS;
+  const total = totalGiven ?? products.length;
+  const full = total >= MAX_PRODUCTS;
+  const offerable = choices ?? bumpChoices(products);
+  const at = (product: Product) => positions?.[product.id] ?? products.indexOf(product);
   // A short list is shown open, as it always was. A long one is shown as rows
-  // that open one at a time, so two hundred products stay a page and not a
-  // scroll through two hundred forms.
+  // that open one at a time, and a list longer than a page is shown a page
+  // at a time (lib/catalog.ts, studioShelf), so two thousand products stay a
+  // page and not a scroll through two thousand forms.
   const [openIds, setOpenIds] = useState<Set<string>>(
-    () => new Set(products.length <= COLLAPSE_ABOVE ? products.map((product) => product.id) : []),
+    () => new Set(total <= COLLAPSE_ABOVE ? products.map((product) => product.id) : []),
   );
   const [query, setQuery] = useState("");
   const [loadingAbout, setLoadingAbout] = useState(false);
-  const shown = query.trim()
+  // A long list is searched on the server (paging); a short one right here.
+  const shown = query.trim() && !paging
     ? products.filter((product) => product.title.toLowerCase().includes(query.trim().toLowerCase()))
     : products;
 
@@ -1275,7 +1403,7 @@ export function ProductEditor({
   async function linkTo(id: string, url: string) {
     setFileError(null);
     setFileBusyId(id);
-    const problem = await send({ action: "link", id, link: url });
+    const problem = await send({ action: "link", id, link: url }, currency);
     setFileBusyId(null);
     if (problem) {
       setFileError({ id, message: problem });
@@ -1287,7 +1415,7 @@ export function ProductEditor({
   async function unlink(id: string) {
     setFileError(null);
     setFileBusyId(id);
-    const problem = await send({ action: "unlink", id });
+    const problem = await send({ action: "unlink", id }, currency);
     setFileBusyId(null);
     if (problem) {
       setFileError({ id, message: problem });
@@ -1299,7 +1427,7 @@ export function ProductEditor({
   async function run(payload: Record<string, unknown>, done: () => void, confirmation?: string) {
     setBusy(true);
     setError(null);
-    const problem = await send(payload);
+    const problem = await send(payload, currency);
     setBusy(false);
     if (problem) {
       setError(problem);
@@ -1321,12 +1449,12 @@ export function ProductEditor({
     setDraft({
       title: product.title,
       summary: product.summary,
-      price: centsToPrice(product.priceCents),
+      price: moneyField(product.priceCents, currency),
       every: product.recurring ? product.recurring.interval : "",
       trial: product.recurring?.trialDays ? String(product.recurring.trialDays) : "",
       payments: product.recurring?.payments ? String(product.recurring.payments) : "",
       pwyw: product.pwyw !== null,
-      suggested: product.pwyw ? centsToPrice(product.pwyw.suggestedCents) : "",
+      suggested: product.pwyw ? moneyField(product.pwyw.suggestedCents, currency) : "",
       about: "",
     });
     setError(null);
@@ -1356,24 +1484,28 @@ export function ProductEditor({
   const quiet = "text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40";
 
   return (
+    <StoreCurrency value={currency}>
     <div className="card mt-8 p-6 sm:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
           What you are selling
         </p>
         <p className="text-sm text-ink-soft">
-          {products.length === 1 ? "1 product" : `${products.length} products`}
+          {total === 1 ? "1 product" : `${total.toLocaleString("en-US")} products`}
         </p>
       </div>
 
-      {products.length === 0 ? (
+      {total === 0 ? (
         <p className="mt-2 text-ink-soft">
           Your page is live and it is empty. Add the first thing and it shows up
           on it straight away.
         </p>
       ) : null}
 
-      {products.length > SEARCH_ABOVE ? (
+      {paging ? (
+        <PagedSearch paging={paging} total={total} />
+      ) : null}
+      {!paging && products.length > SEARCH_ABOVE ? (
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <label htmlFor="product-search" className="sr-only">
             Find a product by its name
@@ -1397,7 +1529,7 @@ export function ProductEditor({
           </button>
         </div>
       ) : null}
-      {query.trim() ? (
+      {query.trim() && !paging ? (
         <p className="mt-2 text-sm text-ink-soft" role="status">
           {shown.length === 0
             ? "Nothing on your store has that in its name."
@@ -1407,7 +1539,7 @@ export function ProductEditor({
 
       <ul className="mt-5 space-y-3">
         {shown.map((product) => {
-          const index = products.indexOf(product);
+          const index = at(product);
           const open = openIds.has(product.id) || editingId === product.id;
           const panel = `product-panel-${product.id}`;
           return (
@@ -1471,10 +1603,10 @@ export function ProductEditor({
                         {isFree(product)
                           ? "Free"
                           : product.recurring
-                            ? `$${centsToPrice(product.priceCents)} ${everyLabel(product.recurring.interval)}`
+                            ? `${formatMoney(product.priceCents, currency)} ${everyLabel(product.recurring.interval)}`
                             : product.pwyw
-                              ? `$${centsToPrice(product.priceCents)}+`
-                              : `$${centsToPrice(product.priceCents)}`}
+                              ? `${formatMoney(product.priceCents, currency)}+`
+                              : formatMoney(product.priceCents, currency)}
                       </p>
                     </div>
                     <p className="mt-1 flex flex-wrap gap-1.5 text-xs font-semibold text-ink-soft">
@@ -1519,7 +1651,7 @@ export function ProductEditor({
                   </button>
                   <button
                     type="button"
-                    disabled={busy || index === products.length - 1}
+                    disabled={busy || index === total - 1}
                     onClick={() =>
                       run(
                         { action: "move", id: product.id, direction: "down" },
@@ -1530,7 +1662,7 @@ export function ProductEditor({
                   >
                     Move down
                   </button>
-                  {products.length > 3 ? (
+                  {total > 3 ? (
                     <>
                       <button
                         type="button"
@@ -1542,7 +1674,7 @@ export function ProductEditor({
                       </button>
                       <button
                         type="button"
-                        disabled={busy || index === products.length - 1}
+                        disabled={busy || index === total - 1}
                         onClick={() => run({ action: "move", id: product.id, direction: "bottom" }, () => {}, "Moved to the end.")}
                         className={quiet}
                       >
@@ -1649,7 +1781,7 @@ export function ProductEditor({
                 </>
                 )}
 
-                <CheckoutExtras product={product} products={products} />
+                <CheckoutExtras product={product} choices={offerable} named={named} />
                 <div className="mt-2">
                   <CheckoutFieldsEditor product={product} />
                 </div>
@@ -1661,6 +1793,7 @@ export function ProductEditor({
           );
         })}
       </ul>
+      {paging ? <Pager paging={paging} /> : null}
 
       {adding ? (
         <div className="mt-5">
@@ -1676,6 +1809,9 @@ export function ProductEditor({
                 () => {
                   setAdding(false);
                   setDraft(EMPTY);
+                  // A new product goes to the end of the list: on a long one,
+                  // the page it lands on is opened so it can be seen.
+                  if (paging) router.push(pageHref(Math.ceil((total + 1) / paging.size), "", sid));
                 },
                 "Product added.",
               )
@@ -1699,7 +1835,7 @@ export function ProductEditor({
 
       {full && !adding ? (
         <p className="mt-3 text-sm text-ink-soft">
-          {`Your store is holding ${MAX_PRODUCTS} products, the most it can list. Remove one to add another.`}
+          {`Your store is holding ${MAX_PRODUCTS.toLocaleString("en-US")} products, the most it can list. Remove one to add another.`}
         </p>
       ) : null}
 
@@ -1749,5 +1885,6 @@ export function ProductEditor({
         named or linked on the public page.
       </p>
     </div>
+    </StoreCurrency>
   );
 }

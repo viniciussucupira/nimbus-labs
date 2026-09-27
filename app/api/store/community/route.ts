@@ -41,6 +41,7 @@ import {
   linkCount,
 } from "@/lib/community-text";
 import { limited } from "@/lib/request-guard";
+import { alertCreator } from "@/lib/phone-alerts";
 
 /** The most a form here may weigh: a full post with its picture's details. */
 const MAX_FORM_BYTES = 40_000;
@@ -191,7 +192,22 @@ export async function POST(request: NextRequest) {
       const commentId = field("comment", 12);
       if (commentId && !(await readComment(id, post.id, commentId))) return back(postPage, "gone");
       if (!(await within(id, key, "report"))) return back(fromPage, "slow");
-      await report(id, commentId ? { kind: "comment", post: post.id, comment: commentId } : { kind: "post", post: post.id }, key);
+      const target = commentId ? ({ kind: "comment", post: post.id, comment: commentId } as const) : ({ kind: "post", post: post.id } as const);
+      const added = await report(id, target, key);
+      // The creator's phone hears of an item's first report, never of what
+      // it says or who sent it (lib/phone-alerts.ts), after this answer.
+      if (added === "added") {
+        await alertCreator(
+          store,
+          "report",
+          {
+            title: "New report in your community",
+            body: commentId ? "A member reported a comment. It is waiting in your moderation queue." : "A member reported a post. It is waiting in your moderation queue.",
+            url: store.sid ? `/studio/community?store=${store.sid}` : "/studio/community",
+          },
+          { seed: commentId ? `c:${post.id}:${commentId}` : `p:${post.id}` },
+        ).catch((error) => console.error("a report notification failed", error));
+      }
       return back(fromPage, "reported", commentId ? `comment-${commentId}` : `post-${post.id}`);
     }
 

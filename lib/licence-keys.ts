@@ -54,9 +54,42 @@
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/site-url";
-import type { Product, Store } from "@/lib/store";
+import type { Listing, Store } from "@/lib/store";
 import { onAccount } from "@/lib/stripe-account";
 import { refundedInFull } from "@/lib/refunds";
+import { readListing, sellsAny } from "@/lib/catalog";
+import {
+  MAX_PREFIX_LENGTH,
+  MIN_GROUPS,
+  MAX_GROUPS,
+  MIN_GROUP_LENGTH,
+  MAX_GROUP_LENGTH,
+  DEFAULT_LOW_AT,
+  MAX_LOW_AT,
+  DEFAULT_KEYS,
+  parseKeySetup,
+  readKeySetup,
+  canHaveKeys,
+  activeKeys,
+  type KeySetup,
+} from "@/lib/key-setup";
+
+// The setting itself lives in lib/key-setup.ts; it is still found here.
+export {
+  MAX_PREFIX_LENGTH,
+  MIN_GROUPS,
+  MAX_GROUPS,
+  MIN_GROUP_LENGTH,
+  MAX_GROUP_LENGTH,
+  DEFAULT_LOW_AT,
+  MAX_LOW_AT,
+  DEFAULT_KEYS,
+  parseKeySetup,
+  readKeySetup,
+  canHaveKeys,
+  activeKeys,
+};
+export type { KeySource, KeySetup, SetupProblem } from "@/lib/key-setup";
 
 /** The most keys one upload may hold, and the most a pool may hold waiting. */
 export const MAX_UPLOAD_KEYS = 10_000;
@@ -65,78 +98,8 @@ export const MIN_KEY_LENGTH = 4;
 export const MAX_KEY_LENGTH = 100;
 /** Letters and digits nobody confuses with another, so a key can be typed from a screenshot. */
 export const KEY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-export const MAX_PREFIX_LENGTH = 12;
-export const MIN_GROUPS = 3;
-export const MAX_GROUPS = 8;
-export const MIN_GROUP_LENGTH = 4;
-export const MAX_GROUP_LENGTH = 8;
-/** The pool size under which the creator is warned, by default and at most. */
-export const DEFAULT_LOW_AT = 20;
-export const MAX_LOW_AT = 1_000;
 /** The biggest file of keys the studio reads. */
 export const MAX_KEY_FILE_BYTES = 1_200_000;
-
-export type KeySource = "pool" | "generated";
-
-/** How a product hands out keys. Kept on the product in the store record. */
-export type KeySetup = {
-  source: KeySource;
-  /** For made keys: what each starts with, and its shape. */
-  prefix: string;
-  groups: number;
-  groupLength: number;
-  /** For a pool: the count at or under which the creator is warned. */
-  lowAt: number;
-};
-
-export const DEFAULT_KEYS: KeySetup = { source: "generated", prefix: "", groups: 4, groupLength: 4, lowAt: DEFAULT_LOW_AT };
-
-function wholeIn(raw: unknown, min: number, max: number): number | null {
-  const n = typeof raw === "string" && raw.trim() ? Number(raw.trim()) : raw;
-  return typeof n === "number" && Number.isInteger(n) && n >= min && n <= max ? n : null;
-}
-
-function cleanPrefix(raw: unknown): string | null {
-  const text = typeof raw === "string" ? raw.trim().toUpperCase().replace(/-+$/, "") : "";
-  if (text.length > MAX_PREFIX_LENGTH || !/^[A-Z0-9-]*$/.test(text)) return null;
-  return text;
-}
-
-export function parseKeySetup(raw: unknown): KeySetup | null {
-  if (!raw || typeof raw !== "object") return null;
-  const value = raw as Record<string, unknown>;
-  const source: KeySource | null = value.source === "pool" ? "pool" : value.source === "generated" ? "generated" : null;
-  if (!source) return null;
-  return {
-    source,
-    prefix: cleanPrefix(value.prefix) ?? "",
-    groups: wholeIn(value.groups, MIN_GROUPS, MAX_GROUPS) ?? DEFAULT_KEYS.groups,
-    groupLength: wholeIn(value.groupLength, MIN_GROUP_LENGTH, MAX_GROUP_LENGTH) ?? DEFAULT_KEYS.groupLength,
-    lowAt: wholeIn(value.lowAt, 0, MAX_LOW_AT) ?? DEFAULT_LOW_AT,
-  };
-}
-
-export type SetupProblem = "source" | "prefix" | "groups" | "length" | "low";
-
-/** Reads the studio's form, and says which field is wrong when one is. */
-export function readKeySetup(raw: Record<string, unknown>): KeySetup | SetupProblem {
-  const source = raw.source === "pool" ? "pool" : raw.source === "generated" ? "generated" : null;
-  if (!source) return "source";
-  const prefix = cleanPrefix(raw.prefix);
-  if (prefix === null) return "prefix";
-  const groups = wholeIn(raw.groups, MIN_GROUPS, MAX_GROUPS);
-  if (groups === null) return "groups";
-  const groupLength = wholeIn(raw.groupLength, MIN_GROUP_LENGTH, MAX_GROUP_LENGTH);
-  if (groupLength === null) return "length";
-  const lowAt = wholeIn(raw.lowAt === "" ? DEFAULT_LOW_AT : raw.lowAt, 0, MAX_LOW_AT);
-  if (lowAt === null) return "low";
-  return { source, prefix, groups, groupLength, lowAt };
-}
-
-/** Which products may hand out keys: paid, sold once, and delivering a file or a link. */
-export function canHaveKeys(product: Product): boolean {
-  return product.priceCents > 0 && product.recurring === null && product.call === null && product.course === null;
-}
 
 /**
  * One made key, from the shape the creator chose, drawn from the system's
@@ -211,13 +174,13 @@ export function readKeyList(text: string): KeyList {
 
 // ---------------------------------------------------------------- storage
 
-const base = (store: Store, product: Pick<Product, "id">) => `nl:keys:${store.statsId}:${product.id}`;
-const poolKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:pool`;
-const allKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:all`;
-const saleKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:sale`;
-const infoKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:info`;
-const waitingKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:waiting`;
-const warnedKey = (store: Store, product: Pick<Product, "id">) => `${base(store, product)}:warned`;
+const base = (store: Store, product: Pick<Listing, "id">) => `nl:keys:${store.statsId}:${product.id}`;
+const poolKey = (store: Store, product: Pick<Listing, "id">) => `${base(store, product)}:pool`;
+const allKey = (store: Store, product: Pick<Listing, "id">) => `${base(store, product)}:all`;
+const saleKey = (store: Store, product: Pick<Listing, "id">) => `${base(store, product)}:sale`;
+const infoKey = (store: Store, product: Pick<Listing, "id">) => `${base(store, product)}:info`;
+const waitingKey = (store: Store, product: Pick<Listing, "id">) => `${base(store, product)}:waiting`;
+const warnedKey = (store: Store, product: Pick<Listing, "id">) => `${base(store, product)}:warned`;
 
 /** Keys go to Redis in batches this size, well under any request limit. */
 const BATCH = 1_000;
@@ -260,20 +223,12 @@ export type SaleKey =
   | { state: "waiting" };
 
 /** Whether this product hands out keys that can be read or given right now. */
-function usable(store: Store, product: Product): boolean {
+function usable(store: Store, product: Listing): boolean {
   return Boolean(activeKeys(product) && store.statsId && isRedisConfigured());
 }
 
-/**
- * The key set-up that applies right now. A product made a membership or a
- * course after keys were switched on keeps the setting but hands out none.
- */
-export function activeKeys(product: Product): KeySetup | null {
-  return product.keys && canHaveKeys(product) ? product.keys : null;
-}
-
 /** The key a sale already has, without giving it one. */
-export async function keyOfSale(store: Store, product: Product, reference: string): Promise<SaleKey | null> {
+export async function keyOfSale(store: Store, product: Listing, reference: string): Promise<SaleKey | null> {
   if (!usable(store, product) || !reference) return null;
   const [key, waiting] = await redisPipeline([
     ["HGET", saleKey(store, product), reference],
@@ -294,7 +249,7 @@ export async function keyOfSale(store: Store, product: Product, reference: strin
  * `reference` must be a sale Stripe has already said is paid; the callers
  * only reach here after that check.
  */
-export async function keyForSale(store: Store, product: Product, reference: string, email: string): Promise<SaleKey | null> {
+export async function keyForSale(store: Store, product: Listing, reference: string, email: string): Promise<SaleKey | null> {
   if (!usable(store, product) || !reference) return null;
   const known = await keyOfSale(store, product, reference);
   if (known?.state === "issued") return known;
@@ -327,7 +282,7 @@ export async function keyForSale(store: Store, product: Product, reference: stri
  * Ties a key to a sale, unless the sale got one a moment ago from somewhere
  * else — then that one stands, and this key goes back where it came from.
  */
-async function settle(store: Store, product: Product, reference: string, email: string, key: string, fromPool: boolean): Promise<SaleKey> {
+async function settle(store: Store, product: Listing, reference: string, email: string, key: string, fromPool: boolean): Promise<SaleKey> {
   const [won] = await redisPipeline([["HSETNX", saleKey(store, product), reference, key]]);
   if (Number(won) !== 1) {
     await redisPipeline(fromPool ? [["LPUSH", poolKey(store, product), key]] : [["SREM", allKey(store, product), key]]);
@@ -351,7 +306,7 @@ export type KeyCounts = {
   waiting: number;
 };
 
-export async function keyCounts(store: Store, product: Product): Promise<KeyCounts> {
+export async function keyCounts(store: Store, product: Listing): Promise<KeyCounts> {
   if (!store.statsId || !isRedisConfigured()) return { left: 0, issued: 0, revoked: 0, waiting: 0 };
   const [left, issued, waiting] = await redisPipeline([
     ["LLEN", poolKey(store, product)],
@@ -363,7 +318,7 @@ export async function keyCounts(store: Store, product: Product): Promise<KeyCoun
 }
 
 /** Whether a product that hands out keys from a pool has none left to give. */
-export async function outOfKeys(store: Store, product: Product): Promise<boolean> {
+export async function outOfKeys(store: Store, product: Listing): Promise<boolean> {
   if (activeKeys(product)?.source !== "pool" || !store.statsId || !isRedisConfigured()) return false;
   const [left] = await redisPipeline([["LLEN", poolKey(store, product)]]);
   return Number(left) === 0;
@@ -385,7 +340,7 @@ export type UploadResult = {
  * Then gives a key to every buyer who paid while the pool was empty, and
  * emails it to them.
  */
-export async function addKeys(store: Store, product: Product, keys: string[], origin: string = SITE_URL): Promise<UploadResult> {
+export async function addKeys(store: Store, product: Listing, keys: string[], origin: string = SITE_URL): Promise<UploadResult> {
   if (!store.statsId || !isRedisConfigured()) throw new Error("keys cannot be stored");
   const [length] = await redisPipeline([["LLEN", poolKey(store, product)]]);
   let room = Math.max(0, MAX_POOL_KEYS - (Number(length) || 0));
@@ -425,7 +380,7 @@ export async function addKeys(store: Store, product: Product, keys: string[], or
 }
 
 /** Takes every key still in the pool out, so none of them is ever given. */
-export async function clearPool(store: Store, product: Product): Promise<number> {
+export async function clearPool(store: Store, product: Listing): Promise<number> {
   if (!store.statsId || !isRedisConfigured()) return 0;
   const [length] = await redisPipeline([["LLEN", poolKey(store, product)]]);
   await redisPipeline([["DEL", poolKey(store, product)]]);
@@ -438,7 +393,7 @@ export async function clearPool(store: Store, product: Product): Promise<number>
  */
 export async function issuedKeys(
   store: Store,
-  product: Product,
+  product: Listing,
   query: string,
   limit = 50,
 ): Promise<{ keys: IssuedKey[]; total: number; revoked: number }> {
@@ -465,7 +420,7 @@ export async function issuedKeys(
  */
 export async function setRevoked(
   store: Store,
-  product: Pick<Product, "id">,
+  product: Pick<Listing, "id">,
   key: string,
   revoked: boolean,
   by: "creator" | "refund" = "creator",
@@ -503,7 +458,7 @@ const INTENT_PATTERN = /^pi_[A-Za-z0-9]{6,200}$/;
 
 /** Whether any product of this store hands out keys, so its refunds are worth reading. */
 export function storeHasKeys(store: Store): boolean {
-  return Boolean(store.statsId && store.stripeAccountId) && store.products.some((p) => activeKeys(p) !== null);
+  return Boolean(store.statsId && store.stripeAccountId) && sellsAny(store, "keys");
 }
 
 /**
@@ -571,7 +526,7 @@ export async function revokeRefunded(store: Store, deadline: number): Promise<nu
 
       for (const sale of sales) {
         for (const productId of sale.products) {
-          const product = store.products.find((p) => p.id === productId);
+          const product = await readListing(store, productId);
           if (!product) continue;
           const [key] = await redisPipeline([["HGET", saleKey(store, product), sale.reference]]);
           if (typeof key === "string" && key && (await setRevoked(store, product, key, true, "refund"))) revoked += 1;
@@ -604,7 +559,7 @@ export async function revokeRefunded(store: Store, deadline: number): Promise<nu
 export type KeyCheck = "valid" | "revoked" | "unknown";
 
 /** What the public check answers about a key: given and good, given and revoked, or never given. */
-export async function checkKey(store: Store, product: Product, key: string): Promise<KeyCheck> {
+export async function checkKey(store: Store, product: Listing, key: string): Promise<KeyCheck> {
   if (!activeKeys(product) || !store.statsId || !isRedisConfigured()) return "unknown";
   if (key.length < MIN_KEY_LENGTH || key.length > MAX_KEY_LENGTH) return "unknown";
   const [raw] = await redisPipeline([["HGET", infoKey(store, product), key]]);
@@ -625,7 +580,7 @@ function senderAddress(): string {
 }
 
 /** Once per top-up: the pool is at or under the number the creator chose. */
-async function warnIfLow(store: Store, product: Product): Promise<void> {
+async function warnIfLow(store: Store, product: Listing): Promise<void> {
   const setup = activeKeys(product);
   if (!setup || setup.source !== "pool") return;
   const [left] = await redisPipeline([["LLEN", poolKey(store, product)]]);
@@ -650,7 +605,7 @@ async function warnIfLow(store: Store, product: Product): Promise<void> {
 }
 
 /** A buyer paid in the moment the last key went: the creator hears at once. */
-async function tellCreatorEmpty(store: Store, product: Product, reference: string, email: string): Promise<void> {
+async function tellCreatorEmpty(store: Store, product: Listing, reference: string, email: string): Promise<void> {
   await sendEmail({
     from: `"Nimbus Labs" <${senderAddress()}>`,
     to: store.email,
@@ -666,7 +621,7 @@ async function tellCreatorEmpty(store: Store, product: Product, reference: strin
 }
 
 /** Gives every waiting buyer a key from a fresh upload, and emails it. */
-async function serveWaiting(store: Store, product: Product, origin: string): Promise<number> {
+async function serveWaiting(store: Store, product: Listing, origin: string): Promise<number> {
   const [raw] = await redisPipeline([["HGETALL", waitingKey(store, product)]]);
   const flat = Array.isArray(raw) ? (raw as unknown[]) : [];
   let served = 0;

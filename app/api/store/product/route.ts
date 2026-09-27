@@ -8,22 +8,29 @@ import {
   editProduct,
   filesOnProduct,
   moveProduct,
-  priceToCents,
   removeProduct,
   setProductAbout,
   setProductLink,
   storeForEmail,
-  type ProductResult,
+  type Product,
 } from "@/lib/store";
 import { MAX_LINK_LENGTH, readLink } from "@/lib/product-link";
 import { readRecurring } from "@/lib/product-recurring";
 import { MAX_ABOUT_LENGTH, cleanAbout, dropAbout, readAbout, writeAbout } from "@/lib/product-about";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
+import { jsonAccess } from "@/lib/studio-route";
+import { dropPage } from "@/lib/sales-page-store";
+import { dropReviews } from "@/lib/reviews";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { dropCourse, filesInCourse, readCourse } from "@/lib/course";
 import { dropStamped } from "@/lib/pdf-stamp";
+import { readListing } from "@/lib/catalog";
 
 const ACTIONS = new Set(["add", "edit", "remove", "move", "link", "unlink"]);
+
+/** What one change came to: the product as saved, when there is one to show. */
+type Outcome =
+  | { ok: true; product: Product | null }
+  | { ok: false; reason: string; limit?: number; pwyw?: string };
 
 /** How firmly to answer when a change is refused. */
 const STATUS: Record<string, number> = {
@@ -47,12 +54,12 @@ function asProductReason(
  * they open it to edit. `?about=<product id>`.
  */
 export async function GET(request: NextRequest) {
-  const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
-  if (!email) return Response.json({ ok: false, error: "signed_out" }, { status: 401 });
+  const access = await jsonAccess(request, "products");
+  if (access instanceof Response) return access;
   const id = request.nextUrl.searchParams.get("about") ?? "";
   try {
-    const store = await storeForEmail(email);
-    const product = store?.products.find((p) => p.id === id);
+    const store = access.store;
+    const product = await readListing(store, id);
     if (!store || !product) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
     const about = product.about ? await readAbout(store.statsId, product.id) : "";
     return Response.json({ ok: true, about }, { headers: { "Cache-Control": "private, no-store" } });
@@ -65,10 +72,10 @@ export async function GET(request: NextRequest) {
 /** Adds, changes, reorders or removes one thing on the creator's store. */
 export async function POST(request: NextRequest) {
   // Room for the long description, which is the one big thing sent here.
-  const guarded = await guardStoreWrite(request, 40_000);
+  const guarded = await guardStoreWrite(request, "products", 40_000);
   if (!guarded.ok) return guarded.response;
 
-  const { email, body } = guarded;
+  const { ref, body } = guarded;
   const action = text(body.action, 10);
   if (!ACTIONS.has(action)) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
@@ -86,15 +93,11 @@ export async function POST(request: NextRequest) {
   if (recurring === "trial" || recurring === "payments") {
     return Response.json({ ok: false, error: recurring }, { status: 400 });
   }
-  // The suggested price, when the buyer chooses what to pay. Absent means the
-  // price is the price.
-  let pwywCents: number | null = null;
-  if (body.pwyw !== undefined && body.pwyw !== null && body.pwyw !== false) {
-    pwywCents = priceToCents(text(body.pwyw, 20));
-    if (pwywCents === null) {
-      return Response.json({ ok: false, error: "pwyw", pwyw: "suggested" }, { status: 400 });
-    }
-  }
+  // The suggested price, when the buyer chooses what to pay, as typed: it is
+  // read in the store's own currency when the product is saved. Absent means
+  // the price is the price.
+  const suggested =
+    body.pwyw !== undefined && body.pwyw !== null && body.pwyw !== false ? text(body.pwyw, 20) : null;
   // Only written when it was sent, so an older screen never wipes it.
   const about = typeof body.about === "string" ? cleanAbout(body.about.slice(0, MAX_ABOUT_LENGTH * 2)) : null;
 
@@ -103,44 +106,48 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    let result: ProductResult;
+    let result: Outcome;
     if (action === "add" || action === "edit") {
-      result =
+      const done =
         action === "add"
-          ? await addProduct(email, title, summary, price, recurring, pwywCents)
-          : await editProduct(email, id, title, summary, price, recurring, pwywCents);
-      if (result.ok && about !== null) {
-        const saved = action === "add" ? result.store.products[result.store.products.length - 1] : result.store.products.find((p) => p.id === id);
-        if (saved && (about !== "" || saved.about)) {
-          const marked = await setProductAbout(email, saved.id, about !== "");
+          ? await addProduct(ref, title, summary, price, recurring, suggested)
+          : await editProduct(ref, id, title, summary, price, recurring, suggested);
+      result = done.ok ? { ok: true, product: done.product } : done;
+      if (done.ok && about !== null) {
+        const saved = done.product;
+        if (about !== "" || saved.about) {
+          const marked = await setProductAbout(ref, saved.id, about !== "");
           if (marked.ok && marked.store.statsId) {
             await writeAbout(marked.store.statsId, saved.id, about);
-            result = { ok: true, store: marked.store };
+            result = { ok: true, product: marked.product };
           }
         }
       }
     } else if (action === "remove") {
-      // Read the files before the product is gone, so the storage they used
-      // can be released once the removal is safely written. A product with
-      // price options holds one file per option as well as its own.
-      const store = await storeForEmail(email);
-      const going = store?.products.find((product) => product.id === id);
-      const had: { pathname: string }[] = going ? filesOnProduct(going) : [];
-      // Its picture goes with it, and so does its long description.
-      if (going?.image) had.push({ pathname: going.image.path });
-      // A course takes its lessons with it: their records, and their files.
-      const course = going?.course ? await readCourse(going.course.id) : null;
-      if (course) had.push(...filesInCourse(course));
-      result = await removeProduct(email, id);
-      if (result.ok) {
-        if (going?.about) await dropAbout(store?.statsId ?? null, id).catch(() => {});
+      // The product comes back as it was, so the storage its files used can
+      // be released once the removal is safely written. A product with price
+      // options holds one file per option as well as its own.
+      const removed = await removeProduct(ref, id);
+      result = removed.ok ? { ok: true, product: null } : removed;
+      if (removed.ok) {
+        const going = removed.product;
+        const had: { pathname: string }[] = filesOnProduct(going);
+        // Its picture goes with it, and so does its long description.
+        if (going.image) had.push({ pathname: going.image.path });
+        // A course takes its lessons with it: their records, and their files.
+        const course = going.course ? await readCourse(going.course.id).catch(() => null) : null;
+        if (course) had.push(...filesInCourse(course));
+        if (going.about) await dropAbout(removed.store.statsId, id).catch(() => {});
+        // Its page of blocks, and the reviews of a product nobody can buy any more.
+        if (going.page) await dropPage(removed.store.statsId, id).catch(() => {});
+        await dropReviews(removed.store.statsId, id).catch(() => {});
         if (course) await dropCourse(course).catch((error: unknown) => console.error("could not drop a removed course", error));
         for (const file of had) {
           await del(file.pathname).catch((error: unknown) => {
             console.error("could not delete the file of a removed product", error);
           });
         }
-        for (const file of going ? filesOnProduct(going) : []) await dropStamped(file);
+        for (const file of filesOnProduct(going)) await dropStamped(file);
       }
     } else if (action === "link") {
       // The link is checked before anything is written, so a product is never
@@ -154,25 +161,22 @@ export async function POST(request: NextRequest) {
       }
       // Pointing at a link displaces any file that was there. The storage is
       // released only after the record that pointed at it is written.
-      const linked = await setProductLink(email, id, read.url);
+      const linked = await setProductLink(ref, id, read.url);
       if (linked.ok && linked.removed) {
         await del(linked.removed.pathname).catch((error: unknown) => {
           console.error("could not delete a file replaced by a link", error);
         });
         await dropStamped(linked.removed);
       }
-      result = linked.ok
-        ? { ok: true, store: linked.store }
-        : { ok: false, reason: asProductReason(linked.reason) };
+      result = linked.ok ? { ok: true, product: null } : { ok: false, reason: asProductReason(linked.reason) };
     } else if (action === "unlink") {
-      const cleared = await setProductLink(email, id, null);
-      result = cleared.ok
-        ? { ok: true, store: cleared.store }
-        : { ok: false, reason: asProductReason(cleared.reason) };
+      const cleared = await setProductLink(ref, id, null);
+      result = cleared.ok ? { ok: true, product: null } : { ok: false, reason: asProductReason(cleared.reason) };
     } else {
       const direction =
         body.direction === "up" || body.direction === "top" || body.direction === "bottom" ? body.direction : "down";
-      result = await moveProduct(email, id, direction);
+      const moved = await moveProduct(ref, id, direction);
+      result = moved.ok ? { ok: true, product: null } : moved;
     }
 
     if (!result.ok) {
@@ -181,7 +185,7 @@ export async function POST(request: NextRequest) {
         { status: STATUS[result.reason] ?? 400 },
       );
     }
-    return Response.json({ ok: true, products: result.store.products });
+    return Response.json({ ok: true, product: result.product });
   } catch (error) {
     if (error instanceof StoreFullError) {
       return Response.json({ ok: false, error: "store_full" }, { status: 409 });

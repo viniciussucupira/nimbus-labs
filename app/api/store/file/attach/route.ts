@@ -18,9 +18,9 @@ import { dropStamped } from "@/lib/pdf-stamp";
  * exists if the write failed in between.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "products");
   if (!guarded.ok) return guarded.response;
-  const { email, body } = guarded;
+  const { ref, body } = guarded;
 
   const id = text(body.id, 40);
   const pathname = text(body.pathname, 400);
@@ -30,14 +30,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const store = await storeForEmail(email);
+    const store = await storeForEmail(ref);
     if (!store) {
       return Response.json({ ok: false, error: "none" }, { status: 400 });
     }
 
     let file: ProductFile | null = null;
     if (!detach) {
-      const folder = await storeFolder(email);
+      const folder = await storeFolder(ref);
       if (!ownsPath(pathname, folder, id)) {
         return Response.json({ ok: false, error: "invalid" }, { status: 400 });
       }
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    const result = await setProductFile(email, id, file);
+    const result = await setProductFile(ref, id, file);
     if (!result.ok) {
       return Response.json(
         { ok: false, error: result.reason },
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       await dropStamped(result.removed);
     }
 
-    return Response.json({ ok: true, products: result.store.products });
+    return Response.json({ ok: true });
   } catch (error) {
     console.error("attaching a file failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });

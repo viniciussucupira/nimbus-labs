@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { handleForDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
 import { AFFILIATE_CODE_PATTERN, VIA_COOKIE_SECONDS, viaCookieName } from "@/lib/affiliate-setting";
-import { dynamicPolicy, isDynamicPage, newNonce } from "@/lib/csp";
+import { dynamicPolicy, isDynamicPage, isStorePage, newNonce } from "@/lib/csp";
 import { fromAnotherSite } from "@/lib/request-guard";
 import { isPlatformHost, requestHost } from "@/lib/request-origin";
 
@@ -12,7 +12,7 @@ import { isPlatformHost, requestHost } from "@/lib/request-origin";
  * On nimbuslabsai.com (and the deployment's own addresses) nothing happens
  * here. On a creator's domain, the root is their store page, the store's own
  * pages keep their short paths (/thanks, /course/…, /p/<product>, /community,
- * /affiliates, /renew/<product>, /certificate/<id>), and
+ * /affiliates, /renew/<product>, /certificate/<id>, /review), and
  * anything that belongs to the site itself — signing in, the studio, the help
  * pages — is sent to nimbuslabsai.com, where the session lives.
  *
@@ -26,7 +26,7 @@ import { isPlatformHost, requestHost } from "@/lib/request-origin";
  * read (guardApi, below).
  */
 const DOMAIN_HEADER = "x-nimbus-domain";
-const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|community|p|affiliates|renew|certificate)(\/|$)/;
+const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|community|p|affiliates|renew|certificate|review)(\/|$)/;
 
 /**
  * A visitor who followed an affiliate's link (?via=<code>) keeps the code and
@@ -102,7 +102,8 @@ function guardApi(request: NextRequest): NextResponse {
  */
 function withPolicy(path: string, headers: Headers): string | null {
   if (!isDynamicPage(path)) return null;
-  const policy = dynamicPolicy(newNonce());
+  // Ad platforms and video players only on a store's own pages (lib/csp.ts).
+  const policy = dynamicPolicy(newNonce(), { store: isStorePage(path) });
   headers.set("content-security-policy", policy);
   return policy;
 }

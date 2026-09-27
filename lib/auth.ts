@@ -11,10 +11,26 @@
  *
  *   nl:auth:link:<hash>     -> email, 15 minutes, deleted the moment it is used
  *   nl:auth:session:<hash>  -> email, 30 days, deleted on sign-out
+ *   nl:auth:fresh:<hash>    -> that the session was opened in the last 15
+ *                              minutes, for the few changes that ask for a
+ *                              recent login (adding a passkey)
  *   nl:auth:sessions:<hash> -> the set of a creator's live sessions, so that
  *                              they can close every one of them at once
  *   nl:auth:move:<hash>     -> a move from one address to another, 15 minutes,
  *                              spent on the tap that finishes it
+ *   nl:auth:devices:<hash>  -> the browsers an account has signed in from,
+ *                              each by a one-way hash of its nl_device cookie
+ *
+ * A passkey (lib/passkeys.ts) opens exactly the same kind of session, so
+ * everything here — "log out of all devices" included — covers it too.
+ *
+ * Signing in from a browser the account has not signed in from before sends
+ * the creator a plain email saying so, with when and how, and what to do if
+ * it was not them. The browser is recognised by a random id in a long-lived
+ * cookie of its own; clearing cookies, or a private window, looks like a new
+ * browser, which errs on the side of telling. The very first sign-in of an
+ * account, and the first after this began, is only written down: the person
+ * has just opened the email that let them in.
  *
  * Two counters keep the sending honest: one for the machine that asks, one for
  * the address that would receive. The second one matters because the first one
@@ -64,6 +80,24 @@ const linkKey = async (token: string) =>
 
 const sessionKey = async (id: string) =>
   `nl:auth:session:${(await sha256Hex(`nimbus-auth-session:${id}`)).slice(0, 40)}`;
+
+const freshKey = async (id: string) =>
+  `nl:auth:fresh:${(await sha256Hex(`nimbus-auth-fresh:${id}`)).slice(0, 40)}`;
+
+/**
+ * How recent a login has to be for a change that would outlive the session
+ * itself. Adding a passkey is one: a session cookie that walked off could
+ * otherwise add a key of its own, which "Log out of all devices" does not
+ * take away. Fifteen minutes, as long as a login link lasts.
+ */
+export const FRESH_LOGIN_SECONDS = 15 * 60;
+
+/** Whether this session was opened in the last FRESH_LOGIN_SECONDS. */
+export async function isFreshSession(id: string | undefined): Promise<boolean> {
+  if (!id || !isRedisConfigured() || !/^[0-9a-f]{64}$/.test(id)) return false;
+  const [found] = await redisPipeline([["EXISTS", await freshKey(id)]]);
+  return Number(found) === 1;
+}
 
 const sessionsKey = async (email: string) =>
   `nl:auth:sessions:${(await sha256Hex(`nimbus-auth-sessions:${email}`)).slice(0, 40)}`;
@@ -184,6 +218,7 @@ export async function openSession(email: string): Promise<string> {
   const owned = await sessionsKey(normaliseEmail(email));
   await redisPipeline([
     ["SET", opened, normaliseEmail(email), "EX", SESSION_TTL_SECONDS],
+    ["SET", await freshKey(id), "1", "EX", FRESH_LOGIN_SECONDS],
     ["SADD", owned, opened],
     ["EXPIRE", owned, SESSION_TTL_SECONDS + 86_400],
   ]);
@@ -260,6 +295,7 @@ export async function spendSignInLink(token: string): Promise<string | null> {
   const owned = await sessionsKey(email);
   await redisPipeline([
     ["SET", opened, email, "EX", SESSION_TTL_SECONDS],
+    ["SET", await freshKey(id), "1", "EX", FRESH_LOGIN_SECONDS],
     // The creator's own list of open sessions, which is what makes "sign out
     // everywhere" possible. It outlives any single session by a day, so the
     // last entry is never orphaned before the session it names.
@@ -327,3 +363,139 @@ export const SESSION_COOKIE_OPTIONS = {
   path: "/",
   maxAge: SESSION_TTL_SECONDS,
 };
+
+/** A session cookie, as every way of signing in sets it. */
+export function sessionCookie(id: string): string {
+  const options = SESSION_COOKIE_OPTIONS;
+  return [
+    `${SESSION_COOKIE}=${id}`,
+    `Path=${options.path}`,
+    `Max-Age=${options.maxAge}`,
+    "HttpOnly",
+    "SameSite=Lax",
+    options.secure ? "Secure" : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+}
+
+export const DEVICE_COOKIE = "nl_device";
+/** As long as a browser keeps a cookie at all. */
+const DEVICE_TTL_SECONDS = 400 * 24 * 60 * 60;
+/** Browsers remembered per account; past it, a new one is still told about, just not added. */
+const MAX_DEVICES = 100;
+
+const devicesKey = async (email: string) =>
+  `nl:auth:devices:${(await sha256Hex(`nimbus-auth-devices:${normaliseEmail(email)}`)).slice(0, 40)}`;
+
+/** How a session was opened, for the email that tells the creator about it. */
+export type SignInWay = "link" | "passkey" | "invitation";
+
+const WAY_WORDS: Record<SignInWay, string> = {
+  link: "with a login link sent to this address",
+  passkey: "with a passkey",
+  invitation: "by accepting an invitation to a store's team",
+};
+
+/** "Chrome on macOS", or as near as a user agent says. Never more than that. */
+export function browserName(userAgent: string): string {
+  const ua = userAgent || "";
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /OPR\//.test(ua)
+      ? "Opera"
+      : /Firefox\//.test(ua)
+        ? "Firefox"
+        : /Chrome\//.test(ua)
+          ? "Chrome"
+          : /Safari\//.test(ua)
+            ? "Safari"
+            : "A browser";
+  const system = /iPhone|iPad/.test(ua)
+    ? "iOS"
+    : /Android/.test(ua)
+      ? "Android"
+      : /Mac OS X/.test(ua)
+        ? "macOS"
+        : /Windows/.test(ua)
+          ? "Windows"
+          : /CrOS/.test(ua)
+            ? "ChromeOS"
+            : /Linux/.test(ua)
+              ? "Linux"
+              : "";
+  return system ? `${browser} on ${system}` : browser;
+}
+
+/**
+ * Writes down the browser a session was just opened in, and emails the
+ * creator when the account has signed in before but never from this browser.
+ * Returns the cookie that names the browser, to be set on the response.
+ * Never throws: a notice that could not be sent does not undo a sign-in.
+ */
+export async function noteSignIn(
+  email: string,
+  deviceCookie: string | undefined,
+  way: SignInWay,
+  userAgent: string,
+  options: { quiet?: boolean } = {},
+): Promise<string> {
+  const id = deviceCookie && /^[0-9a-f]{64}$/.test(deviceCookie) ? deviceCookie : randomToken();
+  const secure = process.env.NODE_ENV === "production";
+  const cookie = `${DEVICE_COOKIE}=${id}; Path=/; Max-Age=${DEVICE_TTL_SECONDS}; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`;
+  if (!isRedisConfigured()) return cookie;
+  try {
+    const key = await devicesKey(email);
+    const seen = (await sha256Hex(`nimbus-device:${id}`)).slice(0, 40);
+    const [known, count] = await redisPipeline([
+      ["SISMEMBER", key, seen],
+      ["SCARD", key],
+    ]);
+    if (Number(known) === 1) {
+      await redisPipeline([["EXPIRE", key, DEVICE_TTL_SECONDS]]);
+      return cookie;
+    }
+    if (Number(count) < MAX_DEVICES) {
+      await redisPipeline([
+        ["SADD", key, seen],
+        ["EXPIRE", key, DEVICE_TTL_SECONDS],
+      ]);
+    }
+    if (Number(count) > 0 && !options.quiet && isSenderConfigured()) {
+      const when = new Date().toISOString().replace("T", " ").slice(0, 16);
+      await sendEmail({
+        from: NIMBUS_FROM,
+        to: normaliseEmail(email),
+        replyTo: "support@nimbuslabsai.com",
+        subject: "New login to your Nimbus Labs account",
+        text: [
+          `Your Nimbus Labs account (${normaliseEmail(email)}) was just logged in to from a browser it has not been used in before.`,
+          "",
+          `When: ${when} UTC`,
+          `How: ${WAY_WORDS[way]}`,
+          `Browser: ${browserName(userAgent)}`,
+          "",
+          "If this was you, there is nothing to do.",
+          "",
+          "If it was not you: log in at",
+          "https://nimbuslabsai.com/signin",
+          "with this email address, choose “Log out of all devices” at the foot of your studio, remove any passkey you do not recognise, and reply to this email so we can help.",
+        ].join("\n"),
+      }).catch(() => false);
+    }
+  } catch (error) {
+    console.error("noting a sign-in failed", error);
+  }
+  return cookie;
+}
+
+/** Carries the browsers an account knows to its new address, when it moves. */
+export async function moveDevices(from: string, to: string): Promise<void> {
+  if (!isRedisConfigured()) return;
+  const [members] = await redisPipeline([["SMEMBERS", await devicesKey(from)]]);
+  const list = Array.isArray(members) ? members.filter((m): m is string => typeof m === "string") : [];
+  await redisPipeline([
+    ...(list.length ? [["SADD", await devicesKey(to), ...list], ["EXPIRE", await devicesKey(to), DEVICE_TTL_SECONDS]] : []),
+    ["DEL", await devicesKey(from)],
+  ]);
+}

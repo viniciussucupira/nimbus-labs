@@ -236,19 +236,24 @@ export async function createConnectedAccount(options: {
  * Stripe is explicit that these must never be emailed or passed around: they
  * open a door to the account holder's personal information, so this link only
  * ever goes to a browser that has just proved it holds the session.
+ *
+ * `storeId` names the store the way back is for, so a creator with several
+ * stores comes back to the one whose account they were finishing.
  */
 export async function createOnboardingLink(
   accountId: string,
   origin: string,
+  storeId = "",
 ): Promise<string> {
+  const pin = /^[0-9a-f]{32}$/.test(storeId) ? `?store=${storeId}` : "";
   const link = await stripeRequest("POST", "/v2/core/account_links", {
     account: accountId,
     use_case: {
       type: "account_onboarding",
       account_onboarding: {
         configurations: ["merchant"],
-        refresh_url: `${origin}/api/stripe/refresh`,
-        return_url: `${origin}/api/stripe/return`,
+        refresh_url: `${origin}/api/stripe/refresh${pin}`,
+        return_url: `${origin}/api/stripe/return${pin}`,
       },
     },
   });

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { photoUrl } from "@/lib/photo-limits";
-import { centsToPrice, isFree, type Product, type Store } from "@/lib/store";
+import { isFree, type Listing, type Store } from "@/lib/store";
+import { formatMoney } from "@/lib/money";
 import { CREATOR, type CommunityConfig, type Member, type Post } from "@/lib/community";
 import { communityImageFile } from "@/lib/community-image";
 import { initialOf, segments, whenWords } from "@/lib/community-text";
@@ -65,12 +66,13 @@ export const LINK_NOTICES: Record<string, { title: string; body: string }> = {
 };
 
 /** What a product that opens the community is, in a few words. */
-export function ticketKind(product: Product): string {
+export function ticketKind(product: Listing, currency: string): string {
   if (isFree(product)) return "Free";
-  if (product.recurring) return `Membership · $${centsToPrice(product.priceCents)}`;
-  if (product.course) return `Course · $${centsToPrice(product.priceCents)}`;
-  if (product.call) return `Call · $${centsToPrice(product.priceCents)}`;
-  return `$${centsToPrice(product.priceCents)}`;
+  const price = formatMoney(product.priceCents, currency);
+  if (product.recurring) return `Membership · ${price}`;
+  if (product.course) return `Course · ${price}`;
+  if (product.call) return `Call · ${price}`;
+  return price;
 }
 
 /** The picture's address: through the route that checks who is asking. */

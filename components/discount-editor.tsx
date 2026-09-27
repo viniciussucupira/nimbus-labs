@@ -5,8 +5,10 @@ import {
   CODE_PROBLEMS,
   type CodeProblem,
   type DiscountCode,
+  amountProblem,
   offLabel,
 } from "@/lib/discount";
+import { type Currency, fieldPrefix } from "@/lib/money";
 import { toast } from "@/components/toast";
 
 const MESSAGES: Record<string, string> = {
@@ -22,7 +24,7 @@ const MESSAGES: Record<string, string> = {
 
 type Answer = { codes?: DiscountCode[]; problem?: string };
 
-async function send(payload: Record<string, unknown>): Promise<Answer> {
+async function send(payload: Record<string, unknown>, currency: Currency): Promise<Answer> {
   try {
     const response = await fetch("/api/store/discount", {
       method: "POST",
@@ -40,7 +42,10 @@ async function send(payload: Record<string, unknown>): Promise<Answer> {
       // The server says which way it was wrong; the creator gets that sentence
       // rather than a failure they cannot act on.
       return {
-        problem: CODE_PROBLEMS[data.reason as CodeProblem] ?? CODE_PROBLEMS.shape,
+        problem:
+          data.reason === "amount"
+            ? amountProblem(currency)
+            : CODE_PROBLEMS[data.reason as CodeProblem] ?? CODE_PROBLEMS.shape,
       };
     }
     return { problem: MESSAGES[data.error ?? ""] ?? MESSAGES.server_error };
@@ -63,7 +68,7 @@ const whenLabel = (seconds: number) =>
  * not ours: asking on the server would make the whole studio wait on a call to
  * Stripe just to draw a page that is mostly about something else.
  */
-export function DiscountEditor({ selling }: { selling: boolean }) {
+export function DiscountEditor({ selling, currency = "usd" }: { selling: boolean; currency?: Currency }) {
   const [codes, setCodes] = useState<DiscountCode[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -83,7 +88,7 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
   useEffect(() => {
     if (!selling) return;
     let alive = true;
-    send({ action: "list" }).then((answer) => {
+    send({ action: "list" }, currency).then((answer) => {
       if (!alive) return;
       if (answer.codes) setCodes(answer.codes);
       else setError(answer.problem ?? MESSAGES.server_error);
@@ -91,12 +96,12 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
     return () => {
       alive = false;
     };
-  }, [selling]);
+  }, [selling, currency]);
 
   async function run(payload: Record<string, unknown>, done: () => void, confirmation: string) {
     setBusy(true);
     setError(null);
-    const answer = await send(payload);
+    const answer = await send(payload, currency);
     setBusy(false);
     if (!answer.codes) {
       setError(answer.problem ?? MESSAGES.server_error);
@@ -147,6 +152,11 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                       {entry.off ? offLabel(entry.off) : "Made in Stripe"}
                     </p>
                   </div>
+                  {entry.off?.kind === "amount" && entry.off.currency !== currency ? (
+                    <p className="mt-2 rounded-xl bg-amber-brand/10 px-3 py-2 text-sm text-ink">
+                      {`This code takes off ${entry.off.currency.toUpperCase()}, and your store now charges in ${currency.toUpperCase()}. Stripe only takes it off a checkout in ${entry.off.currency.toUpperCase()}, so buyers cannot use it now. Switch it off and make a new one.`}
+                    </p>
+                  ) : null}
                   <p className="mt-1 text-sm text-ink-soft">
                     {`Used ${entry.timesRedeemed} ${
                       entry.timesRedeemed === 1 ? "time" : "times"
@@ -254,17 +264,17 @@ export function DiscountEditor({ selling }: { selling: boolean }) {
                     <option value="amount">An amount</option>
                   </select>
                 </div>
-                <div className="w-28">
+                <div className={kind === "amount" && currency !== "usd" ? "w-36" : "w-28"}>
                   <label
                     htmlFor="discount-value"
                     className="field-label"
                   >
-                    {kind === "percent" ? "Percent" : "Dollars"}
+                    {kind === "percent" ? "Percent" : currency === "usd" ? "Dollars" : `Amount, ${fieldPrefix(currency)}`}
                   </label>
                   <input
                     id="discount-value"
                     type="text"
-                    inputMode="decimal"
+                    inputMode={kind === "amount" && currency === "jpy" ? "numeric" : "decimal"}
                     required
                     value={kind === "percent" ? percent : amount}
                     onChange={(event) =>

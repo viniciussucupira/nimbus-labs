@@ -5,6 +5,7 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { requestCourseLink } from "@/lib/learn";
 import { clientIp } from "@/lib/visit";
 import { limited } from "@/lib/request-guard";
+import { readCourseListing } from "@/lib/catalog";
 
 /** "Send me a link": a student opening the course on another device. */
 export async function POST(request: NextRequest) {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     return new Response("Bad request", { status: 400 });
   }
   const store = handle ? await storeForHandle(handle) : null;
-  const product = store?.products.find((p) => p.id === productId && p.course);
+  const product = await readCourseListing(store, productId);
   if (!store || !product) return new Response("Not found.", { status: 404 });
 
   let result: string;

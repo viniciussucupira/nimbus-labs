@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { get, issueSignedToken, presignUrl } from "@vercel/blob";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
+import { studioAccess } from "@/lib/studio-route";
 import { productFile } from "@/lib/store";
 import {
   DOWNLOAD_URL_SECONDS,
@@ -49,19 +49,27 @@ async function signedDownload(pathname: string): Promise<string | null> {
 }
 
 export async function GET(request: NextRequest) {
-  const email = await emailForSession(
-    request.cookies.get(SESSION_COOKIE)?.value,
-  );
-  if (!email) return new Response("Log in first.", { status: 401 });
-
   if (!isRedisConfigured()) {
     return new Response("Stores are not switched on yet.", { status: 503 });
   }
 
+  const access = await studioAccess(request, "products");
+  if (!access.ok) {
+    const words: Record<string, [string, number]> = {
+      signed_out: ["Log in first.", 401],
+      no_store: ["There is no store here yet.", 404],
+      forbidden: ["Your role on this store does not include its files.", 403],
+      gone: ["That store is not one you can open.", 403],
+    };
+    const [text, status] = words[access.reason];
+    return new Response(text, { status });
+  }
+  const ref = access.access.ref;
+
   const id = request.nextUrl.searchParams.get("id") ?? "";
   if (!id) return new Response("Which file?", { status: 400 });
 
-  const found = await productFile(email, id);
+  const found = await productFile(ref, id);
   if (!found) return new Response("No file on that product.", { status: 404 });
 
   if (found.file.bytes > REDIRECT_ABOVE_BYTES) {

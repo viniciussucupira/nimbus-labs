@@ -29,7 +29,7 @@ import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { isPaidUp } from "@/lib/billing";
-import { type Product, type Store, isFree } from "@/lib/store";
+import { type Listing, type Store, isFree } from "@/lib/store";
 import {
   type AddResult,
   MAX_LEADS,
@@ -101,7 +101,7 @@ const addressKey = async (email: string) =>
  * good standing, the trial included — and something behind it to hand over.
  * It does not need a Stripe account, because no money moves.
  */
-export function canGiveProduct(store: Store, product: Product): boolean {
+export function canGiveProduct(store: Store, product: Listing): boolean {
   return (
     isFree(product) &&
     product.recurring === null &&
@@ -157,7 +157,7 @@ export type Claim = {
  */
 export async function requestCopy(input: {
   store: Store;
-  product: Product;
+  product: Listing;
   email: string;
   consent: boolean;
   ip: string;

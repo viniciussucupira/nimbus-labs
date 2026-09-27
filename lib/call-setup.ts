@@ -99,6 +99,13 @@ export type CallSetup = {
   bufferMinutes: number;
   /** Where the call happens: a meeting link the creator already has. */
   room: string | null;
+  /**
+   * Whether each booking gets a private video room made for it instead
+   * (lib/call-rooms.ts): a Jitsi Meet link nobody else knows. False is the
+   * creator's own link above, which every setup saved before rooms existed
+   * keeps.
+   */
+  video: boolean;
   /** Buyers per weekly time: 1 for a one-to-one call, up to MAX_SEATS. */
   seats: number;
   /** The dated sessions, soonest first. Empty for weekly hours. */
@@ -220,6 +227,7 @@ export function readSetup(raw: unknown): CallSetup | SetupProblem {
       horizonDays: 30,
       bufferMinutes: 0,
       room: null,
+      video: value.video === true,
       seats: 1,
       sessions,
     };
@@ -264,7 +272,19 @@ export function readSetup(raw: unknown): CallSetup | SetupProblem {
   const seats = Number(value.seats ?? 1);
   if (!Number.isInteger(seats) || seats < 1 || seats > MAX_SEATS) return "seats";
 
-  return { kind: "weekly", minutes, tz: value.tz as string, weekly, noticeHours, horizonDays, bufferMinutes, room, seats, sessions: [] };
+  return {
+    kind: "weekly",
+    minutes,
+    tz: value.tz as string,
+    weekly,
+    noticeHours,
+    horizonDays,
+    bufferMinutes,
+    room,
+    video: value.video === true,
+    seats,
+    sessions: [],
+  };
 }
 
 /** Whatever came back from storage, made safe to use, or null. */

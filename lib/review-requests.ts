@@ -1,0 +1,255 @@
+/**
+ * The one email that asks a buyer for a review, some days after they bought.
+ *
+ * Off for every store until its creator switches it on in the studio and
+ * picks when it goes: 3 to 30 days after buying. It is email from the
+ * creator to people, so it goes through the same sender and the same rules
+ * as their other email (lib/mail.ts): Pro, a postal address in the footer,
+ * the store's monthly allowance counted before it is sent, and a one-click
+ * way to stop it (an unsubscribe link and the header that lets a mail app
+ * offer the same), which keeps that address from being asked again by that
+ * store. An address that left the creator's list is not asked either.
+ *
+ * What it will not do: ask twice about one order, ask about an order that
+ * was refunded or has been reviewed already, or offer anything in return
+ * for a review. It asks for an honest one and says the review will show as
+ * a verified purchase under a name the buyer chooses.
+ *
+ * Orders are put on the list when their purchase is confirmed
+ * (lib/review-ask.ts). The five-minute job takes what is due, at most fifty
+ * a run, and reads each order from Stripe again before writing, so a refund
+ * made in the meantime is honoured. The delay is read when the email is due:
+ * a creator who makes it longer moves the orders still waiting; one who
+ * makes it shorter sends those at the old time.
+ *
+ *   nl:rev:ask:sent:<reference>    that order was asked, 120 days
+ *   nl:rev:off:<statsId>:<hash>    that address pressed stop, kept for good
+ *   nl:rev:stop:<token>            who a stop link belongs to, 400 days
+ */
+import { createHash, randomBytes } from "node:crypto";
+import { normaliseEmail } from "@/lib/auth";
+import { type BatchMessage, sendBatch } from "@/lib/email";
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { canWrite, fromLine, release, render, reserve } from "@/lib/mail";
+import { leadsKey, parseContact } from "@/lib/contacts";
+import { storeBase } from "@/lib/purchase-email";
+import { SITE_URL } from "@/lib/site-url";
+import { ASK_DUE_KEY, type AskEntry, dueAt, readAskMember } from "@/lib/review-ask";
+import { mintReviewLink, provePurchase } from "@/lib/review-proof";
+import { readReview, reviewId } from "@/lib/reviews";
+import type { Store } from "@/lib/store";
+
+/** Orders looked at in one run of the job. */
+export const MAX_ASKS_PER_RUN = 50;
+/** An email this late after it was due is not sent at all: it would read like a mistake. */
+export const LATE_SECONDS = 14 * 86_400;
+/** How long a waiting order waits before it is looked at again. */
+const RETRY_SECONDS = { plan: 6 * 3600, stripe: 3600, sender: 1800 };
+const SENT_MARK_SECONDS = 120 * 86_400;
+const STOP_LINK_SECONDS = 400 * 86_400;
+export const REVIEW_STOP = /^[0-9a-f]{40}$/;
+
+const sha = (value: string) => createHash("sha256").update(value).digest("hex");
+const sentKey = (reference: string) => `nl:rev:ask:sent:${reference}`;
+const offKey = (statsId: string, email: string) => `nl:rev:off:${statsId}:${sha(`nimbus-review-off:${normaliseEmail(email)}`).slice(0, 32)}`;
+const stopKey = (token: string) => `nl:rev:stop:${token}`;
+
+const DATE = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+async function stopLink(store: Store, email: string): Promise<string> {
+  const token = randomBytes(20).toString("hex");
+  const grant = { s: store.statsId, e: normaliseEmail(email), h: store.handle, n: store.mail?.fromName || store.name };
+  await redisPipeline([["SET", stopKey(token), JSON.stringify(grant), "EX", STOP_LINK_SECONDS]]);
+  return token;
+}
+
+/** Who a stop link belongs to, without acting on it. */
+export async function readReviewStop(token: string): Promise<{ email: string; storeName: string; stopped: boolean } | null> {
+  if (!REVIEW_STOP.test(token) || !isRedisConfigured()) return null;
+  const [raw] = await redisPipeline([["GET", stopKey(token)]]);
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    const grant = JSON.parse(raw) as { s?: unknown; e?: unknown; n?: unknown };
+    if (typeof grant.s !== "string" || typeof grant.e !== "string" || !grant.s || !grant.e) return null;
+    const [off] = await redisPipeline([["EXISTS", offKey(grant.s, grant.e)]]);
+    return { email: grant.e, storeName: typeof grant.n === "string" ? grant.n : "", stopped: Number(off) === 1 };
+  } catch {
+    return null;
+  }
+}
+
+/** Stops every review request from that store to that address, for good. Safe to press twice. */
+export async function stopReviewRequests(token: string): Promise<boolean> {
+  if (!REVIEW_STOP.test(token) || !isRedisConfigured()) return false;
+  const [raw] = await redisPipeline([["GET", stopKey(token)]]);
+  if (typeof raw !== "string" || !raw) return false;
+  try {
+    const grant = JSON.parse(raw) as { s?: unknown; e?: unknown };
+    if (typeof grant.s !== "string" || typeof grant.e !== "string" || !grant.s || !grant.e) return false;
+    await redisPipeline([["SET", offKey(grant.s, grant.e), new Date().toISOString()]]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The words of the email, for one order and the products in it not reviewed yet. */
+export function requestText(store: Store, titles: string[], paidAt: number, link: string): { subject: string; body: string } {
+  const name = store.mail?.fromName || store.name;
+  const what = titles.length === 1 ? titles[0] : `${titles.slice(0, -1).join(", ")} and ${titles[titles.length - 1]}`;
+  return {
+    subject: `How is ${titles[0]}?`.slice(0, 150),
+    body: [
+      `You bought ${what} from ${name} on ${DATE.format(new Date(paidAt * 1000))}. If you have a minute, ${name} would like to know what you think, good or bad.`,
+      "",
+      "Give it one to five stars and a few words here:",
+      link,
+      "",
+      `Your review appears on ${name}'s page marked as a verified purchase, under the name you choose. Your email address is never shown. The same link lets you change or delete it for 60 days.`,
+      "",
+      "This is the only email about reviewing this order.",
+    ].join("\n"),
+  };
+}
+
+export type AskCounts = { sent: number; dropped: number; waiting: number };
+
+type Ready = { entry: AskEntry; member: string; message: BatchMessage };
+
+/**
+ * Sends the review requests that are due, until the deadline or fifty
+ * orders, whichever comes first. Safe to run from two places: each order is
+ * claimed before it is sent.
+ */
+export async function sendReviewRequests(
+  load: (handle: string) => Promise<Store | null>,
+  deadline: number,
+  nowSeconds = Math.floor(Date.now() / 1000),
+): Promise<AskCounts> {
+  const counts: AskCounts = { sent: 0, dropped: 0, waiting: 0 };
+  if (!isRedisConfigured()) return counts;
+  const [raw] = await redisPipeline([["ZRANGEBYSCORE", ASK_DUE_KEY, 0, nowSeconds, "LIMIT", 0, MAX_ASKS_PER_RUN]]);
+  const members = Array.isArray(raw) ? (raw as string[]) : [];
+  const stores = new Map<string, Store | null>();
+  const groups = new Map<string, { store: Store; ready: Ready[] }>();
+  const drop = async (member: string) => {
+    counts.dropped += 1;
+    await redisPipeline([["ZREM", ASK_DUE_KEY, member]]);
+  };
+  const later = async (member: string, at: number) => {
+    counts.waiting += 1;
+    await redisPipeline([["ZADD", ASK_DUE_KEY, "XX", at, member]]);
+  };
+
+  for (const member of members) {
+    if (Date.now() >= deadline) break;
+    const entry = readAskMember(member);
+    if (!entry) {
+      await drop(member);
+      continue;
+    }
+    if (!stores.has(entry.handle)) stores.set(entry.handle, await load(entry.handle).catch(() => null));
+    const store = stores.get(entry.handle) ?? null;
+    if (!store || store.statsId !== entry.statsId || !store.reviewAsk.days) {
+      await drop(member);
+      continue;
+    }
+    const due = dueAt(entry.paidAt, store.reviewAsk.days);
+    if (due > nowSeconds) {
+      await later(member, due);
+      continue;
+    }
+    if (nowSeconds - due > LATE_SECONDS) {
+      await drop(member);
+      continue;
+    }
+    if (!canWrite(store)) {
+      await later(member, nowSeconds + RETRY_SECONDS.plan);
+      continue;
+    }
+    const [asked] = await redisPipeline([["EXISTS", sentKey(entry.reference)]]);
+    if (Number(asked) === 1) {
+      await drop(member);
+      continue;
+    }
+    const proof = await provePurchase(store, entry.reference);
+    if (proof.state === "error") {
+      await later(member, nowSeconds + RETRY_SECONDS.stripe);
+      continue;
+    }
+    if (proof.state !== "ok" || proof.proof.refunded) {
+      await drop(member);
+      continue;
+    }
+    const email = proof.proof.email;
+    const [off, contact] = await redisPipeline([
+      ["EXISTS", offKey(entry.statsId, email)],
+      store.listId ? ["HGET", leadsKey(store.listId), normaliseEmail(email)] : ["EXISTS", "nl:none"],
+    ]);
+    if (Number(off) === 1 || (store.listId && parseContact(contact)?.unsub)) {
+      await drop(member);
+      continue;
+    }
+    const open = [];
+    for (const product of proof.proof.products) {
+      if (!(await readReview(entry.statsId, product.id, reviewId(entry.statsId, product.id, email)))) open.push(product);
+    }
+    if (open.length === 0) {
+      await drop(member);
+      continue;
+    }
+    const [claimed] = await redisPipeline([["SET", sentKey(entry.reference), "sending", "NX", "EX", SENT_MARK_SECONDS]]);
+    if (claimed === null) {
+      await drop(member);
+      continue;
+    }
+    const token = await mintReviewLink(store, entry.reference, email);
+    const stop = await stopLink(store, email);
+    const fromName = store.mail?.fromName || store.name;
+    const words = requestText(store, open.map((p) => p.title), entry.paidAt, `${storeBase(store)}/review?ask=${token}`);
+    const r = render(store, words.subject, words.body, null, {
+      page: `${SITE_URL}/unsubscribe?v=${stop}`,
+      oneClick: `${SITE_URL}/api/mail/unsubscribe?v=${stop}`,
+      why: `You are getting this because you bought from ${fromName} at nimbuslabsai.com/@${store.handle}.`,
+      label: "Stop review requests",
+      after: `from ${fromName} in one click.`,
+    });
+    const group = groups.get(entry.handle) ?? { store, ready: [] };
+    group.ready.push({
+      entry,
+      member,
+      message: { from: fromLine(store), to: email, subject: r.subject, text: r.text, html: r.html, replyTo: store.email, headers: r.headers },
+    });
+    groups.set(entry.handle, group);
+  }
+
+  for (const { store, ready } of groups.values()) {
+    const unclaim = () => redisPipeline(ready.map((item) => ["DEL", sentKey(item.entry.reference)]));
+    const reserved = await reserve(store, ready.length);
+    if (reserved !== "ok") {
+      await unclaim();
+      for (const item of ready) await later(item.member, nowSeconds + RETRY_SECONDS.plan);
+      continue;
+    }
+    const outcome = await sendBatch(
+      ready.map((item) => item.message),
+      `review-ask:${sha(ready.map((item) => item.entry.reference).join(","))}`,
+    );
+    if (outcome !== "sent") {
+      await release(store, ready.length);
+      await unclaim();
+      for (const item of ready) {
+        if (outcome === "refused") await drop(item.member);
+        else await later(item.member, nowSeconds + RETRY_SECONDS.sender);
+      }
+      continue;
+    }
+    await redisPipeline([
+      ...ready.map((item) => ["SET", sentKey(item.entry.reference), "sent", "EX", SENT_MARK_SECONDS]),
+      ["ZREM", ASK_DUE_KEY, ...ready.map((item) => item.member)],
+    ]);
+    counts.sent += ready.length;
+  }
+  return counts;
+}
+

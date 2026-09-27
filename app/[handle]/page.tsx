@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
-import { isFree, normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForPage } from "@/lib/store";
+import { productCount, readPage, sellsAny } from "@/lib/catalog";
 import { canSell, canSellProduct } from "@/lib/store-checkout";
 import { linkHost } from "@/lib/product-link";
 import { isConnectInTestMode } from "@/lib/stripe-connect";
@@ -17,6 +18,7 @@ import { ProductCard } from "@/components/store-product";
 import { canWrite } from "@/lib/mail";
 import { canUseDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
+import { summaries } from "@/lib/reviews";
 
 type Params = {
   params: Promise<{ handle: string }>;
@@ -51,7 +53,7 @@ async function load(raw: string) {
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) return null;
   const asked = normaliseHandle(decoded);
-  const store = await storeForHandle(asked);
+  const store = await storeForPage(asked);
   return store ? { store, asked } : null;
 }
 
@@ -72,7 +74,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     // something on it does, so it stops hiding the moment it has. A page of
     // links alone counts: it is a page somebody may be looking for.
     robots: {
-      index: store.products.length > 0 || store.links.length > 0,
+      index: productCount(store) > 0 || store.links.length > 0,
       follow: true,
     },
     // A shared link shows the creator's face when they have put one up.
@@ -89,10 +91,17 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
+/** Where one page of the store's products is: the store's own address, with the page after it. */
+function pageHref(handle: string, page: number, ownDomain: boolean): string {
+  const base = ownDomain ? "/" : `/@${handle}`;
+  return page <= 1 ? base : `${base}?page=${page}`;
+}
+
 export default async function StorePage({ params, searchParams }: Params) {
   const { handle } = await params;
   const query = searchParams ? await searchParams : {};
   const notice = NOTICES[typeof query.status === "string" ? query.status : ""] ?? null;
+  const asking = typeof query.page === "string" && /^\d{1,4}$/.test(query.page) ? Number(query.page) : 1;
   const found = await load(handle);
   if (!found) notFound();
   const { store, asked } = found;
@@ -116,7 +125,16 @@ export default async function StorePage({ params, searchParams }: Params) {
   const rehearsal = selling && isConnectInTestMode();
   // The note about payments is about things that cost money. A page that only
   // gives things away has no card to talk about.
-  const hasPriced = store.products.some((product) => !isFree(product));
+  const hasPriced = sellsAny(store, "paid");
+  // The page asked for, a page of products at a time. The first page is
+  // drawn from the store record alone; a later one reads its own cards.
+  // The buyers' reviews of every product, in one read, started alongside the
+  // page's own reads — and only for a store that has ever had a review
+  // (lib/store.ts, reviewed), so any other store makes no extra request.
+  const ratings = store.reviewed ? summaries(store.statsId).catch(() => new Map()) : Promise.resolve(new Map());
+  const { listings, related, page, pages } = await readPage(store, asking);
+  const known = [...listings, ...related];
+  const total = productCount(store);
 
   const bold = store.look.theme === "bold";
   // A member can always find the way out, even when the store cannot sell
@@ -129,7 +147,7 @@ export default async function StorePage({ params, searchParams }: Params) {
   // a product without a limit is answered without asking anything.
   // A product handing out keys from a pool that is empty is sold out too.
   const counts = await Promise.all(
-    store.products.map(async (product) => {
+    listings.map(async (product) => {
       const [stock, out] = await Promise.all([
         stockLeft(store, product).catch(() => null),
         outOfKeys(store, product).catch(() => false),
@@ -137,8 +155,9 @@ export default async function StorePage({ params, searchParams }: Params) {
       return out ? 0 : stock;
     }),
   );
+  const rated = await ratings;
   const left = new Map<string, number>();
-  store.products.forEach((product, i) => {
+  listings.forEach((product, i) => {
     const count = counts[i];
     if (count !== null) left.set(product.id, count);
   });
@@ -187,7 +206,7 @@ export default async function StorePage({ params, searchParams }: Params) {
             </div>
           ) : null}
 
-          {store.products.length === 0 && store.links.length === 0 ? (
+          {total === 0 && store.links.length === 0 ? (
             <div className="st-note text-center">
               <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing here yet</p>
               <p className="mt-2 text-sm">
@@ -197,23 +216,57 @@ export default async function StorePage({ params, searchParams }: Params) {
             </div>
           ) : null}
 
-          {store.products.length > 0 ? (
+          {total > 0 ? (
             <>
               <ul className="space-y-4">
-                {store.products.map((product, index) => (
+                {listings.map((product, index) => (
                   <ProductCard
-                    eager={index < 3}
+                    eager={index < 3 && page === 1}
                     key={product.id}
                     store={store}
                     product={product}
+                    related={known}
                     // A count is only worth showing where the product can be bought.
                     remaining={left.has(product.id) && canSellProduct(store, product) ? left.get(product.id)! : null}
                     writes={writes}
                     selling={selling}
                     manageable={manageable}
+                    rating={rated.get(product.id) ?? null}
                   />
                 ))}
               </ul>
+
+              {/*
+                A long store, a page at a time: plain links, so every page has
+                an address of its own, works without JavaScript and can be
+                shared. The count says how far the list goes.
+              */}
+              {pages > 1 ? (
+                <nav aria-label="Pages of products" className="st-pager mt-6">
+                  {page > 1 ? (
+                    <Link href={pageHref(store.handle, page - 1, reachedOn !== null)} rel="prev" className="st-card st-link-card st-pager-link">
+                      <span aria-hidden="true">&larr;</span> Previous
+                    </Link>
+                  ) : (
+                    <span className="st-pager-link st-pager-off" aria-hidden="true">
+                      <span>&larr;</span> Previous
+                    </span>
+                  )}
+                  <p className="st-muted text-center text-sm font-semibold" aria-current="page">
+                    {`Page ${page} of ${pages}`}
+                    <span className="block text-xs font-normal">{`${total.toLocaleString("en-US")} products`}</span>
+                  </p>
+                  {page < pages ? (
+                    <Link href={pageHref(store.handle, page + 1, reachedOn !== null)} rel="next" className="st-card st-link-card st-pager-link">
+                      Next <span aria-hidden="true">&rarr;</span>
+                    </Link>
+                  ) : (
+                    <span className="st-pager-link st-pager-off" aria-hidden="true">
+                      Next <span>&rarr;</span>
+                    </span>
+                  )}
+                </nav>
+              ) : null}
 
               {/*
                 Said plainly, because the alternative is a button that takes a

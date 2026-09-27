@@ -12,22 +12,19 @@ import { setStripeAccount } from "@/lib/store";
  * they walked through a door.
  */
 export async function GET(request: NextRequest) {
-  const creator = await creatorFrom(request, { checkOrigin: false });
+  const creator = await creatorFrom(request, "payments", { checkOrigin: false });
   if (creator instanceof Response) return creator;
-  const { email, store, origin } = creator;
+  const { ref, store, origin, studio } = creator;
 
-  if (!isConnectConfigured()) return away(origin, "/studio?stripe=unavailable");
-  if (!store.stripeAccountId) return away(origin, "/studio?stripe=notstarted");
+  if (!isConnectConfigured()) return away(origin, studio("stripe=unavailable"));
+  if (!store.stripeAccountId) return away(origin, studio("stripe=notstarted"));
 
   try {
     const state = await readAccount(store.stripeAccountId);
-    await setStripeAccount(email, store.stripeAccountId, state.chargesEnabled);
-    return away(
-      origin,
-      `/studio?stripe=${state.chargesEnabled ? "ready" : "pending"}`,
-    );
+    await setStripeAccount(ref, store.stripeAccountId, state.chargesEnabled);
+    return away(origin, studio(`stripe=${state.chargesEnabled ? "ready" : "pending"}`));
   } catch (error) {
     console.error("stripe return failed", error);
-    return away(origin, "/studio?stripe=error");
+    return away(origin, studio("stripe=error"));
   }
 }

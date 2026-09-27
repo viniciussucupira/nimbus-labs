@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { hasProduct } from "@/lib/catalog";
 import { StoreFullError, setCommunity, storeForEmail } from "@/lib/store";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import {
@@ -46,6 +47,9 @@ const ACTIONS = new Set([
   "report-delete",
 ]);
 
+/** What keeps order, as opposed to what sets the community up. */
+const MODERATION = new Set(["member", "dismiss", "report-hide", "report-delete"]);
+
 /**
  * Everything the studio changes about the creator's community.
  *
@@ -60,20 +64,26 @@ const ACTIONS = new Set([
  * here can reach anyone else's.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request, 8_000);
+  // Keeping order is moderation, which Editors and Support do too; setting
+  // the community up is the store's settings (lib/team-roles.ts).
+  const guarded = await guardStoreWrite(
+    request,
+    (body) => (MODERATION.has(text(body.action, 20)) ? "community" : "settings"),
+    8_000,
+  );
   if (!guarded.ok) return guarded.response;
-  const { email, body } = guarded;
+  const { ref, body } = guarded;
   const action = text(body.action, 20);
   if (!ACTIONS.has(action)) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
 
   try {
-    let store = await storeForEmail(email);
+    let store = await storeForEmail(ref);
     if (!store) return fail("none");
 
     if (action === "enable") {
       const on = body.on === true;
-      store = await setCommunity(email, on);
+      store = await setCommunity(ref, on);
       if (!store?.community) return fail("none");
       let config = await readConfig(store.community.id);
       if (!config) {
@@ -99,8 +109,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "access") {
       const wanted = Array.isArray(body.products) ? body.products.filter((p): p is string => typeof p === "string") : [];
-      const known = new Set(store.products.map((p) => p.id));
-      const access = [...new Set(wanted)].filter((p) => known.has(p));
+      const access = [...new Set(wanted)].filter((p) => hasProduct(store, p));
       // A new version, so no answer kept under the old choice lets anybody in.
       return save({ ...config, access, v: config.v + 1 });
     }

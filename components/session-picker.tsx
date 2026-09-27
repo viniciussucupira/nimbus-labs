@@ -123,7 +123,7 @@ export function SessionPicker({
 
       <div className="mt-6">
         <button type="submit" className="btn st-btn btn-lg btn-block">
-          {move ? "Move my seat to this session" : `Continue to payment — $${price}`}
+          {move ? "Move my seat to this session" : `Continue to payment — ${price}`}
         </button>
         <p className="st-muted mt-3 text-center text-xs">
           {move

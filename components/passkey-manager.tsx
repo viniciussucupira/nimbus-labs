@@ -1,0 +1,256 @@
+"use client";
+
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
+import { type PublicKeyCredentialCreationOptionsJSON, browserSupportsWebAuthn, startRegistration } from "@simplewebauthn/browser";
+import { toast } from "@/components/toast";
+import { Icon } from "@/components/icons";
+
+export type PasskeyRow = { id: string; name: string; createdAt: string; lastUsedAt: string; synced: boolean };
+
+const MESSAGES: Record<string, string> = {
+  expired: "That took longer than five minutes. Press the button again.",
+  invalid: "Your browser's answer could not be checked, so nothing was added. Try again.",
+  full: "An account holds ten passkeys at most. Remove one you no longer use first.",
+  taken: "That passkey is already on an account here.",
+  cancelled: "Nothing was added: the passkey prompt was closed.",
+  unknown: "That passkey is not on your account any more. Reload the page.",
+  signed_out: "Your session ended. Log in again.",
+  server_error: "Something went wrong on our side. Try again in a moment.",
+  rate_limited: "That is a lot of passkey changes in an hour. Try again later.",
+  reauth: "Adding a passkey needs a login from the last 15 minutes. Log in again below, then add it.",
+};
+
+type Answer = { ok?: boolean; error?: string; options?: unknown; passkeys?: PasskeyRow[] };
+
+async function call(payload: Record<string, unknown>): Promise<Answer> {
+  try {
+    const response = await fetch("/api/auth/passkey", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return (await response.json().catch(() => ({ ok: false, error: "server_error" }))) as Answer;
+  } catch {
+    return { ok: false, error: "server_error" };
+  }
+}
+
+function day(iso: string): string {
+  if (!iso) return "never";
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+
+/** A name to start from: what the device is, as far as its browser says. */
+function guessName(): string {
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  if (/iPhone/.test(ua)) return "iPhone";
+  if (/iPad/.test(ua)) return "iPad";
+  if (/Android/.test(ua)) return "Android phone";
+  if (/Mac OS X/.test(ua)) return "Mac";
+  if (/Windows/.test(ua)) return "Windows computer";
+  return "This device";
+}
+
+const noSubscription = () => () => {};
+
+/**
+ * Where this browser remembers, for half an hour, that its person went to log
+ * in again in order to add a passkey, so the studio can bring them back to
+ * this spot when they return. Only a convenience: the server decides whether
+ * the login is recent enough.
+ */
+const AFTER_LOGIN = "nimbus-passkey-after-login";
+const AFTER_LOGIN_MS = 30 * 60 * 1000;
+
+function rememberReturn(): void {
+  try {
+    window.localStorage.setItem(AFTER_LOGIN, String(Date.now()));
+  } catch {
+    // Without storage the person simply finds this section themselves.
+  }
+}
+
+function takeReturn(): boolean {
+  try {
+    const at = Number(window.localStorage.getItem(AFTER_LOGIN));
+    window.localStorage.removeItem(AFTER_LOGIN);
+    return Number.isFinite(at) && at > 0 && Date.now() - at < AFTER_LOGIN_MS;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The person's passkeys, in the studio's Account part: add one, see when
+ * each was last used, remove one. A passkey is the person's, not a store's,
+ * so the list is the same whichever store is open.
+ */
+export function PasskeyManager({ initial, fresh }: { initial: PasskeyRow[]; fresh: boolean }) {
+  const supported = useSyncExternalStore(noSubscription, () => browserSupportsWebAuthn(), () => true);
+  const [list, setList] = useState(initial);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  /** The login is too old to add a passkey (told by the page, or by the server when it ran out meanwhile). */
+  const [stale, setStale] = useState(!fresh);
+  const [back, setBack] = useState(false);
+  const section = useRef<HTMLElement>(null);
+  const nameField = useRef<HTMLInputElement>(null);
+
+  // Back from logging in again to add a passkey: brought to this spot, ready.
+  useEffect(() => {
+    if (!fresh) return;
+    // After the page has settled, and only once however often this runs.
+    const timer = window.setTimeout(() => {
+      if (!takeReturn()) return;
+      setBack(true);
+      const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      section.current?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+      nameField.current?.focus({ preventScroll: true });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fresh]);
+
+  async function add() {
+    setBusy("add");
+    setError(null);
+    try {
+      const first = await call({ action: "options" });
+      if (first.error === "reauth") {
+        setStale(true);
+        return;
+      }
+      if (!first.ok || !first.options) {
+        setError(MESSAGES[first.error ?? ""] ?? MESSAGES.server_error);
+        return;
+      }
+      let response;
+      try {
+        response = await startRegistration({ optionsJSON: first.options as PublicKeyCredentialCreationOptionsJSON });
+      } catch {
+        setError(MESSAGES.cancelled);
+        return;
+      }
+      const done = await call({ action: "add", response, name: name.trim() || guessName() });
+      if (done.error === "reauth") {
+        setStale(true);
+        return;
+      }
+      if (!done.ok) {
+        setError(MESSAGES[done.error ?? ""] ?? MESSAGES.server_error);
+        return;
+      }
+      setList(done.passkeys ?? list);
+      setName("");
+      setBack(false);
+      toast("Passkey added.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function remove(row: PasskeyRow) {
+    if (!window.confirm(`Remove “${row.name}”? It will not log in any more.`)) return;
+    setBusy(row.id);
+    setError(null);
+    const done = await call({ action: "remove", id: row.id });
+    setBusy(null);
+    if (!done.ok) {
+      setError(MESSAGES[done.error ?? ""] ?? MESSAGES.server_error);
+      return;
+    }
+    setList((rows) => rows.filter((r) => r.id !== row.id));
+    toast("Passkey removed.");
+  }
+
+  return (
+    <section ref={section} id="passkeys" aria-labelledby="passkeys-title" className="mt-8 scroll-mt-32 border-t border-line pt-6">
+      <h3 id="passkeys-title" className="flex items-center gap-2 font-semibold text-ink">
+        <Icon name="key" size={18} className="text-violet-deep" />
+        Passkeys
+      </h3>
+      <p className="mt-2 text-sm text-ink-soft">
+        Log in with your fingerprint, face or device PIN instead of waiting for an email. The emailed link keeps
+        working either way, so losing a phone never locks you out. We keep only the public half of each key.
+      </p>
+
+      {list.length ? (
+        <ul className="mt-4 divide-y divide-line rounded-[12px] ring-1 ring-line">
+          {list.map((row) => (
+            <li key={row.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
+              <span className="min-w-0">
+                <span className="block break-words font-semibold text-ink">{row.name}</span>
+                <span className="block text-xs text-ink-soft">
+                  {`Added ${day(row.createdAt)} · last used ${day(row.lastUsedAt)}${row.synced ? " · synced across your devices" : ""}`}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => void remove(row)}
+                disabled={busy !== null}
+                aria-busy={busy === row.id}
+                className="inline-flex min-h-6 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 rounded-[12px] bg-paper px-4 py-3 text-sm text-ink-soft ring-1 ring-line">No passkeys yet.</p>
+      )}
+
+      {back && !stale ? (
+        <p className="notice mt-4" role="status">
+          You logged in again. Name this device and add your passkey now.
+        </p>
+      ) : null}
+
+      {supported && stale ? (
+        <div className="mt-4 rounded-[12px] bg-paper px-4 py-4 ring-1 ring-line">
+          <p className="text-sm text-ink-soft">
+            Adding a passkey needs a login from the last 15 minutes, because a passkey keeps working after this
+            session ends. Log in again with a link sent to your email, or with a passkey you already have, and you come
+            back here to add it.
+          </p>
+          <Link href="/signin?status=reauth" onClick={rememberReturn} className="btn btn-secondary mt-3">
+            <Icon name="key" size={16} />
+            Log in again
+          </Link>
+        </div>
+      ) : supported ? (
+        <form
+          className="mt-4 flex flex-wrap items-end gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void add();
+          }}
+        >
+          <label className="min-w-0 flex-1 basis-48 text-sm font-bold text-ink">
+            Name it
+            <input
+              ref={nameField}
+              className="field mt-1"
+              maxLength={60}
+              value={name}
+              placeholder={`${guessName()}, for example`}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </label>
+          <button type="submit" className="btn btn-secondary" disabled={busy !== null} aria-busy={busy === "add"}>
+            <Icon name="plus" size={16} />
+            {busy === "add" ? "Waiting for your device…" : "Add a passkey"}
+          </button>
+        </form>
+      ) : (
+        <p className="mt-4 text-sm text-ink-soft">This browser cannot make passkeys. The emailed link works as always.</p>
+      )}
+      {error ? (
+        <p className="notice notice-error mt-3" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </section>
+  );
+}

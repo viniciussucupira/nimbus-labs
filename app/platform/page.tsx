@@ -15,10 +15,10 @@ export const metadata: Metadata = {
 };
 
 const GROUPS: { key: NonNullable<TopicPage["group"]>; title: string; line: string }[] = [
-  { key: "sell", title: "Sell", line: "Files, courses, memberships, calls and a community, from one page." },
+  { key: "sell", title: "Sell", line: "Files, courses, memberships, calls and a community, from one page, with a sales page for each." },
   { key: "paid", title: "Get paid", line: "On your own Stripe account, with the tools that raise each sale." },
   { key: "deliver", title: "Deliver", line: "The second Stripe confirms, with a key, a stamp or a certificate where you want one." },
-  { key: "grow", title: "Grow", line: "Your list, your numbers, your affiliates, your other tools and your own domain." },
+  { key: "grow", title: "Grow", line: "Your list, your reviews, your numbers, your affiliates, your team, your other tools and your own domain." },
 ];
 
 const dollars = (cents: number) => `$${cents / 100}`;

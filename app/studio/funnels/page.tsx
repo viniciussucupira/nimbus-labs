@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { idsOfKind, readAllListings, readProduct } from "@/lib/catalog";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Logo } from "@/components/logo";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { centsToPrice, storeForEmail } from "@/lib/store";
+import { studioPath, studioView } from "@/lib/studio-route";
+import { StudioHeader } from "@/components/studio-header";
+import { StudioStorePin } from "@/components/studio-store-pin";
+import { formatMoney } from "@/lib/money";
 import { canBeBumped, isOneOff } from "@/lib/product-extras";
 import { MAX_FUNNEL_STEPS } from "@/lib/funnel";
 import { imageUrl } from "@/lib/product-image";
@@ -21,40 +23,58 @@ type Params = { searchParams: Promise<{ [key: string]: string | string[] | undef
  * What each product offers after it is paid for: up to five one-click offers
  * in a row, each with a way on for yes and for no thanks. On every plan.
  */
-export default async function StudioFunnelsPage({ searchParams }: Params) {
-  const cookieStore = await cookies();
-  const email = await emailForSession(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!email) redirect("/signin");
-  const store = await storeForEmail(email);
-  if (!store) redirect("/studio");
+/** Products listed beside the editor at once; a longer list is searched. */
+const NAV_LIMIT = 50;
 
-  // Only a plain one-off sale can be followed by offers.
-  const owners = store.products.filter((p) => isOneOff(p));
+export default async function StudioFunnelsPage({ searchParams }: Params) {
   const query = await searchParams;
+  // Which store, and whether this person's role there has "products" (lib/studio-route.ts).
+  const found = await studioView(await cookies(), typeof query.store === "string" ? query.store : undefined, "products");
+  if (!found.ok) {
+    if (found.reason === "signed_out") redirect("/signin");
+    redirect(found.store ? studioPath(found.store, "team=forbidden") : "/studio");
+  }
+  const { view } = found;
+  const { store } = view;
+
+  // Only a plain one-off sale can be followed by offers. Every card is read
+  // once; the product being edited is read in full, for its funnel.
+  const listings = await readAllListings(store);
+  const owners = listings.filter((p) => isOneOff(p));
+  const withOffers = new Set(idsOfKind(store, "funnel"));
   const asked = typeof query.product === "string" ? query.product : "";
-  const selected =
-    owners.find((p) => p.id === asked) ?? owners.find((p) => p.funnel !== null) ?? owners[0] ?? null;
-  const offerable = store.products
+  const find = typeof query.q === "string" ? query.q.trim().slice(0, 80) : "";
+  const chosen =
+    owners.find((p) => p.id === asked) ?? owners.find((p) => withOffers.has(p.id)) ?? owners[0] ?? null;
+  const selected = chosen ? await readProduct(store, chosen.id) : null;
+  // A long store lists the products with offers first and the rest after,
+  // NAV_LIMIT at a time, found by name.
+  const matching = (find ? owners.filter((p) => p.title.toLowerCase().includes(find.toLowerCase())) : owners)
+    .slice()
+    .sort((a, b) => Number(withOffers.has(b.id)) - Number(withOffers.has(a.id)));
+  const listed = matching.slice(0, NAV_LIMIT);
+  if (selected && !listed.some((p) => p.id === selected.id)) listed.unshift(selected);
+  const offerable = listings
     .filter((p) => canBeBumped(p))
     .map((p) => ({
       id: p.id,
       title: p.title,
       priceCents: p.priceCents,
     }));
-  const pictures = store.products
+  const pictures = listings
     .filter((p) => p.image)
     .map((p) => ({ id: p.id, title: p.title, src: imageUrl(p.image!) }));
 
   return (
     <div className="min-h-screen bg-paper text-ink">
-      <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
-        <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-3">
-          <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Nimbus Labs, home">
-            <Logo />
-          </Link>
-          <Link href="/studio" className="btn btn-secondary btn-sm">Back to the studio</Link>
-        </div>
-      </header>
+      <StudioHeader
+        current={store}
+        role={view.role}
+        stores={view.stores}
+        owned={view.owned}
+        action={{ href: studioPath(store), label: "Back to the studio", short: "Studio" }}
+      />
+      <StudioStorePin sid={store.sid}>
 
       <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
         <p className="eyebrow">Funnels</p>
@@ -79,20 +99,40 @@ export default async function StudioFunnelsPage({ searchParams }: Params) {
             <p className="mt-2 text-ink-soft">
               Offers follow a one-off paid product: a download, a link or a course. Add one in the studio and it appears here.
             </p>
-            <Link href="/studio#products" className="btn btn-primary mt-5">Go to products</Link>
+            <Link href={`${studioPath(store)}#products`} className="btn btn-primary mt-5">Go to products</Link>
           </div>
         ) : (
           <div className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">
             <nav aria-label="Products" className="card min-w-0 p-3 lg:sticky lg:top-24">
               <p className="px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-[0.08em] text-ink-mute">After buying</p>
+              {owners.length > NAV_LIMIT ? (
+                <form action="/studio/funnels" method="get" role="search" className="px-1 pb-3">
+                  {store.sid ? <input type="hidden" name="store" value={store.sid} /> : null}
+                  <label htmlFor="funnel-find" className="sr-only">Find a product by its name</label>
+                  <input
+                    id="funnel-find"
+                    type="search"
+                    name="q"
+                    defaultValue={find}
+                    placeholder="Find a product"
+                    className="field field-search w-full"
+                  />
+                  <p className="mt-2 px-2 text-xs text-ink-mute" role="status">
+                    {matching.length === 0
+                      ? "Nothing has that in its name."
+                      : `${Math.min(matching.length, NAV_LIMIT)} of ${matching.length.toLocaleString("en-US")} shown. Search to find another.`}
+                  </p>
+                </form>
+              ) : null}
               <ul className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin] lg:block lg:space-y-1 lg:overflow-visible">
-                {owners.map((p) => {
+                {listed.map((p) => {
                   const on = p.id === selected?.id;
-                  const count = p.funnel?.steps.length ?? 0;
+                  // The one open is read in full; the rest are known to have offers or not.
+                  const count = on ? selected?.funnel?.steps.length ?? 0 : withOffers.has(p.id) ? -1 : 0;
                   return (
                     <li key={p.id} className="shrink-0 lg:shrink">
                       <Link
-                        href={`/studio/funnels?product=${p.id}`}
+                        href={studioPath(store, `product=${p.id}${find ? `&q=${encodeURIComponent(find)}` : ""}`, "funnels")}
                         aria-current={on ? "page" : undefined}
                         className={`flex min-h-[44px] items-center justify-between gap-3 rounded-[12px] px-3 py-2 text-sm transition-colors ${
                           on ? "bg-lilac text-violet-ink" : "text-ink-soft hover:bg-paper hover:text-ink"
@@ -104,7 +144,7 @@ export default async function StudioFunnelsPage({ searchParams }: Params) {
                             count ? "bg-mint-soft text-mint-deep" : "bg-sand text-ink-mute"
                           }`}
                         >
-                          {count ? `${count} ${count === 1 ? "offer" : "offers"}` : "None"}
+                          {count > 0 ? `${count} ${count === 1 ? "offer" : "offers"}` : count < 0 ? "Offers" : "None"}
                         </span>
                       </Link>
                     </li>
@@ -120,12 +160,14 @@ export default async function StudioFunnelsPage({ searchParams }: Params) {
                 initial={selected.funnel}
                 offerable={offerable.filter((p) => p.id !== selected.id)}
                 pictures={pictures}
-                ownerPrice={`$${centsToPrice(selected.priceCents)}`}
+                ownerPrice={formatMoney(selected.priceCents, store.currency)}
+                currency={store.currency}
               />
             ) : null}
           </div>
         )}
       </main>
+      </StudioStorePin>
     </div>
   );
 }

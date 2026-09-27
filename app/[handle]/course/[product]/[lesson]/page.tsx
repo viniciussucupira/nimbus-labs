@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { linkHost } from "@/lib/product-link";
 import { readableSize } from "@/lib/product-file";
@@ -12,6 +12,7 @@ import { type Attempt, attemptOf, heldBack, passedQuizzes, readQuizFor } from "@
 import { CourseOutline } from "@/components/course-outline";
 import { LessonText } from "@/components/lesson-text";
 import { LessonQuiz } from "@/components/lesson-quiz";
+import { readListing } from "@/lib/catalog";
 
 type Params = {
   params: Promise<{ handle: string; product: string; lesson: string }>;
@@ -28,9 +29,9 @@ export default async function LessonPage({ params, searchParams }: Params) {
   const { handle: raw, product: productId, lesson: lessonId } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const product = store.products.find((item) => item.id === productId);
+  const product = await readListing(store, productId);
   if (!product?.course) redirect(`/@${store.handle}`);
   const course = await readCourse(product.course.id);
   const base = `/@${store.handle}/course/${product.id}`;

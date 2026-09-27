@@ -4,7 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
-import type { Product } from "@/lib/store";
+import type { Listing, Product } from "@/lib/store";
+import type { BumpChoice } from "@/lib/catalog";
+import { useStudioHref } from "@/components/studio-store-pin";
+import { type Currency, currencyRule, fieldPrefix, formatMoney, moneyField } from "@/lib/money";
+import { useStoreCurrency } from "@/components/store-currency";
 import {
   MAX_PITCH_LENGTH,
   MAX_PLAN_PAYMENTS,
@@ -18,22 +22,45 @@ import {
 const MESSAGES: Record<string, string> = {
   stock: `Type a whole number from 1 to ${MAX_STOCK.toLocaleString("en-US")}.`,
   target: "Pick another product that has one price and a file or a link on it.",
-  price: "Type a price of at least $0.50, and no more than that product costs on its own.",
   kind: "This works on one-off paid products only.",
-  plan: "Pick how many payments, how often, and an amount of at least $0.50 for each.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
-const dollars = (cents: number) => (cents % 100 ? (cents / 100).toFixed(2) : String(cents / 100));
+/** The two sentences about the smallest charge, in the store's currency (lib/money.ts). */
+const amountMessages = (currency: Currency): Record<string, string> => {
+  const least = formatMoney(currencyRule(currency).minCharge, currency);
+  return {
+    price: `Type a price of at least ${least}, and no more than that product costs on its own.`,
+    plan: `Pick how many payments, how often, and an amount of at least ${least} for each.`,
+  };
+};
 
 /** A product's limited quantity and its order bump, in the studio. */
-export function CheckoutExtras({ product, products }: { product: Product; products: Product[] }) {
+
+/** The choices from a list of products at hand: those with one price and one delivery. */
+export function bumpChoices(products: Listing[]): BumpChoice[] {
+  return products.filter((p) => canBeBumped(p)).map((p) => ({ id: p.id, title: p.title, priceCents: p.priceCents }));
+}
+
+export function CheckoutExtras({
+  product,
+  choices,
+  named,
+}: {
+  product: Product;
+  /** Every product of the store that can be offered in the box, read by the page. */
+  choices: BumpChoice[];
+  /** The name of the product this one offers now, whether or not it is still a choice. */
+  named: Record<string, string>;
+}) {
+  const studioHref = useStudioHref();
   const router = useRouter();
+  const currency = useStoreCurrency();
   const [open, setOpen] = useState<"stock" | "bump" | "plan" | null>(null);
   const [stock, setStock] = useState(product.stock ? String(product.stock) : "");
-  const candidates = products.filter((p) => p.id !== product.id && canBeBumped(p));
+  const candidates = choices.filter((p) => p.id !== product.id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +82,7 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
         router.refresh();
         return;
       }
-      setError(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
+      setError(amountMessages(currency)[data.error ?? ""] ?? MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
     } catch {
       setError(MESSAGES.server_error);
     } finally {
@@ -118,17 +145,17 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
       )}
 
       {/* A chosen amount has to be the only thing in its checkout. */}
-      {product.pwyw ? null : <OfferBlock kind="bump" product={product} products={products} candidates={candidates} busy={busy} open={open === "bump"} onOpen={() => setOpen("bump")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "bump" ? error : null} />}
+      {product.pwyw ? null : <OfferBlock kind="bump" product={product} named={named} candidates={candidates} busy={busy} open={open === "bump"} onOpen={() => setOpen("bump")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "bump" ? error : null} />}
       {product.funnel ? (
         <p className="text-sm text-ink-soft">
           <span className="font-semibold text-ink">
             {`${product.funnel.steps.length === 1 ? "One offer" : `${product.funnel.steps.length} offers`} after paying`}
           </span>
           {" \u00b7 "}
-          <Link href={`/studio/funnels?product=${product.id}`} className={link}>Edit the funnel</Link>
+          <Link href={studioHref(`/studio/funnels?product=${product.id}`)} className={link}>Edit the funnel</Link>
         </p>
       ) : (
-        <Link href={`/studio/funnels?product=${product.id}`} className={`block ${link}`}>
+        <Link href={studioHref(`/studio/funnels?product=${product.id}`)} className={`block ${link}`}>
           Offer more after they pay
         </Link>
       )}
@@ -143,7 +170,7 @@ export function CheckoutExtras({ product, products }: { product: Product; produc
 const OFFER_TEXT = {
   bump: {
     add: "Offer another product at checkout",
-    on: (title: string, price: string) => `Offers ${title} for $${price} at checkout`,
+    on: (title: string, price: string) => `Offers ${title} for ${price} at checkout`,
     stop: "Stop offering it",
     save: "Save the offer",
     saved: "Checkout offer saved.",
@@ -155,7 +182,7 @@ const OFFER_TEXT = {
 function OfferBlock({
   kind,
   product,
-  products,
+  named,
   candidates,
   busy,
   open,
@@ -166,8 +193,8 @@ function OfferBlock({
 }: {
   kind: "bump";
   product: Product;
-  products: Product[];
-  candidates: Product[];
+  named: Record<string, string>;
+  candidates: BumpChoice[];
   busy: boolean;
   open: boolean;
   onOpen: () => void;
@@ -176,11 +203,14 @@ function OfferBlock({
   error: string | null;
 }) {
   const current = product[kind];
+  const currency = useStoreCurrency();
   const text = OFFER_TEXT[kind];
   const [target, setTarget] = useState(current?.productId ?? candidates[0]?.id ?? "");
-  const [price, setPrice] = useState(current ? dollars(current.priceCents) : "");
+  const [price, setPrice] = useState(current ? moneyField(current.priceCents, currency) : "");
   const [pitch, setPitch] = useState(current?.pitch ?? "");
-  const currentTarget = current ? products.find((p) => p.id === current.productId) : null;
+  const currentTarget = current
+    ? { title: named[current.productId] ?? candidates.find((p) => p.id === current.productId)?.title ?? "" }
+    : null;
   const link = "text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep";
   const id = `${kind}-${product.id}`;
 
@@ -203,18 +233,18 @@ function OfferBlock({
               <span className="field-label">Offer this</span>
               <select id={`${id}-t`} value={target} onChange={(e) => setTarget(e.target.value)} className="field">
                 {candidates.map((p) => (
-                  <option key={p.id} value={p.id}>{`${p.title} ($${dollars(p.priceCents)})`}</option>
+                  <option key={p.id} value={p.id}>{`${p.title} (${formatMoney(p.priceCents, currency)})`}</option>
                 ))}
               </select>
             </label>
             <label className="block" htmlFor={`${id}-p`}>
-              <span className="field-label">For, in dollars</span>
+              <span className="field-label">{currency === "usd" ? "For, in dollars" : `For, ${fieldPrefix(currency)}`}</span>
               <input
                 id={`${id}-p`}
                 type="text"
-                inputMode="decimal"
+                inputMode={currency === "jpy" ? "numeric" : "decimal"}
                 value={price}
-                placeholder="9"
+                placeholder={currency === "jpy" ? "900" : "9"}
                 onChange={(e) => setPrice(e.target.value)}
                 className="field"
                 required
@@ -249,10 +279,10 @@ function OfferBlock({
       </form>
     );
   }
-  if (current && currentTarget) {
+  if (current && currentTarget?.title) {
     return (
       <p className="text-sm text-ink-soft">
-        <span className="font-semibold text-ink">{text.on(currentTarget.title, dollars(current.priceCents))}</span>
+        <span className="font-semibold text-ink">{text.on(currentTarget.title, formatMoney(current.priceCents, currency))}</span>
         {" \u00b7 "}
         <button type="button" className={link} onClick={onOpen}>Change</button>
         {" \u00b7 "}
@@ -285,10 +315,12 @@ function PlanBlock({
   error: string | null;
 }) {
   const current = product.plan;
+  const currency = useStoreCurrency();
   const [payments, setPayments] = useState(current?.payments ?? 3);
   const [interval, setEvery] = useState<"week" | "month">(current?.interval ?? "month");
-  const suggested = (n: number) => dollars(Math.ceil(product.priceCents / n / 100) * 100);
-  const [price, setPrice] = useState(current ? dollars(current.amountCents) : suggested(3));
+  // Each payment rounded up to a whole unit (a whole dollar, a hundred yen).
+  const suggested = (n: number) => moneyField(Math.ceil(product.priceCents / n / 100) * 100, currency);
+  const [price, setPrice] = useState(current ? moneyField(current.amountCents, currency) : suggested(3));
   const link = "text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep";
   const id = `plan-${product.id}`;
 
@@ -327,7 +359,7 @@ function PlanBlock({
             </select>
           </label>
           <label className="block" htmlFor={`${id}-p`}>
-            <span className="field-label">Each payment, in dollars</span>
+            <span className="field-label">{currency === "usd" ? "Each payment, in dollars" : `Each payment, ${fieldPrefix(currency)}`}</span>
             <input
               id={`${id}-p`}
               type="text"
@@ -359,7 +391,7 @@ function PlanBlock({
   if (current) {
     return (
       <p className="text-sm text-ink-soft">
-        <span className="font-semibold text-ink">{`Payment plan: ${planWords(current)}`}</span>
+        <span className="font-semibold text-ink">{`Payment plan: ${planWords(current, currency)}`}</span>
         {" \u00b7 "}
         <button type="button" className={link} onClick={onOpen}>Change</button>
         {" \u00b7 "}

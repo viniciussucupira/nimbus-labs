@@ -8,14 +8,14 @@ import { guardStoreWrite } from "@/lib/store-request";
  * Stripe says the creator's tax setup is complete.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "settings");
   if (!guarded.ok) return guarded.response;
   const enabled = guarded.body.enabled === true;
   const included = guarded.body.included === true;
 
   try {
     if (enabled) {
-      const store = await storeForEmail(guarded.email);
+      const store = await storeForEmail(guarded.ref);
       if (!store) return Response.json({ ok: false, error: "none" }, { status: 400 });
       if (!store.stripeAccountId) return Response.json({ ok: false, error: "stripe" }, { status: 400 });
       const status = await taxStatus(store);
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    const result = await setTax(guarded.email, { enabled, included });
+    const result = await setTax(guarded.ref, { enabled, included });
     if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
     return Response.json({ ok: true, tax: result.store.tax });
   } catch (error) {

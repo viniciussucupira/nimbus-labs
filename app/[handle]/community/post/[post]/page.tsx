@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
-import { normaliseHandle, storeForHandle, type Store } from "@/lib/store";
+import { normaliseHandle, storeForPage, type Store } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { CREATOR, type Comment, type Member, postNumbers, readComments, readMembers, readPost } from "@/lib/community";
 import { communityViewer } from "@/lib/community-access";
@@ -103,7 +103,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
   const { handle: raw, post: postId } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
   const viewer = await communityViewer(store, await cookies());
   if (viewer.state === "off" || !store.community) redirect(`/@${store.handle}`);

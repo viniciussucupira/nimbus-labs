@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { centsToPrice, normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForPage } from "@/lib/store";
+import { formatMoney } from "@/lib/money";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canSellProduct, fromPriceCents } from "@/lib/store-checkout";
@@ -9,6 +10,7 @@ import { membershipPrice } from "@/lib/product-recurring";
 import { canManage } from "@/lib/membership-manage";
 import { canRecover } from "@/lib/buyer-orders";
 import { productPath } from "@/components/store-product";
+import { readListing } from "@/lib/catalog";
 
 export const metadata: Metadata = {
   title: "Your membership has ended — Nimbus Labs",
@@ -32,14 +34,14 @@ export default async function RenewPage({ params }: Params) {
   const { handle: raw, product: productId } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const product = store.products.find((p) => p.id === productId) ?? null;
+  const product = await readListing(store, productId) ?? null;
 
   const selling = product ? canSellProduct(store, product) : false;
   const price =
     product?.recurring && selling
-      ? membershipPrice(product.recurring, `$${centsToPrice(fromPriceCents(product))}`)
+      ? membershipPrice(product.recurring, `${formatMoney(fromPriceCents(product), store.currency)}`)
       : null;
   const needsChoice = product ? product.options.length > 0 : false;
 

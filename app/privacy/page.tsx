@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="September 26, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="September 27, 2026">
       <p>
         Nimbus Labs (“Nimbus Labs,” “we,” “us,” or “our”) is an independent
         software studio. This Privacy Policy explains how we collect, use,
@@ -329,6 +329,116 @@ export default function PrivacyPage() {
           copy belongs to which sale is kept for about 400 days. Anyone the
           buyer passes the file to can read that line.
         </p>
+        <p id="teams">
+          <strong className="text-black">A store&apos;s team.</strong> A
+          creator can invite up to five people to help run a store. For each
+          invitation we keep the address it went to, the role, when it was made
+          and when it runs out, seven days later; the link in it works once.
+          For each member we keep their sign-in address, their role and when
+          they joined, and, for each person, which stores they are on, so
+          their studio can find them. A store keeps an activity log of its last
+          500 lines: when, who (their sign-in address), their role and what
+          they did, such as a change they made in the studio, a file they
+          downloaded or a change to the team. The owner sees the team and the
+          log, and is emailed when someone joins or changes role. The team,
+          its invitations and its log are deleted with the store, and a member
+          taken off the team or who leaves is removed from it at once.
+        </p>
+        <p id="signing-in">
+          <strong className="text-black">Passkeys and new browsers.</strong> A
+          creator can add up to ten passkeys to their account. For each we keep
+          only the public half of the key, a counter, the name they gave it,
+          the kinds of connection the device reported, whether it is kept in a
+          synced keychain, and when it was added and last used; the private
+          half never leaves their device. Each is kept until they remove it.
+          Signing in with a passkey sets a cookie named <code>nl_pk</code> for
+          five minutes, for that one sign-in. Every sign-in also sets a cookie
+          named <code>nl_device</code> holding a random code for that browser,
+          for 400 days, and we keep a one-way hash of that code with the
+          account, up to 100 browsers, until 400 days after the account&apos;s
+          last sign-in. When an account that has signed in before signs in from a browser
+          it has not used, we email its owner when it happened, how, and the
+          browser and system as the browser names them; we do not keep that
+          description. In the studio, a cookie named <code>nl_store</code>{" "}
+          remembers which of an account&apos;s stores was last open, for a
+          year.
+        </p>
+        <p id="drafts">
+          <strong className="text-black">Email drafts.</strong> For each draft
+          of an email to a creator&apos;s list we keep its subject, its text,
+          who it is meant for, who last saved it (their sign-in address) and
+          when, until it is sent or deleted, up to 20 per store. A creator, an
+          Admin or Support can have a buyer&apos;s purchase email sent again;
+          it goes only to the address the buyer paid with, read again from the
+          creator&apos;s Stripe account.
+        </p>
+        <p id="email-platforms">
+          <strong className="text-black">
+            An email platform a creator connects.
+          </strong>{" "}
+          A creator can connect their own Mailchimp, Kit, beehiiv or MailerLite
+          account with an API key. We encrypt the key before it is stored, keep
+          its last four characters to show them, and delete it when they
+          disconnect. When someone who agreed to hear from that creator asks
+          for something free and confirms it, or buys and agreed, we send that
+          platform their email address, their first name when the payment
+          carries a name, and the tags the creator chose, to add them to the
+          audience, form, publication or group the creator picked. Nobody who
+          did not agree is sent, and we then keep no address for them. For
+          each person sent we keep a record of how it went, with their address
+          and first name, for up to a week, the last 50 of them in the
+          creator&apos;s studio, and a one-way hash of each person and event
+          for 30 days so nobody is sent twice. What happens on the platform is
+          governed by the creator&apos;s own account there and that
+          platform&apos;s privacy policy.
+        </p>
+        <p id="notifications">
+          <strong className="text-black">Phone notifications.</strong> When a
+          creator or someone on their team turns notifications on for a
+          device, we keep what the browser gives us to reach it (its push
+          address and keys), a label such as &ldquo;iPhone · Safari&rdquo;, which
+          events it wants, when it was added and whose it is, until it is
+          removed or the browser turns notifications off, with how the last
+          send went. A notification says an amount, a product title or a time,
+          never a buyer&apos;s name or email address; it is encrypted for the
+          device and passes through the push service of that browser&apos;s
+          maker, such as Apple, Google or Mozilla. We keep a mark of each event
+          sent for 40 days, so it is never sent twice.
+        </p>
+        <p id="reviews">
+          <strong className="text-black">Reviews.</strong> A buyer can review
+          what they paid for. We check the order on the creator&apos;s own
+          Stripe account, and keep the stars, the words, the name the buyer
+          chose to show (or &ldquo;Verified buyer&rdquo;), the order reference
+          and the payment it came from, when it was written and changed,
+          whether the creator hid it or answered it, and whether the payment
+          was later refunded. The buyer&apos;s email address is not kept with
+          the review and is never shown; the review&apos;s code is a one-way
+          hash that includes it, so one buyer has one review per product. The
+          review, with the chosen name, is public on the store; its buyer can
+          change or delete it, and the creator can hide it but not change it.
+          Deleting the product deletes its reviews.
+          If the creator switches on the email that asks for a review, we put
+          each paid order on a list with when it was paid, send its buyer one
+          email on the creator&apos;s behalf, and keep a mark that the order
+          was asked for 120 days. The link in that email, tied to the order and
+          the address it went to, works for 60 days; its link to stop being
+          asked works for 400 days, and pressing it keeps a
+          one-way hash of the address for that store for good, so that store
+          never asks again.
+        </p>
+        <p id="video-rooms">
+          <strong className="text-black">Video rooms.</strong> When a creator
+          chooses a video room for their calls, each booking, or each time of a
+          group call or session, gets a Jitsi Meet address with a random name.
+          We keep it for 60 days after the call and put it in the booking
+          emails, reminders, calendar files, the creator&apos;s bookings feed
+          and the buyer&apos;s list of purchases. Jitsi Meet (meet.jit.si) is
+          run by 8x8, not by us: whoever opens the room uses that service under
+          its own privacy policy, and the first person in may be asked to sign
+          in to it with a Google, GitHub or Facebook account. We send Jitsi
+          nothing ourselves.
+        </p>
         <p>
           <strong className="text-black">Usage and technical data.</strong> We
           may collect information such as IP address, browser type, device
@@ -460,6 +570,26 @@ export default function PrivacyPage() {
             never receive buyers&apos; names or email addresses;
           </li>
           <li>
+            <strong className="text-black">
+              The people on a store&apos;s team
+            </strong>
+            , who see what that store&apos;s owner lets their role see,
+            including buyers&apos; orders and bookings for Admins and Support;
+          </li>
+          <li>
+            <strong className="text-black">
+              The email platform a creator connects
+            </strong>
+            {" "}(Mailchimp, Kit, beehiiv or MailerLite), which receives the
+            email address, first name and tags of people who agreed to hear
+            from that creator;
+          </li>
+          <li>
+            <strong className="text-black">Push services</strong> run by the
+            maker of the browser a notification goes to, such as Apple, Google
+            or Mozilla, which carry it encrypted;
+          </li>
+          <li>
             <strong className="text-black">Vercel</strong>, our host, which
             serves the site and, when a creator adds their own domain, receives
             that domain&apos;s name to check its records and issue its
@@ -469,8 +599,9 @@ export default function PrivacyPage() {
             <strong className="text-black">Resend</strong>, our email
             provider, which delivers the emails we send: login links,
             receipts and the links to what you asked for, the links that let
-            members, students and affiliates in, and the emails a creator sends
-            to their list or their community;
+            members, students, affiliates and team members in, the emails that
+            ask a buyer for a review, and the emails a creator sends to their
+            list or their community;
           </li>
           <li>
             <strong className="text-black">
@@ -503,9 +634,13 @@ export default function PrivacyPage() {
         </p>
         <p>
           The same is true for the members of a creator&apos;s community, the
-          people who apply to their affiliate programme, and their
-          students&apos; quiz answers and certificates: the creator is the
-          controller, and we handle that data on their behalf.
+          people who apply to their affiliate programme, their students&apos;
+          quiz answers and certificates, and their buyers&apos; reviews: the
+          creator is the controller, and we handle that data on their behalf.
+          When a creator connects an email platform or chooses Jitsi Meet for
+          their calls, that is the creator&apos;s choice, and the data sent or
+          used there is governed by the creator&apos;s account and that
+          service&apos;s own terms.
         </p>
         <p>
           In practice this means a request about your data as a buyer — a copy
@@ -540,7 +675,10 @@ export default function PrivacyPage() {
           affiliate&apos;s own sign-in, named <code>nl_aff_</code> followed by
           the store&apos;s address, for 30 days. The ad pixels a creator may
           add are described in section 1 and are asked for first where the law
-          says so.
+          says so. A creator&apos;s own browser keeps <code>nl_device</code>{" "}
+          for 400 days and <code>nl_store</code> for a year, and{" "}
+          <code>nl_pk</code> for five minutes while signing in with a
+          passkey, as section 1 describes.
         </p>
         <p>
           You can control cookies through your browser settings. Disabling
@@ -575,6 +713,19 @@ export default function PrivacyPage() {
           mark that an event was sent for 30 days. A calendar reading is kept
           for up to six hours, and the calendar address until the creator
           removes it.
+        </p>
+        <p>
+          A store&apos;s team, invitations and activity log are kept until the
+          store is deleted, and invitations run out after seven days. Passkeys
+          are kept until removed, and the record of the browsers an account
+          signed in from until 400 days after its last sign-in. Email drafts are kept until
+          sent or deleted. An email platform&apos;s key is kept until the
+          creator disconnects it, each record of a person sent there for up to
+          a week, and the mark that they were sent for 30 days. A device&apos;s
+          notification address is kept until it is removed or turned off.
+          Reviews are kept until their buyer deletes them or the creator
+          deletes the product. A video room&apos;s address is kept for 60 days after
+          its call.
         </p>
         <p>
           Creator research answers are kept for up to 24 months from the date

@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { type Listing, type Store, normaliseHandle, storeForPage } from "@/lib/store";
 import { linkHost } from "@/lib/product-link";
 import { readClaim } from "@/lib/free";
 import { lookStyle } from "@/lib/store-look";
 import { StoreTracking } from "@/components/store-tracking";
+import { readListing } from "@/lib/catalog";
+import { canSellProduct } from "@/lib/store-checkout";
+import { readPage } from "@/lib/sales-page-store";
+import { imageUrl } from "@/lib/product-image";
+import { pricePill, productPath } from "@/components/store-product";
 
 export const metadata: Metadata = {
   title: "Your free copy — Nimbus Labs",
@@ -37,6 +42,42 @@ const NOTICES: Record<string, { title: string; body: string }> = {
 };
 
 /**
+ * The paid product a free one's landing page names to show next
+ * (lib/sales-page.ts, `next`), when it is still for sale here.
+ */
+async function nextProduct(store: Store, free: Listing | null): Promise<Listing | null> {
+  if (!free?.page) return null;
+  const page = await readPage(store.statsId, free.id).catch(() => null);
+  const next = page?.next ? await readListing(store, page.next) : null;
+  return next && next.priceCents > 0 && canSellProduct(store, next) ? next : null;
+}
+
+/** A link to that product's own page, with its picture, price and a line about it. Nothing is charged from here. */
+function NextUp({ store, product }: { store: Store; product: Listing }) {
+  return (
+    <section aria-labelledby="next-title" className="st-card mt-6 overflow-hidden">
+      <div className="flex gap-4 p-6 sm:p-7">
+        {product.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl(product.image)} alt="" width={96} height={96} className="st-callout-img shrink-0" />
+        ) : null}
+        <div className="min-w-0">
+          <p className="st-label">{`Also from ${store.name}`}</p>
+          <h2 id="next-title" className="font-display mt-1 text-xl font-semibold leading-snug">
+            {product.title}
+          </h2>
+          <p className="st-price mt-2 text-sm">{pricePill(product, store.currency)}</p>
+          {product.summary ? <p className="st-muted mt-2 text-sm leading-relaxed">{product.summary}</p> : null}
+          <Link href={productPath(store, product)} className="btn st-btn mt-4">
+            {`See ${product.title}`}
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
  * Where a free copy is asked for and picked up.
  *
  * Two visits to the same page. The first comes straight from the store's form
@@ -49,7 +90,7 @@ export default async function FreePage({ params, searchParams }: Params) {
   const { handle: raw } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
 
   const query = await searchParams;
@@ -63,10 +104,12 @@ export default async function FreePage({ params, searchParams }: Params) {
   // The product the email named, looked up in the store as it is now. The
   // claim may be for a store's old address, which still leads here.
   const claimed = claim
-    ? store.products.find((item) => item.id === claim.productId) ?? null
+    ? await readListing(store, claim.productId) ?? null
     : null;
-  const asked = store.products.find((item) => item.id === productId) ?? null;
+  const asked = await readListing(store, productId) ?? null;
   const stillFree = claimed !== null && claimed.priceCents === 0;
+  // After signing up, the paid product the free one's page names, if any.
+  const next = await nextProduct(store, token ? (stillFree ? claimed : null) : status === "sent" ? asked : null);
 
   return (
     <div
@@ -167,6 +210,7 @@ export default async function FreePage({ params, searchParams }: Params) {
             />
           </div>
         </div>
+        {next ? <NextUp store={store} product={next} /> : null}
       </main>
     </div>
   );

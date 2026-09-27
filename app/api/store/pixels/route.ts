@@ -8,14 +8,14 @@ import { guardStoreWrite } from "@/lib/store-request";
  * other value has to be an id in its platform's exact format.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "settings");
   if (!guarded.ok) return guarded.response;
 
   const read = readPixels(guarded.body.pixels);
   if (!read.ok) return Response.json({ ok: false, error: "format", bad: read.bad }, { status: 400 });
 
   try {
-    const result = await setPixels(guarded.email, read.pixels);
+    const result = await setPixels(guarded.ref, read.pixels);
     if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
     return Response.json({ ok: true, pixels: result.store.pixels });
   } catch (error) {

@@ -22,8 +22,10 @@
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { isSenderConfigured, sendEmail } from "@/lib/email";
-import type { Store } from "@/lib/store";
-import { readableTime, roomFor, seatsAt, zoneName, isTimeZone } from "@/lib/call-setup";
+import type { Listing, Store } from "@/lib/store";
+import { listingFinder } from "@/lib/catalog";
+import { readableTime, seatsAt, zoneName, isTimeZone } from "@/lib/call-setup";
+import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
 import { REMINDER_QUEUE, parseMember } from "@/lib/call-records";
 import {
   type PaidCall,
@@ -57,12 +59,11 @@ function when(mark: "24" | "1"): string {
   return mark === "24" ? "Tomorrow" : "In 1 hour";
 }
 
-async function remindBuyer(store: Store, call: PaidCall, mark: "24" | "1", origin: string): Promise<boolean> {
-  const product = store.products.find((p) => p.id === call.product);
+async function remindBuyer(store: Store, product: Listing, call: PaidCall, mark: "24" | "1", origin: string): Promise<boolean> {
   if (!product || !isCallProduct(product) || !call.email) return false;
   const setup = product.call;
   const tz = isTimeZone(call.buyerTz) ? call.buyerTz : setup.tz;
-  const room = roomFor(setup, call.start);
+  const room = await roomOf(store.callsId, { product: product.id, setup, session: call.session, start: call.start, end: call.end });
   const minutes = Math.round((call.end - call.start) / 60_000);
   return sendEmail({
     from: storeSender(store),
@@ -76,6 +77,7 @@ async function remindBuyer(store: Store, call: PaidCall, mark: "24" | "1", origi
       room
         ? `Join here at that time: ${room}`
         : `${store.name} will send you the link to join. If it has not reached you, reply to this email.`,
+      ...(isVideoRoom(room) ? [VIDEO_ROOM_NOTE] : []),
       "",
       `Add it to your calendar: ${icsLink(origin, store, call.session)}`,
       ...(canMove(setup, call.start, call.moves) ? [`To move it to another time: ${moveLink(origin, store, product.id, call.session)}`] : []),
@@ -85,11 +87,10 @@ async function remindBuyer(store: Store, call: PaidCall, mark: "24" | "1", origi
   });
 }
 
-async function remindCreator(store: Store, paid: PaidCall[], call: PaidCall, mark: "24" | "1"): Promise<boolean> {
-  const product = store.products.find((p) => p.id === call.product);
+async function remindCreator(store: Store, product: Listing, paid: PaidCall[], call: PaidCall, mark: "24" | "1"): Promise<boolean> {
   if (!product || !isCallProduct(product)) return false;
   const setup = product.call;
-  const room = roomFor(setup, call.start);
+  const room = await roomOf(store.callsId, { product: product.id, setup, session: call.session, start: call.start, end: call.end });
   const people = paid.filter((c) => c.product === call.product && c.start === call.start);
   const emails = people.map((c) => c.email ?? "a buyer who gave no address");
   const seats = seatsAt(setup, call.start);
@@ -107,7 +108,9 @@ async function remindCreator(store: Store, paid: PaidCall[], call: PaidCall, mar
       ...emails.map((email) => `- ${email}`),
       "",
       room
-        ? `Your meeting link, which they have: ${room}`
+        ? isVideoRoom(room)
+          ? `The private video room, which they have: ${room}\n${VIDEO_ROOM_NOTE} Open it a few minutes early and sign in, so nobody is left waiting.`
+          : `Your meeting link, which they have: ${room}`
         : `You have not set a meeting link, so send one to ${people.length === 1 ? "them" : "each of them"} before it starts.`,
       "",
       "Everyone booked is also in your studio, under Upcoming calls.",
@@ -173,13 +176,14 @@ export async function sendCallReminders(
       continue;
     }
     const bySession = new Map(paid.map((call) => [call.session, call]));
+    const find = listingFinder(store);
 
     for (const { member } of members) {
       const item = parseMember(member);
       done.push(member);
       if (!item) continue;
       const call = bySession.get(item.session);
-      const product = call ? store.products.find((p) => p.id === call.product) : undefined;
+      const product = call ? await find(call.product) : null;
       if (!call || !product || !isCallProduct(product)) {
         // Never paid, refunded out of the list, or the product is gone.
         counts.dropped += 1;
@@ -199,6 +203,7 @@ export async function sendCallReminders(
               buyerTz: call.buyerTz,
               moves: call.moves,
               answers: call.answers,
+              amountCents: call.amount,
               origin,
             });
             counts.confirmed += 1;
@@ -215,8 +220,8 @@ export async function sendCallReminders(
           ["SET", sentKey(call.session, call.start, item.mark), "1", "NX", "EX", SENT_SECONDS],
           ["SET", creatorKey(callsId, call.product, call.start, item.mark), "1", "NX", "EX", SENT_SECONDS],
         ]);
-        if (fresh !== null && (await remindBuyer(store, call, item.mark, origin))) counts.reminded += 1;
-        if (freshCreator !== null) await remindCreator(store, paid, call, item.mark);
+        if (fresh !== null && (await remindBuyer(store, product, call, item.mark, origin))) counts.reminded += 1;
+        if (freshCreator !== null) await remindCreator(store, product, paid, call, item.mark);
       } catch (error) {
         console.error("sending a call reminder failed", error);
       }

@@ -102,10 +102,77 @@ type Draft = {
   horizonDays: number;
   bufferMinutes: number;
   room: string;
+  /** A private video room made for each booking, instead of the link above. */
+  video: boolean;
   /** Typed, so a field being cleared to retype it is not snapped back to a number. */
   seats: string;
   sessions: SessionDraft[];
 };
+
+/**
+ * Where the call happens: the creator's own link, as it always was, or a
+ * private video room made for each booking (lib/call-rooms.ts). Two radio
+ * cards; what the second one means, and what it asks of whoever opens the
+ * room first, is said right under it.
+ */
+function RoomChoice({
+  video,
+  live,
+  onChange,
+  children,
+}: {
+  video: boolean;
+  live: boolean;
+  onChange: (video: boolean) => void;
+  /** The field for the creator's own link, shown while that is chosen. */
+  children?: React.ReactNode;
+}) {
+  const card =
+    "flex cursor-pointer items-start gap-3 rounded-[12px] border px-3 py-3 transition has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-violet-brand";
+  return (
+    <fieldset>
+      <legend className="field-label">Where the call happens</legend>
+      <div className="mt-2 grid gap-2">
+        <label className={`${card} ${video ? "border-line bg-white" : "border-violet-brand bg-lilac/40"}`}>
+          <input type="radio" name="where" checked={!video} onChange={() => onChange(false)} className="mt-1 h-4 w-4 shrink-0" />
+          <span>
+            <span className="block text-sm font-semibold text-ink">Your own link (Zoom, Google Meet…)</span>
+            <span className="mt-0.5 block text-sm text-ink-soft">
+              {live ? "The link you give each session below." : "The link you type below, the same for every booking."}
+            </span>
+          </span>
+        </label>
+        <label className={`${card} ${video ? "border-violet-brand bg-lilac/40" : "border-line bg-white"}`}>
+          <input type="radio" name="where" checked={video} onChange={() => onChange(true)} className="mt-1 h-4 w-4 shrink-0" />
+          <span>
+            <span className="block text-sm font-semibold text-ink">Create a private video room for each booking</span>
+            <span className="mt-0.5 block text-sm text-ink-soft">
+              Nothing to set up and no account: a Jitsi Meet link nobody can guess.
+            </span>
+          </span>
+        </label>
+      </div>
+      {video ? (
+        <div className="mt-3 rounded-[10px] bg-paper px-3 py-3 text-sm text-ink-soft">
+          <p>
+            {live
+              ? "Each session gets one room, shared by everyone booked into it. "
+              : "Each booking gets its own room, and keeps it if it is moved; a group call has one room per time, shared by everyone booked into it. "}
+            The link is in the booking and reminder emails, the calendar file, your bookings calendar and the buyer&apos;s purchases page.
+          </p>
+          <p className="mt-2">
+            <strong className="text-ink">Good to know:</strong> Jitsi Meet (meet.jit.si) is a free video service run by a third
+            party, not by us. Nobody needs an account to join, but the first person to open a room may be asked to sign in to
+            Jitsi with a Google, GitHub or Facebook account to start the meeting as its moderator, and the others wait until
+            then. Open it a few minutes early and sign in yourself.
+          </p>
+        </div>
+      ) : (
+        children ?? null
+      )}
+    </fieldset>
+  );
+}
 
 function isoDate(y: number, m: number, d: number): string {
   return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -158,6 +225,7 @@ function toDraft(setup: CallSetup | null, kind: "weekly" | "live"): Draft {
     horizonDays: 30,
     bufferMinutes: 10,
     room: "",
+    video: false,
     seats: "1",
     sessions: kind === "live" ? [newSession(tz, undefined)] : [],
   };
@@ -281,7 +349,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
                 {coming.slice(0, 5).map((s) => (
                   <li key={s.id} className="break-words">
                     <span className="font-semibold text-ink">{sessionWhen(s.start, setup.tz)}</span>
-                    {` · ${sessionLength(s.minutes)} · ${s.seats} ${s.seats === 1 ? "seat" : "seats"}${s.room ? "" : " · no meeting link yet"}`}
+                    {` · ${sessionLength(s.minutes)} · ${s.seats} ${s.seats === 1 ? "seat" : "seats"}${s.room || setup.video ? "" : " · no meeting link yet"}`}
                   </li>
                 ))}
                 {coming.length > 5 ? <li>{`and ${coming.length - 5} more`}</li> : null}
@@ -294,6 +362,9 @@ export function CallEditor({ product, email }: { product: Product; email: string
                 ? "On sale until each session starts."
                 : `Sales close ${hoursLabel(setup.noticeHours)} before each session.`}
             </p>
+            {setup.video ? (
+              <p className="mt-1 text-sm text-ink-soft">A private video room is made for each session, shared by everyone booked into it.</p>
+            ) : null}
           </>
         ) : (
           <>
@@ -307,7 +378,13 @@ export function CallEditor({ product, email }: { product: Product; email: string
               {`At least ${setup.noticeHours} hours' notice, up to ${setup.horizonDays} days ahead${setup.bufferMinutes ? `, ${setup.bufferMinutes} minutes between calls` : ""}.`}
             </p>
             <p className="mt-1 break-all text-sm text-ink-soft">
-              {setup.room ? `Meeting link: ${setup.room}` : "No meeting link: you send one to each buyer yourself."}
+              {setup.video
+                ? setup.seats > 1
+                  ? "A private video room is made for each time, shared by everyone booked into it."
+                  : "A private video room is made for each booking."
+                : setup.room
+                  ? `Meeting link: ${setup.room}`
+                  : "No meeting link: you send one to each buyer yourself."}
             </p>
           </>
         )}
@@ -355,6 +432,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
                 kind: "live",
                 tz: draft.tz,
                 noticeHours: draft.noticeHours,
+                video: draft.video,
                 sessions: draft.sessions.map((s) => ({
                   id: s.id,
                   date: s.date,
@@ -392,6 +470,8 @@ export function CallEditor({ product, email }: { product: Product; email: string
             </select>
           </label>
         </div>
+
+        <RoomChoice video={draft.video} live onChange={(video) => setDraft({ ...draft, video })} />
 
         <fieldset className="min-w-0">
           <legend className="field-label">Sessions, in your time zone</legend>
@@ -459,17 +539,19 @@ export function CallEditor({ product, email }: { product: Product; email: string
                       className="field mt-1 !min-h-0 !py-1.5"
                     />
                   </label>
-                  <label className="col-span-2 block sm:col-span-4">
-                    <span className="text-xs font-semibold text-ink-soft">Meeting link</span>
-                    <input
-                      type="url"
-                      inputMode="url"
-                      placeholder="https://zoom.us/j/… or https://meet.google.com/…"
-                      value={s.room}
-                      onChange={(e) => setSession(index, { room: e.target.value })}
-                      className="field mt-1 !min-h-0 !py-1.5"
-                    />
-                  </label>
+                  {draft.video ? null : (
+                    <label className="col-span-2 block sm:col-span-4">
+                      <span className="text-xs font-semibold text-ink-soft">Meeting link</span>
+                      <input
+                        type="url"
+                        inputMode="url"
+                        placeholder="https://zoom.us/j/… or https://meet.google.com/…"
+                        value={s.room}
+                        onChange={(e) => setSession(index, { room: e.target.value })}
+                        className="field mt-1 !min-h-0 !py-1.5"
+                      />
+                    </label>
+                  )}
                 </div>
               </li>
             ))}
@@ -520,6 +602,7 @@ export function CallEditor({ product, email }: { product: Product; email: string
               horizonDays: draft.horizonDays,
               bufferMinutes: draft.bufferMinutes,
               room: draft.room.trim(),
+              video: draft.video,
               seats: Number(draft.seats),
             },
           },
@@ -683,20 +766,22 @@ export function CallEditor({ product, email }: { product: Product; email: string
         </label>
       </div>
 
-      <label className="block">
-        <span className="field-label">Meeting link</span>
-        <input
-          type="url"
-          inputMode="url"
-          placeholder="https://zoom.us/j/… or https://meet.google.com/…"
-          value={draft.room}
-          onChange={(e) => setDraft({ ...draft, room: e.target.value })}
-          className="field mt-2"
-        />
-        <span className="field-hint mt-1 block">
-          Your Zoom, Google Meet or Whereby room. Each buyer gets it the moment they have paid. Leave it empty to send one yourself.
-        </span>
-      </label>
+      <RoomChoice video={draft.video} live={false} onChange={(video) => setDraft({ ...draft, video })}>
+        <label className="mt-3 block">
+          <span className="field-label">Meeting link</span>
+          <input
+            type="url"
+            inputMode="url"
+            placeholder="https://zoom.us/j/… or https://meet.google.com/…"
+            value={draft.room}
+            onChange={(e) => setDraft({ ...draft, room: e.target.value })}
+            className="field mt-2"
+          />
+          <span className="field-hint mt-1 block">
+            Your Zoom, Google Meet or Whereby room. Each buyer gets it the moment they have paid. Leave it empty to send one yourself.
+          </span>
+        </label>
+      </RoomChoice>
 
       <p className="rounded-[10px] bg-paper px-3 py-2 text-sm text-ink-soft">
         {`When someone books, you both get an email with a calendar file, then a reminder a day and an hour before. Buyers can move their booking to another open time themselves, twice at most, up to your notice before it starts. A buyer can reply to their email to reach you, and the reply goes to ${email}.`}

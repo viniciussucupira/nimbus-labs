@@ -5,22 +5,19 @@ import { setStripeAccount } from "@/lib/store";
 
 /** Asks Stripe again, on the creator's word, and writes down what it says. */
 export async function POST(request: NextRequest) {
-  const creator = await creatorFrom(request);
+  const creator = await creatorFrom(request, "payments");
   if (creator instanceof Response) return creator;
-  const { email, store, origin } = creator;
+  const { ref, store, origin, studio } = creator;
 
-  if (!isConnectConfigured()) return away(origin, "/studio?stripe=unavailable");
-  if (!store.stripeAccountId) return away(origin, "/studio?stripe=notstarted");
+  if (!isConnectConfigured()) return away(origin, studio("stripe=unavailable"));
+  if (!store.stripeAccountId) return away(origin, studio("stripe=notstarted"));
 
   try {
     const state = await readAccount(store.stripeAccountId);
-    await setStripeAccount(email, store.stripeAccountId, state.chargesEnabled);
-    return away(
-      origin,
-      `/studio?stripe=${state.chargesEnabled ? "ready" : "pending"}`,
-    );
+    await setStripeAccount(ref, store.stripeAccountId, state.chargesEnabled);
+    return away(origin, studio(`stripe=${state.chargesEnabled ? "ready" : "pending"}`));
   } catch (error) {
     console.error("stripe check failed", error);
-    return away(origin, "/studio?stripe=error");
+    return away(origin, studio("stripe=error"));
   }
 }

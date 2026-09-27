@@ -74,7 +74,10 @@ export type IconName =
   | "notebook"
   | "info"
   | "alert"
-  | "external";
+  | "external"
+  | "star"
+  | "layout"
+  | "play";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   "arrow-right": <path d="M5 12h14M13 6l6 6-6 6" />,
@@ -385,6 +388,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   external: <path d="M14 4.5h5.5V10M19.5 4.5 11 13M18 14v4.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 18.5v-11A1.5 1.5 0 0 1 5.5 6H10" />,
+  star: <path d="m12 3.8 2.5 5.1 5.6.8-4.05 3.95.96 5.6L12 16.6l-5.01 2.65.96-5.6L3.9 9.7l5.6-.8L12 3.8Z" />,
+  layout: (
+    <>
+      <rect x="3.5" y="4" width="17" height="16" rx="2" />
+      <path d="M3.5 9h17M9.5 9v11" />
+    </>
+  ),
+  play: <path d="M8 5.5v13l10.5-6.5L8 5.5Z" />,
 };
 
 export function Icon({

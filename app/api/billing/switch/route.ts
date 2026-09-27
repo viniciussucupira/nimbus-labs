@@ -13,12 +13,12 @@ import { limited } from "@/lib/request-guard";
  * is said on the studio page before the button is pressed.
  */
 export async function POST(request: NextRequest) {
-  const creator = await creatorFrom(request);
+  const creator = await creatorFrom(request, "billing");
   if (creator instanceof Response) return creator;
-  const { email, store, origin } = creator;
+  const { ref, store, origin, studio } = creator;
 
-  if (!isBillingConfigured()) return away(origin, "/studio?billing=unavailable");
-  if (!store.subscriptionId) return away(origin, "/studio?billing=none");
+  if (!isBillingConfigured()) return away(origin, studio("billing=unavailable"));
+  if (!store.subscriptionId) return away(origin, studio("billing=none"));
 
   let fields: FormData | null = null;
   try {
@@ -28,14 +28,14 @@ export async function POST(request: NextRequest) {
   }
   const cycle = parseCycle(fields?.get("cycle"));
   const tier = parseTier(fields?.get("tier") ?? store.tier);
-  if (!cycle || !tier) return away(origin, "/studio?billing=switch-error");
-  if (tier === "pro" && !PRO_ON_SALE) return away(origin, "/studio?billing=pro-closed");
+  if (!cycle || !tier) return away(origin, studio("billing=switch-error"));
+  if (tier === "pro" && !PRO_ON_SALE) return away(origin, studio("billing=pro-closed"));
 
   try {
     const result = await switchPlan(store.subscriptionId, { tier, cycle });
     if (result.kind === "switched") {
       if (result.state.state === "active") {
-        await setSubscription(email, {
+        await setSubscription(ref, {
           active: true,
           tier: result.state.tier,
           cycle: result.state.cycle,
@@ -43,15 +43,15 @@ export async function POST(request: NextRequest) {
         });
       }
       const moved = result.state.state === "active" && result.state.tier !== store.tier ? `tier-${result.state.tier}` : cycle;
-      return away(origin, `/studio?billing=switched-${moved}`);
+      return away(origin, studio(`billing=switched-${moved}`));
     }
     if (result.kind === "confirm") {
       return new Response(null, { status: 303, headers: { Location: result.url } });
     }
-    if (result.kind === "same") return away(origin, "/studio?billing=same");
-    return away(origin, `/studio?billing=switch-${result.reason}`);
+    if (result.kind === "same") return away(origin, studio("billing=same"));
+    return away(origin, studio(`billing=switch-${result.reason}`));
   } catch (error) {
     console.error("switching the plan failed", error);
-    return away(origin, "/studio?billing=switch-error");
+    return away(origin, studio("billing=switch-error"));
   }
 }

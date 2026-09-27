@@ -179,7 +179,7 @@ export function SlotPicker({
           </p>
         ) : null}
         <button type="submit" className="btn st-btn btn-lg btn-block">
-          {move ? "Move my booking to this time" : `Continue to payment — $${price}`}
+          {move ? "Move my booking to this time" : `Continue to payment — ${price}`}
         </button>
         <p className="st-muted mt-3 text-center text-xs">
           {move

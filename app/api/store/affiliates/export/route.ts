@@ -1,18 +1,17 @@
 import type { NextRequest } from "next/server";
-import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
-import { storeForEmail } from "@/lib/store";
+import { creatorFrom } from "@/lib/studio-route";
 import { bookCsv, listAffiliates, readBook } from "@/lib/affiliates";
 
 /**
  * The affiliate programme as a spreadsheet, for the creator's own records:
  * every credited sale with what it earns after refunds, and every payout the
- * creator wrote down. Only for the signed-in owner of the store.
+ * creator wrote down. Only for the owner of the store, and an Admin: it
+ * carries every affiliate's address (lib/team-roles.ts, "export").
  */
 export async function GET(request: NextRequest) {
-  const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
-  if (!email) return new Response("Log in first.", { status: 401 });
-  const store = await storeForEmail(email);
-  if (!store) return new Response("No store.", { status: 404 });
+  const creator = await creatorFrom(request, "export");
+  if (creator instanceof Response) return creator;
+  const { store } = creator;
   try {
     const [book, people] = await Promise.all([readBook(store), listAffiliates(store)]);
     const day = new Date().toISOString().slice(0, 10);

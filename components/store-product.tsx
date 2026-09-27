@@ -1,35 +1,39 @@
 import Link from "next/link";
-import { centsToPrice, isFree, type Product, type Store } from "@/lib/store";
+import { isFree, syncTakesBuyer, type Listing, type Store } from "@/lib/store";
+import { formatMoney } from "@/lib/money";
 import { canSellProduct, fromPriceCents, sellableOptions } from "@/lib/store-checkout";
 import { everyLabel, membershipPrice } from "@/lib/product-recurring";
 import { canGiveProduct } from "@/lib/free";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { imageUrl } from "@/lib/product-image";
+import type { PageAction } from "@/components/sales-blocks";
+import { RatingLine } from "@/components/review-list";
+import type { Summary } from "@/lib/review-summary";
 
 /**
  * Where a product's own page is, under the store's address.
  *
  * Links from a card to this page, to a booking page or to a course are not
  * prefetched: every one of those pages is drawn fresh for its visitor, so a
- * prefetch is a request to the server, and a store of two hundred products
- * would send hundreds of them from one visit that opens none.
+ * prefetch is a request to the server, and a page of two dozen products
+ * would send dozens of them from one visit that opens none.
  */
-export function productPath(store: Store, product: Product): string {
+export function productPath(store: Store, product: Listing): string {
   return `/@${store.handle}/p/${product.id}`;
 }
 
-/** The figure on the price pill: "$27", "from $9 a month", "$5+", "Free". */
-export function pricePill(product: Product): string {
+/** The figure on the price pill: "$27", "from €9 a month", "¥500+", "Free", in the store's currency. */
+export function pricePill(product: Listing, currency: string): string {
   if (isFree(product)) return "Free";
-  if (activePwyw(product)) return `$${centsToPrice(product.priceCents)}+`;
+  if (activePwyw(product)) return `${formatMoney(product.priceCents, currency)}+`;
   const options = sellableOptions(product);
   const every = product.recurring ? ` ${everyLabel(product.recurring.interval)}` : "";
-  return `${options.length > 1 ? "from " : ""}$${centsToPrice(fromPriceCents(product))}${every}`;
+  return `${options.length > 1 ? "from " : ""}${formatMoney(fromPriceCents(product), currency)}${every}`;
 }
 
 /** What a card says about a call: one person, a group, or dated live sessions. */
-function callLine(call: NonNullable<Product["call"]>, now = Date.now()): string {
+function callLine(call: NonNullable<Listing["call"]>, now = Date.now()): string {
   if (call.kind === "live") {
     const coming = call.sessions.filter((s) => s.start > now).length;
     if (coming === 0) return "Live session, online, no dates scheduled";
@@ -40,7 +44,7 @@ function callLine(call: NonNullable<Product["call"]>, now = Date.now()): string 
 }
 
 /** Whether a call can still be booked: always for weekly hours, and for dated sessions while one is before its notice. */
-function hasDateOnSale(call: NonNullable<Product["call"]>, now = Date.now()): boolean {
+export function hasDateOnSale(call: NonNullable<Listing["call"]>, now = Date.now()): boolean {
   if (call.kind !== "live") return true;
   return call.sessions.some((s) => s.start - call.noticeHours * 3600_000 > now);
 }
@@ -50,17 +54,17 @@ function hasDateOnSale(call: NonNullable<Product["call"]>, now = Date.now()): bo
  * call, a course's lessons, a free trial, a set number of payments, a price
  * the buyer chooses. Every one of them is something the checkout will do.
  */
-export function ProductFacts({ store, product, linkCourse = true }: { store: Store; product: Product; linkCourse?: boolean }) {
+export function ProductFacts({ store, product, linkCourse = true }: { store: Store; product: Listing; linkCourse?: boolean }) {
   const pwyw = activePwyw(product);
   const options = sellableOptions(product);
   const facts: string[] = [];
   if (product.call) facts.push(callLine(product.call));
   if (product.recurring && (product.recurring.trialDays > 0 || product.recurring.payments > 0)) {
-    const price = `$${centsToPrice(fromPriceCents(product))}`;
+    const price = `${formatMoney(fromPriceCents(product), store.currency)}`;
     facts.push(`${options.length > 1 ? "From " : ""}${membershipPrice(product.recurring, price)}`.replace(/^([a-z])/, (c) => c.toUpperCase()));
   }
   if (pwyw) {
-    facts.push(`Pay what you want, from $${centsToPrice(product.priceCents)}. Suggested: $${centsToPrice(pwyw.suggestedCents)}`);
+    facts.push(`Pay what you want, from ${formatMoney(product.priceCents, store.currency)}. Suggested: ${formatMoney(pwyw.suggestedCents, store.currency)}`);
   }
   const course = product.course && product.course.lessons > 0 ? product.course : null;
   if (facts.length === 0 && !course) return null;
@@ -105,9 +109,12 @@ export function BuyBox({
   remaining,
   writes,
   selling,
+  related,
 }: {
   store: Store;
-  product: Product;
+  product: Listing;
+  /** Other products read with this one: the one its order bump offers, when it has one. */
+  related: Listing[];
   /** Units left of a limited product, or null when it is not limited. */
   remaining: number | null;
   /** Whether buyers may be asked to hear from the creator. */
@@ -118,7 +125,7 @@ export function BuyBox({
   const options = sellableOptions(product);
   const every = product.recurring ? ` ${everyLabel(product.recurring.interval)}` : "";
   const soldOut = remaining === 0;
-  const extra = activeBump(store.products, product);
+  const extra = activeBump(related, product);
   const plan = activePlan(product);
   const pwyw = activePwyw(product);
   const trial = product.recurring && product.recurring.trialDays > 0 ? product.recurring.trialDays : 0;
@@ -176,7 +183,7 @@ export function BuyBox({
     }
     return (
       <Link prefetch={false} href={`/@${store.handle}/book/${product.id}`} className="btn st-btn btn-block mt-4">
-        {`${product.call.kind === "live" ? "Pick a session" : "Pick a time"} — $${centsToPrice(product.priceCents)}`}
+        {`${product.call.kind === "live" ? "Pick a session" : "Pick a time"} — ${formatMoney(product.priceCents, store.currency)}`}
       </Link>
     );
   }
@@ -218,7 +225,7 @@ export function BuyBox({
                   />
                   <span className="font-bold">{option.label}</span>
                 </span>
-                <span className="font-semibold tabular-nums">{`$${centsToPrice(option.priceCents)}${every}`}</span>
+                <span className="font-semibold tabular-nums">{`${formatMoney(option.priceCents, store.currency)}${every}`}</span>
               </label>
             ))}
           </div>
@@ -233,14 +240,14 @@ export function BuyBox({
                 <input id={`pf-${product.id}`} type="radio" name="pay" value="full" defaultChecked className="h-4 w-4" />
                 <span className="font-bold">Pay in full</span>
               </span>
-              <span className="font-semibold tabular-nums">{`$${centsToPrice(product.priceCents)}`}</span>
+              <span className="font-semibold tabular-nums">{`${formatMoney(product.priceCents, store.currency)}`}</span>
             </label>
             <label htmlFor={`pp-${product.id}`} className="st-option">
               <span className="flex items-center gap-3">
                 <input id={`pp-${product.id}`} type="radio" name="pay" value="plan" className="h-4 w-4" />
-                <span className="font-bold">{planWords(plan)}</span>
+                <span className="font-bold">{planWords(plan, store.currency)}</span>
               </span>
-              <span className="font-semibold tabular-nums">{`$${centsToPrice(plan.amountCents)} today`}</span>
+              <span className="font-semibold tabular-nums">{`${formatMoney(plan.amountCents, store.currency)} today`}</span>
             </label>
           </div>
         </fieldset>
@@ -251,17 +258,19 @@ export function BuyBox({
           <span className="flex items-start gap-3">
             <input id={`b-${product.id}`} type="checkbox" name="bump" value="yes" className="mt-1 h-4 w-4 shrink-0" />
             <span>
-              <span className="block font-bold">{`Add ${extra.target.title} for $${centsToPrice(extra.bump.priceCents)}`}</span>
+              <span className="block font-bold">{`Add ${extra.target.title} for ${formatMoney(extra.bump.priceCents, store.currency)}`}</span>
               {extra.bump.pitch ? <span className="st-muted mt-0.5 block text-sm">{extra.bump.pitch}</span> : null}
               {extra.bump.priceCents < extra.target.priceCents ? (
-                <span className="st-muted mt-0.5 block text-xs">{`$${centsToPrice(extra.target.priceCents)} on its own`}</span>
+                <span className="st-muted mt-0.5 block text-xs">{`${formatMoney(extra.target.priceCents, store.currency)} on its own`}</span>
               ) : null}
             </span>
           </span>
         </label>
       ) : null}
-      {writes ? (
-        /* Starts empty, like every box here: buying is not agreeing to more email. */
+      {writes || syncTakesBuyer(store, product.id) ? (
+        /* Starts empty, like every box here: buying is not agreeing to more email.
+           Offered where the creator writes to their list here, or sends this
+           product's buyers to their own email platform (lib/email-sync.ts). */
         <label htmlFor={`n-${product.id}`} className="st-muted mb-4 flex cursor-pointer items-start gap-3 text-sm">
           <input id={`n-${product.id}`} type="checkbox" name="news" value="yes" className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{`Also send me emails from ${store.mail?.fromName || store.name}. I can unsubscribe whenever I like.`}</span>
@@ -278,39 +287,87 @@ export function BuyBox({
                   ? "Subscribe"
                   : "Buy the one you picked"
                 : product.recurring
-                  ? `Subscribe — $${centsToPrice(product.priceCents)}${every}`
-                  : `Buy for $${centsToPrice(product.priceCents)}`}
+                  ? `Subscribe — ${formatMoney(product.priceCents, store.currency)}${every}`
+                  : `Buy for ${formatMoney(product.priceCents, store.currency)}`}
         </span>
         {/* With the box ticked, the button says the new total. */}
-        {plan ? <span className="plan-on">{`Start the plan: $${centsToPrice(plan.amountCents)} today`}</span> : null}
+        {plan ? <span className="plan-on">{`Start the plan: ${formatMoney(plan.amountCents, store.currency)} today`}</span> : null}
         {plan && extra ? (
           <span className="plan-bump-on">
-            {`Start the plan with ${extra.target.title}: $${centsToPrice(plan.amountCents + extra.bump.priceCents)} today`}
+            {`Start the plan with ${extra.target.title}: ${formatMoney(plan.amountCents + extra.bump.priceCents, store.currency)} today`}
           </span>
         ) : null}
         {extra ? (
           <span className="bump-on">
             {options.length > 0
               ? `Buy it with ${extra.target.title}`
-              : `Buy both for $${centsToPrice(product.priceCents + extra.bump.priceCents)}`}
+              : `Buy both for ${formatMoney(product.priceCents + extra.bump.priceCents, store.currency)}`}
           </span>
         ) : null}
       </button>
       {pwyw ? (
         <p className="st-muted mt-2 text-center text-xs">
-          {`You type the amount on the payment page: $${centsToPrice(product.priceCents)} or more, $${centsToPrice(pwyw.suggestedCents)} suggested.`}
+          {`You type the amount on the payment page: ${formatMoney(product.priceCents, store.currency)} or more, ${formatMoney(pwyw.suggestedCents, store.currency)} suggested.`}
         </p>
       ) : null}
       {trial && product.recurring ? (
         <p className="st-muted mt-2 text-center text-xs">
           {`Your card is asked for now and nothing is charged for ${trial} days. Then ${membershipPrice(
             { ...product.recurring, trialDays: 0 },
-            `$${centsToPrice(fromPriceCents(product))}`,
+            `${formatMoney(fromPriceCents(product), store.currency)}`,
           )}${product.recurring.payments > 0 ? "" : " until you cancel"}. Cancel before the trial ends and you pay nothing.`}
         </p>
       ) : null}
     </form>
   );
+}
+
+/**
+ * Where a button on a product's page of blocks leads, by the same rules as
+ * the buy box: straight to Stripe's checkout when there is nothing to choose
+ * first, to the buy box when there is (a price option, a payment plan, the
+ * product offered alongside), to the booking page for a call, to the sign-up
+ * form for something free, and nowhere — with the reason said — when it
+ * cannot be bought right now. The label is what the button says when the
+ * creator left it empty.
+ */
+export function pageAction(
+  store: Store,
+  product: Listing,
+  remaining: number | null,
+  selling: boolean,
+  /** What its order bump offers, read by the page (lib/catalog.ts), as the buy box is given it. */
+  related: Listing[],
+): { action: PageAction; label: string } {
+  if (isFree(product)) {
+    return canGiveProduct(store, product)
+      ? { action: { kind: "link", href: "#get" }, label: "Get it free" }
+      : { action: { kind: "none", text: "Not available right now." }, label: "" };
+  }
+  if (product.call) {
+    return canSellProduct(store, product) && hasDateOnSale(product.call)
+      ? { action: { kind: "link", href: `/@${store.handle}/book/${product.id}` }, label: product.call.kind === "live" ? "Pick a session" : "Pick a time" }
+      : { action: { kind: "none", text: "No dates on sale right now." }, label: "" };
+  }
+  if (remaining === 0) return { action: { kind: "none", text: "Sold out." }, label: "" };
+  if (!canSellProduct(store, product)) {
+    return { action: { kind: "none", text: selling ? "Not ready to buy yet." : "This store cannot take payments yet." }, label: "" };
+  }
+  const trial = product.recurring && product.recurring.trialDays > 0 ? product.recurring.trialDays : 0;
+  if (sellableOptions(product).length > 0 || activePlan(product) || activeBump(related, product)) {
+    return { action: { kind: "link", href: "#buy" }, label: trial ? `Start the ${trial}-day free trial` : "Choose and buy" };
+  }
+  const every = product.recurring ? ` ${everyLabel(product.recurring.interval)}` : "";
+  return {
+    action: { kind: "checkout", handle: store.handle, product: product.id },
+    label: activePwyw(product)
+      ? "Choose your price"
+      : trial
+        ? `Start the ${trial}-day free trial`
+        : product.recurring
+          ? `Subscribe — ${formatMoney(product.priceCents, store.currency)}${every}`
+          : `Buy for ${formatMoney(product.priceCents, store.currency)}`,
+  };
 }
 
 /**
@@ -327,20 +384,26 @@ export function BuyBox({
 export function ProductCard({
   store,
   product,
+  related,
   remaining,
   writes,
   selling,
   manageable,
   eager = false,
+  rating = null,
 }: {
   store: Store;
-  product: Product;
+  product: Listing;
+  /** Other products read with this one: the one its order bump offers, when it has one. */
+  related: Listing[];
   remaining: number | null;
   writes: boolean;
   selling: boolean;
   manageable: boolean;
   /** Near the top of the page: the picture is fetched straight away. */
   eager?: boolean;
+  /** Its buyers' reviews, shown only when lib/reviews.ts says a page may. */
+  rating?: Summary | null;
 }) {
   const href = productPath(store, product);
   const image = product.image;
@@ -371,16 +434,18 @@ export function ProductCard({
           {product.title}
         </Link>
       </h2>
-      <p className="st-price text-base">{pricePill(product)}</p>
+      <p className="st-price text-base">{pricePill(product, store.currency)}</p>
     </div>
   );
 
   const summary = product.summary ? <p className="st-muted mt-2 leading-relaxed">{product.summary}</p> : null;
+  const stars = rating ? <RatingLine summary={rating} href={`${href}#reviews`} className="mt-1" /> : null;
   const body = (
     <>
+      {stars}
       <ProductFacts store={store} product={product} />
       {summary}
-      {product.about ? (
+      {product.about || product.page ? (
         <p className="mt-2 text-sm font-semibold">
           <Link prefetch={false} href={href} className="underline underline-offset-4" style={{ color: "var(--st-text)" }}>
             Read more
@@ -393,14 +458,14 @@ export function ProductCard({
   const rest = (
     <>
       {plan && canSellProduct(store, product) ? (
-        <p className="st-muted mt-1 text-sm font-semibold">{`or ${planWords(plan)}`}</p>
+        <p className="st-muted mt-1 text-sm font-semibold">{`or ${planWords(plan, store.currency)}`}</p>
       ) : null}
       {remaining !== null ? (
         <p className="mt-2 text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>
           {soldOut ? "Sold out" : `${remaining.toLocaleString("en-US")} left`}
         </p>
       ) : null}
-      <BuyBox store={store} product={product} remaining={remaining} writes={writes} selling={selling} />
+      <BuyBox store={store} product={product} related={related} remaining={remaining} writes={writes} selling={selling} />
       {product.recurring && manageable ? (
         <p className="mt-3 text-center text-sm">
           <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">
@@ -439,14 +504,15 @@ export function ProductCard({
                 {product.title}
               </Link>
             </h2>
-            <p className="st-price mt-2 text-sm">{pricePill(product)}</p>
+            <p className="st-price mt-2 text-sm">{pricePill(product, store.currency)}</p>
+            {stars ? <div>{stars}</div> : null}
             <ProductFacts store={store} product={product} />
             {/* Beside the picture on a wide screen, where there is room for it. */}
             <div className="hidden sm:block">{summary}</div>
           </div>
         </div>
         <div className="sm:hidden">{summary}</div>
-        {product.about ? (
+        {product.about || product.page ? (
           <p className="mt-2 text-sm font-semibold">
             <Link prefetch={false} href={href} className="underline underline-offset-4" style={{ color: "var(--st-text)" }}>
               Read more

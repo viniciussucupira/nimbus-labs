@@ -31,6 +31,7 @@ const PRODUCT_GROUPS: { label: string; items: MenuItem[] }[] = [
     items: [
       item("Store page", "Your photo, links and products at one address.", "/platform/store-page", "store"),
       item("Price options", "Up to three prices on one product.", "/platform/price-options", "tag"),
+      item("Sales pages", "Built from blocks, with reviews.", "/platform/sales-pages", "layout"),
       item("Courses", "Video lessons that open over time.", "/platform/courses", "book"),
       item("Memberships", "Paid every week, month or year.", "/platform/memberships", "repeat"),
       item("Paid calls", "Booked in their time zone, paid first.", "/platform/calls", "calendar"),
@@ -42,6 +43,7 @@ const PRODUCT_GROUPS: { label: string; items: MenuItem[] }[] = [
     items: [
       item("Your own Stripe", "The money lands in your account.", "/platform/your-stripe", "bank"),
       item("Checkout tools", "Codes, add-ons, instalments, tax.", "/platform/checkout", "percent"),
+      item("Currencies and ways to pay", "15 currencies, Klarna, Apple Pay.", "/platform/currencies-and-ways-to-pay", "card"),
       item("Funnels", "Up to five offers after paying.", "/platform/funnels", "ladder"),
     ],
   },

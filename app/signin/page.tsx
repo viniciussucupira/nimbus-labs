@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Icon } from "@/components/icons";
 import { Logo } from "@/components/logo";
 import { SignInForm } from "@/components/signin-form";
+import { PasskeySignIn } from "@/components/passkey-signin";
 import { ToastOnLoad } from "@/components/toast";
 import { isConnectConfigured } from "@/lib/stripe-connect";
 import { TRIAL_DAYS } from "@/lib/plan";
@@ -34,6 +35,42 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   "move-error": {
     title: "The move did not finish",
     body: "Nothing was changed. Log in and try again.",
+  },
+  "invite-expired": {
+    title: "That invitation no longer works",
+    body: "An invitation works once and lasts 7 days, and the store's owner can take it back. Ask them for a new one.",
+  },
+  "invite-gone": {
+    title: "That store is not there any more",
+    body: "The invitation was for a store that has since been deleted. Nothing was changed.",
+  },
+  "invite-full": {
+    title: "That team is full",
+    body: "A store's team has room for five people. Ask the store's owner to make room and invite you again.",
+  },
+  "invite-owner": {
+    title: "That is your own store",
+    body: "The invitation was sent to the address that owns the store. Log in below to open it.",
+  },
+  "invite-error": {
+    title: "Joining did not finish",
+    body: "Nothing was changed. Open the invitation again in a moment.",
+  },
+  reauth: {
+    title: "Log in again to add a passkey",
+    body: "A passkey keeps working after a session ends, so adding one needs a login from the last 15 minutes. Log in below with a link sent to your email, or with a passkey you already have, and your studio opens at the spot to add it.",
+  },
+  "invite-other": {
+    title: "You are logged in with another address",
+    body: "That invitation is for a different email address. Nothing was changed. Log out, then open the invitation again from the email it came in.",
+  },
+  "invite-joined": {
+    title: "You joined the team",
+    body: "Your address already has an account here, so the invitation did not log you in. Log in below with a link sent to that address, or with a passkey, and the store is in your studio.",
+  },
+  "invite-slow": {
+    title: "Too many tries",
+    body: "Nothing was changed. Wait a little, then open the invitation again.",
   },
 };
 
@@ -110,6 +147,7 @@ export default async function SignInPage({
 
           <div className="card mt-8 p-6 sm:p-8">
             <SignInForm />
+            <PasskeySignIn />
           </div>
 
           <section aria-labelledby="next-title" className="mt-10">

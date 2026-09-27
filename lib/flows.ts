@@ -17,6 +17,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { isMailable, leadsKey, mailable, parseContact } from "@/lib/contacts";
 import { MAX_MAIL_BODY, MAX_SUBJECT, monthlyAllowance, sendTo } from "@/lib/mail";
 import type { Store } from "@/lib/store";
+import { hasProduct } from "@/lib/catalog";
 
 export const MAX_FLOWS = 10;
 export const MAX_STEPS = 10;
@@ -83,7 +84,7 @@ export async function saveFlow(store: Store, raw: Record<string, unknown>): Prom
   const trigger = raw.trigger === "joined" || raw.trigger === "product" ? raw.trigger : null;
   if (!trigger) return { ok: false, reason: "trigger" };
   const productId = trigger === "product" && typeof raw.productId === "string" ? raw.productId : null;
-  if (trigger === "product" && !store.products.some((p) => p.id === productId)) return { ok: false, reason: "product" };
+  if (trigger === "product" && !(productId && hasProduct(store, productId))) return { ok: false, reason: "product" };
   const rawSteps = Array.isArray(raw.steps) ? raw.steps : [];
   if (rawSteps.length === 0 || rawSteps.length > MAX_STEPS) return { ok: false, reason: "steps" };
   const steps: FlowStep[] = [];

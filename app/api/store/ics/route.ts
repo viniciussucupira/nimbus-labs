@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { readOrder } from "@/lib/store-checkout";
 import { callInvite } from "@/lib/calls";
-import { roomFor } from "@/lib/call-setup";
+import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
 
 /**
  * The calendar file for a booked call, for the "Add to your calendar" button.
@@ -23,7 +23,13 @@ export async function GET(request: NextRequest) {
   if (order.state !== "paid" || !order.call || !order.product.call) {
     return new Response("Not found.", { status: 404, headers: { "Cache-Control": "no-store" } });
   }
-  const room = roomFor(order.product.call, order.call.start);
+  const room = await roomOf(store.callsId, {
+    product: order.product.id,
+    setup: order.product.call,
+    session: sessionId,
+    start: order.call.start,
+    end: order.call.end,
+  });
   const ics = callInvite({
     sequence: order.call.moves,
     uid: sessionId,
@@ -32,7 +38,7 @@ export async function GET(request: NextRequest) {
     title: order.product.title,
     storeName: store.name,
     room,
-    note: room ? `Join: ${room}` : `${store.name} will send the link to join.`,
+    note: room ? `Join: ${room}${isVideoRoom(room) ? `\n\n${VIDEO_ROOM_NOTE}` : ""}` : `${store.name} will send the link to join.`,
   });
   return new Response(ics, {
     headers: {

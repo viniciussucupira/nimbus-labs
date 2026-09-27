@@ -11,6 +11,8 @@ import { SITE_URL } from "@/lib/site-url";
 import { sweepCheckouts } from "@/lib/checkout-sweep";
 import { deliverDue, watchStripe } from "@/lib/webhooks";
 import { settlePendingOffers } from "@/lib/upsell";
+import { sendReviewRequests } from "@/lib/review-requests";
+import { syncDue } from "@/lib/email-sync";
 
 export const maxDuration = 60;
 
@@ -21,9 +23,12 @@ export const maxDuration = 60;
  * comes, finishes long ones, sends each step of a sequence when it is due,
  * sends the reminders before booked calls (lib/call-reminders.ts), which
  * need this job's five-minute rhythm to arrive an hour before and not later,
- * and finishes a community announcement's email (lib/community-mail.ts).
+ * finishes a community announcement's email (lib/community-mail.ts), and
+ * sends the review requests that are due (lib/review-requests.ts).
  * Last, it reads each store's Stripe events for the creator's webhooks and
- * retries the webhook deliveries that are due (lib/webhooks.ts) — which need
+ * retries the webhook deliveries that are due (lib/webhooks.ts), then the
+ * people waiting to be sent to a creator's own email platform
+ * (lib/email-sync.ts) — which need
  * Redis and Stripe but not email, so they run even where sending is off, as
  * does writing down the sales that came through an affiliate's link (the
  * checkout pass). Right after the checkout pass, the one-click offers still
@@ -34,8 +39,8 @@ export const maxDuration = 60;
  * The run has sixty seconds, shared out so that nothing starves what comes
  * after it: the checkout pass up to twelve, the creators' emails until
  * thirty-four, call reminders at least ten more but nothing past forty-four,
- * and the webhooks the rest, starting nothing after fifty — one try can take
- * eight more.
+ * review requests what is left until forty-seven, and the webhooks the rest,
+ * starting nothing after fifty — one try can take eight more.
  */
 export async function GET(request: NextRequest) {
   // Vercel sends the secret with every scheduled run, compared here in
@@ -91,10 +96,17 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       console.error("sending call reminders failed", error);
     }
+    // Review requests are the least urgent email here: a day late is no harm.
+    let reviews = null;
+    try {
+      reviews = await sendReviewRequests(storeForHandle, started + 47_000);
+    } catch (error) {
+      console.error("sending review requests failed", error);
+    }
     // Nothing started after fifty: a webhook try can take eight more, and the
     // whole run has sixty.
     const webhooks = await runWebhooks(webhooksBy);
-    return Response.json({ ok: true, checkouts, offers, broadcasts, announcements, ...steps, calls, webhooks }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ok: true, checkouts, offers, broadcasts, announcements, ...steps, calls, reviews, webhooks }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("the email job failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });
@@ -103,10 +115,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/** The webhook pass: new Stripe events first, then the retries due. One failing never stops the other. */
+/**
+ * The webhook pass: new Stripe events first, then the retries due, then the
+ * email platforms' sends and retries. One failing never stops the others.
+ */
 async function runWebhooks(deadline: number) {
   let stripe = null;
   let deliveries = null;
+  let emailPlatforms = null;
   try {
     stripe = await watchStripe(deadline - 3_000);
   } catch (error) {
@@ -117,5 +133,10 @@ async function runWebhooks(deadline: number) {
   } catch (error) {
     console.error("retrying webhooks failed", error);
   }
-  return { stripe, deliveries };
+  try {
+    emailPlatforms = await syncDue(deadline);
+  } catch (error) {
+    console.error("sending to email platforms failed", error);
+  }
+  return { stripe, deliveries, emailPlatforms };
 }

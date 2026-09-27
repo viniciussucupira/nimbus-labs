@@ -8,6 +8,7 @@ import { HOLD_SECONDS } from "@/lib/stripe-account";
 import { affiliateCookieName, attributionFor } from "@/lib/affiliates";
 import { viaCookieName } from "@/lib/affiliate-setting";
 import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
+import { readProduct } from "@/lib/catalog";
 
 /** The checkout this browser last opened for a call, so going back frees it. */
 const HOLD_COOKIE = "nl_call_hold";
@@ -53,7 +54,8 @@ export async function POST(request: NextRequest) {
 
   const store = await storeForHandle(handle);
   if (!store) return new Response("No such store.", { status: 404 });
-  const product = store.products.find((item) => item.id === productId);
+  // In full: the questions the creator asks are put on the checkout.
+  const product = await readProduct(store, productId);
   if (!product || !isCallProduct(product)) {
     return new Response(null, { status: 303, headers: { Location: `${origin}/@${store.handle}` } });
   }

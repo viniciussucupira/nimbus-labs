@@ -8,6 +8,7 @@ import { courseAccess, doneLessons, emailKey, storeKey } from "@/lib/learn";
 import { passedQuizzes } from "@/lib/quiz";
 import { hasFinished, issueCertificate } from "@/lib/certificate";
 import { limited } from "@/lib/request-guard";
+import { readCourseListing } from "@/lib/catalog";
 
 /**
  * "Get my certificate": issues a student's certificate of completion under
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     return new Response("Bad request", { status: 400 });
   }
   const store = handle ? await storeForHandle(handle) : null;
-  const product = store?.products.find((p) => p.id === productId && p.course);
+  const product = await readCourseListing(store, productId);
   if (!store || !product?.course) return new Response("Not found.", { status: 404 });
   const base = `${origin}/@${store.handle}/course/${product.id}`;
   const away = (path: string) => new Response(null, { status: 303, headers: { Location: path, "Cache-Control": "no-store" } });

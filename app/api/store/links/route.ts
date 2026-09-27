@@ -27,10 +27,10 @@ const STATUS: Record<string, number> = {
  * none of its ways of failing.
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request);
+  const guarded = await guardStoreWrite(request, "page");
   if (!guarded.ok) return guarded.response;
 
-  const { email, body } = guarded;
+  const { ref, body } = guarded;
   const action = text(body.action, 10);
   if (!ACTIONS.has(action)) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
@@ -58,13 +58,13 @@ export async function POST(request: NextRequest) {
       }
       result =
         action === "add"
-          ? await addStoreLink(email, title, read.url)
-          : await editStoreLink(email, id, title, read.url);
+          ? await addStoreLink(ref, title, read.url)
+          : await editStoreLink(ref, id, title, read.url);
     } else if (action === "remove") {
-      result = await removeStoreLink(email, id);
+      result = await removeStoreLink(ref, id);
     } else {
       const direction = body.direction === "up" ? "up" : "down";
-      result = await moveStoreLink(email, id, direction);
+      result = await moveStoreLink(ref, id, direction);
     }
 
     if (!result.ok) {
