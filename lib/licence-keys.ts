@@ -51,6 +51,7 @@
  * <store> is the store's statsId, which follows it through a new address and
  * a new sign-in email.
  */
+import { saleHandles } from "@/lib/store";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/site-url";
@@ -228,9 +229,12 @@ function usable(store: Store, product: Listing): boolean {
   return Boolean(activeKeys(product) && store.statsId && isRedisConfigured());
 }
 
-/** The key a sale already has, without giving it one. */
+/**
+ * The key a sale already has, without giving it one. Read whether or not the
+ * product still hands out keys: a key given stays the buyer's.
+ */
 export async function keyOfSale(store: Store, product: Listing, reference: string): Promise<SaleKey | null> {
-  if (!usable(store, product) || !reference) return null;
+  if (!store.statsId || !isRedisConfigured() || !reference) return null;
   const [key, waiting] = await redisPipeline([
     ["HGET", saleKey(store, product), reference],
     ["HEXISTS", waitingKey(store, product), reference],
@@ -240,7 +244,8 @@ export async function keyOfSale(store: Store, product: Listing, reference: strin
     const info = parseInfo(key, raw);
     return { state: "issued", key, revoked: Boolean(info?.revokedAt) };
   }
-  return Number(waiting) === 1 ? { state: "waiting" } : null;
+  // Still waiting only while the product hands out keys: one switched off gives none.
+  return Number(waiting) === 1 && activeKeys(product) ? { state: "waiting" } : null;
 }
 
 /**
@@ -487,7 +492,7 @@ export async function revokeRefunded(store: Store, deadline: number): Promise<nu
   let revoked = 0;
   let after = "";
   let complete = false;
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
 
   for (let page = 0; page < REFUND_PAGES && Date.now() < deadline; page += 1) {
     const query = new URLSearchParams({ limit: "100", "created[gte]": String(since) });
@@ -560,9 +565,12 @@ export async function revokeRefunded(store: Store, deadline: number): Promise<nu
 
 export type KeyCheck = "valid" | "revoked" | "unknown";
 
-/** What the public check answers about a key: given and good, given and revoked, or never given. */
+/**
+ * What the public check answers about a key: given and good, given and
+ * revoked, or never given. Keys given before keys were switched off stay valid.
+ */
 export async function checkKey(store: Store, product: Listing, key: string): Promise<KeyCheck> {
-  if (!activeKeys(product) || !store.statsId || !isRedisConfigured()) return "unknown";
+  if (!store.statsId || !isRedisConfigured()) return "unknown";
   if (key.length < MIN_KEY_LENGTH || key.length > MAX_KEY_LENGTH) return "unknown";
   const [raw] = await redisPipeline([["HGET", infoKey(store, product), key]]);
   const info = parseInfo(key, raw);

@@ -6,6 +6,7 @@ import {
   SESSION_COOKIE,
   emailForSession,
   isAuthConfigured,
+  isFreshSession,
   normaliseEmail,
   sendMoveLink,
   withinAddressLimit,
@@ -32,7 +33,8 @@ export async function POST(request: NextRequest) {
       headers: { Location: `${origin}/studio?address=${status}` },
     });
 
-  const email = await emailForSession(request.cookies.get(SESSION_COOKIE)?.value);
+  const session = request.cookies.get(SESSION_COOKIE)?.value;
+  const email = await emailForSession(session);
   if (!email) {
     return new Response(null, {
       status: 303,
@@ -64,10 +66,13 @@ export async function POST(request: NextRequest) {
   if (await storeForEmail(wanted)) return back("taken");
 
   if (!isAuthConfigured()) return back("unavailable");
+  // Moving the account outlives any session, so it needs a recent login, as
+  // adding a passkey does: a session cookie that walked off cannot start it.
+  if (!(await isFreshSession(session))) return back("reauth");
 
   try {
     if (!(await withinAddressLimit(wanted))) return back("limited");
-    await sendMoveLink(email, wanted, linkOrigin(request));
+    await sendMoveLink(email, wanted, linkOrigin(request), session as string);
   } catch (error) {
     console.error("address move request failed", error);
     return back("error");

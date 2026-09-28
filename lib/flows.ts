@@ -37,6 +37,13 @@ export type Flow = {
 };
 
 const QUEUE = "nl:mail:flowq";
+/**
+ * Steps taken off the queue by a run, until it has sent or put them back. A
+ * run stopped mid-way (a timeout, an error) leaves them here, and the next run
+ * returns those whose time is up to the queue, so no contact is dropped.
+ */
+const LEASE = "nl:mail:flowq:lease";
+const LEASE_SECONDS = 15 * 60;
 const flowsKey = (listId: string) => `nl:mail:flows:${listId}`;
 const enrolledKey = (flowId: string, email: string) =>
   `nl:mail:enr:${flowId}:${createHash("sha256").update(`nimbus-flow:${normaliseEmail(email)}`).digest("hex").slice(0, 32)}`;
@@ -181,6 +188,14 @@ export async function sendDueSteps(
   if (!isRedisConfigured()) return counts;
   const stores = new Map<string, Store | null>();
   const flowsFor = new Map<string, Flow[]>();
+  // What an earlier run took and never finished goes back in the queue first.
+  const [stuck] = await redisPipeline([["ZRANGEBYSCORE", LEASE, 0, Math.floor(Date.now() / 1000), "LIMIT", 0, 1000]]);
+  const orphans = Array.isArray(stuck) ? (stuck as string[]) : [];
+  if (orphans.length) {
+    const back = await redisPipeline(orphans.map((m) => ["ZREM", LEASE, m]));
+    const mine = orphans.filter((_, i) => Number(back[i]) === 1);
+    if (mine.length) await redisPipeline(mine.map((m) => ["ZADD", QUEUE, Math.floor(Date.now() / 1000), m]));
+  }
   while (Date.now() < deadline) {
     const now = Math.floor(Date.now() / 1000);
     const [due] = await redisPipeline([["ZRANGEBYSCORE", QUEUE, 0, now, "LIMIT", 0, 300]]);
@@ -188,6 +203,8 @@ export async function sendDueSteps(
     if (!members.length) break;
     // Whoever removes a member from the queue is the one who sends it.
     const taken = await redisPipeline(members.map((m) => ["ZREM", QUEUE, m]));
+    const owned = members.filter((_, i) => Number(taken[i]) === 1);
+    if (owned.length) await redisPipeline(owned.map((m) => ["ZADD", LEASE, now + LEASE_SECONDS, m]));
     const groups = new Map<string, string[]>();
     members.forEach((member, i) => {
       if (Number(taken[i]) !== 1) return;
@@ -198,56 +215,70 @@ export async function sendDueSteps(
     });
 
     for (const [group, emails] of groups) {
+      const release = [["ZREM", LEASE, ...emails.map((email) => `${group}|${email}`)]];
       if (Date.now() > deadline) {
         // Out of time: back in the queue for the next run, untouched.
-        await redisPipeline(emails.map((email) => ["ZADD", QUEUE, now, `${group}|${email}`]));
+        await redisPipeline([...emails.map((email) => ["ZADD", QUEUE, now, `${group}|${email}`]), ...release]);
         continue;
       }
-      const [listId, handle, flowId, stepRaw] = group.split("|");
-      const index = Number(stepRaw);
-      if (!stores.has(handle)) stores.set(handle, await load(handle));
-      const store = stores.get(handle);
-      if (!store || store.listId !== listId) {
-        counts.dropped += emails.length;
-        continue;
+      try {
+        await sendGroup(group, emails);
+        await redisPipeline(release);
+      } catch (error) {
+        // Put back for a later run rather than lost; the send's own key keeps
+        // anybody it already reached from getting it twice.
+        console.error("sending a sequence step failed", error);
+        await redisPipeline([...emails.map((email) => ["ZADD", QUEUE, now + 600, `${group}|${email}`]), ...release]).catch(() => {});
       }
-      if (!flowsFor.has(listId)) flowsFor.set(listId, await readFlows(listId));
-      const flow = flowsFor.get(listId)!.find((f) => f.id === flowId);
-      const step = flow?.steps[index];
-      if (!flow || !flow.active || !step || monthlyAllowance(store) === 0) {
-        counts.dropped += emails.length;
-        continue;
-      }
-      const [rows] = await redisPipeline([["HMGET", leadsKey(listId), ...emails]]);
-      const found = Array.isArray(rows) ? rows : [];
-      const still = emails.filter((_, i) => {
-        const contact = parseContact(found[i]);
-        return contact !== null && mailable(contact);
-      });
-      counts.dropped += emails.length - still.length;
-      if (!still.length) continue;
-
-      const key = `fl:${flow.id}:${step.id}:${createHash("sha256").update([...still].sort().join(",")).digest("hex").slice(0, 32)}`;
-      const result = await sendTo(store, still, step.subject, step.body, key);
-      if (result.rest.length) {
-        if (result.stopped === "refused") counts.dropped += result.rest.length;
-        else {
-          // Tried again later rather than lost: next month, or once the sender takes it.
-          const later = result.stopped === "allowance" || result.stopped === "day" ? 6 * 3600 : 600;
-          await redisPipeline(result.rest.map((email) => ["ZADD", QUEUE, now + later, `${group}|${email}`]));
-          counts.later += result.rest.length;
-        }
-      }
-      if (!result.done.length) continue;
-      counts.sent += result.done.length;
-      const commands: (string | number)[][] = [["HINCRBY", statsKey(flow.id), "sent", result.done.length]];
-      const following = flow.steps[index + 1];
-      if (following) {
-        const at = now + following.delayHours * 3600;
-        for (const email of result.done) commands.push(["ZADD", QUEUE, at, `${listId}|${handle}|${flowId}|${index + 1}|${email}`]);
-      }
-      await redisPipeline(commands);
     }
   }
   return counts;
+
+  async function sendGroup(group: string, emails: string[]): Promise<void> {
+    const now = Math.floor(Date.now() / 1000);
+    const [listId, handle, flowId, stepRaw] = group.split("|");
+    const index = Number(stepRaw);
+    if (!stores.has(handle)) stores.set(handle, await load(handle));
+    const store = stores.get(handle);
+    if (!store || store.listId !== listId) {
+      counts.dropped += emails.length;
+      return;
+    }
+    if (!flowsFor.has(listId)) flowsFor.set(listId, await readFlows(listId));
+    const flow = flowsFor.get(listId)!.find((f) => f.id === flowId);
+    const step = flow?.steps[index];
+    if (!flow || !flow.active || !step || monthlyAllowance(store) === 0) {
+      counts.dropped += emails.length;
+      return;
+    }
+    const [rows] = await redisPipeline([["HMGET", leadsKey(listId), ...emails]]);
+    const found = Array.isArray(rows) ? rows : [];
+    const still = emails.filter((_, i) => {
+      const contact = parseContact(found[i]);
+      return contact !== null && mailable(contact);
+    });
+    counts.dropped += emails.length - still.length;
+    if (!still.length) return;
+
+    const key = `fl:${flow.id}:${step.id}:${createHash("sha256").update([...still].sort().join(",")).digest("hex").slice(0, 32)}`;
+    const result = await sendTo(store, still, step.subject, step.body, key);
+    if (result.rest.length) {
+      if (result.stopped === "refused") counts.dropped += result.rest.length;
+      else {
+        // Tried again later rather than lost: next month, or once the sender takes it.
+        const later = result.stopped === "allowance" || result.stopped === "day" ? 6 * 3600 : 600;
+        await redisPipeline(result.rest.map((email) => ["ZADD", QUEUE, now + later, `${group}|${email}`]));
+        counts.later += result.rest.length;
+      }
+    }
+    if (!result.done.length) return;
+    counts.sent += result.done.length;
+    const commands: (string | number)[][] = [["HINCRBY", statsKey(flow.id), "sent", result.done.length]];
+    const following = flow.steps[index + 1];
+    if (following) {
+      const at = now + following.delayHours * 3600;
+      for (const email of result.done) commands.push(["ZADD", QUEUE, at, `${listId}|${handle}|${flowId}|${index + 1}|${email}`]);
+    }
+    await redisPipeline(commands);
+  }
 }

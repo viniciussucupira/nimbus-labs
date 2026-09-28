@@ -35,7 +35,7 @@ import {
   isCallProduct,
   isConfirmed,
   moveLink,
-  paidCalls,
+  paidCall, paidCalls,
   senderAddress,
   storeSender,
 } from "@/lib/calls";
@@ -186,7 +186,10 @@ export async function sendCallReminders(
       const item = parseMember(member);
       done.push(member);
       if (!item) continue;
-      const call = bySession.get(item.session);
+      // A booking made long ahead in a busy account may be older than the
+      // sessions paidCalls reads: it is looked up on its own before it is
+      // taken for unpaid or refunded.
+      const call = bySession.get(item.session) ?? (await paidCall(store, item.session).catch(() => null)) ?? undefined;
       const product = call ? await find(call.product) : null;
       if (!call || !product || !isCallProduct(product)) {
         // Never paid, refunded out of the list, or the product is gone.
@@ -224,10 +227,25 @@ export async function sendCallReminders(
           ["SET", sentKey(call.session, call.start, item.mark), "1", "NX", "EX", SENT_SECONDS],
           ["SET", creatorKey(callsId, call.product, call.start, item.mark), "1", "NX", "EX", SENT_SECONDS],
         ]);
-        if (fresh !== null && (await remindBuyer(store, product, call, item.mark, origin))) counts.reminded += 1;
-        if (freshCreator !== null) await remindCreator(store, product, paid, call, item.mark);
+        // A send that did not go (the mail service down for a moment) is
+        // tried again on the next run, while the reminder is still of use.
+        let again = false;
+        if (fresh !== null) {
+          if (await remindBuyer(store, product, call, item.mark, origin)) counts.reminded += 1;
+          else if (call.email) {
+            await redisPipeline([["DEL", sentKey(call.session, call.start, item.mark)]]);
+            again = true;
+          }
+        }
+        if (freshCreator !== null && !(await remindCreator(store, product, paid, call, item.mark))) {
+          await redisPipeline([["DEL", creatorKey(callsId, call.product, call.start, item.mark)]]);
+          again = true;
+        }
+        if (again) done.pop();
       } catch (error) {
         console.error("sending a call reminder failed", error);
+        // Kept in the queue for the next run; stillUseful lets it go once it is too late.
+        done.pop();
       }
     }
     if (done.length) await redisPipeline([["ZREM", REMINDER_QUEUE, ...done]]);

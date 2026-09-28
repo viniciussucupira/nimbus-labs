@@ -28,6 +28,7 @@
  *   nl:meet:rf:<callsId>:since   the time refunds were read up to, in seconds
  *   nl:meet:rf:<callsId>:seen    refunds already read
  */
+import { saleHandles } from "@/lib/store";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { isSenderConfigured } from "@/lib/email";
 import { onAccount } from "@/lib/stripe-account";
@@ -167,7 +168,7 @@ async function refundsOf(store: Store, callsId: string, deadline: number): Promi
   // a refund made before one existed has nothing to remove.
   const anchor = Number(anchorRaw) > 0 ? Number(anchorRaw) : nowSeconds - 86_400;
   const since = Math.max(0, anchor - 300);
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   let newest = anchor;
   let lookups = REFUND_LOOKUPS;
   let handled = 0;

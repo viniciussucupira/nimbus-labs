@@ -157,7 +157,7 @@ export async function writeRecord(record: MeetRecord): Promise<void> {
   ]);
 }
 
-/** The link the people booked were given, when a record gave one. */
+/** The link the people booked were given, when a record gave one and its meeting was not removed. */
 export function givenLink(record: MeetRecord | null): string | null {
-  return record && record.link ? record.link : null;
+  return record && record.link && !record.gone ? record.link : null;
 }

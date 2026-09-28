@@ -554,11 +554,17 @@ async function productsStep(job: ImportJob, store: Store, rows: string[][]): Pro
     drafts.push({ line, draft: { title, summary, priceCents, link }, about });
   }
   const seen = await firstSeen(job, drafts.map((d) => ({ key: `t:${d.draft.title.toLowerCase()}`, line: d.line })));
-  const fresh = drafts.filter((d, i) => {
+  const unseen = drafts.filter((d, i) => {
     if (seen[i] === null) return true;
     skipped.push({ line: d.line, column: "title", problem: `The same title as row ${seen[i]}`, value: d.draft.title });
     return false;
   });
+  // Rows a run already made a product of, before it stopped short of saving
+  // its place: made once, never twice.
+  const madeBefore = unseen.length
+    ? ((await redisPipeline([["HMGET", seenKey(job.id), ...unseen.map((d) => `m:${d.line}`)]]))[0] as unknown[])
+    : [];
+  const fresh = unseen.filter((_, i) => !(Array.isArray(madeBefore) && madeBefore[i]));
   if (fresh.length) {
     let made = await addDraftProducts(storeRef(store), fresh.map((d) => ({ ...d.draft, about: d.about !== "" })));
     let taking = fresh;
@@ -571,6 +577,12 @@ async function productsStep(job: ImportJob, store: Store, rows: string[][]): Pro
       made = taking.length ? await addDraftProducts(storeRef(store), taking.map((d) => ({ ...d.draft, about: d.about !== "" }))) : { ok: true, store, ids: [] };
     }
     if (!made.ok) throw new Error(`adding imported products failed: ${made.reason}`);
+    if (made.ids.length) {
+      await redisPipeline([
+        ["HSET", seenKey(job.id), ...taking.slice(0, made.ids.length).flatMap((d) => [`m:${d.line}`, "1"])],
+        ["EXPIRE", seenKey(job.id), KEEP_SECONDS],
+      ]);
+    }
     const statsId = made.store.statsId;
     for (let i = 0; i < made.ids.length; i += 1) {
       if (taking[i].about && statsId) await writeAbout(statsId, made.ids[i], taking[i].about);

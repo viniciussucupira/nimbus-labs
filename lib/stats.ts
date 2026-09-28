@@ -23,6 +23,7 @@
  * Sales are not counted here. They are read from the creator's own Stripe
  * account, which is the only record of money that deserves the name.
  */
+import { saleHandles } from "@/lib/store";
 import { createHash } from "node:crypto";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount } from "@/lib/stripe-account";
@@ -433,7 +434,7 @@ const currencyOf = (row: { currency?: unknown }) => (typeof row.currency === "st
  */
 export async function readPaidSales(store: Store, since: number, pages: number): Promise<{ sales: Sale[]; partial: boolean }> {
   if (!store.stripeAccountId) return { sales: [], partial: false };
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   const sales: Sale[] = [];
   let partial = false;
   const walk = async (path: string, take: (row: Record<string, unknown>) => void) => {

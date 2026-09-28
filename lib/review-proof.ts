@@ -30,6 +30,7 @@
  *   nl:rev:refunds:since:<statsId> -> how far the refund pass has read
  *   nl:rev:refunds:seen:<statsId>  -> refunds already handled
  */
+import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { normaliseEmail } from "@/lib/auth";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -105,7 +106,7 @@ async function invoicePayment(account: string, invoice: unknown): Promise<string
 export async function provePurchase(store: Store, reference: string): Promise<ProofResult> {
   const account = store.stripeAccountId;
   if (!account) return { state: "no" };
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   try {
     if (SESSION_ID.test(reference)) {
       const session = await onAccount(

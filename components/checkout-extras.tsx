@@ -23,6 +23,7 @@ const MESSAGES: Record<string, string> = {
   stock: `Type a whole number from 1 to ${MAX_STOCK.toLocaleString("en-US")}.`,
   target: "Pick another product that has one price and a file or a link on it.",
   kind: "This works on one-off paid products only.",
+  sold_with: "This product is also sold in a bundle, a checkout box or an offer after paying. Take it out of those first: only its own checkout counts sales against the number.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   server_error: "Something went wrong on our side. Try again in a moment.",

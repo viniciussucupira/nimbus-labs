@@ -155,18 +155,22 @@ function viewOf(c: Connection): ConnectionView {
 
 /** Which accounts a store has connected, for the studio. Nothing is read when both are off. */
 export async function meetView(statsId: string | null, sid?: OfferedTo): Promise<MeetView> {
-  // A studio page names its store, and sees what that store is offered;
-  // the booking side (usableProviders) reads every provider switched on.
-  const providers = sid === undefined ? configuredProviders() : offeredProviders(sid);
-  if (!providers.length || !statsId || !isRedisConfigured()) return { providers, connected: {}, problems: [] };
-  const replies = await redisPipeline([...providers.map((p) => ["GET", connKey(statsId, p)]), ["LRANGE", logKey(statsId), 0, LOG_SIZE - 1]]);
+  // A studio page names its store, and sees what that store is offered, and
+  // any account it has connected whether or not it is still offered: one the
+  // bookings use (usableProviders reads every provider switched on) must stay
+  // in sight, to be seen and disconnected.
+  const configured = configuredProviders();
+  const offered = sid === undefined ? configured : offeredProviders(sid);
+  if (!configured.length || !statsId || !isRedisConfigured()) return { providers: offered, connected: {}, problems: [] };
+  const replies = await redisPipeline([...configured.map((p) => ["GET", connKey(statsId, p)]), ["LRANGE", logKey(statsId), 0, LOG_SIZE - 1]]);
   const connected: MeetView["connected"] = {};
-  providers.forEach((p, i) => {
+  configured.forEach((p, i) => {
     const c = parseConnection(replies[i], p);
     if (c) connected[p] = viewOf(c);
   });
+  const providers = configured.filter((p) => offered.includes(p) || connected[p]);
   const problems: MeetProblem[] = [];
-  for (const raw of Array.isArray(replies[providers.length]) ? (replies[providers.length] as unknown[]) : []) {
+  for (const raw of Array.isArray(replies[configured.length]) ? (replies[configured.length] as unknown[]) : []) {
     try {
       const v = JSON.parse(String(raw)) as MeetProblem;
       if (isMeetProvider(v.provider) && typeof v.what === "string" && typeof v.error === "string") problems.push(v);

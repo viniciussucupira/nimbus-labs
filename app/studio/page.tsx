@@ -294,6 +294,10 @@ const ADDRESS_NOTICES: Record<string, { title: string; body: string }> = {
     title: "There is no store to move yet",
     body: "Take your address first. Until then, simply log in with whichever email you prefer.",
   },
+  reauth: {
+    title: "Log in again first",
+    body: "Moving your account needs a login from the last 15 minutes. Log out, log in again, and ask once more. Nothing was changed.",
+  },
   limited: {
     title: "Too many attempts for that address",
     body: "Wait an hour and try again.",

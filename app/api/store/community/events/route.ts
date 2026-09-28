@@ -17,7 +17,7 @@ import {
   setReplay,
   withinEventWrites,
 } from "@/lib/community-events";
-import { advanceEventJob, queueEventNotice } from "@/lib/community-event-mail";
+import { advanceEventJob, cancelNoticeSending, queueEventNotice } from "@/lib/community-event-mail";
 import { eventMeeting, eventMeetingAfterEdit, eventMeetingCancelled } from "@/lib/event-meetings";
 import { usableProviders } from "@/lib/meet-connect";
 import type { EventInput } from "@/lib/community-events";
@@ -139,6 +139,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "delete") {
+      // Everyone coming is told it was called off before the event itself goes.
+      if (await cancelNoticeSending(id, eventId)) return fail("telling", 409);
       const gone = await deleteEvent(store, eventId);
       if (gone === "gone") return fail("unknown", 404);
       if (gone === "upcoming") return fail("upcoming", 409);

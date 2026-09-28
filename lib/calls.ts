@@ -37,11 +37,13 @@
  * without it. Dated sessions are never hidden by it: the creator put them on
  * that date themselves, so the studio shows the clash instead.
  */
+import { saleHandles } from "@/lib/store";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { HOLD_SECONDS, checkoutClosesAt, onAccount } from "@/lib/stripe-account";
 import { applyTax } from "@/lib/tax";
 import { inTheCurrencyShown, isSettled, onlyInstantMethods } from "@/lib/instant-pay";
+import { refundedInFull } from "@/lib/refunds";
 import { type Answer, applyCheckoutFields, readAnswers } from "@/lib/checkout-fields";
 import type { Listing, Product, Store } from "@/lib/store";
 import { idsOfKind, listingFinder, readListing, readListings, sellsAny } from "@/lib/catalog";
@@ -105,10 +107,10 @@ function readEntries(flat: string[]): { field: string; entry: Entry }[] {
   return out;
 }
 
-async function heldAndBooked(callsId: string, now: number): Promise<Busy[]> {
+async function heldAndBooked(callsId: string, now: number): Promise<(Busy & { field: string })[]> {
   const [raw] = await redisPipeline([["HGETALL", busyKey(callsId)]]);
   const flat = Array.isArray(raw) ? (raw as string[]) : [];
-  const busy: Busy[] = [];
+  const busy: (Busy & { field: string })[] = [];
   const stale: string[] = [];
   for (const { field, entry } of readEntries(flat)) {
     if (entry.until === -1 || (entry.until !== 0 && entry.until < now)) {
@@ -117,7 +119,7 @@ async function heldAndBooked(callsId: string, now: number): Promise<Busy[]> {
     }
     const start = typeof entry.s === "number" ? entry.s : Number(field);
     if (!Number.isFinite(start) || !Number.isFinite(entry.e)) continue;
-    busy.push({ start, end: entry.e, product: entry.p, session: entry.session });
+    busy.push({ start, end: entry.e, product: entry.p, session: entry.session, field });
   }
   // Holds that ran out are tidied as they are noticed.
   if (stale.length) await redisPipeline([["HDEL", busyKey(callsId), ...stale]]).catch(() => {});
@@ -133,6 +135,7 @@ type SessionRow = {
   created?: unknown;
   custom_fields?: unknown;
   amount_total?: unknown;
+  payment_intent?: unknown;
 };
 
 /**
@@ -158,51 +161,96 @@ export async function paidCalls(store: Store): Promise<
     amount: number;
   }[]
 > {
-  if (!store.stripeAccountId) return [];
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  return (await readCallSessions(store)).paid;
+}
+
+type CallRow = Awaited<ReturnType<typeof paidCalls>>[number];
+
+/**
+ * A paid booking of this store from one checkout session, or null. A booking
+ * refunded in full is `refunded`: it no longer holds its time or gets reminders.
+ */
+function callFromRow(row: SessionRow, handles: Set<string>): CallRow | "refunded" | null {
+  const meta = row.metadata ?? {};
+  if (meta.kind !== "call" || !handles.has(meta.store ?? "")) return null;
+  if (!isSettled(row)) return null;
+  const start = Number(meta.start);
+  const end = Number(meta.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  if (refundedInFull(row.payment_intent)) return "refunded";
+  const email = row.customer_details?.email;
+  const name = row.customer_details?.name;
+  return {
+    session: typeof row.id === "string" ? row.id : "",
+    start,
+    end,
+    product: meta.product ?? "",
+    title: meta.title ?? "",
+    email: typeof email === "string" && email ? email : null,
+    name: typeof name === "string" && name.trim() ? name.trim().slice(0, 120) : null,
+    buyerTz: isTimeZone(meta.tz) ? meta.tz : "UTC",
+    moves: 0,
+    answers: readAnswers(row),
+    amount: typeof row.amount_total === "number" ? row.amount_total : 0,
+  };
+}
+
+async function withMoves(found: CallRow[]): Promise<CallRow[]> {
+  const moves = await readMoves(found.map((call) => call.session));
+  return found.map((call) => {
+    const move = moves.get(call.session);
+    return move ? { ...call, start: move.s, end: move.e, moves: move.n } : call;
+  });
+}
+
+/**
+ * The paid bookings Stripe lists for this store, and the sessions of those
+ * refunded in full. Only completed checkouts are read, so holds that ran out
+ * never use up the pages.
+ */
+async function readCallSessions(store: Store): Promise<{ paid: CallRow[]; refunded: Set<string> }> {
+  const refunded = new Set<string>();
+  if (!store.stripeAccountId) return { paid: [], refunded };
+  const handles = saleHandles(store);
   const since = Math.floor(Date.now() / 1000) - LOOKBACK_DAYS * 86400;
-  const found: Awaited<ReturnType<typeof paidCalls>> = [];
+  const found: CallRow[] = [];
   let after = "";
   for (let page = 0; page < MAX_PAGES; page += 1) {
     const list = (await onAccount(
       "GET",
       store.stripeAccountId,
-      `/checkout/sessions?limit=100&created[gte]=${since}${after ? `&starting_after=${encodeURIComponent(after)}` : ""}`,
+      `/checkout/sessions?limit=100&status=complete&created[gte]=${since}&expand[]=data.payment_intent.latest_charge${after ? `&starting_after=${encodeURIComponent(after)}` : ""}`,
     )) as { data?: unknown; has_more?: unknown };
     const rows = Array.isArray(list.data) ? (list.data as SessionRow[]) : [];
     for (const row of rows) {
-      const meta = row.metadata ?? {};
-      if (meta.kind !== "call" || !handles.has(meta.store ?? "")) continue;
-      if (!isSettled(row)) continue;
-      const start = Number(meta.start);
-      const end = Number(meta.end);
-      if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
-      const email = row.customer_details?.email;
-      const name = row.customer_details?.name;
-      found.push({
-        session: typeof row.id === "string" ? row.id : "",
-        start,
-        end,
-        product: meta.product ?? "",
-        title: meta.title ?? "",
-        email: typeof email === "string" && email ? email : null,
-        name: typeof name === "string" && name.trim() ? name.trim().slice(0, 120) : null,
-        buyerTz: isTimeZone(meta.tz) ? meta.tz : "UTC",
-        moves: 0,
-        answers: readAnswers(row),
-        amount: typeof row.amount_total === "number" ? row.amount_total : 0,
-      });
+      const call = callFromRow(row, handles);
+      if (call === "refunded") {
+        if (typeof row.id === "string") refunded.add(row.id);
+      } else if (call) found.push(call);
     }
     if (list.has_more !== true || rows.length === 0) break;
     const last = rows[rows.length - 1];
     after = typeof last.id === "string" ? last.id : "";
     if (!after) break;
   }
-  const moves = await readMoves(found.map((call) => call.session));
-  return found.map((call) => {
-    const move = moves.get(call.session);
-    return move ? { ...call, start: move.s, end: move.e, moves: move.n } : call;
-  });
+  return { paid: await withMoves(found), refunded };
+}
+
+/**
+ * One booking read straight from its checkout session, for a booking too far
+ * back in a busy account to be among the sessions paidCalls reads. Null when
+ * it is not a paid, unrefunded booking of this store.
+ */
+export async function paidCall(store: Store, session: string): Promise<CallRow | null> {
+  if (!store.stripeAccountId || !/^cs_(test|live)_[A-Za-z0-9]{10,200}$/.test(session)) return null;
+  const row = (await onAccount(
+    "GET",
+    store.stripeAccountId,
+    `/checkout/sessions/${encodeURIComponent(session)}?expand[]=payment_intent.latest_charge`,
+  )) as SessionRow;
+  const call = callFromRow(row, saleHandles(store));
+  if (!call || call === "refunded") return null;
+  return (await withMoves([call]))[0] ?? null;
 }
 
 export type PaidCall = Awaited<ReturnType<typeof paidCalls>>[number];
@@ -227,8 +275,9 @@ async function readBusy(
   const sessions = weekly ? readListings(store, idsOfKind(store, "call")).then((calls) => sessionTimes(calls, now)) : Promise.resolve([]);
   // Awaited below; marked here so a failure while Stripe is being read is not left unheard.
   sessions.catch(() => {});
+  let refunded = new Set<string>();
   try {
-    paid = await paidCalls(store);
+    ({ paid, refunded } = await readCallSessions(store));
   } catch (error) {
     // Without Stripe's answer a paid time could be offered twice. Refusing to
     // show any time is the safe failure; the caller treats the throw as that.
@@ -238,8 +287,13 @@ async function readBusy(
   // Stripe's copy wins over ours: it is the ledger, and it is read with any
   // move applied. Each checkout session is one seat, however often it is seen.
   const fromStripe = new Set(paid.map((c) => c.session).filter(Boolean));
+  // A booking refunded in full gives its time back.
+  const gone = local.filter((b) => b.session && refunded.has(b.session));
+  if (gone.length && store.callsId) {
+    await redisPipeline([["HDEL", busyKey(store.callsId), ...gone.map((b) => b.field)]]).catch(() => {});
+  }
   const busy: Busy[] = [
-    ...local.filter((b) => !b.session || !fromStripe.has(b.session)),
+    ...local.filter((b) => (!b.session || !fromStripe.has(b.session)) && !(b.session && refunded.has(b.session))),
     ...paid.map((c) => ({ start: c.start, end: c.end, product: c.product, session: c.session })),
   ];
   return { busy, paid, blocked: (await calendar).busy, sessions: await sessions };

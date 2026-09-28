@@ -49,6 +49,7 @@
  *   nl:aff:<id>:sales    hash  Stripe reference -> the sale
  *   nl:aff:<id>:payouts  hash  payout id -> what the creator says they paid
  */
+import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
@@ -636,7 +637,7 @@ export async function noteSession(store: Store, session: SessionLike): Promise<v
   if (!AFFILIATE_ID_PATTERN.test(aff) || typeof session.id !== "string") return;
   if (session.mode !== undefined && session.mode !== "payment") return;
   if (!isSettled(session)) return;
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   if (!handles.has(meta.store ?? "")) return;
   const total = typeof session.amount_total === "number" ? session.amount_total : 0;
   const tax = typeof session.total_details?.amount_tax === "number" ? session.total_details.amount_tax : 0;

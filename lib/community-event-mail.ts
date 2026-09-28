@@ -113,6 +113,19 @@ async function save(job: EventMailJob): Promise<void> {
   await redisPipeline([["SET", jobKey(job.id), JSON.stringify(job), "EX", KEEP_SECONDS]]);
 }
 
+/** Whether the emails telling people an event was called off are still going out. */
+export async function cancelNoticeSending(community: string, event: string): Promise<boolean> {
+  if (!isRedisConfigured()) return false;
+  const [members] = await redisPipeline([["SMEMBERS", JOBS]]);
+  const ids = (Array.isArray(members) ? members.map(String) : []).filter((id) => JOB_ID.test(id));
+  if (!ids.length) return false;
+  const raws = await redisPipeline(ids.map((id) => ["GET", jobKey(id)]));
+  return raws.some((raw) => {
+    const job = parseJob(raw);
+    return job !== null && job.community === community && job.event === event && job.kind === "cancelled" && job.status === "sending";
+  });
+}
+
 export async function readEventJob(id: string): Promise<EventMailJob | null> {
   if (!JOB_ID.test(id) || !isRedisConfigured()) return null;
   const [raw] = await redisPipeline([["GET", jobKey(id)]]);

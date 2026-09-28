@@ -289,6 +289,12 @@ export type Store = {
   createdAt: string;
   /** Addresses this store used before. They lead here until it lets them go. */
   previousHandles: string[];
+  /**
+   * Addresses this store let go of. They no longer lead here, but sales made
+   * under them still carry them in Stripe, so every lookup of a store's sales
+   * reads them too (saleHandles). Never pruned.
+   */
+  releasedHandles: string[];
   renamedAt: string;
   /**
    * The creator's own Stripe account, once they have connected it.
@@ -569,6 +575,9 @@ function parseStore(raw: unknown): Store | null {
       previousHandles: Array.isArray(value.previousHandles)
         ? value.previousHandles.filter((h) => typeof h === "string")
         : [],
+      releasedHandles: Array.isArray(value.releasedHandles)
+        ? value.releasedHandles.filter((h) => typeof h === "string")
+        : [],
       renamedAt: value.renamedAt ?? "",
       stripeAccountId:
         typeof value.stripeAccountId === "string" &&
@@ -755,6 +764,7 @@ async function freshStore(fields: {
     extra: fields.extra,
     createdAt,
     previousHandles: [],
+    releasedHandles: [],
     renamedAt: "",
     stripeAccountId: null,
     stripeChargesEnabled: false,
@@ -1259,6 +1269,7 @@ export async function renameHandle(
 
   const result = await withStore<RenameResult>(email, async (store, save) => {
     if (store.handle === handle) return { ok: false, reason: "same" };
+    let claimed = false;
 
     // Going back to an address this store already owns costs nothing: no new
     // lock, and no room on the shelf, because it never stopped being theirs.
@@ -1270,17 +1281,29 @@ export async function renameHandle(
         ["SET", handleKey(handle), email.toLowerCase(), "NX"],
       ]);
       if (taken === null) return { ok: false, reason: "taken" };
+      claimed = true;
     }
 
-    const next = await save({
-      ...store,
-      handle,
-      previousHandles: [
-        ...store.previousHandles.filter((old) => old !== handle),
-        store.handle,
-      ].slice(-20),
-      renamedAt: new Date().toISOString(),
-    });
+    let next: Store;
+    try {
+      next = await save({
+        ...store,
+        handle,
+        previousHandles: [
+          ...store.previousHandles.filter((old) => old !== handle),
+          store.handle,
+        ].slice(-20),
+        renamedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      // The store was not moved: give the address back, or it would stay
+      // claimed by a store that never took it, for this creator and everyone.
+      if (claimed) {
+        const [holder] = await redisPipeline([["GET", handleKey(handle)]]);
+        if (holder === email.toLowerCase()) await redisPipeline([["DEL", handleKey(handle)]]);
+      }
+      throw error;
+    }
     // The store's own domain follows it to the new address.
     if (next.domain) await redisPipeline([["SET", `nl:domain:${next.domain.name}`, handle]]);
     return { ok: true, store: next };
@@ -1512,10 +1535,19 @@ export async function releaseHandle(
     const next = await save({
       ...store,
       previousHandles: store.previousHandles.filter((old) => old !== handle),
+      releasedHandles: [...store.releasedHandles.filter((old) => old !== handle), handle],
     });
     return { ok: true, store: next };
   });
   return result ?? { ok: false, reason: "none" };
+}
+
+/**
+ * Every address this store's sales may be recorded under in Stripe: the one
+ * it has, the ones that still lead here, and the ones it let go of.
+ */
+export function saleHandles(store: Pick<Store, "handle" | "previousHandles" | "releasedHandles">): Set<string> {
+  return new Set([store.handle, ...store.previousHandles, ...(store.releasedHandles ?? [])]);
 }
 
 export type DetailsResult =
@@ -1679,7 +1711,7 @@ export async function ensureListId(email: string): Promise<Store | null> {
 
 export type ExtrasResult =
   | { ok: true; store: Store; product: Product }
-  | { ok: false; reason: "none" | "unknown" | "kind" | "target" | "price" };
+  | { ok: false; reason: "none" | "unknown" | "kind" | "target" | "price" | "sold_with" };
 
 /**
  * Sets or clears a product's limited quantity and its order bump.
@@ -1688,18 +1720,32 @@ export type ExtrasResult =
  * must be another one-off of the same store with one price and one delivery,
  * and it can never cost more that way than on its own.
  */
+/** Whether a product is also sold inside a bundle, in a checkout box or as an offer after paying. */
+async function soldWithOthers(store: Store, id: string): Promise<boolean> {
+  const others = (await readListings(store)).filter((p) => p.id !== id);
+  if (others.some((p) => (p.bundle ?? []).includes(id) || p.bump?.productId === id)) return true;
+  const withFunnel = await readProducts(store, idsOfKind(store, "funnel").filter((other) => other !== id));
+  return withFunnel.some((p) => (p.funnel?.steps ?? []).some((step) => step.productId === id));
+}
+
 export async function setProductExtras(
   email: string,
   id: string,
   change: { stock?: number | null; bump?: Bump | null; plan?: Plan | null },
 ): Promise<ExtrasResult> {
-  return onProduct<"kind" | "target" | "price">(
+  return onProduct<"kind" | "target" | "price" | "sold_with">(
     email,
     id,
     async (product, store) => {
       const next: Product = { ...product };
       if (change.stock !== undefined) {
         if (change.stock !== null && !isOneOff(product)) return { ok: false, reason: "kind" };
+        // Only a checkout of its own counts a sale against the number: a
+        // product also sold inside a bundle, in a checkout box or as an offer
+        // after paying would be sold past it.
+        if (change.stock !== null && product.stock === null && (await soldWithOthers(store, product.id))) {
+          return { ok: false, reason: "sold_with" };
+        }
         next.stock = change.stock;
       }
       if (change.bump !== undefined) {

@@ -25,6 +25,7 @@
  * Progress is kept per course and per student: which lessons they marked done
  * and when they last came back. That is all, and the creator sees it.
  */
+import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { issueSignedToken, presignUrl } from "@/lib/blob";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, SESSION_COOKIE, emailForSession, normaliseEmail } from "@/lib/auth";
@@ -176,7 +177,7 @@ async function paidAtStripe(store: Store, email: string): Promise<Ledger> {
   const refunded = new Set<string>();
   const account = store.stripeAccountId;
   if (!account) return { paid: found, ended, refunded };
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   const courses = new Map((await readKind(store, "course")).filter((p) => p.course).map((p) => [p.id, p]));
   if (courses.size === 0) return { paid: found, ended, refunded };
 

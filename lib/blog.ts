@@ -588,7 +588,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "note",
-        text: "And later the same day, when Nimbus added live events inside the community, bundles of products, drafts, and importing a list, products and past buyers from another platform.",
+        text: "And later the same day, when Nimbus added live events inside the community, bundles of products, drafts, and importing a list, products and past buyers from another platform. And later, Google Meet links made on your own Google Calendar.",
       },
       { type: "h2", text: "What Stan is" },
       {
@@ -597,7 +597,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "That is a large product. A community in the same place as your store, with live sessions inside it, is something we both have now. Theirs are webinars members sign up for, with Zoom or Google Meet links made automatically; ours are live events members RSVP to, in a private Jitsi Meet room shown in the page or at the creator's own link, with no Zoom or Google Meet link made for you.",
+        text: "That is a large product. A community in the same place as your store, with live sessions inside it, is something we both have now. Theirs are webinars members sign up for, with Zoom or Google Meet links made automatically; ours are live events members RSVP to, in a private Jitsi Meet room shown in the page, at the creator's own link, or in a Google Meet made on the creator's connected Google Calendar. No Zoom link is made for you yet.",
       },
       { type: "h2", text: "What Nimbus is" },
       {
@@ -617,7 +617,7 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "Range: automated Instagram replies, PayPal for creators in the United States, affiliates paid automatically, Zoom and Google Meet links made for each booking and webinar, and stores with no limit on products. We have none of those. PayPal reaches our checkout only through Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein; our affiliates are paid by you; our funnels are pages and offers you connect rather than one builder; our video rooms, for calls and live events alike, are Jitsi Meet rooms, where the first person in may have to sign in to Jitsi; and a store holds up to 2,000 products.",
+          "Range: automated Instagram replies, PayPal for creators in the United States, affiliates paid automatically, Zoom links made for each booking and webinar, and stores with no limit on products. We have none of those. PayPal reaches our checkout only through Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein; our affiliates are paid by you; our funnels are pages and offers you connect rather than one builder; our video rooms, for calls and live events alike, are Google Meet links made on your connected Google Calendar, your own meeting link, or Jitsi Meet rooms, where the first person in may have to sign in to Jitsi; and a store holds up to 2,000 products.",
           "Years of running: their support library is deep, and ours is a few pages.",
           "An installable creator app: their help centre states their creator app is currently available on iPhone and iPad. We do not have a native app at all — our studio and every store install to the home screen from the browser, on both iPhone and Android, and the studio can send notifications of sales, which is a different trade-off, not a better one in every case.",
           "Integrations with third-party tools, which they list on their site. We have webhooks that Zapier, Make or your own server can catch, and no app of our own in anyone's directory.",

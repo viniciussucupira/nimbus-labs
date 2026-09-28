@@ -7,6 +7,7 @@
  * and leaves Nimbus with nothing to hold, skim or lose. The 0% on the home
  * page is this file.
  */
+import { saleHandles } from "@/lib/store";
 import type { Listing, Product, Store } from "@/lib/store";
 import { readListing, readListings } from "@/lib/catalog";
 import type { ProductFile } from "@/lib/product-file";
@@ -495,7 +496,7 @@ export async function readOrder(
   const metadata = session.metadata as Record<string, string> | null;
   // Sold under an address this store still answers to: a rename while the
   // buyer was paying does not lose them their order.
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   if (!handles.has(metadata?.store ?? "")) return { state: "invalid" };
   const mainList = bundleFromMeta(metadata, "bundle");
   const bumpList = bundleFromMeta(metadata, "bump_bundle");
@@ -672,11 +673,13 @@ export async function listSales(store: Store): Promise<SaleList> {
   const now = Date.now() / 1000;
 
   const titles = new Map((await listingsNamedIn(store, rows)).map((p) => [p.id, p.title]));
+  // Sales made under an address the store used before are still its sales.
+  const handles = saleHandles(store);
   const sales = rows
     .filter(
       (row) =>
         isSettled(row) &&
-        row.metadata?.store === store.handle,
+        handles.has(row.metadata?.store ?? ""),
     )
     .map((row): Sale => {
       const paidAt = typeof row.created === "number" ? row.created : 0;
@@ -715,7 +718,7 @@ export async function listSales(store: Store): Promise<SaleList> {
     added = list
       .filter((pi) => {
         const meta = pi.metadata as Record<string, string> | null;
-        return meta?.kind === "upsell" && meta?.store === store.handle && pi.status === "succeeded";
+        return meta?.kind === "upsell" && handles.has(meta?.store ?? "") && pi.status === "succeeded";
       })
       .map((pi): Sale => {
         const meta = pi.metadata as Record<string, string>;

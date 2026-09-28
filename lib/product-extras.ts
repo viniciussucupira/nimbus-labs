@@ -69,13 +69,15 @@ export function isOneOff(product: Listing): boolean {
  * delivery, so the buyer who ticks the box gets exactly one clear thing. A
  * product whose buyers choose the price has no one price to offer it at. A
  * bundle counts as one thing, at its one price: what it holds is handed over
- * with it (lib/bundle-rules.ts).
+ * with it (lib/bundle-rules.ts). A product with a limited number for sale is
+ * not: only a checkout of its own counts it against that number.
  */
 export function canBeBumped(product: Listing): boolean {
   return (
     isOneOff(product) &&
     product.options.length === 0 &&
     !product.pwyw &&
+    product.stock === null &&
     (product.file !== null || product.link !== null || (product.bundle?.length ?? 0) >= MIN_BUNDLE_ITEMS)
   );
 }

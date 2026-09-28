@@ -29,6 +29,7 @@ import {
   HANDLE_PATTERN,
   SUBSCRIPTION_PATTERN,
   type Store,
+  saleHandles,
 } from "@/lib/store";
 
 /**
@@ -651,7 +652,7 @@ export function customerOf(subscription: Record<string, unknown>): { id: string;
  */
 export function ownedBy(store: Store, subscription: Record<string, unknown>): boolean {
   const meta = subscription.metadata as Record<string, string> | null | undefined;
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   if (!handles.has(meta?.store ?? "")) return false;
   const customer = customerOf(subscription);
   if (store.stripeCustomerId && customer.id === store.stripeCustomerId) return true;
@@ -699,7 +700,7 @@ export async function findStoreSubscriptions(
   store: Store,
 ): Promise<{ live: StartedSubscription | null; customerId: string | null }> {
   // Stripe takes at most ten clauses in one query.
-  const handles = [store.handle, ...store.previousHandles]
+  const handles = [...saleHandles(store)]
     .filter((handle) => HANDLE_PATTERN.test(handle))
     .slice(0, 10);
   if (handles.length === 0) return { live: null, customerId: null };

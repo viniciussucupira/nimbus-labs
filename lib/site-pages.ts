@@ -335,7 +335,7 @@ export const PAGES: TopicPage[] = [
         items: [
           { emoji: "🏦", title: "We never hold your sales", body: "Your money is charged on your own Stripe account, so there is no Nimbus balance to freeze, delay or set a minimum on.", tint: "bg-mint-brand/15 text-mint-deep" },
           { emoji: "🙋", title: "A person answers you", body: "Support is a human writing back. No chatbot standing between you and your money.", tint: "bg-violet-brand/10 text-violet-deep" },
-          { emoji: "🚪", title: "You can always leave", body: "Export your products, your customers and your sales history whenever you want, free, without asking us.", tint: "bg-sky-brand/15 text-sky-brand" },
+          { emoji: "🚪", title: "You can always leave", body: "Download your sales history, with each buyer's address, and your email list as files whenever you want, free, without asking us.", tint: "bg-sky-brand/15 text-sky-brand" },
           { emoji: "🌐", title: "Your domain stays yours", body: "If you bring a domain, you remain the owner of it and keep access to its settings. No exit fee.", tint: "bg-pink-brand/10 text-pink-brand" },
           { emoji: "✉️", title: "Your list is yours", body: "Your buyers are on your own Stripe account, and the addresses your free products collect download as a CSV from your studio whenever you like. The price does not go up as the list grows.", tint: "bg-amber-brand/15 text-amber-brand" },
           { emoji: "📜", title: "No silent changes", body: "Price and rule changes are announced in advance, in writing, and never applied retroactively to money already earned.", tint: "bg-violet-brand/10 text-violet-deep" },

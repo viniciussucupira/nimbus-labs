@@ -122,8 +122,19 @@ async function run(request: NextRequest, started: number): Promise<Response> {
       return Response.json({ ok: true, mail: "unavailable", checkouts, offers, events, webhooks: await runWebhooks(webhooksBy, meetingsCutoff) }, { headers: { "Cache-Control": "no-store" } });
     }
     const deadline = started + 30_000;
-    const broadcasts = await advanceAll(storeForHandle, deadline);
-    const steps = await sendDueSteps(storeForHandle, deadline);
+    // Each kept apart: one failing never skips the others for this run.
+    let broadcasts = 0;
+    try {
+      broadcasts = await advanceAll(storeForHandle, deadline);
+    } catch (error) {
+      console.error("sending broadcasts failed", error);
+    }
+    let steps = { sent: 0, dropped: 0, later: 0 };
+    try {
+      steps = await sendDueSteps(storeForHandle, deadline);
+    } catch (error) {
+      console.error("sending sequence steps failed", error);
+    }
     let announcements = 0;
     try {
       announcements = await advanceAnnouncements(storeForHandle, deadline);

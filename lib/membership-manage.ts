@@ -21,6 +21,7 @@
  * Cancelling ends the membership at the end of the period already paid for,
  * which is what the member has bought and is the fair default.
  */
+import { saleHandles } from "@/lib/store";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -108,7 +109,7 @@ type Listed = { data?: unknown };
 export async function findMember(store: Store, email: string): Promise<string | null> {
   const account = store.stripeAccountId;
   if (!account) return null;
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
 
   const customers = (await onAccount(
     "GET",

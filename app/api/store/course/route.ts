@@ -26,6 +26,7 @@ import { EMAIL_PATTERN } from "@/lib/auth";
 import { dropQuiz, readQuiz, readQuizFor, resetTries, saveQuiz, setupOf } from "@/lib/quiz";
 import { CERT_ID_PATTERN, withdrawCertificate } from "@/lib/certificate";
 import { readListing } from "@/lib/catalog";
+import { LockBusyError, withLock } from "@/lib/redis-lock";
 
 const OPS = new Set([
   "module-add",
@@ -99,155 +100,161 @@ export async function POST(request: NextRequest) {
     }
 
     if (!product.course) return Response.json({ ok: false, error: "not_course" }, { status: 400 });
-    const course = await readCourse(product.course.id);
-    if (!course) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
+    // One change at a time per course: each reads the whole outline and writes it
+    // back, so two at once (two lessons uploading, two tabs) would drop one.
+    const courseInfo = product.course;
+    return await withLock(`nl:course:${courseInfo.id}:lock`, 60, 15_000, async () => {
+      const course = await readCourse(courseInfo.id);
+      if (!course) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
 
-    if (action === "disable") {
-      if (lessonCount(course) > 0) return Response.json({ ok: false, error: "not_empty" }, { status: 400 });
-      const result = await setProductCourse(ref, id, null);
-      if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
-      await dropCourse(course);
-      await registerDrip(store, product, { ...course, modules: [] });
-      return Response.json({ ok: true });
-    }
+      if (action === "disable") {
+        if (lessonCount(course) > 0) return Response.json({ ok: false, error: "not_empty" }, { status: 400 });
+        const result = await setProductCourse(ref, id, null);
+        if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
+        await dropCourse(course);
+        await registerDrip(store, product, { ...course, modules: [] });
+        return Response.json({ ok: true });
+      }
 
-    if (action === "block") {
-      const who = text(body.email, 254).trim();
-      if (!EMAIL_PATTERN.test(who)) return Response.json({ ok: false, error: "email" }, { status: 400 });
-      await setBlocked(store, course.id, who, body.blocked === true);
-      return Response.json({ ok: true });
-    }
+      if (action === "block") {
+        const who = text(body.email, 254).trim();
+        if (!EMAIL_PATTERN.test(who)) return Response.json({ ok: false, error: "email" }, { status: 400 });
+        await setBlocked(store, course.id, who, body.blocked === true);
+        return Response.json({ ok: true });
+      }
 
-    if (action === "quiz") {
-      const lessonId = text(body.lessonId, 20);
-      if (!findLesson(course, lessonId)) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
-      if (body.quiz === null) {
-        const result = editCourse(course, { op: "quiz", lessonId, quiz: null });
+      if (action === "quiz") {
+        const lessonId = text(body.lessonId, 20);
+        if (!findLesson(course, lessonId)) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
+        if (body.quiz === null) {
+          const result = editCourse(course, { op: "quiz", lessonId, quiz: null });
+          if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
+          await saveCourse(result.course);
+          await dropQuiz(course.id, lessonId);
+          return Response.json({ ok: true, course: result.course });
+        }
+        const read = readQuiz(body.quiz);
+        if (!read.ok) {
+          // Which question, and what is wrong with it, so the studio can say so.
+          const at = "at" in read ? read.at : null;
+          return Response.json({ ok: false, error: "quiz", problem: { reason: read.reason, at } }, { status: 400 });
+        }
+        await saveQuiz(course.id, lessonId, read.quiz);
+        const result = editCourse(course, { op: "quiz", lessonId, quiz: setupOf(read.quiz) });
         if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
         await saveCourse(result.course);
-        await dropQuiz(course.id, lessonId);
+        return Response.json({ ok: true, course: result.course, quiz: read.quiz });
+      }
+
+      if (action === "cert") {
+        const result = editCourse(course, { op: "certificate", on: body.on === true });
+        if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
+        await saveCourse(result.course);
         return Response.json({ ok: true, course: result.course });
       }
-      const read = readQuiz(body.quiz);
-      if (!read.ok) {
-        // Which question, and what is wrong with it, so the studio can say so.
-        const at = "at" in read ? read.at : null;
-        return Response.json({ ok: false, error: "quiz", problem: { reason: read.reason, at } }, { status: 400 });
+
+      if (action === "withdraw") {
+        const certificate = text(body.certificate, 20);
+        if (!CERT_ID_PATTERN.test(certificate)) return Response.json({ ok: false, error: "unknown" }, { status: 400 });
+        const done = await withdrawCertificate(course.id, certificate);
+        return done ? Response.json({ ok: true }) : Response.json({ ok: false, error: "unknown" }, { status: 404 });
       }
-      await saveQuiz(course.id, lessonId, read.quiz);
-      const result = editCourse(course, { op: "quiz", lessonId, quiz: setupOf(read.quiz) });
-      if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
+
+      if (action === "retries") {
+        const who = text(body.email, 254).trim();
+        if (!EMAIL_PATTERN.test(who)) return Response.json({ ok: false, error: "email" }, { status: 400 });
+        await resetTries(course, emailKey(who));
+        return Response.json({ ok: true });
+      }
+
+      if (action === "body") {
+        const lessonId = text(body.lessonId, 20);
+        if (!findLesson(course, lessonId)) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
+        const cleaned = cleanBody(body.text);
+        await saveBody(course.id, lessonId, cleaned);
+        const found = findLesson(course, lessonId)!;
+        const result = editCourse(course, {
+          op: "lesson-edit",
+          lessonId,
+          title: found.lesson.title,
+          preview: found.lesson.preview,
+          link: found.lesson.link,
+          hasBody: cleaned.length > 0,
+        });
+        if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
+        await saveCourse(result.course);
+        return Response.json({ ok: true, course: result.course });
+      }
+
+      let edit: CourseEdit;
+      if (action === "media") {
+        const lessonId = text(body.lessonId, 20);
+        const pathname = text(body.pathname, 400);
+        const kind = body.kind === "video" ? "video" : "file";
+        if (!findLesson(course, lessonId)) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
+        // The file has to sit in this account's folder for this very lesson,
+        // and what it is is read from storage, not from the browser.
+        const folder = await storeFolder(ref);
+        if (!ownsPath(pathname, folder, lessonId)) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
+        const found = await head(pathname);
+        const file: ProductFile = {
+          pathname,
+          name: safeFileName(text(body.name, 200) || found.pathname),
+          bytes: found.size,
+          contentType: found.contentType,
+          addedAt: new Date().toISOString(),
+        };
+        edit = { op: "media", lessonId, kind, file };
+      } else if (action === "edit") {
+        const op = text(body.op, 20);
+        if (!OPS.has(op)) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
+        const direction = body.direction === "up" ? "up" : "down";
+        if (op === "lesson-edit") {
+          const rawLink = text(body.link, 2000).trim();
+          let link: string | null = null;
+          if (rawLink) {
+            const read = readLink(rawLink);
+            if (!read.ok) return Response.json({ ok: false, error: "link", reason: read.reason }, { status: 400 });
+            link = read.url;
+          }
+          edit = { op, lessonId: text(body.lessonId, 20), title: body.title, preview: body.preview, link };
+        } else if (op === "module-add") edit = { op, title: body.title };
+        else if (op === "module-edit") edit = { op, moduleId: text(body.moduleId, 20), title: body.title, dripDays: body.dripDays };
+        else if (op === "module-move") edit = { op, moduleId: text(body.moduleId, 20), direction };
+        else if (op === "module-remove") edit = { op, moduleId: text(body.moduleId, 20) };
+        else if (op === "lesson-add") edit = { op, moduleId: text(body.moduleId, 20), title: body.title };
+        else if (op === "lesson-move") edit = { op, lessonId: text(body.lessonId, 20), direction };
+        else if (op === "lesson-remove") edit = { op, lessonId: text(body.lessonId, 20) };
+        else edit = { op: "media-remove", lessonId: text(body.lessonId, 20), pathname: text(body.pathname, 400) };
+      } else {
+        return Response.json({ ok: false, error: "invalid" }, { status: 400 });
+      }
+
+      const result = editCourse(course, edit);
+      if (!result.ok) {
+        return Response.json({ ok: false, error: result.reason }, { status: result.reason === "unknown" ? 404 : 400 });
+      }
       await saveCourse(result.course);
-      return Response.json({ ok: true, course: result.course, quiz: read.quiz });
-    }
+      const lessons = lessonCount(result.course);
+      if (lessons !== courseInfo.lessons) await setCourseLessons(ref, id, lessons);
+      if (edit.op === "lesson-remove") {
+        await dropBody(course.id, edit.lessonId);
+        await dropQuiz(course.id, edit.lessonId);
+      }
+      if (edit.op === "module-edit" || edit.op === "module-remove" || edit.op === "lesson-add") {
+        await registerDrip(store, product, result.course);
+      }
 
-    if (action === "cert") {
-      const result = editCourse(course, { op: "certificate", on: body.on === true });
-      if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
-      await saveCourse(result.course);
-      return Response.json({ ok: true, course: result.course });
-    }
-
-    if (action === "withdraw") {
-      const certificate = text(body.certificate, 20);
-      if (!CERT_ID_PATTERN.test(certificate)) return Response.json({ ok: false, error: "unknown" }, { status: 400 });
-      const done = await withdrawCertificate(course.id, certificate);
-      return done ? Response.json({ ok: true }) : Response.json({ ok: false, error: "unknown" }, { status: 404 });
-    }
-
-    if (action === "retries") {
-      const who = text(body.email, 254).trim();
-      if (!EMAIL_PATTERN.test(who)) return Response.json({ ok: false, error: "email" }, { status: 400 });
-      await resetTries(course, emailKey(who));
-      return Response.json({ ok: true });
-    }
-
-    if (action === "body") {
-      const lessonId = text(body.lessonId, 20);
-      if (!findLesson(course, lessonId)) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
-      const cleaned = cleanBody(body.text);
-      await saveBody(course.id, lessonId, cleaned);
-      const found = findLesson(course, lessonId)!;
-      const result = editCourse(course, {
-        op: "lesson-edit",
-        lessonId,
-        title: found.lesson.title,
-        preview: found.lesson.preview,
-        link: found.lesson.link,
-        hasBody: cleaned.length > 0,
-      });
-      if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
-      await saveCourse(result.course);
-      return Response.json({ ok: true, course: result.course });
-    }
-
-    let edit: CourseEdit;
-    if (action === "media") {
-      const lessonId = text(body.lessonId, 20);
-      const pathname = text(body.pathname, 400);
-      const kind = body.kind === "video" ? "video" : "file";
-      if (!findLesson(course, lessonId)) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
-      // The file has to sit in this account's folder for this very lesson,
-      // and what it is is read from storage, not from the browser.
-      const folder = await storeFolder(ref);
-      if (!ownsPath(pathname, folder, lessonId)) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
-      const found = await head(pathname);
-      const file: ProductFile = {
-        pathname,
-        name: safeFileName(text(body.name, 200) || found.pathname),
-        bytes: found.size,
-        contentType: found.contentType,
-        addedAt: new Date().toISOString(),
-      };
-      edit = { op: "media", lessonId, kind, file };
-    } else if (action === "edit") {
-      const op = text(body.op, 20);
-      if (!OPS.has(op)) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
-      const direction = body.direction === "up" ? "up" : "down";
-      if (op === "lesson-edit") {
-        const rawLink = text(body.link, 2000).trim();
-        let link: string | null = null;
-        if (rawLink) {
-          const read = readLink(rawLink);
-          if (!read.ok) return Response.json({ ok: false, error: "link", reason: read.reason }, { status: 400 });
-          link = read.url;
-        }
-        edit = { op, lessonId: text(body.lessonId, 20), title: body.title, preview: body.preview, link };
-      } else if (op === "module-add") edit = { op, title: body.title };
-      else if (op === "module-edit") edit = { op, moduleId: text(body.moduleId, 20), title: body.title, dripDays: body.dripDays };
-      else if (op === "module-move") edit = { op, moduleId: text(body.moduleId, 20), direction };
-      else if (op === "module-remove") edit = { op, moduleId: text(body.moduleId, 20) };
-      else if (op === "lesson-add") edit = { op, moduleId: text(body.moduleId, 20), title: body.title };
-      else if (op === "lesson-move") edit = { op, lessonId: text(body.lessonId, 20), direction };
-      else if (op === "lesson-remove") edit = { op, lessonId: text(body.lessonId, 20) };
-      else edit = { op: "media-remove", lessonId: text(body.lessonId, 20), pathname: text(body.pathname, 400) };
-    } else {
-      return Response.json({ ok: false, error: "invalid" }, { status: 400 });
-    }
-
-    const result = editCourse(course, edit);
-    if (!result.ok) {
-      return Response.json({ ok: false, error: result.reason }, { status: result.reason === "unknown" ? 404 : 400 });
-    }
-    await saveCourse(result.course);
-    const lessons = lessonCount(result.course);
-    if (lessons !== product.course.lessons) await setCourseLessons(ref, id, lessons);
-    if (edit.op === "lesson-remove") {
-      await dropBody(course.id, edit.lessonId);
-      await dropQuiz(course.id, edit.lessonId);
-    }
-    if (edit.op === "module-edit" || edit.op === "module-remove" || edit.op === "lesson-add") {
-      await registerDrip(store, product, result.course);
-    }
-
-    // Storage is released only after the record that no longer points at it
-    // is written, the same order every other file here is handled in.
-    for (const file of result.removed) {
-      if (filesInCourse(result.course).some((f) => f.pathname === file.pathname)) continue;
-      await del(file.pathname).catch((error: unknown) => console.error("could not delete a lesson file", error));
-    }
-    return Response.json({ ok: true, course: result.course, addedId: result.addedId });
+      // Storage is released only after the record that no longer points at it
+      // is written, the same order every other file here is handled in.
+      for (const file of result.removed) {
+        if (filesInCourse(result.course).some((f) => f.pathname === file.pathname)) continue;
+        await del(file.pathname).catch((error: unknown) => console.error("could not delete a lesson file", error));
+      }
+      return Response.json({ ok: true, course: result.course, addedId: result.addedId });
+    });
   } catch (error) {
+    if (error instanceof LockBusyError) return Response.json({ ok: false, error: "busy" }, { status: 409 });
     console.error("changing a course failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });
   }

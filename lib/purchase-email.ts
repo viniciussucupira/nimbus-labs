@@ -34,6 +34,7 @@
  * its licence key when it hands one out — kept under the offer's payment,
  * the same reference the thanks page and the list of purchases use.
  */
+import { saleHandles } from "@/lib/store";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { StripeError, onAccount } from "@/lib/stripe-account";
@@ -152,7 +153,7 @@ export function confirmationFor(
   if (!SESSION_ID_PATTERN.test(id)) return null;
   if (!isSettled(session)) return null;
   const meta = session.metadata ?? {};
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   if (!handles.has(meta.store ?? "")) return null;
   if (meta.kind === "call") return null;
   const product = listings.find((p) => p.id === meta.product);

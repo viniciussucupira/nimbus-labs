@@ -134,6 +134,8 @@ export async function sendMoveLink(
   from: string,
   to: string,
   origin: string,
+  /** The session that asked. The link works only while it is still open. */
+  session: string,
 ): Promise<boolean> {
   const fromAddress = normaliseEmail(from);
   const toAddress = normaliseEmail(to);
@@ -143,7 +145,7 @@ export async function sendMoveLink(
     [
       "SET",
       await moveKey(token),
-      JSON.stringify({ from: fromAddress, to: toAddress }),
+      JSON.stringify({ from: fromAddress, to: toAddress, session }),
       "EX",
       LINK_TTL_SECONDS,
     ],
@@ -181,7 +183,11 @@ export async function sendMoveLink(
   });
 }
 
-/** Spends a move link and says which address is moving where. */
+/**
+ * Spends a move link and says which address is moving where. A link whose
+ * asking session has since been closed (logging out, or out of every device,
+ * as the notice to the old address advises) moves nothing.
+ */
 export async function spendMoveLink(
   token: string,
 ): Promise<{ from: string; to: string } | null> {
@@ -202,9 +208,10 @@ export async function spendMoveLink(
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
-    const { from, to } = parsed as { from?: unknown; to?: unknown };
+    const { from, to, session } = parsed as { from?: unknown; to?: unknown; session?: unknown };
     if (typeof from !== "string" || typeof to !== "string") return null;
     if (!from || !to) return null;
+    if (typeof session !== "string" || normaliseEmail((await emailForSession(session)) ?? "") !== from) return null;
     return { from, to };
   } catch {
     return null;

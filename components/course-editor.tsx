@@ -36,6 +36,7 @@ const MESSAGES: Record<string, string> = {
   too_big: `That file is over ${maxFileLabel()}, which is the most one file can be.`,
   wrong_type: "That kind of file cannot be uploaded here.",
   unknown: "That is not there any more. Reload the page.",
+  busy: "Another change to this course is still saving. Try again in a moment.",
   invalid: "That upload could not be checked. Try again.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",

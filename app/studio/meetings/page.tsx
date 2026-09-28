@@ -73,12 +73,13 @@ export default async function StudioMeetingsPage({ searchParams }: Params) {
   const { view: access } = found;
   const loaded = access.store;
   const store = loaded.statsId ? loaded : ((await ensureStatsId(access.ref)) ?? loaded);
-  const offered = offeredProviders(store);
-  if (offered.length === 0) notFound();
   const view = await meetView(store.statsId, store).catch((error) => {
     console.error("reading the meeting connections failed", error);
     return null;
   });
+  // What the store is offered, and any account it has connected either way.
+  const offered = view ? view.providers : offeredProviders(store);
+  if (offered.length === 0) notFound();
   const said = outcome(typeof query.meet === "string" ? query.meet : "", typeof query.p === "string" ? query.p : "");
   const names = offered.map((p) => MEET_NAMES[p]);
 

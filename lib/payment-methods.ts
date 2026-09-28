@@ -14,6 +14,7 @@
  * Read only: two GETs on the creator's account, and one more, kept for half
  * a day, for the currencies their country can charge in.
  */
+import { saleHandles } from "@/lib/store";
 import { onAccount } from "@/lib/stripe-account";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { DELAYED_METHODS } from "@/lib/instant-pay";
@@ -255,7 +256,7 @@ const RUNNING_PAGES = 10;
 export async function runningSubscriptions(store: Store): Promise<number | null> {
   const account = store.stripeAccountId;
   if (!account) return 0;
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   let count = 0;
   try {
     for (const status of RUNNING) {

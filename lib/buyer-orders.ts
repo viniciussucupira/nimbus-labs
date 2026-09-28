@@ -22,6 +22,7 @@
  * Like cancelling a membership, this works whatever state the creator's own
  * Nimbus subscription is in: somebody paid for that file, and they get it.
  */
+import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
@@ -235,7 +236,7 @@ const refunded = refundedInFull;
 export async function purchasesFor(store: Store, email: string): Promise<Purchase[]> {
   const account = store.stripeAccountId;
   if (!account && !store.pastBuyers) return [];
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   const find = listingFinder(store);
   const found = new Map<string, Purchase>();
   const customers = new Set<string>();

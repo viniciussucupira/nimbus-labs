@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { createHash } from "node:crypto";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
-import { MAX_KEY_LENGTH, activeKeys, checkKey } from "@/lib/licence-keys";
+import { MAX_KEY_LENGTH, checkKey } from "@/lib/licence-keys";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { clientIp } from "@/lib/visit";
 import { readListing } from "@/lib/catalog";
@@ -58,7 +58,9 @@ export async function GET(request: NextRequest) {
   try {
     const store = await storeForHandle(handle);
     const product = (store ? await readListing(store, productId) : null);
-    if (!store || !product || !activeKeys(product)) return answer(404, { error: "No such product with licence keys." });
+    // Checked whether or not the product still hands out keys: a product that
+    // stopped still answers for the keys it gave, which stay valid.
+    if (!store || !product) return answer(404, { error: "No such product with licence keys." });
     const status = await checkKey(store, product, key);
     return answer(200, { valid: status === "valid", status });
   } catch (error) {

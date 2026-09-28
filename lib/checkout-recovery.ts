@@ -37,6 +37,7 @@
  *   nl:recover:off:<statsId>:<hash>          that address pressed stop, kept for good
  *   nl:recover:link:<token>                  who a stop link belongs to
  */
+import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { normaliseEmail } from "@/lib/auth";
 import { sendEmail } from "@/lib/email";
@@ -138,7 +139,7 @@ export async function stopReminders(token: string): Promise<boolean> {
 
 /** Whether the address paid this store for this product after the checkout opened. */
 async function paidSince(store: Store, email: string, productId: string, since: number): Promise<boolean> {
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   const query = new URLSearchParams({
     "customer_details[email]": email,
     status: "complete",
@@ -170,7 +171,7 @@ export async function remindAbandoned(
   // Consent, as Stripe recorded it. Nothing else counts as a yes.
   if (session.consent?.promotions !== "opt_in") return "skip";
   const meta = session.metadata ?? {};
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   if (!handles.has(meta.store ?? "") || meta.kind === "call") return "skip";
   const closed = typeof session.expires_at === "number" ? session.expires_at : 0;
   if (!closed || nowSeconds - closed > REMIND_WITHIN_SECONDS || closed > nowSeconds) return "skip";

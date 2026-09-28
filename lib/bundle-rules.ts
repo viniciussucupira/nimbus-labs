@@ -73,7 +73,8 @@ export function canBeInBundle(product: Listing): boolean {
 
 /** Why an included product cannot be in a bundle, in words for the studio. */
 export function whyNotInBundle(product: Listing): string | null {
-  if (canBeInBundle(product)) return null;
+  // Only a checkout of its own counts a sale against a limited number.
+  if (canBeInBundle(product)) return product.stock !== null ? "It has a limited number for sale" : null;
   if (product.priceCents <= 0) return "It is free";
   if (product.recurring) return "It is a membership";
   if (product.call) return "It is a call";
@@ -122,6 +123,8 @@ export function itemsProblem(items: string[], listings: Listing[], ownerId = "")
     const found = listings.find((p) => p.id === id);
     if (!found) return "unknown";
     if (!canBeInBundle(found)) return "kind";
+    // A sale inside a bundle is not counted against a limited number.
+    if (found.stock !== null) return "kind";
   }
   return null;
 }

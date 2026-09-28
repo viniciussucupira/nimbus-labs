@@ -75,6 +75,7 @@ const MESSAGES: Record<string, string> = {
   early: "A replay can be added once the event has started.",
   replay: "That is not a YouTube, Vimeo or Loom address.",
   upcoming: "Cancel it first, so everyone coming is told.",
+  telling: "Everyone coming is still being told it was cancelled. Delete it once that is done.",
   busy: "This event is being saved from somewhere else right now. Try again in a moment.",
   slow: "That is a lot of changes in an hour. Wait a little, then try again.",
   unknown: "That event is not there any more. Reload the page.",

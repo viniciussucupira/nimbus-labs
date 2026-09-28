@@ -23,6 +23,7 @@
  *     at checkout, when the creator's settings take them — and only if the
  *     buyer agreed to hear from the creator, which lib/email-sync.ts decides.
  */
+import { saleHandles } from "@/lib/store";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { isSettled } from "@/lib/instant-pay";
 import { alertCreator } from "@/lib/phone-alerts";
@@ -123,7 +124,7 @@ async function tell(store: Store, record: SaleRecord, session: string): Promise<
  */
 export async function noteSales(store: Store, records: SaleRecord[]): Promise<number> {
   if (!listensToSales(store) || !isRedisConfigured()) return 0;
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   const paid = records.filter(
     (r): r is SaleRecord & { id: string } => typeof r.id === "string" && isSettled(r) && handles.has(r.metadata?.store ?? ""),
   );

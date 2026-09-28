@@ -52,7 +52,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
 import { SafeFetchError, checkUrl, problemWords, safeFetch } from "@/lib/safe-fetch";
-import { type Store, storeForHandle } from "@/lib/store";
+import { type Store, storeForHandle, saleHandles } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
 import { SITE_URL } from "@/lib/site-url";
 import { bundleFromMeta } from "@/lib/bundle-rules";
@@ -531,7 +531,7 @@ const num = (value: unknown) => (typeof value === "number" && Number.isFinite(va
 async function fromStripe(store: Store, event: StripeEvent, lookups: { left: number }): Promise<void> {
   const object = event.data?.object ?? {};
   const previous = event.data?.previous_attributes ?? {};
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   let meta = (object.metadata ?? {}) as Record<string, string>;
   const product = async (id: string | undefined) => {
     const found = id ? await readListing(store, id) : null;

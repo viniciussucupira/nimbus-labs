@@ -43,6 +43,7 @@
  *   nl:cm:link:<hash>:opens       how often it was used (at most 10)
  *   nl:rl:cm:ip:<hash>, nl:rl:cm:addr:<hash>   how often a link was asked for
  */
+import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
@@ -103,7 +104,7 @@ const refunded = refundedInFull;
 export async function paidForAny(store: Store, email: string, ids: Set<string>): Promise<boolean> {
   const account = store.stripeAccountId;
   if (!account || ids.size === 0) return false;
-  const handles = new Set([store.handle, ...store.previousHandles]);
+  const handles = saleHandles(store);
   const customers = new Set<string>();
   // Stripe keeps the address as it was typed at checkout.
   const variants = [...new Set([email.trim(), normaliseEmail(email)])];
