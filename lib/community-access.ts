@@ -51,7 +51,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
 import { isLive } from "@/lib/membership-access";
-import { refundedInFull } from "@/lib/refunds";
+import { purchaseRefunded, refundedInFull } from "@/lib/refunds";
 import { leadsKey, parseContact } from "@/lib/contacts";
 import { type Learner, TOKEN_PATTERN, emailKey, learnerFrom, storeKey } from "@/lib/learn";
 import type { Listing, Store } from "@/lib/store";
@@ -117,7 +117,7 @@ export async function paidForAny(store: Store, email: string, ids: Set<string>):
       const meta = (session.metadata ?? {}) as Record<string, string>;
       if (!handles.has(meta.store ?? "")) continue;
       if (!isSettled(session)) continue;
-      if (refunded(session.payment_intent)) continue;
+      if (await purchaseRefunded(account, session)) continue;
       if (typeof session.customer === "string" && CUSTOMER_PATTERN.test(session.customer)) customers.add(session.customer);
       // A product in a bundle opens the door as if bought on its own.
       const bought = deliveredIds(meta).filter((id) => ids.has(id));

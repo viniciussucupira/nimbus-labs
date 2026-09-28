@@ -27,7 +27,7 @@ import { imageUrl } from "@/lib/product-image";
 import { readMoves } from "@/lib/call-records";
 import { applyRecovery, recoveryOn, refusedRecovery, withoutRecovery } from "@/lib/recovery-setting";
 import { isLive, membershipStatus, soldAMembership } from "@/lib/membership-access";
-import { refundedInFull } from "@/lib/refunds";
+import { purchaseRefunded } from "@/lib/refunds";
 import { MIN_BUNDLE_ITEMS, bundleFromMeta, bundleMeta, deliverableItems } from "@/lib/bundle-rules";
 import { type BundleContents, contentsOf } from "@/lib/bundles";
 
@@ -524,7 +524,7 @@ export async function readOrder(
   }
   // Given back in full: the download, the course and the offers after it
   // close, whatever time is left on the link.
-  if (refundedInFull(session.payment_intent)) {
+  if (await purchaseRefunded(store.stripeAccountId, session)) {
     return { state: "refunded" };
   }
 

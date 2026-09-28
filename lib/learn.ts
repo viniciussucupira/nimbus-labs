@@ -34,7 +34,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
 import { isLive } from "@/lib/membership-access";
-import { refundedInFull } from "@/lib/refunds";
+import { purchaseRefunded } from "@/lib/refunds";
 import { recordDelivery } from "@/lib/delivery";
 import type { ProductFile } from "@/lib/product-file";
 import type { Listing, Store } from "@/lib/store";
@@ -200,7 +200,7 @@ async function paidAtStripe(store: Store, email: string): Promise<Ledger> {
         .filter((p): p is Listing => Boolean(p));
       if (bought.length === 0) continue;
       // Refunded in full: the one rule every door uses (lib/refunds.ts).
-      if (refundedInFull(session.payment_intent)) {
+      if (await purchaseRefunded(account, session)) {
         for (const product of bought) refunded.add(product.id);
         continue;
       }

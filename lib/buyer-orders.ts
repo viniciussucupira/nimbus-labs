@@ -31,7 +31,7 @@ import { onAccount, platformKey } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
 import type { ProductFile } from "@/lib/product-file";
 import { isLive, soldAMembership } from "@/lib/membership-access";
-import { refundedInFull } from "@/lib/refunds";
+import { purchaseRefunded, refundedInFull } from "@/lib/refunds";
 import type { Listing, Store } from "@/lib/store";
 import { listingFinder, readListings, sellsAny, sellsThings } from "@/lib/catalog";
 import { paidCalls } from "@/lib/calls";
@@ -257,7 +257,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       if (meta.kind === "call") continue;
       const product = await find(meta.product);
       if (!product || product.call) continue;
-      if (refunded(session.payment_intent)) continue;
+      if (await purchaseRefunded(account, session)) continue;
 
       // A membership hands its thing over while it is being paid for.
       const member = soldAMembership(product, { mode: session.mode, metadata: meta });

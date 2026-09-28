@@ -28,6 +28,7 @@
  * delivered as a link to somewhere else — once the buyer has the address,
  * only the creator can close it there.
  */
+import { onAccount } from "@/lib/stripe-account";
 
 type ChargeLike = { refunded?: unknown; amount?: unknown; amount_refunded?: unknown };
 
@@ -52,4 +53,58 @@ export function refundedInFull(payment: unknown): boolean {
   const charge = value.latest_charge;
   if (charge && typeof charge === "object") return chargeRefunded(charge as ChargeLike);
   return false;
+}
+
+type SessionLike = {
+  mode?: unknown;
+  invoice?: unknown;
+  payment_intent?: unknown;
+  metadata?: Record<string, string> | null | unknown;
+};
+
+const INVOICE_ID = /^in_[A-Za-z0-9]{8,255}$/;
+const INTENT_ID = /^pi_[A-Za-z0-9]{8,255}$/;
+
+/**
+ * Whether a payment plan's purchase was given back in full: a plan runs as a
+ * subscription, so its checkout carries no payment of its own, and the one
+ * that counts is its first invoice's. Read from Stripe; any answer it does
+ * not give counts as not refunded, as everywhere else.
+ */
+async function planRefundedInFull(account: string, session: SessionLike): Promise<boolean> {
+  const meta = (session.metadata ?? {}) as Record<string, unknown>;
+  if (session.mode !== "subscription" || meta.kind !== "plan") return false;
+  const invoice =
+    typeof session.invoice === "string" ? session.invoice : (session.invoice as { id?: unknown } | null)?.id;
+  if (typeof invoice !== "string" || !INVOICE_ID.test(invoice)) return false;
+  try {
+    const read = (await onAccount(
+      "GET",
+      account,
+      `/invoices/${encodeURIComponent(invoice)}?expand[]=payments`,
+    )) as { payments?: { data?: unknown } };
+    const rows = Array.isArray(read.payments?.data) ? (read.payments!.data as { payment?: { payment_intent?: unknown } }[]) : [];
+    const intents = rows.map((row) => row.payment?.payment_intent).filter(Boolean);
+    if (!intents.length) return false;
+    const checked = await Promise.all(
+      intents.map(async (intent) => {
+        if (typeof intent === "object") return refundedInFull(intent);
+        if (typeof intent !== "string" || !INTENT_ID.test(intent)) return false;
+        return refundedInFull(await onAccount("GET", account, `/payment_intents/${encodeURIComponent(intent)}?expand[]=latest_charge`));
+      }),
+    );
+    return checked.every(Boolean);
+  } catch (error) {
+    console.error("reading a payment plan's first payment failed", error);
+    return false;
+  }
+}
+
+/**
+ * Whether a checkout's purchase was given back in full: its payment, or for a
+ * payment plan its first invoice's. The one rule for every door.
+ */
+export async function purchaseRefunded(account: string | null | undefined, session: SessionLike): Promise<boolean> {
+  if (refundedInFull(session.payment_intent)) return true;
+  return account ? planRefundedInFull(account, session) : false;
 }

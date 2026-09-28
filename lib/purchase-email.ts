@@ -48,7 +48,7 @@ import type { Listing, Store } from "@/lib/store";
 import { listingsNamed, recordListings } from "@/lib/catalog";
 import { formatMoney } from "@/lib/money";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
-import { refundedInFull } from "@/lib/refunds";
+import { purchaseRefunded } from "@/lib/refunds";
 import { scheduleReviewAsk } from "@/lib/review-ask";
 import { bundleFromMeta, deliveredIds } from "@/lib/bundle-rules";
 
@@ -535,7 +535,7 @@ export async function resendPurchase(store: Store, sessionId: string): Promise<R
   }
   if (session.id !== sessionId) return "unknown";
   if (session.metadata?.kind === "call") return "call";
-  if (refundedInFull(session.payment_intent)) return "refunded";
+  if (await purchaseRefunded(store.stripeAccountId, session)) return "refunded";
   const created = typeof session.created === "number" ? session.created : 0;
   // Read by id, so a sale of any product of a store of any size is found.
   const listings = await listingsNamed(store, session.metadata);
