@@ -316,10 +316,11 @@ export default function PrivacyPage() {
           named <code>nl_via_</code> followed by the store&apos;s address holds
           the affiliate&apos;s code and the time of the click, for up to 90
           days; a purchase counts for the affiliate only within the window the
-          creator set. This cookie is not set for visitors in the European
-          Economic Area, the United Kingdom, Switzerland or Brazil, or where
-          we cannot tell the country, because the rules there ask for consent
-          first. To count a click once per visitor per day we keep a
+          creator set. Visitors in the European Economic Area, the United
+          Kingdom, Switzerland or Brazil, or whose country we cannot tell, are
+          asked first, because the rules there require consent: the cookie is
+          set only if they allow it, and their answer is kept in their browser
+          for that store. To count a click once per visitor per day we keep a
           one-way hash of the visitor&apos;s network address and browser for
           two days. When a purchase counts, we note which product, when, what
           was paid before tax and in all, and the share it earns, and never

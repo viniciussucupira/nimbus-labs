@@ -9,8 +9,9 @@ import { type PixelEvent, StorePixels } from "@/components/store-pixels";
  * What a store page carries besides the page: the visit count, on the store
  * page itself, the count of a click on an affiliate's link, on any page of a
  * store with affiliates, and the creator's own ad pixels, on every page of
- * the store that has any. Whether a visitor is asked first is decided here, from the
- * country the request came from.
+ * the store that has any. Whether a visitor is asked first, for the pixels and
+ * for remembering an affiliate's link, is decided here, from the country the
+ * request came from.
  */
 export async function StoreTracking({
   store,
@@ -22,11 +23,13 @@ export async function StoreTracking({
   event?: PixelEvent;
 }) {
   const withPixels = hasPixels(store.pixels);
-  const askFirst = withPixels ? needsConsent((await headers()).get("x-vercel-ip-country")) : true;
+  const askFirst = withPixels || store.affiliates.enabled ? needsConsent((await headers()).get("x-vercel-ip-country")) : true;
   return (
     <>
       {countVisit ? <StoreBeacon handle={store.handle} /> : null}
-      {store.affiliates.enabled ? <AffiliateClick handle={store.handle} /> : null}
+      {store.affiliates.enabled ? (
+        <AffiliateClick handle={store.handle} storeName={store.name} days={store.affiliates.days} askFirst={askFirst} />
+      ) : null}
       {withPixels ? (
         <StorePixels
           handle={store.handle}

@@ -38,9 +38,10 @@ const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|community|p|affil
  * (lib/affiliates.ts). Set here so it works without JavaScript; whether the
  * code is real, and still inside the window, is decided at the checkout.
  *
- * Not set where the law asks for consent before a tracking cookie (the same
- * places the ad pixels ask first, lib/pixels.ts): a click from there is not
- * remembered, and the affiliate is not credited for it.
+ * Not set here where the law asks for consent before such a cookie (the same
+ * places the ad pixels ask first, lib/pixels.ts): there the store page asks
+ * the visitor (components/affiliate-click.tsx), and a yes sets this same
+ * cookie through /api/store/via.
  */
 function withAffiliateClick(request: NextRequest, handle: string, response: NextResponse): NextResponse {
   const code = request.nextUrl.searchParams.get("via")?.toLowerCase() ?? "";
