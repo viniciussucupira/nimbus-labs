@@ -65,7 +65,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "One more figure, because it runs in your favor: once your paid sales in a calendar month reach $20,000, new direct sales for the rest of that month are charged 5% plus 50 cents instead. It resets on the first, and there is nothing to apply for. At $27 a file, that threshold is around 740 sales in a month.",
+        text: "One more figure, because it runs in your favor: once your paid sales in a calendar month reach $20,000, new direct sales for the rest of that month are charged 5% plus 50 cents instead. It resets on the first of the month, and there is nothing to apply for. At $27 a file, that threshold is around 740 sales in a month.",
       },
       { type: "h2", text: "The money arrives in their balance, not in yours" },
       {
@@ -75,10 +75,10 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "You need at least $100 in balance before a payout is sent at all. A number of countries have a higher minimum in local currency.",
+          "You need at least $100 in your balance before a payout is sent at all. A number of countries have a higher minimum in local currency.",
           "On the weekly, monthly and quarterly schedules, a sale waits at least seven days in the balance before it is eligible to leave.",
           "A payout covers sales made up to the previous Friday, counted in UTC.",
-          "Your payout day depends on where your bank account is: Tuesday, Wednesday or Thursday for bank accounts, Friday for PayPal. The bank transfer itself then takes a further two to seven business days.",
+          "Your payout day depends on how you are paid and, for a bank account, on its country: Tuesday, Wednesday or Thursday for bank accounts, Friday for PayPal. The bank transfer itself then takes a further two to seven business days.",
           "Before your first payout, they review the account. They say that takes one to three weeks.",
           "Getting it sooner costs: PayPal payouts carry a 2% fee, and instant payouts cost 3%, are for creators in the United States only, and open only after a first payout and sixty days of processing.",
           "You are paid in your local currency, converted at the exchange rate at the time of the sale rather than the time of the payout.",
@@ -95,7 +95,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "Being the seller is what pays for the things Gumroad genuinely takes off you: VAT in the European Union, GST where it applies, state sales tax in the United States, collected and filed without you ever learning what any of it means. It is also what forces everything in the list above. If the sale is legally theirs, the money is theirs first. If their bank holds them responsible for that sale, they have to hold something back against a refund or a chargeback, and they have to be able to stop an account that is costing them.",
+        text: "Being the seller is what pays for the things Gumroad genuinely takes off your hands: VAT in the European Union, GST where it applies, state sales tax in the United States, collected and filed without you ever learning what any of it means. It is also what forces everything in the list above. If the sale is legally theirs, the money is theirs first. If their bank holds them responsible for that sale, they have to hold something back against a refund or a chargeback, and they have to be able to stop an account that is costing them.",
       },
       {
         type: "p",
@@ -112,7 +112,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "You open your own Stripe account. The buyer's card is charged on it directly. The money is in your account at the moment of the sale, your own business name is on the buyer's statement, and the payout schedule is whatever you set in your own Stripe dashboard. Nobody holds a balance for you, because there is no balance to hold.",
+        text: "You open your own Stripe account. The buyer's card is charged on it directly. The money is in your account at the moment of the sale, your own business name is on the buyer's statement, and the payout schedule is whatever you set in your own Stripe dashboard. No platform holds a balance for you: the balance is in your own Stripe account.",
       },
       {
         type: "p",
@@ -124,19 +124,19 @@ export const BLOG_POSTS: BlogPost[] = [
         items: [
           {
             title: "Five sales of $27 in a month",
-            text: "Gumroad leaves you $113.59. Your own Stripe with a $29 monthly plan leaves you $100.59. Gumroad wins by $13, and at that volume you should be using it.",
+            text: "Gumroad leaves you $113.60. Your own Stripe with a $29 monthly plan leaves you $100.60. Gumroad wins by $13, and at that volume you should be using it.",
           },
           {
             title: "Nine sales of $27",
-            text: "Gumroad leaves you $204.45. Your own Stripe leaves you $204.25. This is the crossing point, give or take a sale.",
+            text: "Gumroad leaves you $204.48. Your own Stripe leaves you $204.28. This is the crossing point, give or take a sale.",
           },
           {
             title: "A hundred sales of $27",
-            text: "Gumroad leaves you $2,271.70. Your own Stripe leaves you $2,562.70. The difference is $291, in one month.",
+            text: "Gumroad leaves you $2,272. Your own Stripe leaves you $2,563. The difference is $291, in one month.",
           },
           {
             title: "Five hundred sales of $27",
-            text: "Gumroad leaves you $11,358.50. Your own Stripe leaves you $12,929.50. The difference is $1,571, in one month, and it comes back every month.",
+            text: "Gumroad leaves you $11,360. Your own Stripe leaves you $12,931. The difference is $1,571, in one month, and it comes back every month.",
           },
         ],
       },
@@ -159,7 +159,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "note",
-        text: "Every figure here is from Gumroad's own pages, read on September 20, 2026 and checked again on September 28, 2026: their pricing page for 10% plus 50 cents, 30% on Discover and the merchant-of-record change of January 1, 2025; 'Gumroad's fees' for card processing at 2.9% plus 30 cents not being included and for the $20,000 discount; 'Getting paid by Gumroad' for the $100 minimum, the seven-day hold, the payout days, the 2% PayPal fee, the 3% instant payout, the currency conversion and the one-to-three-week review; 'Adding PayPal to checkout' for PayPal sales paid into your own PayPal account; and their 'Account suspension FAQ' for what can happen to a balance. The same 2.9% plus 30 cents is Stripe's published United States rate for domestic cards. If any of it has changed since, this page is wrong until we fix it, and we would rather be told than left looking accurate.",
+        text: "Every figure here is from Gumroad's own pages, read on September 20, 2026 and checked again on September 28, 2026: their pricing page for 10% plus 50 cents, 30% on Discover and the merchant-of-record change of January 1, 2025; “Gumroad's fees” for card processing at 2.9% plus 30 cents not being included and for the $20,000 discount; “Getting paid by Gumroad” for the $100 minimum, the seven-day hold, the payout days, the 2% PayPal fee, the 3% instant payout, the currency conversion and the one-to-three-week review; “Adding PayPal to checkout” for PayPal sales paid into your own PayPal account; and their “Account suspension FAQ” for what can happen to a balance. The same 2.9% plus 30 cents is Stripe's published United States rate for domestic cards. If any of it has changed since, this page is wrong until we fix it, and we would rather be told than left looking accurate.",
       },
     ],
   },
@@ -201,7 +201,7 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "Say what the buyer gets, in nouns: 'A 12-page PDF with 5 weeks of dinners and the shopping list for each week.'",
+          "Say what the buyer gets, in nouns: “A 12-page PDF with 5 weeks of dinners and the shopping list for each week.”",
           "Say who it is for and who it is not for. Turning the wrong buyer away is what makes the right one trust you.",
           "Say what happens after payment, in one sentence, before they pay.",
           "Show one page of the thing. A single honest screenshot beats a paragraph of adjectives.",
@@ -283,7 +283,7 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "A 5% platform fee on a $27 file is $1.35 — more than a dollar per sale, forever, on every sale.",
+          "A 5% platform fee on a $27 file is $1.35 — more than a dollar on every sale, forever.",
           "At 100 sales a month, that is $135 a month. At 500, it is $675 a month.",
           "A fixed monthly price does the opposite: it hurts at 3 sales and disappears at 300.",
         ],
@@ -336,7 +336,7 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         type: "p",
-        text: "When a buyer pays for your file, the money goes somewhere before it reaches you. Where exactly is the single most important thing to understand about any platform you sell on, and almost nobody explains it.",
+        text: "When a buyer pays for your file, the money goes somewhere before it reaches you. Where exactly it goes is the single most important thing to understand about any platform you sell on, and almost nobody explains it.",
       },
       { type: "h2", text: "The first way: the platform holds it" },
       {
@@ -396,7 +396,7 @@ export const BLOG_POSTS: BlogPost[] = [
     date: "2026-09-18",
     readMinutes: 4,
     excerpt:
-      "Most creators sell one file at one price. Giving the same work three sizes changes the question in the buyer's head from 'should I?' to 'which one?', and that question is far easier to answer.",
+      "Most creators sell one file at one price. Giving the same work three sizes changes the question in the buyer's head from “should I?” to “which one?”, and that question is far easier to answer.",
     kicker: "Pricing",
     from: "#6c3bff",
     to: "#12d6a4",
@@ -425,7 +425,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "Where to put the price you want people to pick" },
       {
         type: "p",
-        text: "Put it in the middle and make it obviously good value — a clear drop in the price per week, per template or per page from the smallest size. Say that out loud on the page. 'Five weeks for $39' next to 'one week for $27' does the arithmetic for the buyer.",
+        text: "Put it in the middle and make it obviously good value — a clear drop in the price per week, per template or per page from the smallest size. Say that out loud on the page. “Five weeks for $39” next to “one week for $27” does the arithmetic for the buyer.",
       },
       {
         type: "note",
@@ -434,7 +434,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "What changes on the page" },
       {
         type: "p",
-        text: "The product page stops being a wall of copy with a button at the bottom. It becomes a short description and three rows the buyer taps. Show the 'from' price at the top of the store so the cheapest tier is what catches the eye, and let the choice happen on the product, one tap before the card.",
+        text: "The product page stops being a wall of copy with a button at the bottom. It becomes a short description and three rows the buyer taps. Show the “from” price at the top of the store so the cheapest tier is what catches the eye, and let the choice happen on the product, one tap before the card.",
       },
       {
         type: "p",
@@ -449,7 +449,7 @@ export const BLOG_POSTS: BlogPost[] = [
     date: "2026-09-18",
     readMinutes: 5,
     excerpt:
-      "Six lines, in order, and what each one has to do. Written for people selling a PDF from a phone screen, not for people writing sales letters.",
+      "Six lines, in order, and what each one has to do. Written for people selling a PDF to buyers on their phones, not for people writing sales letters.",
     kicker: "Copy",
     from: "#37b6ff",
     to: "#6c3bff",
@@ -461,7 +461,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "Line 1 — the name, said plainly" },
       {
         type: "p",
-        text: "'Weekly Meal Planner' beats 'The Nourish Method'. A clever name asks the reader to learn something before they can want it. Save the clever name for when people already know you.",
+        text: "“Weekly Meal Planner” beats “The Nourish Method”. A clever name asks the reader to learn something before they can want it. Save the clever name for when people already know you.",
       },
       { type: "h2", text: "Line 2 — what it physically is" },
       {
@@ -471,22 +471,22 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "Line 3 — the one problem it removes" },
       {
         type: "p",
-        text: "Not the transformation. The problem, in the reader's own words: 'You stop deciding what to cook at 6 p.m.' If you cannot write this line, the product is not finished yet.",
+        text: "Not the transformation. The problem, in the reader's own words: “You stop deciding what to cook at 6 p.m.” If you cannot write this line, the product is not finished yet.",
       },
       { type: "h2", text: "Line 4 — who it is for, and who it is not" },
       {
         type: "p",
-        text: "'For two people who cook three or four nights a week. Not for bulk meal prep.' Saying who should not buy it is the strongest trust signal a new seller has, and it cuts refunds.",
+        text: "“For two people who cook three or four nights a week. Not for bulk meal prep.” Saying who should not buy it is the strongest trust signal a new seller has, and it cuts refunds.",
       },
       { type: "h2", text: "Line 5 — what happens after payment" },
       {
         type: "p",
-        text: "'You get the download on the next screen, and a copy by email.' Say this before the price, not after. The fear of paying and being left waiting is the last thing standing between a reader and a sale.",
+        text: "“You get the download on the next screen, and a copy by email.” Say this before the price, not after. The fear of paying and being left waiting is the last thing standing between a reader and a sale.",
       },
       { type: "h2", text: "Line 6 — the price, with the options visible" },
       {
         type: "p",
-        text: "Show the choices as rows the buyer can tap, with what each one includes. No math for them to do, no 'contact for pricing', no discount timer that resets when they reload the page.",
+        text: "Show the choices as rows the buyer can tap, with what each one includes. No math for them to do, no “contact for pricing,” no discount timer that resets when they reload the page.",
       },
       { type: "h2", text: "What to leave out" },
       {
@@ -494,7 +494,7 @@ export const BLOG_POSTS: BlogPost[] = [
         items: [
           "Testimonials you do not have. An empty review section is better than an invented one, and inventing them is against the law in the United States and the European Union.",
           "Countdown timers that are not real deadlines.",
-          "'Normally $197, today $27.' If it was never $197, that sentence is a lie with a number in it.",
+          "“Normally $197, today $27.” If it was never $197, that sentence is a lie with a number in it.",
           "Long autobiography. One line about why you are the person to make this is plenty on a product page.",
         ],
       },
@@ -538,7 +538,7 @@ export const BLOG_POSTS: BlogPost[] = [
           },
           {
             title: "Say it in one sentence",
-            text: "'Five weeks of dinners for two people, with the shopping list.' That sentence is the offer; everything else is decoration.",
+            text: "“Five weeks of dinners for two people, with the shopping list.” That sentence is the offer; everything else is decoration.",
           },
           {
             title: "Then build the page",
@@ -602,7 +602,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "What Nimbus is" },
       {
         type: "p",
-        text: "Nimbus is a store page for selling files, courses, memberships, communities and calls, and it is early. At its core is one job: a colorful page, price options on a product, and the file in the buyer's hands the second the payment clears.",
+        text: "Nimbus is a store page for selling files, courses, memberships, communities and calls, and it is early. At its core are three things: a colorful page, price options on a product, and the file in the buyer's hands the second the payment clears.",
       },
       { type: "h2", text: "The one thing we do differently" },
       {
@@ -617,7 +617,7 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "Range: automated Instagram replies, PayPal, affiliates paid automatically, Zoom links made for each booking and webinar, and stores with no limit on products. We have none of those. PayPal does not reach our checkout, because Stripe does not support it for the direct charges every sale here is made with; our affiliates are paid by you; our funnels are pages and offers you connect rather than one builder; our video rooms, for calls and live events alike, are Google Meet links made on your connected Google Calendar, your own meeting link, or Jitsi Meet rooms, where the first person in may have to sign in to Jitsi; and a store holds up to 2,000 products.",
+          "Range: automatic Instagram replies, PayPal, affiliates paid automatically, one builder for funnels, Zoom links made for each booking and webinar, and stores with no limit on products. We have none of those. PayPal does not reach our checkout, because Stripe does not support it for the direct charges every sale here is made with; our affiliates are paid by you; our funnels are pages and offers you connect rather than one builder; our video rooms, for calls and live events alike, are Google Meet links made on your connected Google Calendar, your own meeting link, or Jitsi Meet rooms, where the first person in may have to sign in to Jitsi; and a store holds up to 2,000 products.",
           "Years of running: their support library is deep, and ours is a few pages.",
           "A native creator app: their help center states their creator app is currently available only on iPhone and iPad. We do not have a native app at all — our studio and every store install to the home screen from the browser, on both iPhone and Android, and the studio can send notifications of sales, which is a different trade-off, not a better one in every case.",
           "Integrations with third-party tools, which they list on their site. We have webhooks that Zapier, Make or your own server can catch, and no app of our own in anyone's directory.",
@@ -630,9 +630,9 @@ export const BLOG_POSTS: BlogPost[] = [
           "The money lands in your own Stripe account, so payouts, receipts and refunds are yours.",
           "Price options on a single product, with the right file delivered for the tier that was paid for.",
           "Reviews only buyers can write, checked against the payment. Stan's help center says reviews there are added by the creator.",
-          "A team with roles, each person signing in with their own email. Stan's help center says the only way there is to share your login.",
-          "Sales pages, landing pages, discount codes, payment plans and offers after payment on the $29 plan (Stan's help center puts discount codes, payment plans and upsells on its $99 Creator Pro plan), and a store in any of 15 currencies.",
-          "Bundles that hand over each of your products as if bought on its own. Stan's help center lists bundles among what one download can hold.",
+          "A team with roles, each person signing in with their own email. Stan's help center says the only way to give someone admin access to a store there is to share your login.",
+          "Sales pages, landing pages, discount codes, payment plans and offers after payment on the $29 plan (Stan's help center puts discount codes, payment plans and upsells on their $99 Creator Pro plan), and a store in any of 15 currencies.",
+          "Bundles that hand over each of your products as if bought on its own. Stan's help center lists bundles among the files you can sell as one download.",
           "Moving in from a spreadsheet: up to 50,000 contacts, 500 products and 20,000 past buyers per file, where Stan's help center sets a limit of 5,000 imported contacts per store in all, and buyers are given access one at a time.",
           "A live demo store anyone can buy from with a test card, before signing up for anything.",
           "Terms and privacy policy published as pages on the site, where Stan links to them as PDF files.",
@@ -644,11 +644,11 @@ export const BLOG_POSTS: BlogPost[] = [
         items: [
           {
             title: "Write down your own numbers",
-            text: "Your price, your sales per month. Run them through both fee structures. The cheaper platform is different at 5 sales and at 500.",
+            text: "Your price, your sales per month and the features you actually need. Find the plan each platform would put you on for those features, and compare the monthly totals.",
           },
           {
             title: "Buy something from both",
-            text: "Go through a real checkout on each. Whose name is on the receipt? How fast did the file arrive? Could you do it on a phone in one hand?",
+            text: "Go through a real checkout on each. Whose name is on the receipt? How fast did the file arrive? Could you do it on a phone with one hand?",
           },
           {
             title: "Read the payout page",
@@ -677,7 +677,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "The buyer's side is not a close call" },
       {
         type: "p",
-        text: "Someone taps a link in a bio because they are curious. Every step you add between that tap and the file loses people, and 'install an app first' is the largest step there is. A store that sells to strangers has to work in the browser they already have open.",
+        text: "Someone taps a link in a bio because they are curious. Every step you add between that tap and the file loses people, and “install an app first” is the largest step there is. A store that sells to strangers has to work in the browser they already have open.",
       },
       { type: "h2", text: "The creator's side is where it gets interesting" },
       {
@@ -693,12 +693,12 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "We took the second route because it reaches both phones with one thing to maintain, which for a small team is the difference between shipping and not shipping. Stan's own help center says their creator app is currently available only on iPhone and iPad; our installable store runs on both iPhone and Android. That is the concrete difference the choice makes.",
+        text: "We took the second route because it reaches both phones with one thing to maintain, which for a studio this small is the difference between shipping and not shipping. Stan's own help center says their creator app is currently available only on iPhone and iPad; our installable store runs on both iPhone and Android. That is the concrete difference the choice makes.",
       },
       { type: "h2", text: "The honest cost" },
       {
         type: "p",
-        text: "Installing from a browser is less discoverable than a store listing: on iPhone it lives behind the share menu, and on Android behind the browser menu. A native app can also do things a web page cannot. Since September 27, 2026, the studio itself installs and sends notifications of sales and bookings, but on iPhone only from iOS 16.4 and only once it is on the home screen.",
+        text: "Installing from a browser is less discoverable than a store listing: on iPhone it lives behind the share menu, and on Android behind the browser menu. A native app can also do things a web page cannot, though the gap is closing: since September 27, 2026, the studio itself installs and sends notifications of sales and bookings, but on iPhone only from iOS 16.4 and only once it is on the home screen.",
       },
       {
         type: "note",

@@ -4,6 +4,7 @@ import "./globals.css";
 import { SiteData } from "@/components/structured-data";
 import { Toaster } from "@/components/toast";
 import { SITE_URL } from "@/lib/site-url";
+import { SITE_OG_IMAGE } from "@/lib/site-og";
 
 /* Two faces, both served from our own domain so the page never waits on
    fonts.googleapis.com: Geist for everything a person reads or clicks, and an
@@ -50,27 +51,18 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
   },
+  // Only the picture and the site here: a shared link to any page carries
+  // that page's own title and description (its <title> and description),
+  // never the home page's.
   openGraph: {
     type: "website",
-    url: "./",
     siteName: "Nimbus Labs",
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
     locale: "en_US",
-    images: [
-      {
-        url: "/og.png?v=2",
-        width: 1200,
-        height: 630,
-        alt: "Nimbus Labs: your store, your Stripe, your money. A paid Stripe checkout and a delivered file, with 0% of the sale taken.",
-      },
-    ],
+    images: [SITE_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-    images: ["/og.png?v=2"],
+    images: [SITE_OG_IMAGE.url],
   },
 };
 

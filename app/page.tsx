@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SITE_OG_IMAGE } from "@/lib/site-og";
 import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { BuyerPath } from "@/components/buyer-path";
@@ -11,10 +12,23 @@ import { HOME_QUESTIONS } from "@/lib/home-faq";
 import { PLAN_PRICES, PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 import { isDomainsConfigured } from "@/lib/domains";
 
+const HOME_TITLE = "Nimbus Labs — the link-in-bio store that pays into your own Stripe";
+const HOME_DESCRIPTION =
+  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is delivered the second the payment clears, and Nimbus takes 0% of your sales.";
+
 export const metadata: Metadata = {
-  title: "Nimbus Labs — the link-in-bio store that pays into your own Stripe",
-  description:
-    "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is delivered the second the payment clears, and Nimbus takes 0% of your sales.",
+  title: HOME_TITLE,
+  description: HOME_DESCRIPTION,
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "Nimbus Labs",
+    locale: "en_US",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    images: [SITE_OG_IMAGE],
+  },
+  twitter: { card: "summary_large_image", title: HOME_TITLE, description: HOME_DESCRIPTION, images: [SITE_OG_IMAGE.url] },
 };
 
 const PHOTO = (id: string, w = 400, h = 400) =>
@@ -64,7 +78,7 @@ const REASONS: {
     title: "Delivered the second it is paid",
     body: "The file is released when Stripe confirms the payment. If the buyer loses it, a month or a year later, they get it again by email.",
     example:
-      "A buyer on a new phone types the address they paid with, and every purchase from that store comes back to them.",
+      "A buyer on a new phone types the email address they paid with, and every purchase from that store comes back to them.",
     visual: "delivery",
     href: "/platform/instant-delivery",
     link: "How delivery works",
@@ -92,9 +106,9 @@ const GROUPS: Group[] = [
     items: [
       { title: "Files and links", body: "PDFs, videos, presets and templates up to 5 GB, or a link to where it lives." },
       { title: "Courses", body: "Modules and lessons that can open over time, with free previews." },
-      { title: "Paid calls", body: "One to one, groups of up to 50, or live sessions, with your meeting link or a private video room." },
+      { title: "Paid calls", body: "One-on-one, groups of up to 50, or live sessions, with your meeting link or a private video room." },
       { title: "Memberships", body: "Daily, weekly, monthly or yearly, with a free trial if you want one." },
-      { title: "Free products", body: "Given for an email address, each one confirmed by its owner." },
+      { title: "Free products", body: "Given for an email address, each address confirmed by its owner." },
       { title: "A community", body: "Posts, comments and live events, open only to the buyers you choose." },
       { title: "Bundles", body: "2 to 20 of your products at one price, each delivered as itself." },
       { title: "Sales and landing pages", body: "Up to 30 blocks for any product, with video and your buyers' reviews." },
@@ -229,12 +243,12 @@ const CREATORS = [
 /* Checked on Stan's own public pricing, terms and help pages. */
 const COMPARE = [
   { row: "Where the money from a sale goes", stan: "A Stripe account managed by the platform", nimbus: "Your own Stripe account", key: true },
-  { row: "Getting paid out", stan: "Manual cash-out, $10 minimum, payout fee", nimbus: "Your Stripe payout schedule, no minimum from us", key: true },
+  { row: "Getting paid out", stan: "Manual cash-out, $10 minimum, whole balance only", nimbus: "Your Stripe payout schedule, no minimum from us", key: true },
   { row: "Cut of each sale", stan: "0%, plus Stripe's own fees", nimbus: "0%, plus Stripe's own fees", key: false, same: true },
   { row: "Several prices for one product", stan: "Not available", nimbus: "Up to three on any product", key: true },
   { row: "Discount codes", stan: "On the $99 Creator Pro plan", nimbus: `Included at $${PRICE} a month`, key: true },
   { row: "Pay what you want", stan: "Not in their help center", nimbus: "A minimum and a suggested price", key: false },
-  { row: "Changing your store address", stan: "Old links forwarded on a best effort", nimbus: "Old addresses keep working, up to 10 held at once", key: false },
+  { row: "Changing your store address", stan: "Old links forwarded on a best-effort basis", nimbus: "Old addresses keep working, up to 10 held at once", key: false },
 ];
 
 const SPEED = [
@@ -317,7 +331,7 @@ export default function Home() {
                 ))}
               </ul>
               <p className="mt-4 text-sm text-white/80">
-                {`$${PRICE} a month after the trial. Cancel in one click, from your own studio.`}
+                {`$${PRICE} a month after the trial. Cancel in two clicks, from your own studio.`}
               </p>
             </div>
 
@@ -354,7 +368,7 @@ export default function Home() {
               },
               {
                 icon: "door" as IconName,
-                figure: "1 click",
+                figure: "2 clicks",
                 title: "To cancel",
                 body: "From your own studio. No email to us, no chat, no second request.",
               },
@@ -510,7 +524,7 @@ export default function Home() {
                 the account, the customers and the payouts were always yours.
               </p>
               <p className="measure mt-4 text-white/70">
-                We make money one way only, a monthly subscription. That is the whole business model, written on one line.
+                We make money one way only: a subscription, paid monthly or yearly. That is the whole business model, written on one line.
               </p>
               <ol aria-label="Where the money goes" className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
@@ -799,7 +813,7 @@ export default function Home() {
             <ul className="mx-auto mt-10 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[0.9375rem] text-white/80">
               {[
                 { icon: "calendar" as IconName, text: `${TRIAL_DAYS} days free` },
-                { icon: "door" as IconName, text: "Cancel in one click" },
+                { icon: "door" as IconName, text: "Cancel in two clicks" },
                 { icon: "percent" as IconName, text: "0% of your sales" },
                 { icon: "lock" as IconName, text: "Payments by Stripe" },
               ].map((f) => (

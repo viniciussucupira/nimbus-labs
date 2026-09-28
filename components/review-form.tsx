@@ -135,7 +135,7 @@ export function ReviewForm({
           {existing ? "Update my review" : "Post my review"}
         </button>
         <p className="st-muted text-xs leading-relaxed">
-          {`Your review is public on ${storeName}'s page, marked as a verified purchase. Your email address is never shown. ${storeName} can reply and can hide it, but cannot change it, and nothing is given in return for writing one.`}
+          {`Your review is public on ${storeName}'s page, marked as a verified purchase. Your email address is never shown. ${storeName} can reply and can hide it, but cannot change it.`}
         </p>
       </form>
       {existing ? (

@@ -212,7 +212,7 @@ export function confirmationFor(
     lines.push(
       `Start the course: ${base}/course/${product.id}`,
       "",
-      `If you pressed "Start the course" after paying, it opens straight away on that device. Anywhere else, the course page asks for your email: type ${email}, and a link that lets that device in arrives within a minute. There is no password to make.`,
+      `If you pressed "Start the course" after paying, it opens straight away on that device. Anywhere else, the course page asks for your email: type ${email}, and a link that lets that device in usually arrives within a minute. There is no password to make.`,
     );
   } else {
     lines.push(
@@ -227,7 +227,7 @@ export function confirmationFor(
     lines.push("", `Start ${course.title}: ${base}/course/${course.id}`);
   }
   if (courses.length) {
-    lines.push("", `A course you started after paying opens straight away on that device. Anywhere else, its page asks for your email: type ${email}, and a link that lets that device in arrives within a minute.`);
+    lines.push("", `A course you started after paying opens straight away on that device. Anywhere else, its page asks for your email: type ${email}, and a link that lets that device in usually arrives within a minute.`);
   }
 
   for (const line of keys) {

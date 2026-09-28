@@ -38,7 +38,7 @@ const LINK_NOTICES: Record<string, { title: string; body: string }> = {
   error: { title: "The email could not be sent", body: "Nothing is lost. Try again in a moment." },
   ask: {
     title: "One more step",
-    body: "Type the address you paid with below and the way in is sent there.",
+    body: "Type the address you paid with below, and a link to open the course is sent there.",
   },
 };
 
@@ -157,11 +157,11 @@ export default async function CoursePage({ params, searchParams }: Params) {
             <div className="st-note mt-6" role="status">
               <p className="font-bold" style={{ color: "var(--st-text)" }}>Your membership has ended</p>
               <p className="mt-1 text-sm">
-                {`This course came with your membership, which is no longer running, so its lessons are closed now. Join again and it opens straight away, with your progress where you left it.`}
+                {`This course came with your membership, which is no longer running, so its lessons are closed now. Renew and it opens straight away, with your progress where you left it.`}
               </p>
               {canManage(store) ? (
                 <p className="mt-2 text-sm">
-                  {"Did a payment fail rather than you canceling? Updating the card may bring it back: "}
+                  {"Did it end because a payment failed, not because you canceled? Updating the card may bring it back: "}
                   <Link href={`/@${store.handle}/manage`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>
                     manage your membership
                   </Link>

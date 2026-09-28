@@ -56,7 +56,7 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
         <p className="eyebrow">Affiliates</p>
         <h1 className="t-h2 mt-3">People who sell for you</h1>
         <p className="mt-3 max-w-2xl text-ink-soft">
-          Anyone can apply on your affiliate page; you decide who is in. Each affiliate gets their own link, and a single
+          Anyone can apply on your affiliate page; you decide who is in. Each affiliate gets their own link, and a one-time
           purchase made through it within your window earns them the share you set, worked out from what the buyer paid
           before tax and taken back if you refund the sale.
         </p>

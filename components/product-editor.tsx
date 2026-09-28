@@ -244,7 +244,7 @@ function ProductForm({
           htmlFor={`product-title-${id}`}
           className="field-label"
         >
-          What are you selling
+          What you are selling
         </label>
         <input
           id={`product-title-${id}`}

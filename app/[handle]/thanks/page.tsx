@@ -512,7 +512,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 <div className="st-note mt-7" role="status">
                   <p className="font-bold" style={{ color: "var(--st-text)" }}>Your membership has ended</p>
                   <p className="mt-1 text-sm">
-                    {`Stripe says this membership is no longer running, so what it gave is closed now. Join again and it opens straight away.`}
+                    {`Stripe says this membership is no longer running, so what it gave you access to is closed now. Renew it and everything opens again straight away.`}
                   </p>
                   <Link href={renewPath(store, order.product)} className="btn st-btn mt-4">
                     Renew your membership
@@ -794,7 +794,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 </p>
               ) : order.email ? (
                 <p className="st-muted mt-2 text-sm">
-                  {`This order is under ${order.email}. The charge was made on ${store.name}'s own Stripe account, not ours, so any receipt comes from them.`}
+                  {`This order is filed under ${order.email}. The charge was made on ${store.name}'s own Stripe account, not ours, so any receipt comes from them.`}
                 </p>
               ) : null}
             </>

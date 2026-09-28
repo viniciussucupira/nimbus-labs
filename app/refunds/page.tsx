@@ -67,8 +67,8 @@ export default function RefundsPage() {
           <li>the date of the charge, if you are requesting a refund.</li>
         </ul>
         <p>
-          We will confirm when the cancellation and/or refund has been
-          processed. Refunds are returned to the original payment method and
+          We will confirm by email once your cancellation, refund, or both
+          have been processed. Refunds are returned to the original payment method and
           may take several business days to appear, depending on your bank or
           card issuer.
         </p>
@@ -76,8 +76,8 @@ export default function RefundsPage() {
 
       <LegalSection title="4. After 14 days">
         <p>
-          A refund requested more than 14 days after a charge is not
-          available, except where applicable consumer law requires it. You may still cancel at any time to stop
+          Refunds are not available for requests made more than 14 days after
+          a charge, except where applicable consumer law requires them. You may still cancel at any time to stop
           future charges.
         </p>
       </LegalSection>

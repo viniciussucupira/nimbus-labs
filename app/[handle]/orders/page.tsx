@@ -37,7 +37,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     body: "To keep this form from being used to flood somebody's inbox, it takes a limited number of requests an hour. Try again in an hour.",
   },
   unavailable: {
-    title: "This store cannot do this here",
+    title: "This store cannot look up purchases right now",
     body: "Its payments are not connected to Stripe right now. Reply to the order confirmation you were emailed when you paid, and it reaches the store.",
   },
   error: {
@@ -256,7 +256,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
         Email me my purchases
       </button>
       <p className="st-muted text-sm">
-        {`If that address bought something from ${store.name}, a link to all of it arrives in a minute and works for 24 hours. We say the same thing whether or not it did, so nobody can use this page to find out who bought what.`}
+        {`If that address bought something from ${store.name}, a link to all of it usually arrives within a minute and works for 24 hours. We say the same thing whether or not it did, so nobody can use this page to find out who bought what.`}
       </p>
     </form>
   );
@@ -329,7 +329,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                           {purchase.ended ? (
                             <>
                               <p className="st-muted text-sm">
-                                This membership is no longer running, so what it gave is closed now. Join again and it opens straight away.
+                                This membership is no longer running, so what it gave you access to is closed now. Renew it and everything opens again straight away.
                               </p>
                               <Link href={renewPath(store, { id: purchase.productId })} className="btn st-btn btn-block">
                                 Renew your membership
@@ -403,7 +403,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
               </h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
                 {available
-                  ? `Lost a download, or got a new phone? Type the email you paid ${store.name} with and we send you a link to everything you bought here. No account and no password.`
+                  ? `Lost a download, or got a new phone? Type the email you paid ${store.name} with, and we will email you a link to everything you bought here. No account and no password.`
                   : `${store.name} cannot take payments through Stripe right now, so there is nothing to look up from here. Reply to the order confirmation you were emailed when you paid, and it reaches them.`}
               </p>
               {available ? form : null}

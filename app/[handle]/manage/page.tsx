@@ -26,7 +26,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     body: "To keep this form from being used to flood somebody's inbox, it takes a limited number of requests an hour. Try again in an hour.",
   },
   unavailable: {
-    title: "This store cannot do this here",
+    title: "This store cannot open memberships right now",
     body: "Its payments are not connected to Stripe right now, so there is no membership to open from this page. Reply to your order confirmation email and it reaches the store.",
   },
   error: {
@@ -92,7 +92,7 @@ export default async function ManagePage({ params, searchParams }: Params) {
         Email me a link to my membership
       </button>
       <p className="st-muted text-sm">
-        {`If that address has a membership with ${store.name}, a link to it arrives in a minute. It works for ${hours === 1 ? "one hour" : `${hours} hours`}. We say the same thing whether or not it does, so nobody can use this page to find out who is a member.`}
+        {`If that address has a membership with ${store.name}, a link to it usually arrives within a minute. It works for ${hours === 1 ? "one hour" : `${hours} hours`}. We say the same thing whether or not it does, so nobody can use this page to find out who is a member.`}
       </p>
     </form>
   );
@@ -161,7 +161,7 @@ export default async function ManagePage({ params, searchParams }: Params) {
               </h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
                 {available
-                  ? `Type the email you pay ${store.name} with and we send you a link to your membership. No account and no password: you cancel it yourself, on Stripe's own page.`
+                  ? `Type the email you pay ${store.name} with, and we will email you a link to your membership. No account and no password: you cancel it yourself, on Stripe's own page.`
                   : `${store.name} cannot take payments through Stripe right now, so there is no membership to open from here. Reply to your order confirmation email and it reaches them.`}
               </p>
               {available ? form : null}

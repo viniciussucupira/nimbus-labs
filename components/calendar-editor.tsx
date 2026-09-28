@@ -171,7 +171,7 @@ export function CalendarEditor({ view: initial, weekly }: { view: CalendarView; 
           }}
         >
           <label htmlFor="calendar-url" className="field-label">
-            Private calendar address (ends in .ics)
+            Private calendar address (iCal or .ics link)
           </label>
           <div className="mt-2 flex flex-col gap-3 sm:flex-row">
             <input

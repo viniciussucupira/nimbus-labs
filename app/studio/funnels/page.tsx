@@ -82,7 +82,7 @@ export default async function StudioFunnelsPage({ searchParams }: Params) {
         <p className="eyebrow">Funnels</p>
         <h1 className="t-h2 mt-3">Offers after they pay</h1>
         <p className="mt-3 max-w-2xl text-ink-soft">
-          {`Right after paying, the buyer sees one offer at a time on their thanks page, up to ${MAX_FUNNEL_STEPS} per product. Each offer has a yes and a no thanks, and you choose where each one leads: another offer, a cheaper one after a no, or the end. Yes charges the card they just used, in one press, on your own Stripe account.`}
+          {`Right after paying, the buyer sees one offer at a time on their thank-you page, up to ${MAX_FUNNEL_STEPS} per product. Each offer has a yes and a no thanks, and you choose where each one leads: another offer, a cheaper one after a no, or the end. Yes charges the card they just used, in one press, on your own Stripe account.`}
         </p>
 
         {store.tax.enabled ? (

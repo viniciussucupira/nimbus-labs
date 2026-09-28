@@ -24,7 +24,7 @@ const NOT_PAID: Record<
   },
   processing: {
     title: "Your payment is on its way",
-    body: "Your bank is still confirming it. When it clears, open this page again and the file is here.",
+    body: "Your bank is still confirming it. When it clears, open this page again and the file will be here.",
   },
   expired: {
     title: "This download link has expired",

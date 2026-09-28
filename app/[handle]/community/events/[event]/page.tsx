@@ -198,7 +198,7 @@ export default async function CommunityEventPage({ params, searchParams }: Param
                       </div>
                       {place && !viewer.owner ? (
                         <p className="st-muted mt-2 text-sm">
-                          {place === "google" ? `Google Meet may ask you to wait until ${store.name} lets you in.` : `Zoom lets you in once ${store.name} starts the meeting, and admits you if they use a waiting room.`}
+                          {place === "google" ? `Google Meet may ask you to wait until ${store.name} lets you in.` : `Zoom lets you in once ${store.name} starts the meeting; if they use a waiting room, they admit you from there.`}
                         </p>
                       ) : null}
                     </>

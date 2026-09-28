@@ -52,10 +52,10 @@ export default function DemoStorePage() {
           <span className="rounded-[5px] bg-white/12 px-1.5 py-0.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-white">
             Demo
           </span>
-          Stripe test mode, no real money moves.
+          Stripe test mode: no real money moves.
         </span>
         <span>
-          Pay with <span className="font-mono font-semibold text-white">4242 4242 4242 4242</span>, any date, any CVC.
+          Pay with <span className="font-mono font-semibold text-white">4242 4242 4242 4242</span>, any future date, any CVC.
         </span>
       </p>
 
@@ -275,7 +275,7 @@ export default function DemoStorePage() {
             About Jenny
           </h2>
           <p className="mt-3 text-ink-soft">
-            Jenny is a fictional creator made up for this demo. Harbor Kitchen
+            Jenny is a fictional creator, invented for this demo. Harbor Kitchen
             shows how a creator store on Nimbus Labs looks and works.
           </p>
         </section>

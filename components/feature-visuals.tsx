@@ -111,7 +111,7 @@ function DeliveryVisual() {
             A month later, on a new phone
           </p>
           <p className="mt-1 text-[12.5px] leading-snug text-ink-soft">
-            &ldquo;Bought something here? Get it again&rdquo; &mdash; the address they paid with receives everything they bought.
+            &ldquo;Bought something here? Get it again&rdquo; &mdash; the email address they paid with receives everything they bought.
           </p>
         </div>
       </div>
@@ -213,7 +213,7 @@ function MembershipVisual() {
             <Icon name="repeat" size={15} className="text-violet-deep" />
             Charged on your Stripe account
           </p>
-          <p className="mt-1">Daily, weekly, monthly or yearly. The member cancels on Stripe&apos;s own page, in one click.</p>
+          <p className="mt-1">Daily, weekly, monthly or yearly. The member cancels on Stripe&apos;s own page, without writing to you.</p>
         </div>
       </div>
     </Window>
@@ -371,7 +371,7 @@ function InsightsVisual() {
 
 const CAPTIONS: Record<VisualKey, string> = {
   store: "A store page, drawn from the demo store you can open and buy from.",
-  options: "Try it: the price charged is the one picked, read from what the creator saved.",
+  options: "Try it: the buyer is charged the price they picked, as the creator saved it.",
   delivery: "What the buyer sees after paying, and how they get it back later.",
   stripe: "The path of one sale. Nimbus is not on it.",
   course: "A student's view of a course, with a module that opens on a later day.",

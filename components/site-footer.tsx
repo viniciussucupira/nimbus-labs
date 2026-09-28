@@ -130,6 +130,7 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
             <a href={SUPPORT} className="font-medium text-white underline underline-offset-4">
               {SUPPORT_EMAIL}
             </a>
+            .
           </p>
           <Link href="/signin" className="btn btn-light btn-sm mt-6">
             Start your store

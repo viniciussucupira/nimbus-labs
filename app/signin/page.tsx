@@ -161,7 +161,7 @@ export default async function SignInPage({
                 {
                   title: "Put up your first product",
                   body: isConnectConfigured()
-                    ? `Connect your own Stripe when you are ready to take a card. The first ${TRIAL_DAYS} days of the plan are free.`
+                    ? `Connect your own Stripe account when you are ready to take a card. The first ${TRIAL_DAYS} days of the plan are free.`
                     : "Taking a card is not switched on yet; everything else is.",
                 },
               ].map((step, i) => (

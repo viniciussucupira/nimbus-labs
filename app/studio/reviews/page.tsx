@@ -94,7 +94,7 @@ export default async function StudioReviewsPage({ searchParams }: Params) {
         <p className="eyebrow">Reviews</p>
         <h1 className="t-h2 mt-3">What your buyers say</h1>
         <p className="mt-3 max-w-2xl text-ink-soft">
-          Only people who paid can review, from their thanks page, their list of purchases or the one email that asks. Each
+          Only people who paid can review, from their thank-you page, their list of purchases or the one email that asks. Each
           review is checked against its order with Stripe and keeps that order, so you can find the payment behind it. Reviews
           go on your product&apos;s page and store card as they arrive; a refund in full takes a review&apos;s stars out of
           the average.

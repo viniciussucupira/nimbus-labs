@@ -62,7 +62,7 @@ export default async function NewStorePage() {
               <p className="mt-1">
                 {first
                   ? `Making it is free, and so are its page and editor. Taking payments needs its plan: ${priceWords("creator", "month")}, with the first ${TRIAL_DAYS} days free.`
-                  : `Making it is free, and so are its page and editor. Taking payments needs a plan of its own, from ${priceWords("creator", "month")}. The ${TRIAL_DAYS}-day free trial is for an account's first store, so this one is charged from the day you start its plan. Canceling it is one click and touches no other store.`}
+                  : `Making it is free, and so are its page and editor. Taking payments needs a plan of its own, from ${priceWords("creator", "month")}. The ${TRIAL_DAYS}-day free trial is for an account's first store, so this one is charged from the day you start its plan. Canceling it takes two clicks and touches no other store.`}
               </p>
             </div>
           </>

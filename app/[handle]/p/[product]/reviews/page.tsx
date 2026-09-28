@@ -75,7 +75,7 @@ export default async function ReviewsPage({ params, searchParams }: Params) {
             productTitle={product.title}
             moreHref={null}
           />
-          {summary.visible === 0 ? <p className="st-note mt-6 text-sm">No reviews are on this page.</p> : null}
+          {summary.visible === 0 ? <p className="st-note mt-6 text-sm">There are no reviews to show.</p> : null}
         </div>
         {pages > 1 ? (
           <nav aria-label="Pages of reviews" className="mt-8 flex items-center justify-between gap-3 text-sm font-semibold">

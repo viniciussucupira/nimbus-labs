@@ -133,13 +133,14 @@ export default function PrivacyPage() {
             Ad measurement a creator switches on.
           </strong>{" "}
           A creator can add their own Meta, Google, TikTok or Pinterest pixel to
-          their store. When they do, and only once it is allowed, those pages
-          load that platform&apos;s script, which sets its own cookies and tells
+          their store. When they do, and only once it is allowed, that
+          store&apos;s pages load that platform&apos;s script, which sets its own cookies and tells
           the platform about page views, checkouts started, requests for free
           products and purchases with their amount, on the creator&apos;s behalf
           and under that platform&apos;s own privacy policy. Visitors in the
-          European Economic Area, the United Kingdom, Switzerland and Brazil are
-          asked first and nothing loads unless they agree; everywhere else the
+          European Economic Area, the United Kingdom, Switzerland or Brazil,
+          or whose country we cannot tell, are asked first and nothing loads
+          unless they agree; everywhere else the
           pixels load unless the browser sends Global Privacy Control. The
           choice is kept on the visitor&apos;s device for that store, and a link
           at the foot of its pages changes it.
@@ -154,7 +155,7 @@ export default function PrivacyPage() {
           address replies go to, and the creator&apos;s has the buyer&apos;s.
           While they pay, a cookie in the buyer&apos;s browser names the
           checkout they opened, for 32 minutes, so that going back to pick
-          another time lets go of the first one. The buyer and the creator are
+          another time releases the first one. The buyer and the creator are
           each reminded of the booking a day and an hour before, from a queue
           that names the booking and its time, and we keep a mark that each
           reminder was sent for 14 days. If the buyer moves the booking
@@ -179,7 +180,7 @@ export default function PrivacyPage() {
           When someone buys a course, we note the email address they paid with
           and when, so the course opens for them and modules that open over
           time open on the right day. The browser that paid keeps a cookie for
-          a day so the course can open straight away, and any browser let into
+          a day so the course can open right away, and any browser let into
           a course keeps a cookie for 90 days so the student does not have to
           ask again. For each student we keep when they joined, when they last
           opened the course and which lessons they marked done; the creator
@@ -489,8 +490,8 @@ export default function PrivacyPage() {
           Deleting the product deletes its reviews.
           If the creator switches on the email that asks for a review, we put
           each paid order on a list with when it was paid, send its buyer one
-          email on the creator&apos;s behalf, and keep a mark that the order
-          was asked for 120 days. The link in that email, tied to the order and
+          email on the creator&apos;s behalf, and keep a mark that its buyer
+          was asked, for 120 days. The link in that email, tied to the order and
           the address it went to, works for 60 days; its link to stop being
           asked works for 400 days, and pressing it keeps a
           one-way hash of the address for that store for good, so that store
@@ -585,11 +586,11 @@ export default function PrivacyPage() {
           <strong className="text-black">
             What we keep, and how it ends.
           </strong>{" "}
-          For each connection we keep the account&apos;s id, email address
+          For each connection we keep the account&apos;s ID, email address
           and name, when and by whom it was connected, and the access and
           refresh tokens the provider gives us, encrypted at rest; the tokens
           never leave our servers. For each meeting we keep which account made
-          it, its id, link, title and time and, on Google, its guest list,
+          it, its ID, link, title and time and, on Google, its guest list,
           until 60 days after the meeting. We keep a short log of problems with a
           connection for 30 days, and each consent in progress for ten
           minutes. When a creator disconnects from the studio, we give the
@@ -638,7 +639,7 @@ export default function PrivacyPage() {
           continue the conversation if you reply. Our legal basis is our
           legitimate interest in understanding what creators need before we
           build a product. You can object at any time by replying
-          &quot;stop&quot; or by emailing us, and we will not contact you
+          &ldquo;stop&rdquo; or by emailing us, and we will not contact you
           again.
         </p>
       </LegalSection>
@@ -752,9 +753,9 @@ export default function PrivacyPage() {
               Calendar or Zoom account
             </strong>
             , which receive what the section on Google Calendar and Zoom
-            lists: for a one-to-one call, its time and the buyer&apos;s name
-            and email address; for a group call or a session on dates, its time
-            and, on Google only, each buyer&apos;s email address on the guest
+            lists: for a one-to-one call, the product, its time and the
+            buyer&apos;s name and email address; for a group call or a session
+            on dates, the product, its time and, on Google only, each buyer&apos;s email address on the guest
             list; for a live event, only its title, time and page;
           </li>
           <li>
@@ -977,7 +978,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           If you are in the European Economic Area or the United Kingdom, where
-          the General Data Protection Regulation (GDPR) applies, or in another
+          the General Data Protection Regulation (GDPR) or the UK GDPR applies, or in another
           jurisdiction with similar laws, you may exercise these rights by
           emailing{" "}
           <a

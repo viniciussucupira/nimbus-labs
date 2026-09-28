@@ -449,7 +449,7 @@ function PlanCard({
         <p className="mt-3 text-center text-[0.8125rem] leading-relaxed text-ink-mute">
           {`Sends a login link to your email. ${TRIAL_DAYS} days free, then $${
             yearly ? year / 100 : month / 100
-          } ${yearly ? "a year" : "a month"}. Cancel in one click.`}
+          } ${yearly ? "a year" : "a month"}. Cancel in two clicks.`}
         </p>
       </div>
     </div>
@@ -471,7 +471,7 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
           <button type="button" className="seg-item" aria-pressed={yearly} onClick={() => setYearly(true)}>
             Yearly
             <span className="rounded-full bg-mint-soft px-2 py-0.5 text-[0.75rem] font-semibold text-mint-deep">
-              {`save $${yearSaving("creator") / 100}`}
+              {`save $${yearSaving("creator") / 100} or $${yearSaving("pro") / 100}`}
             </span>
           </button>
         </div>
@@ -505,7 +505,7 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
           <Icon name="clock" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
           <span>
             <strong className="font-semibold text-ink">{`Free for the first ${TRIAL_DAYS} days.`}</strong>
-            {" We email you a week before the first charge, and canceling before it means your card is never charged. Cancel in one click from your studio. No email to us, no chat, no second request."}
+            {" We email you a week before the first charge, and canceling before it means your card is never charged. Cancel in two clicks from your studio. No email to us, no chat, no second request."}
           </span>
         </p>
         <p className="flex gap-2 text-ink-soft">

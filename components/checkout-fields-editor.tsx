@@ -37,7 +37,7 @@ function problemText(reason: string, at: number | undefined): string {
     options_many: `Stripe allows up to ${MAX_DROPDOWN_OPTIONS} choices in a list.`,
     option_long: `each choice can be up to ${MAX_DROPDOWN_OPTION_LENGTH} characters.`,
     options_same: "two choices say the same thing. Make each one different.",
-    too_many: `Stripe asks up to ${MAX_CHECKOUT_FIELDS} questions.`,
+    too_many: `Stripe's checkout asks up to ${MAX_CHECKOUT_FIELDS} questions.`,
     free: "something free never reaches the checkout, so it cannot ask questions.",
     store_full: "your store has reached the most it can hold. Shorten a long list of choices, or remove something.",
     signed_out: "your session ended. Log in again.",

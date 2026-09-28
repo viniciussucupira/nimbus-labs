@@ -75,12 +75,12 @@ export default function CreatorsPage() {
             */}
             <div className="rounded-[var(--r-lg)] border border-white/14 bg-white/[0.05] p-6 backdrop-blur-sm sm:p-7">
               <p className="text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-white/70">
-                What happens to your answer
+                Before you answer
               </p>
               <ul className="mt-4 space-y-4 text-[0.9375rem] text-white/80">
                 {[
-                  { icon: "user" as const, text: "It is read by one person — me — and nobody else." },
-                  { icon: "target" as const, text: "It goes on the list that decides what gets built next." },
+                  { icon: "user" as const, text: "One person reads them — me — and nobody else." },
+                  { icon: "target" as const, text: "They go on the list that decides what gets built next." },
                   { icon: "mail" as const, text: "No email back unless you check the box asking for one." },
                 ].map((i) => (
                   <li key={i.text} className="flex gap-3">

@@ -65,8 +65,8 @@ export function TaxEditor({
         Sales tax
       </h2>
       <p className="mt-2 text-ink-soft">
-        Stripe Tax works out sales tax or VAT from each buyer&apos;s address and adds it at checkout, on your own Stripe
-        account. You remain the seller who files and pays it, with Stripe&apos;s reports of what was collected. Stripe
+        Stripe Tax works out sales tax or VAT from each buyer&apos;s address, for the places where you have told Stripe
+        you are registered, and adds it at checkout, on your own Stripe account. You remain the seller who files and pays it, with Stripe&apos;s reports of what was collected. Stripe
         charges for Stripe Tax on your account, at the price on its own pricing page.
       </p>
 

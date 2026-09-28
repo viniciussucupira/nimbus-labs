@@ -683,7 +683,7 @@ function Flows({ flows, products }: { flows: FlowRow[]; products: { id: string; 
     <section className="card mt-8 p-6 sm:p-8" aria-labelledby="flows-title">
       <h2 id="flows-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Sequences</h2>
       <p className="mt-2 text-ink-soft">
-        Emails that go out by themselves: a welcome when someone joins, a few tips the days after they buy. Each person
+        Emails that go out by themselves: a welcome when someone joins, a few tips in the days after they buy. Each person
         goes through a sequence once, and stops the moment they unsubscribe.
       </p>
       {flows.length ? (

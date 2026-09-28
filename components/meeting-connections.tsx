@@ -112,7 +112,7 @@ export function MeetingConnections({ view, pin }: { view: MeetView; pin: string 
                         <span className="whitespace-nowrap">{` · since ${since(connection.connectedAt)}`}</span>
                       </p>
                     ) : (
-                      <p className="text-sm text-ink-soft">{`${info.meeting} links for every booking`}</p>
+                      <p className="text-sm text-ink-soft">{`${info.meeting} links for your bookings`}</p>
                     )}
                   </div>
                 </div>

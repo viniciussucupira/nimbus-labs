@@ -140,7 +140,7 @@ export default function TermsPage() {
           account, or choose Jitsi Meet rooms or your own meeting link for
           your calls and live events, that is your choice. Those services are run by third parties under their own
           terms and privacy policies, your account with them is yours, and we
-          are not responsible for what they do or for their being available.
+          are not responsible for what they do or for their availability.
           Send to an email platform only people who agreed to hear from you;
           the Services send only those who did. A meeting made on your Google
           or Zoom account is yours: it stays there if you disconnect, and
@@ -205,13 +205,13 @@ export default function TermsPage() {
           which we print at the foot of each email; to write subject lines that
           are not misleading; and to follow the laws on commercial email that
           apply to you and to your readers, including the CAN-SPAM Act in the
-          United States. Every email carries an unsubscribe link we honor for
-          good, and you may not ask anyone to do more than press it.
+          United States. Every email carries an unsubscribe link that we honor
+          permanently, and you may not ask anyone to do more than click it.
         </p>
         <p>
           We may investigate suspected violations and take action, including
-          pausing a send, switching off email for a store, or suspension or
-          termination of your account.
+          pausing a send, switching off email for a store, or suspending or
+          terminating your account.
         </p>
       </LegalSection>
 
@@ -235,7 +235,7 @@ export default function TermsPage() {
         </p>
         <p>
           There are two plans. Nimbus Labs, at $29 a month or $300 a year,
-          includes everything to sell. Nimbus Labs Pro, at $99 a month or $948
+          includes everything you need to sell. Nimbus Labs Pro, at $99 a month or $948
           a year, adds email to your list{domains ? " and your store on a domain you own" : ""},
           with up to 50,000 emails a month,
           counted together for one-off emails, sequences, community
@@ -310,8 +310,8 @@ export default function TermsPage() {
           text to train anything, and we do not sell or license them to anyone.
         </p>
         <p>
-          That license lasts as long as you keep the content on Nimbus. Remove a
-          product, or close your store, and it ends for the content you removed.
+          That license lasts as long as you keep the content on Nimbus. When you
+          remove a product or close your store, it ends for the content removed.
         </p>
       </LegalSection>
 
@@ -365,6 +365,13 @@ export default function TermsPage() {
           your right to use the Services ends. Sections that by their nature
           should survive — including intellectual property, disclaimers,
           limitation of liability, and governing law — will survive.
+        </p>
+        <p>
+          Before we suspend or close a store, we email its owner the reason
+          and give them a chance to answer, unless the law, or an urgent risk
+          to buyers, other users or the Services, requires us to act at once;
+          in that case we email the reason as soon as we can. If we discontinue
+          the Services, we give at least 30 days&apos; notice by email.
         </p>
       </LegalSection>
 

@@ -196,8 +196,8 @@ export function LicenceKeyEditor({ product, handle }: { product: Product; handle
       </div>
       <p className="mt-1 text-sm text-ink-soft">
         {pool
-          ? "Each buyer gets the next key from the list you uploaded, shown on their thanks page, in their confirmation email and on their list of purchases. No key is ever given twice."
-          : `Each buyer gets a new key made for them, like ${loaded.sample}, shown on their thanks page, in their confirmation email and on their list of purchases. No key is ever given twice.`}
+          ? "Each buyer gets the next key from the list you uploaded, shown on their thank-you page, in their confirmation email and on their list of purchases. No key is ever given twice."
+          : `Each buyer gets a new key made for them, like ${loaded.sample}, shown on their thank-you page, in their confirmation email and on their list of purchases. No key is ever given twice.`}
       </p>
 
       <dl className="mt-3 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">

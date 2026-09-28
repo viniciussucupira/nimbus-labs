@@ -252,7 +252,7 @@ export function ProductImageEditor({ product, folder }: { product: Product; fold
           <p className="mt-1 text-sm text-ink-soft">
             {image
               ? `${image.width} × ${image.height}, shown on your page and on this product's own page.`
-              : "A cover, a mock-up or a photo. It is shrunk in your browser before it is sent, so any size is fine."}
+              : "A cover, a mock-up or a photo. It is shrunk in your browser before it is sent, so a large one is fine, up to 30 MB."}
           </p>
         </div>
       </div>

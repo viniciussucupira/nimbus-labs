@@ -66,7 +66,7 @@ function describe(change: AccountChange): { subject: string; line: string } {
     case "webhook-added":
       return {
         subject: "A webhook was added to your store",
-        line: `A webhook was added to your store. From now on, the events it chose — which can include buyers' names and email addresses — are sent to ${change.where}.`,
+        line: `A webhook was added to your store. From now on, the events chosen for it — which can include buyers' names and email addresses — are sent to ${change.where}.`,
       };
     case "webhook-removed":
       return {
@@ -118,7 +118,7 @@ function describe(change: AccountChange): { subject: string; line: string } {
     case "phone-added":
       return {
         subject: "A new device gets your store's notifications",
-        line: `Notifications were turned on for a new device (${change.label}). It is told about sales, bookings, reports, affiliate applications and live events, as chosen in your studio.`,
+        line: `Notifications were turned on for a new device (${change.label}). It is told about sales, bookings, community reports, affiliate applications and live events, as chosen in your studio.`,
       };
   }
 }
@@ -146,7 +146,7 @@ export async function noticeCreator(store: Pick<Store, "email" | "handle">, chan
         `${SITE_URL}/signin`,
         "with this email address, choose “Log out of all devices” at the foot of your studio, put the setting back, and reply to this email so we can help.",
         "",
-        "Nimbus Labs sends this notice every time your Stripe account, your store's currency, your domain, your webhooks, your email platform, your Google Calendar or Zoom connection or your team change, and when a new device gets your notifications.",
+        "Nimbus Labs sends this notice every time your Stripe account, your store's currency, your domain, your webhooks, your email platform, your Google Calendar or Zoom connection, or your team changes, and when a new device gets your notifications.",
       ].join("\n"),
     });
   } catch (error) {

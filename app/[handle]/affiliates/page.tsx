@@ -60,8 +60,8 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     body: "An emailed link works once, within 24 hours. Ask for a new one below; it takes a few seconds.",
   },
   signedout: {
-    title: "You left your affiliate page on this browser",
-    body: "Ask for a link below to come back.",
+    title: "You are signed out on this browser",
+    body: "To see your affiliate page again, ask for a new link below.",
   },
 };
 
@@ -296,7 +296,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
               <form action="/api/store/affiliates/signout" method="post" className="mt-8">
                 <input type="hidden" name="handle" value={store.handle} />
                 <button type="submit" className="st-footer-link min-h-[44px] text-sm font-semibold">
-                  Leave this page on this browser
+                  Sign out on this browser
                 </button>
               </form>
             </>

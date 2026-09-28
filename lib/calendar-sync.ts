@@ -160,7 +160,7 @@ async function readFeed(url: string, fallbackTz: string, now: number, fetchOptio
   if (answer.status < 200 || answer.status >= 300) throw new Error(`The calendar answered ${answer.status}. It is tried again in a few minutes.`);
   const text = answer.body.toString("utf8");
   if (!looksLikeCalendar(text)) {
-    throw new Error("That address answers with a web page, not a calendar file. Use the address that ends in .ics (Google calls it the secret address in iCal format).");
+    throw new Error("That address answers with a web page, not a calendar file. Use the calendar's private iCal (.ics) address (Google calls it the secret address in iCal format).");
   }
   const parsed = parseIcs(text, { from: now - 86_400_000, to: now + LOOKAHEAD_DAYS * 86_400_000, fallbackTz });
   return {

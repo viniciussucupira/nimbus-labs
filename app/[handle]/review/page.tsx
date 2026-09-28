@@ -75,7 +75,7 @@ export default async function ReviewPage({ params, searchParams }: Params) {
         ? {
             title: "This link has expired",
             body: canRecover(store)
-              ? "Ask for your purchases again: a new link comes by email in a minute, and you can review from there."
+              ? "Ask for your purchases again: a new link usually arrives by email within a minute, and you can review from there."
               : `Reply to the order confirmation ${store.name} emailed you, and it reaches them.`,
           }
         : opened.state === "error"

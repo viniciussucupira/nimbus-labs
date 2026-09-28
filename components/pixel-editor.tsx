@@ -103,7 +103,7 @@ export function PixelEditor({ pixels }: { pixels: Pixels }) {
                   className="field font-mono"
                 />
                 <span id={`px-${kind}-help`} className={`mt-1 block text-xs ${invalid ? "font-semibold text-danger" : "text-ink-soft"}`}>
-                  {invalid ? `That is not a ${info.label}. It looks like ${info.example}. ${info.where}` : `${info.where} Leave it empty to turn it off.`}
+                  {invalid ? `That is not a ${info.label}. A ${info.label} looks like ${info.example}. ${info.where}` : `${info.where} Leave it empty to turn it off.`}
                 </span>
               </label>
             );

@@ -145,8 +145,8 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
     body: "Coming back here does not mean Stripe is satisfied. Open the connection again and finish what it asks for.",
   },
   forgotten: {
-    title: "Forgotten on this side",
-    body: "Your Stripe account is untouched and still yours. To remove Nimbus from it as well, do that in your own Stripe dashboard.",
+    title: "Disconnected on our side",
+    body: "Your store cannot take payments until a Stripe account is connected again. Your Stripe account itself is untouched and still yours. To remove Nimbus from it as well, do that in your own Stripe dashboard.",
   },
   notstarted: {
     title: "There is no connection yet",
@@ -166,7 +166,7 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
   },
   "country-unsupported": {
     title: "Stripe will not open an account in that country from here",
-    body: "Nothing was charged and nothing was created. This is a limit on our side, not a judgment on you: Stripe does not yet let a platform registered where ours is open accounts in your country. Write to us and we will tell you honestly whether that is changing.",
+    body: "Nothing was charged and nothing was created. This is a limit on our side, not a judgment on you: Stripe does not yet let a platform registered in our country open accounts in yours. Write to us and we will tell you honestly whether that is changing.",
   },
   error: {
     title: "Stripe did not answer as expected",
@@ -202,7 +202,7 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
   },
   pending: {
     title: "Stripe has not confirmed the payment yet",
-    body: "The subscription exists but is not in good standing yet. Open it again in a moment; nothing here was lost.",
+    body: "The subscription exists but is not in good standing yet. Reload this page in a moment; nothing here was lost.",
   },
   cancelled: {
     title: "Nothing was started",
@@ -700,10 +700,10 @@ export default async function StudioPage({
                   : []),
                 // Only once the deployment has the Google or Zoom app's keys (lib/meet-providers.ts).
                 ...(may("settings") && meetOn && (meet?.providers ?? offeredProviders(store)).length > 0
-                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${(meet?.providers ?? offeredProviders(store)).map((p) => MEET_NAMES[p]).join(" or ")} links, made for every booking and live event.`, icon: "video" as const }]
+                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${(meet?.providers ?? offeredProviders(store)).map((p) => MEET_NAMES[p]).join(" or ")} links, made for your bookings and live events.`, icon: "video" as const }]
                   : []),
                 // Everyone on the store, for their own devices (lib/phone-alerts.ts).
-                { href: studioPath(store, "", "phone"), title: "Phone notifications", text: "A buzz for sales, bookings, reports, affiliate applications and live events, on your own devices.", icon: "phone" as const },
+                { href: studioPath(store, "", "phone"), title: "Phone notifications", text: "A buzz for sales, bookings, community reports, affiliate applications and live events, on your own devices.", icon: "phone" as const },
                 ...(PRO_ON_SALE && may("draft")
                   ? [{ href: studioPath(store, "", "email"), title: "Email", text: "One-off emails and sequences to your list.", icon: "mail" as const, tag: "Pro" }]
                   : []),
@@ -898,7 +898,7 @@ export default async function StudioPage({
                               ) : null}
                               {room ? (
                                 <a href={room} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4">
-                                  {roomLabel(room) === "The link to join" ? "Join" : roomLabel(room)}
+                                  {roomLabel(room) === "Join the call" ? "Join" : roomLabel(room)}
                                 </a>
                               ) : null}
                             </span>
@@ -1015,8 +1015,8 @@ export default async function StudioPage({
                   </form>
                 </div>
                 <p className="mt-4 text-sm text-ink-soft">
-                  A CSV file, which Mailchimp, Kit, beehiiv and every other email
-                  tool imports. The ones who agreed checked a box that starts
+                  A CSV file, which Mailchimp, Kit, beehiiv and most other email
+                  tools import. The ones who agreed checked a box that starts
                   empty. The rest asked for one thing and said no more — writing
                   to them about something else is what spam laws, in Europe
                   especially, are about, so the first file is the one for your
@@ -1208,7 +1208,7 @@ export default async function StudioPage({
                         type="submit"
                         className="btn btn-ghost"
                       >
-                        Forget it here
+                        Disconnect it here
                       </button>
                     </form>
                   </div>
@@ -1317,7 +1317,7 @@ export default async function StudioPage({
                   <>
                     <p className="mt-5 notice notice-success font-semibold">
                       {trialing
-                        ? `You are inside the ${TRIAL_DAYS}-day trial. No card has been charged yet. After it: ${billedNow}${endsOn ? `, first charged on ${endsOn}` : ""}.`
+                        ? `You are in the ${TRIAL_DAYS}-day trial. No card has been charged yet. After it: ${billedNow}${endsOn ? `, first charged on ${endsOn}` : ""}.`
                         : `Subscribed at ${billedNow}.${endsOn ? ` Next charge on ${endsOn}.` : ""}`}
                     </p>
                     {changePending ? (
@@ -1469,13 +1469,13 @@ export default async function StudioPage({
                       </p>
                     ) : extraFirstPlan ? (
                       <p className="mt-3 text-sm text-ink-soft">
-                        {`Each store is a subscription of its own. The ${TRIAL_DAYS}-day free trial is for an account's first store, so this one's first payment is taken at checkout, today. Canceling is one click on this page, touches no other store, and nothing more is charged after the period you paid for.`}
+                        {`Each store is a subscription of its own. The ${TRIAL_DAYS}-day free trial is for an account's first store, so this one's first payment is taken at checkout, today. Canceling takes two clicks on this page, touches no other store, and nothing more is charged after the period you paid for.`}
                       </p>
                     ) : (
                       <p className="mt-3 text-sm text-ink-soft">
                         This store has had its free trial, so this time the first
-                        payment is taken at checkout, today. Canceling is still
-                        one click on this page, and nothing more is charged after
+                        payment is taken at checkout, today. Canceling still takes
+                        two clicks on this page, and nothing more is charged after
                         the period you paid for.
                       </p>
                     )}
@@ -1583,7 +1583,7 @@ export default async function StudioPage({
                           ) : null}
                           <p className="mt-1 text-xs text-ink-soft">
                             {sale.isCall
-                              ? "A booked call: the time is in both your calendars."
+                              ? "A booked call: you were both emailed its time."
                               : sale.stillDownloadable
                                 ? "Their download link still works."
                                 : "Their download link has expired — send them the file yourself if they ask."}{" "}
@@ -1681,7 +1681,7 @@ export default async function StudioPage({
                   </summary>
                   <p className="mt-3 text-sm text-ink-soft">
                     {productCount(store) > 0 || paid || store.domain
-                      ? "A store can be deleted while it has no products, no plan running and no domain of its own, so nothing a buyer paid for is lost with it. Remove those first."
+                      ? "A store can be deleted only while it has no products, no plan running and no domain of its own, so nothing a buyer paid for is lost with it. Remove those first."
                       : `Its address, nimbuslabsai.com/@${store.handle}, answers nothing for 30 days, and then anyone may take it. Your other stores are not touched. This cannot be undone.`}
                   </p>
                   {productCount(store) === 0 && !paid && !store.domain ? (
@@ -1722,8 +1722,7 @@ export default async function StudioPage({
             What is not switched on here yet
           </p>
           <p className="mt-2 text-ink-soft">
-            Being honest about it, these pieces are not switched on for your
-            store yet:
+            These pieces are not switched on for your store yet:
           </p>
           <ol className="mt-5 space-y-3">
             {NEXT.map((item, index) => (

@@ -202,8 +202,8 @@ export function FunnelEditor({
           </h2>
           <p className="mt-1 text-sm text-ink-soft">
             {initial
-              ? `${initial.steps.length === 1 ? "One offer" : `${initial.steps.length} offers`} saved. Buyers meet them on the thanks page, one at a time.`
-              : "No offers yet: buyers see their thanks page and nothing else."}
+              ? `${initial.steps.length === 1 ? "One offer" : `${initial.steps.length} offers`} saved. Buyers meet them on the thank-you page, one at a time.`
+              : "No offers yet: buyers see their thank-you page and nothing else."}
           </p>
         </div>
         <span className={`tag ${initial ? "tag-live" : ""}`}>{initial ? "On" : "Off"}</span>
@@ -398,7 +398,7 @@ export function FunnelEditor({
         Only the browser that paid sees these offers, for one hour after paying, and each is answered once. An offer of
         something the buyer already has in this order is skipped as if they said no. Nothing more is offered after a card
         turns one down, while your store charges sales tax, or when the buyer chose a payment plan. Each offer is its own
-        charge on your Stripe account and is delivered on the same thanks page.
+        charge on your Stripe account and is delivered on the same thank-you page.
       </p>
 
       {error ? <p className="notice notice-error mt-4" role="alert">{error}</p> : null}
@@ -415,7 +415,7 @@ export function FunnelEditor({
         {initial && !dirty ? (
           confirmRemove ? (
             <span className="flex flex-wrap items-center gap-2 text-sm text-ink-soft">
-              {`Remove all ${initial.steps.length === 1 ? "of it" : `${initial.steps.length} offers`}?`}
+              {`Remove ${initial.steps.length === 1 ? "the offer" : `all ${initial.steps.length} offers`}?`}
               <button type="button" className="btn btn-danger btn-sm" disabled={busy} onClick={() => send(null, "Funnel removed.")}>
                 Yes, remove
               </button>
@@ -464,7 +464,7 @@ function Branch({
         then show
       </span>
       <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className="field">
-        <option value="">Nothing more: the thanks page</option>
+        <option value="">Nothing more: the thank-you page</option>
         {later.map((s) => (
           <option key={s.id} value={s.id}>{`Offer ${numberOf(s.id)}`}</option>
         ))}
@@ -515,7 +515,7 @@ function FlowNode({
                 >
                   {kind === "yes" ? "Yes" : "No thanks"}
                 </span>
-                {next ? null : <span className="text-ink-mute">then the thanks page</span>}
+                {next ? null : <span className="text-ink-mute">then the thank-you page</span>}
               </p>
               {next ? <FlowNode steps={steps} id={next} product={product} numberOf={numberOf} depth={depth + 1} /> : null}
             </div>

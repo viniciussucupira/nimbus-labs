@@ -27,16 +27,16 @@ export default function ZoomGuidePage() {
         without copying and pasting links.
       </p>
       <p>
-        Connecting Zoom opens to every store once Zoom approves our Marketplace
-        listing. Until then, your studio does not show the Zoom option.
+        Connecting Zoom becomes available to every store once Zoom approves our
+        Marketplace listing. Until then, your studio does not show the Zoom option.
       </p>
 
       <LegalSection title="Adding the app" id="add">
         <p>You need a Nimbus Labs store and a Zoom account. Only the store&apos;s owner or an Admin can connect it.</p>
         <ol className="list-decimal space-y-2 pl-6">
           <li>Sign in to your studio and open <strong className="text-black">Video calls</strong>.</li>
-          <li>Under Zoom, press <strong className="text-black">Connect Zoom</strong>.</li>
-          <li>Zoom asks you to sign in, if you are not signed in already, and shows what Nimbus Labs asks for. Press <strong className="text-black">Allow</strong>.</li>
+          <li>Under Zoom, click <strong className="text-black">Connect Zoom</strong>.</li>
+          <li>Zoom asks you to sign in if you are not signed in already, then shows the permissions Nimbus Labs asks for. Click <strong className="text-black">Allow</strong>.</li>
           <li>You come back to Video calls, where Zoom shows as <strong className="text-black">Connected</strong>, with the account&apos;s address. The store&apos;s owner is emailed each time an account is connected or disconnected.</li>
         </ol>
       </LegalSection>
@@ -58,12 +58,12 @@ export default function ZoomGuidePage() {
             of a one-to-one call, or when you cancel an event, its meeting is deleted.
           </li>
           <li>
-            <strong className="text-black">Starting.</strong> Press <strong className="text-black">Start in Zoom</strong> next to a call under Upcoming calls in your studio, or next to a live event in your community&apos;s studio, and Nimbus Labs
+            <strong className="text-black">Starting.</strong> Click <strong className="text-black">Start in Zoom</strong> next to a call under Upcoming calls in your studio, or next to a live event in the community section of your studio, and Nimbus Labs
             asks Zoom for a fresh start link, so you join as the host.
           </li>
           <li>
             <strong className="text-black">If a meeting cannot be made.</strong> The booking gets your own meeting link, or a private
-            video room when you have none, so nobody waits, and we try again over the next hours.
+            video room when you have none, so nobody waits, and we keep trying for about 16 hours.
           </li>
         </ul>
         <p>
@@ -84,14 +84,14 @@ export default function ZoomGuidePage() {
       <LegalSection title="Removing the app" id="remove">
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            <strong className="text-black">From your studio.</strong> Open Video calls and press{" "}
-            <strong className="text-black">Disconnect</strong> under Zoom. We hand the token back to Zoom, which ends access, and
+            <strong className="text-black">From your studio.</strong> Open Video calls and click{" "}
+            <strong className="text-black">Disconnect</strong> under Zoom. We revoke our token with Zoom, which ends our access, and
             delete what we kept about the connection.
           </li>
           <li>
             <strong className="text-black">From Zoom.</strong> Sign in at{" "}
             <a href="https://marketplace.zoom.us/" className={link} rel="noopener noreferrer" target="_blank">marketplace.zoom.us</a>, open{" "}
-            <strong className="text-black">Manage</strong>, then <strong className="text-black">Added Apps</strong>, and press{" "}
+            <strong className="text-black">Manage</strong>, then <strong className="text-black">Added Apps</strong>, and click{" "}
             <strong className="text-black">Remove</strong> next to Nimbus Labs. Zoom tells us at once; we forget the connection and
             its tokens, and the store&apos;s owner is emailed.
           </li>

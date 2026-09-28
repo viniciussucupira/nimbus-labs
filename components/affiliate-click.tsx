@@ -91,13 +91,13 @@ export function AffiliateClick({
 
   return (
     <section
-      aria-label="Partner link"
+      aria-label="Affiliate link"
       className="st-card fixed inset-x-3 top-3 z-50 mx-auto max-w-xl p-5 text-left sm:inset-x-6 sm:top-6"
       style={{ boxShadow: "0 18px 50px -18px rgba(0,0,0,.45)" }}
     >
-      <p className="font-bold">{`A partner of ${storeName} sent you here`}</p>
+      <p className="font-bold">{`An affiliate of ${storeName} sent you here`}</p>
       <p className="st-muted mt-1 text-sm leading-relaxed">
-        {`With your permission, this store keeps a cookie with that partner's code and the time you arrived, so they are credited if you buy within ${days} ${days === 1 ? "day" : "days"}. It holds nothing else about you, and the price is the same either way.`}{" "}
+        {`With your permission, this store keeps a cookie with that affiliate's code and the time you arrived, so they are credited if you buy within ${days} ${days === 1 ? "day" : "days"}. It holds nothing else about you, and the price is the same either way.`}{" "}
         <Link href="/privacy#affiliates" className="st-footer-link font-semibold">
           More about this
         </Link>

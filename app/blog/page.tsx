@@ -10,6 +10,7 @@ import {
   formatPostDate,
   postsSorted,
 } from "@/lib/blog";
+import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 
 export const metadata: Metadata = {
   title: "The Nimbus Journal — selling digital products without the guesswork",
@@ -102,10 +103,11 @@ export default function BlogIndexPage() {
         <section className="surface-sand">
           <div className="container-page grid gap-8 py-16 sm:py-20 lg:grid-cols-[1.4fr_1fr] lg:items-center">
             <div>
-              <h2 className="t-h2 balance">Reading about it is useful. Having one is better.</h2>
+              <h2 className="t-h2 balance">Reading about it is useful. Having a store is better.</h2>
               <p className="mt-4 max-w-xl text-ink-soft">
-                The store address, the page and the editor cost nothing. Your buyer pays into your own Stripe account, and
-                we take 0% of the sale.
+                The store address, the page and the editor cost nothing. Selling takes the {`$${PRICE_CENTS / 100}`} plan,
+                free for the first {TRIAL_DAYS} days. Your buyer pays into your own Stripe account, and we take 0% of the
+                sale.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-4 lg:justify-end">

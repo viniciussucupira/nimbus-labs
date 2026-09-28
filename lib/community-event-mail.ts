@@ -263,7 +263,7 @@ export function eventMailWords(
       `A reminder: "${event.title}", a live event in ${config.name}, starts ${soon}.`,
       when,
       `Join from the event page. The way in shows there ${JOIN_EARLY_MINUTES} minutes before the start:\n${page}`,
-      "Cannot make it anymore? Cancel your RSVP on the same page.",
+      "If you can no longer make it, cancel your RSVP on the same page.",
     ].join("\n\n"),
     why: `You are getting this because you RSVP'd to this event and asked to be emailed by ${config.name}.`,
   };

@@ -75,7 +75,7 @@ export function ReviewAskEditor({ days, canEmail }: { days: number; canEmail: bo
       <p className="mt-2 text-sm text-ink-soft">
         {canEmail
           ? "One email per order, from your name, only for orders paid while this is on and not refunded, and never to someone who already reviewed it, left your list or pressed stop. It counts in your month's emails and carries your postal address and a one-click way to stop. It asks for an honest review and offers nothing in return."
-          : "Review requests are email, so they need Pro with your email set up: the sender name and postal address every email carries. Buyers can still review from their thanks page and their list of purchases on every plan."}
+          : "Review requests are email, so they need Pro with your email set up: the sender name and postal address every email carries. Buyers can still review from their thank-you page and their list of purchases on every plan."}
       </p>
       {error ? (
         <p className="notice notice-error mt-3" role="alert">

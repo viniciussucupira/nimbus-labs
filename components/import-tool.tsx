@@ -425,7 +425,7 @@ export function ImportTool({
               {parsed ? `${fileName}: ${parsed.rows.length.toLocaleString("en-US")} rows` : "Choose a CSV file"}
             </label>
             <p className="mt-1 text-xs text-ink-soft">
-              {`Up to ${LIMITS[kind].toLocaleString("en-US")} rows. Commas, semicolons or tabs; UTF-8, as every platform exports it.`}
+              {`Up to ${LIMITS[kind].toLocaleString("en-US")} rows. Commas, semicolons or tabs; UTF-8, as most platforms export it.`}
             </p>
             <input
               id={`file-${kind}`}
@@ -525,9 +525,9 @@ export function ImportTool({
                     </p>
                   ) : null}
                   <label className="block" htmlFor="import-tags">
-                    <span className="field-label">Label everyone in this file (optional)</span>
+                    <span className="field-label">Tag everyone in this file (optional)</span>
                     <input id="import-tags" className="field" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="from-stan, 2026" maxLength={200} />
-                    <span className="field-hint">Separate labels with commas. They go with each contact, next to any labels the file has.</span>
+                    <span className="field-hint">Separate tags with commas. They go with each contact, next to any tags the file has.</span>
                   </label>
                 </div>
               ) : kind === "products" ? (

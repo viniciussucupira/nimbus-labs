@@ -56,7 +56,7 @@ export default async function UnsubscribePage({
         ) : (
           <>
             <h1 className="t-h3">{`Stop emails from ${who}?`}</h1>
-            <p className="mt-3 text-ink-soft">{`For ${found.email}. One press, and it is kept for good.`}</p>
+            <p className="mt-3 text-ink-soft">{`For ${found.email}. One press stops them for good.`}</p>
             <form action={`/api/mail/unsubscribe?t=${token}`} method="post" className="mt-6">
               <input type="hidden" name="from" value="page" />
               <button type="submit" className="btn btn-primary btn-block">Unsubscribe</button>
@@ -133,7 +133,7 @@ async function StopReminders({ token, done }: { token: string; done: boolean }) 
         ) : (
           <>
             <h1 className="t-h3">{`Stop checkout reminders from ${who}?`}</h1>
-            <p className="mt-3 text-ink-soft">{`For ${found.email}. One press, and it is kept for good.`}</p>
+            <p className="mt-3 text-ink-soft">{`For ${found.email}. One press stops them for good.`}</p>
             <form action={`/api/mail/unsubscribe?r=${token}`} method="post" className="mt-6">
               <input type="hidden" name="from" value="page" />
               <button type="submit" className="btn btn-primary btn-block">Stop reminders</button>
@@ -170,7 +170,7 @@ async function StopReviewRequests({ token, done }: { token: string; done: boolea
         ) : (
           <>
             <h1 className="t-h3">{`Stop review requests from ${who}?`}</h1>
-            <p className="mt-3 text-ink-soft">{`For ${found.email}. One press, and it is kept for good. A review you already wrote stays as it is.`}</p>
+            <p className="mt-3 text-ink-soft">{`For ${found.email}. One press stops them for good. A review you already wrote stays as it is.`}</p>
             <form action={`/api/mail/unsubscribe?v=${token}`} method="post" className="mt-6">
               <input type="hidden" name="from" value="page" />
               <button type="submit" className="btn btn-primary btn-block">Stop review requests</button>

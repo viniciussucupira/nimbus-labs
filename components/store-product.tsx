@@ -222,7 +222,7 @@ export function BuyBox({
       Sellable store, but this one has nothing attached to hand over. Better to
       say so than to take the money and work out the delivery afterwards.
     */
-    return selling ? <p className="st-muted mt-4 text-sm">Not ready to buy yet.</p> : null;
+    return selling ? <p className="st-muted mt-4 text-sm">Not on sale yet.</p> : null;
   }
 
   return (
@@ -342,7 +342,7 @@ export function BuyBox({
       ) : null}
       {trial && product.recurring ? (
         <p className="st-muted mt-2 text-center text-xs">
-          {`Your card is asked for now and nothing is charged for ${trial} days. Then ${membershipPrice(
+          {`You enter your card now, and nothing is charged for ${trial} days. Then ${membershipPrice(
             { ...product.recurring, trialDays: 0 },
             `${formatMoney(fromPriceCents(product), store.currency)}`,
           )}${product.recurring.payments > 0 ? "" : " until you cancel"}. Cancel before the trial ends and you pay nothing.`}
@@ -381,7 +381,7 @@ export function pageAction(
   }
   if (remaining === 0) return { action: { kind: "none", text: "Sold out." }, label: "" };
   if (!canSellProduct(store, product)) {
-    return { action: { kind: "none", text: selling ? "Not ready to buy yet." : "This store cannot take payments yet." }, label: "" };
+    return { action: { kind: "none", text: selling ? "Not on sale yet." : "This store cannot take payments yet." }, label: "" };
   }
   const trial = product.recurring && product.recurring.trialDays > 0 ? product.recurring.trialDays : 0;
   if (sellableOptions(product).length > 0 || activePlan(product) || activeBump(related, product)) {

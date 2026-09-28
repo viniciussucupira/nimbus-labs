@@ -95,9 +95,9 @@ export default async function StudioMeetingsPage({ searchParams }: Params) {
       <StudioStorePin sid={store.sid}>
         <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
           <p className="eyebrow">Video calls</p>
-          <h1 className="t-h2 mt-3">{`${names.join(" and ")} links, made for every booking`}</h1>
+          <h1 className="t-h2 mt-3">{`${names.join(" and ")} links, made for your bookings`}</h1>
           <p className="mt-3 max-w-2xl text-ink-soft">
-            {`Connect your own ${offered.map((p) => ACCOUNT_NAMES[p]).join(" or ")} account, and each booking of a call gets its own meeting on it, with the link in the buyer's confirmation, reminders and calendar file. Nothing to copy and paste.`}
+            {`Connect your own ${offered.map((p) => ACCOUNT_NAMES[p]).join(" or ")} account, and each call you set to use it gets a meeting on that account for every booking, with the link in the buyer's confirmation, reminders and calendar file. Nothing to copy and paste.`}
           </p>
 
           {said?.tone === "ok" ? <ToastOnLoad message={said.text} param="meet" /> : null}

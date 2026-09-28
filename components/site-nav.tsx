@@ -65,7 +65,7 @@ export const MENUS: Menu[] = [
   {
     id: "product",
     label: "Product",
-    blurb: "Everything a link-in-bio store needs, each with its own page and its honest limits.",
+    blurb: "The parts of a link-in-bio store, each with its own page and its honest limits.",
     feature: {
       title: "The live demo store",
       body: "Pick a plan, pay with a Stripe test card, get the file. The same path your buyer takes.",

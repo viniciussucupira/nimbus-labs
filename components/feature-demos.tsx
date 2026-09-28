@@ -78,7 +78,7 @@ export function OptionsDemo() {
           Buy the one you picked
         </button>
         <p id={`${name}-note`} className="mt-3 text-center text-[12px] text-ink-soft">
-          A drawing to try: nothing is charged here.
+          A preview to try: nothing is charged here.
         </p>
       </form>
     </Frame>
@@ -147,7 +147,7 @@ export function BumpDemo() {
           {label}
         </button>
         <p className="mt-3 text-center text-[12px] text-ink-soft">
-          A drawing to try: nothing is charged here. The box is never checked for the buyer.
+          A preview to try: nothing is charged here. The box is never checked for the buyer.
         </p>
       </form>
     </Frame>

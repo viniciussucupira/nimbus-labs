@@ -180,7 +180,7 @@ const OFFER_TEXT = {
     save: "Save the offer",
     saved: "Checkout offer saved.",
     stopped: "Checkout offer stopped.",
-    note: "Buyers see a box above the buy button and check it themselves; it is never checked for them. Both are paid in one checkout and both are delivered on the thanks page.",
+    note: "Buyers see a box above the buy button and check it themselves; it is never checked for them. Both are paid in one checkout and both are delivered on the thank-you page.",
   },
 } as const;
 

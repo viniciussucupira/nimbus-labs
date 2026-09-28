@@ -168,7 +168,7 @@ export function roomLabel(room: string | null): string {
     case "zoom":
       return "Join on Zoom";
     default:
-      return "The link to join";
+      return "Join the call";
   }
 }
 
@@ -182,4 +182,4 @@ export async function roomOf(callsId: string | null, ask: RoomAsk): Promise<stri
  * is surprised at the door.
  */
 export const VIDEO_ROOM_NOTE =
-  "This is a private Jitsi Meet room (a free video service run by a third party). Nobody needs an account to join, but the first person to open it may be asked to sign in to Jitsi (with a Google account, for example) to start the meeting; everyone else waits until then.";
+  "This is a private Jitsi Meet room (a free video service run by a third party). The first person to open it may be asked to sign in to Jitsi (with a Google account, for example) to start the meeting; everyone else joins without an account once it has started.";
