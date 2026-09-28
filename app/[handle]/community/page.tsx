@@ -147,6 +147,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
           {canWrite && !before ? (
             <div className="mb-6">
               <CommunityComposer
+                key={space?.id ?? "all"}
                 handle={store.handle}
                 folder={communityFolder(id)}
                 spaces={config.spaces.map((s) => ({ id: s.id, name: s.name, creatorOnly: s.creatorOnly }))}

@@ -65,6 +65,13 @@ type SessionLike = {
 const INVOICE_ID = /^in_[A-Za-z0-9]{8,255}$/;
 const INTENT_ID = /^pi_[A-Za-z0-9]{8,255}$/;
 
+const idOf = (value: unknown): string =>
+  typeof value === "string"
+    ? value
+    : value && typeof value === "object" && typeof (value as { id?: unknown }).id === "string"
+      ? ((value as { id: string }).id)
+      : "";
+
 /**
  * Whether a payment plan's purchase was given back in full: a plan runs as a
  * subscription, so its checkout carries no payment of its own, and the one
@@ -78,20 +85,26 @@ async function planRefundedInFull(account: string, session: SessionLike): Promis
     typeof session.invoice === "string" ? session.invoice : (session.invoice as { id?: unknown } | null)?.id;
   if (typeof invoice !== "string" || !INVOICE_ID.test(invoice)) return false;
   try {
-    const read = (await onAccount(
-      "GET",
-      account,
-      `/invoices/${encodeURIComponent(invoice)}?expand[]=payments`,
-    )) as { payments?: { data?: unknown } };
-    const rows = Array.isArray(read.payments?.data) ? (read.payments!.data as { payment?: { payment_intent?: unknown } }[]) : [];
-    const intents = rows.map((row) => row.payment?.payment_intent).filter(Boolean);
+    // Whichever way this account's API version names it: on the invoice
+    // itself (older versions), or as the invoice's payments (newer ones).
+    const read = await onAccount("GET", account, `/invoices/${encodeURIComponent(invoice)}`);
+    const intents: string[] = [];
+    const direct = idOf(read.payment_intent);
+    if (INTENT_ID.test(direct)) intents.push(direct);
+    else {
+      const listed = await onAccount("GET", account, `/invoice_payments?${new URLSearchParams({ invoice, limit: "10" })}`);
+      for (const row of Array.isArray(listed.data) ? (listed.data as Record<string, unknown>[]) : []) {
+        if (row.status !== "paid") continue;
+        const payment = row.payment && typeof row.payment === "object" ? (row.payment as Record<string, unknown>) : null;
+        const pi = idOf(payment?.payment_intent);
+        if (INTENT_ID.test(pi)) intents.push(pi);
+      }
+    }
     if (!intents.length) return false;
     const checked = await Promise.all(
-      intents.map(async (intent) => {
-        if (typeof intent === "object") return refundedInFull(intent);
-        if (typeof intent !== "string" || !INTENT_ID.test(intent)) return false;
-        return refundedInFull(await onAccount("GET", account, `/payment_intents/${encodeURIComponent(intent)}?expand[]=latest_charge`));
-      }),
+      intents.map(async (intent) =>
+        refundedInFull(await onAccount("GET", account, `/payment_intents/${encodeURIComponent(intent)}?expand[]=latest_charge`)),
+      ),
     );
     return checked.every(Boolean);
   } catch (error) {

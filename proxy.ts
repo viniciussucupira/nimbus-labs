@@ -26,6 +26,8 @@ import { isPlatformHost, requestHost } from "@/lib/request-origin";
  * read (guardApi, below).
  */
 const DOMAIN_HEADER = "x-nimbus-domain";
+/** The path and query a visitor asked for on a creator's domain, before it was rewritten. */
+const PATH_HEADER = "x-nimbus-path";
 const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|community|p|affiliates|renew|certificate|review)(\/|$)/;
 
 /**
@@ -139,6 +141,7 @@ export async function proxy(request: NextRequest) {
     // The header is ours to set; one sent by a visitor is dropped.
     const headers = new Headers(request.headers);
     headers.delete(DOMAIN_HEADER);
+    headers.delete(PATH_HEADER);
     const policy = withPolicy(request.nextUrl.pathname, headers);
     return answer(withAffiliateClick(request, store, NextResponse.next({ request: { headers } })), policy);
   }
@@ -149,6 +152,7 @@ export async function proxy(request: NextRequest) {
 
   const headers = new Headers(request.headers);
   headers.set(DOMAIN_HEADER, host);
+  headers.set(PATH_HEADER, `${pathname}${search}`.slice(0, 2_000));
   const rewrite = (path: string) => {
     const url = request.nextUrl.clone();
     url.pathname = path;

@@ -32,6 +32,7 @@
  * it `email` for the first kind and works the same for the second.
  */
 import { cache } from "react";
+import { pointDomain } from "@/lib/domains";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { type Held, LockBusyError, holdLock, releaseLock, setIfHeld, takeLock } from "@/lib/redis-lock";
 import { type ProductFile } from "@/lib/product-file";
@@ -1305,7 +1306,7 @@ export async function renameHandle(
       throw error;
     }
     // The store's own domain follows it to the new address.
-    if (next.domain) await redisPipeline([["SET", `nl:domain:${next.domain.name}`, handle]]);
+    if (next.domain) await pointDomain(next.domain.name, [store.handle, ...store.previousHandles], handle);
     return { ok: true, store: next };
   });
   return result ?? { ok: false, reason: "none" };

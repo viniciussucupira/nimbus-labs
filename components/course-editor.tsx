@@ -26,8 +26,10 @@ import {
 } from "@/lib/product-file";
 import { LINK_PROBLEMS, type LinkProblem } from "@/lib/product-link";
 import { useStudioHref } from "@/components/studio-store-pin";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   too_many: "That is as many as a course holds: 30 modules and 200 lessons.",
   not_empty: "Take its lessons out first, one by one, so no work is lost by accident.",
   drip: `Type a number of days from 0 to ${MAX_DRIP_DAYS}.`,

@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
 import { PIXEL_INFO, PIXEL_KINDS, type PixelKind, type Pixels, hasPixels, readPixels } from "@/lib/pixels";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",

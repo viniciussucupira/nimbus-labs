@@ -29,7 +29,6 @@ import {
   HANDLE_PATTERN,
   SUBSCRIPTION_PATTERN,
   type Store,
-  saleHandles,
 } from "@/lib/store";
 
 /**
@@ -73,7 +72,7 @@ export class BillingError extends Error {
 }
 
 async function onPlatform(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "DELETE",
   path: string,
   body?: URLSearchParams,
 ): Promise<Record<string, unknown>> {
@@ -403,6 +402,27 @@ export type SubscriptionState =
  */
 const GOOD = new Set(["active", "trialing", "past_due"]);
 
+/** When the current period began: on the item in newer versions, on the subscription in older ones. */
+function periodStart(subscription: Record<string, unknown>): number {
+  const items = subscription.items as { data?: { current_period_start?: unknown }[] } | undefined;
+  const fromItem = items?.data?.[0]?.current_period_start;
+  if (typeof fromItem === "number") return fromItem;
+  return typeof subscription.current_period_start === "number" ? subscription.current_period_start : 0;
+}
+
+/**
+ * Whether a subscription whose last payment failed is still in its grace
+ * while Stripe retries the card. Not when the payment that failed is the
+ * first one after a free trial: nothing was ever paid, so the trial is
+ * simply over. How long the retries last is set in our Stripe account
+ * (Billing, retries), which ends the subscription when they run out.
+ */
+function pastDueInGrace(subscription: Record<string, unknown>): boolean {
+  const start = periodStart(subscription);
+  const trialEnd = typeof subscription.trial_end === "number" ? subscription.trial_end : 0;
+  return !(trialEnd && start && Math.abs(start - trialEnd) < 24 * 60 * 60);
+}
+
 /**
  * When the period already paid for, or the trial, runs out.
  *
@@ -450,6 +470,7 @@ export function planOf(subscription: Record<string, unknown>): { tier: Tier; cyc
 export function stateOf(subscription: Record<string, unknown>): SubscriptionState {
   const status = typeof subscription.status === "string" ? subscription.status : "";
   if (!GOOD.has(status)) return { state: "inactive", reason: status || "unknown" };
+  if (status === "past_due" && !pastDueInGrace(subscription)) return { state: "inactive", reason: "past_due" };
 
   const trialing = status === "trialing";
   // Newer versions also fill `cancel_at` when a subscription is set to stop at
@@ -652,10 +673,16 @@ export function customerOf(subscription: Record<string, unknown>): { id: string;
  */
 export function ownedBy(store: Store, subscription: Record<string, unknown>): boolean {
   const meta = subscription.metadata as Record<string, string> | null | undefined;
-  const handles = saleHandles(store);
-  if (!handles.has(meta?.store ?? "")) return false;
+  const named = meta?.store ?? "";
   const customer = customerOf(subscription);
-  if (store.stripeCustomerId && customer.id === store.stripeCustomerId) return true;
+  const sameCustomer = Boolean(store.stripeCustomerId) && customer.id === store.stripeCustomerId;
+  // An address this store let go of may be another store's now: a
+  // subscription under it is this store's only when it pays as this store's
+  // own customer, never by the email address alone.
+  if (store.releasedHandles.includes(named)) return sameCustomer;
+  const handles = new Set([store.handle, ...store.previousHandles]);
+  if (!handles.has(named)) return false;
+  if (sameCustomer) return true;
   return customer.email !== "" && normaliseEmail(customer.email) === normaliseEmail(store.email);
 }
 
@@ -698,12 +725,13 @@ const SEARCH_LIMIT = 100;
  */
 export async function findStoreSubscriptions(
   store: Store,
-): Promise<{ live: StartedSubscription | null; customerId: string | null }> {
-  // Stripe takes at most ten clauses in one query.
-  const handles = [...saleHandles(store)]
+): Promise<{ live: StartedSubscription | null; customerId: string | null; lapsed: string[] }> {
+  // Stripe takes at most ten clauses in one query. An address the store let
+  // go of is looked under too, and kept only for its own customer (ownedBy).
+  const handles = [...new Set([store.handle, ...store.previousHandles, ...store.releasedHandles])]
     .filter((handle) => HANDLE_PATTERN.test(handle))
     .slice(0, 10);
-  if (handles.length === 0) return { live: null, customerId: null };
+  if (handles.length === 0) return { live: null, customerId: null, lapsed: [] };
   const query = new URLSearchParams({
     query: handles.map((handle) => `metadata['store']:'${handle}'`).join(" OR "),
     limit: String(SEARCH_LIMIT),
@@ -720,7 +748,36 @@ export async function findStoreSubscriptions(
     if (live) break;
   }
   const last = rows.map((subscription) => customerOf(subscription).id).find((id) => CUSTOMER_PATTERN.test(id));
-  return { live, customerId: last ?? null };
+  // Not paying, but Stripe could still charge them: a card being retried, or
+  // a first payment not finished. Ended before a new one is started.
+  // A first payment still going through (a bank debit) is left alone for an hour.
+  const hourAgo = Date.now() / 1000 - 3600;
+  const lapsed = rows
+    .filter(
+      (subscription) =>
+        !startedFrom(subscription) &&
+        (subscription.status === "past_due" || (subscription.status === "incomplete" && (Number(subscription.created) || 0) < hourAgo)),
+    )
+    .map((subscription) => (typeof subscription.id === "string" ? subscription.id : ""))
+    .filter((id) => SUBSCRIPTION_PATTERN.test(id));
+  return { live, customerId: last ?? null, lapsed };
+}
+
+/**
+ * Ends subscriptions that are not paying but that Stripe could still charge,
+ * at once and without a final bill, so a new subscription never runs beside
+ * one whose retried card goes through later.
+ */
+export async function endLapsed(ids: string[]): Promise<void> {
+  for (const id of ids) {
+    if (!SUBSCRIPTION_PATTERN.test(id)) continue;
+    try {
+      await onPlatform("DELETE", `/subscriptions/${encodeURIComponent(id)}`);
+    } catch (error) {
+      if (error instanceof BillingError && error.status === 404) continue;
+      throw error;
+    }
+  }
 }
 
 /**

@@ -8,11 +8,15 @@
  * words. Nothing here touches the creator's DNS: they add the records at
  * whoever sells them the domain, and we look again when they say they have.
  *
- *   nl:domain:<name>   the store handle a domain serves (read by proxy.ts)
+ *   nl:domain:<name>   the store handle a domain serves (read by proxy.ts);
+ *                      "?<handle>" while the creator has not yet proved
+ *                      the domain is theirs, which serves nothing and lapses
+ *                      after three days (lib/domain-proof.ts)
  *
  * The nimbuslabsai.com address keeps working either way, so a link already
  * printed somewhere never breaks because a domain was added or removed.
  */
+import { createHash } from "node:crypto";
 import { DOMAINS_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { canUse } from "@/lib/plan";
@@ -78,7 +82,23 @@ export function cleanDomain(raw: string): string | null {
   return value;
 }
 
-const domainKey = (name: string) => `nl:domain:${name}`;
+export const domainKey = (name: string) => `nl:domain:${name}`;
+
+/** How long a domain may stay claimed without being proved. */
+export const UNPROVED_SECONDS = 3 * 24 * 60 * 60;
+
+/** A claim not proved yet: kept apart from a proved one by its first character. */
+export const UNPROVED = "?";
+
+/**
+ * The TXT record that proves a domain is this store's: its value is made
+ * from the store's own id, so a record one creator adds for their store
+ * proves nothing for anyone else's.
+ */
+export function proofRecord(store: Pick<Store, "sid">, name: string): { host: string; value: string } {
+  const digest = createHash("sha256").update(`nimbus-domain-proof:${store.sid}:${name}`).digest("hex").slice(0, 32);
+  return { host: `_nimbus.${name}`, value: `nimbus-verify=${digest}` };
+}
 
 /** Which store a domain serves. For the proxy; cached for a minute per instance. */
 const cache = new Map<string, { handle: string | null; at: number }>();
@@ -87,16 +107,39 @@ export async function handleForDomain(name: string): Promise<string | null> {
   if (hit && Date.now() - hit.at < 60_000) return hit.handle;
   if (!isRedisConfigured()) return null;
   const [raw] = await redisPipeline([["GET", domainKey(name)]]);
-  const handle = typeof raw === "string" && raw ? raw : null;
+  // A domain nobody has proved is theirs serves nothing.
+  const handle = typeof raw === "string" && raw && !raw.startsWith(UNPROVED) ? raw : null;
   cache.set(name, { handle, at: Date.now() });
   if (cache.size > 5_000) cache.clear();
   return handle;
 }
 
-/** Points the domain at the store's current address, after a rename. */
-export async function pointDomain(name: string, handle: string): Promise<void> {
-  await redisPipeline([["SET", domainKey(name), handle]]);
+/**
+ * Points the domain at the store's new address after a rename, when it
+ * still points at its old one; one not proved stays not proved.
+ */
+export async function pointDomain(name: string, from: string[], handle: string): Promise<void> {
+  const [raw] = await redisPipeline([["GET", domainKey(name)]]);
+  const holder = typeof raw === "string" ? raw.replace(/^\?/, "") : "";
+  if (holder && from.includes(holder)) {
+    const value = typeof raw === "string" && raw.startsWith(UNPROVED) ? `${UNPROVED}${handle}` : handle;
+    // Written only if nobody changed it since it was read.
+    await redisPipeline([["EVAL", SWAP_KEEPING_TTL, 1, domainKey(name), raw as string, value]]);
+  }
   cache.delete(name);
+}
+
+/** Sets the key only while it still holds the value read, keeping its time to live. */
+const SWAP_KEEPING_TTL = [
+  'if redis.call("GET", KEYS[1]) ~= ARGV[1] then return 0 end',
+  'redis.call("SET", KEYS[1], ARGV[2], "KEEPTTL")',
+  "return 1",
+].join("\n");
+
+/** Whether the domain is proved to be the store's: always for one connected before proofs were asked for. */
+export async function domainProved(name: string): Promise<boolean> {
+  const [raw] = await redisPipeline([["GET", domainKey(name)]]);
+  return typeof raw === "string" && raw !== "" && !raw.startsWith(UNPROVED);
 }
 
 type VercelAnswer = { status: number; body: Record<string, unknown> };
@@ -142,9 +185,10 @@ function hostPart(name: string, apex: string): string {
 }
 
 /** What Vercel sees for a domain, and what is still missing. */
-export async function domainStatus(name: string): Promise<DomainStatus | null> {
+export async function domainStatus(name: string, store: Pick<Store, "sid">): Promise<DomainStatus | null> {
   const project = await vercel("GET", `/v9/projects/${PROJECT}/domains/${name}`);
   if (project.status !== 200) return null;
+  const proved = await domainProved(name);
   const config = await vercel("GET", `/v6/domains/${name}/config?projectIdOrName=${PROJECT}`);
   const apex = typeof project.body.apexName === "string" ? project.body.apexName : name;
   const verified = project.body.verified === true;
@@ -174,7 +218,16 @@ export async function domainStatus(name: string): Promise<DomainStatus | null> {
       }
     }
   }
-  return { name, live: verified && !misconfigured, records };
+  if (!proved) {
+    const proof = proofRecord(store, name);
+    records.push({
+      type: "TXT",
+      name: hostPart(proof.host, apex),
+      value: proof.value,
+      why: "Proves the domain is yours, so no other store can use it. It can stay there.",
+    });
+  }
+  return { name, live: proved && verified && !misconfigured, records };
 }
 
 export type ConnectResult =
@@ -192,7 +245,9 @@ export async function connectDomain(store: Store, raw: string): Promise<ConnectR
   const name = cleanDomain(raw);
   if (!name) return { ok: false, reason: "shape" };
 
-  const [claimed] = await redisPipeline([["SET", domainKey(name), store.handle, "NX"]]);
+  // Claimed as not proved yet: it serves nothing, and lapses, until the
+  // creator adds the TXT record that proves it is theirs.
+  const [claimed] = await redisPipeline([["SET", domainKey(name), `${UNPROVED}${store.handle}`, "NX", "EX", UNPROVED_SECONDS]]);
   if (claimed === null) return { ok: false, reason: "taken" };
 
   const added = await vercel("POST", `/v10/projects/${PROJECT}/domains`, { name });
@@ -217,7 +272,12 @@ export async function verifyDomain(name: string): Promise<void> {
 }
 
 /** Takes a domain off a store. The nimbuslabsai.com address carries on as before. */
-export async function disconnectDomain(name: string): Promise<boolean> {
+export async function disconnectDomain(name: string, handles: string[]): Promise<boolean> {
+  // A claim that lapsed and was taken by another store is theirs now: only
+  // this store's side of it is let go of.
+  const [raw] = await redisPipeline([["GET", domainKey(name)]]);
+  const holder = typeof raw === "string" ? raw.replace(/^\?/, "") : "";
+  if (holder && !handles.includes(holder)) return true;
   const removed = await vercel("DELETE", `/v9/projects/${PROJECT}/domains/${name}`);
   if (removed.status !== 200 && removed.status !== 404) return false;
   await redisPipeline([["DEL", domainKey(name)]]);

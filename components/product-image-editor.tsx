@@ -16,8 +16,10 @@ import {
   imagePath,
   imageUrl,
 } from "@/lib/product-image";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   unreadable: "That picture could not be opened. Try a JPEG, PNG or WebP.",
   source: "That picture is over 30 MB. Pick a smaller one, or a screenshot of it.",
   too_big: "That picture is still over 1 MB after shrinking. Try a simpler one.",

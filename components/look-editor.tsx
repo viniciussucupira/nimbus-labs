@@ -15,8 +15,10 @@ import {
   normaliseHex,
 } from "@/lib/store-look";
 import { MAX_PHOTO_BYTES, PHOTO_SIDE, photoUrl } from "@/lib/photo-limits";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   theme: "Pick one of the themes before saving.",
   accent: "That colour could not be read. Pick one of the swatches or your own.",
   none: "This account has no store yet.",

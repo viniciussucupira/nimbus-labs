@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 type State =
   | { kind: "closed" }
@@ -11,6 +12,7 @@ type State =
   | { kind: "error"; message: string };
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   shape:
     "Use 3 to 24 letters, numbers, dots, hyphens or underscores, starting and ending with a letter or number.",
   reserved: "That name belongs to the site itself. Pick another one.",

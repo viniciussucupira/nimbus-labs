@@ -6,8 +6,10 @@ import { toast } from "@/components/toast";
 import type { Flow } from "@/lib/flows";
 import type { MailSettings } from "@/lib/store";
 import { StoreField } from "@/components/studio-store-pin";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   from_name: "Type the name your emails are from.",
   address: "Type a postal address where you can be reached: a street address or a PO box. The law in the United States asks for one in every email like this.",
   confirm: "Tick the box to confirm the people you are importing agreed to hear from you.",

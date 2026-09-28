@@ -37,8 +37,10 @@ import {
   readVideo,
   videoAddress,
 } from "@/lib/sales-page";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   too_many: `A page can have up to ${MAX_BLOCKS} blocks.`,
   hero_first: "The hero can only be the first block: it carries the page's main headline.",
   two_reviews: "Reviews can sit in one place on the page. Remove the second block of them.",

@@ -620,6 +620,7 @@ type SessionLike = {
   payment_status?: unknown;
   created?: unknown;
   amount_total?: unknown;
+  amount_subtotal?: unknown;
   currency?: unknown;
   total_details?: { amount_tax?: unknown } | null;
   payment_intent?: unknown;
@@ -648,6 +649,18 @@ export async function noteSession(store: Store, session: SessionLike): Promise<v
         ? ((session.payment_intent as { id: string }).id)
         : "";
   const buyer = typeof session.customer_details?.email === "string" ? session.customer_details.email : "";
+  const base = Math.max(0, total - tax);
+  let rate = Number(meta.via_rate) || 0;
+  // A bump in the same order earns its own product's share, none when the
+  // creator left that product out: the one rate kept for the sale is the
+  // two shares together, over the whole of it.
+  const bumpCents = Number(meta.bump_cents);
+  const bumpRate = Number(meta.bump_rate);
+  const subtotal = typeof session.amount_subtotal === "number" ? session.amount_subtotal : 0;
+  if (meta.bump && Number.isFinite(bumpCents) && bumpCents > 0 && Number.isFinite(bumpRate) && subtotal > 0 && base > 0) {
+    const bumpShare = Math.min(1, bumpCents / subtotal);
+    rate = Math.round((rate * (1 - bumpShare) + bumpRate * bumpShare) * 100) / 100;
+  }
   await writeReferral(store, {
     ref: session.id,
     pi,
@@ -655,10 +668,10 @@ export async function noteSession(store: Store, session: SessionLike): Promise<v
     at: typeof session.created === "number" ? session.created : Math.floor(Date.now() / 1000),
     product: meta.product ?? "",
     title: (meta.title ?? "").slice(0, 200),
-    base: Math.max(0, total - tax),
+    base,
     total,
     currency: readCurrencyCode(session.currency),
-    rate: Number(meta.via_rate) || 0,
+    rate,
     self: await isSelf(store, aff, buyer),
   });
 }

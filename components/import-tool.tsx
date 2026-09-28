@@ -6,6 +6,7 @@ import { Icon } from "@/components/icons";
 import { toast } from "@/components/toast";
 import { useStudioStore } from "@/components/studio-store-pin";
 import { type ParsedCsv, guessColumn, parseCsv, readConsent } from "@/lib/csv";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 export type ImportKind = "contacts" | "products" | "purchases";
 
@@ -67,6 +68,7 @@ const EXAMPLES: Record<ImportKind, string> = {
 };
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   busy: "Another import is running on this store. Wait for it to finish, or cancel it, and start this one after.",
   too_many: "That is more rows than this import takes. Split the file and bring it in parts.",
   consent: "Tick the box to confirm these people agreed to receive your emails. Nobody is added without it.",
@@ -215,6 +217,8 @@ export function ImportTool({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const stepping = useRef(false);
+  // Bumped when a step did not go through, so the next one is tried again.
+  const [missed, setMissed] = useState(0);
   const other = active && active.kind !== kind && running(active.state) ? active : null;
 
   const post = useCallback(async (payload: Record<string, unknown>) => {
@@ -231,9 +235,11 @@ export function ImportTool({
     if (!job || job.state === "receiving" || !running(job.state) || stepping.current) return;
     stepping.current = true;
     const timer = setTimeout(async () => {
+      let moved = false;
       try {
         const data = await post({ action: "step", id: job.id });
         if (data.ok && data.import) {
+          moved = true;
           setJob(data.import);
           if (!running(data.import.state)) {
             toast(data.import.state === "done" ? "Import finished." : "Import stopped.");
@@ -241,16 +247,17 @@ export function ImportTool({
           }
         }
       } catch {
-        // The next step, or the five-minute job, carries on.
+        // Tried again below; the five-minute job carries on meanwhile.
       } finally {
         stepping.current = false;
       }
-    }, 900);
+      setMissed((n) => (moved ? 0 : n + 1));
+    }, missed ? Math.min(30_000, 900 * 2 ** Math.min(missed, 5)) : 900);
     return () => {
       clearTimeout(timer);
       stepping.current = false;
     };
-  }, [job, post, router]);
+  }, [job, post, router, missed]);
 
   async function choose(file: File | undefined) {
     setError(null);
@@ -315,6 +322,10 @@ export function ImportTool({
       return;
     }
     setBusy(true);
+    let current: ImportView | null = null;
+    // Only a file still being sent is let go of when something fails; once
+    // "finish" is asked for, the import may already be running.
+    let sending = true;
     try {
       const begun = await post({
         action: "start",
@@ -330,7 +341,7 @@ export function ImportTool({
         setError(MESSAGES[begun.error ?? ""] ?? MESSAGES.server_error);
         return;
       }
-      let current = begun.import;
+      current = begun.import;
       setJob(current);
       for (let from = 0; from < rows.length; from += BATCH) {
         const sent = await post({ action: "rows", id: current.id, rows: rows.slice(from, from + BATCH) });
@@ -343,9 +354,18 @@ export function ImportTool({
         current = sent.import;
         setJob(current);
       }
+      sending = false;
       const finished = await post({ action: "finish", id: current.id });
       if (!finished.ok || !finished.import) {
-        setError(MESSAGES[finished.error ?? ""] ?? MESSAGES.server_error);
+        // Refused: let go of, so the file can be chosen again. No answer that
+        // can be read: it may have started, so it is left as it is.
+        if (finished.error && finished.error !== "server_error") {
+          setError(MESSAGES[finished.error] ?? MESSAGES.server_error);
+          await post({ action: "cancel", id: current.id }).catch(() => null);
+          setJob(null);
+        } else {
+          setError("We could not tell whether your import started. Reload the page to see it.");
+        }
         return;
       }
       setJob(finished.import);
@@ -355,7 +375,13 @@ export function ImportTool({
         router.refresh();
       }
     } catch {
-      setError(MESSAGES.server_error);
+      setError(sending ? MESSAGES.server_error : "We could not tell whether your import started. Reload the page to see it.");
+      // A file only partly sent is let go of, so it can be chosen again.
+      if (sending && current && current.state === "receiving") {
+        const id = current.id;
+        await post({ action: "cancel", id }).catch(() => null);
+        setJob(null);
+      }
     } finally {
       setBusy(false);
     }
@@ -371,6 +397,8 @@ export function ImportTool({
         toast("Import cancelled.");
         router.refresh();
       } else setError(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
+    } catch {
+      setError(MESSAGES.server_error);
     } finally {
       setBusy(false);
     }

@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
 import { MAX_RECOVERY_ADDRESS, type RecoverySetting } from "@/lib/recovery-setting";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   address: "Add the postal address your reminders carry. US law asks every email about buying something to include one.",
   address_long: `Keep the address under ${MAX_RECOVERY_ADDRESS} characters.`,
   stripe: "Connect your Stripe account first.",

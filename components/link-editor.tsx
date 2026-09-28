@@ -9,8 +9,10 @@ import {
   MAX_STORE_LINKS,
   type StoreLink,
 } from "@/lib/store-link";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   title: "Give the button a name before saving.",
   unknown: "That is no longer on your page.",
   none: "This account has no store yet.",

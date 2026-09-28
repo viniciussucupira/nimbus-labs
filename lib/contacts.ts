@@ -146,7 +146,15 @@ export async function upsertContact(
   const now = new Date().toISOString();
   const wasMailable = before ? mailable(before) : false;
   const agreed = Boolean(before?.agreed) || input.agreed;
-  const resubscribe = Boolean(before?.unsub) && input.agreed && input.explicit;
+  // A yes only undoes an unsubscribe when it was given after it: a thank-you
+  // page reloaded, or a download link opened again, repeats an old tick.
+  const saidAt = Date.parse(input.at || now);
+  const leftAt = Date.parse(before?.unsubAt || "");
+  const resubscribe =
+    Boolean(before?.unsub) &&
+    input.agreed &&
+    input.explicit &&
+    (!Number.isFinite(leftAt) || !Number.isFinite(saidAt) || saidAt > leftAt);
   const titles = before ? [...before.titles] : [];
   if (input.title && !titles.includes(input.title)) titles.push(input.title);
   const ids = before ? [...before.ids] : [];
@@ -413,22 +421,38 @@ export async function tokensFor(listId: string, emails: string[], handle: string
   const out = new Map<string, string>();
   if (!emails.length) return out;
   const key = leadsKey(listId);
-  const [rows] = await redisPipeline([["HMGET", key, ...emails]]);
-  const found = Array.isArray(rows) ? rows : [];
-  const writes: (string | number)[][] = [];
-  emails.forEach((email, i) => {
-    const contact = parseContact(found[i]);
-    if (!contact || !mailable(contact)) return;
-    if (contact.t) {
-      out.set(email, contact.t);
-      return;
-    }
-    const t = randomBytes(20).toString("hex");
-    out.set(email, t);
-    writes.push(["HSET", key, email, JSON.stringify({ ...contact, t })]);
-    writes.push(["SET", tokenKey(t), `${listId}|${email}|${handle}`]);
-  });
-  if (writes.length) await redisPipeline(writes);
+  let pending = [...emails];
+  // A row changed between the read and the write (a purchase noted, a name
+  // added) is read again and tried again; one that left meanwhile is dropped.
+  for (let round = 0; round < 3 && pending.length; round += 1) {
+    const [rows] = await redisPipeline([["HMGET", key, ...pending]]);
+    const found = Array.isArray(rows) ? rows : [];
+    const writes: { email: string; value: string; was: string; token: string }[] = [];
+    pending.forEach((email, i) => {
+      const raw = found[i];
+      const contact = parseContact(raw);
+      if (!contact || !mailable(contact) || typeof raw !== "string") return;
+      if (contact.t) {
+        out.set(email, contact.t);
+        return;
+      }
+      const token = randomBytes(20).toString("hex");
+      writes.push({ email, value: JSON.stringify({ ...contact, t: token }), was: sha1(raw), token });
+    });
+    if (!writes.length) break;
+    // The token's own record first, so a link is never sent that leads
+    // nowhere; then each contact only if it is still as it was read, so an
+    // unsubscribe made meanwhile is never written over, and two sends at
+    // once keep one token between them.
+    await redisPipeline(writes.map((w) => ["SET", tokenKey(w.token), `${listId}|${w.email}|${handle}`]));
+    const done = await casWrite(key, writes);
+    writes.forEach((w, i) => {
+      if (done[i]) out.set(w.email, w.token);
+    });
+    const lost = writes.filter((_, i) => !done[i]);
+    if (lost.length) await redisPipeline(lost.map((w) => ["DEL", tokenKey(w.token)]));
+    pending = lost.map((w) => w.email);
+  }
   return out;
 }
 

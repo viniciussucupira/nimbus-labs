@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
 import { MAX_BIO_LENGTH, MAX_NAME_LENGTH } from "@/lib/store";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   name: "Give the store a name before saving.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",

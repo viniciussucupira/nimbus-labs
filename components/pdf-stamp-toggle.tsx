@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
 import type { Product } from "@/lib/store";
 import { MAX_STAMP_BYTES, isPdf, readableSize } from "@/lib/product-file";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   signed_out: "Your session ended. Log in again.",
   server_error: "Something went wrong on our side. Nothing was changed; try again in a moment.",
 };

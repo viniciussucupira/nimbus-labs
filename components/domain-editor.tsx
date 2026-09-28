@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 type DnsRecord = { type: "A" | "CNAME" | "TXT"; name: string; value: string; why: string };
 type Status = { name: string; live: boolean; records: DnsRecord[] };
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   shape: "That is not a domain we can use. Type it like shop.yourname.com or yourname.com, without https://.",
   taken: "Another store here already uses that domain.",
   elsewhere: "That domain is connected to a site somewhere else. Remove it there first, then add it here.",
@@ -122,7 +124,8 @@ export function DomainEditor({
       ) : (
         <p className="mt-2 text-ink-soft">
           Add the record{shown && shown.records.length > 1 ? "s" : ""} below where you bought the domain, in its DNS settings. It
-          usually takes a few minutes to show, and at most a day. Then press Check again.
+          usually takes a few minutes to show, and at most a day. Then press Check again. The domain is held for your store for three
+          days while you do this.
         </p>
       )}
 

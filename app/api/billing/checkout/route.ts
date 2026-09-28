@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { away, creatorFrom } from "@/lib/studio-route";
-import { createBillingCheckout, findStoreSubscriptions, isBillingConfigured } from "@/lib/billing";
+import { createBillingCheckout, endLapsed, findStoreSubscriptions, isBillingConfigured } from "@/lib/billing";
 import { PRO_ON_SALE, parseCycle, parseTier } from "@/lib/plan";
 import { accountStores, setSubscription } from "@/lib/store";
 import { limited } from "@/lib/request-guard";
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
   // Stripe not answering the question does not stop a first payment: the
   // daily job still finds anything this misses.
   let customerId = store.stripeCustomerId;
+  let lapsed: string[] = [];
   try {
     const found = await findStoreSubscriptions(store);
     if (found.live) {
@@ -50,8 +51,20 @@ export async function POST(request: NextRequest) {
       return away(origin, studio("billing=already"));
     }
     customerId = customerId ?? found.customerId;
+    lapsed = found.lapsed;
   } catch (error) {
     console.error("looking for this store's subscriptions failed", error);
+  }
+  // One whose card failed, or whose first payment never finished, is ended
+  // first: otherwise a retry that goes through later would charge beside the
+  // new one. If it cannot be ended now, no new one is started.
+  if (lapsed.length) {
+    try {
+      await endLapsed(lapsed);
+    } catch (error) {
+      console.error("ending a lapsed subscription failed", error);
+      return away(origin, studio("billing=error"));
+    }
   }
   // Another store of the same account pays as the customer its owner already
   // is, so one person is one customer at Stripe however many stores they run.

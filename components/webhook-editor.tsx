@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "@/components/toast";
 import { Icon } from "@/components/icons";
 import type { DeliveryView, WebhookEvent, WebhooksView } from "@/lib/webhooks";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MAX_ENDPOINTS = 5;
 
@@ -20,6 +21,7 @@ const EVENTS: { key: WebhookEvent; label: string; hint: string }[] = [
 const ALL = EVENTS.map((e) => e.key);
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",

@@ -15,8 +15,10 @@ import {
 } from "@/lib/affiliate-setting";
 import type { Affiliate, AffiliateStatus, LineStatus, Payout } from "@/lib/affiliates";
 import { StoreField } from "@/components/studio-store-pin";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   percent: `Type a whole share from ${MIN_COMMISSION} to ${MAX_COMMISSION} percent.`,
   days: `Type a whole number of days from ${MIN_COOKIE_DAYS} to ${MAX_COOKIE_DAYS}.`,
   rate: `A product's own share is a whole number from 0 to ${MAX_COMMISSION}; 0 leaves it out.`,
@@ -561,7 +563,14 @@ function Member({
         </form>
       ) : (
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-          <button type="button" className="min-h-[36px] text-sm font-bold text-violet-deep underline underline-offset-4" onClick={() => setPaying(true)}>
+          <button type="button" className="min-h-[36px] text-sm font-bold text-violet-deep underline underline-offset-4" onClick={() => {
+              // The form opens on what is owed now, not on what was owed
+              // when this row first appeared.
+              setAmount(row.owed > 0 ? moneyField(row.owed, currency) : "");
+              setDate(today);
+              setReference("");
+              setPaying(true);
+            }}>
             Mark as paid
           </button>
           {affiliate.status === "approved" ? (

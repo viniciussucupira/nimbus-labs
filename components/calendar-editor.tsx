@@ -2,21 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useHydrated } from "@/components/use-hydrated";
 import { toast } from "@/components/toast";
 import { Icon } from "@/components/icons";
 import type { CalendarView } from "@/lib/calendar-sync";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MAX_FEEDS = 3;
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Nothing was changed; try again in a moment.",
 };
 
-function ago(ms: number): string {
+/** How long ago, by the reader's clock; "recently" until the page runs. */
+function ago(ms: number, local: boolean): string {
   if (!ms) return "";
+  if (!local) return "recently";
   const minutes = Math.max(0, Math.round((Date.now() - ms) / 60_000));
   if (minutes < 1) return "just now";
   if (minutes < 60) return `${minutes} min ago`;
@@ -26,7 +31,7 @@ function ago(ms: number): string {
 
 function addedOn(iso: string): string {
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
 /**
@@ -34,6 +39,7 @@ function addedOn(iso: string): string {
  * busy times, and the private address that puts every booking into theirs.
  */
 export function CalendarEditor({ view: initial, weekly }: { view: CalendarView; weekly: boolean }) {
+  const local = useHydrated();
   const router = useRouter();
   const [view, setView] = useState(initial);
   const [url, setUrl] = useState("");
@@ -121,9 +127,9 @@ export function CalendarEditor({ view: initial, weekly }: { view: CalendarView; 
                     <span className="block font-semibold text-ink">{feed.provider}</span>
                     <span className="block text-sm text-ink-soft">
                       {feed.state === "ok"
-                        ? `Read ${ago(feed.checkedAt)} · ${feed.busyTimes} busy ${feed.busyTimes === 1 ? "time" : "times"} in the next 120 days`
+                        ? `Read ${ago(feed.checkedAt, local)} · ${feed.busyTimes} busy ${feed.busyTimes === 1 ? "time" : "times"} in the next 120 days`
                         : feed.state === "error"
-                          ? `Could not be read ${ago(feed.checkedAt)}`
+                          ? `Could not be read ${ago(feed.checkedAt, local)}`
                           : "Waiting for its first reading"}
                       {feed.addedAt ? ` · added ${addedOn(feed.addedAt)}` : ""}
                     </span>

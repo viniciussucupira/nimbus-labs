@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useHydrated } from "@/components/use-hydrated";
 import { toast } from "@/components/toast";
 import { Icon } from "@/components/icons";
 import { STUDIO_SCOPE, STUDIO_WORKER } from "@/components/studio-app";
 import type { DeviceView, PhoneEvent, PhoneView } from "@/lib/phone-alerts";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MAX_DEVICES = 10;
 
@@ -18,6 +20,7 @@ const EVENTS: { key: PhoneEvent; label: string; hint: string }[] = [
 ];
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Notifications are not set up on this deployment, so nothing was saved.",
@@ -31,9 +34,17 @@ const MESSAGES: Record<string, string> = {
 
 type Support = "checking" | "unsupported" | "ios-install" | "ready";
 
-function when(ms: number): string {
+/** In the reader's own time zone once the page runs; in UTC, marked so, before. */
+function when(ms: number, local: boolean): string {
   if (!ms) return "";
-  return new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const text = new Date(ms).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    ...(local ? {} : { timeZone: "UTC" }),
+  });
+  return local ? text : `${text} UTC`;
 }
 
 /** The public key as the browser's subscribe() wants it. */
@@ -69,6 +80,7 @@ const subscribeToDisplayMode = (notify: () => void) => {
  * them (lib/phone-alerts.ts).
  */
 export function PhoneAlertsPanel({ view: initial }: { view: PhoneView }) {
+  const local = useHydrated();
   const [view, setView] = useState(initial);
   // Only the events this person's role may hear (lib/phone-alerts.ts, eventsFor).
   const events = EVENTS.filter((e) => view.allowed.includes(e.key));
@@ -405,9 +417,9 @@ export function PhoneAlertsPanel({ view: initial }: { view: PhoneView }) {
                           ? "Needs turning on again on that device."
                           : device.last
                             ? device.last.ok
-                              ? `Last sent ${when(device.last.at)}`
-                              : `Last try failed ${when(device.last.at)}: ${device.last.error}`
-                            : `Added ${when(device.addedAt)}`}
+                              ? `Last sent ${when(device.last.at, local)}`
+                              : `Last try failed ${when(device.last.at, local)}: ${device.last.error}`
+                            : `Added ${when(device.addedAt, local)}`}
                       </span>
                     </span>
                     {device.id !== thisId ? (

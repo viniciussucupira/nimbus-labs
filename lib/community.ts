@@ -255,11 +255,35 @@ export async function readMembers(id: string, keys: string[]): Promise<Map<strin
   return out;
 }
 
-async function saveMember(id: string, member: Member): Promise<void> {
-  const commands: (string | number)[][] = [["HSET", membersKey(id), member.k, JSON.stringify(member)]];
+/** Writes a member's record only if it is still exactly what was read. */
+const CAS_MEMBER = [
+  'local cur = redis.call("HGET", KEYS[1], ARGV[1])',
+  "if cur ~= ARGV[2] then return 0 end",
+  'redis.call("HSET", KEYS[1], ARGV[1], ARGV[3])',
   // The directory lists only those who asked to be listed and are still here.
-  commands.push(member.dir && member.n && !member.removed ? ["ZADD", dirKey(id), member.at, member.k] : ["ZREM", dirKey(id), member.k]);
-  await redisPipeline(commands);
+  'if ARGV[4] == "1" then redis.call("ZADD", KEYS[2], ARGV[5], ARGV[1]) else redis.call("ZREM", KEYS[2], ARGV[1]) end',
+  "return 1",
+].join("\n");
+
+/**
+ * Changes some of a member's fields on the record as it is now, so a change
+ * the member makes never writes back a mute or a removal the creator just
+ * undid, or undoes one they just made. Null when there is no record.
+ */
+async function patchMember(id: string, key: string, change: (member: Member) => Partial<Member>): Promise<Member | null> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const [raw] = await redisPipeline([["HGET", membersKey(id), key]]);
+    const member = parseMember(raw);
+    if (!member || typeof raw !== "string") return null;
+    const next: Member = { ...member, ...change(member), k: member.k };
+    const listed = next.dir && next.n && !next.removed ? "1" : "0";
+    const [written] = await redisPipeline([
+      ["EVAL", CAS_MEMBER, 2, membersKey(id), dirKey(id), key, raw, JSON.stringify(next), listed, next.at],
+    ]);
+    if (Number(written) !== 1) continue;
+    return next;
+  }
+  throw new Error("a member's record kept changing");
 }
 
 /**
@@ -272,9 +296,7 @@ export async function touchMember(id: string, email: string, existing: Member | 
   const at = now();
   if (existing) {
     if (at - existing.seen < 3_600) return existing;
-    const next = { ...existing, seen: at };
-    await redisPipeline([["HSET", membersKey(id), key, JSON.stringify(next)]]);
-    return next;
+    return (await patchMember(id, key, () => ({ seen: at }))) ?? existing;
   }
   const [size] = await redisPipeline([["HLEN", membersKey(id)]]);
   if (Number(size) >= MAX_MEMBERS) return null;
@@ -291,21 +313,17 @@ export async function setProfile(
   change: { name: string; dir: boolean; mail: boolean },
 ): Promise<Member> {
   const name = cleanLine(change.name, MAX_DISPLAY_NAME);
-  const next: Member = { ...member, n: name, dir: change.dir && Boolean(name), mail: change.mail };
-  await saveMember(id, next);
-  return next;
+  return (await patchMember(id, member.k, () => ({ n: name, dir: change.dir && Boolean(name), mail: change.mail }))) ?? member;
 }
 
 /** Switches a member's announcement emails off (the unsubscribe link) or on. */
 export async function setMail(id: string, member: Member, mail: boolean): Promise<Member> {
-  const next: Member = { ...member, mail };
-  await saveMember(id, next);
-  return next;
+  return (await patchMember(id, member.k, () => ({ mail }))) ?? member;
 }
 
 /** Keeps the unsubscribe token a member's emails carry. */
 export async function setMemberToken(id: string, member: Member, token: string): Promise<void> {
-  await redisPipeline([["HSET", membersKey(id), member.k, JSON.stringify({ ...member, t: token })]]);
+  await patchMember(id, member.k, () => ({ t: token }));
 }
 
 /** The creator mutes or unmutes, removes or lets back. */
@@ -314,15 +332,10 @@ export async function moderateMember(
   key: string,
   change: { muted?: boolean; removed?: boolean },
 ): Promise<Member | null> {
-  const member = await readMember(id, key);
-  if (!member) return null;
-  const next: Member = {
-    ...member,
+  return patchMember(id, key, (member) => ({
     muted: change.muted ?? member.muted,
     removed: change.removed ?? member.removed,
-  };
-  await saveMember(id, next);
-  return next;
+  }));
 }
 
 /** One page of the member directory: those who chose to be listed, newest first. */

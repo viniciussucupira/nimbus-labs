@@ -14,6 +14,7 @@ import {
   MAX_KEPT_EVENTS,
   MAX_UPCOMING_EVENTS,
 } from "@/lib/community-text";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 /** One event, as the studio shows it: everything but the member-facing page's checks. */
 export type StudioEvent = {
@@ -55,6 +56,7 @@ type Product = { id: string; title: string };
 type Space = { id: string; name: string };
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   title: "Give the event a title.",
   about_links: "That description has more web addresses than it may carry (10). Take a few out.",
   when: "Pick a date, a start time and a time zone.",

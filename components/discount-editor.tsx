@@ -10,8 +10,10 @@ import {
 } from "@/lib/discount";
 import { type Currency, fieldPrefix } from "@/lib/money";
 import { toast } from "@/components/toast";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   none: "This account has no store yet.",
   not_selling:
     "Codes come off a charge, so they need your Stripe account connected and your subscription running.",

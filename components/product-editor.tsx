@@ -52,6 +52,7 @@ import {
 import { MAX_ABOUT_LENGTH } from "@/lib/product-about";
 import { imageUrl } from "@/lib/product-image";
 import { StoreField, useStudioHref, useStudioStore } from "@/components/studio-store-pin";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 /** The sentences about amounts, in the store's own currency (lib/money.ts). */
 const optionPrice = (currency: Currency) => `Type an amount ${rangeWords(currency)}, like ${priceExample(currency, 39)}.`;
@@ -81,6 +82,7 @@ const PWYW_MESSAGES: Record<string, string> = {
 };
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   title: "Give it a name before saving.",
   trial: `Type a free trial of ${MIN_TRIAL_DAYS} to ${MAX_TRIAL_DAYS} days, or leave it empty for none.`,
   payments: `Type ${MIN_MEMBER_PAYMENTS} to ${MAX_MEMBER_PAYMENTS} payments, or leave it empty for a membership that runs until it is cancelled.`,
@@ -1313,6 +1315,10 @@ export function ProductEditor({
   );
   const [query, setQuery] = useState("");
   const [loadingAbout, setLoadingAbout] = useState(false);
+  // Which opening of the form the description being read belongs to, and
+  // whether it could not be read: then saving leaves the stored one alone.
+  const aboutFor = useRef(0);
+  const [aboutUnread, setAboutUnread] = useState(false);
   // A long list is searched on the server (paging); a short one right here.
   const shown = query.trim() && !paging
     ? products.filter((product) => product.title.toLowerCase().includes(query.trim().toLowerCase()))
@@ -1446,6 +1452,9 @@ export function ProductEditor({
   }
 
   function startAdding() {
+    aboutFor.current += 1;
+    setLoadingAbout(false);
+    setAboutUnread(false);
     setDraft(EMPTY);
     setError(null);
     setEditingId(null);
@@ -1468,23 +1477,30 @@ export function ProductEditor({
     setAdding(false);
     setEditingId(product.id);
     toggle(product.id, true);
+    const opening = ++aboutFor.current;
+    setAboutUnread(false);
+    setLoadingAbout(false);
     if (!product.about) return;
     // The long description lives in a record of its own; it is read when the
-    // form opens, and the box waits for it so nothing is saved over it.
+    // form opens, and the box waits for it so nothing is saved over it. An
+    // answer that arrives after another product was opened is dropped.
     setLoadingAbout(true);
+    let about: string | null = null;
     try {
       const response = await fetch(`/api/store/product?about=${encodeURIComponent(product.id)}`);
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean; about?: string };
-      if (data.ok && typeof data.about === "string") {
-        const about = data.about;
-        setDraft((current) => ({ ...current, about }));
-      } else {
-        setError("Your description could not be read just now, so it is not shown. Close this and open it again before saving.");
-      }
+      if (data.ok && typeof data.about === "string") about = data.about;
     } catch {
-      setError("Your description could not be read just now, so it is not shown. Close this and open it again before saving.");
-    } finally {
-      setLoadingAbout(false);
+      about = null;
+    }
+    if (aboutFor.current !== opening) return;
+    setLoadingAbout(false);
+    if (about !== null) {
+      const read = about;
+      setDraft((current) => ({ ...current, about: read }));
+    } else {
+      setAboutUnread(true);
+      setError("Your description could not be read just now, so it is not shown. Anything else you change is saved and the description is kept as it is.");
     }
   }
 
@@ -1565,8 +1581,10 @@ export function ProductEditor({
                 loadingAbout={loadingAbout}
                 onSubmit={() => {
                   if (loadingAbout) return;
+                  const payload = payloadOf(draft);
+                  if (aboutUnread && !draft.about) delete payload.about;
                   run(
-                    { action: "edit", id: product.id, ...payloadOf(draft) },
+                    { action: "edit", id: product.id, ...payload },
                     () => setEditingId(null),
                     "Product saved.",
                   );

@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useHydrated } from "@/components/use-hydrated";
 import { toast } from "@/components/toast";
 import { Icon } from "@/components/icons";
 import type { EmailProvider, Target } from "@/lib/email-platforms";
 import type { Buyers, JobView, SyncView } from "@/lib/email-sync";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MAX_TAGS = 3;
 
@@ -46,6 +48,7 @@ const PROVIDERS: { key: EmailProvider; name: string; target: string; tags: strin
 const byKey = (key: EmailProvider) => PROVIDERS.find((p) => p.key === key) ?? PROVIDERS[0];
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
@@ -55,16 +58,24 @@ const MESSAGES: Record<string, string> = {
 
 type Product = { id: string; title: string; free: boolean };
 
-function when(ms: number): string {
+/** In the reader's own time zone once the page runs; in UTC, marked so, before. */
+function when(ms: number, local: boolean): string {
   if (!ms) return "";
-  return new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const text = new Date(ms).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    ...(local ? {} : { timeZone: "UTC" }),
+  });
+  return local ? text : `${text} UTC`;
 }
 
-function outcome(job: JobView): { text: string; tone: "ok" | "wait" | "bad" | "quiet" } {
+function outcome(job: JobView, local: boolean): { text: string; tone: "ok" | "wait" | "bad" | "quiet" } {
   if (job.state === "added") return { text: "Sent", tone: "ok" };
   if (job.state === "skipped") return { text: "Not sent", tone: "quiet" };
   if (job.state === "queued") return { text: "Sending", tone: "wait" };
-  if (job.state === "retrying") return { text: `Try ${job.attempts} failed; next ${when(job.next)}`, tone: "wait" };
+  if (job.state === "retrying") return { text: `Try ${job.attempts} failed; next ${when(job.next, local)}`, tone: "wait" };
   return { text: `Failed after ${job.attempts} ${job.attempts === 1 ? "try" : "tries"}`, tone: "bad" };
 }
 
@@ -74,6 +85,7 @@ function outcome(job: JobView): { text: string; tone: "ok" | "wait" | "bad" | "q
  * last sends (lib/email-sync.ts).
  */
 export function EmailSyncEditor({ view: initial, products }: { view: SyncView; products: Product[] }) {
+  const local = useHydrated();
   const [view, setView] = useState(initial);
   const [targets, setTargets] = useState<Target[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -472,12 +484,12 @@ export function EmailSyncEditor({ view: initial, products }: { view: SyncView; p
             <>
               <ul className="mt-3 divide-y divide-line text-sm">
                 {view.log.map((job) => {
-                  const result = outcome(job);
+                  const result = outcome(job, local);
                   return (
                     <li key={job.id} className="flex items-start justify-between gap-x-4 py-2.5">
                       <span className="min-w-0">
                         <span className="block break-all font-semibold text-ink">{job.email || (job.source === "free" ? "A free sign-up" : "A buyer")}</span>
-                        <span className="block text-ink-soft">{`${job.title} · ${job.source === "free" ? "free" : "bought"} · ${when(job.createdAt)}`}</span>
+                        <span className="block text-ink-soft">{`${job.title} · ${job.source === "free" ? "free" : "bought"} · ${when(job.createdAt, local)}`}</span>
                         {job.state === "added" || job.state === "skipped" ? (
                           job.note ? <span className="block text-xs text-ink-soft">{job.note}</span> : null
                         ) : job.lastError ? (

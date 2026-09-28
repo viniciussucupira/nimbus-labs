@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
 import { Icon } from "@/components/icons";
 import { type Permission, type TeamRole, ROLE_NAMES, ROLE_SUMMARIES, TEAM_ROLES, can } from "@/lib/team-roles";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 export type TeamRow = { email: string; role: TeamRole; joinedAt: string };
 export type InviteRow = { id: string; email: string; role: TeamRole; expiresAt: number };
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   shape: "That does not look like an email address.",
   role: "Choose a role.",
   owner: "That is the address that owns this store.",

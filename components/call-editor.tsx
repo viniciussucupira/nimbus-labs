@@ -26,8 +26,10 @@ import {
   newSessionId,
   partsIn,
 } from "@/lib/call-setup";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   minutes: "Pick how long a call lasts.",
   tz: "Pick your time zone.",
   weekly: "Check your hours: switch on at least one day, and make every stretch long enough for one call, with the second stretch starting after the first ends.",

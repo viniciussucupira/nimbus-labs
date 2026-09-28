@@ -117,11 +117,13 @@ export async function paidForAny(store: Store, email: string, ids: Set<string>):
       const meta = (session.metadata ?? {}) as Record<string, string>;
       if (!handles.has(meta.store ?? "")) continue;
       if (!isSettled(session)) continue;
-      if (await purchaseRefunded(account, session)) continue;
+      if (refunded(session.payment_intent)) continue;
       if (typeof session.customer === "string" && CUSTOMER_PATTERN.test(session.customer)) customers.add(session.customer);
       // A product in a bundle opens the door as if bought on its own.
       const bought = deliveredIds(meta).filter((id) => ids.has(id));
       if (!bought.length) continue;
+      // A payment plan's first payment is read only for a purchase that would open the door.
+      if (await purchaseRefunded(account, session)) continue;
       // A membership opens the door while it is being paid for; a payment
       // plan is a one-off paid in parts, and counts like one.
       if (session.mode === "subscription" && meta.kind !== "plan") {

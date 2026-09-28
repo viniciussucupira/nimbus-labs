@@ -60,6 +60,16 @@ export function CommunityComposer({
   const [image, setImage] = useState<{ path: string; w: number; h: number; preview: string } | null>(null);
   const [alt, setAlt] = useState("");
   const [busy, setBusy] = useState(false);
+  // Set once the form is sent, so a second press does not post (and email) twice.
+  const [sent, setSent] = useState(false);
+  useEffect(() => {
+    // Coming back to this page with the browser's Back button: it can be sent again.
+    const back = (event: PageTransitionEvent) => {
+      if (event.persisted) setSent(false);
+    };
+    window.addEventListener("pageshow", back);
+    return () => window.removeEventListener("pageshow", back);
+  }, []);
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(false);
@@ -113,7 +123,19 @@ export function CommunityComposer({
   const left = MAX_POST_TEXT - text.length;
 
   return (
-    <form action="/api/store/community" method="post" className="st-card p-5 sm:p-6" aria-labelledby="composer-title">
+    <form
+      action="/api/store/community"
+      method="post"
+      className="st-card p-5 sm:p-6"
+      aria-labelledby="composer-title"
+      onSubmit={(event) => {
+        if (sent || busy) {
+          event.preventDefault();
+          return;
+        }
+        setSent(true);
+      }}
+    >
       <input type="hidden" name="handle" value={handle} />
       <input type="hidden" name="action" value="post" />
       <input type="hidden" name="from" value={from} />
@@ -224,7 +246,7 @@ export function CommunityComposer({
         ) : (
           <span />
         )}
-        <button type="submit" className="btn st-btn" disabled={busy}>
+        <button type="submit" className="btn st-btn" disabled={busy || sent} aria-busy={sent}>
           {announce ? "Post the announcement" : "Post"}
         </button>
       </div>

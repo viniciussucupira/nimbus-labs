@@ -49,7 +49,7 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { after } from "next/server";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
-import { onAccount } from "@/lib/stripe-account";
+import { StripeError, onAccount } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
 import { SafeFetchError, checkUrl, problemWords, safeFetch } from "@/lib/safe-fetch";
 import { type Store, storeForHandle, saleHandles } from "@/lib/store";
@@ -83,6 +83,8 @@ export const MAX_ENDPOINT_URL = 1000;
 const TESTS_PER_MINUTE = 10;
 /** Stripe events read per store per run, in pages of a hundred. */
 const MAX_EVENT_PAGES = 3;
+/** How far back a store's first run reads, in pages of a hundred events. */
+const FIRST_RUN_PAGES = 10;
 /** Deliveries retried in one run of the job, at most. */
 const MAX_RETRIES_PER_RUN = 100;
 
@@ -223,23 +225,42 @@ async function attempt(delivery: Delivery, endpoint: Endpoint | undefined, now =
  * Tries a delivery that this caller has claimed (taken off the queue), and
  * writes down how it went, putting it back on the queue for its next try.
  */
-async function runClaimed(id: string, now = Date.now()): Promise<Delivery | null> {
+async function runClaimed(statsId: string, id: string, now = Date.now()): Promise<Delivery | null> {
   const [raw] = await redisPipeline([["GET", deliveryKey(id)]]);
   const delivery = parseDelivery(raw);
-  if (!delivery || delivery.state === "delivered" || delivery.state === "failed") return delivery;
+  if (!delivery || delivery.state === "delivered" || delivery.state === "failed") {
+    await redisPipeline([["ZREM", QUEUE_KEY, `${statsId}|${id}`]]);
+    return delivery;
+  }
   const config = await readConfig(delivery.statsId);
   const endpoint = config?.endpoints.find((e) => e.id === delivery.endpoint);
   const done = await attempt(delivery, endpoint, now);
   const commands: (string | number)[][] = [["SET", deliveryKey(id), JSON.stringify(done), "EX", DELIVERY_SECONDS]];
-  if (done.state === "retrying") commands.push(["ZADD", QUEUE_KEY, done.next, `${done.statsId}|${id}`]);
+  commands.push(
+    done.state === "retrying" ? ["ZADD", QUEUE_KEY, done.next, `${statsId}|${id}`] : ["ZREM", QUEUE_KEY, `${statsId}|${id}`],
+  );
   await redisPipeline(commands);
   return done;
 }
 
-/** Takes a delivery off the queue. Only the caller that took it tries it. */
-async function claim(statsId: string, id: string): Promise<boolean> {
-  const [removed] = await redisPipeline([["ZREM", QUEUE_KEY, `${statsId}|${id}`]]);
-  return Number(removed) === 1;
+/**
+ * Takes an item that is due on the queue for a while (a lease) rather than
+ * off it: a run that dies half way, a function cut off by its time limit,
+ * leaves it to come back when the lease ends instead of losing it. Only one
+ * caller at a time gets it.
+ */
+const LEASE_SCRIPT = [
+  'local due = redis.call("ZSCORE", KEYS[1], ARGV[1])',
+  "if not due or tonumber(due) > tonumber(ARGV[2]) then return 0 end",
+  'redis.call("ZADD", KEYS[1], ARGV[3], ARGV[1])',
+  "return 1",
+].join("\n");
+const LEASE_MS = 10 * 60 * 1000;
+
+/** Takes a delivery that is due, for the length of a lease. Only the caller that took it tries it. */
+async function claim(statsId: string, id: string, now = Date.now()): Promise<boolean> {
+  const [taken] = await redisPipeline([["EVAL", LEASE_SCRIPT, 1, QUEUE_KEY, `${statsId}|${id}`, now, now + LEASE_MS]]);
+  return Number(taken) === 1;
 }
 
 /** Runs now, after the answer is sent when there is a request to wait for. */
@@ -306,7 +327,7 @@ export async function emitEvent(store: Store, type: WebhookEvent, seed: string, 
   commands.push(["LTRIM", logKey(statsId), 0, LOG_SIZE - 1]);
   await redisPipeline(commands);
   await soon(async () => {
-    for (const id of ids) if (await claim(statsId, id)) await runClaimed(id);
+    for (const id of ids) if (await claim(statsId, id)) await runClaimed(statsId, id);
   });
   return ids.length;
 }
@@ -328,9 +349,9 @@ export async function deliverDue(deadline: number, now = Date.now()): Promise<{ 
           await redisPipeline([["ZREM", QUEUE_KEY, member]]);
           return;
         }
-        if (!(await claim(statsId, id))) return;
+        if (!(await claim(statsId, id, now))) return;
         counts.tried += 1;
-        const done = await runClaimed(id).catch((error) => {
+        const done = await runClaimed(statsId, id).catch((error) => {
           console.error("a webhook retry failed", error);
           return null;
         });
@@ -683,44 +704,71 @@ async function watchStore(store: Store, statsId: string, config: Config): Promis
   const account = store.stripeAccountId as string;
   const types = STRIPE_TYPES.map((t, i) => `types[${i}]=${encodeURIComponent(t)}`).join("&");
   const [anchorRaw] = await redisPipeline([["GET", anchorKey(statsId)]]);
-  let anchor = typeof anchorRaw === "string" && /^evt_[A-Za-z0-9]+$/.test(anchorRaw) ? anchorRaw : "";
+  const anchor = typeof anchorRaw === "string" && /^evt_[A-Za-z0-9]+$/.test(anchorRaw) ? anchorRaw : "";
   const lookups = { left: 10 };
   let handled = 0;
-  for (let page = 0; page < MAX_EVENT_PAGES; page += 1) {
-    // After an anchor: the hundred events just after it. Without one (the
-    // first run): the newest since the first endpoint was added.
-    const path = anchor
-      ? `/events?limit=100&${types}&ending_before=${encodeURIComponent(anchor)}`
-      : `/events?limit=100&${types}&created[gte]=${Math.max(config.since - 60, 0)}`;
-    let list: Record<string, unknown>;
-    try {
-      list = await onAccount("GET", account, path);
-    } catch (error) {
-      // Stripe keeps events for thirty days; an anchor older than that is
-      // gone, and the store starts again from a day ago.
-      if (anchor) {
-        await redisPipeline([["DEL", anchorKey(statsId)]]);
-        anchor = "";
-        config = { ...config, since: Math.floor(Date.now() / 1000) - 86400 };
-        continue;
-      }
-      throw error;
-    }
-    const rows = Array.isArray(list.data) ? (list.data as StripeEvent[]) : [];
-    if (!rows.length) break;
+  const send = async (rows: StripeEvent[]) => {
     // Stripe lists newest first; they are sent in the order they happened.
     for (const event of [...rows].reverse()) {
       await fromStripe(store, event, lookups);
       handled += 1;
     }
+  };
+
+  if (!anchor) {
+    // The first run, or an anchor Stripe no longer has: every page since
+    // then is read, going back in time, and all of it sent oldest first, so
+    // nothing between the start and the newest page is passed over.
+    const pages: StripeEvent[][] = [];
+    let older = "";
+    for (let page = 0; page < FIRST_RUN_PAGES; page += 1) {
+      const list = await onAccount(
+        "GET",
+        account,
+        `/events?limit=100&${types}&created[gte]=${Math.max(config.since - 60, 0)}${older ? `&starting_after=${encodeURIComponent(older)}` : ""}`,
+      );
+      const rows = Array.isArray(list.data) ? (list.data as StripeEvent[]) : [];
+      if (!rows.length) break;
+      pages.push(rows);
+      const last = str(rows[rows.length - 1].id);
+      if (list.has_more !== true || !last) break;
+      older = last;
+      if (page === FIRST_RUN_PAGES - 1) console.error("a store has more Stripe events than one first run reads; the oldest are left", store.handle);
+    }
+    if (!pages.length) return 0;
+    for (const rows of [...pages].reverse()) await send(rows);
+    const newest = str(pages[0][0].id);
+    if (newest) await redisPipeline([["SET", anchorKey(statsId), newest, "EX", 30 * 86400]]);
+    return handled;
+  }
+
+  let after = anchor;
+  for (let page = 0; page < MAX_EVENT_PAGES; page += 1) {
+    // The hundred events just after the anchor.
+    let list: Record<string, unknown>;
+    try {
+      list = await onAccount("GET", account, `/events?limit=100&${types}&ending_before=${encodeURIComponent(after)}`);
+    } catch (error) {
+      // Stripe keeps events for thirty days: an anchor it no longer knows is
+      // let go of, and the store is read again from as far back as Stripe
+      // goes (what was sent already is not sent twice, lib/webhooks.ts
+      // emitEvent). Any other failure leaves the anchor for the next run.
+      if (error instanceof StripeError && (error.status === 400 || error.status === 404)) {
+        await redisPipeline([["DEL", anchorKey(statsId)]]);
+        const since = Math.max(config.since, Math.floor(Date.now() / 1000) - 29 * 86400);
+        return handled + (await watchStore(store, statsId, { ...config, since }));
+      }
+      throw error;
+    }
+    const rows = Array.isArray(list.data) ? (list.data as StripeEvent[]) : [];
+    if (!rows.length) break;
+    await send(rows);
     const newest = str(rows[0].id);
     if (newest) {
-      anchor = newest;
-      await redisPipeline([["SET", anchorKey(statsId), anchor, "EX", 30 * 86400]]);
+      after = newest;
+      await redisPipeline([["SET", anchorKey(statsId), after, "EX", 30 * 86400]]);
     }
     if (list.has_more !== true) break;
-    // Without an anchor, the newest page came first; carrying on from it is
-    // what the anchor now does.
   }
   return handled;
 }

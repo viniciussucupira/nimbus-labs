@@ -7,6 +7,7 @@
  * and leaves Nimbus with nothing to hold, skim or lose. The 0% on the home
  * page is this file.
  */
+import { commissionRate } from "@/lib/affiliate-setting";
 import { saleHandles } from "@/lib/store";
 import type { Listing, Product, Store } from "@/lib/store";
 import { readListing, readListings } from "@/lib/catalog";
@@ -271,6 +272,12 @@ export async function createCheckout(
     body.set("metadata[via]", extras.via.aff);
     body.set("metadata[via_rate]", String(extras.via.rate));
     body.set("payment_intent_data[metadata][via]", extras.via.aff);
+    // A bump rides in the same order: its own share, which may be none, is
+    // kept beside it, so it earns what the creator set for that product.
+    if (body.get("metadata[bump]") && bump) {
+      body.set("metadata[bump_cents]", String(bump.bump.priceCents));
+      body.set("metadata[bump_rate]", String(commissionRate(store.affiliates, bump.target.id)));
+    }
   }
 
   if (membership) {

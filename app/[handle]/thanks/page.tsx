@@ -180,6 +180,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
       const added = await upsertContact(store.listId, order.email, {
         agreed: true,
         explicit: true,
+        at: new Date(order.created * 1000).toISOString(),
         source: "buyer",
         productId: order.product.id,
         title: order.product.title,

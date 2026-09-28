@@ -10,6 +10,7 @@ import {
   isDomainsConfigured,
   verifyDomain,
 } from "@/lib/domains";
+import { proveDomain } from "@/lib/domain-proof";
 
 /**
  * The store's own domain, from the studio:
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "remove") {
       if (!store.domain) return Response.json({ ok: true });
-      if (!(await disconnectDomain(store.domain.name))) return fail("unavailable", 502);
+      if (!(await disconnectDomain(store.domain.name, [store.handle, ...store.previousHandles]))) return fail("unavailable", 502);
       await setDomain(ref, null);
       const name = store.domain.name;
       after(() => noticeCreator(store, { kind: "domain-removed", name }));
@@ -51,17 +52,20 @@ export async function POST(request: NextRequest) {
       await setDomain(ref, { name: result.name, addedAt: now, liveAt: "" });
       // A domain decides where buyers land; the creator hears of every one.
       after(() => noticeCreator(store, { kind: "domain-added", name: result.name }));
-      const status = await domainStatus(result.name);
+      const status = await domainStatus(result.name, store);
       return Response.json({ ok: true, status });
     }
 
     if (action === "check") {
       if (!store.domain) return fail("none");
-      let status = await domainStatus(store.domain.name);
-      // A domain that needed proving: ask Vercel to look at the TXT record now.
-      if (status && !status.live && status.records.some((r) => r.type === "TXT")) {
+      // Our own proof first: the record that says the domain is this store's.
+      const proof = await proveDomain(store, store.domain.name);
+      if (proof === "taken") return fail("taken", 409);
+      let status = await domainStatus(store.domain.name, store);
+      // A domain in use elsewhere at Vercel: ask Vercel to look at its TXT record now.
+      if (status && !status.live && status.records.some((r) => r.type === "TXT" && !r.name.startsWith("_nimbus"))) {
         await verifyDomain(store.domain.name);
-        status = await domainStatus(store.domain.name);
+        status = await domainStatus(store.domain.name, store);
       }
       if (!status) return fail("unavailable", 502);
       if (status.live && !store.domain.liveAt) {

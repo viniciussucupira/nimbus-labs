@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { cache } from "react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { canUseDomain } from "@/lib/domains";
+import { SITE_URL } from "@/lib/site-url";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { iconUrl, shortName, themeColour } from "@/lib/store-app";
 import { StoreApp } from "@/components/store-app";
@@ -41,7 +45,22 @@ export async function generateViewport({ params }: LayoutProps<"/[handle]">): Pr
   return store ? { themeColor: themeColour(store) } : {};
 }
 
-export default function StoreLayout({ children }: LayoutProps<"/[handle]">) {
+export default async function StoreLayout({ children, params }: LayoutProps<"/[handle]">) {
+  // Reached on a creator's own domain (proxy.ts says which): every page of
+  // the store, not only its front page, is served there only while the
+  // domain is this store's and the store is on Pro. Otherwise the visitor is
+  // sent to the same page at the address that always works.
+  const asked = await headers();
+  const reachedOn = asked.get("x-nimbus-domain");
+  if (reachedOn) {
+    const { handle } = await params;
+    const store = await loadStore(handle);
+    if (store && (store.domain?.name !== reachedOn || !canUseDomain(store))) {
+      const path = asked.get("x-nimbus-path") ?? "/";
+      const own = /^\/@/.test(path) ? path : `/@${store.handle}${path === "/" || path.startsWith("/?") ? path.slice(1) : path}`;
+      redirect(`${SITE_URL}${own.startsWith("/") ? own : `/@${store.handle}`}`);
+    }
+  }
   return (
     <>
       {children}

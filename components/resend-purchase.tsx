@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { toast } from "@/components/toast";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   unknown: "That sale could not be found on your Stripe account.",
   call: "A booked call has its own confirmation, sent with the calendar file.",
   refunded: "That sale was refunded in full, so there is nothing to send.",

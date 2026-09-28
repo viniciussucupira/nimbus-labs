@@ -5,6 +5,7 @@ import { deleteStore } from "@/lib/store";
 import { dropTeam } from "@/lib/team";
 import { forgetStoreSync } from "@/lib/email-sync";
 import { forgetStorePhones } from "@/lib/phone-alerts";
+import { endLapsed, findStoreSubscriptions, isBillingConfigured } from "@/lib/billing";
 
 /**
  * The studio's switcher, and the door out for a store.
@@ -44,8 +45,16 @@ export async function POST(request: NextRequest) {
     const typed = String(form?.get("confirm") ?? "").trim().replace(/^@+/, "").toLowerCase();
     if (typed !== store.handle) return away(origin, studio("stores=confirm"));
     try {
+      // The snapshot can lag behind Stripe (a payment whose way back was lost):
+      // a store with a plan in good standing there is not deleted either.
+      const found = isBillingConfigured() ? await findStoreSubscriptions(store) : null;
+      if (found?.live) return away(origin, studio("stores=paying"));
       const result = await deleteStore(ref);
       if (!result.ok) return away(origin, studio(`stores=${result.reason}`));
+      // One that is not paying but could still be charged ends with the store.
+      if (found?.lapsed.length) {
+        await endLapsed(found.lapsed).catch((error: unknown) => console.error("ending a deleted store's lapsed subscription failed", error));
+      }
       await dropTeam(result.store);
       // Nothing of a deleted store is kept that could still reach anyone: the
       // sealed key to its email platform, and its phones' push addresses.

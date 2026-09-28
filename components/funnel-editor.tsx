@@ -12,8 +12,10 @@ import {
   MAX_HEADLINE_LENGTH,
   MAX_STEP_TEXT_LENGTH,
 } from "@/lib/funnel";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   target: "Pick a product for every offer: another product of yours with one price and a file or a link on it.",
   repeat: "An offer that follows a yes cannot offer the same product again: the buyer already has it.",
   shape: `Keep between 1 and ${MAX_FUNNEL_STEPS} offers, each leading only to an offer further down the list.`,

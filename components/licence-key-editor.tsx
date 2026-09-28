@@ -24,8 +24,10 @@ import {
   canHaveKeys,
   sampleKey,
 } from "@/lib/licence-keys";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   source: "Choose where the keys come from.",
   prefix: `Use up to ${MAX_PREFIX_LENGTH} letters, digits and dashes for the start of each key.`,
   groups: `Choose ${MIN_GROUPS} to ${MAX_GROUPS} groups.`,

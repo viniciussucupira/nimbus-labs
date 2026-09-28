@@ -6,6 +6,7 @@ import { toast } from "@/components/toast";
 import { Icon } from "@/components/icons";
 import type { MeetProvider } from "@/lib/call-setup";
 import type { MeetView } from "@/lib/meet-connect";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 /** Each account as the studio describes it: what it makes, and what connecting it lets us do. */
 const ACCOUNTS: Record<
@@ -37,6 +38,7 @@ const ACCOUNTS: Record<
 };
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   signed_out: "Your session ended. Log in again.",
   role: "Only the store's owner and Admins can do that.",
   limited: "That is too many changes in a minute. Wait a moment and try again.",

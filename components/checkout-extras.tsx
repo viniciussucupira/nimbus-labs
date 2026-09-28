@@ -18,8 +18,10 @@ import {
   isOneOff,
   planWords,
 } from "@/lib/product-extras";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   stock: `Type a whole number from 1 to ${MAX_STOCK.toLocaleString("en-US")}.`,
   target: "Pick another product that has one price and a file or a link on it.",
   kind: "This works on one-off paid products only.",

@@ -56,7 +56,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/site-url";
 import type { Listing, Store } from "@/lib/store";
-import { onAccount } from "@/lib/stripe-account";
+import { StripeError, onAccount } from "@/lib/stripe-account";
 import { refundedInFull } from "@/lib/refunds";
 import { readListing, sellsAny } from "@/lib/catalog";
 import { deliveredIds } from "@/lib/bundle-rules";
@@ -478,6 +478,41 @@ export function storeHasKeys(store: Store): boolean {
  * ticked at checkout lose their keys, since both were paid by that payment.
  * A partial refund changes nothing. Returns how many keys it revoked.
  */
+const idOf = (value: unknown): string =>
+  typeof value === "string"
+    ? value
+    : value && typeof value === "object" && typeof (value as { id?: unknown }).id === "string"
+      ? (value as { id: string }).id
+      : "";
+
+/**
+ * The payment plan checkout whose first payment this was, or null: the
+ * invoice the payment paid, whichever way the API version names it, then the
+ * checkout that started its subscription, when that invoice was its first.
+ */
+async function planSaleOf(
+  account: string,
+  intent: string,
+  pi: Record<string, unknown>,
+): Promise<{ session: string; meta: Record<string, string> } | null> {
+  let invoice = idOf(pi.invoice);
+  if (!invoice) {
+    const listed = await onAccount("GET", account, `/invoice_payments?${new URLSearchParams({ "payment[type]": "payment_intent", "payment[payment_intent]": intent, limit: "1" })}`);
+    const row = (Array.isArray(listed.data) ? (listed.data as Record<string, unknown>[]) : [])[0];
+    invoice = idOf(row?.invoice);
+  }
+  if (!/^in_[A-Za-z0-9]{8,255}$/.test(invoice)) return null;
+  const read = await onAccount("GET", account, `/invoices/${encodeURIComponent(invoice)}`);
+  const parent = read.parent as { subscription_details?: { subscription?: unknown } } | null | undefined;
+  const subscription = idOf(read.subscription) || idOf(parent?.subscription_details?.subscription);
+  if (!/^sub_[A-Za-z0-9]{8,255}$/.test(subscription)) return null;
+  const sessions = await onAccount("GET", account, `/checkout/sessions?${new URLSearchParams({ subscription, limit: "1" })}`);
+  const session = (Array.isArray(sessions.data) ? (sessions.data as Record<string, unknown>[]) : [])[0];
+  if (!session || typeof session.id !== "string" || idOf(session.invoice) !== invoice) return null;
+  const meta = (session.metadata ?? {}) as Record<string, string>;
+  return meta.kind === "plan" ? { session: session.id, meta } : null;
+}
+
 export async function revokeRefunded(store: Store, deadline: number): Promise<number> {
   if (!storeHasKeys(store) || !isRedisConfigured()) return 0;
   const account = store.stripeAccountId as string;
@@ -492,6 +527,9 @@ export async function revokeRefunded(store: Store, deadline: number): Promise<nu
   let revoked = 0;
   let after = "";
   let complete = false;
+  // A refund whose sale could not be told for sure is left unread, and the
+  // anchor stays, so the next run looks at it again.
+  let unsure = false;
   const handles = saleHandles(store);
 
   for (let page = 0; page < REFUND_PAGES && Date.now() < deadline; page += 1) {
@@ -529,6 +567,28 @@ export async function revokeRefunded(store: Store, deadline: number): Promise<nu
         const pi = await onAccount("GET", account, `/payment_intents/${encodeURIComponent(intent)}`);
         const meta = (pi.metadata ?? {}) as Record<string, string>;
         if (meta.kind === "upsell" && handles.has(meta.store ?? "")) sales.push({ reference: intent, products: deliveredIds(meta) });
+        else if (lookups > 0) {
+          // A payment plan's first payment belongs to an invoice, not to the
+          // checkout: found through the invoice, the plan is refunded like any sale.
+          lookups -= 1;
+          const plan = await planSaleOf(account, intent, pi).catch((error: unknown) => {
+            // Stripe saying there is no such thing is an answer: not a plan.
+            if (error instanceof StripeError && error.status >= 400 && error.status < 500 && error.status !== 429) return null;
+            console.error("finding a refunded payment plan failed", error);
+            return undefined;
+          });
+          if (plan === undefined) {
+            unsure = true;
+            continue;
+          }
+          if (plan && handles.has(plan.meta.store ?? "")) sales.push({ reference: plan.session, products: deliveredIds(plan.meta) });
+        } else {
+          unsure = true;
+          continue;
+        }
+      } else {
+        unsure = true;
+        continue;
       }
 
       for (const sale of sales) {
@@ -557,7 +617,7 @@ export async function revokeRefunded(store: Store, deadline: number): Promise<nu
   // Only moved forward past what was read to the end: a run cut short by
   // its deadline, its pages or its lookups starts from the same place next
   // time, and the refunds it already handled are skipped as read.
-  if (complete && lookups > 0 && Date.now() < deadline) {
+  if (complete && !unsure && lookups > 0 && Date.now() < deadline) {
     await redisPipeline([["SET", refundAnchorKey(store), String(Math.max(newest, anchor)), "EX", REFUND_LOOKBACK_SECONDS * 2]]);
   }
   return revoked;

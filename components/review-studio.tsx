@@ -7,8 +7,10 @@ import { Stars } from "@/components/review-stars";
 import { toast } from "@/components/toast";
 import { MAX_REPLY_TEXT } from "@/lib/review-summary";
 import { DEFAULT_ASK_DAYS, MAX_ASK_DAYS, MIN_ASK_DAYS } from "@/lib/review-ask";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   days: `Pick between ${MIN_ASK_DAYS} and ${MAX_ASK_DAYS} days.`,
   email: "Review requests are email, so they need Pro with your email set up (the sender name and postal address). Set that up in Email first.",
   busy: "Someone else changed this review at the same moment. Try again.",

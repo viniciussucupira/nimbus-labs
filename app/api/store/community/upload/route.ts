@@ -5,6 +5,7 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES } from "@/lib/product-image";
 import { within } from "@/lib/community";
 import { communityViewer } from "@/lib/community-access";
+import { noteCommunityUpload } from "@/lib/community-files";
 import { ownsCommunityImage } from "@/lib/community-image";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
 
@@ -49,6 +50,9 @@ export async function POST(request: NextRequest) {
         if (viewer.state !== "in" || !viewer.canWrite) throw new Error("signed_out");
         if (!ownsCommunityImage(pathname, store.community.id)) throw new Error("invalid");
         if (!viewer.owner && !(await within(store.community.id, viewer.key, "upload"))) throw new Error("slow");
+
+        // Only the member given this door may put the picture in a post.
+        await noteCommunityUpload(pathname, viewer.key);
 
         const rules = {
           allowedContentTypes: [...IMAGE_CONTENT_TYPES],

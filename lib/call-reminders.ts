@@ -237,7 +237,9 @@ export async function sendCallReminders(
             again = true;
           }
         }
-        if (freshCreator !== null && !(await remindCreator(store, product, paid, call, item.mark))) {
+        // A booking found on its own is counted among the people booked, too.
+        const booked = paid.some((c) => c.session === call.session) ? paid : [...paid, call];
+        if (freshCreator !== null && !(await remindCreator(store, product, booked, call, item.mark))) {
           await redisPipeline([["DEL", creatorKey(callsId, call.product, call.start, item.mark)]]);
           again = true;
         }

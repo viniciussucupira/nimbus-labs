@@ -37,6 +37,9 @@ const MAX_SCAN_STEPS = 500;
 /** Where the walk through the stores stopped, when the deadline stopped it. */
 const CURSOR_KEY = "nl:billing:sync:cursor";
 const CURSOR_SECONDS = 7 * 24 * 60 * 60;
+/** Where the reading of Stripe's list stopped, when the deadline stopped it. */
+const LIST_CURSOR_KEY = "nl:billing:sync:after";
+const SUBSCRIPTION_ID = /^sub_[A-Za-z0-9]+$/;
 
 export type SyncCounts = {
   /** Subscriptions read from Stripe. */
@@ -100,9 +103,16 @@ async function applyListed(subscription: Record<string, unknown>, counts: SyncCo
 
 /** Step 1: every subscription on our account, newest first. */
 async function syncListed(deadline: number, seen: Set<string>, counts: SyncCounts): Promise<boolean> {
-  let after: string | undefined;
+  // A list longer than one run carries on the next day where it stopped,
+  // so the oldest subscriptions are reached too.
+  const [saved] = await redisPipeline([["GET", LIST_CURSOR_KEY]]);
+  let after: string | undefined = typeof saved === "string" && SUBSCRIPTION_ID.test(saved) ? saved : undefined;
+  const stop = async () => {
+    if (after) await redisPipeline([["SET", LIST_CURSOR_KEY, after, "EX", CURSOR_SECONDS]]);
+    return false;
+  };
   for (let page = 0; page < MAX_PAGES; page += 1) {
-    if (Date.now() > deadline) return false;
+    if (Date.now() > deadline) return stop();
     const { data, hasMore } = await listSubscriptions("all", after);
     for (const subscription of data) {
       if (typeof subscription.id === "string") seen.add(subscription.id);
@@ -115,10 +125,13 @@ async function syncListed(deadline: number, seen: Set<string>, counts: SyncCount
       }
     }
     const last = data[data.length - 1];
-    if (!hasMore || typeof last?.id !== "string") return true;
+    if (!hasMore || typeof last?.id !== "string") {
+      await redisPipeline([["DEL", LIST_CURSOR_KEY]]);
+      return true;
+    }
     after = last.id;
   }
-  return false;
+  return stop();
 }
 
 /** Step 2: stores still paid up whose subscription step 1 did not see. */
@@ -153,7 +166,9 @@ export async function syncSubscriptions(deadline: number): Promise<SyncCounts> {
   const counts: SyncCounts = { seen: 0, updated: 0, adopted: 0, checked: 0, failed: 0, complete: false };
   if (!isRedisConfigured() || !isBillingConfigured()) return counts;
   const seen = new Set<string>();
-  const listed = await syncListed(deadline, seen, counts);
+  // Stripe's list gets at most two thirds of the time, so the stores that
+  // count as paid up are always asked about too.
+  const listed = await syncListed(Date.now() + ((deadline - Date.now()) * 2) / 3, seen, counts);
   const walked = await syncStores(deadline, seen, counts);
   counts.complete = listed && walked;
   return counts;

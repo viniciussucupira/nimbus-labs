@@ -338,7 +338,7 @@ export async function queuePerson(store: Store, person: Person, now = Date.now()
   ]);
   if (!agreed) return "skipped";
   await soon(async () => {
-    if (await claim(statsId, job.id)) await runClaimed(job.id, JOB_MS);
+    if (await claim(statsId, job.id)) await runClaimed(statsId, job.id, JOB_MS);
   });
   return "queued";
 }
@@ -389,21 +389,40 @@ async function attempt(job: Job, now: number, budget: number): Promise<Job> {
 }
 
 /** Tries a job this caller has claimed, writes down how it went, and queues its next try. */
-async function runClaimed(id: string, budget: number, now = Date.now()): Promise<Job | null> {
+async function runClaimed(statsId: string, id: string, budget: number, now = Date.now()): Promise<Job | null> {
   const [raw] = await redisPipeline([["GET", jobKey(id)]]);
   const job = parseJob(raw);
-  if (!job || job.state === "added" || job.state === "failed" || job.state === "skipped") return job;
+  if (!job || job.state === "added" || job.state === "failed" || job.state === "skipped") {
+    await redisPipeline([["ZREM", QUEUE_KEY, `${statsId}|${id}`]]);
+    return job;
+  }
   const done = await attempt(job, now, budget);
   const commands: (string | number)[][] = [["SET", jobKey(id), JSON.stringify(done), "EX", JOB_SECONDS]];
-  if (done.state === "retrying") commands.push(["ZADD", QUEUE_KEY, done.next, `${done.statsId}|${id}`]);
+  commands.push(
+    done.state === "retrying" ? ["ZADD", QUEUE_KEY, done.next, `${statsId}|${id}`] : ["ZREM", QUEUE_KEY, `${statsId}|${id}`],
+  );
   await redisPipeline(commands);
   return done;
 }
 
-/** Takes a job off the queue. Only the caller that took it tries it. */
-async function claim(statsId: string, id: string): Promise<boolean> {
-  const [removed] = await redisPipeline([["ZREM", QUEUE_KEY, `${statsId}|${id}`]]);
-  return Number(removed) === 1;
+/**
+ * Takes an item that is due on the queue for a while (a lease) rather than
+ * off it: a run that dies half way, a function cut off by its time limit,
+ * leaves it to come back when the lease ends instead of losing it. Only one
+ * caller at a time gets it.
+ */
+const LEASE_SCRIPT = [
+  'local due = redis.call("ZSCORE", KEYS[1], ARGV[1])',
+  "if not due or tonumber(due) > tonumber(ARGV[2]) then return 0 end",
+  'redis.call("ZADD", KEYS[1], ARGV[3], ARGV[1])',
+  "return 1",
+].join("\n");
+const LEASE_MS = 10 * 60 * 1000;
+
+/** Takes a job that is due, for the length of a lease. Only the caller that took it tries it. */
+async function claim(statsId: string, id: string, now = Date.now()): Promise<boolean> {
+  const [taken] = await redisPipeline([["EVAL", LEASE_SCRIPT, 1, QUEUE_KEY, `${statsId}|${id}`, now, now + LEASE_MS]]);
+  return Number(taken) === 1;
 }
 
 /**
@@ -423,9 +442,9 @@ export async function syncDue(deadline: number, now = Date.now()): Promise<{ tri
           await redisPipeline([["ZREM", QUEUE_KEY, member]]);
           return;
         }
-        if (!(await claim(statsId, id))) return;
+        if (!(await claim(statsId, id, now))) return;
         counts.tried += 1;
-        const done = await runClaimed(id, JOB_MS_IN_RUN).catch((error) => {
+        const done = await runClaimed(statsId, id, JOB_MS_IN_RUN).catch((error) => {
           console.error("an email platform retry failed", error);
           return null;
         });

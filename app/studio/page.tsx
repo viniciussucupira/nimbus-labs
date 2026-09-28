@@ -28,7 +28,7 @@ import { WebhookEditor } from "@/components/webhook-editor";
 import { calendarBusy, calendarView, ensureFeedToken, overlaps, slotRooms } from "@/lib/calendar-sync";
 import { roomKind, roomLabel } from "@/lib/call-rooms";
 import { type MeetView, meetView } from "@/lib/meet-connect";
-import { offeredProviders } from "@/lib/meet-providers";
+import { configuredProviders, offeredProviders } from "@/lib/meet-providers";
 import { slotMeetings } from "@/lib/meet-links";
 import type { MeetRecord } from "@/lib/meet-records";
 import { keepHandle, webhooksView } from "@/lib/webhooks";
@@ -445,7 +445,7 @@ export default async function StudioPage({
   const domainsOn = isDomainsConfigured();
   const domainNow =
     domainsOn && store?.domain && !store.domain.liveAt && paid && tier === "pro"
-      ? await domainStatus(store.domain.name).catch(() => null)
+      ? await domainStatus(store.domain.name, store).catch(() => null)
       : null;
   const billedNow =
     live?.state === "active" && live.amountCents > 0
@@ -491,7 +491,9 @@ export default async function StudioPage({
   // Google Calendar and Zoom (lib/meet-connect.ts): which accounts calls can
   // make meetings on, for the call editor, and what was made for each booked
   // time, for the list below. Nothing is read when the deployment has neither.
-  const meetOn = store ? offeredProviders(store).length > 0 : false;
+  // Read whenever the deployment has either app: an account connected while
+  // it was offered stays in sight even once it is not (lib/meet-connect.ts).
+  const meetOn = store ? configuredProviders().length > 0 : false;
   const meet: MeetView | null =
     store && meetOn && (may("products") || may("orders")) ? await meetView(store.statsId, store).catch(() => null) : null;
   const meetAccounts = meet
@@ -696,8 +698,8 @@ export default async function StudioPage({
                   ? [{ href: studioPath(store, "", "integrations"), title: "Email platforms", text: "Mailchimp, Kit, beehiiv or MailerLite, kept fed.", icon: "plug" as const }]
                   : []),
                 // Only once the deployment has the Google or Zoom app's keys (lib/meet-providers.ts).
-                ...(may("settings") && meetOn
-                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${offeredProviders(store).map((p) => MEET_NAMES[p]).join(" or ")} links, made for every booking and live event.`, icon: "video" as const }]
+                ...(may("settings") && meetOn && (meet?.providers ?? offeredProviders(store)).length > 0
+                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${(meet?.providers ?? offeredProviders(store)).map((p) => MEET_NAMES[p]).join(" or ")} links, made for every booking and live event.`, icon: "video" as const }]
                   : []),
                 // Everyone on the store, for their own devices (lib/phone-alerts.ts).
                 { href: studioPath(store, "", "phone"), title: "Phone notifications", text: "A buzz for each sale, booking and report, on your own devices.", icon: "phone" as const },

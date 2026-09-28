@@ -8,6 +8,7 @@ import { CURRENCIES, type Currency, currencyLabel, currencyRule, formatMoney } f
 import type { WayGroup, WaysToPay } from "@/lib/payment-methods";
 import type { CurrencyShortfall } from "@/lib/store";
 import { useStudioHref } from "@/components/studio-store-pin";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 /** What each kind of amount is called in the list of ones that are too small. */
 const SHORT_WORDS: Record<CurrencyShortfall["what"], string> = {
@@ -28,6 +29,7 @@ const GROUPS: { title: string; has: WayGroup[]; note?: string }[] = [
 ];
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   currency: "Pick one of the currencies on the list.",
   unsupported: "Your Stripe account cannot charge in that currency. Pick another from the list.",
   stripe: "Stripe did not answer when we asked whether any membership is still running, so nothing was changed. Try again in a moment.",

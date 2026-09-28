@@ -8,6 +8,7 @@ import { useStudioHref } from "@/components/studio-store-pin";
 import { type Currency, fieldPrefix, formatMoney, priceExample, readMoney } from "@/lib/money";
 import { MAX_BUNDLE_ITEMS, MIN_BUNDLE_ITEMS } from "@/lib/bundle-rules";
 import { MAX_SUMMARY_LENGTH, MAX_TITLE_LENGTH } from "@/lib/catalog";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 /** A product as the picker shows it. */
 export type PickerProduct = {
@@ -22,6 +23,7 @@ export type PickerProduct = {
 };
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   count: `A bundle holds ${MIN_BUNDLE_ITEMS} to ${MAX_BUNDLE_ITEMS} different products.`,
   self: "A bundle cannot hold itself.",
   unknown: "One of those products is no longer in your store. Reload the page and pick again.",

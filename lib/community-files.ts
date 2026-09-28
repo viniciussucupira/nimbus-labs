@@ -3,7 +3,9 @@
  * the same one product pictures and paid files live in. Kept apart from the
  * checks so they can be tried against a stand-in without a network.
  */
+import { createHash } from "node:crypto";
 import { del, get, head } from "@/lib/blob";
+import { redisPipeline } from "@/lib/redis";
 import type { ImageStore } from "@/lib/community-image";
 
 async function firstBytes(path: string): Promise<Uint8Array | null> {
@@ -38,6 +40,32 @@ export const blobImages: ImageStore = {
     await del(path);
   },
 };
+
+/** A day: the door is open five minutes, the post can be written later. */
+const UPLOAD_TTL_SECONDS = 24 * 60 * 60;
+
+function uploadKey(path: string): string {
+  return `nl:cimg:${createHash("sha256").update(path).digest("hex").slice(0, 32)}`;
+}
+
+/** Notes who was given the door for a picture's path, when it is given. */
+export async function noteCommunityUpload(path: string, author: string): Promise<void> {
+  await redisPipeline([["SET", uploadKey(path), author, "NX", "EX", UPLOAD_TTL_SECONDS]]);
+}
+
+/**
+ * Whether this picture was sent by this member and not used yet; it is then
+ * theirs for this one post only. Somebody else's picture, or one already in
+ * a post, is refused and left alone.
+ */
+export async function takeCommunityUpload(path: string, author: string): Promise<boolean> {
+  const [held] = await redisPipeline([["GETDEL", uploadKey(path)]]);
+  if (held === author) return true;
+  if (typeof held === "string" && held) {
+    await redisPipeline([["SET", uploadKey(path), held, "NX", "EX", UPLOAD_TTL_SECONDS]]).catch(() => null);
+  }
+  return false;
+}
 
 /** Deletes a picture a post no longer needs. Best effort: never throws. */
 export async function dropCommunityImage(path: string | undefined | null): Promise<void> {

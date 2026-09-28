@@ -26,7 +26,7 @@ import {
 } from "@/lib/community";
 import { communityViewer } from "@/lib/community-access";
 import { checkCommunityImage } from "@/lib/community-image";
-import { blobImages, dropCommunityImage } from "@/lib/community-files";
+import { blobImages, dropCommunityImage, noteCommunityUpload, takeCommunityUpload } from "@/lib/community-files";
 import { advanceAnnouncement, queueAnnouncement } from "@/lib/community-mail";
 import {
   ITEM_ID,
@@ -140,7 +140,16 @@ export async function POST(request: NextRequest) {
         };
         const w = side(field("img_w", 6));
         const h = side(field("img_h", 6));
-        const checked = await checkCommunityImage(path, id, blobImages);
+        if (!(await takeCommunityUpload(path, key))) return back(fromPage, "image");
+        let checked: Awaited<ReturnType<typeof checkCommunityImage>>;
+        try {
+          checked = await checkCommunityImage(path, id, blobImages);
+        } catch (error) {
+          // Still this member's, for when they send the form again.
+          await noteCommunityUpload(path, key).catch(() => {});
+          throw error;
+        }
+        if (checked === "missing") await noteCommunityUpload(path, key).catch(() => {});
         if (checked !== "ok" || !w || !h) {
           if (checked === "ok") await dropCommunityImage(path);
           return back(fromPage, "image");
@@ -148,6 +157,8 @@ export async function POST(request: NextRequest) {
         img = { path, w, h, alt: cleanLine(form.get("img_alt"), MAX_ALT_LENGTH) };
       }
       const announce = owner && form.get("kind") === "announcement";
+      // Not given back if this fails: the post may have been written anyway,
+      // and a picture must never end up in two posts.
       const made = await createPost(id, { space: chosen.id, author: key, title, text, img, kind: announce ? "announcement" : "post" });
       if (!made.ok) {
         if (img) await dropCommunityImage(img.path);

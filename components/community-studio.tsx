@@ -20,6 +20,7 @@ import {
   MAX_EVENT_CAP,
   MAX_UPCOMING_EVENTS,
 } from "@/lib/community-text";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 export type QueueRow = {
   key: string;
@@ -48,6 +49,7 @@ export type StudioMember = {
 type ProductChoice = { id: string; title: string; free: boolean; kind: string };
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   name: "Give the community a name.",
   space_name: "Give the space a name.",
   too_many: `A community holds up to ${MAX_SPACES} spaces.`,

@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Product } from "@/lib/store";
 import { useStudioHref } from "@/components/studio-store-pin";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   free: "A course is sold. Give it a price first.",
   options: "Take the price options off first: a course has one price.",
   delivery: "Take the file or link off first: a course delivers its lessons.",

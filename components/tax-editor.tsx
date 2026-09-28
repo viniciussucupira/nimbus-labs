@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
 import type { TaxSetting } from "@/lib/tax";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
+  ...STUDIO_MESSAGES,
   setup: "Stripe says your tax setup is not finished yet. Finish it in your Stripe dashboard, then switch this on.",
   stripe: "Connect your Stripe account first.",
   none: "This account has no store yet.",
