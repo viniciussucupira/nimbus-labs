@@ -24,7 +24,7 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
   noemail: { text: "Posted. It was not emailed: emailing announcements is part of Pro, with your email settings filled in.", tone: "warn" },
   noreaders: { text: "Posted. Nobody has asked for announcement emails yet, so none were sent." },
   commented: { text: "Comment added." },
-  liked: { text: "Thanks for the like." },
+  liked: { text: "Like updated." },
   reported: { text: "Reported. The creator sees it in their moderation queue; nobody else is told who reported it." },
   deleted: { text: "Deleted." },
   hidden: { text: "Hidden from members. You can still see it, and show it again." },
@@ -43,17 +43,17 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
   image: { text: "That picture could not be checked. Try a JPEG, PNG or WebP.", tone: "warn" },
   creatoronly: { text: "Only the creator starts posts in that space. You can still comment.", tone: "warn" },
   muted: { text: "The creator has muted you here: you can read, and cannot post, comment or like.", tone: "warn" },
-  full: { text: "This community is full, so there is no record to save your choices in. Tell the creator.", tone: "warn" },
+  full: { text: "This community has as many members as it can hold, so there is no member record for you: you can read, but cannot post, comment, like or save your choices. Tell the creator.", tone: "warn" },
   fullposts: { text: "This community holds as many posts as it can. The creator can delete old ones to make room.", tone: "warn" },
   fullcomments: { text: "This post has as many comments as one post holds.", tone: "warn" },
   pinfull: { text: "Three posts are pinned already. Unpin one first.", tone: "warn" },
-  gone: { text: "That is not there any more.", tone: "warn" },
+  gone: { text: "That is not there anymore.", tone: "warn" },
   forbidden: { text: "That is not yours to change.", tone: "warn" },
   going: { text: "You are going. The way in shows on this page 15 minutes before the start." },
-  goingnomail: { text: "You are going. The way in shows on this page 15 minutes before the start. For an email a day and an hour before, tick the emails box on your You page." },
-  notgoing: { text: "Your RSVP is cancelled." },
+  goingnomail: { text: "You are going. The way in shows on this page 15 minutes before the start. For reminder emails a day and an hour before, check the “Email me” box on your You page." },
+  notgoing: { text: "Your RSVP is canceled." },
   eventfull: { text: "Every place is taken. If somebody cancels, a place opens here again.", tone: "warn" },
-  eventcancelled: { text: "This event was cancelled.", tone: "warn" },
+  eventcancelled: { text: "This event was canceled.", tone: "warn" },
   eventover: { text: "This event is over.", tone: "warn" },
   eventlocked: { text: "This event is for members who have one of the products named on it.", tone: "warn" },
   host: { text: "You host this event, so there is no place for you to take.", tone: "warn" },
@@ -66,7 +66,7 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
 export const LINK_NOTICES: Record<string, { title: string; body: string }> = {
   sent: {
     title: "Check your inbox",
-    body: "If that address has a purchase that opens this community, a link to come in is on its way. It works for one hour.",
+    body: "If that address has something that opens this community, a link to come in is on its way. It works for one hour.",
   },
   email: { title: "That address does not look right", body: "Check it and try again." },
   limited: { title: "Too many requests", body: "Wait a little, then ask again." },
@@ -469,7 +469,7 @@ export function Gate({
         <div className="st-note mt-6" role="status">
           <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing that opens it yet</p>
           <p className="mt-1 text-sm">
-            {`${email} has no purchase from ${store.name} that opens this community, or a membership that did has stopped. If you paid with another address, ask for a link with it below.`}
+            {`${email} has nothing from ${store.name} that opens this community, or a membership that did has stopped. If you used another address, ask for a link with it below.`}
           </p>
         </div>
       ) : null}
@@ -494,7 +494,7 @@ export function Gate({
         <form action="/api/store/community/link" method="post" className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
           <input type="hidden" name="handle" value={store.handle} />
           <label htmlFor="community-email" className="st-label">{state === "closed" ? "Try another address" : "Already a member?"}</label>
-          <p className="st-muted mt-1 text-sm">Type the address you paid with and a link to come in on this device is sent there. No password.</p>
+          <p className="st-muted mt-1 text-sm">Type the address you used to buy or sign up, and a link to come in on this device is sent there. No password.</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <input id="community-email" name="email" type="email" required autoComplete="email" placeholder="you@example.com" className="st-field min-w-0 flex-1" />
             <button type="submit" className="btn st-btn">Send me the link</button>

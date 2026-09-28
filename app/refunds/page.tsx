@@ -9,12 +9,12 @@ export const metadata: Metadata = {
 
 export default function RefundsPage() {
   return (
-    <LegalPage title="Refund Policy" lastUpdated="September 26, 2026">
+    <LegalPage title="Refund Policy" lastUpdated="September 28, 2026">
       <p>
         This Refund Policy applies to what you pay Nimbus Labs, an independent
-        software studio, for the creator store at nimbuslabsai.com — including
-        a creator store subscription once stores open, at whatever price is
-        shown at checkout.
+        software studio, for the creator store at nimbuslabsai.com: the monthly
+        or yearly subscription, on either plan, at the price shown at
+        checkout.
       </p>
       <p>
         It does not cover something you bought from a creator&apos;s store.
@@ -33,7 +33,7 @@ export default function RefundsPage() {
         </p>
         <p>
           To cancel, open your studio and choose &ldquo;Cancel the
-          subscription&rdquo; under Plan. You can also
+          subscription&rdquo; under &ldquo;What you pay us.&rdquo; You can also
           ask us by email, as described in section 3.
         </p>
       </LegalSection>
@@ -43,8 +43,8 @@ export default function RefundsPage() {
           If you request a refund within fourteen (14) days of a charge, we
           will refund that charge in full. This applies to the initial
           subscription payment, to later renewal charges, monthly or yearly,
-          to a charge made when you switch between them, and to a
-          one-time purchase, provided the request is made within 14 days of the
+          and to a charge made when you switch plans or between monthly and
+          yearly billing, provided the request is made within 14 days of the
           specific charge.
         </p>
       </LegalSection>
@@ -91,8 +91,9 @@ export default function RefundsPage() {
 
       <LegalSection title="6. If you bought from a creator’s store">
         <p>
-          Write to the creator you bought from. Their email is on the store
-          page you paid on and on your receipt, and their store is theirs: they
+          Write to the creator you bought from: reply to the confirmation email
+          the store sent you after you paid, and your reply reaches them. Their
+          store is theirs: they
           set the terms of the sale, they received the money in their own
           Stripe account, and they are the only one who can return it.
         </p>
@@ -104,15 +105,15 @@ export default function RefundsPage() {
           >
             support@nimbuslabsai.com
           </a>{" "}
-          with your receipt. We cannot move money we never held, but we can
+          with your order confirmation email. We cannot move money we never held, but we can
           pass your message to the creator and tell you what we did.
         </p>
       </LegalSection>
 
       <LegalSection title="7. Changes">
         <p>
-          We may update this Refund Policy. The effective date at the top of
-          this page will be revised when we do. The policy in effect at the
+          We may update this Refund Policy. The &ldquo;Last updated&rdquo; date at
+          the top of this page will change when we do. The policy in effect at the
           time of a charge will apply to that charge.
         </p>
       </LegalSection>

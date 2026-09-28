@@ -12,13 +12,13 @@ const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
   from_name: "Type the name your emails are from.",
   address: "Type a postal address where you can be reached: a street address or a PO box. The law in the United States asks for one in every email like this.",
-  confirm: "Tick the box to confirm the people you are importing agreed to hear from you.",
+  confirm: "Check the box to confirm the people you are importing agreed to hear from you.",
   no_addresses: "No email addresses were found in what you pasted.",
   too_many: "That is more than one import takes. Split it into files of 5,000 addresses or fewer.",
   subject: "Write a subject line.",
   body: "Write the email itself.",
   when: "Pick a time between now and a year from now.",
-  product: "That product is not in your store any more.",
+  product: "That product is not in your store anymore.",
   empty: "Nobody on your list matches, so there is nobody to send it to yet.",
   allowance: "This goes to more people than this month's emails have left. Send it to a smaller group, or next month.",
   day: "Today's sending is full. A test can go out again tomorrow.",
@@ -28,7 +28,7 @@ const MESSAGES: Record<string, string> = {
   trigger: "Choose what starts the sequence.",
   steps: "A sequence has between one and ten emails.",
   step: "Every email in the sequence needs a subject, some text, and a wait of up to a year.",
-  unknown: "That is not there any more. Reload the page.",
+  unknown: "That is not there anymore. Reload the page.",
   send: "The email service did not take it just now. Nothing was sent; try again in a moment.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Email is not switched on yet, so nothing was sent.",
@@ -196,7 +196,7 @@ function Settings({ name, mail }: { name: string; mail: MailSettings | null }) {
       </label>
       <label className="block">
         <span className="field-label">Postal address at the foot of each email</span>
-        <input className="field mt-2" maxLength={200} placeholder="Street, city, postcode, country — or a PO box" value={address} onChange={(e) => setAddress(e.target.value)} />
+        <input className="field mt-2" maxLength={200} placeholder="Street, city, ZIP or postal code, country — or a PO box" value={address} onChange={(e) => setAddress(e.target.value)} />
       </label>
       <p className="text-sm text-ink-soft">
         Replies go to the address you log in with. The postal address is required by the CAN-SPAM Act for emails
@@ -539,7 +539,7 @@ const STATUS: Record<string, string> = {
   sending: "Going out",
   sent: "Sent",
   waiting: "Waiting",
-  cancelled: "Cancelled",
+  cancelled: "Canceled",
   failed: "Stopped",
 };
 
@@ -594,7 +594,7 @@ function History({
                   setBusy(true);
                   const a = await call({ action: "cancel", id: b.id });
                   setBusy(false);
-                  if (a.ok) toast("Scheduled email cancelled.");
+                  if (a.ok) toast("Scheduled email canceled.");
                   router.refresh();
                 }}
               >

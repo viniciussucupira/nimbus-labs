@@ -146,7 +146,7 @@ export default async function CommunityEventPage({ params, searchParams }: Param
               <p className="mt-3 text-sm">{`If you bought one with another address, sign out on your You page and come back in with that one.`}</p>
             </div>
           ) : event.cancelled ? (
-            <p className="cm-flash cm-flash-warn mt-6">{`${store.name} cancelled this event. Nothing for you to do: RSVPs were cancelled with it, and everyone who had one was emailed.`}</p>
+            <p className="cm-flash cm-flash-warn mt-6">{`${store.name} canceled this event, and everyone who had RSVP'd was emailed. There is nothing for you to do.`}</p>
           ) : !over ? (
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {viewer.owner ? (
@@ -198,7 +198,7 @@ export default async function CommunityEventPage({ params, searchParams }: Param
                       </div>
                       {place && !viewer.owner ? (
                         <p className="st-muted mt-2 text-sm">
-                          {place === "google" ? `Google Meet asks you to wait until ${store.name} lets you in.` : `Zoom lets you in once ${store.name} starts the meeting.`}
+                          {place === "google" ? `Google Meet may ask you to wait until ${store.name} lets you in.` : `Zoom lets you in once ${store.name} starts the meeting, and admits you if they use a waiting room.`}
                         </p>
                       ) : null}
                     </>

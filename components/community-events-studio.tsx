@@ -67,20 +67,20 @@ const MESSAGES: Record<string, string> = {
   cap: `A cap is a whole number from 1 to ${MAX_EVENT_CAP.toLocaleString("en-US")}, or empty for no cap.`,
   link: "Your meeting link has to be a full address that starts with https://.",
   meet: "Pick where the event happens.",
-  meet_google: "Google Calendar is not connected to this store any more. Connect it again under Video calls in your studio, or pick another place.",
-  meet_zoom: "Zoom is not connected to this store any more. Connect it again under Video calls in your studio, or pick another place.",
+  meet_google: "Google Calendar is not connected to this store anymore. Connect it again under Video calls in your studio, or pick another place.",
+  meet_zoom: "Zoom is not connected to this store anymore. Connect it again under Video calls in your studio, or pick another place.",
   only: "One of those products no longer opens the community. Reload the page.",
   too_many: `${MAX_UPCOMING_EVENTS} events are coming up already. Cancel one, or wait for one to be over.`,
   started: "It has started, so it can no longer be moved. Its words, link and cap can still change.",
   over: "It is over, so it can no longer be changed. You can still post its replay.",
-  cancelled: "It was cancelled, so it can no longer be changed.",
+  cancelled: "It was canceled, so it can no longer be changed.",
   early: "A replay can be added once the event has started.",
   replay: "That is not a YouTube, Vimeo or Loom address.",
   upcoming: "Cancel it first, so everyone coming is told.",
-  telling: "Everyone coming is still being told it was cancelled. Delete it once that is done.",
+  telling: "Everyone coming is still being told it was canceled. Delete it once that is done.",
   busy: "This event is being saved from somewhere else right now. Try again in a moment.",
   slow: "That is a lot of changes in an hour. Wait a little, then try again.",
-  unknown: "That event is not there any more. Reload the page.",
+  unknown: "That event is not there anymore. Reload the page.",
   not_set_up: "Set the community up first.",
   role: "Your role on this store cannot change events.",
   none: "This account has no store yet.",
@@ -186,7 +186,7 @@ export function CommunityEventsStudio({
         <span className={`tag ${upcoming ? "tag-brand" : ""}`}>{upcoming ? `${upcoming} coming up` : "None coming up"}</span>
       </div>
       <p className="mt-2 text-ink-soft">
-        {`Workshops, Q&As, coworking hours for your members. They RSVP in the community and join from the event's page: in a private video room shown right in the page, at your own meeting link${meetings.length ? `, or in a ${meetings.map((m) => MEET_NAMES[m.provider]).join(" or ")} meeting made for it` : ""}. The way in shows ${JOIN_EARLY_MINUTES} minutes before the start, only to members who can come, and is checked on every visit. Members who asked for the community's emails get a reminder a day and an hour before; moving or cancelling emails everyone coming, once.`}
+        {`Workshops, Q&As, coworking hours for your members. They RSVP in the community and join from the event's page: in a private video room shown right in the page, at your own meeting link${meetings.length ? `, or in a ${meetings.map((m) => MEET_NAMES[m.provider]).join(" or ")} meeting made for it` : ""}. The way in shows ${JOIN_EARLY_MINUTES} minutes before the start, only to members who can come, and is checked on every visit. Members who asked for the community's emails get a reminder a day and an hour before; moving or canceling it emails everyone coming, once.`}
       </p>
 
       {canManage ? (
@@ -257,7 +257,7 @@ export function CommunityEventsStudio({
                   onCancelEvent={() => {
                     const who = event.going ? ` The ${event.going === 1 ? "person" : `${event.going} people`} coming will be emailed once.` : "";
                     if (window.confirm(`Cancel "${event.title}"?${who} This cannot be undone.`)) {
-                      run(`e-${event.id}`, { action: "cancel", event: event.id }, event.going ? "Cancelled. Everyone coming is being emailed." : "Cancelled.");
+                      run(`e-${event.id}`, { action: "cancel", event: event.id }, event.going ? "Canceled. Everyone coming is being emailed." : "Canceled.");
                     }
                   }}
                   onDelete={() => {
@@ -340,7 +340,7 @@ function EventRow({
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1">
         <p className="min-w-0 break-words font-semibold text-ink">
           {event.title}
-          {event.cancelled ? <span className="tag ml-2 align-middle">Cancelled</span> : event.started && !event.over ? <span className="tag tag-live ml-2 align-middle">On now</span> : null}
+          {event.cancelled ? <span className="tag ml-2 align-middle">Canceled</span> : event.started && !event.over ? <span className="tag tag-live ml-2 align-middle">On now</span> : null}
         </p>
         <span className="text-sm font-semibold tabular-nums text-ink-soft">{places}</span>
       </div>
@@ -352,7 +352,7 @@ function EventRow({
       </p>
       {meetName && event.meeting?.error && !event.over && !event.cancelled ? (
         <p className="mt-2 rounded-[10px] bg-amber-brand/10 px-3 py-2 text-sm text-ink" role="status">
-          {`${made ? `The ${meetName} meeting could not be kept in step yet` : `The ${meetName} link could not be made`}: ${event.meeting.error}.${made ? "" : " Members get the event's private video room instead."}${event.meeting.retrying ? " We try again by ourselves until two hours before it starts." : ""}`}
+          {`${made ? `The ${meetName} meeting could not be kept in step yet` : `The ${meetName} link could not be made`}: ${event.meeting.error}.${made ? "" : " Members get the event's private video room instead."}${event.meeting.retrying ? " We keep trying on our own until two hours before it starts." : ""}`}
         </p>
       ) : null}
       {way && !event.over && !event.cancelled ? (
@@ -593,7 +593,7 @@ function EventForm({
                       ? p === "google"
                         ? `A Google Calendar event with a Meet link is made on ${account.account}, with nobody on its guest list: members get the link on the event's page and ask to join, and you let them in.`
                         : `A Zoom meeting is made on ${account.account}. Members get its link on the event's page and come in once you start it, from Zoom or with Start in Zoom here.`
-                      : `${p === "google" ? "Google Calendar" : "Zoom"} is not connected any more: connect it again under Video calls in your studio, or pick another place.`}
+                      : `${p === "google" ? "Google Calendar" : "Zoom"} is not connected anymore: connect it again under Video calls in your studio, or pick another place.`}
                   </span>
                 </span>
               </label>
@@ -615,7 +615,7 @@ function EventForm({
         </label>
         {draft.where === "meet" && draft.meet ? (
           <p className="mt-2 rounded-[10px] bg-white px-3 py-2 text-sm text-ink-soft ring-1 ring-line">
-            {`Members see its link on the event's page, ${JOIN_EARLY_MINUTES} minutes before the start, as with the other places. Moving the event moves the meeting; cancelling it removes the meeting. If it cannot be made, the event uses its private video room, and we try again until two hours before. ${
+            {`Members see its link on the event's page, ${JOIN_EARLY_MINUTES} minutes before the start, as with the other places. Moving the event moves the meeting; canceling it removes the meeting. If it cannot be made, the event uses its private video room, and we keep trying until two hours before it starts. ${
               draft.meet === "google"
                 ? "Your Google plan sets how many can join and for how long (free accounts: 100 people, 60 minutes for three or more)."
                 : "Your Zoom plan sets how many can join and for how long (free accounts: 100 people, 40 minutes)."
@@ -649,7 +649,7 @@ function EventForm({
               </li>
             ))}
           </ul>
-          <p className="mt-1 text-sm text-ink-soft">{draft.only.length ? "Other members see the event, and what opens it, but cannot RSVP or join." : "Nothing ticked: every member can come."}</p>
+          <p className="mt-1 text-sm text-ink-soft">{draft.only.length ? "Other members see the event, and what opens it, but cannot RSVP or join." : "Nothing checked: every member can come."}</p>
         </fieldset>
       ) : null}
 

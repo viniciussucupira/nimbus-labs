@@ -298,7 +298,7 @@ export function ProductImageEditor({ product, folder }: { product: Product; fold
             className="mt-4"
             onSubmit={(event) => {
               event.preventDefault();
-              if (altChanged) run("alt", { alt: alt.trim() }, "Description saved.");
+              if (altChanged) run("alt", { alt: alt.trim() }, "Picture description saved.");
             }}
           >
             <label htmlFor={altId} className="field-label">
@@ -341,7 +341,7 @@ export function ProductImageEditor({ product, folder }: { product: Product; fold
                       value={style.id}
                       checked={chosen}
                       disabled={busy !== null}
-                      onChange={() => run("display", { display: style.id }, `Shown as ${style.label}.`)}
+                      onChange={() => run("display", { display: style.id }, `Card style set to ${style.label}.`)}
                       className="sr-only"
                     />
                     <StyleSketch style={style.id} />

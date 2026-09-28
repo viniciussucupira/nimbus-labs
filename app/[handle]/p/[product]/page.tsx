@@ -297,7 +297,7 @@ export default async function ProductPage({ params }: Params) {
   const buyTerms = (
     <>
       {plan && canSellProduct(store, product) ? (
-        <p className="st-muted text-sm font-semibold">{`Pay at once, or ${planWords(plan, store.currency)}`}</p>
+        <p className="st-muted text-sm font-semibold">{`Pay in full, or in ${planWords(plan, store.currency)}`}</p>
       ) : null}
       {pwyw && canSellProduct(store, product) ? (
         <p className="st-muted text-sm font-semibold">{`You choose the price: ${formatMoney(product.priceCents, store.currency)} or more.`}</p>

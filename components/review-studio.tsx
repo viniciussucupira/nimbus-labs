@@ -14,7 +14,7 @@ const MESSAGES: Record<string, string> = {
   days: `Pick between ${MIN_ASK_DAYS} and ${MAX_ASK_DAYS} days.`,
   email: "Review requests are email, so they need Pro with your email set up (the sender name and postal address). Set that up in Email first.",
   busy: "Someone else changed this review at the same moment. Try again.",
-  missing: "That review is not there any more: its buyer may have deleted it. Reload the page.",
+  missing: "That review is not there anymore: its buyer may have deleted it. Reload the page.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Try again in a moment.",

@@ -22,7 +22,7 @@ export default function DemoRecoverPage() {
           Lost your download?
         </h1>
         <p className="mt-4 text-lg text-ink-soft">
-          Type the address you paid with. If the download is still open, we send
+          Type the email address you paid with. If the download is still open, we send
           the link there again — no account to create, no password to invent.
         </p>
 
@@ -51,7 +51,7 @@ export default function DemoRecoverPage() {
             href="/help"
             className="btn btn-secondary"
           >
-            Help centre
+            Help center
           </Link>
         </div>
       </main>

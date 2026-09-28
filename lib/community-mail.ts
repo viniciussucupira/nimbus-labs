@@ -184,7 +184,7 @@ export async function advanceAnnouncement(
     const store = await load(job.handle);
     const config = store?.community?.id === job.community ? await readConfig(job.community) : null;
     if (!store || !config) {
-      job = { ...job, status: "failed", note: "The community is not here any more." };
+      job = { ...job, status: "failed", note: "The community is not here anymore." };
       await save(job);
       await redisPipeline([["SREM", QUEUE, id]]);
       return job;

@@ -52,7 +52,7 @@ export function HelpSearch() {
   return (
     <div className="mt-8 max-w-2xl">
       <label htmlFor="help-search" className="sr-only">
-        Search the help centre
+        Search the help center
       </label>
       {/*
         The field is the first thing on the page for a reason: most people
@@ -83,7 +83,7 @@ export function HelpSearch() {
         {shown === null
           ? "Type a word and the answers that mention it open below."
           : shown === 0
-            ? "No answer mentions that yet. Write to us at the bottom of the page and a person answers."
+            ? "No answer mentions that yet. Write to us at the bottom of the page, and a person will answer."
             : `${shown} ${shown === 1 ? "answer" : "answers"} below.`}
       </p>
 

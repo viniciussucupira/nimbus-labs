@@ -69,7 +69,7 @@ export function SessionPicker({
         <p className="mt-1 text-sm">
           {move
             ? "Your seat stays as it is."
-            : "Every session is full or has already started. New dates appear here when they are added."}
+            : "Every session is full or too close to its start to book. New dates appear here when they are added."}
         </p>
       </div>
     );

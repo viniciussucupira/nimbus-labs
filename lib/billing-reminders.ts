@@ -85,7 +85,7 @@ export function reminderEmail(reminder: Reminder): { subject: string; text: stri
       "",
       `Your yearly subscription to ${name} renews automatically on ${date}. Your card will be charged ${price} for another year, unless you cancel before then.`,
       "",
-      `To cancel, or to switch to paying ${monthly} a month instead, open your studio. Cancelling is one click, with no email to us:`,
+      `To cancel, or to switch to paying ${monthly} a month instead, open your studio. Canceling is one click, with no email to us:`,
       studio,
       "",
       `If you cancel, nothing more is charged, and your store keeps taking payments until ${date}.`,

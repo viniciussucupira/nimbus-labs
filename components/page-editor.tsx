@@ -348,7 +348,7 @@ export function PageEditor({
                 )}
                 <p id={`${base}-vh`} className={`mt-1 text-xs ${draft.video && !recognised ? "font-semibold text-danger" : "text-ink-soft"}`}>
                   {recognised
-                    ? `${PROVIDER_NAMES[recognised.provider]} video recognised. It loads only when a visitor presses play (YouTube's privacy-enhanced player, Vimeo with do-not-track).`
+                    ? `${PROVIDER_NAMES[recognised.provider]} video recognized. It loads only when a visitor presses play (YouTube's privacy-enhanced player, Vimeo with do-not-track).`
                     : draft.video
                       ? "Not a video we can play. Paste a link from YouTube, Vimeo or Loom."
                       : "A link from YouTube, Vimeo or Loom. Nothing else can be played on the page."}
@@ -879,7 +879,7 @@ function PairEditor({
         </button>
       ) : null}
       {incomplete ? (
-        <p className="text-xs text-ink-soft">{needsBoth ? "A question without an answer is left out when you save." : "A part without a name is left out when you save."}</p>
+        <p className="text-xs text-ink-soft">{needsBoth ? "A question without an answer, or an answer without a question, is left out when you save." : "A part without a name is left out when you save."}</p>
       ) : null}
     </div>
   );

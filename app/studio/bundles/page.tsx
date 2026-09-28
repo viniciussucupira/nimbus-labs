@@ -74,7 +74,7 @@ export default async function StudioBundlesPage({ searchParams }: Params) {
           <p className="eyebrow">Bundles</p>
           <h1 className="t-h2 mt-3">Several products, one price</h1>
           <p className="mt-3 max-w-2xl text-ink-soft">
-            {`A bundle hands over ${MIN_BUNDLE_ITEMS} to ${MAX_BUNDLE_ITEMS} of your one-off products for one price you set. Your store shows what the products cost on their own, worked out from their prices today, next to the bundle's price.`}
+            {`A bundle hands over ${MIN_BUNDLE_ITEMS} to ${MAX_BUNDLE_ITEMS} of your one-off products for one price you set. When they add up to more than that price, your store shows what the products cost on their own, worked out from their prices today, next to the bundle's price.`}
           </p>
 
           <div className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)]">

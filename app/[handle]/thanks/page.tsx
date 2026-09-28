@@ -68,8 +68,8 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     body: "Check the link you were given, or write to the store.",
   },
   unavailable: {
-    title: "This store cannot take payments yet",
-    body: "Nothing was charged.",
+    title: "This order cannot be checked right now",
+    body: "This store's payments are not connected at the moment, so the order cannot be looked up here. If you paid, reply to your order confirmation email and it reaches the store.",
   },
   error: {
     title: "We could not check this order",
@@ -77,12 +77,33 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   },
   slow: {
     title: "Give it a moment",
-    body: "This page was opened a great many times in a few minutes, so it is resting. Nothing is wrong with your order and nothing is lost: open your link again in a few minutes, or use the link in the email you were sent.",
+    body: "This page was opened many times in a few minutes, so it is paused for now. Nothing is wrong with your order and nothing is lost: open your link again in a few minutes, or use the link in the email you were sent.",
   },
   refunded: {
     title: "This order was refunded",
-    body: "The payment was given back in full, so what it bought no longer opens here. If you think this is a mistake, reply to the receipt you were emailed when you paid.",
+    body: "The payment was given back in full, so what it bought no longer opens here. If you think this is a mistake, reply to the order confirmation you were emailed when you paid; it reaches the store.",
   },
+};
+
+/**
+ * What the buyer's answer to an offer after paying came to, as
+ * /api/store/upsell reports it (lib/upsell.ts, TakeResult). A reason whose
+ * outcome this page already shows from the order itself (what was added,
+ * what is still being checked, what was turned down) is said only when the
+ * page would otherwise say nothing.
+ */
+const UPSELL_NOTES: Record<string, { text: string; always: boolean }> = {
+  done: {
+    text: "Your yes was received. If what you added is not shown here yet, open this page again in a minute: it is charged once at most.",
+    always: false,
+  },
+  declined: { text: "No thanks, noted. Nothing more was charged.", always: true },
+  failed: { text: "That offer was not charged.", always: false },
+  checking: {
+    text: "We are still hearing back from Stripe about that offer. Open this page again in a minute: it is charged once at most.",
+    always: false,
+  },
+  unavailable: { text: "That offer is no longer open, so nothing was charged for it.", always: true },
 };
 
 /**
@@ -383,6 +404,11 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     `/api/store/download?${new URLSearchParams({ handle: store.handle, session_id: sessionId ?? "", ...extra, pid: id })}`;
 
   const notice = order.state !== "paid" ? NOTICES[order.state] : null;
+  const upsellAnswer = typeof query.upsell === "string" && Object.hasOwn(UPSELL_NOTES, query.upsell) ? UPSELL_NOTES[query.upsell] : null;
+  const upsellNote =
+    order.state === "paid" && upsellAnswer && (upsellAnswer.always || (!funnel?.taken.length && !funnel?.notes.length))
+      ? upsellAnswer.text
+      : null;
   const hours = order.state === "paid" ? Math.floor(order.secondsLeft / 3600) : 0;
 
   return (
@@ -395,7 +421,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
           {order.state === "paid" ? (
             <>
               <p className="st-price text-sm">
-                Paid
+                {order.product.recurring && order.trialDays > 0 ? "Trial started" : "Paid"}
               </p>
               <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
                 {booked ? "You are booked" : "Thank you"}
@@ -445,7 +471,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   className="mt-3 rounded-2xl px-4 py-3 text-sm"
                   style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
                 >
-                  {`This is the first of ${order.plan.payments} ${order.plan.interval === "week" ? "weekly" : "monthly"} payments. The other ${order.plan.payments - 1} are charged to the same card on ${store.name}'s own account, and it stops by itself after the last one. To change the card or ask about a payment, reply to the receipt Stripe emailed you.`}
+                  {`This is the first of ${order.plan.payments} ${order.plan.interval === "week" ? "weekly" : "monthly"} payments. The other ${order.plan.payments - 1} are charged to the same card on ${store.name}'s own account, and the plan stops by itself after the last one. To change the card or ask about a payment, reply to your order confirmation email; it reaches ${store.name}.`}
                 </p>
               ) : null}
               {order.product.recurring && !ended ? (
@@ -456,17 +482,17 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   {canManage(store) ? (
                     <>
                       {order.endsAfter > 0
-                        ? `This renews ${everyLabel(order.product.recurring.interval)} for ${order.endsAfter} payments in all and then ends by itself. You can cancel it yourself before that, without writing to anyone: `
-                        : `This renews ${everyLabel(order.product.recurring.interval)} until you cancel it, and you can cancel it yourself at any time, without writing to anyone: `}
+                        ? `This renews once ${everyLabel(order.product.recurring.interval)} for ${order.endsAfter} payments in all and then ends by itself. You can cancel it yourself before that, without writing to anyone: `
+                        : `This renews once ${everyLabel(order.product.recurring.interval)} until you cancel it, and you can cancel it yourself at any time, without writing to anyone: `}
                       <Link href={`/@${store.handle}/manage`} className="font-semibold underline underline-offset-4">
                         manage your membership
                       </Link>
                       {" with the email you paid with."}
                     </>
                   ) : (
-                    `This renews ${everyLabel(order.product.recurring.interval)} ${
+                    `This renews once ${everyLabel(order.product.recurring.interval)} ${
                       order.endsAfter > 0 ? `for ${order.endsAfter} payments in all and then ends by itself, unless you cancel it first` : "until you cancel it"
-                    }. The charge is made by ${store.name}, on their own account: reply to the receipt Stripe emailed you and it reaches them.`
+                    }. The charge is made by ${store.name}, on their own account. To cancel, reply to your order confirmation email; it reaches them.`
                   )}
                 </p>
               ) : null}
@@ -516,7 +542,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                       : `${store.name} will send you the link to join before the call.`}
                     {isVideoRoom(booked.room) ? ` ${VIDEO_ROOM_NOTE}` : ""}
                     {order.email
-                      ? ` A confirmation is on its way to ${order.email}, and a reminder follows a day and an hour before; to cancel, reply to it.`
+                      ? ` A confirmation is on its way to ${order.email}, and reminders follow a day and an hour before. To cancel, reply to the confirmation; it reaches ${store.name}.`
                       : ""}
                   </p>
                   {sessionId && canMove(booked.setup, booked.start, booked.moves) ? (
@@ -598,10 +624,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   is who can fix it.
                 */
                 <p className="mt-7 rounded-2xl bg-danger-soft px-4 py-3 text-sm text-ink">
-                  <strong>Your payment went through, and this one has
-                  nothing attached to send.</strong> That is on {store.name} to
+                  <strong>Your payment went through, but this product has
+                  nothing attached to send.</strong> That is for {store.name} to
                   put right, and the charge is on their own Stripe account, so
-                  reply to the receipt Stripe emailed you and they will see it.
+                  reply to your order confirmation email and it reaches them.
                 </p>
               )}
               {/* What is theirs first — the product, what was ticked at checkout and
@@ -637,7 +663,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     </a>
                   ) : (
                     <p className="st-muted mt-2 text-sm">
-                      {`This one has nothing attached right now. Reply to your receipt and ${store.name} will send it.`}
+                      {`This one has nothing attached right now. Reply to your order confirmation email to ask ${store.name} for it.`}
                     </p>
                   )}
                   {keyBox(bumpKey, order.bump.product.title)}
@@ -684,6 +710,11 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     Go to the community
                   </Link>
                 </div>
+              ) : null}
+              {upsellNote ? (
+                <p className="st-note mt-6 text-sm" role="status">
+                  {upsellNote}
+                </p>
               ) : null}
               {offer && sessionId ? (
                 <section
@@ -743,7 +774,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     ? `We are still hearing back from Stripe about ${note.title}. Open this page again in a minute: it is charged once at most, and it appears here as soon as it is paid.`
                     : note.state === "unconfirmed"
                       ? `Your bank has not confirmed ${note.title}, so it was not charged.`
-                      : `${note.title} was not charged: your card turned it down. You can still buy it from the store.`}
+                      : `${note.title} was not charged: the card you paid with could not be used for it. You can still buy it from the store.`}
                 </p>
               ))}
               {confirming && order.email ? (

@@ -27,7 +27,7 @@ const PROMISES = [
   },
   {
     emoji: "✉️",
-    title: "E-mail only if you ticked a box",
+    title: "Email only if you checked a box",
     body: "And only about what that box says.",
     tint: "bg-amber-brand/15 text-amber-brand",
   },
@@ -65,7 +65,7 @@ export default function CreatorsPage() {
               </div>
               <p className="mt-8 flex items-center gap-2 text-[0.9375rem] text-white/80">
                 <Icon name="clock" size={18} className="text-[#b9a8ff]" />
-                Two minutes, eight questions, four of them optional
+                Two minutes, eight questions, three of them optional
               </p>
             </div>
             {/*
@@ -81,7 +81,7 @@ export default function CreatorsPage() {
                 {[
                   { icon: "user" as const, text: "It is read by one person — me — and nobody else." },
                   { icon: "target" as const, text: "It goes on the list that decides what gets built next." },
-                  { icon: "mail" as const, text: "No email back unless you tick the box asking for one." },
+                  { icon: "mail" as const, text: "No email back unless you check the box asking for one." },
                 ].map((i) => (
                   <li key={i.text} className="flex gap-3">
                     <span className="icon-tile icon-tile-sm">

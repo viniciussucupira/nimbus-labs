@@ -48,7 +48,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     body: "A store cannot be its own affiliate.",
   },
   full: {
-    title: "This programme is full",
+    title: "This program is full",
     body: "It has as many affiliates as one store can hold. Write to the store if you would like to be considered.",
   },
   error: {
@@ -57,7 +57,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   },
   expired: {
     title: "This link has expired",
-    body: "A link works for 24 hours and once. Ask for a new one below; it takes a few seconds.",
+    body: "An emailed link works once, within 24 hours. Ask for a new one below; it takes a few seconds.",
   },
   signedout: {
     title: "You left your affiliate page on this browser",
@@ -188,7 +188,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                   <p className="mt-1 text-sm">
                     {status === "applied"
                       ? `${store.name} has been told. You get an email when they decide.`
-                      : "This page stays open here for 30 days."}
+                      : "You stay signed in on this browser for 30 days."}
                   </p>
                 </div>
               ) : null}
@@ -196,7 +196,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                 {affiliate.status === "approved"
                   ? on
                     ? "Affiliate"
-                    : "Programme paused"
+                    : "Program paused"
                   : affiliate.status === "pending"
                     ? "Waiting for approval"
                     : affiliate.status === "declined"
@@ -222,13 +222,13 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                 </p>
               ) : affiliate.status === "approved" ? (
                 <p className="st-muted mt-5 leading-relaxed">
-                  {`${store.name} has paused the programme, so links do not earn right now. What you already earned is below.`}
+                  {`${store.name} has paused the program, so links do not earn right now. What you already earned is below.`}
                 </p>
               ) : (
                 <p className="st-muted mt-5 leading-relaxed">
                   {affiliate.status === "declined"
                     ? `${store.name} did not approve this application.`
-                    : `${store.name} ended your place in the programme, so your link no longer earns. What you earned before is below.`}
+                    : `${store.name} ended your place in the program, so your link no longer earns. What you earned before is below.`}
                 </p>
               )}
 
@@ -316,15 +316,15 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                 </div>
               ) : null}
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">
-                {on ? `Earn by sharing ${store.name}` : `${store.name} has no affiliate programme right now`}
+                {on ? `Earn by sharing ${store.name}` : `${store.name} has no affiliate program right now`}
               </h1>
               {on ? (
                 <>
                   <ul className="mt-6 space-y-3">
                     {[
-                      `${terms.percent}% of what a buyer pays before tax, on single purchases made through your link${different.length ? " (some products differ, below)" : ""}.`,
+                      `${terms.percent}% of what a buyer pays before tax, on one-time purchases made through your link (memberships and payment plans do not earn)${different.length ? "; some products differ, below" : ""}.`,
                       `A purchase counts if it is made within ${terms.days} ${terms.days === 1 ? "day" : "days"} of their last click on your link, and the last affiliate link they followed is the one credited.`,
-                      "A refunded sale earns nothing, and your own purchases never earn.",
+                      "A refunded sale earns nothing, a partly refunded one earns only on what was kept, and your own purchases never earn.",
                       `${store.name} approves every affiliate, and pays you directly: Nimbus Labs never holds this money.`,
                     ].map((line) => (
                       <li key={line} className="flex gap-3">
@@ -336,7 +336,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                   {different.length ? (
                     <ul className="st-muted mt-4 space-y-1 text-sm">
                       {different.map((p) => (
-                        <li key={p.title}>{`${p.title}: ${p.rate === 0 ? "not part of the programme" : `${p.rate}%`}`}</li>
+                        <li key={p.title}>{`${p.title}: ${p.rate === 0 ? "not part of the program" : `${p.rate}%`}`}</li>
                       ))}
                     </ul>
                   ) : null}

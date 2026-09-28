@@ -27,7 +27,7 @@ const MESSAGES: Record<string, string> = {
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   events: "Choose at least one event to send.",
   missing: "That endpoint is no longer there. Reload the page.",
-  limited: "That is ten tests in a minute. Wait a moment and try again.",
+  limited: "A store can send ten tests a minute. Wait a moment and try again.",
   server_error: "Something went wrong on our side. Nothing was changed; try again in a moment.",
 };
 
@@ -101,7 +101,7 @@ export function WebhookEditor({ view: initial }: { view: WebhooksView }) {
     const data = await send({ action: "test", id }, `test:${id}`);
     if (!data) return;
     if (data.delivered) toast(`Test delivered (${data.status}).`);
-    else setError(`The test did not arrive: ${data.message || "no answer"} Nothing is retried for a test.`);
+    else setError(`The test did not arrive: ${(data.message || "no answer").replace(/\.?$/, ".")} Nothing is retried for a test.`);
   }
 
   async function copySecret() {
@@ -240,7 +240,7 @@ export function WebhookEditor({ view: initial }: { view: WebhooksView }) {
           </button>
         </form>
       ) : (
-        <p className="mt-5 text-sm text-ink-soft">{`That is ${MAX_ENDPOINTS} endpoints, as many as a store has. Remove one to add another.`}</p>
+        <p className="mt-5 text-sm text-ink-soft">{`That is ${MAX_ENDPOINTS} endpoints, as many as a store can have. Remove one to add another.`}</p>
       )}
 
       {error ? (

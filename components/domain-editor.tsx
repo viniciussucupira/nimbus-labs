@@ -124,7 +124,7 @@ export function DomainEditor({
       ) : (
         <p className="mt-2 text-ink-soft">
           Add the record{shown && shown.records.length > 1 ? "s" : ""} below where you bought the domain, in its DNS settings. It
-          usually takes a few minutes to show, and at most a day. Then press Check again. The domain is held for your store for three
+          usually takes a few minutes to show, and can take up to 48 hours. Then press Check again. The domain is held for your store for three
           days while you do this.
         </p>
       )}

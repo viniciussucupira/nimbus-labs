@@ -148,7 +148,7 @@ async function tell(email: string, subject: string, line: string): Promise<void>
       "",
       "If it was not you: log in at",
       `${SITE_URL}/signin`,
-      "with this email address, remove any passkey you do not recognise, choose “Log out of all devices” at the foot of your studio, and reply to this email so we can help.",
+      "with this email address, remove any passkey you do not recognize, choose “Log out of all devices” at the foot of your studio, and reply to this email so we can help.",
     ].join("\n"),
   }).catch(() => false);
 }
@@ -234,7 +234,7 @@ export async function removePasskey(email: string, id: string): Promise<boolean>
   if (!gone) return false;
   await saveList(address, list.filter((p) => p.id !== id));
   await redisPipeline([["DEL", credKey(id)]]);
-  await tell(address, "A passkey was removed from your Nimbus Labs account", `The passkey called “${headerText(gone.name, 60)}” was removed from your Nimbus Labs account (${address}). It cannot log in any more.`);
+  await tell(address, "A passkey was removed from your Nimbus Labs account", `The passkey called “${headerText(gone.name, 60)}” was removed from your Nimbus Labs account (${address}). It cannot log in anymore.`);
   return true;
 }
 

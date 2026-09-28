@@ -65,7 +65,7 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
           <div className="notice notice-warn mt-6">
             <p className="font-bold text-ink">Your store is not selling yet</p>
             <p className="mt-1 text-sm text-ink-soft">
-              You can set the programme up now. Sales are credited to affiliates once your Stripe account is connected and
+              You can set the program up now. Sales are credited to affiliates once your Stripe account is connected and
               your plan is running.
             </p>
           </div>

@@ -25,7 +25,7 @@ const PROVIDERS: { key: EmailProvider; name: string; target: string; tags: strin
     name: "Kit",
     target: "form",
     tags: "Tags",
-    where: "In Kit (formerly ConvertKit): Settings, then Developer, then “Add a new key” under API keys (v4).",
+    where: "In Kit (formerly ConvertKit): Settings, then Developer, then “Add a new key” under V4 Keys.",
     placeholder: "kit_…",
   },
   {
@@ -33,7 +33,7 @@ const PROVIDERS: { key: EmailProvider; name: string; target: string; tags: strin
     name: "beehiiv",
     target: "publication",
     tags: "Tags",
-    where: "In beehiiv: Settings, then API, then “Create new API key”.",
+    where: "In beehiiv: Settings, then API under Workspace Settings, then “Create New API Key”.",
     placeholder: "Your beehiiv API key",
   },
   {
@@ -312,8 +312,8 @@ export function EmailSyncEditor({ view: initial, products }: { view: SyncView; p
                   {(
                     [
                       ["all", "Buyers of every product", "Anyone who pays, calls and memberships included"],
-                      ["some", "Buyers of some products", "Only the products you tick below"],
-                      ["none", "No buyers", "Only free sign-ups, if ticked above"],
+                      ["some", "Buyers of some products", "Only the products you check below"],
+                      ["none", "No buyers", "Only free sign-ups, if checked above"],
                     ] as const
                   ).map(([value, label, hint]) => (
                     <label
@@ -355,7 +355,7 @@ export function EmailSyncEditor({ view: initial, products }: { view: SyncView; p
                   <Icon name="shield" size={16} className="mt-0.5 shrink-0 text-violet-deep" />
                   <span>
                     Only people who agreed to hear from you are sent: the box on your free-product form, or &ldquo;Also send me
-                    emails&rdquo; at checkout, which appears, unticked, for the buyers you choose here.
+                    emails&rdquo; above the buy button, which appears, unchecked, for the buyers you choose here.
                   </span>
                 </p>
               </fieldset>

@@ -55,7 +55,7 @@ const MESSAGES: Record<string, string> = {
   too_many: `A community holds up to ${MAX_SPACES} spaces.`,
   last_space: "A community needs at least one space. Add another before removing this one.",
   not_set_up: "Set the community up first.",
-  unknown: "That is not there any more. Reload the page.",
+  unknown: "That is not there anymore. Reload the page.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
@@ -291,7 +291,7 @@ function Basics({
       </div>
       <p className="mt-2 text-sm text-ink-soft">
         On your own domain it is also at /community. To sell access on its own, make a membership whose delivery link is
-        this address, and tick it below.
+        this address, and check it below.
       </p>
 
       <form
@@ -354,8 +354,8 @@ function Access({
     <section className="card mt-8 p-6 sm:p-8" aria-labelledby="cm-access-title">
       <h2 id="cm-access-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Who gets in</h2>
       <p className="mt-2 text-ink-soft">
-        Anyone whose address bought one of the products you tick. Checked against your Stripe account as they come in,
-        and again every few minutes while they are here: a refund, or a membership that is cancelled or stops being
+        Anyone whose address bought one of the products you check. Checked against your Stripe account as they come in,
+        and again every few minutes while they are here: a refund, or a membership that is canceled or stops being
         paid, closes the door within five minutes.
       </p>
       {products.length === 0 ? (
@@ -695,7 +695,7 @@ function Limits() {
   const rows: [string, string][] = [
     ["Spaces", `${MAX_SPACES}`],
     ["Posts in the community", MAX_POSTS.toLocaleString("en-US")],
-    ["Words in a post", `${MAX_POST_TEXT.toLocaleString("en-US")} characters, and one picture up to 1 MB`],
+    ["A post", `${MAX_POST_TEXT.toLocaleString("en-US")} characters, and one picture up to 1 MB`],
     ["Comments under one post", `${MAX_COMMENTS_PER_POST}, each up to ${MAX_COMMENT_TEXT.toLocaleString("en-US")} characters, one level of replies`],
     ["Pinned posts", `${MAX_PINNED}, plus one Start here post`],
     ["Members", MAX_MEMBERS.toLocaleString("en-US")],

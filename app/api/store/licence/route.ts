@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     const product = (store ? await readListing(store, productId) : null);
     // Checked whether or not the product still hands out keys: a product that
     // stopped still answers for the keys it gave, which stay valid.
-    if (!store || !product) return answer(404, { error: "No such product with licence keys." });
+    if (!store || !product) return answer(404, { error: "No such product with license keys." });
     const status = await checkKey(store, product, key);
     return answer(200, { valid: status === "valid", status });
   } catch (error) {

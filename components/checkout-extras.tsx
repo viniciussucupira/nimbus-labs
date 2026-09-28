@@ -23,9 +23,11 @@ import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
   stock: `Type a whole number from 1 to ${MAX_STOCK.toLocaleString("en-US")}.`,
-  target: "Pick another product that has one price and a file or a link on it.",
+  target: "Pick another product with one price, no limit on how many can be sold, and a file, a link or a bundle behind it.",
   kind: "This works on one-off paid products only.",
   sold_with: "This product is also sold in a bundle, a checkout box or an offer after paying. Take it out of those first: only its own checkout counts sales against the number.",
+  unknown: "That product is no longer in your store. Reload the page.",
+  store_full: "Your store is full. Remove something before adding more.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   server_error: "Something went wrong on our side. Try again in a moment.",
@@ -35,7 +37,7 @@ const MESSAGES: Record<string, string> = {
 const amountMessages = (currency: Currency): Record<string, string> => {
   const least = formatMoney(currencyRule(currency).minCharge, currency);
   return {
-    price: `Type a price of at least ${least}, and no more than that product costs on its own.`,
+    price: `Type an amount of at least ${least}. An offer at checkout costs no more than that product on its own, and a payment plan's payments add up to at least the full price.`,
     plan: `Pick how many payments, how often, and an amount of at least ${least} for each.`,
   };
 };
@@ -121,7 +123,7 @@ export function CheckoutExtras({
           </label>
           <p className="mt-2 text-xs text-ink-soft">
             Your page shows how many are left, counted from real payments, and stops selling at zero. Someone paying right
-            now holds one for up to 30 minutes.
+            now holds one for about half an hour.
           </p>
           {error ? <p className="notice notice-error mt-3" role="alert">{error}</p> : null}
           <div className="mt-3 flex flex-wrap gap-3">
@@ -178,7 +180,7 @@ const OFFER_TEXT = {
     save: "Save the offer",
     saved: "Checkout offer saved.",
     stopped: "Checkout offer stopped.",
-    note: "Buyers see a box under the buy button and tick it themselves; it is never ticked for them. Both are paid in one checkout and both are delivered on the thanks page.",
+    note: "Buyers see a box above the buy button and check it themselves; it is never checked for them. Both are paid in one checkout and both are delivered on the thanks page.",
   },
 } as const;
 
@@ -228,7 +230,7 @@ function OfferBlock({
       >
         {candidates.length === 0 ? (
           <p className="text-sm text-ink-soft">
-            Add another product with one price and a file or a link on it, and it can be offered here.
+            Add another product with one price and a file, a link or a bundle behind it, and it can be offered here.
           </p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">

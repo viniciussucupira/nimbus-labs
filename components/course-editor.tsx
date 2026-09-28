@@ -37,7 +37,8 @@ const MESSAGES: Record<string, string> = {
   video_type: "That video type does not play in every browser. Upload an MP4, a MOV or a WebM.",
   too_big: `That file is over ${maxFileLabel()}, which is the most one file can be.`,
   wrong_type: "That kind of file cannot be uploaded here.",
-  unknown: "That is not there any more. Reload the page.",
+  unknown: "That is not there anymore. Reload the page.",
+  not_course: "This product is no longer a course. Reload the page.",
   busy: "Another change to this course is still saving. Try again in a moment.",
   invalid: "That upload could not be checked. Try again.",
   signed_out: "Your session ended. Log in again.",
@@ -221,7 +222,7 @@ function ModuleCard({
       </form>
       <p className="mt-2 text-sm text-ink-mute">
         {unit.dripDays === 0
-          ? "Open as soon as a student joins."
+          ? "Opens as soon as a student joins."
           : `Opens ${unit.dripDays} ${unit.dripDays === 1 ? "day" : "days"} after each student joins, with an email to them that day.`}
       </p>
 

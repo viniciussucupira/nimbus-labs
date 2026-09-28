@@ -187,8 +187,8 @@ export function MeetingConnections({ view, pin }: { view: MeetView; pin: string 
           </p>
           <p className="mt-2 text-sm text-ink-soft">
             If a meeting cannot be made when someone books, they get your own link, or a private video room when you have none, so
-            no booking waits. We try again over the next hours, and if it works while there are more than two hours to go, you
-            and they are emailed the new link.
+            no booking waits. We try again over the following hours, and if it works while there are more than two hours to go and
+            no more than 20 people are booked, you and they are emailed the new link.
           </p>
           <p className="mt-2 text-sm text-ink-soft">
             A community live event can use it too: pick it under <span className="font-semibold text-ink">Where</span> when you schedule one.

@@ -33,12 +33,13 @@ const MESSAGES: Record<string, string> = {
   groups: `Choose ${MIN_GROUPS} to ${MAX_GROUPS} groups.`,
   length: `Choose ${MIN_GROUP_LENGTH} to ${MAX_GROUP_LENGTH} characters in each group.`,
   low: `Type a number from 0 to ${MAX_LOW_AT.toLocaleString("en-US")}.`,
-  kind: "Licence keys work on paid products sold once: not on free products, memberships, calls or courses.",
-  too_big: "That file is too big to read. Split it into files of up to 10,000 keys.",
+  kind: "License keys work only on paid products sold once, not on free products, memberships, calls, courses or bundles.",
+  unknown: "This product was not found. It may have been deleted; reload the page.",
+  too_big: `That file is too big to read. Split it into files of up to ${MAX_UPLOAD_KEYS.toLocaleString("en-US")} keys.`,
   too_many: `That is more than ${MAX_UPLOAD_KEYS.toLocaleString("en-US")} keys. Upload them in parts of up to ${MAX_UPLOAD_KEYS.toLocaleString("en-US")}.`,
   no_keys: "No keys were found in that. Put one key per line, or the key in the first column of a CSV.",
   unknown_key: "That key was never given by this product.",
-  off: "Licence keys are off for this product.",
+  off: "License keys are off for this product.",
   signed_out: "Your session ended. Log in again.",
   store_full: "Your store has reached the most it can hold. Remove something, or shorten a long list of choices, first.",
   server_error: "Something went wrong on our side. Nothing was changed; try again in a moment.",
@@ -153,7 +154,7 @@ export function LicenceKeyEditor({ product, handle }: { product: Product; handle
     return (
       <div className="mt-3">
         <button type="button" className={quiet} onClick={() => setEditing(true)}>
-          Give each buyer a unique licence key
+          Give each buyer a unique license key
         </button>
       </div>
     );
@@ -173,7 +174,7 @@ export function LicenceKeyEditor({ product, handle }: { product: Product; handle
         onSave={async (setup) => {
           const data = await post({ action: "setup", ...setup });
           if (!data.ok) return;
-          toast(on ? "Licence keys saved." : "Licence keys are on.");
+          toast(on ? "License keys saved." : "License keys are on.");
           setEditing(false);
           router.refresh();
         }}
@@ -188,9 +189,9 @@ export function LicenceKeyEditor({ product, handle }: { product: Product; handle
   const checkUrl = `${SITE_URL}/api/store/licence?store=${encodeURIComponent(handle)}&product=${encodeURIComponent(product.id)}&key=`;
 
   return (
-    <section className="mt-3 rounded-[var(--r-sm)] border border-line bg-white p-4" aria-label={`Licence keys for ${product.title}`}>
+    <section className="mt-3 rounded-[var(--r-sm)] border border-line bg-white p-4" aria-label={`License keys for ${product.title}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-sm font-semibold text-ink">Licence keys</p>
+        <p className="text-sm font-semibold text-ink">License keys</p>
         <span className="tag tag-live">On</span>
       </div>
       <p className="mt-1 text-sm text-ink-soft">
@@ -381,7 +382,7 @@ export function LicenceKeyEditor({ product, handle }: { product: Product; handle
         <p className="mt-2 text-ink-soft">
           Your software can ask whether a key is one this product gave and is still good. It answers{" "}
           <code className="font-mono">valid</code>, <code className="font-mono">revoked</code> or{" "}
-          <code className="font-mono">unknown</code>, and nothing about the buyer. Up to 120 checks a minute from one connection.
+          <code className="font-mono">unknown</code>, and nothing about the buyer. Up to 120 checks a minute from one IP address.
         </p>
         <code className="mt-2 block break-all rounded-[var(--r-sm)] bg-sand px-3 py-2 font-mono text-xs text-ink">{`GET ${checkUrl}THE-KEY`}</code>
       </details>
@@ -412,7 +413,7 @@ export function LicenceKeyEditor({ product, handle }: { product: Product; handle
           onClick={async () => {
             const data = await post({ action: "off" });
             if (!data.ok) return;
-            toast("Licence keys are off.");
+            toast("License keys are off.");
             setLoaded(null);
             router.refresh();
           }}
@@ -450,7 +451,7 @@ function SetupForm({
   if (loading) {
     return (
       <p className="mt-3 text-sm text-ink-soft" role="status">
-        Reading your licence keys…
+        Reading your license keys…
       </p>
     );
   }
@@ -470,7 +471,7 @@ function SetupForm({
       }}
     >
       <fieldset>
-        <legend className="field-label">Where each buyer&apos;s licence key comes from</legend>
+        <legend className="field-label">Where each buyer&apos;s license key comes from</legend>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-[var(--r-sm)] border border-line-strong bg-white p-3 text-sm transition hover:border-violet-brand has-[:checked]:border-violet-brand has-[:checked]:bg-lilac has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-violet-brand">
             <input type="radio" name="key-source" value="generated" checked={source === "generated"} onChange={() => setSource("generated")} className="mt-0.5 h-4 w-4 accent-violet-brand" />

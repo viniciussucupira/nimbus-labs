@@ -37,7 +37,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { title: "Take your address", body: "nimbuslabsai.com/@yourname is yours the moment you take it, and the page is up straight away." },
           { title: "Put up what you sell", body: "Its name, what is inside, the price and a picture. Files, courses, memberships, calls and live sessions, bundles of your products, free things for an email, and plain links. A community for your buyers sits beside them." },
-          { title: "Make it look like you", body: "Your photo, one of four themes, and one of ten colours or your own. The studio shows the page before you save." },
+          { title: "Make it look like you", body: "Your photo, one of four themes, and one of ten colors or your own. The studio shows the page before you save." },
         ],
       },
       {
@@ -51,10 +51,10 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "star", title: "Stars from real buyers", body: "Reviews only people who paid can write, with the average on the product's card and page.", href: "/platform/reviews" },
           { icon: "gift", title: "Free things, for an email", body: "Price something at 0 and it is handed out for a confirmed email address that joins your list." },
           { icon: "link", title: "Links with no price", body: "Your channel, your podcast, your booking page — with the site each one leads to printed under it." },
-          { icon: "palette", title: "Colours that stay readable", body: "Every colour is checked for contrast before your page uses it, so your words never disappear into it." },
-          { icon: "phone", title: "Your store, as an app", body: "On iPhone and Android, straight from the browser, your store installs to the home screen as an app of its own, with its name, its icon and its colour. No app store." },
-          { icon: "refresh", title: "Change your address freely", body: "Every address your store has used keeps working and leads to the new one, so the link in your bio never breaks." },
-          { icon: "gauge", title: "Fast on a phone", body: "The demo store scored 97 to 100 for performance on Google PageSpeed, on a simulated phone, on 17 September 2026." },
+          { icon: "palette", title: "Colors that stay readable", body: "Every color is checked for contrast before your page uses it, so your words never disappear into it." },
+          { icon: "phone", title: "Your store, as an app", body: "On iPhone and Android, straight from the browser, your store installs to the home screen as an app of its own, with its name, its icon and its color. No app store." },
+          { icon: "refresh", title: "Change your address freely", body: "Old addresses stay with your store and lead to the new one, up to ten at once, so the link in your bio keeps working." },
+          { icon: "gauge", title: "Fast on a phone", body: "The demo store scored 97 to 100 for performance on Google PageSpeed, on a simulated phone, on September 17, 2026." },
         ],
       },
       {
@@ -71,21 +71,21 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do yet",
         intro: "Said here so nobody signs up expecting it.",
         items: [
-          "There is one layout: you choose the theme, the colour and the order, not the arrangement of blocks on the page.",
+          "There is one layout: you choose the theme, the color and the order, not the arrangement of blocks on the page.",
           "Up to 2,000 products and 100 links per store. Stan says unlimited; we say the number we can stand behind.",
           "No categories, and no search on the store page itself: buyers page through 24 products at a time. Search is in your studio.",
           "No custom code on the page, and the store cannot be embedded in another website.",
-          "Buyers pay through Stripe, with the ways to pay your own Stripe account has on. PayPal is among them only for Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein: not for a Stripe account in the United States.",
+          "Buyers pay through Stripe, with the ways to pay your own Stripe account has on. Do not count on PayPal: Stripe offers it only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein, and its documentation, read on September 28, 2026, lists it as not supported for direct charges, which is how every sale here is charged.",
         ],
       },
       {
         kind: "faq",
         title: "Questions about the store page",
         items: [
-          { q: "Can I change my store address later?", a: "Yes, from your studio, whenever you want. Every address the store has ever used keeps working and sends people to the current one. A store holds up to ten addresses." },
+          { q: "Can I change my store address later?", a: "Yes, from your studio, whenever you want. The addresses your store holds keep working and send people to the current one, up to ten at once. An address you let go of stops working, and after 30 days anyone may take it." },
           { q: "Is the page up before I connect Stripe?", a: "Yes. The page, the editor and your address are free and stay free. Taking a card needs two things: Stripe has cleared your account, and your plan or its 14-day trial is running. Until then the page says plainly that it cannot take a payment." },
           { q: "Can I use my own domain?", a: DOMAINS ? "Yes, on the $99 Pro plan. You add one record where you bought the domain, and the certificate is made for you. Your nimbuslabsai.com address keeps working as well." : "Not yet. It is planned for the Pro plan, and this page will say so on the day it works." },
-          { q: "How do I see what the page looks like before I save?", a: "The studio shows the page with your photo, theme and colour as you change them, before anything is saved." },
+          { q: "How do I see what the page looks like before I save?", a: "The studio shows the page with your photo, theme and color as you change them, before anything is saved." },
           { q: "Can one account run more than one store?", a: "Yes, up to five, each with its own address, products, Stripe account and plan. You switch between them at the top of your studio." }
         ],
       },
@@ -111,27 +111,27 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "how",
         title: "How it works",
         items: [
-          { title: "Add up to three options", body: "A name the buyer reads — “1 week”, “Commercial licence” — and a price for each." },
+          { title: "Add up to three options", body: "A name the buyer reads — “1 week”, “Commercial license” — and a price for each." },
           { title: "Give each one its thing", body: "Its own file, up to 5 GB, or its own link. The buyer of the small size never receives the big one." },
           { title: "The buyer picks on the card", body: "One product, one card, no extra page. What is charged is read from what you saved, never from the page." },
         ],
       },
       {
         kind: "lead",
-        text: "Stan's own help centre lists pricing tiers among its most requested features and says there is no native way to offer them under one product — read on 18 September 2026. Here they are on the $29 plan.",
+        text: "Stan's own help center lists pricing tiers among its most requested features and says there is no native way to offer them under one product — read on September 18, 2026. Here they are on the $29 plan.",
       },
       {
         kind: "uses",
         title: "Where a second price earns its keep",
         items: [
           { icon: "calendar", who: "Sizes of the same plan", what: "One week to try, five weeks for the person who already trusts you, the whole season for the fan." },
-          { icon: "key", who: "Licences", what: "Personal use, commercial use and a team licence, each delivering its own file and terms." },
+          { icon: "key", who: "Licenses", what: "Personal use, commercial use and a team license, each delivering its own file and terms." },
           { icon: "video", who: "Plain and complete", what: "The PDF on its own, or the PDF with the videos, at a price that tells the buyer the difference." },
         ],
       },
       {
         kind: "facts",
-        title: "Measured on 17 September 2026",
+        title: "Measured on September 17, 2026",
         items: [
           { value: "$39", label: "Test purchase of the five-week option, in production", tone: "" },
           { value: "8,929", label: "Bytes delivered — identical to the original file", tone: "" },
@@ -215,7 +215,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           "No comments under a lesson. Conversation happens in your store's community, which a course can open.",
           "Certificates are pages printed or saved as a PDF from the student's browser; no PDF file is made.",
           "No live lessons inside the course itself. Hold them as live events in your community, or put a link in a lesson to where you hold them.",
-          "Videos watched count towards your store's 200 GB a month, the same as downloads. Going over never cuts a student off; we write to you instead.",
+          "Videos watched count toward your store's 200 GB a month, the same as downloads. Going over never cuts a student off; your studio shows it, and your store keeps working as usual.",
         ],
       },
       {
@@ -224,7 +224,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "How does a student come back next week?", a: "On the device they paid on, the course simply opens. On any other, they ask for a link on the course page and it goes to the address they paid with. No account, no password." },
           { q: "Can I sell a course monthly?", a: "Yes. Sold as a membership, the course stays open while the member pays and closes when the membership ends." },
-          { q: "Can students pay in instalments?", a: "Yes. A course with one price can be offered in two to twelve weekly or monthly payments. The student gets in after the first." },
+          { q: "Can students pay in installments?", a: "Yes. A course with one price can be offered in two to twelve weekly or monthly payments. The student gets in after the first." },
           { q: "What if I refund a student?", a: "Refunds are made in your own Stripe dashboard. A refund in full closes the course for that student within ten minutes; a partial refund keeps it open. A refund on a payment plan is not detected, so take that student off the course in your studio." },
         ],
       },
@@ -260,7 +260,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What makes it fair to both sides",
         items: [
           { icon: "bank", title: "Your customer, not ours", body: "Members sit in your Stripe dashboard. If you ever leave Nimbus, the paying members stay with you." },
-          { icon: "door", title: "Cancelling is one click", body: "On Stripe's page, at the end of the period already paid for. Nobody has to write to you and wait." },
+          { icon: "door", title: "Canceling is one click", body: "On Stripe's page, at the end of the period already paid for. Nobody has to write to you and wait." },
           { icon: "card", title: "Card changes without you", body: "The member changes their card and sees their receipts on the same page." },
           { icon: "book", title: "A course that stays open", body: "A course sold as a membership is open while the member pays, and closes when it ends." },
           { icon: "gift", title: "A free trial, said plainly", body: "1 to 90 days. The card is taken at the start and nothing is charged until the trial ends. The page and the button say so, and the confirmation email gives the date of the first payment." },
@@ -274,7 +274,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What people sell as a membership",
         items: [
           { icon: "utensils", who: "A monthly meal plan", what: "A new plan every month, delivered as a link to where you keep it." },
-          { icon: "dumbbell", who: "A training club", what: "The programme as a course that stays open while the member pays." },
+          { icon: "dumbbell", who: "A training club", what: "The program as a course that stays open while the member pays." },
           { icon: "users", who: "A group session", what: "A monthly class, with the meeting link as what the membership hands over." },
         ],
       },
@@ -284,7 +284,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           "A free trial is a number of free days, the same for every member of that product. There is no first month at a lower price.",
           "A membership is charged at its set price: it cannot be pay what you want.",
-          "Files, courses and the community close when a membership ends: cancelled, or unpaid once Stripe stops retrying. A link you sell stays wherever you keep it, so remove the member there.",
+          "Files, courses and the community close when a membership ends: canceled, or unpaid once Stripe stops retrying. A link you sell stays wherever you keep it, so remove the member there.",
         ],
       },
       {
@@ -346,7 +346,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "uses",
         title: "Who sells calls",
         items: [
-          { icon: "cap", who: "Coaches", what: "The hour of your time, next to the workbook and the programme, as the top step of the ladder." },
+          { icon: "cap", who: "Coaches", what: "The hour of your time, next to the workbook and the program, as the top step of the ladder." },
           { icon: "dumbbell", who: "Trainers", what: "A 20-minute form check that is booked and paid, not a free message that eats your evening." },
           { icon: "palette", who: "Designers", what: "A portfolio review or a consultation before a commission." },
         ],
@@ -356,8 +356,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do yet",
         items: [
           "Your calendars are read for busy times, and only calls set to Google Meet are written to your connected Google Calendar. Other bookings reach your calendar as a feed you subscribe to, and a new busy time can take about ten minutes to close a slot.",
-          "Buyers move a booking themselves, but cancelling is a reply to their confirmation email, which reaches you; a refund is made from your Stripe dashboard.",
-          "Nothing makes a Zoom link for you: for Zoom, you type your own. Stan creates Zoom links automatically.",
+          "Buyers move a booking themselves, but canceling is a reply to their confirmation email, which reaches you; a refund is made from your Stripe dashboard.",
+          "Zoom links are not made for you yet. Connecting Zoom opens to every store once Zoom approves our app; until then, for Zoom, you type your own link. Stan creates Zoom links automatically.",
           "Google has not finished reviewing our app yet, so connecting Google Calendar shows a \u201cGoogle hasn't verified this app\u201d screen: click Advanced, then continue.",
           "On a free personal Google account, Google ends meetings of three or more people after 60 minutes.",
           "Jitsi Meet is a free service run by a third party, not by us. Nobody needs an account to join, but the first person to open a room may be asked to sign in to Jitsi to start it, and the others wait until then.",
@@ -370,7 +370,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "Questions about paid calls",
         items: [
           { q: "What if two people try to book the same time?", a: "The first to reach payment holds it for 30 minutes. The second no longer sees it. If the first does not pay, the time comes back." },
-          { q: "Can a call be paid in instalments?", a: "No. A call is paid in full when it is booked. Instalments are for products with one price." },
+          { q: "Can a call be paid in installments?", a: "No. A call is paid in full when it is booked. Installments are for products with one price." },
           { q: "Can I hold a free session for my members instead?", a: "Yes, as a live event in your community: members RSVP, get reminders and join from the event's page. Paid calls and live sessions are for selling seats; live events are for the people already let into your community." },
           { q: "Is sales tax added to calls?", a: "When you switch Stripe Tax on, it is added to calls as it is to everything else, on your own account." },
           { q: "Where is the video room, and who runs it?", a: "At meet.jit.si, the free Jitsi Meet service run by 8x8, not by us. Its link is in the booking and reminder emails, the calendar file, your bookings feed and the buyer's list of purchases. Open it a few minutes early: the first person in may be asked to sign in to Jitsi with a Google, GitHub or Facebook account to start the meeting." },
@@ -386,22 +386,22 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Earn more from every buyer,",
     highlight: "on the $29 plan",
     intro:
-      "Discount codes, a product added at checkout, one-click offers after paying, payment plans, pay what you want, questions at checkout, limited quantities and sales tax. On Stan the first four are on the $99 plan.",
+      "Discount codes, a product added at checkout, one-click offers after paying, payment plans, pay what you want, questions at checkout, limited quantities and sales tax. On Stan the first four, and limited quantities, are on the $99 plan.",
     badge: WORKING,
     accent: "from-amber-brand to-pink-brand",
     visual: "checkout",
     plan: "creator",
     group: "paid",
-    menu: { label: "Checkout tools", description: "Codes, add-ons, one-click offers, instalments and tax.", icon: "percent" },
+    menu: { label: "Checkout tools", description: "Codes, add-ons, one-click offers, installments and tax.", icon: "percent" },
     related: ["funnels", "currencies-and-ways-to-pay", "sales-pages", "price-options"],
     blocks: [
       {
         kind: "features",
         title: "Every tool on your own account",
-        intro: "Stan's pricing page, read on 20 September 2026, puts discount codes, order bumps, upsells and payment plans on its $99 plan.",
+        intro: "Stan's pricing page, read on September 20, 2026, puts discount codes, order bumps, upsells and payment plans on its $99 plan.",
         items: [
           { icon: "percent", title: "Discount codes", body: "A word you choose, a percentage or an amount off, and a cap on uses if you want one. Up to twenty codes, kept as coupons on your own Stripe." },
-          { icon: "plus", title: "Add it at checkout", body: "A box under the buy button offers another of your products at a price of your own. Never ticked for the buyer." },
+          { icon: "plus", title: "Add it at checkout", body: "A box under the buy button offers another of your products at a price of your own. Never checked for the buyer." },
           { icon: "bolt", title: "One click after paying", body: "The thanks page offers one more product, or up to five in a row as a funnel, charged to the card just used. Only in that browser, for an hour, and only after a card, Apple Pay or Google Pay payment.", href: "/platform/funnels" },
           { icon: "calendar", title: "Payment plans", body: "Two to twelve weekly or monthly payments. The buyer gets it after the first, and it ends by itself after the last." },
           { icon: "list", title: "Limited quantity", body: "Sell fifty and stop. The count shown is the real one, and a unit being paid for is held so the last one is never sold twice." },
@@ -416,8 +416,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "how",
         title: "What keeps it honest",
         items: [
-          { title: "Nothing ticked for them", body: "An extra charge the buyer did not choose is not a sale, and in Europe it is not allowed either." },
-          { title: "The button says the total", body: "Tick the box or pick the plan, and the buy button changes to what is charged today." },
+          { title: "Nothing checked for them", body: "An extra charge the buyer did not choose is not a sale, and in Europe it is not allowed either." },
+          { title: "The button says the total", body: "Check the box or pick the plan, and the buy button changes to what is charged today." },
           { title: "Scarcity that is true", body: "The number left is counted from real payments. No invented countdowns, no fake stock." },
         ],
       },
@@ -429,7 +429,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           "One product can be offered in the box under each product, and up to five after paying.",
           "While sales tax is on, offers after paying are paused, because tax cannot be added to a one-click charge.",
           "Offers after paying are shown only to a buyer who paid by card, Apple Pay or Google Pay. A buyer who paid with Klarna, Link or a bank goes straight to what they bought.",
-          "A payment plan cannot be cancelled from your page; a buyer who needs to change something replies to their receipt, which reaches you.",
+          "A payment plan cannot be canceled from your page; a buyer who needs to change something replies to their order confirmation email, which reaches you.",
           "Pay what you want is for a product with one price, sold once: not with memberships, price options, payment plans, the box at checkout, calls or discount codes.",
           "Questions are short answers, numbers or lists: no phone-number or checkbox question, and none on free products.",
           "The reminder after an unpaid checkout needs a Stripe account in the United States, because Stripe asks buyers for that consent only on checkouts of US businesses. It is not sent for calls or live sessions.",
@@ -474,7 +474,7 @@ export const FEATURE_PAGES: TopicPage[] = [
       {
         kind: "table",
         title: "Where the money sits",
-        note: "Stan's structure checked on its own help centre and terms in September 2026.",
+        note: "Stan's structure checked on its own help center and terms in September 2026.",
         head: ["", "Platform-held model", "Nimbus Labs"],
         rows: [
           ["Whose Stripe account", "One the platform manages for you, with no Stripe login of your own", "Yours: a full Stripe account in your name, with your own login"],
@@ -496,7 +496,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "The honest limits",
         items: [
-          "Stripe only. Buyers meet the ways to pay your Stripe account has on, and PayPal can be one of them only for Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein. A creator in the United States cannot take PayPal here; Stan offers it to everyone.",
+          "Stripe only. Buyers meet the ways to pay your Stripe account has on, and PayPal is not one to count on: Stripe offers it only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein, and its documentation lists it as not supported for direct charges, which is how every sale here is charged. Stan lets creators connect a PayPal Business account.",
           "You need a Stripe account in one of the 43 countries the studio offers — the United States, Canada, the United Kingdom, Australia, Japan, Singapore, Mexico and most of Europe among them, but not everywhere.",
           "Because we never touch your money, we cannot advance it, split it with an affiliate automatically, or refund a buyer for you.",
         ],
@@ -544,11 +544,11 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "file", title: "Files up to 5 GB", body: "PDF, ePub, ZIP, images, audio, video, text, and Word, Excel and PowerPoint. Large files upload in parts, so a dropped connection costs one part." },
           { icon: "link", title: "Or a link", body: "Too big, or not a file at all — a Drive folder, a Notion page, a private video — and the buyer is sent there the moment they pay." },
-          { icon: "download", title: "200 GB of downloads a month", body: "Published, and shown in your studio as it is used. Going over never cuts a buyer off; we write to you instead." },
+          { icon: "download", title: "200 GB of downloads a month", body: "Published, and shown in your studio as it is used. Going over never cuts a buyer off; your store keeps working as usual." },
           { icon: "shield", title: "Nothing that runs", body: "Programs, installers and scripts are refused, so a taken-over account cannot hand out malware." },
           { icon: "mail", title: "A confirmation email", body: "Every buyer gets one from your store's name: what they bought, what they paid and the way back to it. Replies reach you." },
           { icon: "refresh", title: "Sent again from your studio", body: "A buyer who cannot find it? Send the purchase email again from your list of sales. It goes only to the address they paid with." },
-          { icon: "key", title: "A licence key with each sale", body: "One key per buyer, never given twice, on the thanks page, in the email and in their list of purchases.", href: "/platform/licence-keys" },
+          { icon: "key", title: "A license key with each sale", body: "One key per buyer, never given twice, on the thanks page, in the email and in their list of purchases.", href: "/platform/licence-keys" },
           { icon: "file", title: "The buyer's email on their PDF", body: "Switch on stamping and every page of the PDF they download carries their email, the date and their order.", href: "/platform/pdf-stamping" },
         ],
       },
@@ -601,7 +601,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "how",
         title: "How your list grows and hears from you",
         items: [
-          { title: "People join", body: "A free product for an email, or a box ticked at checkout. Every free-product address is confirmed from its own inbox." },
+          { title: "People join", body: "A free product for an email, or a box checked at checkout. Every free-product address is confirmed from its own inbox." },
           { title: "Sequences welcome them", body: "A welcome when someone joins, a few emails in the days after someone buys. Each person goes through a sequence once." },
           { title: "You write when you have news", body: "To everyone who agreed, or only to the buyers of one product. Now, or at the time you choose." },
         ],
@@ -642,7 +642,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about email",
         items: [
-          { q: "Why is email on Pro and not on $29?", a: "Because it costs us money for every email sent, and the $29 plan is priced to cover a store, not a mailing list. Stan puts email on its $99 plan as well — read on its pricing page on 20 September 2026." },
+          { q: "Why is email on Pro and not on $29?", a: "Because it costs us money for every email sent, and the $29 plan is priced to cover a store, not a mailing list. Stan puts email on its $99 plan as well — read on its pricing page on September 20, 2026." },
           { q: "Can I import the list I already have?", a: "Yes, on every plan, from a CSV file of up to 50,000 rows, as long as those people agreed to hear from you. You confirm that each time, a consent column in the file narrows it further, and anyone who unsubscribed here stays unsubscribed. Nobody is emailed because of the import." },
           { q: "Can I email people on the $29 plan at all?", a: "Your list downloads as a CSV on every plan, and on the $29 plan your store can send the people who agree straight to your own Mailchimp, Kit, beehiiv or MailerLite. Writing to them from Nimbus is what Pro adds." },
         ],
@@ -698,7 +698,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about your own domain",
         items: [
-          { q: "Does Stan offer this?", a: "No. Our comparison with Stan, checked against their own help centre and pricing in September 2026, lists a custom domain as not available." },
+          { q: "Does Stan offer this?", a: "No. Our comparison with Stan, checked against their own help center and pricing in September 2026, lists a custom domain as not available." },
           { q: "Who owns the domain?", a: "You do, and you keep access to its settings. If you ever leave, remove the record and point it wherever you like." },
           { q: "How long does it take?", a: "Adding it takes a minute. The record usually shows up within minutes, and at most within a day, depending on where you bought the domain." },
         ],
@@ -733,7 +733,7 @@ export const FEATURE_PAGES: TopicPage[] = [
       {
         kind: "features",
         title: "Your ad pixels, on the $29 plan",
-        intro: "Stan puts advertising pixels on its $99 plan, by its pricing page read on 20 September 2026.",
+        intro: "Stan puts advertising pixels on its $99 plan, by its pricing page read on September 20, 2026.",
         items: [
           { icon: "target", title: "Meta, Google, TikTok and Pinterest", body: "Paste the pixel's id. Your pages report every view, every checkout started, every lead and every purchase with its amount." },
           { icon: "shield", title: "Asked first, where the law says so", body: "Visitors in the EU, the UK, Switzerland and Brazil are asked in plain words, and nothing loads unless they say yes." },
@@ -800,12 +800,12 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "type", title: "Posts with a picture", body: "A title of up to 120 characters, up to 5,000 characters of text and one picture." },
           { icon: "chat", title: "Comments, replies and likes", body: "Comments of up to 2,000 characters, one level of replies, up to 300 under a post, and one like per member on each post." },
           { icon: "pin", title: "Pinned posts and Start here", body: "Up to three posts held at the top, and one post every member sees first." },
-          { icon: "mail", title: "Announcements", body: "Posts labelled as yours. On Pro they can also go by email to the members who ticked the box for it, with a one-click unsubscribe." },
+          { icon: "mail", title: "Announcements", body: "Posts labeled as yours. On Pro they can also go by email to the members who checked the box for it, with a one-click unsubscribe." },
           { icon: "video", title: "Live events", body: "Workshops and Q&As on the community's calendar, with RSVPs, reminders, a private video room in the page and replays.", href: "/platform/live-events" },
           { icon: "users", title: "A member directory they opt into", body: "Members choose the name they are seen by and whether to be listed. Their email address is never shown to other members." },
           { icon: "shield", title: "Reports and moderation", body: "Members report a post or a comment and it lands in your queue. You hide it, delete it, mute a member or take them out." },
           { icon: "clock", title: "Limits that stop a spammer", body: "Each member can write 5 posts an hour and 20 a day, 30 comments an hour and 10 pictures an hour. You are never limited." },
-          { icon: "phone", title: "In your store's look", body: "Your theme and colour, and part of your store's installable app. Nothing in it is kept offline on a device." },
+          { icon: "phone", title: "In your store's look", body: "Your theme and color, and part of your store's installable app. Nothing in it is kept offline on a device." },
         ],
       },
       {
@@ -823,7 +823,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         intro: "Said here so nobody signs up expecting it.",
         items: [
           "No live chat or private messages. Posts and comments appear when a page is opened, not as they are written.",
-          "Live events happen in a private Jitsi Meet room, at your own meeting link or in a Google Meet made on your connected Google Calendar: nothing makes a Zoom link for you, as Stan's webinars do.",
+          "Live events happen in a private Jitsi Meet room, at your own meeting link or in a Google Meet made on your connected Google Calendar. Unlike Stan's webinars, no Zoom link is made for you yet: connecting Zoom opens to every store once Zoom approves our app; until then, the Zoom option does not show.",
           "No search, mentions, polls, or emails about replies. Posts cannot be edited once written.",
           "One community per store, and every space is open to every member: a space cannot be kept for the buyers of one product.",
           "Up to 10,000 posts and 50,000 members in one community.",
@@ -838,7 +838,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { q: "Can members see each other's email addresses?", a: "No. Other members see only the name someone chose, and the directory lists only those who asked to be listed. You see members' addresses in your studio, because they are your buyers." },
           { q: "What happens after a refund?", a: "A payment you refund in full on your Stripe account stops opening the community, within five minutes." },
           { q: "Can buyers I bring over from another platform get in?", a: "Yes. A buyer you import for a product that opens the community is let in, like anyone who bought it here." },
-          { q: "Does Stan have this?", a: "Yes. Stan has a community, and its help centre, read on 27 September 2026, adds webinars to it as a product members sign up for, with Zoom or Google Meet links made automatically. Ours holds live events members RSVP to, in a private video room, at your own link or in a Google Meet made on your Google Calendar, with no Zoom link made for you. Ours is on the $29 plan; emailing announcements needs Pro." },
+          { q: "Does Stan have this?", a: "Yes. Stan has a community, and its help center, read on September 27, 2026, adds webinars to it as a product members sign up for, with Zoom or Google Meet links made automatically. Ours holds live events members RSVP to, in a private video room, at your own link or in a Google Meet made on your Google Calendar, with no Zoom link made for you yet. Ours is on the $29 plan; emailing announcements needs Pro." },
         ],
       },
     ],
@@ -878,7 +878,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "video", title: "Or Google Meet, made for you", body: "Connect your Google Calendar and pick it under Where: one meeting is made, with nobody on its guest list. Members see its link on the event's page from 15 minutes before, ask to join, and you let them in." },
           { icon: "lock", title: "For some buyers only", body: "Keep an event for the buyers of some of the products that open your community. Other members see it and what opens it, but cannot RSVP or join. Checked on every visit." },
           { icon: "mail", title: "Reminders a day and an hour before", body: "To the members who RSVP'd and asked for the community's emails, with a one-click way to stop. They lead to the event's page, never to the room itself." },
-          { icon: "refresh", title: "Moved or cancelled, everyone is told", body: "A new time or a cancellation is emailed once to everyone coming, whether or not they asked for the community's emails." },
+          { icon: "refresh", title: "Moved or canceled, everyone is told", body: "A new time or a cancellation is emailed once to everyone coming, whether or not they asked for the community's emails." },
           { icon: "play", title: "Replays", body: "Once it has started, add a replay from YouTube, Vimeo or Loom. It plays on the event's page for the members the event was for." },
           { icon: "phone", title: "Your phone, 15 minutes before", body: "A notification from the studio on your home screen, so you open the room first.", href: "/platform/phone-notifications" },
           { icon: "users", title: "Your team can run them", body: "Admins and Editors schedule, move and cancel events; Support sees who is coming.", href: "/platform/teams-and-stores" },
@@ -890,7 +890,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "cap", who: "A course with a cohort", what: "A weekly Q&A kept for the course's buyers, with the replay posted for whoever missed it." },
           { icon: "repeat", who: "A paid monthly club", what: "A live session every month. Whoever stops paying stops seeing the way in, with nothing for you to do." },
-          { icon: "users", who: "A coaching programme", what: "A group call for everyone in it, on the community's calendar, without selling each seat." },
+          { icon: "users", who: "A coaching program", what: "A group call for everyone in it, on the community's calendar, without selling each seat." },
         ],
       },
       {
@@ -898,12 +898,12 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do yet",
         intro: "Said here so nobody signs up expecting it.",
         items: [
-          "Nothing makes a Zoom link for you: you choose the private room, a Google Meet made on your connected Google Calendar, or your own link. Stan's webinars create Zoom and Google Meet links automatically.",
+          "Zoom links are not made for you yet: you choose the private room, a Google Meet made on your connected Google Calendar, or your own link. Connecting Zoom opens to every store once Zoom approves our app; until then, the Zoom option does not show. Stan's webinars create Zoom and Google Meet links automatically.",
           "With Google Meet, nobody is on the meeting's guest list: each member asks to join and you let them in. On a free personal Google account, Google ends meetings of three or more people after 60 minutes.",
           "Jitsi Meet is a free service run by a third party (8x8), not by us. Nobody needs an account to join, but the first person to open a room may be asked to sign in to Jitsi to start it, so open it a few minutes early.",
           "An event is for your community's members and is not sold on its own. To sell seats to anyone, sell live sessions on dates as a paid product.",
           "Nothing is streamed or recorded here. A replay is a video you put on YouTube, Vimeo or Loom: use an unlisted one, because anyone with its address can watch it.",
-          "Reminders go only to members who ticked the box for the community's emails, which starts empty. Moves and cancellations go to everyone coming.",
+          "Reminders go only to members who checked the box for the community's emails, which starts empty. Moves and cancellations go to everyone coming.",
           "No chat beside the room, no polls and no waiting list when an event is full. An event cannot be moved once it has started.",
         ],
       },
@@ -913,7 +913,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Which plan is it on?", a: "Every plan, the $29 one included, with the community. The reminders and the emails about a move or a cancellation are sent on every plan and are not counted in Pro's monthly emails." },
           { q: "Can someone who is not a member get the link?", a: "Not from us. Emails, calendar files and the feed point to the event's page, and the page shows the way in only from 15 minutes before, only to a member who may come, asked again on every visit. A member whose membership lapsed, or who was refunded or taken out, loses it with the rest of the community." },
-          { q: "How does this compare with Stan?", a: "Stan adds webinars to its community as a product members sign up for on its landing page, with Zoom or Google Meet links made automatically, by its help centre read on 27 September 2026. Ours are events members RSVP to, with reminders, a cap, a room in the page or a Google Meet made on your Google Calendar, and replays, with no Zoom link made for you." },
+          { q: "How does this compare with Stan?", a: "Stan adds webinars to its community as a product members sign up for on its landing page, with Zoom or Google Meet links made automatically, by its help center read on September 27, 2026. Ours are events members RSVP to, with reminders, a cap, a room in the page or a Google Meet made on your Google Calendar, and replays, with no Zoom link made for you yet." },
         ],
       },
     ],
@@ -955,7 +955,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "ladder", title: "Downsells", body: "A no can lead to the same product for less, or to something else entirely." },
           { icon: "check", title: "Nothing sold twice", body: "The product just bought is never offered again, and anything already in the order is passed over." },
           { icon: "lock", title: "Only for the buyer who paid", body: "The offers show only in the browser that paid, within an hour of paying." },
-          { icon: "mail", title: "A receipt for each", body: "Every offer taken is delivered on the thanks page and gets its own confirmation email." },
+          { icon: "mail", title: "A confirmation for each", body: "Every offer taken is delivered on the thanks page and gets its own confirmation email." },
           { icon: "layout", title: "And pages before it", body: "A landing page that gives something free for an email and shows a paid product next, and a sales page that leads to the checkout.", href: "/platform/sales-pages" },
         ],
       },
@@ -989,7 +989,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Several products,",
     highlight: "one price",
     intro:
-      "Put 2 to 20 of your products in one bundle, at a price you set. The buyer gets every one of them exactly as if they had bought each on its own: the downloads, the links, the courses and the licence keys.",
+      "Put 2 to 20 of your products in one bundle, at a price you set. The buyer gets every one of them exactly as if they had bought each on its own: the downloads, the links, the courses and the license keys.",
     badge: WORKING,
     accent: "from-amber-brand to-violet-brand",
     plan: "creator",
@@ -1010,10 +1010,10 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "features",
         title: "What a bundle hands over",
         items: [
-          { icon: "file", title: "Everything, as if bought alone", body: "Each product's download or link, its course, its licence key, its stamped PDF, its place on the buyer's list of purchases, and the right to review it." },
+          { icon: "file", title: "Everything, as if bought alone", body: "Each product's download or link, its course, its license key, its stamped PDF, its place on the buyer's list of purchases, and the right to review it." },
           { icon: "lock", title: "What they paid for stays theirs", body: "What a buyer gets is written onto their order when they pay. Change the bundle later and it changes for the next buyer; everyone before keeps what was in it." },
           { icon: "chat", title: "The community, when it opens", body: "When a product in the bundle opens your community, buying the bundle lets the buyer in.", href: "/platform/community" },
-          { icon: "percent", title: "At checkout and after", body: "A bundle can be the box a buyer ticks at checkout, and one of the offers after paying, unless it holds a course.", href: "/platform/checkout" },
+          { icon: "percent", title: "At checkout and after", body: "A bundle can be the box a buyer checks at checkout, and one of the offers after paying, unless it holds a course.", href: "/platform/checkout" },
           { icon: "eye", title: "Drafts inside a bundle", body: "Any product can be taken off your store and kept as a draft, and a draft can still go in a bundle: sell a guide only as part of one, if you like." },
           { icon: "mail", title: "Your email platform hears each one", body: "A bundle's products reach Mailchimp, Kit, beehiiv or MailerLite as if each had been bought on its own.", href: "/platform/email-platforms" },
         ],
@@ -1044,7 +1044,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "Questions about bundles",
         items: [
           { q: "What happens when I change a product in a bundle?", a: "Its buyers get the product as it is now, its current file, link or lessons, exactly as the product's own buyers do. Which products they get is fixed when they pay." },
-          { q: "Does Stan have bundles?", a: "Its help centre, read on 27 September 2026, lists bundles among what one digital download can hold, and we found no product type there that hands over other products. Here a bundle is its own product, and each product in it is delivered as itself." },
+          { q: "Does Stan have bundles?", a: "Its help center, read on September 27, 2026, lists bundles among what one digital download can hold, and we found no product type there that hands over other products. Here a bundle is its own product, and each product in it is delivered as itself." },
         ],
       },
     ],
@@ -1066,7 +1066,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     blocks: [
       {
         kind: "how",
-        title: "How your programme runs",
+        title: "How your program runs",
         items: [
           { title: "Set the terms", body: "A share of 1% to 90%, for the whole store or product by product, and a window of 1 to 90 days after a click." },
           { title: "Approve who you want", body: "People apply on your store's affiliate page with an email address they confirm. Nobody is in until you say so." },
@@ -1080,7 +1080,7 @@ export const FEATURE_PAGES: TopicPage[] = [
       },
       {
         kind: "features",
-        title: "What the programme keeps track of",
+        title: "What the program keeps track of",
         items: [
           { icon: "user", title: "A page for each affiliate", body: "Their link, their clicks, their sales, what they earned and what you paid them. They never see who the buyers were." },
           { icon: "link", title: "Last click wins", body: "The most recent affiliate link a buyer followed, inside your window, gets the sale." },
@@ -1159,7 +1159,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about calendar sync",
         items: [
-          { q: "Does Stan do this?", a: "Stan's help centre, read on 26 September 2026, lists Google Calendar for its calls. Ours reads Google, Outlook and iCloud calendars by their private address, and writes events only for calls set to Google Meet, on a Google Calendar you connect." },
+          { q: "Does Stan do this?", a: "Stan's help center, read on September 26, 2026, lists Google Calendar for its calls. Ours reads Google, Outlook and iCloud calendars by their private address, and writes events only for calls set to Google Meet, on a Google Calendar you connect." },
           { q: "What happens to my calendar's address?", a: "It is stored with your store and used only to read your busy times. Once saved it is never shown again, not even to you. If you are ever unsure, reset it in your calendar app and the old one stops working." },
           { q: "Does it block group calls and live sessions too?", a: "It hides call times you are busy for. Live sessions are on the dates you set yourself, so they are yours to place around your calendar." },
         ],
@@ -1208,7 +1208,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do",
         items: [
           "There is no Nimbus app in Zapier's directory. In Zapier, use its Webhooks by Zapier trigger, Catch Hook.",
-          "Webhooks only send. There is no public API to read or change your store; the one public address is the licence key check.",
+          "Webhooks only send. There is no public API to read or change your store; the one public address is the license key check.",
           "Up to five addresses per store, https only, and redirects are not followed.",
         ],
       },
@@ -1218,7 +1218,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "How do I know a message came from you?", a: "Check its Nimbus-Signature header against the secret you were shown when you added the address, and check that its time is recent." },
           { q: "What if the same event arrives twice?", a: "Every event has an id made from what it is about, and it is sent once however often it is noticed. Keep the ids you have seen and ignore a repeat, in case a retry crosses a slow answer." },
-          { q: "Does Stan have webhooks?", a: "Not that its help centre publishes, read on 17 September 2026." },
+          { q: "Does Stan have webhooks?", a: "Not that its help center publishes, read on September 17, 2026." },
         ],
       },
     ],
@@ -1275,7 +1275,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Can a certificate be faked by editing a link?", a: "No. Its page is read from our record of it, never from anything in the address. Anyone checking one should open its page on your store." },
           { q: "Does passing a quiz count as finishing the lesson?", a: "Yes. Passing marks the lesson done, which is what a certificate counts." },
-          { q: "Does Stan have quizzes and certificates?", a: "Not by its help centre, read on 17 September 2026." },
+          { q: "Does Stan have quizzes and certificates?", a: "Not by its help center, read on September 17, 2026." },
         ],
       },
     ],
@@ -1283,7 +1283,7 @@ export const FEATURE_PAGES: TopicPage[] = [
   {
     slug: "licence-keys",
     section: "platform",
-    eyebrow: "Licence keys",
+    eyebrow: "License keys",
     title: "A unique key",
     highlight: "with every sale",
     intro:
@@ -1292,7 +1292,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     accent: "from-amber-brand to-mint-brand",
     plan: "creator",
     group: "deliver",
-    menu: { label: "Licence keys", description: "One unique key per sale, and a check for your app.", icon: "key" },
+    menu: { label: "License keys", description: "One unique key per sale, and a check for your app.", icon: "key" },
     related: ["instant-delivery", "pdf-stamping", "webhooks", "checkout"],
     blocks: [
       {
@@ -1328,7 +1328,7 @@ export const FEATURE_PAGES: TopicPage[] = [
       },
       {
         kind: "faq",
-        title: "Questions about licence keys",
+        title: "Questions about license keys",
         items: [
           { q: "How does my software check a key?", a: "It asks /api/store/licence with your store's address, the product and the key, and gets back valid, revoked or unknown. It can be called from a website or an app, up to 120 times a minute from one connection." },
           { q: "Can I use keys my own system already made?", a: "Yes. Upload them as a text or CSV file. A key that was already uploaded is skipped, so it can never go to two buyers." },
@@ -1415,7 +1415,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "type", title: "Hero", body: "A headline of up to 120 characters and a line under it, beside the product's picture or a video." },
           { icon: "play", title: "Video that waits", body: "From YouTube, Vimeo or Loom. Nothing from them loads until the visitor presses play, and YouTube plays from its privacy-enhanced address." },
-          { icon: "list", title: "Benefits and what is inside", body: "Up to 12 points with a tick, and up to 20 numbered parts, each with a line about it." },
+          { icon: "list", title: "Benefits and what is inside", body: "Up to 12 points with a check mark, and up to 20 numbered parts, each with a line about it." },
           { icon: "user", title: "About you", body: "Who made it, with your store photo." },
           { icon: "chat", title: "Questions", body: "Up to 15 questions and answers that open and close." },
           { icon: "shield", title: "Your guarantee", body: "Your refund promise, in your own words." },
@@ -1437,7 +1437,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do yet",
         intro: "Said here so nobody signs up expecting it.",
         items: [
-          "No custom code, HTML or styles: every block is plain text, drawn in your store's theme and colour. Blocks stack in the order you set; there are no columns or free layout.",
+          "No custom code, HTML or styles: every block is plain text, drawn in your store's theme and color. Blocks stack in the order you set; there are no columns or free layout.",
           "Pictures are the product's own and your store photo. Videos come only from YouTube, Vimeo or Loom.",
           "A button cannot state a price or a deal of its own: it leads to the checkout with the prices the store page shows.",
           "One page per product. There is no editor that chains several pages into a funnel, and no thanks page of your own.",
@@ -1448,7 +1448,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about sales pages",
         items: [
-          { q: "Which plan is it on?", a: "Every plan, the $29 one included. On Stan, landing pages come with its funnels, on its $99 plan, by our reading of Stan on 27 September 2026." },
+          { q: "Which plan is it on?", a: "Every plan, the $29 one included. On Stan, landing pages come with its funnels, on its $99 plan, by our reading of Stan on September 27, 2026." },
           { q: "Who in my team can edit them?", a: "You, an Admin and an Editor. Support cannot." },
           { q: "Can I put a testimonial I collected on the page?", a: "In a text block, in your own words, yes. The Reviews block shows only reviews written by people who paid, and nothing you type can appear as one." },
         ],
@@ -1481,7 +1481,7 @@ export const FEATURE_PAGES: TopicPage[] = [
       },
       {
         kind: "lead",
-        text: "On Stan, reviews are added by the creator: its help centre, read on 27 September 2026, says there is no way for customers to write one on a Stan store. Here, only customers can.",
+        text: "On Stan, reviews are added by the creator: its help center, read on September 27, 2026, says there is no way for customers to write one on a Stan store. Here, only customers can.",
       },
       {
         kind: "features",
@@ -1536,7 +1536,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "how",
         title: "How it is set",
         items: [
-          { title: "Pick the currency", body: "US, Canadian, Australian, New Zealand, Singapore and Hong Kong dollars, euros, pounds, Swiss francs, Swedish, Norwegian and Danish kronor, Polish zloty, Japanese yen or Mexican pesos — among those your Stripe account can charge in." },
+          { title: "Pick the currency", body: "US, Canadian, Australian, New Zealand, Singapore and Hong Kong dollars, euros, pounds, Swiss francs, Swedish kronor, Norwegian and Danish kroner, Polish zloty, Japanese yen or Mexican pesos — among those your Stripe account can charge in." },
           { title: "Switch ways to pay on in Stripe", body: "Your studio lists what your Stripe account has on, read from Stripe each time, and links straight to the page in Stripe where you switch more on." },
           { title: "Stripe shows what fits", body: "Each buyer meets the ways that fit their country, the currency and the amount. Memberships and payment plans show only the ways Stripe can charge again each period." },
         ],
@@ -1546,7 +1546,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it gives your buyers",
         items: [
           { icon: "phone", title: "Wallets", body: "Apple Pay, Google Pay and Link, and others such as Revolut Pay where your account has them." },
-          { icon: "calendar", title: "Pay later", body: "Klarna, Afterpay or Clearpay, Affirm and the rest: the buyer pays in instalments, and you are paid in full." },
+          { icon: "calendar", title: "Pay later", body: "Klarna, Afterpay or Clearpay, Affirm and the rest: the buyer pays in installments, and you are paid in full." },
           { icon: "bank", title: "Bank payments confirmed on the spot", body: "iDEAL, Bancontact, BLIK, Przelewy24 and others that confirm while the buyer waits." },
           { icon: "globe", title: "Prices written their way", body: "Every page, email, spreadsheet and number in your studio writes money in your store's currency: ¥2,700, not $27.00." },
           { icon: "bolt", title: "Delivery that stays instant", body: "Ways to pay that settle days later are left out, so nobody pays and then meets a page saying nothing was paid." },
@@ -1557,7 +1557,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do",
         intro: "Said here so nobody signs up expecting it.",
         items: [
-          "PayPal through Stripe is offered only to Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein. A creator in the United States cannot take PayPal here. Stan offers PayPal to every creator, so for US creators Stan is ahead.",
+          "Do not count on PayPal here. Stripe offers PayPal only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein, and its documentation, read on September 28, 2026, lists it as not supported for direct charges, which is how every sale here is charged. Stan lets creators connect a PayPal Business account, so on PayPal Stan is ahead.",
           "Slow bank debits and vouchers — ACH, SEPA and Bacs Direct Debit, bank transfers, Boleto, OXXO, Konbini, Multibanco — and stablecoins are left out on purpose, because they settle days after the checkout.",
           "One-click offers after paying are shown only to buyers who paid by card, Apple Pay or Google Pay.",
           "One currency per store at a time. Changing it keeps every price's number — 49 dollars becomes 49 euros — so check your prices; it waits while a membership or payment plan is still running, and moving between the yen and a currency with cents is refused while the store has prices.",
@@ -1569,7 +1569,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "Questions about currencies and ways to pay",
         items: [
           { q: "Does Nimbus take a cut of Klarna or other methods?", a: "No. 0%, as on every sale. Stripe charges its own fee for each method on your account, published on its pricing page." },
-          { q: "What does Stan offer?", a: "Stan offers Stripe and PayPal, and a single currency, by our reading on 27 September 2026. We are ahead on currencies, and behind on PayPal for creators in the United States." },
+          { q: "What does Stan offer?", a: "Stan offers Stripe and PayPal, and a single currency, by our reading on September 27, 2026. We are ahead on currencies, and behind on PayPal." },
           { q: "Who can change the currency?", a: "You and an Admin. You are emailed whenever it changes." },
         ],
       },
@@ -1601,13 +1601,13 @@ export const FEATURE_PAGES: TopicPage[] = [
       },
       {
         kind: "lead",
-        text: "Stan has Mailchimp built in and reaches the others through Zapier, by our reading of Stan on 27 September 2026. Here all four are built in, on the $29 plan.",
+        text: "Stan's help center, read on September 28, 2026, connects Mailchimp and other email tools through Zapier. Here all four are built in, on the $29 plan.",
       },
       {
         kind: "features",
         title: "What it respects",
         items: [
-          { icon: "check", title: "Only people who agreed", body: "A free sign-up who ticked the box, or a buyer who ticked “Also send me emails” or agreed on Stripe's page. Anyone else is never sent, whatever the setting." },
+          { icon: "check", title: "Only people who agreed", body: "A free sign-up who checked the box, or a buyer who checked “Also send me emails” or agreed on Stripe's page. Anyone else is never sent, whatever the setting." },
           { icon: "ban", title: "Unsubscribed stays unsubscribed", body: "Mailchimp and beehiiv never subscribe again someone who left, and MailerLite is never asked to change anyone's status." },
           { icon: "refresh", title: "Tried again", body: "When the platform does not answer, a person is tried again over about forty hours, seven tries in all." },
           { icon: "list", title: "A log you can read", body: "The last 50 people, each for up to a week, with what the platform did, or why someone was not sent." },
@@ -1661,7 +1661,7 @@ export const FEATURE_PAGES: TopicPage[] = [
       },
       {
         kind: "lead",
-        text: "Stan's help centre, read on 27 September 2026, says there is no way to give a team member access without sharing your login. Here each person has their own.",
+        text: "Stan's help center, read on September 27, 2026, says there is no way to give a team member access without sharing your login. Here each person has their own.",
       },
       {
         kind: "features",
@@ -1737,7 +1737,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "receipt", title: "Sales", body: "The product and the amount, for every paid order and every one-click offer taken after it." },
           { icon: "calendar", title: "Bookings", body: "The product, the time and what was paid." },
           { icon: "alert", title: "Reports", body: "A member reported a post or a comment in your community." },
-          { icon: "handshake", title: "Affiliate applications", body: "Someone confirmed an application to your programme." },
+          { icon: "handshake", title: "Affiliate applications", body: "Someone confirmed an application to your program." },
           { icon: "video", title: "Live events", body: "One of your community's live events starts in 15 minutes: time to open the room.", href: "/platform/live-events" },
           { icon: "lock", title: "Written for a lock screen", body: "Amounts, titles and times: never a buyer's name or email address." },
           { icon: "users", title: "Each person their own", body: "Up to ten devices each. Your team members see only their own devices, and hear only what their role may see." },
@@ -1798,7 +1798,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "store", title: "Products, up to 500 a file, as drafts", body: "Title, price in your store's currency, description with the HTML of another platform turned into plain text, free or paid, and a link when the product is one. Each waits in your studio until you publish it." },
           { icon: "users", title: "Past buyers, up to 20,000 a file", body: "Each gets what they bought, the file, the link, the course or each product of a bundle, on your store's list of purchases, marked as brought over from another platform. No payment is taken and no receipt is sent." },
           { icon: "chat", title: "Into your community", body: "A buyer brought over for a product that opens your community is let in, like anyone who bought it here.", href: "/platform/community" },
-          { icon: "gift", title: "One email, if you choose", body: "Tick it, and each buyer gets one email from your store's name saying what moved and how to open it. Up to 20,000 buyers per store in 30 days, and nothing else is sent because of it." },
+          { icon: "gift", title: "One email, if you choose", body: "Check it, and each buyer gets one email from your store's name saying what moved and how to open it. Up to 20,000 buyers per store in 30 days, and nothing else is sent because of it." },
           { icon: "shield", title: "Checked row by row", body: "Every row is checked again on our side, the way the studio checks a product or an address, and importing the same file twice gives nobody anything twice." },
         ],
       },
@@ -1809,7 +1809,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           "Files, pictures and course lessons are not imported. Add a product's file or lessons from its row in the studio, then import the buyers who should have it.",
           "Memberships and calls cannot be given to past buyers, and neither can a product with several prices. A subscription on another platform stays there: members join again here.",
-          "Buyers brought over get no licence key here; the key they had on the old platform is still theirs.",
+          "Buyers brought over get no license key here; the key they had on the old platform is still theirs.",
           "Buyers brought over are not sales: they are not in your numbers, not sent to webhooks, not credited to affiliates, and cannot write a review.",
           "An import cannot be undone in one step. A student can be taken off a course, and a member out of the community, one at a time.",
           "Posts and comments from a community elsewhere do not come across. One import runs at a time per store.",
@@ -1822,7 +1822,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { q: "In what order should I import?", a: "Products first, because the buyers' file names them by their title or their id here. Then add each product's file or lessons, then your list and your buyers." },
           { q: "Which plan is it on, and who can run it?", a: "Every plan. You and your Admins can import; Editors and Support cannot. The one email to past buyers is sent only while your plan or its trial is running." },
           { q: "Is my file kept?", a: "The file itself never reaches us: your browser reads it and sends the columns you matched. Those rows, the report of what was left out and the import's counts are deleted two weeks after the import began, so download the report before then. What the import added, the contacts, drafts and purchases, stays." },
-          { q: "What does Stan offer here?", a: "Its help centre, read on 27 September 2026, imports up to 5,000 contacts per store in all, and sends them an email to opt in again; it gives a customer a download, a course or the community one customer at a time, with no way to undo that in bulk. We found no import for products there. Here you confirm your contacts agreed instead of us emailing them, and buyers come in from a file." },
+          { q: "What does Stan offer here?", a: "Its help center, read on September 27, 2026, imports up to 5,000 contacts per store in all, and sends them an email to opt in again; it gives a customer a download, a course or the community one customer at a time, with no way to undo that in bulk. We found no import for products there. Here you confirm your contacts agreed instead of us emailing them, and buyers come in from a file." },
         ],
       },
     ],
@@ -1873,7 +1873,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "download", title: "Downloads that expire", body: "The download on the thanks page works for 3 days; after that the buyer gets it again by email. Where a file is stored is never shown, and large files go through signed links that expire in minutes." },
           { icon: "file", title: "Files that cannot run", body: "Every file is handed over as a download, with headers that stop a browser running anything inside it." },
-          { icon: "ban", title: "A full refund closes the door", body: "Refund a payment in full on your Stripe account and its download stops at once, its course closes within 10 minutes, the community within 5, and its licence key is revoked within about 5. A partial refund keeps access." },
+          { icon: "ban", title: "A full refund closes the door", body: "Refund a payment in full on your Stripe account and its download stops at once, its course closes within 10 minutes, the community within 5, and its license key is revoked within about 5. A partial refund keeps access." },
           { icon: "clock", title: "Limits that stop bots", body: "Checkouts are limited to 20 per 10 minutes per connection per store, and bookings and every form that sends an email have limits of their own, so a script cannot sit on your limited stock or your call times." },
           { icon: "plug", title: "Signed webhooks, guarded addresses", body: "Webhooks are signed with HMAC-SHA256, and a calendar or webhook address that points into a private network is refused." },
           { icon: "lock", title: "Email platform keys kept encrypted", body: "The API key of your Mailchimp, Kit, beehiiv or MailerLite is encrypted before it is stored, and never shown again." },
@@ -1886,7 +1886,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         intro: "Said here so nobody trusts it for more than it is.",
         items: [
           "There is no two-factor sign-in, because there are no passwords. Your account is as safe as your email inbox: protect that one.",
-          "A refund on a payment plan is not detected: take the buyer off the course, or remove their access, yourself. A refunded membership closes when its subscription is cancelled in Stripe.",
+          "A refund on a payment plan is not detected: take the buyer off the course, or remove their access, yourself. A refunded membership closes when its subscription is canceled in Stripe.",
           "A refund cannot take back a file already saved, or a product delivered as a link to somewhere else.",
           "The limits on checkouts, bookings and forms are counted in our database. If it cannot be reached, they let requests through rather than stop a buyer from paying.",
           "Pages built ahead of time, such as the home page, the help and the blog, carry a policy without a nonce. Nothing on them comes from a creator or a visitor.",
@@ -1915,7 +1915,7 @@ export const CREATOR_PAGES: TopicPage[] = [
     title: "A store for coaches",
     highlight: "from free worksheet to paid hour",
     intro:
-      "The worksheet that starts the conversation, the programme that does the work and the hour of your time — on one page, each at its own price, paid into your own Stripe account.",
+      "The worksheet that starts the conversation, the program that does the work and the hour of your time — on one page, each at its own price, paid into your own Stripe account.",
     badge: WORKING,
     accent: "from-sky-brand to-violet-brand",
     related: ["calls", "courses", "checkout", "email"],
@@ -1931,7 +1931,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         items: [
           { label: "The first-week checklist", detail: "Free, for an email address", price: "Free" },
           { label: "Interview workbook", detail: "PDF, 18 pages", price: "$19" },
-          { label: "Six-week programme", detail: "A course, one module a week, or 3 payments of $30", price: "$89" },
+          { label: "Six-week program", detail: "A course, one module a week, or 3 payments of $30", price: "$89" },
           { label: "One hour with Marcus", detail: "A call, booked in your time zone", price: "$180" },
         ],
       },
@@ -1942,7 +1942,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         items: [
           { step: "1", icon: "gift", title: "A free worksheet", price: "Free", body: "Given for a confirmed email, so the people who want more are on your list.", href: "/platform/store-page" },
           { step: "2", icon: "file", title: "A workbook", price: "$19", body: "The first thing they pay for, delivered the second the payment clears.", href: "/platform/instant-delivery" },
-          { step: "3", icon: "book", title: "A programme", price: "$89", body: "A course whose modules open week by week, in one payment or in instalments.", href: "/platform/courses" },
+          { step: "3", icon: "book", title: "A program", price: "$89", body: "A course whose modules open week by week, in one payment or in installments.", href: "/platform/courses" },
           { step: "4", icon: "calendar", title: "Your time", price: "$180", body: "A call booked into your hours, paid before it is on your calendar.", href: "/platform/calls" },
         ],
       },
@@ -1951,9 +1951,9 @@ export const CREATOR_PAGES: TopicPage[] = [
         title: "What coaches use most",
         items: [
           { icon: "calendar", title: "Calls in their time zone", body: "Your hours once, in your zone; each client sees the free times in theirs, and both of you get the invitation.", href: "/platform/calls" },
-          { icon: "calendar", title: "Programmes in instalments", body: "Two to twelve payments, the programme opened after the first, ending by itself after the last.", href: "/platform/checkout" },
+          { icon: "calendar", title: "Programs in installments", body: "Two to twelve payments, the program opened after the first, ending by itself after the last.", href: "/platform/checkout" },
           { icon: "refresh", title: "A sequence after each sale", body: "On Pro, a few emails in the days after someone buys: what to do first, and when to book the call.", href: "/platform/email" },
-          { icon: "users", title: "A monthly group", body: "A membership that hands over the meeting link, cancelled by the member in one click.", href: "/platform/memberships" },
+          { icon: "users", title: "A monthly group", body: "A membership that hands over the meeting link, canceled by the member in one click.", href: "/platform/memberships" },
         ],
       },
       {
@@ -1961,17 +1961,17 @@ export const CREATOR_PAGES: TopicPage[] = [
         title: "Where it falls short for coaches today",
         items: [
           "Calls read your calendar's busy times but write bookings into it only when they use Google Meet: otherwise you subscribe to a feed of them.",
-          "Clients move their own booking up to twice, but cancelling is a reply to the confirmation email, and a refund is yours to make in Stripe.",
-          "No Zoom link is made for you: calls happen in a Google Meet made on your connected Google Calendar, on the meeting service whose link you give, or in a Jitsi Meet room made for each booking. Live events in your community work the same way.",
+          "Clients move their own booking up to twice, but canceling is a reply to the confirmation email, and a refund is yours to make in Stripe.",
+          "No Zoom link is made for you yet: calls happen in a Google Meet made on your connected Google Calendar, on the meeting service whose link you give, or in a Jitsi Meet room made for each booking. Live events in your community work the same way.",
         ],
       },
       {
         kind: "faq",
         title: "Questions coaches ask",
         items: [
-          { q: "Can I sell a package of several calls?", a: "Not as one booking. Each call is booked and paid on its own. A programme with a set of calls can be sold as a course or a file, with your booking arrangement inside it." },
+          { q: "Can I sell a package of several calls?", a: "Not as one booking. Each call is booked and paid on its own. A program with a set of calls can be sold as a course or a file, with your booking arrangement inside it." },
           { q: "Where does the video call happen?", a: "In a Google Meet made for each booking once you connect your Google Calendar, on the service whose link you give — Zoom or any other — or in a private Jitsi Meet room made for each booking. The link goes into every invitation." },
-          { q: "Can I see who finished the programme?", a: "Yes. Your studio shows each student and how many lessons they marked done." },
+          { q: "Can I see who finished the program?", a: "Yes. Your studio shows each student and how many lessons they marked done." },
         ],
       },
     ],
@@ -2009,15 +2009,15 @@ export const CREATOR_PAGES: TopicPage[] = [
         items: [
           { step: "1", icon: "gift", title: "The free recipe", price: "Free", body: "For a confirmed email. The part people share is the part that brings the next buyer.", href: "/platform/store-page" },
           { step: "2", icon: "tag", title: "A plan in sizes", price: "$27 or $39", body: "One week to try, five for the person who already trusts you — one product, two prices.", href: "/platform/price-options" },
-          { step: "3", icon: "plus", title: "The shopping list, added at checkout", price: "+$4", body: "A box under the buy button, never ticked for the buyer.", href: "/platform/checkout" },
-          { step: "4", icon: "repeat", title: "Every month", price: "$12 a month", body: "A membership for the regulars, cancelled by them in one click.", href: "/platform/memberships" },
+          { step: "3", icon: "plus", title: "The shopping list, added at checkout", price: "+$4", body: "A box under the buy button, never checked for the buyer.", href: "/platform/checkout" },
+          { step: "4", icon: "repeat", title: "Every month", price: "$12 a month", body: "A membership for the regulars, canceled by them in one click.", href: "/platform/memberships" },
         ],
       },
       {
         kind: "features",
         title: "What food creators use most",
         items: [
-          { icon: "phone", title: "Opened in a kitchen, on a phone", body: "The demo store scored 97 to 100 on Google PageSpeed on a simulated phone, on 17 September 2026.", href: "/proof/speed" },
+          { icon: "phone", title: "Opened in a kitchen, on a phone", body: "The demo store scored 97 to 100 on Google PageSpeed on a simulated phone, on September 17, 2026.", href: "/proof/speed" },
           { icon: "book", title: "A cooking course", body: "Batch cooking on video, a free first lesson on your store, a module that opens each week.", href: "/platform/courses" },
           { icon: "download", title: "Lost the plan? Back by email", body: "A buyer who changes phone gets everything they bought again, with the address they paid with.", href: "/platform/instant-delivery" },
           { icon: "chart", title: "Which post sold the plan", body: "Visits from Instagram, TikTok and Pinterest counted apart, next to the sales from your Stripe.", href: "/platform/insights" },
@@ -2048,9 +2048,9 @@ export const CREATOR_PAGES: TopicPage[] = [
     section: "for",
     eyebrow: "For fitness creators",
     title: "A store for trainers",
-    highlight: "from starter block to programme",
+    highlight: "from starter block to program",
     intro:
-      "A short block to start, a full programme as a course with video, a form check booked and paid, and a monthly club — on one page, charged on your own Stripe.",
+      "A short block to start, a full program as a course with video, a form check booked and paid, and a monthly club — on one page, charged on your own Stripe.",
     badge: WORKING,
     accent: "from-pink-brand to-violet-brand",
     related: ["courses", "calls", "memberships", "checkout"],
@@ -2065,7 +2065,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         alt: "A woman with natural hair, photographed against a dark green wall",
         items: [
           { label: "4-week starter block", detail: "PDF with video links", price: "$29" },
-          { label: "12-week programme", detail: "A course, a module a week, or 3 payments of $27", price: "$79" },
+          { label: "12-week program", detail: "A course, a module a week, or 3 payments of $27", price: "$79" },
           { label: "Form check", detail: "A 20-minute call", price: "$45" },
           { label: "The club", detail: "Membership, cancel any time", price: "$15 a month" },
         ],
@@ -2075,7 +2075,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         title: "The path from first workout to regular",
         items: [
           { step: "1", icon: "file", title: "A starter block", price: "$29", body: "The sample: four weeks that show how you coach.", href: "/platform/instant-delivery" },
-          { step: "2", icon: "book", title: "The programme", price: "$79", body: "Twelve weeks as a course, each week's module opening on its day, with an email.", href: "/platform/courses" },
+          { step: "2", icon: "book", title: "The program", price: "$79", body: "Twelve weeks as a course, each week's module opening on its day, with an email.", href: "/platform/courses" },
           { step: "3", icon: "video", title: "A form check", price: "$45", body: "A short call, booked into your hours and paid first.", href: "/platform/calls" },
           { step: "4", icon: "repeat", title: "The club", price: "$15 a month", body: "A course that stays open while the member pays.", href: "/platform/memberships" },
         ],
@@ -2086,7 +2086,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         items: [
           { icon: "video", title: "Workout videos in the course", body: "Up to 5 GB a lesson, and videos filmed upright on a phone play upright.", href: "/platform/courses" },
           { icon: "calendar", title: "Weekly unlocks", body: "A module opens a set number of days after each person joins, so nobody skips to week twelve.", href: "/platform/courses" },
-          { icon: "calendar", title: "Programmes in instalments", body: "Three monthly payments for a twelve-week programme, ending by itself.", href: "/platform/checkout" },
+          { icon: "calendar", title: "Programs in installments", body: "Three monthly payments for a twelve-week program, ending by itself.", href: "/platform/checkout" },
           { icon: "list", title: "Challenges with a real limit", body: "Fifty places, counted from real payments, with no invented countdown.", href: "/platform/checkout" },
         ],
       },
@@ -2096,14 +2096,14 @@ export const CREATOR_PAGES: TopicPage[] = [
         items: [
           "No workout-tracking app and no progress photos: students mark lessons done, and that is what you see.",
           "No live group chat for a challenge: your community holds posts, comments and likes, updated when the page is opened.",
-          "Videos watched count towards the store's 200 GB a month; going over never cuts anyone off, and we write to you.",
+          "Videos watched count toward the store's 200 GB a month; going over never cuts anyone off.",
         ],
       },
       {
         kind: "faq",
         title: "Questions trainers ask",
         items: [
-          { q: "Can my programme have videos I already host on YouTube?", a: "Yes. A lesson can hold a link as well as a video, so unlisted videos can stay where they are." },
+          { q: "Can my program have videos I already host on YouTube?", a: "Yes. A lesson can hold a link as well as a video, so unlisted videos can stay where they are." },
           { q: "Can a form check be a video they send me?", a: "Sell it as a call, booked and paid. A product that asks the buyer to upload a video is not built." },
         ],
       },
@@ -2131,16 +2131,16 @@ export const CREATOR_PAGES: TopicPage[] = [
         alt: "A man in a dark shirt, photographed against a plain wall",
         items: [
           { label: "Starter pack", detail: "6 presets, ZIP", price: "$15" },
-          { label: "Full collection", detail: "Personal, commercial or studio licence", price: "from $49" },
-          { label: "Launch edition", detail: "50 copies, with the colour guide as a PDF", price: "$79" },
+          { label: "Full collection", detail: "Personal, commercial or studio license", price: "from $49" },
+          { label: "Launch edition", detail: "50 copies, with the color guide as a PDF", price: "$79" },
         ],
       },
       {
         kind: "ladder",
-        title: "The path from free sample to studio licence",
+        title: "The path from free sample to studio license",
         items: [
           { step: "1", icon: "gift", title: "A free preset", price: "Free", body: "For a confirmed email, so launch day has someone to tell.", href: "/platform/store-page" },
-          { step: "2", icon: "tag", title: "The collection, three licences", price: "$49 / $99 / $149", body: "Personal, commercial and studio — one product, each delivering its own file.", href: "/platform/price-options" },
+          { step: "2", icon: "tag", title: "The collection, three licenses", price: "$49 / $99 / $149", body: "Personal, commercial and studio — one product, each delivering its own file.", href: "/platform/price-options" },
           { step: "3", icon: "bolt", title: "One click after paying", price: "+$19", body: "The matching brushes, charged to the same card on the thanks page.", href: "/platform/checkout" },
           { step: "4", icon: "percent", title: "A launch code", price: "20% off", body: "A code you choose, capped at a number of uses, kept on your own Stripe.", href: "/platform/checkout" },
         ],
@@ -2153,8 +2153,8 @@ export const CREATOR_PAGES: TopicPage[] = [
           { icon: "list", title: "Limited editions that are true", body: "The count left is the real one, and the last copy is never sold twice.", href: "/platform/checkout" },
           { icon: "target", title: "Pixels for your ads", body: "Meta, Google, TikTok and Pinterest, with each purchase and its amount, on the $29 plan.", href: "/platform/insights" },
           { icon: "globe", title: "Your own domain", body: "shop.yourstudio.com on Pro, with the certificate made for you.", href: "/platform/domain" },
-          { icon: "key", title: "Licence keys", body: "A unique key with each sale, for plugins and apps, checked by your software through a public address.", href: "/platform/licence-keys" },
-          { icon: "file", title: "Stamped PDFs", body: "The buyer's email on every page of a guide or a colour book, to make sharing it a second thought.", href: "/platform/pdf-stamping" },
+          { icon: "key", title: "License keys", body: "A unique key with each sale, for plugins and apps, checked by your software through a public address.", href: "/platform/licence-keys" },
+          { icon: "file", title: "Stamped PDFs", body: "The buyer's email on every page of a guide or a color book, to make sharing it a second thought.", href: "/platform/pdf-stamping" },
           { icon: "star", title: "Reviews from real buyers", body: "Stars and words only people who paid can leave, on the product's card and its page.", href: "/platform/reviews" },
         ],
       },
@@ -2171,7 +2171,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions designers ask",
         items: [
-          { q: "Can each licence deliver different files?", a: "Yes. Each price option carries its own file or link, and the buyer receives only the one they paid for." },
+          { q: "Can each license deliver different files?", a: "Yes. Each price option carries its own file or link, and the buyer receives only the one they paid for." },
           { q: "What if my pack is bigger than 5 GB?", a: "Sell it as a link to where you keep it — a Drive or Dropbox folder — and the buyer is sent there the moment they pay." },
         ],
       },

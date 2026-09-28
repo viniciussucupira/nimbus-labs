@@ -156,22 +156,20 @@ export async function sendMoveLink(
   void sendEmail({
     from: NIMBUS_FROM,
     to: fromAddress,
-    subject: "Someone asked to move your Nimbus account",
+    subject: "Someone asked to move your Nimbus Labs account",
     text: [
       `A request was made to move your Nimbus Labs account to ${toAddress}.`,
       "",
       "If that was you, finish it from the link sent to that address.",
       "",
-      "If it was not you, log in here and log out of all devices. Nothing has",
-      "moved yet, and nothing moves until someone opens the link sent to that",
-      "other address.",
+      `If it was not you, log in at ${origin}/signin with this email address and choose “Log out of all devices” at the foot of your studio. Nothing has moved yet, and nothing moves until someone opens the link sent to that other address.`,
     ].join("\n"),
   }).catch(() => undefined);
 
   return sendEmail({
     from: NIMBUS_FROM,
     to: toAddress,
-    subject: "Finish moving your Nimbus account",
+    subject: "Finish moving your Nimbus Labs account",
     text: [
       `Your Nimbus Labs account at ${fromAddress} is being moved here.`,
       "",
@@ -476,7 +474,7 @@ export async function noteSignIn(
         replyTo: "support@nimbuslabsai.com",
         subject: "New login to your Nimbus Labs account",
         text: [
-          `Your Nimbus Labs account (${normaliseEmail(email)}) was just logged in to from a browser it has not been used in before.`,
+          `Someone just logged in to your Nimbus Labs account (${normaliseEmail(email)}) from a browser that had not been used with it before.`,
           "",
           `When: ${when} UTC`,
           `How: ${WAY_WORDS[way]}`,
@@ -486,7 +484,7 @@ export async function noteSignIn(
           "",
           "If it was not you: log in at",
           "https://nimbuslabsai.com/signin",
-          "with this email address, choose “Log out of all devices” at the foot of your studio, remove any passkey you do not recognise, and reply to this email so we can help.",
+          "with this email address, choose “Log out of all devices” at the foot of your studio, remove any passkey you do not recognize, and reply to this email so we can help.",
         ].join("\n"),
       }).catch(() => false);
     }

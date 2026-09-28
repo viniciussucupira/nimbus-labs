@@ -58,7 +58,7 @@ export default function PlatformIndex() {
         <div className="container-page space-y-16 py-14 sm:py-18">
           <section className="reveal" aria-labelledby="catalogue-title">
             <h2 id="catalogue-title" className="sr-only">
-              The feature catalogue
+              The feature catalog
             </h2>
             <FeatureCatalogue
               groups={GROUPS.map((g) => ({ key: g.key, title: g.title, line: g.line }))}

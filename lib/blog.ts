@@ -52,7 +52,7 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         type: "p",
-        text: "Gumroad's pricing page shows two numbers: 10% plus 50 cents on a sale you bring yourself, and 30% on a sale their Discover marketplace brings you. There is no monthly fee. That is a clear offer and for plenty of people it is the right one. It is also not the whole cost, and the rest is not hidden \u2014 it is written in their own help centre, on the pages most sellers open only after something has gone wrong.",
+        text: "Gumroad's pricing page shows two numbers: 10% plus 50 cents on a sale you bring yourself, and 30% on a sale their Discover marketplace brings you. There is no monthly fee. That is a clear offer and for plenty of people it is the right one. It is also not the whole cost, and the rest is not hidden \u2014 it is written in their own help center, on the pages most sellers open only after something has gone wrong.",
       },
       { type: "h2", text: "The fee on the pricing page does not include the card fee" },
       {
@@ -61,16 +61,16 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "On a $27 file sold through your own link, that is $3.20 to Gumroad and about $1.08 to the card network. You keep $22.72. Nothing here is concealed. The two figures simply live on two different pages, and only one of them is on the page you read before signing up.",
+        text: "On a $27 file sold through your own link, that is $3.20 to Gumroad and about $1.08 in card processing. You keep $22.72. Nothing here is concealed. The two figures simply live on two different pages, and only one of them is on the page you read before signing up.",
       },
       {
         type: "p",
-        text: "One more figure, because it runs in your favour: once your paid sales in a calendar month reach $20,000, new direct sales for the rest of that month are charged 5% plus 50 cents instead. It resets on the first, and there is nothing to apply for. At $27 a file, that threshold is around 740 sales in a month.",
+        text: "One more figure, because it runs in your favor: once your paid sales in a calendar month reach $20,000, new direct sales for the rest of that month are charged 5% plus 50 cents instead. It resets on the first, and there is nothing to apply for. At $27 a file, that threshold is around 740 sales in a month.",
       },
       { type: "h2", text: "The money arrives in their balance, not in yours" },
       {
         type: "p",
-        text: "This is the part that surprises people. A sale does not land in your bank account, and it does not land in a payment account of yours. It lands in a Gumroad balance, and it leaves that balance on a schedule.",
+        text: "This is the part that surprises people. A card sale does not land in your bank account, and it does not land in a payment account of yours. It lands in a Gumroad balance, and it leaves that balance on a schedule. The one exception is PayPal: if you have connected your own PayPal account, a sale paid with PayPal is credited to it at the time of sale.",
       },
       {
         type: "ul",
@@ -80,7 +80,7 @@ export const BLOG_POSTS: BlogPost[] = [
           "A payout covers sales made up to the previous Friday, counted in UTC.",
           "Your payout day depends on where your bank account is: Tuesday, Wednesday or Thursday for bank accounts, Friday for PayPal. The bank transfer itself then takes a further two to seven business days.",
           "Before your first payout, they review the account. They say that takes one to three weeks.",
-          "Getting it sooner costs: PayPal payouts carry a 2% fee, and instant payouts are 3%, United States only, and only once the account has been processing for sixty days.",
+          "Getting it sooner costs: PayPal payouts carry a 2% fee, and instant payouts cost 3%, are for creators in the United States only, and open only after a first payout and sixty days of processing.",
           "You are paid in your local currency, converted at the exchange rate at the time of the sale rather than the time of the payout.",
         ],
       },
@@ -91,7 +91,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "Why it is built that way" },
       {
         type: "p",
-        text: "It would be easy to make that sound like a trap. It is not. Since 1 January 2025, Gumroad is the merchant of record on every sale, which means they are legally the seller and you are not. They say so on their own pricing page, and it is why they collect and remit sales tax worldwide.",
+        text: "It would be easy to make that sound like a trap. It is not. Since January 1, 2025, Gumroad has been the merchant of record, which means they are legally the seller and you are not. They say so on their own pricing page, and it is why they collect and remit sales tax worldwide.",
       },
       {
         type: "p",
@@ -151,7 +151,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "If being the seller of record is the part that worries you \u2014 if the thought of being personally answerable for sales tax in countries you have never visited is what keeps you up \u2014 stay on Gumroad whatever the arithmetic says. That is a good reason, and the maths does not beat it.",
+        text: "If being the seller of record is the part that worries you \u2014 if the thought of being personally answerable for sales tax in countries you have never visited is what keeps you up \u2014 stay on Gumroad whatever the arithmetic says. That is a good reason, and the math does not beat it.",
       },
       {
         type: "p",
@@ -159,7 +159,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "note",
-        text: "Every figure here is from Gumroad's own pages, read on 20 September 2026: their pricing page for 10% plus 50 cents, 30% on Discover and the merchant-of-record change of 1 January 2025; 'Gumroad's fees' for card processing not being included and for the $20,000 discount; 'Getting paid by Gumroad' for the $100 minimum, the seven-day hold, the payout days, the 2% PayPal fee, the 3% instant payout and the one-to-three-week review; and their 'Account suspension FAQ' for what can happen to a balance. The card rate is Stripe's published United States online rate. If any of it has changed since, this page is wrong until we fix it, and we would rather be told than left looking accurate.",
+        text: "Every figure here is from Gumroad's own pages, read on September 20, 2026 and checked again on September 28, 2026: their pricing page for 10% plus 50 cents, 30% on Discover and the merchant-of-record change of January 1, 2025; 'Gumroad's fees' for card processing at 2.9% plus 30 cents not being included and for the $20,000 discount; 'Getting paid by Gumroad' for the $100 minimum, the seven-day hold, the payout days, the 2% PayPal fee, the 3% instant payout, the currency conversion and the one-to-three-week review; 'Adding PayPal to checkout' for PayPal sales paid into your own PayPal account; and their 'Account suspension FAQ' for what can happen to a balance. The same 2.9% plus 30 cents is Stripe's published United States rate for domestic cards. If any of it has changed since, this page is wrong until we fix it, and we would rather be told than left looking accurate.",
       },
     ],
   },
@@ -224,7 +224,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "note",
-        text: "Test your own checkout with a real card before you send a single person to it. Buy your own product. Read the confirmation. Download the file on a phone, on mobile data, not on your home wifi. Most broken stores were never bought from by their owner.",
+        text: "Test your own checkout with a real card before you send a single person to it. Buy your own product. Read the confirmation. Download the file on a phone, on mobile data, not on your home Wi-Fi. Most broken stores were never bought from by their owner.",
       },
       { type: "h2", text: "What to do this week" },
       {
@@ -258,7 +258,7 @@ export const BLOG_POSTS: BlogPost[] = [
     readMinutes: 5,
     excerpt:
       "Card fees, platform fees, subscriptions and payout fees, added up on one sale and on a hundred — so you can see which cost is worth paying and which one quietly eats the month.",
-    kicker: "The maths",
+    kicker: "The math",
     from: "#12d6a4",
     to: "#37b6ff",
     body: [
@@ -269,11 +269,11 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "The card fee" },
       {
         type: "p",
-        text: "Someone has to move the money. Card networks and payment processors take a percentage plus a fixed amount per transaction — Stripe publishes its own rates, and in the United States the standard online card rate has been 2.9% plus 30 cents for years. On a $27 sale that is about $1.08, so roughly $25.92 reaches you.",
+        text: "Someone has to move the money. Card networks and payment processors take a percentage plus a fixed amount per transaction — Stripe publishes its own rates, and in the United States the standard online rate for domestic cards has been 2.9% plus 30 cents for years. On a $27 sale that is about $1.08, so roughly $25.92 reaches you.",
       },
       {
         type: "p",
-        text: "Nobody escapes this one. Any service that says it takes nothing is either paying the card fee out of the subscription you pay them, or taking it before you see the number.",
+        text: "Nobody escapes this one. When a service says it takes nothing, it means nothing on top of this. The card fee is still paid, whether by you to your own payment processor, out of the subscription you pay the service, or before you see the number.",
       },
       { type: "h2", text: "The platform fee" },
       {
@@ -415,7 +415,7 @@ export const BLOG_POSTS: BlogPost[] = [
         items: [
           "By amount: one week of meal plans, five weeks, the whole season.",
           "By format: the PDF; the PDF plus the editable file; the PDF, the editable file and the video walkthrough.",
-          "By use: for yourself; for your clients (a licence to use it in your own work).",
+          "By use: for yourself; for your clients (a license to use it in your own work).",
         ],
       },
       {
@@ -471,12 +471,12 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "Line 3 — the one problem it removes" },
       {
         type: "p",
-        text: "Not the transformation. The problem, in the reader's own words: 'You stop deciding what to cook at 6pm.' If you cannot write this line, the product is not finished yet.",
+        text: "Not the transformation. The problem, in the reader's own words: 'You stop deciding what to cook at 6 p.m.' If you cannot write this line, the product is not finished yet.",
       },
       { type: "h2", text: "Line 4 — who it is for, and who it is not" },
       {
         type: "p",
-        text: "'For two people who cook three or four nights a week. Not for meal-prep in bulk.' Saying who should not buy it is the strongest trust signal a new seller has, and it cuts refunds.",
+        text: "'For two people who cook three or four nights a week. Not for bulk meal prep.' Saying who should not buy it is the strongest trust signal a new seller has, and it cuts refunds.",
       },
       { type: "h2", text: "Line 5 — what happens after payment" },
       {
@@ -486,7 +486,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "Line 6 — the price, with the options visible" },
       {
         type: "p",
-        text: "Show the choices as rows the buyer can tap, with what each one includes. No maths for them to do, no 'contact for pricing', no discount timer that resets when they reload the page.",
+        text: "Show the choices as rows the buyer can tap, with what each one includes. No math for them to do, no 'contact for pricing', no discount timer that resets when they reload the page.",
       },
       { type: "h2", text: "What to leave out" },
       {
@@ -576,15 +576,15 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         type: "note",
-        text: "Disclosure: we build Nimbus. Everything below about Stan comes from Stan's own website and help centre, which anyone can read. Where we are worse, we say so.",
+        text: "Disclosure: we build Nimbus. Everything below about Stan comes from Stan's own website and help center, which anyone can read. Where we are worse, we say so.",
       },
       {
         type: "note",
-        text: "Updated on 26 September 2026, when Nimbus added a community, funnels of offers after the checkout, an affiliate programme you pay out yourself, calendar sync and webhooks. The lines below say where that leaves each of us.",
+        text: "Updated on September 26, 2026, when Nimbus added a community, funnels of offers after the checkout, an affiliate program you pay out yourself, calendar sync and webhooks. The lines below say where that leaves each of us.",
       },
       {
         type: "note",
-        text: "Updated again on 27 September 2026, when Nimbus added sales and landing pages, reviews only buyers can write, 15 currencies and the ways to pay a creator switches on in Stripe, Mailchimp, Kit, beehiiv and MailerLite built in, up to five stores and a team with roles, a video room for each booking, phone notifications and up to 2,000 products.",
+        text: "Updated again on September 27, 2026, when Nimbus added sales and landing pages; reviews only buyers can write; 15 currencies; the ways to pay a creator switches on in Stripe; Mailchimp, Kit, beehiiv and MailerLite built in; up to five stores and a team with roles; a video room for each booking; phone notifications; and up to 2,000 products.",
       },
       {
         type: "note",
@@ -593,7 +593,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "What Stan is" },
       {
         type: "p",
-        text: "Stan is a creator store that has been running for years and sells a wide product range from one dashboard. Their own help centre lists what a creator can sell there: digital downloads, e-courses, coaching calls, webinars, memberships, communities, lead magnets, external links and custom products, plus order bumps and funnels, an affiliate share programme, email marketing and their AutoDM tool.",
+        text: "Stan is a creator store that has been running for years and sells a wide product range from one dashboard. Their own help center lists what a creator can sell there: digital downloads, e-courses, coaching calls, webinars, memberships, communities, lead magnets, external links and custom products, plus order bumps and funnels, an affiliate share program, email marketing and their AutoDM tool.",
       },
       {
         type: "p",
@@ -602,7 +602,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "What Nimbus is" },
       {
         type: "p",
-        text: "Nimbus is a store page for selling files, courses, memberships and calls, and it is early. It does one job: a colourful page, price options on a product, and the file in the buyer's hands the second the payment clears.",
+        text: "Nimbus is a store page for selling files, courses, memberships, communities and calls, and it is early. At its core is one job: a colorful page, price options on a product, and the file in the buyer's hands the second the payment clears.",
       },
       { type: "h2", text: "The one thing we do differently" },
       {
@@ -617,9 +617,9 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "Range: automated Instagram replies, PayPal for creators in the United States, affiliates paid automatically, Zoom links made for each booking and webinar, and stores with no limit on products. We have none of those. PayPal reaches our checkout only through Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein; our affiliates are paid by you; our funnels are pages and offers you connect rather than one builder; our video rooms, for calls and live events alike, are Google Meet links made on your connected Google Calendar, your own meeting link, or Jitsi Meet rooms, where the first person in may have to sign in to Jitsi; and a store holds up to 2,000 products.",
+          "Range: automated Instagram replies, PayPal, affiliates paid automatically, Zoom links made for each booking and webinar, and stores with no limit on products. We have none of those. PayPal does not reach our checkout, because Stripe does not support it for the direct charges every sale here is made with; our affiliates are paid by you; our funnels are pages and offers you connect rather than one builder; our video rooms, for calls and live events alike, are Google Meet links made on your connected Google Calendar, your own meeting link, or Jitsi Meet rooms, where the first person in may have to sign in to Jitsi; and a store holds up to 2,000 products.",
           "Years of running: their support library is deep, and ours is a few pages.",
-          "An installable creator app: their help centre states their creator app is currently available on iPhone and iPad. We do not have a native app at all — our studio and every store install to the home screen from the browser, on both iPhone and Android, and the studio can send notifications of sales, which is a different trade-off, not a better one in every case.",
+          "A native creator app: their help center states their creator app is currently available only on iPhone and iPad. We do not have a native app at all — our studio and every store install to the home screen from the browser, on both iPhone and Android, and the studio can send notifications of sales, which is a different trade-off, not a better one in every case.",
           "Integrations with third-party tools, which they list on their site. We have webhooks that Zapier, Make or your own server can catch, and no app of our own in anyone's directory.",
         ],
       },
@@ -629,13 +629,13 @@ export const BLOG_POSTS: BlogPost[] = [
         items: [
           "The money lands in your own Stripe account, so payouts, receipts and refunds are yours.",
           "Price options on a single product, with the right file delivered for the tier that was paid for.",
-          "Reviews only buyers can write, checked against the payment. Stan's help centre says reviews there are added by the creator.",
-          "A team with roles, each person signing in with their own email. Stan's help centre says the only way there is to share your login.",
+          "Reviews only buyers can write, checked against the payment. Stan's help center says reviews there are added by the creator.",
+          "A team with roles, each person signing in with their own email. Stan's help center says the only way there is to share your login.",
           "Sales pages, landing pages, discount codes, payment plans and offers after paying on the $29 plan, and a store in any of 15 currencies.",
-          "Bundles that hand over each of your products as if bought on its own. Stan's help centre lists bundles among what one download can hold.",
-          "Moving in from a spreadsheet: up to 50,000 contacts, 500 products and 20,000 past buyers a file, where Stan's help centre imports up to 5,000 contacts per store in all and gives buyers access one at a time.",
+          "Bundles that hand over each of your products as if bought on its own. Stan's help center lists bundles among what one download can hold.",
+          "Moving in from a spreadsheet: up to 50,000 contacts, 500 products and 20,000 past buyers per file, where Stan's help center imports up to 5,000 contacts per store in all and gives buyers access one at a time.",
           "A live demo store anyone can buy from with a test card, before signing up for anything.",
-          "Prices and terms published as pages on the site, not as PDFs you have to download.",
+          "Terms and privacy policy published as pages on the site, where Stan links to them as PDF files.",
         ],
       },
       { type: "h2", text: "How to decide without trusting either of us" },
@@ -693,16 +693,16 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "p",
-        text: "We took the second route because it reaches both phones with one thing to maintain, which for a small team is the difference between shipping and not shipping. Stan's own help centre says their creator app is currently available on iPhone and iPad; our installable store runs on both iPhone and Android. That is the concrete difference the choice makes.",
+        text: "We took the second route because it reaches both phones with one thing to maintain, which for a small team is the difference between shipping and not shipping. Stan's own help center says their creator app is currently available only on iPhone and iPad; our installable store runs on both iPhone and Android. That is the concrete difference the choice makes.",
       },
       { type: "h2", text: "The honest cost" },
       {
         type: "p",
-        text: "Installing from a browser is less discoverable than a store listing: on iPhone it lives behind the share menu, and on Android behind the browser menu. A native app can also do things a web page cannot. Since 27 September 2026 the studio itself installs and sends notifications of sales and bookings, but on iPhone only from iOS 16.4 and only once it is on the home screen.",
+        text: "Installing from a browser is less discoverable than a store listing: on iPhone it lives behind the share menu, and on Android behind the browser menu. A native app can also do things a web page cannot. Since September 27, 2026, the studio itself installs and sends notifications of sales and bookings, but on iPhone only from iOS 16.4 and only once it is on the home screen.",
       },
       {
         type: "note",
-        text: "If we ever put a real app in the app stores, this page will say so on the day it is true, and not before. Until then, what you get is a store that installs in two taps and a buyer who never has to install anything at all.",
+        text: "If we ever put a real app in the app stores, this page will say so on the day it is true, and not before. Until then, what you get is a store that installs from the browser menu in a few taps and a buyer who never has to install anything at all.",
       },
     ],
   },

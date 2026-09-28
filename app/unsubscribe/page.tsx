@@ -90,7 +90,7 @@ async function StopAnnouncements({ token, done }: { token: string; done: boolean
           <>
             <h1 className="t-h3">No more emails from the community</h1>
             <p className="mt-3 text-ink-soft">
-              {`${found.member.e} will not be emailed ${who}'s announcements or live event reminders again. You are still in ${where}, and can read them there. If an event you RSVP'd to is moved or cancelled, you are still told, once.`}
+              {`${found.member.e} will not be emailed ${who}'s announcements or live event reminders again. You are still in ${where}, and can read them there. If an event you RSVP'd to is moved or canceled, you are still told, once.`}
             </p>
           </>
         ) : (

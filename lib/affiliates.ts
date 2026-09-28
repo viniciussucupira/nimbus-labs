@@ -340,7 +340,7 @@ export async function requestAffiliateLink(input: {
       "",
       typeof known === "string"
         ? "It shows your link, your clicks, your sales and what you have earned and been paid."
-        : `${name} decides on each application. Once you are approved, your page gives you your own link, and every sale made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you a share.`,
+        : `${name} decides on each application. Once you are approved, your page gives you your own link, and a sale made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you a share.`,
       "",
       `Commissions are paid to you by ${name} directly, not by Nimbus Labs, which never holds the money.`,
       "",

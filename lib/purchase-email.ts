@@ -212,7 +212,7 @@ export function confirmationFor(
     lines.push(
       `Start the course: ${base}/course/${product.id}`,
       "",
-      `On the device you paid with it opens straight away. On any other, the course page asks for your email: type ${email}, and a link that lets that device in arrives within a minute. There is no password to make.`,
+      `On the device you paid with, it opens straight away. On any other, the course page asks for your email: type ${email}, and a link that lets that device in arrives within a minute. There is no password to make.`,
     );
   } else {
     lines.push(
@@ -227,11 +227,11 @@ export function confirmationFor(
     lines.push("", `Start ${course.title}: ${base}/course/${course.id}`);
   }
   if (courses.length) {
-    lines.push("", `On the device you paid with a course opens straight away. On any other, its page asks for your email: type ${email}, and a link that lets that device in arrives within a minute.`);
+    lines.push("", `On the device you paid with, a course opens straight away. On any other, its page asks for your email: type ${email}, and a link that lets that device in arrives within a minute.`);
   }
 
   for (const line of keys) {
-    const label = keys.length > 1 ? `Your licence key for ${line.title}` : "Your licence key";
+    const label = keys.length > 1 ? `Your license key for ${line.title}` : "Your license key";
     lines.push(
       "",
       line.key.state === "issued"
@@ -258,8 +258,8 @@ export function confirmationFor(
     }
     const schedule =
       endsAfter > 0
-        ? `This renews ${every} for ${endsAfter} payments in all and then ends by itself.`
-        : `This renews ${every} until you cancel it.`;
+        ? `This renews once ${every} for ${endsAfter} payments in all and then ends by itself.`
+        : `This renews once ${every} until you cancel it.`;
     lines.push(
       "",
       canManage(store)
@@ -410,8 +410,8 @@ export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleK
     lines.push(
       "",
       line.key.state === "issued"
-        ? `Your licence key for ${line.title}: ${line.key.key}`
-        : `Your licence key for ${line.title}: on its way. ${name}'s keys ran out just as you paid; it is emailed to you the moment they add more.`,
+        ? `Your license key for ${line.title}: ${line.key.key}`
+        : `Your license key for ${line.title}: on its way. ${name}'s keys ran out just as you paid; it is emailed to you the moment they add more.`,
     );
   }
   lines.push(

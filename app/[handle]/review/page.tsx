@@ -76,7 +76,7 @@ export default async function ReviewPage({ params, searchParams }: Params) {
             title: "This link has expired",
             body: canRecover(store)
               ? "Ask for your purchases again: a new link comes by email in a minute, and you can review from there."
-              : `Reply to the receipt ${store.name} emailed you, and it reaches them.`,
+              : `Reply to the order confirmation ${store.name} emailed you, and it reaches them.`,
           }
         : opened.state === "error"
           ? { title: "Something went wrong on our side", body: "Nothing was changed. Try again in a moment." }
@@ -120,7 +120,7 @@ export default async function ReviewPage({ params, searchParams }: Params) {
                 {opened.proof.products.length === 1 ? `Review ${opened.proof.products[0].title}` : "Review what you bought"}
               </h1>
               <p className="st-muted mt-3 leading-relaxed">
-                {`Bought from ${store.name}${opened.proof.paidAt ? ` on ${DATE.format(new Date(opened.proof.paidAt * 1000))}` : ""}. Honest is what helps the next buyer, and ${store.name}.`}
+                {`Bought from ${store.name}${opened.proof.paidAt ? ` on ${DATE.format(new Date(opened.proof.paidAt * 1000))}` : ""}. An honest review is what helps the next buyer, and ${store.name}.`}
               </p>
               <div className="mt-8 space-y-10">
                 {opened.proof.products.map((product) => (

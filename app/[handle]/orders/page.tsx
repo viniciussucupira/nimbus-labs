@@ -30,7 +30,7 @@ type Params = {
 const NOTICES: Record<string, { title: string; body: string }> = {
   email: {
     title: "That does not look like an email address",
-    body: "Check it and try again. Use the address you paid with; it is the one your receipt went to.",
+    body: "Check it and try again. Use the address you paid with: the one you typed at checkout.",
   },
   limited: {
     title: "Too many requests for now",
@@ -38,7 +38,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   },
   unavailable: {
     title: "This store cannot do this here",
-    body: "Its payments are not connected to Stripe right now. Reply to the receipt you were emailed when you paid, and it reaches the store.",
+    body: "Its payments are not connected to Stripe right now. Reply to the order confirmation you were emailed when you paid, and it reaches the store.",
   },
   error: {
     title: "Something went wrong on our side",
@@ -50,7 +50,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   },
 };
 
-const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const DATE = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 
 function DeliveryButton({
   handle,
@@ -299,7 +299,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
               ) : null}
               {purchases.length === 0 && calls.length > 0 ? null : purchases.length === 0 ? (
                 <p className="st-muted mt-4 text-lg leading-relaxed">
-                  {`There is nothing to open here any more. A purchase that was refunded is no longer listed. If something is missing, reply to the receipt you were emailed when you paid, and it reaches ${store.name}.`}
+                  {`There is nothing to open here anymore. A purchase that was refunded in full is no longer listed. If something is missing, reply to the order confirmation you were emailed when you paid, and it reaches ${store.name}.`}
                 </p>
               ) : (
                 <>
@@ -386,7 +386,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                 {`If that address bought something from ${store.name}, the link is on its way. It comes from ${store.name} via Nimbus Labs and usually arrives within a minute. If it is not there, look in spam.`}
               </p>
               <p className="st-muted mt-4 text-sm">
-                Nothing arrived? You may have paid with a different address. It is the one your receipt went to. Try that one below.
+                Nothing arrived? You may have paid with a different address: the one you typed at checkout. Try that one below.
               </p>
               {available ? form : null}
             </>
@@ -403,8 +403,8 @@ export default async function OrdersPage({ params, searchParams }: Params) {
               </h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
                 {available
-                  ? `Lost a download, or changed phone? Type the email you paid ${store.name} with and we send you a link to everything you bought here. No account and no password.`
-                  : `${store.name} cannot take payments through Stripe right now, so there is nothing to look up from here. Reply to the receipt you were emailed when you paid, and it reaches them.`}
+                  ? `Lost a download, or got a new phone? Type the email you paid ${store.name} with and we send you a link to everything you bought here. No account and no password.`
+                  : `${store.name} cannot take payments through Stripe right now, so there is nothing to look up from here. Reply to the order confirmation you were emailed when you paid, and it reaches them.`}
               </p>
               {available ? form : null}
             </>

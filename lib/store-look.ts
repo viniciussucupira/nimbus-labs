@@ -18,7 +18,7 @@ export const THEMES = [
   {
     id: "light",
     label: "Paper",
-    description: "Light and quiet. Your colour is on the buttons.",
+    description: "Light and quiet. Your color is on the buttons.",
   },
   {
     id: "sand",
@@ -28,12 +28,12 @@ export const THEMES = [
   {
     id: "night",
     label: "Night",
-    description: "Dark, for photos and colours that glow.",
+    description: "Dark, for photos and colors that glow.",
   },
   {
     id: "bold",
-    label: "Colour",
-    description: "Your colour across the top of the page.",
+    label: "Color",
+    description: "Your color across the top of the page.",
   },
 ] as const;
 
@@ -294,5 +294,5 @@ export function lookStyle(look: StoreLook): Record<string, string> {
 
 /** A name for a colour that is not one of the presets, for screen readers. */
 export function accentLabel(hex: string): string {
-  return ACCENTS.find((accent) => accent.hex === hex)?.label ?? `Your colour, ${hex}`;
+  return ACCENTS.find((accent) => accent.hex === hex)?.label ?? `Your color, ${hex}`;
 }

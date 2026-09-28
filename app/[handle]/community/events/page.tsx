@@ -93,7 +93,7 @@ export default async function CommunityEventsPage({ params, searchParams }: Para
                 <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing scheduled yet</p>
                 <p className="mt-1 text-sm">
                   {viewer.owner
-                    ? "Schedule a live event in the studio: members RSVP here, get reminders, and join from this page."
+                    ? "Schedule a live event in the studio: members RSVP here, get reminder emails if they asked for them, and join from this page."
                     : `When ${store.name} schedules a live event, it shows up here.`}
                 </p>
               </div>

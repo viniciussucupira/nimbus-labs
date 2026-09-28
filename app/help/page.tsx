@@ -14,7 +14,7 @@ function answerId(q: string): string {
 }
 
 export const metadata: Metadata = {
-  title: "Help centre — Nimbus Labs",
+  title: "Help center — Nimbus Labs",
   description:
     "Straight answers about the store, the money, the files and what the subscription buys. If an answer is 'not yet', it says not yet.",
 };
@@ -39,16 +39,16 @@ const SECTIONS: Section[] = [
       {
         q: "What is Nimbus today?",
         a: [
-          "You sign up, take your own store address and build the page: its name, its description, and what you sell with its price. You connect your own Stripe account, and once Stripe has cleared it your page can take a card. The money is charged on your account, not ours.",
-          "You can see the whole path before signing up. The demo store has price options on a product, a Stripe checkout made on the creator account, and the file delivered the second the payment clears. You can buy from it with a test card.",
+          "You sign up, take your own store address and build the page: its name, its description, and what you sell with its price. You connect your own Stripe account, and once Stripe has cleared it and your plan or free trial is running, your page can take a card. The money is charged on your account, not ours.",
+          "You can see the whole path before signing up. The demo store has price options on a product, a Stripe checkout made on the creator's own account, and the file delivered the second the payment clears. You can buy from it with a test card.",
           "The mission page lists everything that is built and everything that is not, in two columns, so nobody signs up expecting the wrong thing.",
         ],
       },
       {
         q: "Can I put my own products on my store?",
         a: [
-          "Yes. On your account page you write the name of the store, the line under it, and each thing you sell with what the buyer gets and the price. It is on your page the moment you save it, and you can reorder or remove any of it.",
-          "A store holds up to 2,000 things and up to 100 links, priced in your store's currency — one of 15, US dollars unless you choose another — with one price each, up to three if you want the buyer to choose, or a price the buyer chooses above your minimum. You can also put the file itself on each one, and open it again to check it is the right one. A long store shows 24 products a page, and your studio finds any product by name.",
+          "Yes. In your studio you write the name of the store, the line under it, and each thing you sell with what the buyer gets and the price. It is on your page the moment you save it, and you can reorder or remove any of it.",
+          "A store holds up to 2,000 things and up to 100 links, priced in your store's currency — one of 15, US dollars unless you choose another — with one price each, up to three if you want the buyer to choose, or a price the buyer chooses, at or above your minimum. You can also put the file itself on each one, and open it again to check it is the right one. A long store shows 24 products a page, and your studio finds any product by name.",
           "Each product can have a picture, shown on its card in one of three ways, and a page of its own at your store address followed by /p/ and the product, with a long description of up to 5,000 characters. That page has its own title and preview card, so a link to one product shared anywhere unfolds into that product. You can also build it as a sales page, from blocks.",
           "Your page can take a card as soon as two things are true: Stripe has cleared your connected account, and your subscription is running — the trial counts. Until then the page says so plainly, to you and to anyone who opens it.",
         ],
@@ -56,18 +56,18 @@ const SECTIONS: Section[] = [
       {
         q: "What file can I sell, and how big?",
         a: [
-          "Up to 5 GB, in any of these: PDF, ePub, ZIP, PNG, JPG, GIF, WebP, SVG, MP3, WAV, M4A, MP4, MOV, TXT, CSV, Markdown, Word, Excel and PowerPoint. Anything over about 20 MB is uploaded in parts, so a dropped connection costs you one part rather than the whole thing.",
+          "Up to 5 GB, in any of these: PDF, ePub, ZIP, PNG, JPG, GIF, WebP, SVG, MP3, WAV, M4A, MP4, MOV, WebM, TXT, CSV, Markdown, Word, Excel and PowerPoint. Anything over about 20 MB is uploaded in parts, so a dropped connection costs you one part rather than the whole thing.",
           "Bigger than that, or not a file at all? Sell it as a link. You paste an https address \u2014 a Google Drive folder, a private video page, a Notion page \u2014 and the buyer is sent there the moment they pay, with the address shown on the page and kept in their receipt. There is no size limit on that, because the files stay where you already keep them.",
           "A product carries one or the other, never both, so a buyer who has paid is shown one thing to open rather than a choice.",
           "Anything that runs — a program, an installer, a script — is refused. A store that hands out software is a store that hands out malware the day an account is taken over.",
-          "The file goes straight from your browser to storage that needs a key to read. It is never named or linked on your public page, and the only way it comes out is through us, after we have checked who is asking. You can open it yourself from your account page to be sure it is the right one.",
+          "The file goes straight from your browser to storage that needs a key to read. It is never named or linked on your public page, and the only way it comes out is through us, after we have checked who is asking. You can open it yourself from your studio to be sure it is the right one.",
         ],
       },
       {
         q: "What does it cost to start?",
         a: [
           "Nothing to sign up. Your store address, your page, the editor and connecting Stripe are free and stay free.",
-          "What the subscription switches on is the till: your page taking a card, and handing out what you give away for an email address. It is $29 a month, or $300 a year paid once, which is $48 less. Pro, which adds email to your list, is $99 a month or $948 a year. The first 14 days are free on either plan, monthly or yearly. Stripe takes your card when the trial starts and first charges it when the 14 days end; we email you a week before that charge, and if you cancel before it — one click in your studio — it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.",
+          "What the subscription switches on is the till: your page taking a card, and handing out what you give away for an email address. It is $29 a month, or $300 a year, which is $48 less than paying monthly. Pro, which adds email to your list, is $99 a month or $948 a year. The first 14 days are free on either plan, monthly or yearly. Stripe takes your card details when the trial starts and first charges it when the 14 days end; we email you a week before that charge, and if you cancel before it — one click in your studio — it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.",
         ],
       },
       {
@@ -80,25 +80,25 @@ const SECTIONS: Section[] = [
       {
         q: "Can I switch between monthly and yearly, or between the plans?",
         a: [
-          "Yes to both, from your studio. Moving up to Pro while you pay charges the difference that day, less what is left of what you already paid; going back to $29 keeps what is left of Pro as credit on your account. Inside the trial, neither charges anything.",
-          "Yes, from your studio, whenever you like. Monthly to yearly charges the year that day, less what is left of the month you already paid for. Yearly to monthly keeps what is left of your year as credit on your account, and that credit pays your months until it runs out. Inside the trial, switching charges nothing.",
+          "Yes to both, from your studio, whenever you like. Monthly to yearly charges the year that day, less what is left of the month you already paid for. Yearly to monthly keeps what is left of your year as credit on your account, and that credit pays your months until it runs out.",
+          "Moving up to Pro charges the difference that day, less what is left of what you already paid; going back to $29 keeps what is left of Pro as credit on your account. Inside the trial, no switch charges anything.",
           "On a yearly plan we email you about a month before it renews, with the date, the amount and the link to cancel.",
         ],
       },
       {
         q: "Can I run more than one store, or have someone help me?",
         a: [
-          "Both. One account runs up to five stores, each with its own address, products, buyers, Stripe account and plan, and you switch between them at the top of your studio. The 14-day free trial is for an account's first store; each other store is charged from the day its plan starts, and cancelling one touches no other.",
+          "Both. One account runs up to five stores, each with its own address, products, buyers, Stripe account and plan, and you switch between them at the top of your studio. The 14-day free trial is for an account's first store; each other store is charged from the day its plan starts, and canceling one touches no other.",
           "Each store can have a team of up to five people, invitations still waiting included, each signing in with their own email: an Admin runs everything except the plan, the Stripe connection, the team and deleting the store; an Editor looks after products, courses, calls, bundles, sales pages, the store page and the community's live events and writes email drafts without sending them; Support reads orders and bookings, sends purchase emails again, sees who is coming to live events and moderates the community and reviews. What each role may do is checked on our server for every request. You are emailed when someone joins or changes role, and the activity log shows the last 500 changes and downloads your team made.",
-          "Stan's help centre, read on 27 September 2026, says the only way to give a team member access there is to share your login.",
+          "Stan's help center, read on September 28, 2026, says the only way to give a team member admin access there is to share your login.",
         ],
       },
       {
         q: "Can I move my store from Stan, Gumroad or another platform?",
         a: [
           "Yes, from a spreadsheet, in three imports from the Import page of your studio, on every plan. Your list: up to 50,000 rows a file, and only people who agreed to hear from you \u2014 you confirm it each time, a consent column in the file narrows it further, nobody who unsubscribed here is added back, and nobody is emailed because of it. Your products: up to 500 a file, each made a draft that waits in your studio until you publish it, with its title, price, description and link. Your past buyers: up to 20,000 a file, each given what they bought on your store's list of purchases, marked as brought over from another platform, with no payment and no receipt.",
-          "Bring products first, because the buyers' file names them by their title or their id here, then add each product's file or lessons. A buyer brought over for a product that opens your community is let in. If you tick it, each buyer gets one email from your store's name saying what moved and how to open it \u2014 up to 20,000 buyers per store in 30 days \u2014 and nothing more is sent because of it. The studio reads the file in your browser, you say which column is which, and every row that is not brought in is listed with its row number and the reason, as a spreadsheet you download.",
-          "What it does not do: files, pictures and lessons are not imported; memberships, calls and products with several prices cannot be given to past buyers; buyers brought over get no licence key here and are not counted as sales, sent to webhooks, credited to affiliates or able to review; and an import cannot be undone in one step. You and your Admins can import. Stan's help centre, read on 27 September 2026, imports up to 5,000 contacts per store in all and emails them to opt in again, and grants a customer access one at a time.",
+          "Bring products first, because the buyers' file names them by their title or their id here, then add each product's file or lessons. A buyer brought over for a product that opens your community is let in. If you check it, each buyer gets one email from your store's name saying what moved and how to open it \u2014 up to 20,000 buyers per store in 30 days \u2014 and nothing more is sent because of it. The studio reads the file in your browser, you say which column is which, and every row that is not brought in is listed with its row number and the reason, as a spreadsheet you download.",
+          "What it does not do: files, pictures and lessons are not imported; memberships, calls and products with several prices cannot be given to past buyers; buyers brought over get no license key here and are not counted as sales, sent to webhooks, credited to affiliates or able to review; and an import cannot be undone in one step. You and your Admins can import. Stan's help center, read on September 28, 2026, allows up to 5,000 imported contacts per store in all, has you send them an opt-in email, and grants a customer access to a product one at a time.",
         ],
       },
       {
@@ -120,7 +120,7 @@ const SECTIONS: Section[] = [
       {
         q: "How do I try it?",
         a: [
-          "Open the demo store, pick a price option and pay with the Stripe test card 4242 4242 4242 4242, any future expiry date, any three digits for the security code and any postcode.",
+          "Open the demo store, pick a price option and pay with the Stripe test card 4242 4242 4242 4242, any future expiration date, any three digits for the security code and any ZIP code.",
           "The checkout is a real Stripe checkout running in test mode. No real money moves, and no real card is ever charged.",
         ],
       },
@@ -167,24 +167,24 @@ const SECTIONS: Section[] = [
       {
         q: "Can I give someone a discount code?",
         a: [
-          "Yes, and it is on the $29 plan — on Stan the same thing is on their $99 plan, read from their own pricing page on 20 September 2026.",
+          "Yes, and it is on the $29 plan. On Stan, discount codes are on the $99 Creator Pro plan, by its help center read on September 28, 2026.",
           "You pick the word, say whether it takes a percentage or an amount off, and cap how many times it can be used if you want to. The buyer types it at checkout and Stripe works out the new total.",
           "The code is a coupon on your own Stripe account, not a record of ours. So the count of how many times it has been used is Stripe\u2019s count, a code you switch off in your own dashboard is off here too, and if you ever leave, your codes leave with you.",
-          "One limit, said plainly: a code comes off the payment it is typed into. On a membership that is the first charge, not every renewal for ever.",
+          "One limit, said plainly: a code comes off the payment it is typed into. On a membership that is the first charge, not every renewal forever.",
         ],
       },
       {
         q: "Can my buyers pay with PayPal?",
         a: [
-          "Only if your Stripe account is in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein. Nimbus runs on Stripe and only Stripe, and your buyers meet the ways to pay you switch on in your own Stripe account. Stripe offers PayPal to accounts in those countries, and there you switch it on in the same place as the rest.",
-          "For a Stripe account in the United States, or anywhere else, PayPal is not available here. Stan lets every creator take PayPal, Beacons offers it too, and on this one we are behind them. The other road would be a second, separate integration with PayPal, which means a second checkout, a second refund path and a second dispute queue to keep working. We would rather have one that never breaks than two that sometimes do.",
-          "Two things follow from that, and you should know them before you sign up. You need a Stripe account in one of the 43 countries the studio offers \u2014 the United States, Canada, the United Kingdom, Australia, Japan, Singapore, Mexico and most of Europe among them, but not everywhere. And where PayPal is not on, a buyer who has only a PayPal balance and no card, wallet or other way to pay cannot buy from you here.",
+          "Do not count on it. Nimbus runs on Stripe and only Stripe, and your buyers are offered the ways to pay you switch on in your own Stripe account. Every sale here is a direct charge on that account, and Stripe's documentation, read on September 28, 2026, lists PayPal as not supported for direct charges. Stripe also offers PayPal only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein. So even if your Stripe dashboard shows PayPal as on, your buyers should not expect it at checkout here.",
+          "Stan lets creators take PayPal, Beacons offers it too, and on this one we are behind them. The other road would be a second, separate integration with PayPal, which means a second checkout, a second refund path and a second dispute queue to keep working. We would rather have one that never breaks than two that sometimes do.",
+          "Two things follow from that, and you should know them before you sign up. You need a Stripe account in one of the 43 countries the studio offers \u2014 the United States, Canada, the United Kingdom, Australia, Japan, Singapore, Mexico and most of Europe among them, but not everywhere. And a buyer who has only a PayPal balance and no card, wallet or other way to pay cannot buy from you here.",
         ],
       },
       {
         q: "Which currencies and ways to pay can I offer?",
         a: [
-          "Your store charges in one of 15 currencies: US, Canadian, Australian, New Zealand, Singapore and Hong Kong dollars, euros, pounds, Swiss francs, Swedish, Norwegian and Danish kronor, Polish zloty, Japanese yen or Mexican pesos, among those your Stripe account can charge in. You or an Admin choose it in your studio, and you are emailed when it changes. Changing it keeps every price's number, so check your prices; it waits while a membership or payment plan is still running.",
+          "Your store charges in one of 15 currencies: US, Canadian, Australian, New Zealand, Singapore and Hong Kong dollars, euros, pounds, Swiss francs, Swedish kronor, Norwegian and Danish kroner, Polish zloty, Japanese yen or Mexican pesos, among those your Stripe account can charge in. You or an Admin choose it in your studio, and you are emailed when it changes. Changing it keeps every price's number, so check your prices; it waits while a membership or payment plan is still running.",
           "The ways to pay are the ones you switch on in your own Stripe account: cards, Apple Pay, Google Pay, Link, and where they fit the buyer and the amount, Klarna, Afterpay or Clearpay, Affirm, iDEAL, Bancontact and others. Your studio lists what is on, read from Stripe, and links to where you switch more on. Memberships and payment plans show only the ways Stripe can charge again each period.",
           "Ways to pay that settle days later \u2014 ACH, SEPA and Bacs Direct Debit, bank transfers, Boleto, OXXO, Konbini, Multibanco, stablecoins \u2014 are left out on purpose, because what your buyers pay for is handed over the moment the payment is confirmed. And one-click offers after paying are shown only to buyers who paid by card, Apple Pay or Google Pay.",
         ],
@@ -213,8 +213,8 @@ const SECTIONS: Section[] = [
       {
         q: "Is there a limit on how much my buyers download?",
         a: [
-          "Your plan covers 200 GB of downloads a month for your store. Your account page shows what you have sent out so far, counted from the moment each download starts.",
-          "If you go past it, nothing is cut off. Somebody paid you for that file and they get it — we are not going to take a sale and then break it to protect our own bill. We write to you instead, and we work it out.",
+          "Your plan covers 200 GB of downloads a month for your store. Your studio shows what you have sent out so far, counted from the moment each download starts.",
+          "If you go past it, nothing is cut off. Somebody paid you for that file and they get it — we are not going to take a sale and then break it to protect our own bill. Your studio marks the month as past what your plan covers, and your store keeps selling as usual.",
           "To put the number in scale: 200 GB is two hundred copies of a one-gigabyte course, or forty thousand copies of a five-megabyte guide, in a single month.",
         ],
       },
@@ -230,7 +230,7 @@ const SECTIONS: Section[] = [
         q: "Can I give something away for an email address?",
         a: [
           "Yes. Set a product's price to 0 and it becomes free: a visitor types their email, we send them a link to it, and when they use that link their address joins your list. Because the link has to be opened from their own inbox, every address on the list is real \u2014 no typos, and nobody signed up by someone else.",
-          "Under the email field there is a box, empty until the visitor ticks it, that says they want to hear from you. Your list keeps the two apart: you can download everyone who asked for something, or only the people who ticked the box, as a CSV that every email tool imports. It is yours to take at any time, with nothing to ask for.",
+          "Under the email field there is a box, empty until the visitor checks it, that says they want to hear from you. Your list keeps the two apart: you can download everyone who asked for something, or only the people who checked the box, as a CSV that every email tool imports. It is yours to take at any time, with nothing to ask for.",
           "Free products are handed out while your subscription or trial is on, and they do not need Stripe, because no money moves. A list holds up to 100,000 addresses.",
         ],
       },
@@ -238,10 +238,10 @@ const SECTIONS: Section[] = [
         q: "Can I sell a membership?",
         a: [
           "Yes. Any product can charge on a schedule instead of once: daily, weekly, monthly or yearly. The subscription is created on your own Stripe account, like every other charge here, so the member is your customer, in your dashboard, and the renewals are 0% to us as well.",
-          "Members cancel on their own. Under every membership on your page there is a link: the member types the email they pay with, we send them a link, and it opens Stripe's own page for their membership, where cancelling is one click. It ends at the end of the period they have paid for, and nobody has to write to you or wait for you. They can change their card and see their receipts there too.",
+          "Members cancel on their own. Under every membership on your page there is a link: the member types the email they pay with, we send them a link, and it opens Stripe's own page for their membership, where canceling is one click. It ends at the end of the period they have paid for, and nobody has to write to you or wait for you. They can change their card and see their receipts there too.",
           "A membership can start with a free trial of 1 to 90 days: the card is taken when they join, nothing is charged until the trial ends, and your page and the buyer's confirmation say so. It can also run for a set number of payments, 2 to 36, and then end by itself; the member can still cancel before that.",
-          "When a membership ends \u2014 cancelled, or unpaid once Stripe has stopped retrying \u2014 its file, its course and your community close by themselves, and the member is shown a page that says so, with the way to join again. While Stripe is still retrying a failed payment, they keep access.",
-          "One thing it cannot do, said plainly: if what you deliver is a link to somewhere else, that link keeps working, so remove them wherever you actually keep the thing. Your Stripe dashboard is where you see who is still paying.",
+          "When a membership ends \u2014 canceled, or unpaid once Stripe has stopped retrying \u2014 its file, its course and your community close by themselves, and the member is shown a page that says so, with the way to join again. While Stripe is still retrying a failed payment, they keep access.",
+          "One thing it cannot do, said plainly: if what you deliver is a link to somewhere else, that link keeps working, so remove the member's access wherever you actually keep it. Your Stripe dashboard is where you see who is still paying.",
         ],
       },
       {
@@ -249,34 +249,34 @@ const SECTIONS: Section[] = [
         a: [
           "Yes. Any one-off product with a price can be sold as a call. You pick how long it lasts, your time zone and the hours you take calls on each day of the week, with up to two stretches a day. You also choose how much notice you need, how far ahead people can book, a gap between calls, and where the call happens: a Google Meet link made for each booking once you connect your Google Calendar, the meeting link you already use, or a private Jitsi Meet room made for each booking.",
           "A call can take one person at each time, or a group of up to 50. Or sell live sessions on dates you set instead of weekly hours: up to 50 dates on one product, each with 1 to 500 seats, its own length and its own link, with sales closing when you say, up to 72 hours before. Buyers see how many seats are left.",
-          "The buyer sees the free times in their own time zone, picks one and pays on your own Stripe account. The time is held for them for 30 minutes while they pay, so two people can never pay for the same time. Once it is paid, you both get an email with a calendar file, the call appears in your studio under Upcoming calls, and the buyer's thanks page and list of purchases have the link to join.",
+          "The buyer sees the free times in their own time zone, picks one and pays on your own Stripe account. The time is held for them for about 30 minutes while they pay, so two people can never pay for the same time. Once it is paid, you both get an email with a calendar file, the call appears in your studio under Upcoming calls, and the buyer's thanks page and list of purchases have the link to join.",
           "Every buyer gets a reminder a day before and an hour before, in their time zone, with the link to join; you get one for each time, listing everyone booked. A buyer can move their booking to another open time themselves, up to twice, from the link in their email, until the notice you set before the call.",
           "Your own calendars can close times too. Paste the private iCal address of up to three calendars \u2014 Google's secret address, an Outlook calendar published as ICS, an iCloud public calendar \u2014 and the times you are busy there, up to 120 days ahead, stop being offered, usually within about ten minutes. Only the busy times are kept, never a title or a guest. The other way round, your studio gives you a private calendar address that lists your upcoming bookings, for Google, Outlook or Apple Calendar to subscribe to.",
           "Google Meet links can be made for you. Connect your own Google Calendar in your studio under Video calls, then pick \u201cGoogle Meet (automatic)\u201d under \u201cWhere the call happens\u201d on a call, a group call or live sessions. Each booking then gets an event with a Google Meet link on your primary calendar, with the buyer on its guest list; a group call or a session has one event per time, with up to 200 guests who do not see one another. Google emails nobody: buyers get the link in our booking email, reminders and calendar file. A moved booking moves its event, and a full refund deletes a one-to-one call's event or takes the buyer off a group's guest list. Only the store's owner and Admins can connect or disconnect it, and the owner is emailed each time; disconnecting withdraws our access. Google has not finished reviewing our app yet, so it shows a \u201cGoogle hasn't verified this app\u201d screen when you connect: click Advanced, then continue. If a meeting cannot be made, the booking gets your own link or a private Jitsi Meet room, and we try again for some hours; if it works more than two hours before the call, the new link is emailed to those booked, up to 20 (a bigger group keeps the link it has). On a free personal Google account, Google ends meetings of three or more people after 60 minutes.",
-          "What it does not do, said plainly. Apart from calls set to Google Meet, nothing is written into your calendar as an event: bookings arrive through the feed you subscribe to, which your calendar app refreshes on its own schedule, and busy times are read only from the private addresses you paste. And a buyer cannot cancel on their own: they reply to their confirmation email, which reaches you, and a refund is made from your own Stripe dashboard. Nothing makes a Zoom link for you, as Stan does: for Zoom, you type your own link. Jitsi Meet is a free service run by a third party, not by us; nobody needs an account to join, but the first person to open a room may be asked to sign in to Jitsi to start it, so open it a few minutes early. The call itself happens on that service; nothing is streamed or recorded here.",
+          "What it does not do, said plainly. Apart from calls set to Google Meet, nothing is written into your calendar as an event: bookings arrive through the feed you subscribe to, which your calendar app refreshes on its own schedule, and busy times are read only from the private addresses you paste. And a buyer cannot cancel on their own: they reply to their confirmation email, which reaches you, and a refund is made from your own Stripe dashboard. Zoom links are not made for you yet, as Stan makes them: our Zoom app is waiting for Zoom to approve it, and until then, for Zoom, you type your own link. Jitsi Meet is a free service run by a third party, not by us; nobody needs an account to join, but the first person to open a room may be asked to sign in to Jitsi to start it, so open it a few minutes early. The call itself happens on that service; nothing is streamed or recorded here.",
         ],
       },
       {
         q: "Can I offer something extra, before or after they pay, or sell a limited number?",
         a: [
-          "Both. Under any one-off product you can offer another of your products at a price of your own: the buyer sees a box under the buy button, ticks it if they want it, and the button says the new total. It is never ticked for them. Both are paid in one checkout and both are delivered on the thanks page.",
+          "Both. Under any one-off product you can offer another of your products at a price of your own: the buyer sees a box under the buy button, checks it if they want it, and the button says the new total. It is never checked for them. Both are paid in one checkout and both are delivered on the thanks page.",
           "Or offer it right after they pay: the thanks page shows it, and one press charges the card they just used, on your own Stripe account. It only works in the browser that paid, for an hour, so a forwarded link can never charge anyone. If the bank wants the buyer to confirm, they confirm it, and nothing is handed over until the payment is through.",
           "After a product you can line up to five such offers, shown one at a time: a funnel. For each one you choose where yes leads and where no thanks leads, so a no can meet the same product for less. Each offer has its own headline, text, picture and price, never above the product's own price, and each one taken gets its own confirmation email. Offers after paying are shown only to buyers who paid by card, Apple Pay or Google Pay, and while sales tax is on, they are paused. Before the checkout, a sales page or a landing page for something free can lead the way, but there is no editor that chains pages into one funnel.",
-          "You can also limit how many of a product can be sold. Your page shows how many are left, counted from real payments, and stops selling at zero. A buyer who is paying right now holds one for up to 30 minutes, so the last one is never sold to two people; if they do not pay, it comes back.",
+          "You can also limit how many of a product can be sold. Your page shows how many are left, counted from real payments, and stops selling at zero. A buyer who is paying right now holds one for about 30 minutes, so the last one is never sold to two people; if they do not pay, it comes back.",
         ],
       },
       {
         q: "Can I sell a bundle of products?",
         a: [
-          "Yes, on every plan. Make a product the bundle, give it a price, and choose 2 to 20 of your one-off products to go in it: those with one price and a file, a link or a course with lessons. The buyer gets every one exactly as if bought on its own \u2014 its download or link, its course, its licence key, its stamped PDF, its place on their list of purchases and the right to review it \u2014 and your community, if one of them opens it. Your store shows what the products cost on their own next to the bundle's price, worked out from their prices today, only when they really cost more.",
-          "What a buyer gets is written onto their order when they pay, so changing the bundle later changes it for the next buyer and nobody loses what they paid for. A bundle can be the box ticked at checkout, and an offer after paying unless it holds a course. Memberships, calls, free products, products with several prices or pay what you want, and other bundles cannot go in one, and a bundle itself has one price, charged once. Any product can also be unpublished and kept as a draft, and a draft can still go in a bundle.",
+          "Yes, on every plan. Make a product the bundle, give it a price, and choose 2 to 20 of your one-off products to go in it: those with one price and a file, a link or a course with lessons. The buyer gets every one exactly as if bought on its own \u2014 its download or link, its course, its license key, its stamped PDF, its place on their list of purchases and the right to review it \u2014 and your community, if one of them opens it. Your store shows what the products cost on their own next to the bundle's price, worked out from their prices today, only when they really cost more.",
+          "What a buyer gets is written onto their order when they pay, so changing the bundle later changes it for the next buyer and nobody loses what they paid for. A bundle can be the box checked at checkout, and an offer after paying unless it holds a course. Memberships, calls, free products, products with several prices or pay what you want, and other bundles cannot go in one, and a bundle itself has one price, charged once. Any product can also be unpublished and kept as a draft, and a draft can still go in a bundle.",
         ],
       },
       {
-        q: "Can buyers pay in instalments?",
+        q: "Can buyers pay in installments?",
         a: [
           "Yes. Under any one-off product with one price, offer a payment plan: two to twelve payments, weekly or monthly, of an amount you choose, adding up to at least the full price. The buyer picks between paying in full and the plan, and the button says what is charged today.",
-          "They get the product after the first payment. The rest are charged to the same card on your own Stripe account, and the plan is given its end as soon as the first payment is through \u2014 and checked again every day for anyone who paid and closed the page \u2014 so no buyer is ever charged one payment more than they agreed to. A plan is not a membership, so it is not cancelled from your page; a buyer who needs to change something replies to their receipt, which reaches you.",
+          "They get the product after the first payment. The rest are charged to the same card on your own Stripe account, and the plan is given its end as soon as the first payment is through \u2014 and checked again every day for anyone who paid and closed the page \u2014 so no buyer is ever charged one payment more than they agreed to. A plan is not a membership, so it is not canceled from your page; a buyer who needs to change something replies to their order confirmation email, which reaches you.",
         ],
       },
       {
@@ -319,7 +319,7 @@ const SECTIONS: Section[] = [
         q: "Can I add my Meta, Google, TikTok or Pinterest pixel?",
         a: [
           "Yes, on the $29 plan. Paste the pixel's id in your studio and your store's pages tell that platform about every page view, every checkout started, every lead from a free product, and every purchase with its amount, so your ads can learn who buys.",
-          "Those platforms set cookies, so visitors in the EU, the UK, Switzerland and Brazil are asked first, in plain words, and nothing loads unless they say yes. Everywhere else the pixels load unless the visitor's browser sends Global Privacy Control. The ads and what they measure are yours: say in your own privacy notice that you use them.",
+          "Those platforms set cookies, so visitors in the European Economic Area, the UK, Switzerland and Brazil, and anyone whose country cannot be told, are asked first, in plain words, and nothing loads unless they say yes. Everywhere else the pixels load unless the visitor's browser sends Global Privacy Control. The ads and what they measure are yours: say in your own privacy notice that you use them.",
         ],
       },
       {
@@ -328,14 +328,14 @@ const SECTIONS: Section[] = [
           "Yes. Turn any paid product into a course from your studio and add modules and lessons. A lesson can have a video of up to 5 GB, text, up to five downloads and a link, and any lesson can be a free preview on your store. Upright phone videos stay upright.",
           "A module can open a set number of days after each student joins, and the student gets an email the day it does. Students open the course in the browser they paid in straight away, and on any other device with a link sent to the address they paid with, so nobody makes a password. Your studio shows who opened it and how many lessons each marked done, and you can take a student off the course.",
           "Any lesson can end with a quiz: up to 20 questions, each with one right answer or several, a pass mark, a number of tries, and if you want, later lessons shut until it is passed. It is marked on our side, so the answers are not in the page. Switch certificates on and a student who finishes gets one in the name they type, with a page of its own on your store that anyone can open to check it; they print it or save it as a PDF from their browser.",
-          "The course can be sold once, in a payment plan, or as a membership that stays open while the member pays. Videos watched count towards your store's 200 GB a month, the same as downloads.",
+          "The course can be sold once, in a payment plan, or as a membership that stays open while the member pays. Videos watched count toward your store's 200 GB a month, the same as downloads.",
         ],
       },
       {
         q: "Can I email the people on my list?",
         a: [
           "Yes, on Pro. From your studio you write one-off emails to everyone who agreed to hear from you, or only to those who got one product, and send them now or at a time you choose. Sequences go out by themselves: a welcome when someone joins, a few emails in the days after someone buys. Each person goes through a sequence once.",
-          "Only people who agreed are ever written to: those who ticked the box when they got something free or bought from you, and those you import, where you confirm each time that they agreed. Every email carries a one-click unsubscribe, why the reader is getting it and your postal address, which the law in the United States asks for; anyone who leaves is never written to again, whatever a later import says.",
+          "Only people who agreed are ever written to: those who checked the box when they got something free or bought from you, and those you import, where you confirm each time that they agreed. Every email carries a one-click unsubscribe, why the reader is getting it and your postal address, which the law in the United States asks for; anyone who leaves is never written to again, whatever a later import says.",
           "Emails go out under your name, and replies come to you. Pro sends up to 50,000 a month, one-off emails, sequences and community announcements together; during the free trial a store sends up to 1,000, and the full 50,000 opens with the first payment. Your list stays downloadable as a file at any time.",
           "Someone on your team with the Editor role can write drafts, up to 20 per store; you or an Admin read them and send them. And, if you switch it on, one email asks each buyer for a review, 3 to 30 days after buying, counted in the same monthly emails.",
         ],
@@ -344,14 +344,14 @@ const SECTIONS: Section[] = [
         q: "Can I send my list to Mailchimp, Kit, beehiiv or MailerLite?",
         a: [
           "Yes, on every plan. Paste an API key from your account on the platform, pick the audience, form, publication or group, and choose who is sent: free sign-ups once they confirm, buyers of every product or of some, with up to three tags per product. Only people who agreed to hear from you are ever sent, and someone who unsubscribed on Mailchimp or beehiiv is never subscribed again.",
-          "The key is checked, encrypted and kept; your studio shows only its last four characters, and disconnecting deletes it. What is sent is an email address, a first name when there is one, and the tags. One platform per store; it only adds people, reads nothing back, and does not send those who joined before you connected it, so download your list and import it for them. Stan has Mailchimp built in and reaches the others through Zapier; here all four are built in.",
+          "The key is checked, encrypted and kept; your studio shows only its last four characters, and disconnecting deletes it. What is sent is an email address, a first name when there is one, and the tags. One platform per store; it only adds people, reads nothing back, and does not send those who joined before you connected it, so download your list and import it for them. Stan's help center, read on September 28, 2026, connects Mailchimp, Flodesk and AWeber through Zapier; here all four are built in.",
         ],
       },
       {
         q: "Can buyers leave reviews?",
         a: [
           "Yes, and only buyers can. A review is written from the thanks page, the buyer's list of purchases or the one email that asks, and each of those first checks the order on your own Stripe account: paid, and not refunded in full. One review per buyer and product, 1 to 5 stars and up to 1,000 characters, under the name they choose or \u201cVerified buyer\u201d; their email is never shown.",
-          "You can answer a review in public and hide one, but you cannot change a word of it or delete it. Hiding takes its words off the page but never its stars out of the average, and the page says how many are hidden. A refund in full takes its stars out. Booked calls and free products are not reviewed. On Stan, by its help centre read on 27 September 2026, reviews are added by the creator and customers cannot write one.",
+          "You can answer a review in public and hide one, but you cannot change a word of it or delete it. Hiding takes its words off the page but never its stars out of the average, and the page says how many are hidden. A refund in full takes its stars out. Booked calls and free products are not reviewed. On Stan, by its help center read on September 28, 2026, reviews are added by the creator, and customers cannot write one.",
         ],
       },
       {
@@ -367,7 +367,7 @@ const SECTIONS: Section[] = [
           "A community, yes, one per store. You choose which products open it: any paid product, a membership while it is being paid for, and free products if you want. Members come in with a link emailed to the address they bought with, and that browser stays in for 90 days. Who bought what is checked against your own Stripe account on every visit, so a membership that ends loses the door within five minutes.",
           "Inside: up to 20 spaces, posts with a title, up to 5,000 characters and one picture, comments and one level of replies, likes, up to three pinned posts and a Start here post. Members choose the name they are seen by and whether to appear in the directory; other members never see their email address. They can report a post or a comment, and you hide or delete it, mute a member or take them out. Your announcements can also go by email to members who asked for them, on Pro.",
           "It also holds live events members RSVP to, with reminders, a private video room in the event's page or your own link, and replays \u2014 the next answer has the details. A webinar you want to sell to anyone, not only to members, you sell as a live session on the dates you set, with up to 500 seats each.",
-          "What it does not have: live chat, private messages, search, mentions, polls, editing a post after it is written, or spaces for one product only. Stan adds webinars to its community with Zoom or Google Meet links made automatically; ours makes Google Meet links once you connect your Google Calendar, but no Zoom link.",
+          "What it does not have: live chat, private messages, search, mentions, polls, editing a post after it is written, or spaces for one product only. Stan adds webinars to its community with Zoom or Google Meet links made automatically; ours makes Google Meet links once you connect your Google Calendar, and no Zoom links yet.",
         ],
       },
       {
@@ -375,26 +375,26 @@ const SECTIONS: Section[] = [
         a: [
           "From the community in your studio you schedule an event: a title, a few words, a start in your time zone and a length from 15 minutes to four hours, up to a year ahead, with an announcement in the feed if you want one. Up to 50 can be coming up at once, and up to 500 are kept with their replays. Members RSVP with one click, and you can cap the places at anything from 1 to 5,000. An event can be for every member, or only for the buyers of some of the products that open the community; the others see it but cannot RSVP or join.",
           "The way in shows on the event's page from 15 minutes before the start until the end, only to members who may come \u2014 and, with a cap, only to those with a place \u2014 checked again on every visit. It is a private Jitsi Meet room made for the event, which members open inside the page or in a tab of its own, your own meeting link, or a Google Meet made on your connected Google Calendar: one meeting with nobody on its guest list, so members ask to join and you let them in. Emails, calendar files and the feed point to the page, never to the room. Members who asked for the community's emails get a reminder a day and an hour before; a move or a cancellation is emailed once to everyone coming; and your phone gets a notification 15 minutes before. After it starts you can add a replay from YouTube, Vimeo or Loom.",
-          "What it does not do: nothing makes a Zoom link for you, as Stan's webinars do. On a free personal Google account, Google ends meetings of three or more people after 60 minutes. Jitsi Meet is run by a third party, and the first person to open a room may be asked to sign in to Jitsi to start it, so open it a few minutes early. Nothing is streamed or recorded here, there is no chat beside the room and no waiting list, and an event is not sold on its own: to sell seats, sell live sessions on dates.",
+          "What it does not do: it does not make Zoom links for you yet, as Stan's webinars do. On a free personal Google account, Google ends meetings of three or more people after 60 minutes. Jitsi Meet is run by a third party, and the first person to open a room may be asked to sign in to Jitsi to start it, so open it a few minutes early. Nothing is streamed or recorded here, there is no chat beside the room and no waiting list, and an event is not sold on its own: to sell seats, sell live sessions on dates.",
         ],
       },
       {
-        q: "Can I run an affiliate programme?",
+        q: "Can I run an affiliate program?",
         a: [
           "Yes. Switch it on, set a commission of 1% to 90% for the store or product by product, and a window of 1 to 90 days after a click. People apply on your store's affiliate page with an email address they confirm, and you approve them. Each gets a link and a page of their own with their clicks, sales, what they earned and what you paid them; they never see who the buyers were. Up to 1,000 people, applications included.",
-          "The part to know first: you pay your affiliates yourself. Every sale lands in full in your own Stripe account and we never hold any of it, so there is nothing for us to pay out from. Your studio shows who is owed what, lets you mark a payment with its date and reference, and downloads the lot as a CSV. Stan pays its affiliates automatically; we do not.",
+          "The part to know first: you pay your affiliates yourself. Every sale lands in full in your own Stripe account and we never hold any of it, so there is nothing for us to pay out from. Your studio shows who is owed what, lets you mark a payment with its date and reference, and downloads the lot as a CSV. On Stan, affiliates are paid out through Stan; here, you pay them.",
           "Commission is taken of what was paid before tax, and a refund on your Stripe account cancels it or reduces it. One-off sales and booked calls earn commission; memberships and payment plans do not. The last affiliate link a buyer followed wins, and nobody earns on their own purchase.",
         ],
       },
       {
         q: "Can I connect Zapier, Make or my own server?",
         a: [
-          "Yes, with webhooks. Add up to five https addresses in your studio and choose the events each one hears: a sale, a membership started or cancelled, a lead confirmed for a free product, a call booked or moved, and a refund. Each message is JSON, signed with an HMAC-SHA256 in its Nimbus-Signature header, and tried again over about forty hours if the address does not answer. Your studio keeps a log of the last deliveries for up to a week, and a button sends a test.",
+          "Yes, with webhooks. Add up to five https addresses in your studio and choose the events each one hears: a sale, a membership started or canceled, a lead confirmed for a free product, a call booked or moved, and a refund. Each message is JSON, signed with an HMAC-SHA256 in its Nimbus-Signature header, and tried again over about forty hours if the address does not answer. Your studio keeps a log of the last deliveries for up to a week, and a button sends a test.",
           "There is no Nimbus app in Zapier's directory: in Zapier, use Webhooks by Zapier with a Catch Hook. Events read from your Stripe account can take up to about five minutes to arrive. Webhooks only send; there is no public API to read or change your store.",
         ],
       },
       {
-        q: "Can I sell software with licence keys?",
+        q: "Can I sell software with license keys?",
         a: [
           "Yes, on any paid one-off product that is not a membership, a call or a course. Upload the keys your own system made, up to 10,000 at a time, or have them made here in a shape you set. Each buyer gets one no one else has, on the thanks page, in their email and in their list of purchases, and you are emailed when the pool runs low.",
           "Your software can ask a public address whether a key is valid, revoked or unknown; the answer says nothing about who bought it. There is no activation or seat counting: revoking a key is a record your software has to check.",
@@ -409,7 +409,7 @@ const SECTIONS: Section[] = [
       {
         q: "Does it work on a phone?",
         a: [
-          "That is the case it is designed for. Your store installs to the home screen on both iPhone and Android as an app of its own, with its name, its icon and its colour, straight from the browser, with no app store in between. It opens on your store, not on ours.",
+          "That is the case it is designed for. Your store installs to the home screen on both iPhone and Android as an app of its own, with its name, its icon and its color, straight from the browser, with no app store in between. It opens on your store, not on ours.",
           "Your studio installs the same way, and from it you can turn on notifications of every sale, booking, community report and affiliate application, on Android and on a computer, and on iPhone and iPad with iOS 16.4 or later once it is on the home screen. It is not an app from the App Store or Google Play; Stan has a native iPhone app, and we do not.",
         ],
       },
@@ -426,9 +426,9 @@ const SECTIONS: Section[] = [
       {
         q: "Can I change my store address later?",
         a: [
-          "Yes, whenever you want, from your own account page. Nobody has to be asked and there is nothing to wait for.",
+          "Yes, whenever you want, from your studio. Nobody has to be asked and there is nothing to wait for.",
           "Your store does not move: same page, same name, same description, same products. Only the address changes.",
-          "Every address your store has ever used keeps working and sends people to the current one, so the link already in your bio, in old posts and in messages other people sent never breaks. A store holds up to ten addresses, and you can hand one back if you are sure it was never given to anyone.",
+          "Every address your store holds keeps working and sends people to the current one, so the link already in your bio, in old posts and in messages other people sent still leads to you. A store holds up to ten addresses at once. When it is full, you can still go back to one you already had; for a new one, let an old one go first. An address you let go stops working at once, leads nowhere for 30 days, and after that anyone may take it, so only let go of one you are sure was never given to anyone.",
         ],
       },
     ],
@@ -451,7 +451,7 @@ const SECTIONS: Section[] = [
         q: "Does the download link expire?",
         a: [
           "Yes. The link on the thanks page works for three days and is tied to that order, so a link that leaks does not turn into a free copy for everyone. A large file is fetched through a signed link that expires in minutes, and where a file is stored is never shown.",
-          "A buyer who loses it does not lose what they paid for, a week or a year later. At the foot of every store page there is \u201cBought something here? Get it again\u201d: they type the address they paid with, and we email it a link to a page with everything that address bought from that store \u2014 downloads, links and courses \u2014 ready to open again. No account, no password.",
+          "A buyer who loses it does not lose what they paid for, a week or a year later. At the foot of every store page there is \u201cBought something here? Get it again\u201d: they type the address they paid with, and we email that address a link to a page with everything it bought from that store \u2014 downloads, links and courses \u2014 ready to open again. No account, no password.",
           "The list is read from your own Stripe account each time it opens, so a sale you refunded in full, or a membership that has ended, is not on it, and its download stops working. The page answers the same whether or not the address bought anything, so nobody can use it to find out who your customers are.",
         ],
       },
@@ -474,7 +474,7 @@ const SECTIONS: Section[] = [
       {
         q: "What do you store about me?",
         a: [
-          "For your store: the email address that logs you in, the store you build, and the Stripe account id you connect. If you ask a store for something free: your email address, what you asked for, and whether you ticked the box to hear from that store \u2014 kept for that store and nobody else. If you join a store's community or its affiliate programme: your email address, the name you chose and what you write or earn there, for that store. If you review something you bought: your stars, your words, the name you chose and the order they came from. If you RSVP to a community's live event: that you are coming, for that event. If a store brought you over from another platform: the products it gave you, kept against a one-way hash of your address. If you are on a store's team: your email address, your role and the changes you make there. For the research form: what you typed in it and, if you ticked the box, your email address. The privacy page lists it in full.",
+          "For your store: the email address that logs you in, the store you build, and the Stripe account id you connect. If you ask a store for something free: your email address, what you asked for, and whether you checked the box to hear from that store \u2014 kept for that store and nobody else. If you join a store's community or its affiliate program: your email address, the name you chose and what you write or earn there, for that store. If you review something you bought: your stars, your words, the name you chose and the order they came from. If you RSVP to a community's live event: that you are coming, for that event. If a store brought you over from another platform: the products it gave you, kept against a one-way hash of your address. If you are on a store's team: your email address, your role and the changes you make there. For the research form: what you typed in it and, if you checked the box, your email address. The privacy page lists it in full.",
         ],
       },
       {
@@ -482,19 +482,23 @@ const SECTIONS: Section[] = [
         a: [
           "Sales are charged on Stripe's own checkout, on your own Stripe account, and what a buyer is charged is worked out on our server from what you saved. You sign in with a link sent to your email that works once and stops working after 15 minutes, or with a passkey if you add one, each sign-in starts a fresh session, and \u201cLog out of all devices\u201d at the foot of your studio closes every session at once. When your Stripe account, your domain or your webhooks change, we email you saying what changed. What each role on your team may do is checked on our server for every request, the API key of an email platform you connect is stored encrypted, and reviews can be written only for orders your Stripe account says were paid.",
           "Store pages, on our address and on your own domain, the studio and signing in carry a strict Content-Security-Policy with a new nonce on every response, so text somebody typed cannot run as a script. Your ad pixels load only after consent where the law asks for it. Every request that changes something must come from this site, our cookies are HttpOnly and SameSite, and pages carry HSTS, nosniff, a referrer policy, Cross-Origin-Opener-Policy and a Permissions-Policy, and cannot be framed by other sites. Links we email point only at nimbuslabsai.com or your store's own domain.",
-          "Files are handed over as downloads that cannot run anything in the browser. A full refund on your Stripe account closes what it paid for by itself: the download at once, the course within 10 minutes, the community within 5, and the licence key within about 5; a partial refund keeps access. Checkouts are limited to 20 per 10 minutes per connection per store, and bookings and forms that send an email have limits too, so a script cannot sit on your limited stock or call times. Webhooks are signed, and calendar and webhook addresses cannot reach private networks.",
-          "What it does not do: there is no two-factor sign-in, because there are no passwords, so keep your email inbox safe. A refund on a payment plan is not detected, and a refunded membership closes when its subscription is cancelled. If our database cannot be reached, the limits let requests through rather than stop a buyer from paying.",
+          "Files are handed over as downloads that cannot run anything in the browser. A full refund on your Stripe account closes what it paid for by itself: the download at once, the course within 10 minutes, the community within 5, and the license key within about 5; a partial refund keeps access. Checkouts are limited to 20 per 10 minutes per connection per store, and bookings and forms that send an email have limits too, so a script cannot sit on your limited stock or call times. Webhooks are signed, and calendar and webhook addresses cannot reach private networks.",
+          "What it does not do: there is no two-factor sign-in, because there are no passwords, so keep your email inbox safe. A refund on a payment plan is not detected, and a refunded membership closes when its subscription is canceled. If our database cannot be reached, the limits let requests through rather than stop a buyer from paying.",
         ],
       },
       {
         q: "Can I have it deleted?",
         a: [
-          "Yes. Email us from the address you used and we remove it. You do not have to give a reason.",
+          "Yes. Email us from the address you used and we remove what we hold about you. You do not have to give a reason.",
+          "If you bought from a store or asked it for something free, that store's creator decides about its own records, and the payment itself stays in their Stripe account. Write to them first; if you write to us instead, we pass it on and tell you we did.",
         ],
       },
       {
         q: "Do you sell or share it?",
-        a: ["No. Not with anyone, for any price."],
+        a: [
+          "We never sell it, to anyone, for any price.",
+          "We share it only where running the product needs it: with Stripe for payments, with our host, database and email provider, with the store it belongs to, and with the services a creator connects. The privacy page lists each one and what it receives.",
+        ],
       },
     ],
   },
@@ -514,7 +518,7 @@ export default function HelpPage() {
         */}
         <section className="surface-dawn border-b border-line">
           <div className="container-page py-14 sm:py-18">
-            <p className="eyebrow">Help centre</p>
+            <p className="eyebrow">Help center</p>
             <h1 className="t-h1 mt-4">
               How can we <span className="serif font-normal text-violet-deep">help?</span>
             </h1>
@@ -524,7 +528,7 @@ export default function HelpPage() {
             </p>
             <p className="mt-3 flex items-center gap-2 text-sm text-ink-mute">
               <Icon name="check" size={15} className="text-mint-deep" />
-              Checked against the product on 27 September 2026.
+              Checked against the product on September 28, 2026.
             </p>
             <HelpSearch />
           </div>

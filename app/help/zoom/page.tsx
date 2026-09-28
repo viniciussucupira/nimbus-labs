@@ -18,7 +18,7 @@ const link = "text-black underline underline-offset-2 hover:no-underline";
  */
 export default function ZoomGuidePage() {
   return (
-    <LegalPage title="Zoom for Nimbus Labs" lastUpdated="September 27, 2026">
+    <LegalPage title="Zoom for Nimbus Labs" lastUpdated="September 28, 2026">
       <p>
         Nimbus Labs is a link-in-bio store where creators sell digital
         products, courses, memberships and paid video calls. The Zoom app lets
@@ -58,7 +58,7 @@ export default function ZoomGuidePage() {
             of a one-to-one call, or when you cancel an event, its meeting is deleted.
           </li>
           <li>
-            <strong className="text-black">Starting.</strong> Press Start next to a call in your studio and Nimbus Labs asks Zoom for a
+            <strong className="text-black">Starting.</strong> Press <strong className="text-black">Start in Zoom</strong> next to a call under Upcoming calls in your studio, and Nimbus Labs asks Zoom for a
             fresh start link, so you join as the host.
           </li>
           <li>
@@ -76,7 +76,7 @@ export default function ZoomGuidePage() {
           Nimbus Labs asks Zoom to create, read, update and delete meetings on your account, and to see your account&apos;s
           name and email address, to show which account is connected. It only ever changes or deletes meetings it created.
           It does not read your other meetings, recordings, chats or participant lists. We keep the IDs and join links of
-          the meetings we made, your Zoom user ID, name and email, and the access tokens, which are encrypted. More in our{" "}
+          the meetings we made, your Zoom user ID, name and email address, and the access and refresh tokens, which are encrypted. More in our{" "}
           <Link href="/privacy#google-zoom" className={link}>Privacy Policy</Link>.
         </p>
       </LegalSection>
@@ -106,7 +106,7 @@ export default function ZoomGuidePage() {
         <p>
           Write to{" "}
           <a href="mailto:support@nimbuslabsai.com" className={link}>support@nimbuslabsai.com</a>. The rest of the product is
-          explained in the <Link href="/help" className={link}>Help centre</Link>.
+          explained in the <Link href="/help" className={link}>help center</Link>.
         </p>
       </LegalSection>
     </LegalPage>

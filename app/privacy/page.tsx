@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="September 27, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="September 28, 2026">
       <p>
         Nimbus Labs (“Nimbus Labs,” “we,” “us,” or “our”) is an independent
         software studio. This Privacy Policy explains how we collect, use,
@@ -40,9 +40,9 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong className="text-black">Payment information.</strong> Payments
-          are processed by third-party payment processors. We do not store your
+          are processed by Stripe, our payment processor. We do not store your
           full credit or debit card number, CVC, or equivalent payment
-          credentials. Our processors may collect billing name, address, and
+          credentials. Stripe may collect billing name, address, and
           payment method details as needed to complete the transaction. We may
           receive limited payment metadata, such as the last four digits of a
           card, payment status, and subscription period.
@@ -50,7 +50,7 @@ export default function PrivacyPage() {
         <p>
           <strong className="text-black">What a creator puts in a store.</strong>{" "}
           If you run a Nimbus store, we host what you put in it: your store
-          name and description, your photo if you add one, the theme and colour
+          name and description, your photo if you add one, the theme and color
           you choose, your product titles, prices and descriptions, the links
           you put on the page, and the files you upload for delivery to your
           buyers. Your photo is shrunk on your own device before it is sent, is
@@ -149,14 +149,14 @@ export default function PrivacyPage() {
           buyer&apos;s confirmation has the creator&apos;s email address as the
           address replies go to, and the creator&apos;s has the buyer&apos;s.
           While they pay, a cookie in the buyer&apos;s browser names the
-          checkout they opened, for 31 minutes, so that going back to pick
+          checkout they opened, for 32 minutes, so that going back to pick
           another time lets go of the first one. Each booking is reminded to
           the buyer, and to the creator, a day and an hour before, from a queue
           that names the booking and its time. If the buyer moves the booking
           to another time from the link in their email, we keep the new time
           and how many times it was moved, tied to that checkout, for 200
           days. The same kind of cookie, for
-          the same 31 minutes, is set when someone starts to buy a product sold
+          the same 32 minutes, is set when someone starts to buy a product sold
           in a limited number, so that pressing buy again hands back the one
           they were holding.
         </p>
@@ -197,7 +197,7 @@ export default function PrivacyPage() {
           </strong>{" "}
           When you ask a creator&apos;s store for something they give away for
           free, we collect your email address, what you asked for, when, and
-          whether you ticked the box saying you want to hear from that creator.
+          whether you checked the box saying you want to hear from that creator.
           The box starts empty. We send you one email, with the link to what
           you asked for, and nothing else. When you use that link, your address
           is added to that creator&apos;s list, marked with your choice, and
@@ -209,7 +209,7 @@ export default function PrivacyPage() {
         <p>
           <strong className="text-black">Emails from a creator.</strong> A
           creator on the Pro plan can email the people on their list who agreed
-          to hear from them: those who ticked the box when they got something
+          to hear from them: those who checked the box when they got something
           free or bought, and those the creator imports after confirming that
           each of them agreed. We send those emails on the creator&apos;s
           behalf, under the creator&apos;s name, through our email provider.
@@ -217,7 +217,7 @@ export default function PrivacyPage() {
           random code for your unsubscribe link. We do not put tracking pixels
           or tracked links in them. When you unsubscribe — one press, from the
           link or your mail app&apos;s own button — we record it and when, and
-          you are not written to by that creator again unless you tick their
+          you are not written to by that creator again unless you check their
           box again yourself.
         </p>
         <p id="community">
@@ -263,13 +263,14 @@ export default function PrivacyPage() {
           of some products, the answer to whether a member holds one is
           looked up on the creator&apos;s Stripe account and kept for up to
           five minutes. An event, with the list of who is coming, is kept
-          until the creator deletes it once it is over or cancelled, or until
+          until the creator deletes it once it is over or canceled, or until
           it makes room for a newer one after 500 are kept. When a member
           presses Join here, the event&apos;s video room loads from Jitsi Meet
           inside the page, with the name they chose in the community filled
           in as their name in the room, where the others in it see it. A
           replay is a YouTube, Vimeo or Loom video that loads from that
-          service only when a member presses play.
+          service only when a member presses play, and so does a video on a
+          creator&apos;s sales page, when a visitor presses play.
         </p>
         <p id="imports">
           <strong className="text-black">
@@ -294,7 +295,7 @@ export default function PrivacyPage() {
           exists; nothing is charged, no receipt is made, and these are never
           counted as sales. When that person opens the store&apos;s list of
           purchases or its community with that address, we use it to look up
-          what they were given. If the creator ticks it, each past buyer gets
+          what they were given. If the creator checks it, each past buyer gets
           one email from the store&apos;s name, through our email provider,
           saying what moved and how to open it. We send it on the
           creator&apos;s instruction and on their word that these people
@@ -304,7 +305,7 @@ export default function PrivacyPage() {
         </p>
         <p id="affiliates">
           <strong className="text-black">
-            A creator&apos;s affiliate programme.
+            A creator&apos;s affiliate program.
           </strong>{" "}
           When someone follows an affiliate&apos;s link to a store, a cookie
           named <code>nl_via_</code> followed by the store&apos;s address holds
@@ -351,8 +352,8 @@ export default function PrivacyPage() {
           the answer the address gave, for up to seven days.
         </p>
         <p id="licence-keys">
-          <strong className="text-black">Licence keys.</strong> When a creator
-          sells a product with licence keys, we keep each key with the sale it
+          <strong className="text-black">License keys.</strong> When a creator
+          sells a product with license keys, we keep each key with the sale it
           went to, when, and the buyer&apos;s email address, so the buyer can
           see it again and the creator can see who has it, and whether the
           creator revoked it. Anyone can ask whether a key is valid; the answer
@@ -610,7 +611,7 @@ export default function PrivacyPage() {
           </Link>
           , we collect your name, email address, country, the platform where
           you sell, the store or profile link you choose to share, your
-          answers, the date you sent them, and the consent choices you ticked.
+          answers, the date you sent them, and the consent choices you checked.
           To limit abuse, we also keep a one-way hash of your IP address for
           one hour; we do not store the IP address itself with your answers.
         </p>
@@ -660,7 +661,7 @@ export default function PrivacyPage() {
           <li>improve the reliability and quality of the Services; and</li>
           <li>
             if you answered our creator research, read your answers to decide
-            what to build next and, only if you ticked the matching optional
+            what to build next and, only if you checked the matching optional
             box, email you follow-up questions about your answers or tell you
             when we launch a product for creators. Each of these is a separate
             choice, and we contact you only by email.
@@ -683,8 +684,8 @@ export default function PrivacyPage() {
         <p>We share information only with:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>
-            <strong className="text-black">Payment processors</strong>, to
-            charge your subscription and handle refunds;
+            <strong className="text-black">Stripe</strong>, our payment
+            processor, to charge your subscription and handle refunds;
           </li>
           <li>
             <strong className="text-black">Stripe</strong>, when you buy from a
@@ -750,8 +751,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-black">Vercel</strong>, our host, which
-            serves the site and, when a creator adds their own domain, receives
-            that domain&apos;s name to check its records and issue its
+            serves the site, stores the files, pictures and videos creators
+            upload (Vercel Blob) and, when a creator adds their own domain,
+            receives that domain&apos;s name to check its records and issue its
             certificate;
           </li>
           <li>
@@ -765,10 +767,16 @@ export default function PrivacyPage() {
             list or their community;
           </li>
           <li>
+            <strong className="text-black">Upstash</strong>, our database
+            provider, which stores the records this policy describes;
+          </li>
+          <li>
             <strong className="text-black">
-              Hosting, analytics, and infrastructure providers
+              The ad platforms a creator adds
             </strong>
-            , to operate our websites and Services; and
+            {" "}(Meta, Google, TikTok or Pinterest), whose scripts on that
+            store&apos;s pages receive what the section on ad measurement
+            lists, only once they are allowed; and
           </li>
           <li>
             <strong className="text-black">
@@ -778,8 +786,11 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          These providers are permitted to use the information only to perform
-          services for us or as required by law.
+          Our own service providers (Vercel, Upstash and Resend) may use the
+          information only to provide their services to us or as required by
+          law. Stripe, the services a creator connects and the ad platforms a
+          creator adds handle what they receive under their own terms and
+          privacy policies.
         </p>
       </LegalSection>
 
@@ -795,7 +806,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           The same is true for the members of a creator&apos;s community, the
-          people who apply to their affiliate programme, their students&apos;
+          people who apply to their affiliate program, their students&apos;
           quiz answers and certificates, and their buyers&apos; reviews: the
           creator is the controller, and we handle that data on their behalf.
           When a creator connects an email platform, Google Calendar or Zoom,
@@ -819,15 +830,16 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection title="5. Cookies">
-        <p>We may use cookies and similar technologies to:</p>
+        <p>We use cookies and similar technologies to:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>keep you logged in;</li>
-          <li>remember preferences;</li>
-          <li>understand how the site is used; and</li>
+          <li>remember preferences; and</li>
           <li>maintain security.</li>
         </ul>
         <p>
-          Besides the short-lived cookies described in section 1, a
+          Signing in sets a cookie named <code>nl_session</code> that keeps
+          you logged in for up to 30 days; logging out removes it. Besides the
+          short-lived cookies described in section 1, a
           creator&apos;s store may set these, each for that store alone: a pass
           that lets a
           browser into a course or a community, named <code>nl_learn_</code>{" "}
@@ -868,7 +880,7 @@ export default function PrivacyPage() {
         <p>
           A community&apos;s posts, comments, pictures and member records are
           kept while the community exists, until the author or the creator
-          deletes them. An affiliate programme&apos;s records, licence keys and
+          deletes them. An affiliate program&apos;s records, license keys and
           the list of who holds them are kept with the store&apos;s records.
           Certificates are kept for good, so their pages keep proving what
           they say. Webhook deliveries are kept for up to seven days, and the
@@ -891,7 +903,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           A live event and its list of who is coming are kept until the
-          creator deletes the event once it is over or cancelled, or until it
+          creator deletes the event once it is over or canceled, or until it
           makes room after 500 are kept; the record of each event email, for
           30 days. What an import from another platform sends us is deleted 14
           days after it began, except the contacts it added to a list, kept as
@@ -922,8 +934,8 @@ export default function PrivacyPage() {
           operate, which include the United States and may include the
           European Union. Where required, we use appropriate
           safeguards for cross-border transfers. Our database provider,
-          Upstash, stores creator research answers under its Data Processing
-          Agreement, which includes the EU Standard Contractual Clauses, the UK
+          Upstash, stores the records this policy describes under its Data
+          Processing Addendum, which includes the EU Standard Contractual Clauses, the UK
           Addendum and the EU-U.S. Data Privacy Framework.
         </p>
       </LegalSection>
@@ -977,8 +989,9 @@ export default function PrivacyPage() {
         <p>
           We use reasonable technical and organizational measures to protect
           personal information. No method of transmission or storage is
-          completely secure. You are responsible for keeping your account
-          credentials confidential.
+          completely secure. You are responsible for keeping your email
+          inbox and any passkeys you add secure, since they are how you sign
+          in.
         </p>
       </LegalSection>
 

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   const domains = isDomainsConfigured();
   return (
-    <LegalPage title="Terms of Service" lastUpdated="September 27, 2026">
+    <LegalPage title="Terms of Service" lastUpdated="September 28, 2026">
       <p>
         These Terms of Service (“Terms”) govern your access to and use of the
         websites, products, and subscription services operated by Nimbus Labs
@@ -34,7 +34,8 @@ export default function TermsPage() {
         </p>
         <p>
           You are responsible for providing accurate account information and for
-          keeping your login credentials confidential. You are also responsible
+          keeping your email inbox and any passkeys you add secure, since they
+          are how you sign in. You are also responsible
           for all activity that occurs under your account. Notify us promptly at{" "}
           <a
             href="mailto:support@nimbuslabsai.com"
@@ -68,7 +69,7 @@ export default function TermsPage() {
           <strong className="text-black">The Nimbus creator store.</strong> A
           hosted store page where a creator sells digital files, courses,
           memberships and calls, and can run a community for their buyers and
-          an affiliate programme. The buyer pays into the creator&apos;s own connected Stripe
+          an affiliate program. The buyer pays into the creator&apos;s own connected Stripe
           account, and the file is delivered as soon as the payment clears.
           Nimbus Labs takes 0% of a creator&apos;s sales; what we charge a
           creator is a subscription for the store itself.
@@ -78,7 +79,7 @@ export default function TermsPage() {
           connecting a Stripe account are free. Taking a card on that page
           requires a paid subscription, which begins with a free trial of 14
           days and then renews every month or every year, whichever you chose,
-          at the price shown on the home page until it is cancelled. The price
+          at the price shown on the home page until it is canceled. The price
           and the payment provider are shown before any card is asked for, and
           these Terms apply to that subscription. We email you at least seven
           days before the first charge after the trial, and, on a yearly
@@ -119,7 +120,7 @@ export default function TermsPage() {
           to everything you upload and sell; answering your own buyers;
           refunds, disputes, and chargebacks on your own sales; and any tax you
           owe on your sales, including sales tax, VAT, or GST where it applies
-          to you. If you run an affiliate programme, paying your affiliates what
+          to you. If you run an affiliate program, paying your affiliates what
           you agreed is yours too: we keep the record, and we never hold or
           pay out that money. If you run a community, what is posted in it is
           yours to moderate, and the rules in section 4 apply to it.
@@ -216,13 +217,13 @@ export default function TermsPage() {
 
       <LegalSection title="5. Subscriptions and payment">
         <p>
-          A creator store subscription will be offered at whatever price is
-          shown at checkout, and these Terms will apply to it. The sales a
+          A creator store subscription is charged at the price shown at
+          checkout, and these Terms apply to it. The sales a
           creator makes are not ours: they run through that creator&apos;s own
           Stripe account, as described in section 3.
         </p>
         <p>
-          Payment is processed by third-party payment providers. We do not
+          Payment is processed by Stripe, our payment provider. We do not
           store full payment card numbers. Prices are in United States dollars
           unless otherwise stated. You are responsible for any applicable
           taxes.
@@ -240,8 +241,9 @@ export default function TermsPage() {
           counted together for one-off emails, sequences and community
           announcements; during the free
           trial a store may send up to 1,000 emails a month, and the full
-          number opens with the first payment. What is not sent in a month does
-          not carry over. Emails a month cannot cover wait for the next one.
+          number opens with the first payment. Emails not sent in a month do
+          not carry over, and emails beyond a month&apos;s allowance wait for
+          the next month.
         </p>
         {domains ? (
           <p>
@@ -304,10 +306,10 @@ export default function TermsPage() {
           and deliver User Content solely to provide the Services: to show your
           store page to the people you send there, and to hand a file to the
           buyer who paid you for it. We do not use your files or your store&apos;s
-          text to train anything, and we do not sell or licence them to anyone.
+          text to train anything, and we do not sell or license them to anyone.
         </p>
         <p>
-          That licence lasts as long as you keep the content on Nimbus. Remove a
+          That license lasts as long as you keep the content on Nimbus. Remove a
           product, or close your store, and it ends for the content you removed.
         </p>
       </LegalSection>
@@ -367,8 +369,8 @@ export default function TermsPage() {
 
       <LegalSection title="13. Changes to these Terms">
         <p>
-          We may update these Terms from time to time. The effective date at
-          the top of this page will be revised when we do. Material changes
+          We may update these Terms from time to time. The &ldquo;Last
+          updated&rdquo; date at the top of this page will change when we do. Material changes
           will be posted on this page. Continued use of the Services after
           changes take effect constitutes acceptance of the updated Terms.
         </p>

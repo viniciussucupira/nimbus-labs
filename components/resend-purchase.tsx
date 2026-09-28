@@ -9,7 +9,7 @@ const MESSAGES: Record<string, string> = {
   unknown: "That sale could not be found on your Stripe account.",
   call: "A booked call has its own confirmation, sent with the calendar file.",
   refunded: "That sale was refunded in full, so there is nothing to send.",
-  limited: "That has been sent again a few times already. Try again tomorrow, or write to the buyer yourself.",
+  limited: "That is the most for now: a sale's email can be sent again 3 times a day, and a store's 30 times an hour. Try again later, or write to the buyer yourself.",
   failed: "The email service did not take it just now. Try again in a moment.",
   role: "Your role on this store does not include this.",
   signed_out: "Your session ended. Log in again.",

@@ -8,7 +8,7 @@ import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canSellProduct } from "@/lib/store-checkout";
 import { type CallListing, canMove, catchUpBookings, icsLink, isCallProduct, slotsForMove, slotsForProduct, whyNotMove } from "@/lib/calls";
-import { type CallSetup, MAX_MOVES, movableUntil, readableTime, zoneName } from "@/lib/call-setup";
+import { type CallSetup, MAX_MOVES, MEET_NAMES, movableUntil, readableTime, zoneName } from "@/lib/call-setup";
 import { VIDEO_ROOM_NOTE, isVideoRoom, roomLabel, roomOf } from "@/lib/call-rooms";
 import { readOrder } from "@/lib/store-checkout";
 import { SITE_URL } from "@/lib/site-url";
@@ -214,19 +214,19 @@ function Shell({ store, children }: { store: Store; children: React.ReactNode })
 
 /** The line under a call's title: how long, how many, and where. */
 function callLine(setup: CallSetup): string {
-  if (setup.kind === "live") {
-    return setup.video
-      ? "Live session \u00b7 online, in a private video room sent when you book"
-      : "Live session \u00b7 online, the link is sent when you book";
-  }
+  // A meeting made on the creator's own Google or Zoom account comes first,
+  // as it does when the booking is confirmed (lib/meet-links.ts).
+  const where = setup.meet
+    ? `online, on ${MEET_NAMES[setup.meet]}; you get the link when you book`
+    : setup.video
+      ? "online, in a private video room; you get the link when you book"
+      : setup.kind === "live" || setup.room
+        ? "online; you get the link when you book"
+        : "online";
+  if (setup.kind === "live") return `Live session \u00b7 ${where}`;
   const who = setup.seats > 1 ? `Group call, up to ${setup.seats} people` : `${setup.minutes}-minute call`;
   const length = setup.seats > 1 ? ` \u00b7 ${setup.minutes} minutes` : "";
-  const where = setup.video
-    ? " \u00b7 online, in a private video room sent when you book"
-    : setup.room
-      ? " \u00b7 online, the link is sent when you book"
-      : " \u00b7 online";
-  return `${who}${length}${where}`;
+  return `${who}${length} \u00b7 ${where}`;
 }
 
 /**
@@ -330,7 +330,7 @@ async function MovePage({
         ) : (
           <>
             <p className="st-muted mt-4 text-sm">
-              {`You can move it ${leftMoves === 1 ? "once more" : `${leftMoves} times`}, until ${readableTime(until, tz)} (${zoneName(until, tz)}). Nothing is charged or refunded.`}
+              {`You can move it ${leftMoves === 1 ? "once more" : `${leftMoves} ${booking.moves > 0 ? "more " : ""}times`}, until ${readableTime(until, tz)} (${zoneName(until, tz)}). Nothing is charged or refunded.`}
             </p>
             {notice ? (
               <div className="st-note mt-6" role="alert">

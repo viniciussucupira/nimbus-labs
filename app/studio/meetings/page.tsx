@@ -32,8 +32,8 @@ function outcome(word: string, provider: string): { tone: "ok" | "warn" | "error
         tone: "warn",
         text:
           provider === "google"
-            ? "Google Calendar was not connected: the box that lets us add events to your calendar was left unticked. Connect again and tick it."
-            : "Zoom was not connected: it did not give permission to make meetings. Connect again and allow everything asked.",
+            ? "Google Calendar was not connected: the box that lets us add events to your calendar was left unchecked. Connect again and check it."
+            : "Zoom was not connected: it did not give permission to make meetings. Connect again and allow everything it asks for.",
       };
     case "refused":
     case "account":

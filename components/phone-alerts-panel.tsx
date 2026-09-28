@@ -25,9 +25,9 @@ const MESSAGES: Record<string, string> = {
   signed_out: "Your session ended. Log in again.",
   unavailable: "Notifications are not set up on this deployment, so nothing was saved.",
   invalid: "This browser gave a subscription we cannot send to. Try again, or use another browser.",
-  full: `That is ${MAX_DEVICES} devices, as many as one person has on a store. Remove one below first.`,
+  full: `That is ${MAX_DEVICES} devices, as many as one person can have on a store. Remove one below first.`,
   missing: "That device is no longer there. Reload the page.",
-  limited: "That is six tests in a minute. Wait a moment and try again.",
+  limited: "A store can send six tests a minute. Wait a moment and try again.",
   stale: "This device has to be turned on again before it can be sent anything.",
   server_error: "Something went wrong on our side. Nothing was changed; try again in a moment.",
 };
@@ -375,6 +375,10 @@ export function PhoneAlertsPanel({ view: initial }: { view: PhoneView }) {
             </li>
             <li>
               <span className="font-semibold text-ink">New affiliate application</span> — approve or decline in your studio.
+            </li>
+            <li>
+              <span className="font-semibold text-ink">Live in 15 minutes</span> — the community live event, its start time and
+              how many people RSVP&apos;d.
             </li>
             <li>They never show a buyer&apos;s or an applicant&apos;s name or email address, so nothing private sits on your lock screen.</li>
             <li>

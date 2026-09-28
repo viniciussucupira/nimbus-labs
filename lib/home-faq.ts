@@ -22,7 +22,7 @@ export const HOME_QUESTIONS = [
   },
   {
     q: "What does Stan have that Nimbus does not, yet?",
-    a: "Among other things: automatic Instagram replies, PayPal for creators in the United States, an iPhone app from the App Store, Zoom links made for each booking and webinar, paying affiliates for you automatically, and stores with no limit on products, where ours hold 2,000. We have PayPal through Stripe only for Stripe accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein, a studio that installs from the browser with notifications, Google Meet links made on your own Google Calendar and a private Jitsi Meet room for each booking and each live event, and an affiliate programme you pay out yourself, but not those. Every one is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
+    a: "Among other things: automatic Instagram replies, PayPal, an iPhone app from the App Store, Zoom links made for each booking and webinar, paying affiliates for you automatically, and stores with no limit on products, where ours hold 2,000. We have a studio that installs from the browser with notifications, Google Meet links made on your own Google Calendar, a private Jitsi Meet room for each booking and each live event, and an affiliate program you pay out yourself, but not those. Every one is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
   },
   {
     q: "Who is behind this?",

@@ -13,6 +13,9 @@ const MESSAGES: Record<string, string> = {
   options: "Take the price options off first: a course has one price.",
   delivery: "Take the file or link off first: a course delivers its lessons.",
   call: "Stop selling it as a call first.",
+  bundle: "A bundle cannot be a course. Stop it being a bundle first.",
+  unknown: "That product is no longer in your store. Reload the page.",
+  busy: "This course is being changed right now. Try again in a moment.",
   signed_out: "Your session ended. Log in again.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
@@ -32,7 +35,7 @@ export function CourseToggle({ product }: { product: Product }) {
       <div className="mt-3 rounded-[var(--r-sm)] border border-line bg-white p-4">
         <p className="text-sm font-semibold text-ink">{`Course · ${n} ${n === 1 ? "lesson" : "lessons"}`}</p>
         <p className="mt-1 text-sm text-ink-soft">
-          {n === 0 ? "Add the first lesson and it goes on sale." : "Buyers open it with their email address, on any device, with no password."}
+          {n === 0 ? "Add the first lesson and it can go on sale." : "Buyers open it with their email address, on any device, with no password."}
         </p>
         <Link href={studioHref(`/studio/course/${product.id}`)} className="btn btn-primary btn-sm mt-3">
           {n === 0 ? "Add lessons" : "Edit the course"}

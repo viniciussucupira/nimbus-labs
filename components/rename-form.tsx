@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
+import { MAX_ADDRESSES } from "@/lib/store";
 
 type State =
   | { kind: "closed" }
@@ -58,7 +59,7 @@ export function RenameForm({ current }: { current: string }) {
         kind: "error",
         message:
           data.error === "too_many"
-            ? `A store keeps up to ${data.limit ?? 5} addresses, and yours is full. Going back to one you already had still works.`
+            ? `A store keeps up to ${data.limit ?? MAX_ADDRESSES} addresses, and yours is full. Going back to one you already had still works.`
             : (MESSAGES[data.error ?? ""] ?? MESSAGES.server_error),
       });
     } catch {
@@ -103,7 +104,7 @@ export function RenameForm({ current }: { current: string }) {
       <p className="text-sm text-ink-soft">
         {preview && preview !== current
           ? `Everything stays as it is — the same store, the same page. @${current} keeps working and sends people to @${preview}.`
-          : "Your store, your page and everything on it stay exactly as they are. Only the address changes, and the old one keeps working for good."}
+          : "Your store, your page and everything on it stay exactly as they are. Only the address changes, and the old one keeps working unless you let it go."}
       </p>
 
       {state.kind === "error" ? (

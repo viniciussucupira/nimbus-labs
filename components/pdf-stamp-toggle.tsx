@@ -10,6 +10,9 @@ import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
   signed_out: "Your session ended. Log in again.",
+  unknown: "This product was not found. It may have been deleted; reload the page.",
+  none: "This account has no store yet.",
+  unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Nothing was changed; try again in a moment.",
 };
 

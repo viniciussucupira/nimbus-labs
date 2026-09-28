@@ -13,7 +13,7 @@ const MESSAGES: Record<string, string> = {
   source: "That picture is over 30 MB. Pick a smaller one, or a screenshot of it.",
   too_big: "That picture is still over 1 MB after shrinking. Try a simpler one.",
   slow: "That is a lot of pictures in an hour. Wait a little, then try again.",
-  signed_out: "Your session here ended. Reload the page.",
+  signed_out: "You are signed out here, or cannot post right now. Reload the page.",
   server_error: "The picture could not be sent. Try again in a moment.",
 };
 
@@ -213,7 +213,7 @@ export function CommunityComposer({
           <legend className="sr-only">Announcement</legend>
           <label className="flex min-h-6 items-start gap-2 text-sm">
             <input type="checkbox" name="kind" value="announcement" checked={announce} onChange={(e) => setAnnounce(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0" />
-            <span>Make it an announcement, labelled so</span>
+            <span>Mark it as an announcement</span>
           </label>
           {announce ? (
             <label className={`flex min-h-6 items-start gap-2 text-sm ${canEmail && reach > 0 ? "" : "st-muted"}`}>

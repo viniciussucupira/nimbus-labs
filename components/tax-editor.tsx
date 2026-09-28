@@ -12,7 +12,8 @@ const MESSAGES: Record<string, string> = {
   stripe: "Connect your Stripe account first.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
-  server_error: "Stripe could not be asked just now. Nothing was changed; try again in a moment.",
+  unavailable: "Stores are not switched on yet, so nothing was saved.",
+  server_error: "Something went wrong on our side, or Stripe did not answer. Nothing was changed; try again in a moment.",
 };
 
 const STRIPE_TAX_SETTINGS = "https://dashboard.stripe.com/settings/tax";

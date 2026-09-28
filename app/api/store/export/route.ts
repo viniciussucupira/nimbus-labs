@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     if (what === "sales") {
       if (!store.stripeAccountId) return plain(400, "Connect your Stripe account first: sales are read from it.");
       const days = range === "30" ? 30 : range === "90" ? 90 : range === "all" ? 0 : -1;
-      if (days < 0) return plain(400, "Choose 30 days, 90 days or all.");
+      if (days < 0) return plain(400, "Choose 30 days, 90 days or all time.");
       const since = days ? Math.floor(Date.now() / 1000) - days * 86400 : 0;
       const { csv, partial } = await salesCsv(store, since);
       return file(csv, `${store.handle}-sales-${days ? `${days}-days` : "all"}-${day}${partial ? "-partial" : ""}.csv`);

@@ -14,7 +14,7 @@ const MESSAGES: Record<string, string> = {
   full: "An account holds ten passkeys at most. Remove one you no longer use first.",
   taken: "That passkey is already on an account here.",
   cancelled: "Nothing was added: the passkey prompt was closed.",
-  unknown: "That passkey is not on your account any more. Reload the page.",
+  unknown: "That passkey is not on your account anymore. Reload the page.",
   signed_out: "Your session ended. Log in again.",
   server_error: "Something went wrong on our side. Try again in a moment.",
   rate_limited: "That is a lot of passkey changes in an hour. Try again later.",
@@ -151,7 +151,7 @@ export function PasskeyManager({ initial, fresh }: { initial: PasskeyRow[]; fres
   }
 
   async function remove(row: PasskeyRow) {
-    if (!window.confirm(`Remove “${row.name}”? It will not log in any more.`)) return;
+    if (!window.confirm(`Remove “${row.name}”? You will no longer be able to log in with it.`)) return;
     setBusy(row.id);
     setError(null);
     const done = await call({ action: "remove", id: row.id });

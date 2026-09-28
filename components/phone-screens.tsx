@@ -169,7 +169,7 @@ export function PhoneScreens() {
                 ))}
               </div>
               <p className="mt-4 rounded-[8px] bg-ink px-3 py-2.5 text-center text-[12px] font-semibold text-white">Pay $39.00</p>
-              <p className="mt-3 text-center text-[9.5px] text-ink-mute">Card, Apple Pay, Klarna and Afterpay, handled by Stripe.</p>
+              <p className="mt-3 text-center text-[9.5px] text-ink-mute">Card, Apple Pay, Google Pay and Link, handled by Stripe.</p>
             </div>
           </Phone>
 

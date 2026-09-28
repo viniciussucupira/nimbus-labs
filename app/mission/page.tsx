@@ -49,13 +49,13 @@ const VALUES = [
   {
     emoji: "🎨",
     title: "A store worth putting in your bio",
-    text: "Colour, movement and a page that looks like a person made it. A store that looks like a form is a store people close.",
+    text: "Color, movement and a page that looks like a person made it. A store that looks like a form is a store people close.",
     tone: "bg-amber-brand/12",
   },
 ];
 
 const BUILT = [
-  "A store page with your photo, up to 100 links and up to 2,000 products shown 24 at a time, in one of four themes and the colour you choose, with search over your products in the studio",
+  "A store page with your photo, up to 100 links and up to 2,000 products shown 24 at a time, in one of four themes and the color you choose, with search over your products in the studio",
   "A picture on each product, shown on its card in one of three styles, and a page of its own for each product with a long description and its own title and preview card for search engines and shared links",
   "Price options on one product — one week, five weeks, the season — up to three, each handing over its own file or link",
   "A Stripe checkout that charges the creator account directly, with nothing taken on top — running in test mode on the demo store",
@@ -63,7 +63,7 @@ const BUILT = [
   "A buyer who loses that link gets everything they bought from the store again, by email, at any time — no account, no password",
   "A creator account you log in to with an emailed link, and no password at all",
   "Your own store address, live the moment you take it",
-  "A change of address that never breaks the link already in your bio",
+  "A change of address that keeps the link already in your bio working, with up to ten addresses held at once",
   "An editor for your own store: the name, the description, and what you sell with its price",
   "The file you sell, uploaded straight from your browser and kept where only you can reach it",
   "Or a link instead of a file, for what is too big to upload or is not a file at all",
@@ -71,7 +71,7 @@ const BUILT = [
   "Members who cancel on their own, in one click on Stripe's own page, without having to write to you",
   "Your numbers: visitors, where they came from, checkouts started and sales for 7, 30 or 90 days or all time, with utm tags and CSV files of sales, visits and sources — visits counted without cookies, sales read from your own Stripe",
   "Your own Meta, Google, TikTok and Pinterest pixels, told of every page view, checkout, lead and purchase with its amount, and loaded only once a visitor allows it where the law asks for that",
-  "An order bump: another of your products offered in a box the buyer ticks at checkout, at your price, never ticked for them, and delivered with the first",
+  "An order bump: another of your products offered in a box the buyer checks at checkout, at your price, never checked for them, and delivered with the first",
   "A one-click upsell: another product offered on the thanks page, charged in one press to the card just used, only in the browser that paid, within the hour and once",
   "Funnels: up to five offers after paying, one at a time, each with its own path for yes and for no, charged in one click to the same card",
   "Payment plans: two to twelve weekly or monthly payments on your own Stripe account, the product delivered after the first, and the plan given its end so no buyer is charged once more",
@@ -91,16 +91,16 @@ const BUILT = [
   "Discount codes a buyer types at checkout, made as coupons on your own Stripe account",
   "Free products given for an email address, each address confirmed by its owner, and the list downloadable from your studio at any time",
   "Email to your list, on Pro: one-off emails now or at a time you choose, and sequences that send themselves after someone joins or buys — only to people who agreed, with a one-click unsubscribe in every one",
-  "Every store installs to the home screen on iPhone and Android as an app of its own, with its name, its icon and its colour",
+  "Every store installs to the home screen on iPhone and Android as an app of its own, with its name, its icon and its color",
   "A community for your buyers: up to 20 spaces, posts with a picture, comments, likes, pinned posts, an opt-in member directory, reports and moderation, open only to the buyers of the products you choose — with announcements emailed to members who asked, on Pro",
   "Memberships whose files, course and community close when the membership ends",
-  "An affiliate programme: commission of 1% to 90%, a window of 1 to 90 days, a link and a page for each affiliate, and a record of who is owed what — paid out by you",
+  "An affiliate program: commission of 1% to 90%, a window of 1 to 90 days, a link and a page for each affiliate, and a record of who is owed what — paid out by you",
   "Calendar sync: busy times in up to three Google, Outlook or iCloud calendars hide call times, and a private feed puts your bookings in your calendar",
   "Webhooks: up to five addresses told about sales, members, leads, bookings and refunds, signed, for Zapier, Make or your own server",
   "Course quizzes of up to 20 questions, and certificates of completion with a page anyone can open to check them",
-  "Licence keys: one unique key per sale, uploaded or made here, with a public check your software can ask",
+  "License keys: one unique key per sale, uploaded or made here, with a public check your software can ask",
   "PDF stamping: the buyer's email, the date and the order on every page of the PDF they download",
-  "A full refund that closes what it paid for by itself: the download at once, the course within 10 minutes, the community within 5, and the licence key revoked within about 5",
+  "A full refund that closes what it paid for by itself: the download at once, the course within 10 minutes, the community within 5, and the license key revoked within about 5",
   "Security you can check: single-use sign-in links that expire in 15 minutes, “Log out of all devices”, an email when your Stripe account, domain or webhooks change, a strict Content-Security-Policy on store pages and the studio, forged requests refused, and limits on checkouts, bookings and emails",
   "Sales pages of up to 30 blocks for any product, with video from YouTube, Vimeo or Loom, their own search title and description and a share picture drawn for them, and landing pages that give something free for an email and show a paid product next",
   "Reviews only buyers can write, checked on your own Stripe account, that you can answer and hide but never edit, with hidden ones still counted in the average and one email that asks for them on Pro",
@@ -109,7 +109,7 @@ const BUILT = [
   "Up to five stores in one account, each with its own plan, and a team of up to five per store as Admin, Editor or Support, with an activity log",
   "Optional passkeys, an email when your account signs in from a new browser, email drafts, and purchase emails sent again from your studio",
   "Notifications of sales, bookings, reports, affiliate applications and live events about to start, from the studio installed on your phone",
-  "Live events in the community: up to 50 coming up, RSVPs with a cap of 1 to 5,000 if you want one, the way in on the event's page from 15 minutes before, only to members who may come, in a private Jitsi Meet room shown in the page or at your own link, reminders a day and an hour before, emails when one moves or is cancelled, and replays from YouTube, Vimeo or Loom",
+  "Live events in the community: up to 50 coming up, RSVPs with a cap of 1 to 5,000 if you want one, the way in on the event's page from 15 minutes before, only to members who may come, in a private Jitsi Meet room shown in the page or at your own link, reminders a day and an hour before, emails when one moves or is canceled, and replays from YouTube, Vimeo or Loom",
   "Bundles: 2 to 20 of your one-off products at one price, each delivered as if bought on its own, with what the buyer keeps fixed when they pay",
   "Drafts: any product unpublished and kept in the studio until you publish it again",
   "Moving from another platform, from a spreadsheet: your list, up to 50,000 a file, only people you confirm agreed; your products, up to 500 a file, as drafts; and your past buyers, up to 20,000 a file, who keep what they bought and come into your community, with one email to them if you choose",
@@ -136,14 +136,14 @@ const ORDERS_LINE =
  * The line about our own income, which belongs to whether billing can reach
  * Stripe from this deployment rather than to whether we have written the code.
  */
-const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year, or $${PLAN_PRICES.pro.month / 100} and $${PLAN_PRICES.pro.year / 100} on Pro, free for the first ${TRIAL_DAYS} days, with an email a week before the first charge, cancelled in one click from your studio`;
+const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year, or $${PLAN_PRICES.pro.month / 100} and $${PLAN_PRICES.pro.year / 100} on Pro, free for the first ${TRIAL_DAYS} days, with an email a week before the first charge, canceled in one click from your studio`;
 
 /** The store on its own domain: built, and live where this deployment can add domains. */
 const DOMAIN_LINE =
   "Your store on your own domain, on Pro: type it in the studio, add the one record we show you, and the certificate is handled for you";
 
 const NOT_BUILT = [
-  "PayPal for Stripe accounts in the United States and outside Europe — through Stripe it is offered only in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein",
+  "PayPal at checkout: Stripe offers it only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein, and does not support it for the direct charges every sale here is made with",
   "Live chat and private messages in the community",
   "Writing every booking into your calendar as an event: only calls set to Google Meet are written there, other bookings come as a feed you subscribe to, and calendars are read for busy times",
   "Paying affiliates automatically: you pay them yourself",
@@ -151,7 +151,7 @@ const NOT_BUILT = [
   "Automatic replies on Instagram",
   "A public API to read or change your store: webhooks only send",
   "More than 2,000 products in one store",
-  "Zoom links made for each booking or live event",
+  "Zoom links made for each booking or live event, for every store: the code is written, and it waits for Zoom to approve our Marketplace app",
   "An app in the App Store or Google Play",
   "Phone-number and checkbox questions at checkout",
   "Streaming or recording live sessions and events here, rather than on the service whose link you give or on Jitsi Meet",
@@ -160,14 +160,14 @@ const NOT_BUILT = [
 
 /* What shipped, and when: read from the site's own history, not written for effect. */
 const RELEASES: { date: string; items: string }[] = [
-  { date: "17 September 2026", items: "The live demo store: a Stripe checkout charged on a creator's own account, and the file handed over the moment Stripe confirms it." },
-  { date: "18 September 2026", items: "Logging in with a link sent to your email, and no password anywhere." },
-  { date: "19 September 2026", items: "Creator stores: an @address of your own, products and prices, the file each one delivers, and your own Stripe account connected." },
-  { date: "20 September 2026", items: "Memberships, discount codes, and several prices on one product in every store." },
-  { date: "21 September 2026", items: "Free products for an email address, members who cancel on their own, and cancelling the Nimbus plan in one click." },
-  { date: "22 September 2026", items: "Paid calls, courses, numbers and ad pixels, offers before and after paying, payment plans, sales tax, yearly plans, email to your list and your own domain on Pro, and buyers getting any purchase again by email." },
-  { date: "26 September 2026", items: "Up to 200 products with pictures and pages of their own, questions at checkout, pay what you want, free trials and fixed-length memberships, group calls and live sessions with reminders and self-serve moves, a confirmation email for every purchase, every store installable as its own app, 43 Stripe countries, and one reminder after an unpaid checkout. Then a community for your buyers, funnels of offers after paying, an affiliate programme, calendar sync, webhooks, course quizzes and certificates, licence keys, stamped PDFs, longer windows and exports for your numbers, and memberships whose access ends when they do." },
-  { date: "27 September 2026", items: "Up to 2,000 products, a private video room for each booking, up to five stores in one account and a team with roles for each, passkeys, 15 currencies and more ways to pay, sales and landing pages, reviews only buyers can write, Mailchimp, Kit, beehiiv and MailerLite built in, and notifications on your phone. Then live events in the community, bundles, drafts, moving your list, products and past buyers from another platform, and Google Meet links made on your own Google Calendar." },
+  { date: "September 17, 2026", items: "The live demo store: a Stripe checkout charged on a creator's own account, and the file handed over the moment Stripe confirms it." },
+  { date: "September 18, 2026", items: "Logging in with a link sent to your email, and no password anywhere." },
+  { date: "September 19, 2026", items: "Creator stores: an @address of your own, products and prices, the file each one delivers, and your own Stripe account connected." },
+  { date: "September 20, 2026", items: "Memberships, discount codes, and several prices on one product in every store." },
+  { date: "September 21, 2026", items: "Free products for an email address, members who cancel on their own, and canceling the Nimbus plan in one click." },
+  { date: "September 22, 2026", items: "Paid calls, courses, numbers and ad pixels, offers before and after paying, payment plans, sales tax, yearly plans, email to your list and your own domain on Pro, and buyers getting any purchase again by email." },
+  { date: "September 26, 2026", items: "Up to 200 products with pictures and pages of their own, questions at checkout, pay what you want, free trials and fixed-length memberships, group calls and live sessions with reminders and self-serve moves, a confirmation email for every purchase, every store installable as its own app, 43 Stripe countries, and one reminder after an unpaid checkout. Then a community for your buyers, funnels of offers after paying, an affiliate program, calendar sync, webhooks, course quizzes and certificates, license keys, stamped PDFs, longer windows and exports for your numbers, and memberships whose access ends when they do." },
+  { date: "September 27, 2026", items: "Up to 2,000 products, a private video room for each booking, up to five stores in one account and a team with roles for each, passkeys, 15 currencies and more ways to pay, sales and landing pages, reviews only buyers can write, Mailchimp, Kit, beehiiv and MailerLite built in, and notifications on your phone. Then live events in the community, bundles, drafts, moving your list, products and past buyers from another platform, and Google Meet links made on your own Google Calendar." },
 ];
 
 /* Facts a creator can check before trusting us with a store. */
@@ -268,8 +268,8 @@ export default function MissionPage() {
             <p className="font-semibold text-ink">A note on how we write</p>
             <blockquote className="mt-3 text-ink-soft">
               We do not publish invented reviews, invented customers or screenshots of money we never made. If a page shows
-              a person, they are a stock photograph and the page says so. When we compare ourselves with anyone, we link to
-              their own site so you can check it. It is a slower way to sell, and it is the only one we are willing to run.
+              a person, they are a stock photograph and the page says so. When we compare ourselves with anyone, we name the
+              page on their own site that each line comes from, and the date we read it, so you can check it. It is a slower way to sell, and it is the only one we are willing to run.
             </blockquote>
             <figcaption className="mt-5 flex items-center gap-3 border-t border-line pt-5 text-sm">
               <span className="grid h-9 w-9 place-items-center rounded-full bg-lilac font-semibold text-violet-deep">VS</span>

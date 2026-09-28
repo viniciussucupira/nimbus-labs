@@ -24,7 +24,7 @@ const MESSAGES: Record<string, string> = {
   rate: `A product's own share is a whole number from 0 to ${MAX_COMMISSION}; 0 leaves it out.`,
   amount: "Type the amount you paid, like 25 or 25.50.",
   date: "Pick the day you paid it.",
-  unknown: "That affiliate is not in your programme any more. Reload the page.",
+  unknown: "That affiliate or payout is no longer on record. Reload the page.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
@@ -228,7 +228,7 @@ export function AffiliateStudio({
             <p className="mt-2 text-sm text-ink-soft">
               {setting.enabled
                 ? "Nobody yet. Share your affiliate page with the people who already recommend you."
-                : "Switch the programme on and share your affiliate page; applications appear here."}
+                : "Switch the program on and share your affiliate page; applications appear here."}
             </p>
           ) : (
             <ul className="mt-4 space-y-3">
@@ -349,12 +349,12 @@ function Terms({
           );
           onSave(
             { action: "settings", enabled, percent: Number(percent.trim()), days: Number(days.trim()), rates: chosen },
-            enabled ? "Affiliate programme saved." : "Affiliate programme switched off.",
+            enabled ? "Affiliate program saved." : "Affiliate program switched off.",
           );
         }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="terms-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Your programme</h2>
+          <h2 id="terms-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Your program</h2>
           <span className={`tag ${setting.enabled ? "tag-live" : ""}`}>{setting.enabled ? "On" : "Off"}</span>
         </div>
 

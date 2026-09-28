@@ -66,7 +66,8 @@ import {
 import { PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, priceWords, yearSaving } from "@/lib/plan";
 import { studioPath, studioView } from "@/lib/studio-route";
 import { type Permission, type Role, ROLE_NAMES, ROLE_SUMMARIES, can } from "@/lib/team-roles";
-import { readTeam } from "@/lib/team";
+import { MAX_TEAM, readTeam } from "@/lib/team";
+import { MAX_FUNNEL_STEPS } from "@/lib/funnel";
 import { listPasskeys } from "@/lib/passkeys";
 import { SESSION_COOKIE, isFreshSession } from "@/lib/auth";
 import { StudioHeader } from "@/components/studio-header";
@@ -125,7 +126,7 @@ function meetProblem(meeting: MeetRecord): string {
   const who = meeting.group ? "Everyone booked was" : "They were";
   const fallback = roomKind(meeting.link) === "room" ? "a private video room" : "your own link";
   const given = meeting.made ? "" : meeting.link ? ` ${who} given ${fallback} instead.` : " Nobody was given a link: send one yourself.";
-  const next = meeting.todo ? " We try again by ourselves over the next hours." : "";
+  const next = meeting.todo ? " We keep trying on our own for several hours." : "";
   return `${what}: ${meeting.error}.${given}${next}`;
 }
 
@@ -153,7 +154,7 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
   },
   nostore: {
     title: "Take your address first",
-    body: "A Stripe account is connected to a store, and there is no store yet.",
+    body: "What you asked for belongs to a store, and there is no store yet. Nothing was changed.",
   },
   unavailable: {
     title: "Connecting is not switched on yet",
@@ -165,7 +166,7 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
   },
   "country-unsupported": {
     title: "Stripe will not open an account in that country from here",
-    body: "Nothing was charged and nothing was created. This is a limit on our side, not a judgement on you: our own Stripe account is registered in a country Stripe does not yet let us open accounts from into yours. Write to us and we will tell you honestly whether that is changing.",
+    body: "Nothing was charged and nothing was created. This is a limit on our side, not a judgment on you: Stripe does not yet let a platform registered where ours is open accounts in your country. Write to us and we will tell you honestly whether that is changing.",
   },
   error: {
     title: "Stripe did not answer as expected",
@@ -177,10 +178,10 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
 const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
   on: {
     title: "You are subscribed",
-    body: "Your trial has started and your store can take money. Nothing is charged until the trial ends, and you can cancel it on this page at any time.",
+    body: "Your store can take money now. If your plan started with a free trial, nothing is charged until the trial ends. You can cancel on this page at any time.",
   },
   cancelling: {
-    title: "Cancelled",
+    title: "Canceled",
     body: "Nothing more will be charged. Your store keeps taking payments until the date below, and you can change your mind on this page until then.",
   },
   resumed: {
@@ -221,7 +222,7 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
   },
   "switched-tier-creator": {
     title: "You are back on the Nimbus Labs plan",
-    body: "Email to your list is off from now. Anything already paid for Pro is kept as credit on your account and pays your next charges until it runs out.",
+    body: "Email to your list is off from now, and so is your own domain if you set one up. Anything already paid for Pro is kept as credit on your account and pays your next charges until it runs out.",
   },
   "switched-month": {
     title: "You now pay monthly",
@@ -334,7 +335,7 @@ const TEAM_NOTICES: Record<string, { title: string; body: string }> = {
 const STORES_NOTICES: Record<string, { title: string; body: string }> = {
   deleted: {
     title: "The store was deleted",
-    body: "Its addresses answer nothing for a month, and then anyone may take them. Your other stores are as they were.",
+    body: "Its addresses answer nothing for 30 days, and then anyone may take them. Your other stores are as they were.",
   },
   confirm: {
     title: "Type the store's address to delete it",
@@ -581,7 +582,7 @@ export default async function StudioPage({
     ? [
         { key: "address", title: "Your address", hint: `nimbuslabsai.com/@${store.handle} is yours.`, done: true, href: "#details" },
         { key: "details", title: "Say what your store is", hint: "One line under your name tells a visitor why they are here.", done: Boolean(store.bio), href: "#details" },
-        { key: "look", title: "Add your photo and colour", hint: "A face and a colour make the page yours.", done: Boolean(store.photoId), href: "#look" },
+        { key: "look", title: "Add your photo and color", hint: "A face and a color make the page yours.", done: Boolean(store.photoId), href: "#look" },
         { key: "product", title: "Put up the first thing to sell", hint: "A file, a course, a call, a membership, or something free for an email.", done: productCount(store) > 0, href: "#products" },
         ...(connectReady
           ? [{ key: "stripe", title: "Connect your Stripe account", hint: "Where your buyers' money goes: yours, not ours.", done: store.stripeChargesEnabled, href: "#stripe" }]
@@ -600,7 +601,7 @@ export default async function StudioPage({
               },
             ]
           : []),
-        { key: "share", title: "Share your address", hint: "Put it in your bio. This ticks itself when your first visitor arrives.", done: (numbers?.totals.d30.visitors ?? 0) > 0, href: "#details" },
+        { key: "share", title: "Share your address", hint: "Put it in your bio. This checks itself off when your first visitor arrives.", done: (numbers?.totals.d30.visitors ?? 0) > 0, href: "#details" },
       ]
     : [];
   const connectTestMode = isConnectInTestMode();
@@ -678,7 +679,7 @@ export default async function StudioPage({
                 ...(may("products")
                   ? [
                       { href: studioPath(store, "", "pages"), title: "Sales pages", text: "Build each product's page from blocks, or a landing page for something free.", icon: "layout" as const },
-                      { href: studioPath(store, "", "funnels"), title: "Funnels", text: "Up to five one-click offers after paying.", icon: "ladder" as const },
+                      { href: studioPath(store, "", "funnels"), title: "Funnels", text: `Up to ${MAX_FUNNEL_STEPS} one-click offers after paying.`, icon: "ladder" as const },
                       { href: studioPath(store, "", "bundles"), title: "Bundles", text: "Several of your products for one price.", icon: "gift" as const },
                     ]
                   : []),
@@ -713,7 +714,7 @@ export default async function StudioPage({
                         title: "Team",
                         text: team && team.members.length
                           ? `${team.members.length} ${team.members.length === 1 ? "person helps" : "people help"} run this store.`
-                          : "Invite up to five people, each with a role.",
+                          : `Invite up to ${MAX_TEAM} people, each with a role.`,
                         icon: "user" as const,
                       },
                     ]
@@ -1014,8 +1015,8 @@ export default async function StudioPage({
                   </form>
                 </div>
                 <p className="mt-4 text-sm text-ink-soft">
-                  A CSV file, which Mailchimp, Kit, Beehiiv and every other email
-                  tool imports. The ones who agreed ticked a box that starts
+                  A CSV file, which Mailchimp, Kit, beehiiv and every other email
+                  tool imports. The ones who agreed checked a box that starts
                   empty. The rest asked for one thing and said no more — writing
                   to them about something else is what spam laws, in Europe
                   especially, are about, so the first file is the one for your
@@ -1176,7 +1177,7 @@ export default async function StudioPage({
                     {store.stripeCheckedAt ? (
                       <p className="mt-2 text-sm text-ink-soft">
                         Last asked on{" "}
-                        {new Date(store.stripeCheckedAt).toISOString().slice(0, 10)}.
+                        {new Date(store.stripeCheckedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}.
                         Stripe can change its mind, so this is what it said
                         then, not a promise about this moment.
                       </p>
@@ -1276,8 +1277,8 @@ export default async function StudioPage({
                   <p className="mt-4 notice notice-warn">
                     You are past what the plan covers this month.{" "}
                     <strong>Nothing has been cut off and nothing will be.</strong>{" "}
-                    A buyer who paid always gets what they paid for. We will
-                    write to you about it rather than quietly stop your store.
+                    A buyer who paid always gets what they paid for, and your
+                    store keeps selling as usual.
                   </p>
                 ) : null}
               </div>
@@ -1299,8 +1300,8 @@ export default async function StudioPage({
                   <>
                     <p className="mt-5 notice notice-warn font-semibold">
                       {trialing
-                        ? `Cancelled inside the trial. Your card will not be charged, and your store keeps taking payments until ${endsOn ?? "the trial ends"}.`
-                        : `Cancelled. Nothing more will be charged, and your store keeps taking payments until ${endsOn ?? "the end of the period you paid for"}.`}
+                        ? `Canceled during the trial. Your card will not be charged, and your store keeps taking payments until ${endsOn ?? "the trial ends"}.`
+                        : `Canceled. Nothing more will be charged, and your store keeps taking payments until ${endsOn ?? "the end of the period you paid for"}.`}
                     </p>
                     <form action={`/api/billing/cancel${pin}`} method="post" className="mt-4">
                       <input type="hidden" name="intent" value="resume" />
@@ -1365,7 +1366,7 @@ export default async function StudioPage({
                           {`Move up to Pro: ${priceWords("pro", billedYearly ? "year" : "month")}`}
                         </summary>
                         <p className="mt-3 text-sm text-ink-soft">
-                          {`Pro adds email to your list: one-off emails, emails scheduled for later and automatic sequences, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month. `}
+                          {`Pro adds email to your list: one-off emails, emails scheduled for later and automatic sequences, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month${domainsOn ? ", and your own domain" : ""}. `}
                           {trialing
                             ? "Nothing is charged now. When the trial ends you pay the Pro price instead."
                             : "You are charged the Pro price today, less what is left of what you already paid for. If your bank asks you to confirm, you are sent to confirm it, and nothing changes until it is paid."}
@@ -1386,8 +1387,8 @@ export default async function StudioPage({
                         </summary>
                         <p className="mt-3 text-sm text-ink-soft">
                           {trialing
-                            ? "Nothing is charged now, and email to your list switches off."
-                            : "Email to your list switches off from today. What is left of what you paid for Pro is kept as credit on your account and pays your next charges until it runs out."}
+                            ? `Nothing is charged now, and ${domainsOn ? "email to your list and your own domain switch" : "email to your list switches"} off.`
+                            : `${domainsOn ? "Email to your list and your own domain switch" : "Email to your list switches"} off from today. What is left of what you paid for Pro is kept as credit on your account and pays your next charges until it runs out.`}
                         </p>
                         <form action={`/api/billing/switch${pin}`} method="post" className="mt-3">
                           <input type="hidden" name="tier" value="creator" />
@@ -1468,12 +1469,12 @@ export default async function StudioPage({
                       </p>
                     ) : extraFirstPlan ? (
                       <p className="mt-3 text-sm text-ink-soft">
-                        {`Each store is a subscription of its own. The ${TRIAL_DAYS}-day free trial is for an account's first store, so this one's first payment is taken at checkout, today. Cancelling is one click on this page, touches no other store, and nothing more is charged after the period you paid for.`}
+                        {`Each store is a subscription of its own. The ${TRIAL_DAYS}-day free trial is for an account's first store, so this one's first payment is taken at checkout, today. Canceling is one click on this page, touches no other store, and nothing more is charged after the period you paid for.`}
                       </p>
                     ) : (
                       <p className="mt-3 text-sm text-ink-soft">
                         This store has had its free trial, so this time the first
-                        payment is taken at checkout, today. Cancelling is still
+                        payment is taken at checkout, today. Canceling is still
                         one click on this page, and nothing more is charged after
                         the period you paid for.
                       </p>
@@ -1482,7 +1483,7 @@ export default async function StudioPage({
                       <div className="mt-6 rounded-[var(--r-md)] bg-sand p-5">
                         <p className="font-semibold text-ink">Pro</p>
                         <p className="mt-1 text-sm text-ink-soft">
-                          {`Everything above, plus email to your list: one-off emails, emails scheduled for later and automatic sequences, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month.${withTrial ? ` The same ${TRIAL_DAYS}-day trial.` : ""}`}
+                          {`Everything above, plus email to your list: one-off emails, emails scheduled for later and automatic sequences, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month${domainsOn ? ", and your own domain" : ""}.${withTrial ? ` The same ${TRIAL_DAYS}-day trial.` : ""}`}
                         </p>
                         <form action={`/api/billing/checkout${pin}`} method="post" className="mt-4 flex flex-col items-start gap-3">
                           <input type="hidden" name="tier" value="pro" />
@@ -1560,7 +1561,7 @@ export default async function StudioPage({
                             )}{" "}
                             on{" "}
                             {new Date(sale.paidAt * 1000).toLocaleDateString(
-                              "en-GB",
+                              "en-US",
                               { day: "numeric", month: "long", year: "numeric" },
                             )}
                           </p>
@@ -1681,7 +1682,7 @@ export default async function StudioPage({
                   <p className="mt-3 text-sm text-ink-soft">
                     {productCount(store) > 0 || paid || store.domain
                       ? "A store can be deleted while it has no products, no plan running and no domain of its own, so nothing a buyer paid for is lost with it. Remove those first."
-                      : `Its address, nimbuslabsai.com/@${store.handle}, answers nothing for a month and then anyone may take it. Your other stores are not touched. This cannot be undone.`}
+                      : `Its address, nimbuslabsai.com/@${store.handle}, answers nothing for 30 days, and then anyone may take it. Your other stores are not touched. This cannot be undone.`}
                   </p>
                   {productCount(store) === 0 && !paid && !store.domain ? (
                     <form action={`/api/store/stores${pin}`} method="post" className="mt-4 flex flex-wrap items-end gap-3">
@@ -1708,7 +1709,7 @@ export default async function StudioPage({
             </p>
             <p className="mt-2 mb-6 text-ink-soft">
               This is the link you put in your bio. Pick one now without
-              agonising over it: you can change it later, and the old address
+              agonizing over it: you can change it later, and the old address
               keeps working and sends people to the new one.
             </p>
             <HandleForm />
@@ -1718,11 +1719,11 @@ export default async function StudioPage({
         {NEXT.length > 0 && role === "owner" ? (
         <div className="card mt-8 p-6 sm:p-8">
           <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
-            What is not here yet
+            What is not switched on here yet
           </p>
           <p className="mt-2 text-ink-soft">
-            Being honest about it, these are the pieces still being built, in
-            this order:
+            Being honest about it, these pieces are not switched on for your
+            store yet:
           </p>
           <ol className="mt-5 space-y-3">
             {NEXT.map((item, index) => (

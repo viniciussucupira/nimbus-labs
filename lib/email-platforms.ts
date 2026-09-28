@@ -94,7 +94,7 @@ export function keyProblem(provider: EmailProvider, raw: string): string | null 
   if (!key) return "Paste your API key.";
   if (key.length > MAX_KEY_LENGTH || /\s/.test(key)) return "That does not look like an API key.";
   if (provider === "mailchimp" && !/^[0-9a-f]{32}-[a-z]{2,4}\d{1,3}$/.test(key)) {
-    return "A Mailchimp API key ends in the data centre it lives in, like “-us21”. Copy the whole key.";
+    return "A Mailchimp API key ends in the data center it lives in, like “-us21”. Copy the whole key.";
   }
   if (provider !== "mailchimp" && !/^[A-Za-z0-9._-]{16,}$/.test(key)) return "That does not look like an API key.";
   return null;
@@ -193,7 +193,7 @@ function failure(provider: EmailProvider, answer: Answer, what: "key" | "target"
   const said = detail(answer.json);
   const { status } = answer;
   if (status === 401 || status === 403) return new PlatformError("key", status, `${name} did not accept the API key${said ? `: ${said}` : "."}`);
-  if (status === 404 && what !== "key") return new PlatformError("target", status, `${name} says the ${TARGET_WORDS[provider]} is not there any more.`);
+  if (status === 404 && what !== "key") return new PlatformError("target", status, `${name} says the ${TARGET_WORDS[provider]} is not there anymore.`);
   if (status === 429) return new PlatformError("limit", status, `${name} asked us to slow down.`);
   if (status >= 500 || status === 0) return new PlatformError("server", status, `${name} had a problem (${status}).`);
   if (what === "contact") return new PlatformError("contact", status, `${name} refused this address${said ? `: ${said}` : "."}`);
@@ -383,6 +383,6 @@ export async function addContact(
   );
   // A group that was deleted is answered as an invalid field, not as missing.
   const goneGroup = made.status === 422 && /groups/i.test(JSON.stringify(made.json.errors ?? ""));
-  if (!ok(made)) throw goneGroup ? new PlatformError("target", 422, "MailerLite says the group is not there any more.") : failure(provider, made, made.status === 404 ? "target" : "contact");
+  if (!ok(made)) throw goneGroup ? new PlatformError("target", 422, "MailerLite says the group is not there anymore.") : failure(provider, made, made.status === 404 ? "target" : "contact");
   return `${made.status === 201 ? "Added" : "Updated"} in the group${contact.tags.length ? `, and in ${contact.tags.map((t) => `“${t}”`).join(", ")}` : ""}.`;
 }

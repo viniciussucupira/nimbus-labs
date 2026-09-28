@@ -148,7 +148,7 @@ export function LegalPage({
                   Back to the home page
                 </Link>
                 <Link href="/help" className="link-arrow">
-                  Questions? The help centre
+                  Questions? The help center
                   <Icon name="arrow-right" size={16} className="arrow" />
                 </Link>
               </div>

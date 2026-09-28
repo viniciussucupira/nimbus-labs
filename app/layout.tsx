@@ -25,7 +25,7 @@ const accent = Instrument_Serif({
 const SITE_TITLE =
   "Nimbus Labs — the link-in-bio store that pays into your own Stripe";
 const SITE_DESCRIPTION =
-  "A fast store page for creators who sell files and memberships. Buyers pay into your own Stripe account, the file is delivered the second the payment clears, and Nimbus takes 0% of your sales.";
+  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is delivered the second the payment clears, and Nimbus takes 0% of your sales.";
 
 export const viewport: Viewport = {
   themeColor: "#0d0b24",

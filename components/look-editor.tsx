@@ -20,7 +20,7 @@ import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
   theme: "Pick one of the themes before saving.",
-  accent: "That colour could not be read. Pick one of the swatches or your own.",
+  accent: "That color could not be read. Pick one of the swatches or your own.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
@@ -192,7 +192,7 @@ export function LookEditor({
         How your page looks
       </h2>
       <p className="mt-2 text-ink-soft">
-        Your photo, a theme and your colour. Every colour is checked so that the words on your page stay easy to read.
+        Your photo, a theme and your color. Every color is checked so that the words on your page stay easy to read.
       </p>
 
       <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,1fr)_15rem]">
@@ -287,7 +287,7 @@ export function LookEditor({
 
           {/* Colour */}
           <fieldset>
-            <legend className="field-label">Your colour</legend>
+            <legend className="field-label">Your color</legend>
             <div className="mt-3 flex flex-wrap items-center gap-2.5">
               {ACCENTS.map((option) => (
                 <label
@@ -328,7 +328,7 @@ export function LookEditor({
             </div>
             <p className="field-hint mt-2">
               {adjusted
-                ? "Your colour is darkened or lightened a little on buttons so that the words on them can be read. The preview shows exactly what your page will show."
+                ? "Your color is darkened or lightened a little on buttons so that the words on them can be read. The preview shows exactly what your page will show."
                 : "The preview shows exactly what your page will show."}
             </p>
           </fieldset>

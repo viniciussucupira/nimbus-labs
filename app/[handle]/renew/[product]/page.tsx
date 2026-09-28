@@ -90,7 +90,7 @@ export default async function RenewPage({ params }: Params) {
             )
           ) : product ? (
             <p className="st-note mt-7 text-sm">
-              {`${store.name} is not taking new members for this right now. Reply to a receipt from them and it reaches them.`}
+              {`${store.name} is not taking new members for this right now. Reply to your order confirmation email and it reaches them.`}
             </p>
           ) : null}
 
@@ -105,7 +105,7 @@ export default async function RenewPage({ params }: Params) {
           <div className="mt-7 space-y-3 border-t pt-6 text-sm" style={{ borderColor: "var(--st-line)" }}>
             {canManage(store) ? (
               <p className="st-muted">
-                {"Did a payment fail rather than you cancelling? Updating the card may bring it back without joining again: "}
+                {"Did a payment fail rather than you canceling? Updating the card may bring it back without joining again: "}
                 <Link href={`/@${store.handle}/manage`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>
                   manage your membership
                 </Link>

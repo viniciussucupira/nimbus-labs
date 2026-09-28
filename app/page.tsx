@@ -54,7 +54,7 @@ const REASONS: {
     title: "Several prices for one product",
     body: "One week for $27, five weeks for $39. Up to three options on any product, and each option delivers its own file.",
     example:
-      "Stan's own help centre lists this among its most requested features and says there is no native way to do it — read on 18 September 2026.",
+      "Stan's own help center lists this among its common feature requests and says there is no native way to do it — read on September 18, 2026.",
     visual: "options",
     href: "/platform/price-options",
     link: "See price options",
@@ -128,10 +128,10 @@ const GROUPS: Group[] = [
     items: [
       { title: "Instant download", body: "On screen the second it is paid. Lost later? The buyer gets it again by email, any time." },
       { title: "Courses without passwords", body: "Students open them with a link to their email." },
-      { title: "Calendar invites", body: "A booked call lands in both calendars, with reminders before it." },
+      { title: "Calendar invites", body: "A calendar file emailed to you both for each booked call, with reminders before it." },
       { title: "A confirmation for every buyer", body: "From your store's name, with the way back to what they bought." },
       { title: "Limited quantities", body: "Counted from real payments, and selling stops at zero." },
-      { title: "Licence keys", body: "A unique key with each sale, never given twice." },
+      { title: "License keys", body: "A unique key with each sale, never given twice." },
       { title: "Stamped PDFs", body: "The buyer's email on every page of the PDF they bought." },
       { title: "Quizzes and certificates", body: "Questions after a lesson, and a certificate anyone can check." },
     ],
@@ -151,8 +151,8 @@ const GROUPS: Group[] = [
       { title: "Affiliates", body: "A link and a page for each one. You pay them yourself." },
       { title: "Ad pixels", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount." },
       { title: "Webhooks", body: "Sales, leads and bookings, sent to Zapier, Make or your own server." },
-      { title: "Your photo, your colour", body: "Four themes, ten colours or your own, each checked for contrast." },
-      { title: "An address that never breaks", body: "Change it any time; every old link keeps working." },
+      { title: "Your photo, your color", body: "Four themes, ten colors or your own, each checked for contrast." },
+      { title: "An address you can change", body: "Change it any time; up to ten old addresses keep working and lead to the new one." },
       { title: "Installs like an app", body: "Your store on any phone's home screen, with its own name and icon." },
       { title: "Moving from another platform", body: "Your list, products and past buyers, brought over from a spreadsheet." },
     ],
@@ -181,7 +181,7 @@ const GROUPS: Group[] = [
  */
 const NOT_YET = [
   "Automatic replies on Instagram",
-  "PayPal for creators in the United States",
+  "PayPal at checkout",
   "An iPhone app from the App Store",
   "Zoom links made for each booking",
   "Paying your affiliates for you",
@@ -199,7 +199,7 @@ const CREATORS = [
   {
     href: "/for/coaches",
     label: "Coaches and teachers",
-    sells: "Workbooks, programmes, paid calls",
+    sells: "Worksheets, programs, paid calls",
     photo: "photo-1758599880979-f6a64947b541",
     alt: "A woman sitting on the floor of her living room, talking through a lesson to a camera",
   },
@@ -213,7 +213,7 @@ const CREATORS = [
   {
     href: "/for/fitness",
     label: "Fitness creators",
-    sells: "Training programmes and challenges",
+    sells: "Training programs and challenges",
     photo: "photo-1787647090008-4b88ffc977b7",
     alt: "A movement teacher showing a stretch to someone in a light studio",
   },
@@ -233,8 +233,8 @@ const COMPARE = [
   { row: "Cut of each sale", stan: "0%, plus Stripe's own fees", nimbus: "0%, plus Stripe's own fees", key: false, same: true },
   { row: "Several prices for one product", stan: "Not available", nimbus: "Up to three on any product", key: true },
   { row: "Discount codes", stan: "On the $99 Creator Pro plan", nimbus: `Included at $${PRICE} a month`, key: true },
-  { row: "Pay what you want", stan: "Not in their help centre", nimbus: "A minimum and a suggested price", key: false },
-  { row: "Changing your store address", stan: "Old links forwarded on a best effort", nimbus: "Every address you ever used keeps working", key: false },
+  { row: "Pay what you want", stan: "Not in their help center", nimbus: "A minimum and a suggested price", key: false },
+  { row: "Changing your store address", stan: "Old links forwarded on a best effort", nimbus: "Old addresses keep working, up to 10 held at once", key: false },
 ];
 
 const SPEED = [
@@ -344,7 +344,7 @@ export default function Home() {
                 icon: "gauge" as IconName,
                 figure: "97–100",
                 title: "Google PageSpeed",
-                body: "Mobile performance on the demo store, measured 17 September 2026.",
+                body: "Mobile performance on the demo store, measured September 17, 2026.",
               },
               {
                 icon: "lock" as IconName,
@@ -475,7 +475,7 @@ export default function Home() {
                 <div className="card-flat flex flex-col p-6 sm:p-7">
                   <span className="tag tag-next self-start">Not here yet</span>
                   <p className="mt-4 text-[0.9375rem] text-ink-soft">
-                    Not built, so not sold. Stan has each of these today, and we do not.
+                    Not offered yet, so not sold. Stan has each of these today, and we do not.
                   </p>
                   <ul className="mt-5 space-y-3">
                     {NOT_YET.map((n) => (
@@ -569,7 +569,7 @@ export default function Home() {
                   </p>
                 </div>
                 <p className="mt-5 text-[0.8125rem] leading-relaxed text-ink-mute">
-                  Tested on 17 September 2026 with a real Stripe checkout in test mode: the sale landed on the creator&apos;s
+                  Tested on September 17, 2026, with a real Stripe checkout in test mode: the sale landed on the creator&apos;s
                   account with no cut for the platform.
                 </p>
               </div>
@@ -648,8 +648,8 @@ export default function Home() {
               <p className="eyebrow">Side by side</p>
               <h2 className="t-h2 balance mt-4">How we compare with Stan</h2>
               <p className="mt-5 text-ink-soft">
-                Checked on Stan&apos;s own public pricing, terms and help pages in September 2026, the discount row on
-                22 September. If any of it changes, this section changes.
+                Checked on Stan&apos;s own public pricing, terms and help pages in September 2026, and the discount row on
+                September 22. If any of it changes, this section changes.
               </p>
             </div>
 
@@ -700,7 +700,7 @@ export default function Home() {
                   <p className="font-semibold text-ink">Speed on a phone</p>
                 </div>
                 <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                  Google PageSpeed Insights, mobile performance score, measured on 17 September 2026. Three public Stan
+                  Google PageSpeed Insights, mobile performance score, measured on September 17, 2026. Three public Stan
                   stores chosen at random, same tool, same day.
                 </p>
                 <ul className="mt-5 space-y-3">
@@ -724,7 +724,7 @@ export default function Home() {
                 <div>
                   <p className="font-semibold text-ink">Where Stan is ahead today</p>
                   <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                    Stan has PayPal for creators in the United States, affiliates paid automatically, automatic Instagram
+                    Stan has PayPal at checkout, affiliates paid automatically, automatic Instagram
                     replies, Zoom links made for each booking and webinar, and an iPhone app. We do not have those, and we say so on every page that could make you think otherwise.
                   </p>
                 </div>
@@ -750,7 +750,7 @@ export default function Home() {
               <p className="eyebrow">Pricing</p>
               <h2 className="t-h2 balance mt-4">Two plans. Your sales stay yours.</h2>
               <p className="mt-5 text-ink-soft">
-                {`The same $${PRICE} and $${PLAN_PRICES.pro.month / 100} a month as Stan's two plans, with 0% of your sales and the sale itself landing in your own Stripe account. The $${PRICE} plan holds what Stan keeps for its $${PLAN_PRICES.pro.month / 100} one: discount codes, pixels, landing pages, order bumps, upsells and payment plans.`}
+                {`The same $${PRICE} and $${PLAN_PRICES.pro.month / 100} a month as Stan's two plans, the same 14-day free trial, 0% of your sales, and the sale itself landing in your own Stripe account. The $${PRICE} plan holds what Stan keeps for its $${PLAN_PRICES.pro.month / 100} one: discount codes, pixels, landing pages, order bumps, upsells, payment plans and limited quantities.`}
               </p>
             </div>
             <div className="reveal mx-auto mt-12 max-w-5xl">
@@ -768,7 +768,7 @@ export default function Home() {
               <p className="mt-5 text-ink-soft">
                 Something else?{" "}
                 <Link href="/help" className="link">
-                  The help centre
+                  The help center
                 </Link>{" "}
                 answers the rest, in writing.
               </p>

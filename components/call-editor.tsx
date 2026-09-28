@@ -42,8 +42,8 @@ const MESSAGES: Record<string, string> = {
   session_time: "Check each session's date and start time: one of them is missing, or is a time your clocks skip when they go forward.",
   session_seats: `Seats in a session have to be a whole number from 1 to ${MAX_SESSION_SEATS}.`,
   session_room: "Each session's meeting link has to be a full web address starting with https://, or left empty.",
-  meet_google: "Google Calendar is not connected to this store any more. Connect it again under Video calls in your studio, or pick another place for the call.",
-  meet_zoom: "Zoom is not connected to this store any more. Connect it again under Video calls in your studio, or pick another place for the call.",
+  meet_google: "Google Calendar is not connected to this store anymore. Connect it again under Video calls in your studio, or pick another place for the call.",
+  meet_zoom: "Zoom is not connected to this store anymore. Connect it again under Video calls in your studio, or pick another place for the call.",
   past: "A new or changed session has to start in the future.",
   upcoming: "Add at least one session that is still to come.",
   booked: "Somebody has booked a session you moved or took off. A booked session keeps its date, time and length; you can still change its link, or add more seats.",
@@ -55,7 +55,9 @@ const MESSAGES: Record<string, string> = {
   options: "Take the price options off first: a call has one price.",
   delivery: "Take the file or link off first: a call delivers a time in your calendar, not a file.",
   course: "This is a course. Stop selling it as a course first.",
-  unknown: "That product is not there any more. Reload the page.",
+  bundle: "A bundle cannot be a call. Stop it being a bundle first.",
+  pwyw: "A call has a set price. Stop letting buyers choose the price first.",
+  unknown: "That product is not there anymore. Reload the page.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
@@ -175,7 +177,7 @@ function RoomChoice({
                     ? p === "google"
                       ? `A Google Calendar event with a Meet link is made on ${account.account} for ${live ? "each session" : "each booking"}.`
                       : `A Zoom meeting is made on ${account.account} for ${live ? "each session" : "each booking"}.`
-                    : `${p === "google" ? "Google Calendar" : "Zoom"} is not connected any more: connect it again under Video calls in your studio, or pick another place.`}
+                    : `${p === "google" ? "Google Calendar" : "Zoom"} is not connected anymore: connect it again under Video calls in your studio, or pick another place.`}
                 </span>
               </span>
             </label>
@@ -211,7 +213,7 @@ function RoomChoice({
           <p className="mt-2">
             <strong className="text-ink">Good to know:</strong> Jitsi Meet (meet.jit.si) is a free video service run by a third
             party, not by us. Nobody needs an account to join, but the first person to open a room may be asked to sign in to
-            Jitsi with a Google, GitHub or Facebook account to start the meeting as its moderator, and the others wait until
+            Jitsi with an existing account, such as Google or GitHub, to start the meeting as its moderator, and the others wait until
             then. Open it a few minutes early and sign in yourself.
           </p>
         </div>
@@ -231,7 +233,7 @@ function RoomChoice({
               {meeting === "google"
                 ? "Your Google plan sets how many can join and for how long (free accounts: 100 people, 60 minutes for three or more)."
                 : "Your Zoom plan sets how many can join and for how long (free accounts: 100 people, 40 minutes)."}{" "}
-              If a meeting cannot be made, the buyer gets the link below, or a private video room when it is empty, and we try again for the next hours.
+              If a meeting cannot be made, the buyer gets the link below, or a private video room when it is empty, and we keep trying on our own for several hours.
             </p>
           </div>
           {children ?? null}
@@ -447,7 +449,7 @@ export function CallEditor({ product, email, meetings = [] }: { product: Product
             </p>
             <p className="mt-1 text-sm text-ink-soft">{summarise(setup)}</p>
             <p className="mt-1 text-sm text-ink-soft">
-              {`At least ${setup.noticeHours} hours' notice, up to ${setup.horizonDays} days ahead${setup.bufferMinutes ? `, ${setup.bufferMinutes} minutes between calls` : ""}.`}
+              {`At least ${setup.noticeHours === 1 ? "1 hour's" : `${setup.noticeHours} hours'`} notice, up to ${setup.horizonDays} days ahead${setup.bufferMinutes ? `, ${setup.bufferMinutes} minutes between calls` : ""}.`}
             </p>
             <p className="mt-1 break-all text-sm text-ink-soft">
               {setup.meet
@@ -650,7 +652,7 @@ export function CallEditor({ product, email, meetings = [] }: { product: Product
         </fieldset>
 
         <p className="rounded-[10px] bg-paper px-3 py-2 text-sm text-ink-soft">
-          {`A session is on sale until it is full or sales close. Each buyer gets the session's link and a calendar file the moment they have paid, then a reminder a day and an hour before; you get one email per booking and a reminder listing everyone. Buyers can move their seat to another session themselves, twice at most, until ${hoursLabel(Math.max(draft.noticeHours, 1))} before it starts. Replies to their emails go to ${email}.`}
+          {`A session is on sale until it is full or sales close. Each buyer gets the session's link and a calendar file the moment they have paid, then a reminder a day and an hour before; you get one email per booking and reminders listing everyone. Buyers can move their seat to another session themselves, twice at most, until ${hoursLabel(Math.max(draft.noticeHours, 1))} before it starts. Replies to their emails go to ${email}.`}
         </p>
 
         {error ? <p className="notice notice-error" role="alert">{error}</p> : null}

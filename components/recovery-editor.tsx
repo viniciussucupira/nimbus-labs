@@ -13,11 +13,11 @@ const MESSAGES: Record<string, string> = {
   stripe: "Connect your Stripe account first.",
   country:
     "Your Stripe account is not in the United States. Stripe asks buyers for this consent only on checkouts of US businesses, so no reminder could ever be sent, and it stays off.",
-  unavailable: "Sending email is not switched on on our side yet, so nothing was changed.",
+  unavailable: "Email sending is not set up on our side yet, so nothing was changed.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   invalid: "That could not be read. Nothing was changed.",
-  server_error: "Stripe could not be asked just now. Nothing was changed; try again in a moment.",
+  server_error: "Something went wrong on our side, or Stripe did not answer. Nothing was changed; try again in a moment.",
 };
 
 /** One reminder after an abandoned checkout, to buyers who agreed to it. */
@@ -71,8 +71,8 @@ export function RecoveryEditor({
         <span className={`tag ${recovery.enabled ? "tag-live" : ""}`}>{recovery.enabled ? "On" : "Off"}</span>
       </div>
       <p className="mt-2 text-ink-soft">
-        When a buyer leaves your checkout without paying, and ticked Stripe&apos;s box on that page to hear from you, they
-        get one email about an hour later with a link back to the product. Nobody who did not tick it is ever written to.
+        When a buyer leaves your checkout without paying, and checked Stripe&apos;s box on that page to hear from you, they
+        get one email about an hour later with a link back to the product. Nobody who did not check it is ever written to.
       </p>
       <ul className="mt-4 space-y-2 text-sm text-ink-soft">
         <li className="flex gap-2">

@@ -222,7 +222,7 @@ function MembershipVisual() {
 
 function CallsVisual() {
   const days = ["Mon 6", "Tue 7", "Wed 8", "Thu 9", "Fri 10"];
-  const times = ["9:00", "9:45", "10:30", "14:00", "14:45", "15:30"];
+  const times = ["9:00 AM", "9:45 AM", "10:30 AM", "2:00 PM", "2:45 PM", "3:30 PM"];
   return (
     <Window bar="One hour with Marcus">
       <div className="p-5">
@@ -253,7 +253,7 @@ function CallsVisual() {
         </div>
         <p className="mt-3 text-[12px] text-ink-soft">Times are in your time zone.</p>
         <p className="mt-3 rounded-[var(--r-sm)] bg-lilac px-3 py-2 text-[12.5px] text-ink">
-          <strong>Wednesday 8, 14:00</strong> &middot; 60 minutes
+          <strong>Wed 8, 2:00 PM</strong> &middot; 60 minutes
         </p>
         <span className="btn btn-primary btn-block pointer-events-none mt-3">Continue to payment &mdash; $180</span>
         <p className="mt-3 flex items-center justify-center gap-2 text-[12px] text-ink-soft">
@@ -377,7 +377,7 @@ const CAPTIONS: Record<VisualKey, string> = {
   course: "A student's view of a course, with a module that opens on a later day.",
   membership: "A membership on a store page, with the way out under it.",
   calls: "Booking a paid call. Dates and times are an example.",
-  checkout: "Tick the box to add it: the total on the button changes with it.",
+  checkout: "Check the box to add it: the total on the button changes with it.",
   email: "Writing to your list from the studio. The subject and steps are an example.",
   domain: "A store on its own domain, with the one record to add.",
   insights: "The numbers screen in the studio. The bars are an example, not our figures.",

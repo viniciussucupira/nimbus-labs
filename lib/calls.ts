@@ -1048,7 +1048,7 @@ export async function confirmBooking(input: {
           : []),
         `To cancel, reply to this email; the reply goes to ${store.name}.`,
         "",
-        `Your booking: ${origin}/@${store.handle}`,
+        `${store.name}: ${origin}/@${store.handle}`,
       ].join("\n"),
       // Replies reach the creator, which the studio tells them before they
       // offer a single call.
@@ -1105,7 +1105,7 @@ function meetingLine(meeting: MeetRecord, group: boolean): string {
   return [
     `The ${name} link could not be made (${meeting.error || "no answer"}), so they were given ${meeting.link ? `this link instead: ${meeting.link}` : "no link: send them one before the call"}.`,
     meeting.todo === "create"
-      ? `We try again over the next hours; if it works while there are more than two hours to go, you and they are emailed the ${name} link.`
+      ? `We try again over the next several hours; if it works while there are more than two hours to go, you and they are emailed the ${name} link.`
       : "",
   ]
     .filter(Boolean)
@@ -1151,7 +1151,7 @@ export async function tellNewLink(input: {
         ...(previous ? [`The link you were sent before (${previous}) is no longer the one to use.`] : []),
         "",
         "The calendar file attached replaces the one sent before.",
-        `Your booking: ${origin}/@${store.handle}`,
+        `${store.name}: ${origin}/@${store.handle}`,
         `To cancel, reply to this email; the reply goes to ${store.name}.`,
       ].join("\n"),
       replyTo: store.email,

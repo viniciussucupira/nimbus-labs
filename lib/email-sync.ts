@@ -326,7 +326,7 @@ export async function queuePerson(store: Store, person: Person, now = Date.now()
     state: agreed ? "queued" : "skipped",
     next: agreed ? now : 0,
     lastError: "",
-    note: agreed ? "" : person.source === "free" ? "Did not tick the box to hear from you, so not sent." : "Did not agree to emails at checkout, so not sent.",
+    note: agreed ? "" : person.source === "free" ? "Did not check the box to hear from you, so not sent." : "Did not agree to emails at checkout, so not sent.",
     lastAt: agreed ? 0 : now,
     createdAt: now,
   };
@@ -620,7 +620,7 @@ export async function saveSettings(store: Store, input: Settings): Promise<{ ok:
       return { ok: false, message: words(error, config.provider) };
     }
     target = targets.find((t) => t.id === wantedTarget) ?? null;
-    if (!target) return { ok: false, message: `That ${TARGET_WORDS[config.provider]} is not in your ${PROVIDER_NAMES[config.provider]} account any more. Refresh the list.` };
+    if (!target) return { ok: false, message: `That ${TARGET_WORDS[config.provider]} is not in your ${PROVIDER_NAMES[config.provider]} account anymore. Refresh the list.` };
   }
   if (!target) return { ok: false, message: `Choose the ${TARGET_WORDS[config.provider]} to add people to.` };
   const known = new Set(productIds(store));
@@ -654,7 +654,7 @@ export async function testConnection(store: Store): Promise<{ ok: boolean; messa
     const targets = await listTargets(config.provider, opened.key);
     if (!config.target) return { ok: true, message: `${name} accepted the key. Now choose the ${TARGET_WORDS[config.provider]} to add people to.`, view: await syncView(store) };
     if (!targets.some((t) => t.id === config.target?.id)) {
-      const message = `${name} accepted the key, but the ${TARGET_WORDS[config.provider]} “${config.target.name}” is not there any more. Choose another.`;
+      const message = `${name} accepted the key, but the ${TARGET_WORDS[config.provider]} “${config.target.name}” is not there anymore. Choose another.`;
       await redisPipeline([["SET", badKey(store.statsId), JSON.stringify({ message, at: Date.now() }), "EX", 30 * 86400]]);
       return { ok: false, message, view: await syncView(store) };
     }

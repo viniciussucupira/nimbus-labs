@@ -27,7 +27,7 @@ const METHODS: Record<string, { name: string; note?: string; group: WayGroup }> 
   apple_pay: { name: "Apple Pay", note: "On Apple devices. It pays with a card.", group: "wallet" },
   google_pay: { name: "Google Pay", note: "In Chrome and on Android. It pays with a card.", group: "wallet" },
   link: { name: "Link", note: "Stripe's saved checkout details, filled in for the buyer.", group: "wallet" },
-  paypal: { name: "PayPal", group: "wallet" },
+  paypal: { name: "PayPal", note: "On in Stripe, but not one to count on here: Stripe lists PayPal as not supported for direct charges, which is how every sale here is charged.", group: "wallet" },
   amazon_pay: { name: "Amazon Pay", group: "wallet" },
   cashapp: { name: "Cash App Pay", group: "wallet" },
   revolut_pay: { name: "Revolut Pay", group: "wallet" },
@@ -84,7 +84,7 @@ const METHODS: Record<string, { name: string; note?: string; group: WayGroup }> 
 };
 
 const GROUP_NOTES: Record<string, string> = {
-  later: "The buyer pays in instalments; you are paid in full.",
+  later: "The buyer pays in installments; you are paid in full.",
   bank: "Paid from the buyer's bank, confirmed on the spot.",
   wallet: "A wallet the buyer already uses.",
 };

@@ -25,7 +25,7 @@ const FIELD_MESSAGES: Record<string, string> = {
   problem: `Please describe the problem in at least ${PROBLEM_MIN_LENGTH} characters.`,
   tools: "That answer is too long.",
   cost: "That answer is too long.",
-  consentResearch: "Please tick the first box so we can store your answers.",
+  consentResearch: "Please check the first box so we can store your answers.",
 };
 
 const inputClass = "field";

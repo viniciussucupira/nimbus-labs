@@ -41,6 +41,9 @@ function problemText(reason: string, at: number | undefined): string {
     free: "something free never reaches the checkout, so it cannot ask questions.",
     store_full: "your store has reached the most it can hold. Shorten a long list of choices, or remove something.",
     signed_out: "your session ended. Log in again.",
+    unknown: "that product is no longer in your store. Reload the page.",
+    role: "your role on this store does not include this. The store's owner can change your role.",
+    store_gone: "this store was deleted, or you are no longer on its team. Reload the page to see your stores.",
   };
   const said = text[reason] ?? "something went wrong on our side. Try again in a moment.";
   return which ? `${which}${said}` : said.charAt(0).toUpperCase() + said.slice(1);
@@ -132,7 +135,7 @@ export function CheckoutFieldsEditor({ product }: { product: Product }) {
     >
       <p className="text-sm font-bold text-ink">Questions at checkout</p>
       <p className="mt-1 text-xs text-ink-soft">
-        {`Asked on Stripe's payment page, before the buyer pays. Up to ${MAX_CHECKOUT_FIELDS}. The answers are on each sale in the list below and in your Stripe dashboard.`}
+        {`Asked on Stripe's payment page, before the buyer pays. Up to ${MAX_CHECKOUT_FIELDS}. The answers are shown on each sale under What you have sold, and in your Stripe dashboard.`}
       </p>
 
       <ol className="mt-3 space-y-3">

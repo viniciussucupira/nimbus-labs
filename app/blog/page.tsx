@@ -14,7 +14,7 @@ import {
 export const metadata: Metadata = {
   title: "The Nimbus Journal — selling digital products without the guesswork",
   description:
-    "Plain guides on selling files, plans and calls from a link in your bio: what to charge, what the page has to say, where the money lands, and what every platform costs you per sale.",
+    "Plain guides on selling files, courses and calls from a link in your bio: what to charge, what the page has to say, where the money lands, and what every platform costs you per sale.",
 };
 
 export default function BlogIndexPage() {
@@ -42,7 +42,7 @@ export default function BlogIndexPage() {
               <span aria-hidden="true">·</span>
               <span>{`Written by us, latest ${formatPostDate(featured.date)}`}</span>
               <span aria-hidden="true">·</span>
-              <span>Every figure carries its source</span>
+              <span>Facts about other companies carry their source</span>
             </p>
           </div>
         </section>
@@ -52,7 +52,7 @@ export default function BlogIndexPage() {
             <article className="reveal surface-night on-dark group relative grid gap-8 overflow-hidden rounded-[var(--r-xl)] p-7 sm:p-10 lg:grid-cols-[1.5fr_1fr] lg:items-center lg:p-12">
               <div>
                 <div className="flex flex-wrap items-center gap-3 text-[0.8125rem]">
-                  <span className="eyebrow">Start here</span>
+                  <span className="eyebrow">Featured</span>
                   <span className="text-white/70">
                     {featured.category} · {formatPostDate(featured.date)} · {featured.readMinutes} min read
                   </span>
@@ -73,10 +73,10 @@ export default function BlogIndexPage() {
               <ul className="panel-dark relative space-y-3 p-6 text-[0.9375rem] text-white/80">
                 <li className="text-[0.8125rem] font-semibold uppercase tracking-[0.14em] text-white/70">Inside</li>
                 {[
-                  "What to sell when you have never sold anything",
-                  "The price that makes the decision easy",
-                  "The six lines a product page needs",
-                  "What has to happen the second someone pays",
+                  "The card fee the pricing page leaves out",
+                  "Where the money waits, and for how long",
+                  "The arithmetic at 5, 9, 100 and 500 sales",
+                  "When to stay on Gumroad, and when to move",
                 ].map((line) => (
                   <li key={line} className="flex gap-3">
                     <span aria-hidden="true" className="text-[#b9a8ff]">
@@ -93,7 +93,7 @@ export default function BlogIndexPage() {
         <section className="container-page py-14 sm:py-20">
           <h2 className="t-h2">More to explore</h2>
           <p className="mt-3 max-w-2xl text-ink-soft">
-            Pick a subject or search for a word. Every article is written by us and says where its facts come from.
+            Pick a subject or search for a word. Every article is written by us and says where its facts about other companies come from.
           </p>
           <div className="mt-8">
             <BlogBrowser posts={rest} categories={[...BLOG_CATEGORIES]} />

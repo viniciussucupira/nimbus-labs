@@ -32,12 +32,16 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     body: "The last one went a moment before you pressed buy. Nothing was charged.",
   },
   busy: {
-    title: "Lots of people are buying that right now",
+    title: "Someone else is buying that right now",
     body: "Nothing was charged. Press buy again in a moment.",
   },
   slow: {
     title: "That was a lot of tries in a few minutes",
     body: "Nothing was charged. Wait a few minutes, then press buy again.",
+  },
+  error: {
+    title: "The payment page could not be opened",
+    body: "Nothing was charged. Try again in a moment.",
   },
 };
 
@@ -345,7 +349,7 @@ export default async function StorePage({ params, searchParams }: Params) {
             <p className="mt-8">
               <Link href={`/@${store.handle}/community`} className="st-card st-link-card px-5 py-4 text-center sm:px-6">
                 <span className="block font-bold">Members&apos; community</span>
-                <span className="st-muted mt-0.5 block text-sm">{`For people who bought from ${store.name}. Come in with the address you paid with.`}</span>
+                <span className="st-muted mt-0.5 block text-sm">{`For people who have one of the products that open it. Come in with the email address you used to get it.`}</span>
               </Link>
             </p>
           ) : null}
@@ -361,7 +365,7 @@ export default async function StorePage({ params, searchParams }: Params) {
             {store.affiliates.enabled ? (
               <p className="mb-4">
                 <Link href={`/@${store.handle}/affiliates`} className="st-footer-link text-sm font-semibold">
-                  {`Earn by sharing ${store.name}: the affiliate programme`}
+                  {`Earn by sharing ${store.name}: the affiliate program`}
                 </Link>
               </p>
             ) : null}

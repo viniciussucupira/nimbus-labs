@@ -42,7 +42,7 @@ const TABS: { kind: ImportKind; title: string; text: string; icon: IconName }[] 
   },
 ];
 
-const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+const DATE = new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
 
 function view(job: ImportJob): ImportView {
   return {

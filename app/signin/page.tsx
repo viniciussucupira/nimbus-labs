@@ -22,7 +22,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   },
   "move-none": {
     title: "That move no longer makes sense",
-    body: "The store it was carrying is not there any more. Nothing was changed.",
+    body: "The store it was carrying is not there anymore. Nothing was changed.",
   },
   "move-same": {
     title: "That is already the address in charge",
@@ -41,7 +41,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     body: "An invitation works once and lasts 7 days, and the store's owner can take it back. Ask them for a new one.",
   },
   "invite-gone": {
-    title: "That store is not there any more",
+    title: "That store is not there anymore",
     body: "The invitation was for a store that has since been deleted. Nothing was changed.",
   },
   "invite-full": {

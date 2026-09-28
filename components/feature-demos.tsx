@@ -147,7 +147,7 @@ export function BumpDemo() {
           {label}
         </button>
         <p className="mt-3 text-center text-[12px] text-ink-soft">
-          A drawing to try: nothing is charged here. The box is never ticked for the buyer.
+          A drawing to try: nothing is charged here. The box is never checked for the buyer.
         </p>
       </form>
     </Frame>

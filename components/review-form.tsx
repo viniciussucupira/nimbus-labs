@@ -4,8 +4,8 @@ import { MAX_REVIEW_NAME, MAX_REVIEW_TEXT, type Review } from "@/lib/review-summ
 /** What happened to the last thing sent, in the buyer's words. */
 export const REVIEW_NOTICES: Record<string, { text: string; alert?: boolean }> = {
   saved: { text: "Thank you. Your review is on the page now." },
-  updated: { text: "Your review is updated." },
-  deleted: { text: "Your review is deleted. Its stars are out of the average." },
+  updated: { text: "Your review has been updated." },
+  deleted: { text: "Your review has been deleted. Its stars no longer count in the average." },
   rating: { text: "Pick from one to five stars.", alert: true },
   refunded: { text: "This order was refunded, so it cannot be reviewed.", alert: true },
   expired: { text: "This link has expired. Ask for your purchases again from the store and review from there.", alert: true },

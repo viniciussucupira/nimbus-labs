@@ -255,7 +255,7 @@ export function CalendarEditor({ view: initial, weekly }: { view: CalendarView; 
               </button>
             </div>
             <p className="mt-2 text-xs text-ink-soft">
-              It holds your buyers&apos; names and addresses, so keep it to yourself. If it has been shared by mistake, make
+              It holds your buyers&apos; names and email addresses, so keep it to yourself. If it has been shared by mistake, make
               a new one: the old one stops working at once.
             </p>
             {!confirmRotate ? (

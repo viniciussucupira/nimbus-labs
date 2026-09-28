@@ -204,7 +204,7 @@ export async function requestCopy(input: {
       "",
       consent
         ? `You also said ${name} may send you emails. You can unsubscribe from any of them.`
-        : `You did not tick the box to hear from ${name}, so your address reaches them marked as having asked for this one thing, and nothing more.`,
+        : `You did not check the box to hear from ${name}, so your address reaches them marked as having asked for this one thing, and nothing more.`,
       "",
       "If you did not ask for this, ignore this email. Nothing happens unless the link is used.",
       "",

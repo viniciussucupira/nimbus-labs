@@ -20,7 +20,7 @@ export function BundleToggle({ product }: { product: Product }) {
       <div className="mt-3 rounded-[var(--r-sm)] border border-line bg-white p-4">
         <p className="text-sm font-semibold text-ink">{`Bundle · ${n} ${n === 1 ? "product" : "products"}`}</p>
         <p className="mt-1 text-sm text-ink-soft">
-          A buyer gets every product in it, each exactly as if they had bought it on its own: its download or link, its course and its licence key.
+          A buyer gets every product in it, each exactly as if they had bought it on its own: its download or link, its course and its license key.
         </p>
         <Link href={href} className="btn btn-primary btn-sm mt-3">
           Choose what is in it

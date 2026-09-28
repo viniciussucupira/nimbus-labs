@@ -199,12 +199,12 @@ export async function domainStatus(name: string, store: Pick<Store, "sid">): Pro
     const list = Array.isArray(config.body.recommendedIPv4) ? (config.body.recommendedIPv4 as { rank: number; value: string[] }[]) : [];
     const best = [...list].sort((a, b) => a.rank - b.rank)[0];
     const ip = best && Array.isArray(best.value) && typeof best.value[0] === "string" ? best.value[0] : "76.76.21.21";
-    records.push({ type: "A", name: "@", value: ip, why: "Sends visitors of your domain to your store." });
+    records.push({ type: "A", name: "@", value: ip, why: "Points your domain to your store." });
   } else {
     const list = Array.isArray(config.body.recommendedCNAME) ? (config.body.recommendedCNAME as { rank: number; value: string }[]) : [];
     const best = [...list].sort((a, b) => a.rank - b.rank)[0];
     const target = best && typeof best.value === "string" ? best.value.replace(/\.$/, "") : "cname.vercel-dns.com";
-    records.push({ type: "CNAME", name: hostPart(name, apex), value: target, why: "Sends visitors of this address to your store." });
+    records.push({ type: "CNAME", name: hostPart(name, apex), value: target, why: "Points this address to your store." });
   }
   if (!verified && Array.isArray(project.body.verification)) {
     for (const item of project.body.verification as { type?: string; domain?: string; value?: string }[]) {

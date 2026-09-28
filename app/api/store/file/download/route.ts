@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
   try {
     const result = await get(found.file.pathname, { access: "private" });
     if (!result || result.statusCode !== 200 || !result.stream) {
-      return new Response("The file is not there any more.", { status: 404 });
+      return new Response("The file is not there anymore.", { status: 404 });
     }
 
     await recordDelivery(found.file.pathname, found.file.bytes);

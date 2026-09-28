@@ -43,7 +43,7 @@ const PRODUCT_GROUPS: { label: string; items: MenuItem[] }[] = [
     label: "Get paid",
     items: [
       item("Your own Stripe", "The money lands in your account.", "/platform/your-stripe", "bank"),
-      item("Checkout tools", "Codes, add-ons, instalments, tax.", "/platform/checkout", "percent"),
+      item("Checkout tools", "Codes, add-ons, installments, tax.", "/platform/checkout", "percent"),
       item("Currencies and ways to pay", "15 currencies, Klarna, Apple Pay.", "/platform/currencies-and-ways-to-pay", "card"),
       item("Funnels", "Up to five offers after paying.", "/platform/funnels", "ladder"),
       item("Bundles", "Several products, one price.", "/platform/bundles", "basket"),
@@ -88,7 +88,7 @@ export const MENUS: Menu[] = [
     items: [
       {
         label: "Coaches and teachers",
-        description: "Worksheets, programmes, paid calls.",
+        description: "Worksheets, programs, paid calls.",
         href: "/for/coaches",
         icon: "cap",
       },
@@ -100,7 +100,7 @@ export const MENUS: Menu[] = [
       },
       {
         label: "Fitness creators",
-        description: "Programmes, challenges, form checks.",
+        description: "Programs, challenges, form checks.",
         href: "/for/fitness",
         icon: "dumbbell",
       },
@@ -131,7 +131,7 @@ export const MENUS: Menu[] = [
       },
       {
         label: "Compared with Gumroad",
-        description: "What 10% of every sale costs over a year.",
+        description: "What 10% plus 50 cents a sale costs, and when they win.",
         href: "/proof/gumroad",
         icon: "calculator",
       },
@@ -465,7 +465,7 @@ export function SiteNav() {
             </section>
           ))}
           <ul className="py-3">
-            {[...PLAIN_LINKS, { href: "/help", label: "Help centre" }].map((l) => (
+            {[...PLAIN_LINKS, { href: "/help", label: "Help center" }].map((l) => (
               <li key={l.href}>
                 <Link href={l.href} onClick={closeAll} className="flex min-h-[52px] items-center rounded-[var(--r-md)] px-2 font-medium text-ink active:bg-sand">
                   {l.label}

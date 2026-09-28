@@ -19,7 +19,7 @@ type Params = {
 const NOTICES: Record<string, { title: string; body: string }> = {
   email: {
     title: "That does not look like an email address",
-    body: "Check it and try again. Use the address you pay with; it is the one Stripe sends your receipts to.",
+    body: "Check it and try again. Use the address you pay with: the one you typed when you joined.",
   },
   limited: {
     title: "Too many requests for now",
@@ -27,7 +27,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   },
   unavailable: {
     title: "This store cannot do this here",
-    body: "Its payments are not connected to Stripe right now, so there is no membership to open from this page. Reply to the receipt Stripe emailed you and it reaches the store.",
+    body: "Its payments are not connected to Stripe right now, so there is no membership to open from this page. Reply to your order confirmation email and it reaches the store.",
   },
   error: {
     title: "Something went wrong on our side",
@@ -122,7 +122,7 @@ export default async function ManagePage({ params, searchParams }: Params) {
                 Your membership
               </h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
-                {`Press the button and Stripe shows your membership with ${store.name}. You can cancel it there in one click, change the card it is paid with, or see your receipts.`}
+                {`Press the button and Stripe shows your membership with ${store.name}. There you can cancel it, change the card it is paid with, or see your receipts.`}
               </p>
               <form action="/api/store/manage/open" method="post" className="mt-7">
                 <input type="hidden" name="handle" value={store.handle} />
@@ -144,7 +144,7 @@ export default async function ManagePage({ params, searchParams }: Params) {
                 {`If that address has a membership with ${store.name}, the link is on its way. It comes from ${store.name} via Nimbus Labs and usually arrives within a minute. If it is not there, look in spam.`}
               </p>
               <p className="st-muted mt-4 text-sm">
-                Nothing arrived? You may pay with a different address. It is the one your Stripe receipts go to. Try that one below.
+                Nothing arrived? You may pay with a different address: the one you typed when you joined. Try that one below.
               </p>
               {available ? form : null}
             </>
@@ -161,8 +161,8 @@ export default async function ManagePage({ params, searchParams }: Params) {
               </h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
                 {available
-                  ? `Type the email you pay ${store.name} with and we send you a link to your membership. No account and no password: you cancel it yourself, in one click, on Stripe's own page.`
-                  : `${store.name} cannot take payments through Stripe right now, so there is no membership to open from here. Reply to the receipt Stripe emailed you and it reaches them.`}
+                  ? `Type the email you pay ${store.name} with and we send you a link to your membership. No account and no password: you cancel it yourself, on Stripe's own page.`
+                  : `${store.name} cannot take payments through Stripe right now, so there is no membership to open from here. Reply to your order confirmation email and it reaches them.`}
               </p>
               {available ? form : null}
             </>

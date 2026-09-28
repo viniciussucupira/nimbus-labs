@@ -70,7 +70,7 @@ function StoreCard({ block, hero = false }: { block: Extract<Block, { kind: "sto
         <Icon name="info" size={16} className="mt-0.5 shrink-0" />
         <span>
           {block.creator === "Harbor Kitchen"
-            ? "The live demo store. Jenny is a fictional cook; the checkout and the files are real."
+            ? "The live demo store. Jenny is a fictional cook; the checkout is a real Stripe checkout in test mode, and the files are real."
             : `An example: ${block.creator} is an invented creator, and every product type shown works today.`}
         </span>
       </p>

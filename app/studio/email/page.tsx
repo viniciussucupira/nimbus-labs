@@ -63,7 +63,7 @@ export default async function StudioEmailPage({ searchParams }: Params) {
         <p className="eyebrow">Email</p>
         <h1 className="t-h2 mt-3">Write to your list</h1>
         <p className="mt-3 max-w-2xl text-ink-soft">
-          Only the people who agreed to hear from you are written to: those who ticked the box when they got
+          Only the people who agreed to hear from you are written to: those who checked the box when they got
           something free or bought from you, and those you import who agreed elsewhere. Every email carries a
           one-click unsubscribe, and anyone who leaves is never written to again.
         </p>

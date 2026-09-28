@@ -23,7 +23,7 @@ const SHORT_WORDS: Record<CurrencyShortfall["what"], string> = {
 /** The ways to pay, grouped the way a buyer thinks of them, each group with the one thing worth knowing. */
 const GROUPS: { title: string; has: WayGroup[]; note?: string }[] = [
   { title: "Cards and wallets", has: ["card", "wallet"], note: "Apple Pay and Google Pay pay with a card; Link fills in Stripe's saved details." },
-  { title: "Pay later", has: ["later"], note: "The buyer pays in instalments; you are paid in full." },
+  { title: "Pay later", has: ["later"], note: "The buyer pays in installments; you are paid in full." },
   { title: "Bank payments", has: ["bank"], note: "Paid from the buyer's bank and confirmed on the spot." },
   { title: "Other", has: ["other"] },
 ];
@@ -106,7 +106,7 @@ export function PaymentsPanel({
       if (data.error === "memberships") {
         const n = data.running ?? 1;
         setError(
-          `${n === 1 ? "A membership or payment plan is" : `${n} memberships and payment plans are`} still running on your Stripe account, charging in ${currency.toUpperCase()}. Stripe keeps charging ${n === 1 ? "it" : "them"} in ${currency.toUpperCase()} whatever the store says, so the currency can be changed once the last one has ended or been cancelled.`,
+          `${n === 1 ? "A membership or payment plan is" : `${n} memberships and payment plans are`} still running on your Stripe account, charging in ${currency.toUpperCase()}. Stripe keeps charging ${n === 1 ? "it" : "them"} in ${currency.toUpperCase()} whatever the store says, so the currency can be changed once the last one has ended or been canceled.`,
         );
         return;
       }
@@ -202,15 +202,14 @@ export function PaymentsPanel({
               <Icon name="repeat" size={16} className="mt-0.5 shrink-0 text-ink-mute" />
               <span>Memberships and payment plans show only the ways Stripe can charge again every period.</span>
             </li>
-            {!ways.paypal ? (
-              <li className="flex gap-2">
-                <Icon name="info" size={16} className="mt-0.5 shrink-0 text-ink-mute" />
-                <span>
-                  PayPal through Stripe is offered only to Stripe accounts in the EU (except Hungary), the UK,
-                  Switzerland, Norway and Liechtenstein. Where your account can take it, it is switched on in the same place.
-                </span>
-              </li>
-            ) : null}
+            <li className="flex gap-2">
+              <Icon name="info" size={16} className="mt-0.5 shrink-0 text-ink-mute" />
+              <span>
+                {ways.paypal
+                  ? "PayPal is on in your Stripe account, but do not count on it at your checkout here: Stripe's documentation lists PayPal as not supported for direct charges, which is how every sale here is charged on your own account."
+                  : "PayPal is not offered here. Stripe offers it only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein, and its documentation lists it as not supported for direct charges, which is how every sale here is charged on your own account."}
+              </span>
+            </li>
           </ul>
         </>
       )}

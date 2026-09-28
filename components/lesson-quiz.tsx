@@ -67,7 +67,7 @@ export function LessonQuiz({
 
       {mode === "owner" ? (
         <p className="st-note mt-3 text-sm">
-          You see the right answers because this is your course. Students see the questions only, and the answers after they have tried.
+          You see the right answers because this is your course. Students see only the questions; the right answers appear once they pass or run out of tries.
         </p>
       ) : last ? (
         <div
@@ -87,8 +87,8 @@ export function LessonQuiz({
               : left === 0
                 ? `You have used all ${quiz.attempts} ${quiz.attempts === 1 ? "try" : "tries"}. The right answers are below. To try again, reply to your purchase confirmation email: it reaches ${storeName}, who can give you more tries.`
                 : left === null
-                  ? "Look at the ones marked not quite and try again. You can try as often as you like."
-                  : `Look at the ones marked not quite and try again. ${left} ${left === 1 ? "try" : "tries"} left.`}
+                  ? "Look at the ones marked “Not quite” and try again. You can try as often as you like."
+                  : `Look at the ones marked “Not quite” and try again. ${left} ${left === 1 ? "try" : "tries"} left.`}
           </p>
         </div>
       ) : (

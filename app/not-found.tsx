@@ -38,7 +38,7 @@ export default function NotFound() {
           </div>
           <ul className="mt-14 grid gap-4 sm:grid-cols-3">
             {[
-              { href: "/help", icon: "info" as const, title: "Help centre", body: "Answers about the product as it is today." },
+              { href: "/help", icon: "info" as const, title: "Help center", body: "Answers about the product as it is today." },
               { href: "/#pricing", icon: "tag" as const, title: "Pricing", body: "Two plans, and 0% of your sales on both." },
               { href: "/signin", icon: "store" as const, title: "Your store", body: "Log in with a link sent to your email." },
             ].map((item) => (

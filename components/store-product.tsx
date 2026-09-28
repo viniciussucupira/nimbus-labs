@@ -194,7 +194,7 @@ export function BuyBox({
           Email it to me
         </button>
         <p className="st-muted text-xs">
-          {`We email you a link to it. ${store.name} gets your address, marked with whether you ticked the box, and Nimbus uses it for nothing else.`}
+          {`A link to it is emailed to you. Once you use it, ${store.name} gets your address, marked with whether you checked the box. Nimbus uses it for nothing else.`}
         </p>
       </form>
     ) : (

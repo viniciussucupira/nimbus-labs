@@ -71,16 +71,16 @@ const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
   busy: "Another import is running on this store. Wait for it to finish, or cancel it, and start this one after.",
   too_many: "That is more rows than this import takes. Split the file and bring it in parts.",
-  consent: "Tick the box to confirm these people agreed to receive your emails. Nobody is added without it.",
-  email: "Emailing buyers needs your store's plan to be active. Untick the box, or start your plan first.",
+  consent: "Check the box to confirm these people agreed to receive your emails. Nobody is added without it.",
+  email: "Emailing buyers needs your store's plan to be active. Uncheck the box, or start your plan first.",
   list: "Your store's list could not be set up. Try again in a moment.",
   store: "Open the studio once, then come back here.",
   rows: "Part of the file could not be sent. Try again.",
   state: "This import is no longer taking rows. Start it again.",
   unknown: "That import is no longer here. Start it again.",
-  slow: "That was a lot in a short time. Wait a few minutes and try again.",
+  slow: "That was a lot in a short time. Wait a while and try again.",
   signed_out: "Your session ended. Log in again.",
-  role: "Only the store's owner and admins can import.",
+  role: "Only the store's owner and Admins can import.",
   unavailable: "Imports are not switched on yet.",
   server_error: "Something went wrong on our side. Nothing more was changed. Try again in a moment.",
 };
@@ -121,7 +121,7 @@ export function ImportProgress({
           : job.state === "done"
             ? "Finished"
             : job.state === "canceled"
-              ? "Cancelled. What was brought in before stays."
+              ? "Canceled. What was brought in before stays."
               : "Stopped: the store is no longer there.";
   const report = `/api/store/import?${new URLSearchParams({ id: job.id, report: "1", ...(sid ? { store: sid } : {}) })}`;
   return (
@@ -394,7 +394,7 @@ export function ImportTool({
       const data = await post({ action: "cancel", id: job.id });
       if (data.ok && data.import) {
         setJob(data.import);
-        toast("Import cancelled.");
+        toast("Import canceled.");
         router.refresh();
       } else setError(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
     } catch {
@@ -411,7 +411,7 @@ export function ImportTool({
     <div className="space-y-5">
       {other ? (
         <p className="notice notice-warn text-sm">
-          {`An import of ${WORDS[other.kind].noun} is running on this store. It has to finish, or be cancelled, before another starts.`}
+          {`An import of ${WORDS[other.kind].noun} is running on this store. It has to finish, or be canceled, before another starts.`}
         </p>
       ) : null}
 
@@ -538,7 +538,7 @@ export function ImportTool({
               ) : (
                 <div className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
                   <p className="text-sm text-ink-soft">
-                    {`Each buyer can open what they bought from ${storeName}'s list of purchases, with the email in the file, as a purchase brought over from another platform, and comes into your community when that product opens it. Nothing is charged and no receipt is sent. Memberships and calls cannot be given this way.`}
+                    {`Each buyer, by the email in the file, can open what they bought from ${storeName}'s list of purchases, marked as a purchase brought over from another platform, and comes into your community when that product opens it. Nothing is charged and no receipt is sent. Memberships and calls cannot be given this way.`}
                   </p>
                   <label htmlFor="import-email" className={`flex items-start gap-3 ${canEmail ? "cursor-pointer" : "opacity-60"}`}>
                     <input id="import-email" type="checkbox" checked={email} disabled={!canEmail} onChange={(e) => setEmail(e.target.checked)} className="mt-1 h-5 w-5 shrink-0" />

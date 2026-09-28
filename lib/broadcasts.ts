@@ -170,7 +170,7 @@ export async function advanceBroadcast(
     if (b.status === "scheduled" && b.sendAt > now) return b;
     const store = await load(b.handle);
     if (!store || store.listId !== b.listId) {
-      b = { ...b, status: "failed", note: "The store is not here any more.", finishedAt: now };
+      b = { ...b, status: "failed", note: "The store is not here anymore.", finishedAt: now };
       await save(b);
       await redisPipeline([["SREM", QUEUE, id]]);
       return b;

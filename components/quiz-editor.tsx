@@ -15,6 +15,7 @@ import {
   type Quiz,
   type QuizSetup,
 } from "@/lib/quiz";
+import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 type DraftQuestion = {
   id: string;
@@ -47,9 +48,9 @@ function problemText(problem: { reason?: string; at?: number | null } | undefine
     case "choice":
       return `Question ${n}: two of its answers are the same.`;
     case "correct":
-      return `Question ${n}: tick the right answer.`;
+      return `Question ${n}: check the right answer.`;
     case "single":
-      return `Question ${n}: it has one right answer, so tick just one — or switch it to several right answers.`;
+      return `Question ${n}: it has one right answer, so check just one — or switch it to several right answers.`;
     default:
       return "Something went wrong on our side. Nothing was saved; try again in a moment.";
   }
@@ -117,7 +118,7 @@ export function QuizEditor({
         onCourse(data.course);
         return true;
       }
-      setError(data.error === "quiz" ? problemText(data.problem) : data.error === "signed_out" ? "Your session ended. Log in again." : problemText(undefined));
+      setError(data.error === "quiz" ? problemText(data.problem) : data.error === "signed_out" ? "Your session ended. Log in again." : STUDIO_MESSAGES[data.error ?? ""] ?? problemText(undefined));
       return false;
     } catch {
       setError(problemText(undefined));
@@ -268,7 +269,7 @@ export function QuizEditor({
                 </div>
               </fieldset>
               <fieldset className="mt-3">
-                <legend className="text-sm font-semibold text-ink">Answers — tick the right {question.kind === "single" ? "one" : "ones"}</legend>
+                <legend className="text-sm font-semibold text-ink">Answers — check the right {question.kind === "single" ? "one" : "ones"}</legend>
                 <ul className="mt-2 space-y-2">
                   {question.choices.map((choice, ci) => (
                     <li key={ci} className="flex items-center gap-2">

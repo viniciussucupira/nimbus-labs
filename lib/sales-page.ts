@@ -60,7 +60,7 @@ export type BlockKind = "hero" | "text" | "benefits" | "inside" | "bio" | "faq" 
 export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "hero", label: "Hero", hint: "The big headline at the top, with the product's picture or a video." },
   { kind: "text", label: "Text", hint: "A heading and paragraphs. A line starting with “- ” is a point in a list." },
-  { kind: "benefits", label: "Benefits", hint: `Up to ${MAX_BENEFITS} short points, each with a tick.` },
+  { kind: "benefits", label: "Benefits", hint: `Up to ${MAX_BENEFITS} short points, each with a check mark.` },
   { kind: "inside", label: "What's inside", hint: `Up to ${MAX_INSIDE_ITEMS} parts, numbered, each with a line about it.` },
   { kind: "bio", label: "About you", hint: "Who made this, with your store photo." },
   { kind: "faq", label: "Questions", hint: `Up to ${MAX_FAQ_ITEMS} questions and answers that open and close.` },

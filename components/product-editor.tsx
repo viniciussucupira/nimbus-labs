@@ -70,6 +70,10 @@ const OPTION_MESSAGES: Record<string, string> = {
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
+  call: "This is a paid call, so it has one price. Stop selling it as a call first to add others.",
+  course: "A course is sold at one price, so it cannot have several.",
+  bundle: "A bundle has one price for everything in it, so it cannot have several.",
+  store_full: "Your store has reached the most it can hold. Remove something, or shorten a long list of choices, to make room.",
 };
 
 /** Why a price the buyer chooses was refused, in words the creator can act on. */
@@ -85,14 +89,14 @@ const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
   title: "Give it a name before saving.",
   trial: `Type a free trial of ${MIN_TRIAL_DAYS} to ${MAX_TRIAL_DAYS} days, or leave it empty for none.`,
-  payments: `Type ${MIN_MEMBER_PAYMENTS} to ${MAX_MEMBER_PAYMENTS} payments, or leave it empty for a membership that runs until it is cancelled.`,
+  payments: `Type ${MIN_MEMBER_PAYMENTS} to ${MAX_MEMBER_PAYMENTS} payments, or leave it empty for a membership that runs until it is canceled.`,
   store_full: "Your store has reached the most it can hold. Remove something, or shorten a long list of choices, to make room.",
   free: "Something free is given once, for an email address, so it cannot be a membership or have several prices. Take those off first.",
   unknown: "That is no longer on your store.",
   call: "This is a paid call, so it has one price, charged once, and delivers a time rather than a file. Stop selling it as a call first to change that.",
-  course: "This is a course, so it is sold, and it delivers its lessons rather than one file. Its lessons are changed from its own page.",
+  course: "This is a course: it cannot be free, and it delivers its lessons rather than a file or a link of its own. Its lessons are changed from its own page.",
   bundle: "This is a bundle: one sale, at one price, of the products in it. It cannot be free, a membership, pay what you want, have several prices or a file of its own. Change what is in it on its bundle page.",
-  too_big: `That file is over ${maxFileLabel()}, which is the most a store can hold.`,
+  too_big: `That file is over ${maxFileLabel()}, the largest one file can be.`,
   wrong_type: "That kind of file is not one a store can sell here.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
@@ -420,15 +424,15 @@ function ProductForm({
           <option value="">Once — a single sale</option>
           {INTERVALS.map((interval) => (
             <option key={interval} value={interval}>
-              {`${intervalName(interval)} \u2014 charged ${everyLabel(interval)}`}
+              {`${intervalName(interval)} \u2014 charged once ${everyLabel(interval)}`}
             </option>
           ))}
         </select>
         <p className="mt-1 text-sm text-ink-soft">
           {draft.every
-            ? `A membership. The member is charged ${everyLabel(
+            ? `A membership. The member is charged once ${everyLabel(
                 draft.every,
-              )} on your own Stripe account until it is cancelled. A member who wants to stop writes to you — a reply to the receipt Stripe sends them reaches you — and you cancel it in your Stripe dashboard. Taking access back when somebody stops paying is yours to do, wherever you keep the thing.`
+              )} on your own Stripe account until it is canceled. Members can cancel it themselves from your store's membership page, linked in their confirmation email and under the membership on your page, and you can cancel it in your Stripe dashboard. A file or course delivered here closes when the membership ends; access to a link that leads somewhere else is yours to take back.`
             : "Most things are sold once. Pick a schedule to make this a membership instead."}
         </p>
         {draft.every ? (
@@ -466,7 +470,7 @@ function ProductForm({
                 step={1}
                 value={draft.payments}
                 onChange={(event) => setDraft({ ...draft, payments: event.target.value })}
-                placeholder="Until cancelled"
+                placeholder="Until canceled"
                 className="field mt-2"
               />
               <p className="mt-1 text-sm text-ink-soft">
@@ -1751,8 +1755,10 @@ export function ProductEditor({
                     <p className="text-sm text-ink-soft">
                       Remove{" "}
                       <strong className="text-ink">{product.title}</strong> from
-                      your page. Its picture and description go with it; nothing
-                      else changes, and you can add it again later.
+                      your store. Its files, picture, description, page, reviews
+                      and any course lessons are deleted with it and cannot be
+                      brought back; sales already made stay in your Stripe account.
+                      {product.hidden ? null : " To take it off your store but keep it, unpublish it instead."}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
@@ -1928,12 +1934,12 @@ export function ProductEditor({
               Your page can take a card for this.
             </strong>{" "}
             What you write here is on your page the moment you save it, and a
-            buyer can pay for it straight away, on your own Stripe account,
-            with nothing taken on top.
+            buyer can pay for it straight away, on your own Stripe account.
+            Nimbus takes no cut of the sale.
           </>
         )}{" "}
-        Your file is kept where only this account can reach it, and it is never
-        named or linked on the public page.
+        Your file is kept private to your store, and it is never named or
+        linked on the public page.
       </p>
     </div>
     </StoreCurrency>

@@ -670,7 +670,7 @@ export function eventFields(event: Pick<CommunityEvent, "start" | "tz">): { date
 
 /** "Starts in 3 days", "Starts in 40 minutes", "On now", "Ended". */
 export function eventWhenWords(event: CommunityEvent, now = Date.now()): string {
-  if (event.cancelled) return "Cancelled";
+  if (event.cancelled) return "Canceled";
   if (isOver(event, now)) return "Ended";
   if (event.start <= now) return "On now";
   const ms = event.start - now;

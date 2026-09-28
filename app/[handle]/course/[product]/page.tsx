@@ -161,7 +161,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
               </p>
               {canManage(store) ? (
                 <p className="mt-2 text-sm">
-                  {"Did a payment fail rather than you cancelling? Updating the card may bring it back: "}
+                  {"Did a payment fail rather than you canceling? Updating the card may bring it back: "}
                   <Link href={`/@${store.handle}/manage`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>
                     manage your membership
                   </Link>
@@ -259,7 +259,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
               {preview ? (
                 <p className="text-sm">
                   <Link href={`${base}/${preview.lesson.id}`} className="font-semibold underline underline-offset-2" style={{ color: "var(--st-text)" }}>
-                    {`Watch a free lesson first: ${preview.lesson.title}`}
+                    {`Try a free lesson first: ${preview.lesson.title}`}
                   </Link>
                 </p>
               ) : null}

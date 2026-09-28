@@ -115,9 +115,9 @@ export function PixelEditor({ pixels }: { pixels: Pixels }) {
               books, a lead when someone asks for something free, and a purchase with its amount once it is paid.
             </p>
             <p className="mt-2">
-              These platforms set cookies, so visitors in the EU, the UK, Switzerland and Brazil are asked first and
-              nothing loads unless they say yes. Everywhere else the pixels load unless the visitor&apos;s browser asks
-              not to be tracked. The ads, and what you do with what they measure, are yours: say in your own privacy
+              These platforms set cookies, so visitors in the EU, Iceland, Liechtenstein, Norway, the UK, Switzerland and
+              Brazil, and visitors whose country is not known, are asked first and nothing loads unless they say yes.
+              Everywhere else the pixels load unless the visitor&apos;s browser sends a Global Privacy Control signal. The ads, and what you do with what they measure, are yours: say in your own privacy
               notice that you use them.
             </p>
           </div>

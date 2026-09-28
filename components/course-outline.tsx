@@ -1,10 +1,7 @@
 import Link from "next/link";
 import type { Course } from "@/lib/course";
 import { isOpen, opensAt } from "@/lib/course";
-
-function day(seconds: number): string {
-  return new Date(seconds * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
-}
+import { LocalDay } from "@/components/local-day";
 
 /**
  * The course as a list: modules, their lessons, and for this visitor what is
@@ -38,9 +35,13 @@ export function CourseOutline({
             <p className="font-semibold" style={{ color: "var(--st-text)" }}>{unit.title}</p>
             {unit.dripDays > 0 && !open ? (
               <p className="st-muted mt-0.5 text-sm">
-                {start !== null
-                  ? `Opens on ${day(opensAt(unit, start))}`
-                  : `Opens ${unit.dripDays} ${unit.dripDays === 1 ? "day" : "days"} after you join`}
+                {start !== null ? (
+                  <>
+                    Opens on <LocalDay seconds={opensAt(unit, start)} />
+                  </>
+                ) : (
+                  `Opens ${unit.dripDays} ${unit.dripDays === 1 ? "day" : "days"} after you enroll`
+                )}
               </p>
             ) : null}
             {unit.lessons.length === 0 ? (

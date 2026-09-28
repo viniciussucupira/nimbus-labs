@@ -20,7 +20,7 @@ const MESSAGES: Record<string, string> = {
   full: "A store's team holds five people, invitations waiting included.",
   limited: "That is a lot of invitations for one day. Try again tomorrow.",
   unsent: "The invitation email could not be sent just now, so nothing was kept. Try again in a moment.",
-  unknown: "That is not there any more. Reload the page.",
+  unknown: "That is not there anymore. Reload the page.",
   same: "They already have that role.",
   signed_out: "Your session ended. Log in again.",
   server_error: "Something went wrong on our side. Try again in a moment.",
@@ -90,7 +90,7 @@ export function TeamManager({
           <h2 id="people-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">
             People on this store
           </h2>
-          <span className="text-sm tabular-nums text-ink-soft">{`${used} of ${max} invited`}</span>
+          <span className="text-sm tabular-nums text-ink-soft">{`${used} of ${max} places used`}</span>
         </div>
         <ul className="mt-4 divide-y divide-line">
           <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3">
@@ -245,7 +245,7 @@ const ROWS: { what: string; permission: Permission }[] = [
   { what: "Hide, show and answer reviews", permission: "reviews" },
   { what: "Write and keep email drafts", permission: "draft" },
   { what: "Send email to your list, sequences, imports", permission: "send" },
-  { what: "Address, domain, currency, pixels, tax, webhooks, discounts, affiliates, review emails, email platforms", permission: "settings" },
+  { what: "Address, domain, currency, pixels, tax, webhooks, discounts, affiliates, checkout reminders, review emails, video calls, calendars, email platforms", permission: "settings" },
   { what: "Download files of buyers' and affiliates' addresses", permission: "export" },
 ];
 

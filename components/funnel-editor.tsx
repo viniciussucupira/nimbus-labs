@@ -16,7 +16,7 @@ import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
-  target: "Pick a product for every offer: another product of yours with one price and a file or a link on it.",
+  target: "Pick a product for every offer: another product of yours with one price, no limit on how many can be sold, and a file, a link or a bundle behind it.",
   repeat: "An offer that follows a yes cannot offer the same product again: the buyer already has it.",
   shape: `Keep between 1 and ${MAX_FUNNEL_STEPS} offers, each leading only to an offer further down the list.`,
   kind: "Offers follow one-off paid products only.",
@@ -229,7 +229,7 @@ export function FunnelEditor({
 
       {offerable.length === 0 ? (
         <p className="notice notice-warn mt-6 text-sm">
-          To offer something, add another product with one price and a file or a link on it.
+          To offer something, add another product with one price and a file, a link or a bundle behind it.
         </p>
       ) : null}
 

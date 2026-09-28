@@ -235,10 +235,10 @@ export function eventMailWords(
   const when = `${eventTime(event)}, ${lengthWords(event.minutes)}`;
   if (job.kind === "cancelled") {
     return {
-      subject: `Cancelled: ${event.title}`,
+      subject: `Canceled: ${event.title}`,
       body: [
-        `${store.name} has cancelled "${event.title}", the live event in ${config.name} planned for ${eventTime(event)}.`,
-        "There is nothing for you to do: your RSVP is cancelled with it.",
+        `${store.name} has canceled "${event.title}", the live event in ${config.name} planned for ${eventTime(event)}.`,
+        "There is nothing for you to do: your RSVP is canceled with it.",
         `Everything else in ${config.name} is where it was: ${SITE_URL}/@${store.handle}/community/events`,
       ].join("\n\n"),
       why: `You are getting this because you RSVP'd to this event in ${config.name}. It is sent once.`,
@@ -263,7 +263,7 @@ export function eventMailWords(
       `A reminder: "${event.title}", a live event in ${config.name}, starts ${soon}.`,
       when,
       `Join from the event page. The way in shows there ${JOIN_EARLY_MINUTES} minutes before the start:\n${page}`,
-      "Cannot make it any more? Cancel your RSVP on the same page.",
+      "Cannot make it anymore? Cancel your RSVP on the same page.",
     ].join("\n\n"),
     why: `You are getting this because you RSVP'd to this event and asked to be emailed by ${config.name}.`,
   };
@@ -295,7 +295,7 @@ export async function advanceEventJob(
       await redisPipeline([["DEL", toKey(id)], ["SREM", JOBS, id]]);
       return job;
     };
-    if (!store || !config || !event) return await finish("failed", "The event is not there any more.");
+    if (!store || !config || !event) return await finish("failed", "The event is not there anymore.");
     const reminder = job.kind === "24" || job.kind === "1";
     // A reminder for a time the event has left, or for an event called off, is no use.
     if (reminder && (event.cancelled || event.start !== job.start || !stillUseful(job.kind, event.start, Date.now()))) {

@@ -67,7 +67,7 @@ export function BundleDelivery({
                 </a>
               ) : (
                 <p className="st-muted mt-2 text-sm">
-                  {`This one has nothing attached right now. Reply to your receipt and ${storeName} will send it.`}
+                  {`This one has nothing attached right now. Reply to your order confirmation email to ask ${storeName} for it.`}
                 </p>
               )}
               {line.keyBox}
@@ -77,7 +77,7 @@ export function BundleDelivery({
       </ul>
       {missing > 0 ? (
         <p className="st-muted mt-3 text-sm">
-          {`${missing === 1 ? "One product" : `${missing} products`} of this bundle ${missing === 1 ? "is" : "are"} no longer in ${storeName}'s store, so there is nothing here to open for ${missing === 1 ? "it" : "them"}. Reply to your receipt and it reaches ${storeName}.`}
+          {`${missing === 1 ? "One product" : `${missing} products`} of this bundle ${missing === 1 ? "is" : "are"} no longer in ${storeName}'s store, so there is nothing here to open for ${missing === 1 ? "it" : "them"}. Reply to your order confirmation email and it reaches ${storeName}.`}
         </p>
       ) : null}
     </section>

@@ -77,7 +77,7 @@ export async function serveFile(file: ProductFile): Promise<Response> {
   try {
     const result = await get(file.pathname, { access: "private" });
     if (!result || result.statusCode !== 200 || !result.stream) {
-      return plain(404, "The file is not there any more.");
+      return plain(404, "The file is not there anymore.");
     }
 
     await recordDelivery(file.pathname, file.bytes);

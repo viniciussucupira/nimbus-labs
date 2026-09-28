@@ -64,7 +64,7 @@ export function EventCard({
         <DateLeaf event={event} />
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap gap-1.5">
-            {event.cancelled ? <span className="cm-badge cm-badge-warn">Cancelled</span> : null}
+            {event.cancelled ? <span className="cm-badge cm-badge-warn">Canceled</span> : null}
             {live ? <span className="cm-badge cm-badge-creator ev-live">On now</span> : null}
             {!live && open ? <span className="cm-badge cm-badge-accent">Doors open</span> : null}
             {mine && !over && !event.cancelled ? <span className="cm-badge cm-badge-accent">You are going</span> : null}

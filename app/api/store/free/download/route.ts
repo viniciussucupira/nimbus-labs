@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   const { claim } = used;
 
   const store = await storeForHandle(claim.h);
-  if (!store) return plain(404, "This store is not here any more.");
+  if (!store) return plain(404, "This store is not here anymore.");
 
   // Looked up again rather than trusted from the claim: a product the creator
   // has since removed, or started charging for, is not handed out for free

@@ -26,7 +26,7 @@ export function LicenceKeyBox({
 
   return (
     <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line-strong)", background: "var(--st-item)" }}>
-      <p className="st-label">{title ? `Your licence key for ${title}` : "Your licence key"}</p>
+      <p className="st-label">{title ? `Your license key for ${title}` : "Your license key"}</p>
       {value ? (
         <>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -66,7 +66,7 @@ export function LicenceKeyBox({
           </div>
           <p className="st-muted mt-2 text-sm">
             {revoked
-              ? `${storeName} has marked this key as no longer valid. If you think that is a mistake, reply to your receipt and it reaches them.`
+              ? `${storeName} has marked this key as no longer valid. If you think that is a mistake, reply to your order confirmation email and it reaches them.`
               : "It is yours alone: nobody else is given this key. It is also in your confirmation email and on your list of purchases."}
           </p>
         </>

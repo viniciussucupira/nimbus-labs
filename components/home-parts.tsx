@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/icons";
 import { HOME_QUESTIONS } from "@/lib/home-faq";
-import { PLAN_PRICES, PRO_MONTHLY_EMAILS, TRIAL_DAYS, TRIAL_MONTHLY_EMAILS, yearSaving } from "@/lib/plan";
+import { PLAN_NAMES, PLAN_PRICES, PRO_MONTHLY_EMAILS, TRIAL_DAYS, TRIAL_MONTHLY_EMAILS, yearSaving } from "@/lib/plan";
 
 /* Reveals every element with .reveal as it scrolls into view, once. */
 export function RevealOnScroll() {
@@ -355,9 +355,9 @@ const INCLUDED = [
   "Up to three prices on any product, bundles of 2 to 20 products, pay what you want, discount codes and payment plans",
   "15 currencies, and Apple Pay, Google Pay, Klarna and the other ways to pay you switch on in Stripe",
   "Offers before and after paying: a box at checkout, and up to five one-click offers after",
-  "An affiliate programme with a page for each affiliate; you pay them yourself",
+  "An affiliate program with a page for each affiliate; you pay them yourself",
   "Ad pixels, and your own numbers counted without cookies, as CSV files too",
-  "Licence keys, stamped PDFs, course quizzes and certificates",
+  "License keys, stamped PDFs, course quizzes and certificates",
   "A private video room for each booking if you want one, and calendar sync for your calls",
   "Mailchimp, Kit, beehiiv or MailerLite built in, and webhooks for Zapier or Make",
   "A team of up to five per store with roles, and notifications of sales on your phone",
@@ -367,11 +367,11 @@ const INCLUDED = [
 ];
 
 const PRO_INCLUDED = [
-  "Everything in Nimbus",
+  `Everything in ${PLAN_NAMES.creator}`,
   "One-off emails to your list, now or at a time you choose",
   "Sequences that go out by themselves after someone joins or buys",
   `Up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month (${TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")} during the free trial), from your name, with replies coming to you`,
-  "One-click unsubscribe in every email, honoured for good",
+  "One-click unsubscribe in every email, honored for good",
   "Community announcements emailed to the members who asked for them, from the same monthly emails",
   "One email that asks each buyer for a review, 3 to 30 days after buying",
 ];
@@ -479,7 +479,7 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
       </div>
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
         <PlanCard
-          name="Nimbus"
+          name={PLAN_NAMES.creator}
           tag="Everything to sell"
           bestFor="For a creator putting a store up and selling from it."
           tier="creator"
@@ -489,7 +489,7 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
           yearly={yearly}
         />
         <PlanCard
-          name="Nimbus Pro"
+          name={PLAN_NAMES.pro}
           tag={domains ? "Email and your own domain" : "With email to your list"}
           bestFor="For a creator with a list to write to, and sell to again."
           tier="pro"
@@ -505,7 +505,7 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
           <Icon name="clock" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
           <span>
             <strong className="font-semibold text-ink">{`Free for the first ${TRIAL_DAYS} days.`}</strong>
-            {" We email you a week before the first charge, and cancelling before it means your card is never charged. Cancel in one click from your studio. No email to us, no chat, no second request."}
+            {" We email you a week before the first charge, and canceling before it means your card is never charged. Cancel in one click from your studio. No email to us, no chat, no second request."}
           </span>
         </p>
         <p className="flex gap-2 text-ink-soft">
@@ -610,7 +610,7 @@ function CostAtVolume() {
         })}
       </ul>
       <p className="mt-3 text-xs text-ink-mute">
-        {`Nimbus and Stan's Creator plan are both $${flat} a month with 0% of sales; Pro and Stan's Creator Pro are both $${PLAN_PRICES.pro.month / 100}. Gumroad takes 10% plus 50 cents on a sale you bring yourself and has no monthly fee, so under about nine sales a month it costs less. Prices read on each company's own pricing page on 20 September 2026.`}
+        {`Nimbus Labs and Stan's Creator plan are both $${flat} a month with 0% of sales; Nimbus Labs Pro and Stan's Creator Pro are both $${PLAN_PRICES.pro.month / 100}. Gumroad takes 10% plus 50 cents on a sale you bring yourself and has no monthly fee, so under about nine sales a month it costs less. Prices read on each company's own pricing page on September 20, 2026.`}
       </p>
     </div>
   );

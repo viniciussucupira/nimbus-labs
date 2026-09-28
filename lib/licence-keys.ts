@@ -661,11 +661,11 @@ async function warnIfLow(store: Store, product: Listing): Promise<void> {
   await sendEmail({
     from: `"Nimbus Labs" <${senderAddress()}>`,
     to: store.email,
-    subject: count === 0 ? `No licence keys left for ${product.title}` : `${count} licence ${count === 1 ? "key" : "keys"} left for ${product.title}`,
+    subject: count === 0 ? `No license keys left for ${product.title}` : `${count} license ${count === 1 ? "key" : "keys"} left for ${product.title}`,
     text: [
       count === 0
-        ? `The last licence key for ${product.title} has just been given to a buyer. Until you add more, the product shows as sold out on your store and no checkout opens for it.`
-        : `${product.title} has ${count} licence ${count === 1 ? "key" : "keys"} left to give. You asked to be told at ${setup.lowAt}.`,
+        ? `The last license key for ${product.title} has just been given to a buyer. Until you add more, the product shows as sold out on your store and no checkout opens for it.`
+        : `${product.title} has ${count} license ${count === 1 ? "key" : "keys"} left to give. You asked to be told at ${setup.lowAt}.`,
       "",
       `Add more in your studio, under the product: ${SITE_URL}/studio#products`,
       "",
@@ -679,9 +679,9 @@ async function tellCreatorEmpty(store: Store, product: Listing, reference: strin
   await sendEmail({
     from: `"Nimbus Labs" <${senderAddress()}>`,
     to: store.email,
-    subject: `A buyer of ${product.title} is waiting for a licence key`,
+    subject: `A buyer of ${product.title} is waiting for a license key`,
     text: [
-      `${email || "A buyer"} paid for ${product.title} just as its licence keys ran out, so they have not been given one yet.`,
+      `${email || "A buyer"} paid for ${product.title} just as its license keys ran out, so they have not been given one yet.`,
       `Their order reference is ${reference}.`,
       "",
       `Add keys in your studio, under the product: ${SITE_URL}/studio#products`,
@@ -709,9 +709,9 @@ async function serveWaiting(store: Store, product: Listing, origin: string): Pro
       from: `"${displayName(store.name)}" <${senderAddress()}>`,
       to: email,
       replyTo: store.email,
-      subject: `Your licence key for ${product.title}`.slice(0, 200),
+      subject: `Your license key for ${product.title}`.slice(0, 200),
       text: [
-        `Your licence key for ${product.title} is ready:`,
+        `Your license key for ${product.title} is ready:`,
         "",
         given.key,
         "",

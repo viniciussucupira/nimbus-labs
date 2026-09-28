@@ -79,7 +79,7 @@ export default async function DemoThanksPage({
                 Payment confirmed
               </p>
               <h1 className="font-display mt-2 text-2xl font-semibold">
-                Thank you! Your file is ready.
+                Thank you. Your file is ready.
               </h1>
               <p className="mt-3 text-ink-soft">
                 You paid {formatPrice(order.amount)} for {DEMO_PRODUCT.name},{" "}

@@ -152,6 +152,6 @@ export async function POST(request: NextRequest) {
     return new Response(null, { status: 303, headers });
   } catch (error) {
     console.error("checkout failed", error);
-    return away(`/@${store.handle}/thanks?status=error`);
+    return away(`/@${store.handle}?status=error`);
   }
 }
