@@ -151,7 +151,7 @@ export function CommunityComposer({
         <p className="st-muted mt-1 text-sm">
           {"Posts carry the name you choose under "}
           <a href={`/@${handle}/community/you`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>You</a>
-          {". Never your email address."}
+          {", never your email address."}
         </p>
       ) : null}
 

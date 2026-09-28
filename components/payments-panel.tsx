@@ -287,7 +287,7 @@ export function PaymentsPanel({
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink-soft">
               <li>
-                {`Every amount keeps its number: ${example} becomes ${exampleThen}. That is ${asking.priced === 1 ? "one product" : `${asking.priced} products`} — prices, price options, offers at checkout and after paying, payment plans and suggested prices. Nothing is converted at an exchange rate, so check each price afterwards.`}
+                {`Every amount keeps its number: ${example} becomes ${exampleThen}. That is ${asking.priced === 1 ? "one product" : `${asking.priced} products`} — prices, price options, offers at checkout and after paying, payment plans and suggested prices. Nothing is converted at an exchange rate, so check each price afterward.`}
               </li>
               <li>{`Discount codes for an amount stay in ${currency.toUpperCase()} and stop working; codes for a percentage keep working.`}</li>
               <li>{`Sales already made stay in ${currency.toUpperCase()} in Stripe and in your downloads; your numbers count ${chosen.toUpperCase()} sales from now on.`}</li>

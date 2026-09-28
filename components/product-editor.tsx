@@ -341,7 +341,7 @@ function ProductForm({
         <p className="mt-1 text-sm text-ink-soft">
           {typedFree(draft.price)
             ? "Free. A visitor types their email and we send them a link to it; their address joins your list once they use that link, marked with whether they agreed to hear from you."
-            : `Your store charges in ${currency.toUpperCase()}: buyers pay exactly this, in ${currency.toUpperCase()}. The currency is chosen under Payments. Type 0 to give it away for an email address instead.`}
+            : `Your store charges in ${currency.toUpperCase()}: buyers pay exactly this, in ${currency.toUpperCase()}. The currency is chosen under Ways to pay. Type 0 to give it away for an email address instead.`}
         </p>
       </div>
 

@@ -289,7 +289,7 @@ export default async function ProductPage({ params }: Params) {
     </p>
   ) : (
     <p className="st-note mt-6 text-sm">
-      <strong>This store cannot take payments yet.</strong> The price above is real, and nothing here can charge a
+      <strong>This store cannot take payments yet.</strong> The price above is real, but nothing here can charge a
       card. To buy, write to {store.name} directly.
     </p>
   );

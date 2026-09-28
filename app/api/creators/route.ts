@@ -9,7 +9,7 @@ import {
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
 
-const RESPONSES_KEY = "nl:creators:responses";
+import { RESPONSES_KEY } from "@/lib/creator-research-store";
 const RATE_LIMIT = 5;
 const RATE_WINDOW_SECONDS = 60 * 60;
 const MAX_BODY_BYTES = 20_000;

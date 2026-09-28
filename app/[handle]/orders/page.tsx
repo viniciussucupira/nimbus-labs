@@ -304,7 +304,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
               ) : (
                 <>
                   <p className="st-muted mt-4 leading-relaxed">
-                    {`Everything ${store.name} sold to this address that can be opened again, newest first. Each download starts a fresh copy, so there is nothing to keep.`}
+                    {`Everything ${store.name} sold to this address that can be opened again, newest first. Open or download any of it again whenever you need it.`}
                   </p>
                   <ul className="mt-7 space-y-4">
                     {purchases.map((purchase) => (
@@ -372,7 +372,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                     ))}
                   </ul>
                   <p className="st-muted mt-6 text-sm">
-                    This page works for 24 hours from the email. After that, ask again below whenever you need it.
+                    This page works for 24 hours from the email. After that, open it again and ask for a new link whenever you need one.
                   </p>
                 </>
               )}

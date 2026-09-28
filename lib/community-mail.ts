@@ -227,8 +227,8 @@ export async function advanceAnnouncement(
             page: `${SITE_URL}/unsubscribe?c=${token}`,
             oneClick: `${SITE_URL}/api/mail/unsubscribe?c=${token}`,
             why: `You are getting this because you asked to be emailed ${fromName}'s announcements in ${config.name}.`,
-            label: "Stop these emails",
-            after: "in one click. You stay in the community.",
+            label: "Stop the community's emails",
+            after: "in one click: announcements and event reminders. You stay in the community, and keep your RSVPs.",
           });
           messages.push({ from: fromLine(store), to: member.e, subject: r.subject, text: r.text, html: r.html, replyTo: store.email, headers: r.headers });
         }

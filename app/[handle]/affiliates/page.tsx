@@ -187,7 +187,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                   </p>
                   <p className="mt-1 text-sm">
                     {status === "applied"
-                      ? `${store.name} has been told. You get an email when they decide.`
+                      ? `${store.name} has been told. If they approve it, you get an email with your link.`
                       : "You stay signed in on this browser for 30 days."}
                   </p>
                 </div>
@@ -218,7 +218,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                 </>
               ) : affiliate.status === "pending" ? (
                 <p className="st-muted mt-5 leading-relaxed">
-                  {`${store.name} decides on each application. You get an email when they do, with your link.`}
+                  {`${store.name} decides on each application. If they approve yours, you get an email with your link.`}
                 </p>
               ) : affiliate.status === "approved" ? (
                 <p className="st-muted mt-5 leading-relaxed">

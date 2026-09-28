@@ -118,7 +118,7 @@ function describe(change: AccountChange): { subject: string; line: string } {
     case "phone-added":
       return {
         subject: "A new device gets your store's notifications",
-        line: `Notifications were turned on for a new device (${change.label}). It is told about sales, bookings, reports and affiliate applications, as chosen in your studio.`,
+        line: `Notifications were turned on for a new device (${change.label}). It is told about sales, bookings, reports, affiliate applications and live events, as chosen in your studio.`,
       };
   }
 }

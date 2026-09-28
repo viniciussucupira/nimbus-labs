@@ -50,7 +50,7 @@ export default async function NewStorePage() {
         {full ? (
           <div className="notice notice-info mt-8">
             <p className="font-semibold text-ink">{`You run ${MAX_STORES_PER_ACCOUNT} stores already`}</p>
-            <p className="mt-1 text-sm text-ink-soft">That is an account&apos;s most. An empty store you no longer need can be deleted from its studio.</p>
+            <p className="mt-1 text-sm text-ink-soft">That is the most one account can run. An empty store you no longer need can be deleted from its studio.</p>
           </div>
         ) : (
           <>

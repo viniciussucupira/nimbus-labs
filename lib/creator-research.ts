@@ -28,7 +28,7 @@ export const PROBLEM_MIN_LENGTH = 10;
 export const SUPPORT_EMAIL = "support@nimbuslabsai.com";
 
 // Stored with every answer as proof of what the person agreed to.
-export const CONSENT_VERSION = "2026-09-16-2";
+export const CONSENT_VERSION = "2026-09-28-1";
 
 export const CONSENT_RESEARCH_TEXT =
   "Nimbus Labs may store my answers and use them for this research. I can ask for them to be deleted at any time.";
@@ -37,7 +37,7 @@ export const CONSENT_FOLLOWUP_TEXT =
   "Nimbus Labs may email me follow-up questions about my answers.";
 
 export const CONSENT_UPDATES_TEXT =
-  "Nimbus Labs may email me if it launches a product for creators.";
+  "Nimbus Labs may email me when it adds something for creators.";
 
 export type CreatorAnswer = {
   name: string;

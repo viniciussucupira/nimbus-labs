@@ -33,7 +33,8 @@ export default function RefundsPage() {
         </p>
         <p>
           To cancel, open your studio and choose &ldquo;Cancel the
-          subscription&rdquo; under &ldquo;What you pay us.&rdquo; You can also
+          subscription&rdquo; under &ldquo;What you pay us,&rdquo; then
+          &ldquo;Yes, cancel it.&rdquo; You can also
           ask us by email, as described in section 3.
         </p>
       </LegalSection>
@@ -68,16 +69,15 @@ export default function RefundsPage() {
         <p>
           We will confirm when the cancellation and/or refund has been
           processed. Refunds are returned to the original payment method and
-          may take several business days to appear, depending on your payment
-          provider.
+          may take several business days to appear, depending on your bank or
+          card issuer.
         </p>
       </LegalSection>
 
       <LegalSection title="4. After 14 days">
         <p>
-          Charges requested for refund more than 14 days after they were
-          processed are not eligible for a refund, except where required by
-          applicable consumer law. You may still cancel at any time to stop
+          A refund requested more than 14 days after a charge is not
+          available, except where applicable consumer law requires it. You may still cancel at any time to stop
           future charges.
         </p>
       </LegalSection>

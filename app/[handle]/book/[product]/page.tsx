@@ -220,7 +220,7 @@ function callLine(setup: CallSetup): string {
     ? `online, on ${MEET_NAMES[setup.meet]}; you get the link when you book`
     : setup.video
       ? "online, in a private video room; you get the link when you book"
-      : setup.kind === "live" || setup.room
+      : setup.room || (setup.kind === "live" && setup.sessions.every((s) => s.room))
         ? "online; you get the link when you book"
         : "online";
   if (setup.kind === "live") return `Live session \u00b7 ${where}`;

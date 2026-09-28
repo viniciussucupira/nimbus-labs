@@ -53,7 +53,7 @@ type Params = {
 const NOTICES: Record<string, { title: string; body: string }> = {
   unpaid: {
     title: "This order has not been paid",
-    body: "If you closed the card page before finishing, nothing was charged. You can start again from the store.",
+    body: "If you closed the payment page before finishing, nothing was charged. You can start again from the store.",
   },
   processing: {
     title: "Your payment is on its way",
@@ -105,6 +105,17 @@ const UPSELL_NOTES: Record<string, { text: string; always: boolean }> = {
   },
   unavailable: { text: "That offer is no longer open, so nothing was charged for it.", always: true },
 };
+
+/**
+ * The reminders a booking gets, as lib/call-records.ts plans them: each only
+ * when it is still at least an hour away when the booking is confirmed.
+ */
+function reminderWords(start: number, now = Date.now()): string {
+  const ahead = start - now;
+  if (ahead >= 25 * 3600_000) return ", and reminders follow a day and an hour before";
+  if (ahead >= 2 * 3600_000) return ", and a reminder follows an hour before";
+  return "";
+}
 
 /**
  * Where a buyer lands after paying.
@@ -542,7 +553,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                       : `${store.name} will send you the link to join before the call.`}
                     {isVideoRoom(booked.room) ? ` ${VIDEO_ROOM_NOTE}` : ""}
                     {order.email
-                      ? ` A confirmation is on its way to ${order.email}, and reminders follow a day and an hour before. To cancel, reply to the confirmation; it reaches ${store.name}.`
+                      ? ` A confirmation is on its way to ${order.email}${reminderWords(booked.start)}. To cancel, reply to the confirmation; it reaches ${store.name}.`
                       : ""}
                   </p>
                   {sessionId && canMove(booked.setup, booked.start, booked.moves) ? (
@@ -783,7 +794,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 </p>
               ) : order.email ? (
                 <p className="st-muted mt-2 text-sm">
-                  {`You paid with ${order.email}. The charge was made on ${store.name}'s own Stripe account, not ours, so any receipt comes from them.`}
+                  {`This order is under ${order.email}. The charge was made on ${store.name}'s own Stripe account, not ours, so any receipt comes from them.`}
                 </p>
               ) : null}
             </>

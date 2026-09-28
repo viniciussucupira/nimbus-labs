@@ -6,6 +6,7 @@ import { settlePlans } from "@/lib/plans";
 import { isBillingConfigured } from "@/lib/billing";
 import { syncSubscriptions } from "@/lib/billing-sync";
 import { moveAllStores } from "@/lib/store";
+import { pruneResearch } from "@/lib/creator-research-store";
 
 export const maxDuration = 60;
 
@@ -68,6 +69,8 @@ async function run(request: NextRequest): Promise<Response> {
     } catch (error) {
       console.error("moving stores to product records failed", error);
     }
+    // Creator research answers are kept 24 months, as the privacy policy says.
+    await pruneResearch().catch((error: unknown) => console.error("pruning old research answers failed", error));
     const ok = plans !== null && (billing !== null || !isBillingConfigured());
     return Response.json({ ok, ...(plans ?? {}), billing, catalogs }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
   } finally {

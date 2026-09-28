@@ -221,7 +221,7 @@ export function render(store: Store, subject: string, body: string, token: strin
   const address = store.mail?.address ?? "";
   const unsub = door ? door.page : token ? `${SITE_URL}/unsubscribe?t=${token}` : `${SITE_URL}/@${store.handle}`;
   const oneClick = door ? door.oneClick : token ? `${SITE_URL}/api/mail/unsubscribe?t=${token}` : "";
-  const why = door ? door.why : `You are getting this because you told ${fromName} you wanted to hear from them, at nimbuslabsai.com/@${store.handle}.`;
+  const why = door ? door.why : `You are getting this because you told ${fromName} you wanted to hear from them.`;
   const label = door ? door.label : "Unsubscribe";
   const after = door ? door.after : `in one click, and ${fromName} will not email you again.`;
   const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f7f5f0">

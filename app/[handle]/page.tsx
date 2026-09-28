@@ -291,7 +291,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                     This checkout is running in Stripe&apos;s test mode.
                   </strong>{" "}
                   No real money moves through it and no real card is charged,
-                  so do not put a card you own into it. When it is switched on,
+                  so do not put a card you own into it. Once it goes live,
                   payment is taken by Stripe on {store.name}&apos;s own account:
                   Nimbus never holds the money and takes none of it.
                 </p>
@@ -305,7 +305,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                   <strong>
                     This store cannot take payments yet.
                   </strong>{" "}
-                  The prices above are real, and nothing here can charge a card.
+                  The prices above are real, but nothing here can charge a card.
                   To buy, write to {store.name} directly.
                 </p>
               )}

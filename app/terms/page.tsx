@@ -29,7 +29,7 @@ export default function TermsPage() {
       <LegalSection title="1. Eligibility and accounts">
         <p>
           You must be at least 18 years old, or the age of majority in your
-          jurisdiction, to use the Services. By using the Services, you confirm
+          jurisdiction if that is higher, to use the Services. By using the Services, you confirm
           that you meet this requirement.
         </p>
         <p>
@@ -77,8 +77,8 @@ export default function TermsPage() {
         <p>
           Creator stores are open. Taking a store address, building the page and
           connecting a Stripe account are free. Taking a card on that page
-          requires a paid subscription, which begins with a free trial of 14
-          days and then renews every month or every year, whichever you chose,
+          requires a paid subscription, which, on an account&apos;s first
+          store, begins with a free trial of 14 days, and which renews every month or every year, whichever you chose,
           at the price shown on the home page until it is canceled. The price
           and the payment provider are shown before any card is asked for, and
           these Terms apply to that subscription. We email you at least seven
@@ -238,8 +238,9 @@ export default function TermsPage() {
           includes everything to sell. Nimbus Labs Pro, at $99 a month or $948
           a year, adds email to your list{domains ? " and your store on a domain you own" : ""},
           with up to 50,000 emails a month,
-          counted together for one-off emails, sequences and community
-          announcements; during the free
+          counted together for one-off emails, sequences, community
+          announcements and the emails that ask buyers for a review; during
+          the free
           trial a store may send up to 1,000 emails a month, and the full
           number opens with the first payment. Emails not sent in a month do
           not carry over, and emails beyond a month&apos;s allowance wait for

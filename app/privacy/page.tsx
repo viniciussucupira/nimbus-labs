@@ -98,8 +98,10 @@ export default function PrivacyPage() {
           the email address they type to look for their membership on the
           creator&apos;s own Stripe account and, if there is one, to email them
           the link. We keep a record that ties that link to their Stripe
-          customer for one hour, and nothing else; the page says the same thing
-          whether or not a membership was found.
+          customer for one hour and, to limit abuse, one-way hashes of the
+          address and of the network address that asked, also for one hour,
+          and nothing else; the page says the same thing whether or not a
+          membership was found.
         </p>
         <p>
           <strong className="text-black">Getting a purchase again.</strong>{" "}
@@ -107,7 +109,9 @@ export default function PrivacyPage() {
           address they type to look for their paid purchases on the
           creator&apos;s own Stripe account and, if there are any, to email them
           a link to a page that lists them. We keep a record that ties that link
-          to the address for 24 hours, and nothing else; the list itself is read
+          to the address for 24 hours and, to limit abuse, one-way hashes of
+          the address and of the network address that asked, for one hour, and
+          nothing else; the list itself is read
           from Stripe each time the page opens, and the page says the same thing
           whether or not a purchase was found.
         </p>
@@ -150,9 +154,10 @@ export default function PrivacyPage() {
           address replies go to, and the creator&apos;s has the buyer&apos;s.
           While they pay, a cookie in the buyer&apos;s browser names the
           checkout they opened, for 32 minutes, so that going back to pick
-          another time lets go of the first one. Each booking is reminded to
-          the buyer, and to the creator, a day and an hour before, from a queue
-          that names the booking and its time. If the buyer moves the booking
+          another time lets go of the first one. The buyer and the creator are
+          each reminded of the booking a day and an hour before, from a queue
+          that names the booking and its time, and we keep a mark that each
+          reminder was sent for 14 days. If the buyer moves the booking
           to another time from the link in their email, we keep the new time
           and how many times it was moved, tied to that checkout, for 200
           days. The same kind of cookie, for
@@ -311,7 +316,10 @@ export default function PrivacyPage() {
           named <code>nl_via_</code> followed by the store&apos;s address holds
           the affiliate&apos;s code and the time of the click, for up to 90
           days; a purchase counts for the affiliate only within the window the
-          creator set. To count a click once per visitor per day we keep a
+          creator set. This cookie is not set for visitors in the European
+          Economic Area, the United Kingdom, Switzerland or Brazil, or where
+          we cannot tell the country, because the rules there ask for consent
+          first. To count a click once per visitor per day we keep a
           one-way hash of the visitor&apos;s network address and browser for
           two days. When a purchase counts, we note which product, when, what
           was paid before tax and in all, and the share it earns, and never
@@ -423,8 +431,12 @@ export default function PrivacyPage() {
           <strong className="text-black">Email drafts.</strong> For each draft
           of an email to a creator&apos;s list we keep its subject, its text,
           who it is meant for, who last saved it (their sign-in address) and
-          when, until it is sent or deleted, up to 20 per store. A creator, an
-          Admin or Support can have a buyer&apos;s purchase email sent again;
+          when, until it is sent or deleted, up to 20 per store.
+        </p>
+        <p>
+          <strong className="text-black">Sending a purchase email again.</strong>{" "}
+          A creator, an Admin or Support can have a buyer&apos;s purchase email
+          sent again;
           it goes only to the address the buyer paid with, read again from the
           creator&apos;s Stripe account.
         </p>
@@ -492,7 +504,7 @@ export default function PrivacyPage() {
           and the buyer&apos;s list of purchases. Jitsi Meet (meet.jit.si) is
           run by 8x8, not by us: whoever opens the room uses that service under
           its own privacy policy, and the first person in may be asked to sign
-          in to it with a Google, GitHub or Facebook account. We send Jitsi
+          in to it with an account such as Google. We send Jitsi
           nothing ourselves. A community&apos;s live event has a room of its
           own, made with the event, as the section on live events describes.
         </p>
@@ -620,8 +632,8 @@ export default function PrivacyPage() {
           contacted you first to ask about your experience as a creator, we
           used business contact details you had made public: your name, your
           business email address or social media profile, your store or
-          profile link and, for UK companies, the public Companies House
-          register. We use them only to send that research message and to
+          profile link and, for UK companies, details from the public
+          Companies House register. We use them only to send that research message and to
           continue the conversation if you reply. Our legal basis is our
           legitimate interest in understanding what creators need before we
           build a product. You can object at any time by replying
@@ -672,7 +684,7 @@ export default function PrivacyPage() {
           following legal bases: performance of a contract (providing the
           subscription), legitimate interests (security, service improvement,
           and necessary communications), consent (where we ask for it, such as
-          optional cookies and the creator research form), and legal
+          the creator research form), and legal
           obligation. You can withdraw consent at any time by emailing us;
           this does not affect processing that happened before you withdrew
           it.
@@ -739,10 +751,10 @@ export default function PrivacyPage() {
               Calendar or Zoom account
             </strong>
             , which receive what the section on Google Calendar and Zoom
-            lists: for a call, its time, the buyer&apos;s name and email address
-            for a one-to-one call, and on Google each buyer&apos;s email
-            address on the guest list; for a live event, only its title, time
-            and page;
+            lists: for a one-to-one call, its time and the buyer&apos;s name
+            and email address; for a group call or a session on dates, its time
+            and, on Google only, each buyer&apos;s email address on the guest
+            list; for a live event, only its title, time and page;
           </li>
           <li>
             <strong className="text-black">Push services</strong> run by the
@@ -758,8 +770,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong className="text-black">Resend</strong>, our email
-            provider, which delivers the emails we send: login links,
-            receipts and the links to what you asked for, the links that let
+            provider, which delivers the emails we send, among them login
+            links, receipts and booking emails, the links to what you asked for, the links that let
             members, students, affiliates and team members in, the emails that
             ask a buyer for a review, the reminders about a community&apos;s live
             events, the one email a creator may send to buyers they brought
@@ -769,6 +781,12 @@ export default function PrivacyPage() {
           <li>
             <strong className="text-black">Upstash</strong>, our database
             provider, which stores the records this policy describes;
+          </li>
+          <li>
+            <strong className="text-black">Unsplash</strong>, which serves the
+            photographs on our own pages straight to your browser and so
+            receives your network address and browser, as any site that serves
+            a picture does;
           </li>
           <li>
             <strong className="text-black">
@@ -833,7 +851,15 @@ export default function PrivacyPage() {
         <p>We use cookies and similar technologies to:</p>
         <ul className="list-disc pl-6 space-y-2">
           <li>keep you logged in;</li>
-          <li>remember preferences; and</li>
+          <li>remember preferences;</li>
+          <li>
+            hold a call time or a limited item while a buyer pays, and let a
+            buyer into what they bought;
+          </li>
+          <li>
+            credit a sale to the affiliate who sent the buyer, on stores that
+            run an affiliate program; and
+          </li>
           <li>maintain security.</li>
         </ul>
         <p>
@@ -949,9 +975,9 @@ export default function PrivacyPage() {
           is based on consent.
         </p>
         <p>
-          If you are in the European Economic Area, the United Kingdom, or
-          another jurisdiction with similar laws — including under the General
-          Data Protection Regulation (GDPR) — you may exercise these rights by
+          If you are in the European Economic Area or the United Kingdom, where
+          the General Data Protection Regulation (GDPR) applies, or in another
+          jurisdiction with similar laws, you may exercise these rights by
           emailing{" "}
           <a
             href="mailto:support@nimbuslabsai.com"

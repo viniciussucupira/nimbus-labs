@@ -93,7 +93,7 @@ const GROUPS: Group[] = [
       { title: "Files and links", body: "PDFs, videos, presets and templates up to 5 GB, or a link to where it lives." },
       { title: "Courses", body: "Modules and lessons that can open over time, with free previews." },
       { title: "Paid calls", body: "One to one, groups of up to 50, or live sessions, with your meeting link or a private video room." },
-      { title: "Memberships", body: "Weekly, monthly or yearly, with a free trial if you want one." },
+      { title: "Memberships", body: "Daily, weekly, monthly or yearly, with a free trial if you want one." },
       { title: "Free products", body: "Given for an email address, each one confirmed by its owner." },
       { title: "A community", body: "Posts, comments and live events, open only to the buyers you choose." },
       { title: "Bundles", body: "2 to 20 of your products at one price, each delivered as itself." },
@@ -152,7 +152,7 @@ const GROUPS: Group[] = [
       { title: "Ad pixels", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount." },
       { title: "Webhooks", body: "Sales, leads and bookings, sent to Zapier, Make or your own server." },
       { title: "Your photo, your color", body: "Four themes, ten colors or your own, each checked for contrast." },
-      { title: "An address you can change", body: "Change it any time; up to ten old addresses keep working and lead to the new one." },
+      { title: "An address you can change", body: "Change it any time; up to nine old addresses keep working and lead to the new one." },
       { title: "Installs like an app", body: "Your store on any phone's home screen, with its own name and icon." },
       { title: "Moving from another platform", body: "Your list, products and past buyers, brought over from a spreadsheet." },
     ],
@@ -750,7 +750,7 @@ export default function Home() {
               <p className="eyebrow">Pricing</p>
               <h2 className="t-h2 balance mt-4">Two plans. Your sales stay yours.</h2>
               <p className="mt-5 text-ink-soft">
-                {`The same $${PRICE} and $${PLAN_PRICES.pro.month / 100} a month as Stan's two plans, the same 14-day free trial, 0% of your sales, and the sale itself landing in your own Stripe account. The $${PRICE} plan holds what Stan keeps for its $${PLAN_PRICES.pro.month / 100} one: discount codes, pixels, landing pages, order bumps, upsells, payment plans and limited quantities.`}
+                {`The same $${PRICE} and $${PLAN_PRICES.pro.month / 100} a month as Stan's two plans, the same 14-day free trial, 0% of your sales, and the sale itself landing in your own Stripe account. The $${PRICE} plan holds what Stan keeps for its $${PLAN_PRICES.pro.month / 100} one: discount codes, pixels, funnels, order bumps, upsells, payment plans and limited quantities.`}
               </p>
             </div>
             <div className="reveal mx-auto mt-12 max-w-5xl">
@@ -784,7 +784,7 @@ export default function Home() {
           <div className="container-narrow py-20 text-center sm:py-28">
             <h2 className="t-h1 balance text-white">Put your first product up today</h2>
             <p className="t-lead mx-auto mt-6 max-w-xl text-white/80">
-              {`Take your address, connect your own Stripe account and list what you sell. The till is yours for ${TRIAL_DAYS} days before you decide whether we are worth $${PRICE} a month.`}
+              {`Take your address, connect your own Stripe account and list what you sell. Your checkout is free for ${TRIAL_DAYS} days before you decide whether we are worth $${PRICE} a month.`}
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
               <Link href="/signin" className="btn btn-light btn-lg">

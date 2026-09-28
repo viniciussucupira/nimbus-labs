@@ -37,7 +37,7 @@ const VALUES = [
   {
     emoji: "⚡",
     title: "Fast is a feature, not a bonus",
-    text: "Your buyer is on a phone, on mobile data, with three seconds of patience. Every page we ship is measured, and the numbers are published on the site.",
+    text: "Your buyer is on a phone, on mobile data, with three seconds of patience. The store page is measured on a phone, and the scores are published on the site.",
     tone: "bg-sky-brand/12",
   },
   {
@@ -69,12 +69,12 @@ const BUILT = [
   "Or a link instead of a file, for what is too big to upload or is not a file at all",
   "Memberships: daily, weekly, monthly or yearly, charged on your own Stripe account, with a free trial of 1 to 90 days or a set number of payments, 2 to 36, after which they end by themselves",
   "Members who cancel on their own, in one click on Stripe's own page, without having to write to you",
-  "Your numbers: visitors, where they came from, checkouts started and sales for 7, 30 or 90 days or all time, with utm tags and CSV files of sales, visits and sources — visits counted without cookies, sales read from your own Stripe",
+  "Your numbers: visitors, where they came from, checkouts started and sales for 7, 30 or 90 days or all time, with UTM tags and CSV files of sales, visits and sources — visits counted without cookies, sales read from your own Stripe",
   "Your own Meta, Google, TikTok and Pinterest pixels, told of every page view, checkout, lead and purchase with its amount, and loaded only once a visitor allows it where the law asks for that",
   "An order bump: another of your products offered in a box the buyer checks at checkout, at your price, never checked for them, and delivered with the first",
   "A one-click upsell: another product offered on the thanks page, charged in one press to the card just used, only in the browser that paid, within the hour and once",
   "Funnels: up to five offers after paying, one at a time, each with its own path for yes and for no, charged in one click to the same card",
-  "Payment plans: two to twelve weekly or monthly payments on your own Stripe account, the product delivered after the first, and the plan given its end so no buyer is charged once more",
+  "Payment plans: two to twelve weekly or monthly payments on your own Stripe account, the product delivered after the first, and the plan given its end so no buyer is charged after the last payment",
   "Sales tax and VAT worked out by Stripe Tax on your own account and added at checkout, switched on once Stripe says your tax setup is complete",
   "Limited quantities: the page shows how many are left, counted from real payments, and a unit someone is paying for is held so the last one is never sold twice",
   "Courses: modules of lessons with video, text, downloads and a link, free preview lessons, modules that open a set number of days after each student joins with an email the day they do, and each student's progress in your studio — students open them with their email, no password",
@@ -109,7 +109,7 @@ const BUILT = [
   "Up to five stores in one account, each with its own plan, and a team of up to five per store as Admin, Editor or Support, with an activity log",
   "Optional passkeys, an email when your account signs in from a new browser, email drafts, and purchase emails sent again from your studio",
   "Notifications of sales, bookings, reports, affiliate applications and live events about to start, from the studio installed on your phone",
-  "Live events in the community: up to 50 coming up, RSVPs with a cap of 1 to 5,000 if you want one, the way in on the event's page from 15 minutes before, only to members who may come, in a private Jitsi Meet room shown in the page or at your own link, reminders a day and an hour before, emails when one moves or is canceled, and replays from YouTube, Vimeo or Loom",
+  "Live events in the community: up to 50 coming up, RSVPs with a cap of 1 to 5,000 if you want one, the way in on the event's page from 15 minutes before, only to members who may come, in a private Jitsi Meet room shown on the page or at your own link, reminders a day and an hour before, emails when one moves or is canceled, and replays from YouTube, Vimeo or Loom",
   "Bundles: 2 to 20 of your one-off products at one price, each delivered as if bought on its own, with what the buyer keeps fixed when they pay",
   "Drafts: any product unpublished and kept in the studio until you publish it again",
   "Moving from another platform, from a spreadsheet: your list, up to 50,000 a file, only people you confirm agreed; your products, up to 500 a file, as drafts; and your past buyers, up to 20,000 a file, who keep what they bought and come into your community, with one email to them if you choose",
@@ -213,7 +213,7 @@ export default function MissionPage() {
                 <span className="serif font-normal text-[#cfc4ff]">to be paid for their work</span>
               </h1>
               <p className="t-lead mt-6 max-w-2xl text-white/80">
-                Selling something you made should cost you the card fee and nothing more. That is the whole idea, and
+                Each sale of something you made should cost you the card fee and nothing more. That is the whole idea, and
                 everything we build is judged against it.
               </p>
             </div>
@@ -370,7 +370,7 @@ export default function MissionPage() {
                   ))}
                 </ul>
                 <p className="mt-7 border-t border-line pt-5 text-sm text-ink-soft">
-                  Other platforms have these today. If you need them now, they are the better choice now, and{" "}
+                  Other platforms have many of these today. If you need them now, they are the better choice now, and{" "}
                   <Link href="/proof/compare" className="link">
                     our comparison page
                   </Link>{" "}

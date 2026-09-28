@@ -52,7 +52,7 @@ export default async function StudioPhonePage({ searchParams }: Params) {
         <p className="eyebrow">Phone notifications</p>
         <h1 className="t-h2 mt-3">Know the moment it happens</h1>
         <p className="mt-3 max-w-2xl text-ink-soft">
-          A sale, a booking, a report in your community, an application from an affiliate: each can buzz your phone, your
+          A sale, a booking, a report in your community, an application from an affiliate, a live event about to start: each can buzz your phone, your
           tablet or your computer, up to ten devices of your own, each with its own choices. On Android, iPhone, iPad and
           computers, with no app store in the way. Everyone on the store&apos;s team turns it on for their own devices and
           is told only what their role can see.

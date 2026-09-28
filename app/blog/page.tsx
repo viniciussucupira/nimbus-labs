@@ -19,7 +19,6 @@ export const metadata: Metadata = {
 
 export default function BlogIndexPage() {
   const featured = featuredPost();
-  const rest = postsSorted().filter((post) => post.slug !== featured.slug);
 
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
@@ -96,7 +95,7 @@ export default function BlogIndexPage() {
             Pick a subject or search for a word. Every article is written by us and says where its facts about other companies come from.
           </p>
           <div className="mt-8">
-            <BlogBrowser posts={rest} categories={[...BLOG_CATEGORIES]} />
+            <BlogBrowser posts={postsSorted()} categories={[...BLOG_CATEGORIES]} />
           </div>
         </section>
 

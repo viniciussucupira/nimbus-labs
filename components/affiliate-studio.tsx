@@ -410,7 +410,7 @@ function Terms({
           </label>
         </div>
         <p className="mt-2 text-xs text-ink-soft">
-          {`From ${MIN_COMMISSION} to ${MAX_COMMISSION}%, of what the buyer paid before tax, and a window of ${MIN_COOKIE_DAYS} to ${MAX_COOKIE_DAYS} days after their last click. A change applies to sales from then on; a sale keeps the share it was made at.`}
+          {`From ${MIN_COMMISSION} to ${MAX_COMMISSION}%, of what the buyer paid before tax, and a window of ${MIN_COOKIE_DAYS} to ${MAX_COOKIE_DAYS} days after their last click. A change applies to sales from then on; a sale keeps the share it was made at. Clicks from the European Economic Area, the UK, Switzerland and Brazil are not remembered, because the rules there ask for consent first.`}
         </p>
 
         {credited.length ? (

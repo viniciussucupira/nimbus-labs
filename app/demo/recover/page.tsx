@@ -22,7 +22,7 @@ export default function DemoRecoverPage() {
           Lost your download?
         </h1>
         <p className="mt-4 text-lg text-ink-soft">
-          Type the email address you paid with. If the download is still open, we send
+          Type the email address you paid with. If the download is still open, we&apos;ll send
           the link there again — no account to create, no password to invent.
         </p>
 
@@ -35,8 +35,9 @@ export default function DemoRecoverPage() {
           <p className="mt-2">
             A link that never dies is a link that can be pasted anywhere and
             turn one sale into a hundred free copies. So it lasts three days and
-            belongs to one order. This page is how you get it back without
-            paying for it twice.
+            belongs to one order. In this demo, this page sends it again while
+            those three days last. In a creator&apos;s own store, a buyer gets
+            every purchase back by email at any time, without paying twice.
           </p>
         </div>
 

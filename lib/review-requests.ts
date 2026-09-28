@@ -210,7 +210,7 @@ export async function sendReviewRequests(
     const r = render(store, words.subject, words.body, null, {
       page: `${SITE_URL}/unsubscribe?v=${stop}`,
       oneClick: `${SITE_URL}/api/mail/unsubscribe?v=${stop}`,
-      why: `You are getting this because you bought from ${fromName} at nimbuslabsai.com/@${store.handle}.`,
+      why: `You are getting this because you bought from ${fromName}.`,
       label: "Stop review requests",
       after: `from ${fromName} in one click.`,
     });

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
 
 export const metadata: Metadata = {
-  title: "Zoom for Nimbus Labs — Nimbus Labs",
+  title: "Zoom app guide — Nimbus Labs",
   description:
     "How to add the Nimbus Labs app to your Zoom account, what it does with your meetings, and how to remove it.",
 };
@@ -46,7 +46,7 @@ export default function ZoomGuidePage() {
           <li>
             <strong className="text-black">Calls.</strong> Under Products, open a call&apos;s hours or sessions and choose{" "}
             <strong className="text-black">Zoom (automatic)</strong> in Where the call happens. Each booking of a one-to-one call
-            gets its own scheduled meeting on your Zoom account; a group call or a session on dates gets one meeting per time,
+            gets its own scheduled meeting on your Zoom account; a group call or a live session on a set date gets one meeting per time,
             shared by everyone booked into it. The join link goes into the buyer&apos;s confirmation email, reminders and calendar file.
           </li>
           <li>
@@ -58,8 +58,8 @@ export default function ZoomGuidePage() {
             of a one-to-one call, or when you cancel an event, its meeting is deleted.
           </li>
           <li>
-            <strong className="text-black">Starting.</strong> Press <strong className="text-black">Start in Zoom</strong> next to a call under Upcoming calls in your studio, and Nimbus Labs asks Zoom for a
-            fresh start link, so you join as the host.
+            <strong className="text-black">Starting.</strong> Press <strong className="text-black">Start in Zoom</strong> next to a call under Upcoming calls in your studio, or next to a live event in your community&apos;s studio, and Nimbus Labs
+            asks Zoom for a fresh start link, so you join as the host.
           </li>
           <li>
             <strong className="text-black">If a meeting cannot be made.</strong> The booking gets your own meeting link, or a private

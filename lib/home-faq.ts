@@ -10,7 +10,7 @@ import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 export const HOME_QUESTIONS = [
   {
     q: "Can I sign up and start selling today?",
-    a: `Yes. You take your store address, connect your own Stripe account and put up what you sell; a buyer can pay for it on your account, with nothing taken on top. The address, the page, the editor and connecting Stripe cost nothing. The $${PRICE_CENTS / 100} subscription switches on the till — selling, and giving things away for an email address — and its first ${TRIAL_DAYS} days are free, so you can make a sale before you decide.`,
+    a: `Yes. You take your store address, connect your own Stripe account and put up what you sell; a buyer can pay for it on your account, with nothing taken on top. The address, the page, the editor and connecting Stripe cost nothing. The $${PRICE_CENTS / 100} subscription switches on your checkout — selling, and giving things away for an email address — and its first ${TRIAL_DAYS} days are free, so you can make a sale before you decide.`,
   },
   {
     q: "Who holds the money from my sales?",

@@ -28,7 +28,7 @@ const NOT_PAID: Record<
   },
   expired: {
     title: "This download link has expired",
-    body: "Download links work for 3 days after checkout.",
+    body: "Demo download links work for 3 days after checkout, and this one is past that. In a creator's own store, a buyer can get a purchase back at any time.",
   },
   invalid: {
     title: "We could not find this order",
@@ -103,7 +103,7 @@ export default async function DemoThanksPage({
               <p className="mt-3 text-ink-soft">
                 {NOT_PAID[order.state].body}
               </p>
-              {order.state === "expired" || order.state === "invalid" ? (
+              {order.state === "invalid" ? (
                 <Link
                   href="/demo/recover"
                   className="btn btn-primary mt-6 btn-block"

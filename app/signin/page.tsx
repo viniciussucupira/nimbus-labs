@@ -133,7 +133,7 @@ export default async function SignInPage({
         <div className="mx-auto w-full max-w-md flex-1 pt-12 lg:flex-none lg:pt-0">
           <h1 className="t-h1">Start your store</h1>
           <p className="mt-4 text-ink-soft">
-            Type your email and we send a link. It opens your store if you already have one, and starts one if you do
+            Type your email and we&apos;ll send you a link. It opens your store if you already have one, and starts one if you do
             not. There is no password here, on purpose, and nothing to pay to begin.
           </p>
 

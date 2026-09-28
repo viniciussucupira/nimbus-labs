@@ -264,7 +264,7 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         type: "p",
-        text: "Every platform advertises one number and charges you three. Here is the whole stack, in the order it comes out of a sale.",
+        text: "Most platforms advertise one number, and a sale pays several. Here is the whole stack, in the order it comes out of a sale.",
       },
       { type: "h2", text: "The card fee" },
       {
@@ -396,7 +396,7 @@ export const BLOG_POSTS: BlogPost[] = [
     date: "2026-09-18",
     readMinutes: 4,
     excerpt:
-      "Most creators sell one file at one price. Giving the same work three sizes changes the question in the buyer's head from 'should I?' to 'which one?', and that question is far easier to answer yes to.",
+      "Most creators sell one file at one price. Giving the same work three sizes changes the question in the buyer's head from 'should I?' to 'which one?', and that question is far easier to answer.",
     kicker: "Pricing",
     from: "#6c3bff",
     to: "#12d6a4",
@@ -415,7 +415,7 @@ export const BLOG_POSTS: BlogPost[] = [
         items: [
           "By amount: one week of meal plans, five weeks, the whole season.",
           "By format: the PDF; the PDF plus the editable file; the PDF, the editable file and the video walkthrough.",
-          "By use: for yourself; for your clients (a license to use it in your own work).",
+          "By use: for yourself; for a team; for your clients (a license to use it in your own work).",
         ],
       },
       {
@@ -425,7 +425,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "Where to put the price you want people to pick" },
       {
         type: "p",
-        text: "Put it in the middle and make it obviously the best value — the one where the price per week, per template or per page is lowest. Say that out loud on the page. 'Five weeks for $39' next to 'one week for $27' does the arithmetic for the buyer.",
+        text: "Put it in the middle and make it obviously good value — a clear drop in the price per week, per template or per page from the smallest size. Say that out loud on the page. 'Five weeks for $39' next to 'one week for $27' does the arithmetic for the buyer.",
       },
       {
         type: "note",
@@ -492,7 +492,7 @@ export const BLOG_POSTS: BlogPost[] = [
       {
         type: "ul",
         items: [
-          "Testimonials you do not have. An empty review section is better than an invented one, and inventing them is fraud in most places you would want to sell.",
+          "Testimonials you do not have. An empty review section is better than an invented one, and inventing them is against the law in the United States and the European Union.",
           "Countdown timers that are not real deadlines.",
           "'Normally $197, today $27.' If it was never $197, that sentence is a lie with a number in it.",
           "Long autobiography. One line about why you are the person to make this is plenty on a product page.",
@@ -584,11 +584,11 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         type: "note",
-        text: "Updated again on September 27, 2026, when Nimbus added sales and landing pages; reviews only buyers can write; 15 currencies; the ways to pay a creator switches on in Stripe; Mailchimp, Kit, beehiiv and MailerLite built in; up to five stores and a team with roles; a video room for each booking; phone notifications; and up to 2,000 products.",
+        text: "Updated again on September 27, 2026, when Nimbus added sales and landing pages; reviews only buyers can write; 15 currencies; the ways to pay that a creator switches on in Stripe; Mailchimp, Kit, beehiiv and MailerLite built in; up to five stores and a team with roles; a video room for each booking; phone notifications; and up to 2,000 products.",
       },
       {
         type: "note",
-        text: "And later the same day, when Nimbus added live events inside the community, bundles of products, drafts, and importing a list, products and past buyers from another platform. And later, Google Meet links made on your own Google Calendar.",
+        text: "And later the same day, when Nimbus added live events inside the community, bundles of products, drafts, and importing a list, products and past buyers from another platform. Later still, it added Google Meet links made on your own Google Calendar.",
       },
       { type: "h2", text: "What Stan is" },
       {
@@ -631,9 +631,9 @@ export const BLOG_POSTS: BlogPost[] = [
           "Price options on a single product, with the right file delivered for the tier that was paid for.",
           "Reviews only buyers can write, checked against the payment. Stan's help center says reviews there are added by the creator.",
           "A team with roles, each person signing in with their own email. Stan's help center says the only way there is to share your login.",
-          "Sales pages, landing pages, discount codes, payment plans and offers after paying on the $29 plan, and a store in any of 15 currencies.",
+          "Sales pages, landing pages, discount codes, payment plans and offers after payment on the $29 plan (Stan's help center puts discount codes, payment plans and upsells on its $99 Creator Pro plan), and a store in any of 15 currencies.",
           "Bundles that hand over each of your products as if bought on its own. Stan's help center lists bundles among what one download can hold.",
-          "Moving in from a spreadsheet: up to 50,000 contacts, 500 products and 20,000 past buyers per file, where Stan's help center imports up to 5,000 contacts per store in all and gives buyers access one at a time.",
+          "Moving in from a spreadsheet: up to 50,000 contacts, 500 products and 20,000 past buyers per file, where Stan's help center sets a limit of 5,000 imported contacts per store in all, and buyers are given access one at a time.",
           "A live demo store anyone can buy from with a test card, before signing up for anything.",
           "Terms and privacy policy published as pages on the site, where Stan links to them as PDF files.",
         ],

@@ -33,7 +33,7 @@ const PRODUCT_GROUPS: { label: string; items: MenuItem[] }[] = [
       item("Price options", "Up to three prices on one product.", "/platform/price-options", "tag"),
       item("Sales pages", "Built from blocks, with reviews.", "/platform/sales-pages", "layout"),
       item("Courses", "Video lessons that open over time.", "/platform/courses", "book"),
-      item("Memberships", "Paid every week, month or year.", "/platform/memberships", "repeat"),
+      item("Memberships", "Paid every day, week, month or year.", "/platform/memberships", "repeat"),
       item("Paid calls", "Booked in their time zone, paid first.", "/platform/calls", "calendar"),
       item("Community", "Posts and comments, for your buyers.", "/platform/community", "chat"),
       item("Live events", "RSVPs, reminders and replays.", "/platform/live-events", "video"),

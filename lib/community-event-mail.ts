@@ -427,7 +427,7 @@ export async function runEventQueue(
             "live",
             {
               title: "Live in 15 minutes",
-              body: `${event.title} starts at ${time}. ${going} ${going === 1 ? "person has" : "people have"} RSVP'd. Open the room first.`,
+              body: `${event.title} starts at ${time}. ${going} ${going === 1 ? "person has" : "people have"} RSVP'd. Get there a few minutes early.`,
               url: store.sid ? `/studio/community?store=${store.sid}` : "/studio/community",
             },
             { seed: `event:${event.id}:${event.start}` },

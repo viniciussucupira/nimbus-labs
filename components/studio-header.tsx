@@ -115,7 +115,7 @@ export function StudioHeader({
                     A store of your own
                   </Link>
                 ) : (
-                  <p className="px-3 py-2 text-xs text-ink-soft">{`${MAX_STORES_PER_ACCOUNT} of ${MAX_STORES_PER_ACCOUNT} stores: an account's most.`}</p>
+                  <p className="px-3 py-2 text-xs text-ink-soft">{`${MAX_STORES_PER_ACCOUNT} of ${MAX_STORES_PER_ACCOUNT} stores, the most one account can run.`}</p>
                 )}
               </div>
             </div>

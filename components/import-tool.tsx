@@ -533,12 +533,12 @@ export function ImportTool({
               ) : kind === "products" ? (
                 <p className="notice notice-info text-sm">
                   Each row becomes a draft: kept in your studio and not on your store until you publish it. Prices are read in your
-                  store&apos;s currency. A file for a product is added afterwards, from its row in the studio.
+                  store&apos;s currency. A file for a product is added afterward, from its row in the studio.
                 </p>
               ) : (
                 <div className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
                   <p className="text-sm text-ink-soft">
-                    {`Each buyer, by the email in the file, can open what they bought from ${storeName}'s list of purchases, marked as a purchase brought over from another platform, and comes into your community when that product opens it. Nothing is charged and no receipt is sent. Memberships and calls cannot be given this way.`}
+                    {`Each buyer in the file can open what they bought on ${storeName}'s orders page, using the email in the file; it is marked there as brought over from another platform. They also get into your community when that product includes it. Nothing is charged and no receipt is sent. Memberships and calls cannot be given this way.`}
                   </p>
                   <label htmlFor="import-email" className={`flex items-start gap-3 ${canEmail ? "cursor-pointer" : "opacity-60"}`}>
                     <input id="import-email" type="checkbox" checked={email} disabled={!canEmail} onChange={(e) => setEmail(e.target.checked)} className="mt-1 h-5 w-5 shrink-0" />

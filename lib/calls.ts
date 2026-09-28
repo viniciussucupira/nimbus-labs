@@ -1040,7 +1040,14 @@ export async function confirmBooking(input: {
           : `${store.name} will send you the link to join before the call.`,
         ...(video ? [VIDEO_ROOM_NOTE] : []),
         "",
-        "The calendar file attached adds it to your calendar. You will get a reminder a day before and an hour before.",
+        // The reminders planned above: each only while it is at least an hour away (lib/call-records.ts).
+        `The calendar file attached adds it to your calendar.${
+          start - Date.now() >= 25 * 3600_000
+            ? " You will get a reminder a day before and an hour before."
+            : start - Date.now() >= 2 * 3600_000
+              ? " You will get a reminder an hour before."
+              : ""
+        }`,
         ...(canMove(setup, start, input.moves ?? 0)
           ? [
               `To move it to another time yourself, up to ${Math.max(setup.noticeHours, 1)} ${Math.max(setup.noticeHours, 1) === 1 ? "hour" : "hours"} before it starts: ${moveLink(origin, store, product.id, session)}`,
@@ -1076,9 +1083,18 @@ export async function confirmBooking(input: {
         : `You have not set a meeting link, so send them one before the call${buyerEmail ? ` at ${buyerEmail}` : ""}.`,
       ...(meeting && !meeting.made && video ? [VIDEO_ROOM_NOTE] : []),
       "",
-      inGoogle(meeting)
-        ? "It is already in your Google Calendar, so no calendar file is attached. Every booking is also in your studio, under Upcoming calls, and you get a reminder with everyone booked a day and an hour before."
-        : "The calendar file attached adds it to your calendar. Every booking is also in your studio, under Upcoming calls, and you get a reminder with everyone booked a day and an hour before.",
+      `${
+        inGoogle(meeting)
+          ? "It is already in your Google Calendar, so no calendar file is attached."
+          : "The calendar file attached adds it to your calendar."
+      } Every booking is also in your studio, under Upcoming calls${
+        // The same reminders the buyer is told about: each only while it is still ahead.
+        start - Date.now() >= 25 * 3600_000
+          ? ", and you get a reminder with everyone booked a day and an hour before."
+          : start - Date.now() >= 2 * 3600_000
+            ? ", and you get a reminder with everyone booked an hour before."
+            : "."
+      }`,
     ].join("\n"),
     ...(buyerEmail ? { replyTo: buyerEmail } : {}),
     // A booking already in the creator's Google Calendar is not sent to it twice.

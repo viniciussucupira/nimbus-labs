@@ -138,7 +138,7 @@ const NEXT_WHEN_NOT = [
 const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
   ready: {
     title: "Stripe says your account can take payments",
-    body: "That is Stripe's answer, not ours. Your store can take money now, and what you sell shows up further down this page.",
+    body: "That is Stripe's answer, not ours. With your plan on, your store can take money now, and what you sell shows up further down this page.",
   },
   pending: {
     title: "Stripe still wants something from you",
@@ -178,7 +178,7 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
 const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
   on: {
     title: "You are subscribed",
-    body: "Your store can take money now. If your plan started with a free trial, nothing is charged until the trial ends. You can cancel on this page at any time.",
+    body: "Your store can take money as soon as your Stripe account is connected and cleared, if it is not already. If your plan started with a free trial, nothing is charged until the trial ends. You can cancel on this page at any time.",
   },
   cancelling: {
     title: "Canceled",
@@ -222,7 +222,7 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
   },
   "switched-tier-creator": {
     title: "You are back on the Nimbus Labs plan",
-    body: "Email to your list is off from now, and so is your own domain if you set one up. Anything already paid for Pro is kept as credit on your account and pays your next charges until it runs out.",
+    body: "Email to your list is off from now, and so is your own domain if you set one up. What is left of what you paid for Pro is kept as credit on your account and pays your next charges until it runs out.",
   },
   "switched-month": {
     title: "You now pay monthly",
@@ -588,7 +588,7 @@ export default async function StudioPage({
           ? [{ key: "stripe", title: "Connect your Stripe account", hint: "Where your buyers' money goes: yours, not ours.", done: store.stripeChargesEnabled, href: "#stripe" }]
           : []),
         ...(billingReadyForSteps
-          ? [{ key: "plan", title: "Switch on the till", hint: withTrial ? `Free for ${TRIAL_DAYS} days, and nothing is charged today.` : `${priceWords("creator", "month")}, from today.`, done: paid, href: "#billing" }]
+          ? [{ key: "plan", title: "Turn on your checkout", hint: withTrial ? `Free for ${TRIAL_DAYS} days, and nothing is charged today.` : `${priceWords("creator", "month")}, from today.`, done: paid, href: "#billing" }]
           : []),
         ...(connectReady && store.stripeChargesEnabled
           ? [
@@ -703,7 +703,7 @@ export default async function StudioPage({
                   ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${(meet?.providers ?? offeredProviders(store)).map((p) => MEET_NAMES[p]).join(" or ")} links, made for every booking and live event.`, icon: "video" as const }]
                   : []),
                 // Everyone on the store, for their own devices (lib/phone-alerts.ts).
-                { href: studioPath(store, "", "phone"), title: "Phone notifications", text: "A buzz for each sale, booking and report, on your own devices.", icon: "phone" as const },
+                { href: studioPath(store, "", "phone"), title: "Phone notifications", text: "A buzz for sales, bookings, reports, affiliate applications and live events, on your own devices.", icon: "phone" as const },
                 ...(PRO_ON_SALE && may("draft")
                   ? [{ href: studioPath(store, "", "email"), title: "Email", text: "One-off emails and sequences to your list.", icon: "mail" as const, tag: "Pro" }]
                   : []),
@@ -785,7 +785,7 @@ export default async function StudioPage({
                   handle={store.handle}
                   selling={current ? canSell(current) : false}
                   testMode={isConnectInTestMode()}
-                  email={email}
+                  email={store.email}
                   currency={store.currency}
                   meetings={meetAccounts}
                 />
@@ -1141,7 +1141,7 @@ export default async function StudioPage({
                     </select>
                     <p className="mt-2 max-w-md text-sm text-ink-soft">
                       Stripe fixes this when the account is opened and it cannot
-                      be changed afterwards, so pick the country your bank
+                      be changed afterward, so pick the country your bank
                       account is really in.
                     </p>
                     <button
@@ -1369,7 +1369,7 @@ export default async function StudioPage({
                           {`Pro adds email to your list: one-off emails, emails scheduled for later and automatic sequences, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month${domainsOn ? ", and your own domain" : ""}. `}
                           {trialing
                             ? "Nothing is charged now. When the trial ends you pay the Pro price instead."
-                            : "You are charged the Pro price today, less what is left of what you already paid for. If your bank asks you to confirm, you are sent to confirm it, and nothing changes until it is paid."}
+                            : "Today you are charged only the difference for the rest of the period you already paid for, and the Pro price from your next charge on. If your bank asks you to confirm, you are sent to confirm it, and nothing changes until it is paid."}
                         </p>
                         <form action={`/api/billing/switch${pin}`} method="post" className="mt-3">
                           <input type="hidden" name="tier" value="pro" />
@@ -1429,7 +1429,7 @@ export default async function StudioPage({
                     <p className="mt-5 text-ink-soft">
                       Your address, your page, the editor and connecting Stripe
                       are free and stay free. What the subscription switches on
-                      is the till: taking a card for what you sell, and handing
+                      is your checkout: taking a card for what you sell, and handing
                       out what you give away for an email address.
                     </p>
                     <form action={`/api/billing/checkout${pin}`} method="post" className="mt-5 flex flex-col items-start gap-3">

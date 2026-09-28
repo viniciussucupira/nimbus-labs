@@ -340,7 +340,7 @@ export async function requestAffiliateLink(input: {
       "",
       typeof known === "string"
         ? "It shows your link, your clicks, your sales and what you have earned and been paid."
-        : `${name} decides on each application. Once you are approved, your page gives you your own link, and a sale made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you a share.`,
+        : `${name} decides on each application. Once you are approved, your page gives you your own link, and a one-time purchase made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you a share.`,
       "",
       `Commissions are paid to you by ${name} directly, not by Nimbus Labs, which never holds the money.`,
       "",
@@ -438,7 +438,7 @@ export async function openAffiliateLink(store: Store, token: string): Promise<Op
         `${affiliate.email} applied to be an affiliate of ${store.name}.`,
         ...(affiliate.note ? [`Where they will share it: ${affiliate.note}`] : []),
         "",
-        `Approve or decline them in your studio: ${SITE_URL}/studio/affiliates`,
+        `Approve or decline them in your studio: ${SITE_URL}/studio/affiliates${store.sid ? `?store=${store.sid}` : ""}`,
         "",
         "Nothing changes until you decide. Commissions are paid by you, directly, never by Nimbus Labs.",
       ].join("\n"),
@@ -498,7 +498,7 @@ export async function decide(store: Store, id: string, decision: Decision): Prom
         "",
         affiliateLink(store, affiliate.code),
         "",
-        `A sale made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you ${store.affiliates.percent}% of what the buyer paid before tax${Object.keys(store.affiliates.rates).length ? " (some products earn a different share; your page lists them)" : ""}. A refunded sale earns nothing.`,
+        `A one-time purchase made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you ${store.affiliates.percent}% of what the buyer paid before tax${Object.keys(store.affiliates.rates).length ? " (some products earn a different share; your page lists them)" : ""}. Memberships and payment plans do not earn, and a refunded sale earns nothing.`,
         "",
         `Your clicks, sales and earnings: ${SITE_URL}/@${store.handle}/affiliates`,
         "",

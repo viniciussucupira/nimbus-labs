@@ -667,7 +667,7 @@ async function warnIfLow(store: Store, product: Listing): Promise<void> {
         ? `The last license key for ${product.title} has just been given to a buyer. Until you add more, the product shows as sold out on your store and no checkout opens for it.`
         : `${product.title} has ${count} license ${count === 1 ? "key" : "keys"} left to give. You asked to be told at ${setup.lowAt}.`,
       "",
-      `Add more in your studio, under the product: ${SITE_URL}/studio#products`,
+      `Add more in your studio, under the product: ${SITE_URL}/studio${store.sid ? `?store=${store.sid}` : ""}#products`,
       "",
       "This email comes once each time the pool runs low; adding keys resets it.",
     ].join("\n"),
@@ -684,7 +684,7 @@ async function tellCreatorEmpty(store: Store, product: Listing, reference: strin
       `${email || "A buyer"} paid for ${product.title} just as its license keys ran out, so they have not been given one yet.`,
       `Their order reference is ${reference}.`,
       "",
-      `Add keys in your studio, under the product: ${SITE_URL}/studio#products`,
+      `Add keys in your studio, under the product: ${SITE_URL}/studio${store.sid ? `?store=${store.sid}` : ""}#products`,
       "The moment you do, they are given the first one and it is emailed to them. Nothing else is needed from you.",
     ].join("\n"),
   }).catch((error) => console.error("telling a creator about a waiting buyer failed", error));

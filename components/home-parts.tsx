@@ -372,7 +372,7 @@ const PRO_INCLUDED = [
   "Sequences that go out by themselves after someone joins or buys",
   `Up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month (${TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")} during the free trial), from your name, with replies coming to you`,
   "One-click unsubscribe in every email, honored for good",
-  "Community announcements emailed to the members who asked for them, from the same monthly emails",
+  "Community announcements emailed to the members who asked for them, counted in the same monthly allowance",
   "One email that asks each buyer for a review, 3 to 30 days after buying",
 ];
 
@@ -412,7 +412,7 @@ function PlanCard({
       */}
       {featured ? (
         <span className="absolute -top-3 left-7 rounded-full bg-violet-brand px-3 py-1 text-[0.75rem] font-semibold text-white shadow-[var(--shadow-sm)] sm:left-9">
-          Where most people start
+          Where to start
         </span>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -545,7 +545,7 @@ function CostAtVolume() {
   return (
     <div className="card-flat mt-6 p-6 sm:p-7">
       <p className="font-semibold text-ink">What you pay as your sales grow</p>
-      <p className="mt-1 text-sm text-ink-soft">{`Each month, at a $${AVERAGE_PRICE} average price. Card processing is not included: every option pays it, to Stripe.`}</p>
+      <p className="mt-1 text-sm text-ink-soft">{`Each month, at a $${AVERAGE_PRICE} average price. Card processing is not included: every option pays it on top.`}</p>
       {/*
         Four money columns do not fit a 320px screen, and a table that is cut
         off at the edge hides the column the whole comparison turns on. Above

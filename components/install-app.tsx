@@ -87,7 +87,7 @@ export function InstallApp() {
           <p className="mt-1.5 text-[0.9375rem] text-ink-soft">
             Your store installs with its own name and icon on the home screen, with no app store in the way. Stan&apos;s creator
             app is on Apple devices only: their help center says it is &ldquo;currently only available on iPhone and
-            iPad&rdquo;. Native apps are on our list, and this line will say so the day they exist.
+            iPad.&rdquo; Native apps are on our list, and this line will say so the day they exist.
           </p>
         </div>
       </div>

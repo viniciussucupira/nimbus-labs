@@ -244,7 +244,8 @@ const ROWS: { what: string; permission: Permission }[] = [
   { what: "Schedule, move and cancel live events, post replays", permission: "events" },
   { what: "Hide, show and answer reviews", permission: "reviews" },
   { what: "Write and keep email drafts", permission: "draft" },
-  { what: "Send email to your list, sequences, imports", permission: "send" },
+  { what: "Send email to your list, run sequences, import addresses into the list", permission: "send" },
+  { what: "Import products, lists and past buyers from another platform", permission: "import" },
   { what: "Address, domain, currency, pixels, tax, webhooks, discounts, affiliates, checkout reminders, review emails, video calls, calendars, email platforms", permission: "settings" },
   { what: "Download files of buyers' and affiliates' addresses", permission: "export" },
 ];

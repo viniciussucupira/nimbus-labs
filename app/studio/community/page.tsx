@@ -222,8 +222,8 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
         <p className="mt-3 max-w-2xl text-ink-soft">
           Posts, comments and likes in spaces you set up, live events members RSVP to and join from the page, a
           member directory people choose to join, and announcements you can also email. You choose which products let people in; each visit is checked against
-          your own Stripe account (and the past buyers you brought over from another platform), so a membership that stops being paid stops opening it. Members come in with a
-          link to their inbox, with no account or password to make.
+          your own Stripe account (and the past buyers you brought over from another platform), so a membership that stops being paid stops opening it. Members get in with a
+          link sent to their inbox, with no account or password to make.
         </p>
 
         <CommunityStudio

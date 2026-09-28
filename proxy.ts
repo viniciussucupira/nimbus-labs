@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { handleForDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
 import { AFFILIATE_CODE_PATTERN, VIA_COOKIE_SECONDS, viaCookieName } from "@/lib/affiliate-setting";
+import { needsConsent } from "@/lib/pixels";
 import { dynamicPolicy, isDynamicPage, isEventRoomPage, isStorePage, newNonce, roomPermissions } from "@/lib/csp";
 import { fromAnotherSite } from "@/lib/request-guard";
 import { isPlatformHost, requestHost } from "@/lib/request-origin";
@@ -36,10 +37,15 @@ const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|community|p|affil
  * made later, inside the store's window, is credited to whoever sent them
  * (lib/affiliates.ts). Set here so it works without JavaScript; whether the
  * code is real, and still inside the window, is decided at the checkout.
+ *
+ * Not set where the law asks for consent before a tracking cookie (the same
+ * places the ad pixels ask first, lib/pixels.ts): a click from there is not
+ * remembered, and the affiliate is not credited for it.
  */
 function withAffiliateClick(request: NextRequest, handle: string, response: NextResponse): NextResponse {
   const code = request.nextUrl.searchParams.get("via")?.toLowerCase() ?? "";
   if (!handle || !AFFILIATE_CODE_PATTERN.test(code)) return response;
+  if (needsConsent(request.headers.get("x-vercel-ip-country"))) return response;
   response.cookies.set({
     name: viaCookieName(handle),
     value: `${code}.${Math.floor(Date.now() / 1000)}`,

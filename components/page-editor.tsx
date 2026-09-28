@@ -461,7 +461,7 @@ export function PageEditor({
             {field(
               `${base}-n`,
               "A line under it (optional)",
-              <input id={`${base}-n`} className="field" maxLength={MAX_CTA_NOTE} value={block.note} placeholder="For example: instant download, lifetime access" onChange={(e) => change(index, { note: e.target.value })} />,
+              <input id={`${base}-n`} className="field" maxLength={MAX_CTA_NOTE} value={block.note} placeholder="For example: instant download, 40 pages as a PDF" onChange={(e) => change(index, { note: e.target.value })} />,
             )}
             <p className="text-xs text-ink-soft">{product.leadsTo}</p>
           </div>
