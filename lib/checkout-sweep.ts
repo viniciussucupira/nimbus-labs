@@ -34,6 +34,8 @@
  * guarded by their own marks, so a store seen twice is only work, never a
  * second email.
  */
+import { revokeRefundedGifts } from "@/lib/gifts";
+import { dropEnrollment } from "@/lib/learn";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount, platformKey } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
@@ -81,6 +83,13 @@ async function sweepStore(store: Store, counts: SweepCounts, deadline: number, r
     } catch (error) {
       console.error("reading a store's refunds failed", store.handle, error);
     }
+  }
+  // A gift refunded in full is taken back from whoever it was given to
+  // (lib/gifts.ts). Nothing is asked of a store that never sold one.
+  try {
+    counts.revoked += await revokeRefundedGifts(store, deadline, (email, productId) => dropEnrollment(store, email, productId));
+  } catch (error) {
+    console.error("reading a store's refunds for gifts failed", store.handle, error);
   }
   if (reviewed) {
     try {

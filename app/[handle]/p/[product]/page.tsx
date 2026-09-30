@@ -1,4 +1,5 @@
 import { isSoon } from "@/lib/waitlist";
+import { canGift } from "@/lib/gift-rules";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -25,7 +26,7 @@ import { SITE_URL } from "@/lib/site-url";
 import { EMPTY_PAGE, type SalesPage } from "@/lib/sales-page";
 import { readPage } from "@/lib/sales-page-store";
 import { type Summary, REVIEWS_ON_PAGE, average, showsRating, summaryOf, visibleReviews } from "@/lib/reviews";
-import { BuyBox, ProductFacts, pageAction, pricePill, productPath } from "@/components/store-product";
+import { BuyBox, GiftBox, ProductFacts, pageAction, pricePill, productPath } from "@/components/store-product";
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { StoreTracking } from "@/components/store-tracking";
@@ -35,6 +36,7 @@ import { MIN_BUNDLE_ITEMS, worthWords } from "@/lib/bundle-rules";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 /**
@@ -194,7 +196,7 @@ function productData(store: Store, product: Listing, description: string, soldOu
   };
 }
 
-export default async function ProductPage({ params }: Params) {
+export default async function ProductPage({ params, searchParams }: Params) {
   const { handle, product: id } = await params;
   const found = await load(handle, id);
   if (!found) {
@@ -217,6 +219,8 @@ export default async function ProductPage({ params }: Params) {
   const selling = canSell(store);
   // Coming soon: a waitlist where the buy box would be (lib/waitlist.ts).
   const soon = await isSoon(store, product.id).catch(() => false);
+  const query = searchParams ? await searchParams : {};
+  const giftProblem = typeof query.gift === "string" ? query.gift : "";
   const rehearsal = selling && isConnectInTestMode();
   const [about, stock, noKeys, page, summary, related, inside] = await Promise.all([
     product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""),
@@ -261,6 +265,8 @@ export default async function ProductPage({ params }: Params) {
   const count = noKeys ? 0 : stock;
   const blocks = aboutBlocks(about);
   const remaining = count !== null && canSellProduct(store, product) ? count : null;
+  // Bought for somebody else, where it can be: on sale, not coming soon, not sold out (lib/gift-rules.ts).
+  const giftable = selling && !soon && remaining !== 0 && bundleReady && canSellProduct(store, product) && canGift(product);
   const plan = activePlan(product);
   const pwyw = activePwyw(product);
   const description = page.seoDescription || product.summary || aboutExcerpt(about) || product.title;
@@ -311,6 +317,7 @@ export default async function ProductPage({ params }: Params) {
         </p>
       ) : null}
       <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} />
+      {giftable ? <GiftBox store={store} product={product} problem={giftProblem} /> : null}
       {product.recurring && canManage(store) ? (
         <p className="mt-3 text-center text-sm">
           <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">

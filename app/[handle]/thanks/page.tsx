@@ -1,3 +1,4 @@
+import { readGift } from "@/lib/gifts";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -142,6 +143,71 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     ? await withinLimit("thanks-view", `${clientAddress({ headers: await headers() })}|${store.handle}`, VIEWS_PER_TEN_MINUTES, 600)
     : true;
   const order: Order | { state: "slow" } = allowed ? await readOrder(store, sessionId) : { state: "slow" };
+
+  // Bought for somebody else: nothing is handed over here. The sale is
+  // counted as any other, the gift goes to its recipient (lib/gifts.ts,
+  // through the confirmation, once), and this page says where it went.
+  if (order.state === "paid" && order.gift && sessionId) {
+    const gift = await readGift(order.gift);
+    const record = order.record as SaleRecord;
+    after(() => noteSale(store, record).catch((error) => console.error("telling about a sale failed", error)));
+    if (order.product.stock !== null) {
+      await confirmStock(store, order.product, sessionId).catch((error) => console.error("confirming stock failed", error));
+    }
+    if (order.record.metadata) {
+      await noteSession(store, order.record as Parameters<typeof noteSession>[1]).catch((error) =>
+        console.error("noting an affiliate sale failed", error),
+      );
+    }
+    if (order.news && order.email && store.listId) {
+      await upsertContact(store.listId, order.email, {
+        agreed: true,
+        explicit: true,
+        at: new Date(order.created * 1000).toISOString(),
+        source: "buyer",
+      }).catch((error) => console.error("adding a buyer to a list failed", error));
+    }
+    if (canConfirm(store)) {
+      after(() => confirmPurchase(store, sessionId).catch((error) => console.error("delivering a gift failed", error)));
+    }
+    return (
+      <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+        <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
+          <div className="st-card p-7 sm:p-10">
+            <p className="st-price text-sm">Paid</p>
+            <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">Your gift is on its way</h1>
+            <p className="st-muted mt-4 text-lg">
+              {"You bought "}
+              <strong style={{ color: "var(--st-text)" }}>{order.product.title}</strong>
+              {` from ${store.name} for ${formatMoney(order.amount, order.currency)}, as a gift${gift ? ` for ${gift.to}` : ""}.`}
+            </p>
+            <p className="st-muted mt-4">
+              {gift
+                ? `We are emailing ${gift.to} now${gift.from ? `, from ${gift.from}` : ""}${gift.message ? ", with your message" : ""}, and a link to open it. It is theirs, on their address; you do not get a copy.`
+                : "It goes to the address you gave, with a link to open it."}
+            </p>
+            {order.email ? <p className="st-muted mt-4 text-sm">{`Your receipt goes to ${order.email}.`}</p> : null}
+            <div className="mt-8">
+              <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
+                {`Back to ${store.name}`}
+              </Link>
+              <StoreTracking
+                store={store}
+                event={{
+                  type: "purchase",
+                  id: sessionId,
+                  value: toMajor(order.amount, order.currency),
+                  currency: order.currency,
+                  productId: order.product.id,
+                  title: order.product.title,
+                }}
+              />
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // A paid call: the time is written down and the two emails go out, once,
   // however many times this page is opened. Confirmed before its link is

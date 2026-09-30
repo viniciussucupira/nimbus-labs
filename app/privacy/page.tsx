@@ -189,6 +189,18 @@ export default function PrivacyPage() {
           Stripe asks the buyer for the address it needs to work the tax out,
           under Stripe&apos;s own privacy policy; we do not keep it.
         </p>
+        <p id="gifts">
+          <strong className="text-black">Gifts.</strong>{" "}
+          When you buy something as a gift, we keep the recipient&apos;s email
+          address, the name and the message you typed, and which payment it
+          was, for about 13 months, so the gift can be handed over, shown on
+          their list of purchases and taken back if the payment is refunded.
+          We email the recipient once, with your name, your message and a link
+          to open it; they are not added to the creator&apos;s list and receive
+          nothing else from it unless they ask. You get the receipt. What was
+          given is kept under the recipient&apos;s address, like a purchase of
+          their own.
+        </p>
         <p id="waitlists">
           <strong className="text-black">Waitlists.</strong>{" "}
           When you join the waitlist for something a creator has not put on

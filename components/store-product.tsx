@@ -116,6 +116,52 @@ export function ProductFacts({
   );
 }
 
+const GIFT_PROBLEMS: Record<string, string> = {
+  email: "That does not look like an email address. Check the recipient's address and try again.",
+  product: "This can no longer be bought as a gift.",
+  unavailable: "Gifts are not available right now. Nothing was charged.",
+};
+
+/**
+ * Buying a product for somebody else: their address, the buyer's name and a
+ * message, then Stripe's page as for anything else (lib/gifts.ts). Folded
+ * away under the buy box, because most buyers buy for themselves.
+ */
+export function GiftBox({ store, product, problem = "" }: { store: Store; product: Listing; problem?: string }) {
+  return (
+    <details id="gift" className="mt-4 scroll-mt-24 rounded-2xl px-4 py-3" style={{ border: "1px solid var(--st-line)" }} open={Boolean(problem)}>
+      <summary className="flex min-h-[40px] cursor-pointer items-center text-sm font-semibold" style={{ color: "var(--st-text)" }}>
+        Buy it as a gift
+      </summary>
+      <form action="/api/store/checkout" method="post" className="mt-2 space-y-3 pb-1" data-checkout="">
+        <input type="hidden" name="handle" value={store.handle} />
+        <input type="hidden" name="product" value={product.id} />
+        {problem && GIFT_PROBLEMS[problem] ? (
+          <p className="st-note text-sm" role="alert">{GIFT_PROBLEMS[problem]}</p>
+        ) : null}
+        <label className="block">
+          <span className="st-label">Their email</span>
+          <input className="st-field mt-2" type="email" name="gift_to" required maxLength={254} autoComplete="off" placeholder="friend@example.com" />
+        </label>
+        <label className="block">
+          <span className="st-label">Your name, as they will see it</span>
+          <input className="st-field mt-2" name="gift_from" maxLength={60} autoComplete="name" placeholder="Dana" />
+        </label>
+        <label className="block">
+          <span className="st-label">A message (optional)</span>
+          <textarea className="st-field mt-2" name="gift_message" rows={3} maxLength={500} />
+        </label>
+        <button type="submit" className="btn st-btn btn-block">
+          {`Buy as a gift — ${formatMoney(product.priceCents, store.currency)}`}
+        </button>
+        <p className="st-muted text-xs">
+          {`You pay on Stripe's page. Right after, they get one email from ${store.name} with your name, your message and a link to open it on their own address. You get the receipt, not a copy.`}
+        </p>
+      </form>
+    </details>
+  );
+}
+
 /**
  * A product coming soon: an address for its waitlist, confirmed from the
  * inbox before it counts. The box to hear more from the creator starts

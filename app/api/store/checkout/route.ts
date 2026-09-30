@@ -1,3 +1,4 @@
+import { startGift } from "@/lib/gifts";
 import { isSoon } from "@/lib/waitlist";
 import { type NextRequest, after } from "next/server";
 import { linkOrigin, originFrom } from "@/lib/request-origin";
@@ -50,6 +51,10 @@ export async function POST(request: NextRequest) {
   let bump = false;
   let plan = false;
   let news = false;
+  // Bought for somebody else (lib/gifts.ts): who, from whom, and a message.
+  let giftTo = "";
+  let giftFrom = "";
+  let giftMessage = "";
   try {
     const form = await (await limited(request, 8_000)).formData();
     const h = form.get("handle");
@@ -66,6 +71,13 @@ export async function POST(request: NextRequest) {
     plan = form.get("pay") === "plan";
     // Only a box the buyer ticked, and only on a store that can write to them.
     news = form.get("news") === "yes";
+    const read = (name: string, max: number) => {
+      const value = form.get(name);
+      return typeof value === "string" ? value.slice(0, max) : "";
+    };
+    giftTo = read("gift_to", 300);
+    giftFrom = read("gift_from", 200);
+    giftMessage = read("gift_message", 2_000);
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -101,6 +113,16 @@ export async function POST(request: NextRequest) {
   // does not exist. The creator was emailed when the pool ran low.
   if (await outOfKeys(store, product).catch(() => false)) return away(`/@${store.handle}?status=soldout`);
 
+  // A gift: written down before its checkout opens, and its checkout is one
+  // plain payment with nothing added and no offer after it.
+  let gift: string | undefined;
+  if (giftTo.trim()) {
+    const started = await startGift(store, product, { to: giftTo, from: giftFrom, message: giftMessage }).catch(() => null);
+    if (!started) return away(`/@${store.handle}?status=error`);
+    if (!started.ok) return away(`/@${store.handle}/p/${product.id}?gift=${started.reason}#gift`);
+    gift = started.gift.id;
+  }
+
   try {
     // A buyer who went back from Stripe's page hands back the unit they held
     // before holding another.
@@ -109,8 +131,8 @@ export async function POST(request: NextRequest) {
 
     // When offers follow the payment, this browser gets a secret, and only
     // its fingerprint travels with the charge.
-    const inPlan = plan && activePlan(product) !== null;
-    const upsell = !inPlan && !store.tax.enabled && activeFunnel(await readListings(store, funnelProductIds(product.funnel)), product) ? newUpsellKey() : null;
+    const inPlan = !gift && plan && activePlan(product) !== null;
+    const upsell = !gift && !inPlan && !store.tax.enabled && activeFunnel(await readListings(store, funnelProductIds(product.funnel)), product) ? newUpsellKey() : null;
     // Sent by an affiliate within the store's window: credited to them. A
     // lookup that fails never stops the sale; it is only not credited.
     const via = await attributionFor(store, product.id, {
@@ -119,7 +141,7 @@ export async function POST(request: NextRequest) {
     }).catch(() => null);
     // A course opens straight away in the browser that paid for it.
     // So does a course in a bundle.
-    const buyer = product.course || product.bundle ? newBuyerKey() : null;
+    const buyer = !gift && (product.course || product.bundle) ? newBuyerKey() : null;
     const held = await withStockHold(store, product, (holding) =>
       createCheckout(store, product, linkOrigin(request, store), optionId, {
         bump,
@@ -131,6 +153,7 @@ export async function POST(request: NextRequest) {
         // list here, or sends this product's buyers to their email platform.
         news: news && (canWrite(store) || syncTakesBuyer(store, product.id)),
         via,
+        gift,
       }),
     );
     if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);

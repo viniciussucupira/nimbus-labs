@@ -124,6 +124,8 @@ export async function GET(request: NextRequest) {
   }
   // A membership that has ended hands nothing over any more.
   if (order.membership === "ended") return toRenew(request, store, order.product);
+  // A gift is its recipient's, opened from their own email (lib/gifts.ts).
+  if (order.gift) return plain(403, "This was a gift: it opens from the email sent to the person it is for.");
   const sale = { reference: order.reference, email: order.email, paidAt: order.created };
   const pid = request.nextUrl.searchParams.get("pid") ?? "";
 

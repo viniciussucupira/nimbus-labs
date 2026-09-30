@@ -34,6 +34,8 @@
  * its licence key when it hands one out — kept under the offer's payment,
  * the same reference the thanks page and the list of purchases use.
  */
+import { deliverGift } from "@/lib/gifts";
+import { ordersLinkFor } from "@/lib/buyer-orders";
 import { saleHandles } from "@/lib/store";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
@@ -45,7 +47,8 @@ import { everyLabel } from "@/lib/product-recurring";
 import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-store";
 import { SITE_URL } from "@/lib/site-url";
 import type { Listing, Store } from "@/lib/store";
-import { listingsNamed, recordListings } from "@/lib/catalog";
+import { listingsNamed, readListing, recordListings } from "@/lib/catalog";
+import { recordEnrollment } from "@/lib/learn";
 import { formatMoney } from "@/lib/money";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { purchaseRefunded } from "@/lib/refunds";
@@ -351,6 +354,9 @@ export async function confirmPurchase(
   }
   if (session.id !== sessionId) return "skip";
   const listings = await listingsNamed(store, session.metadata);
+  // Bought for somebody else: handed to them, and the buyer gets a receipt
+  // that says so (lib/gifts.ts), instead of the usual confirmation.
+  if (session.metadata?.gift) return confirmGift(store, session, listings, key);
   if (!confirmationFor(store, session, Date.now() / 1000, [], listings)) return "skip";
   const letter = confirmationFor(store, session, Date.now() / 1000, await keysFor(store, session, listings), listings);
   if (!letter) return "skip";
@@ -382,6 +388,29 @@ export async function confirmPurchase(
     await scheduleReviewAsk(store, sessionId, paidAt).catch((error) => console.error("putting an order on the review list failed", error));
   }
   return sent ? "sent" : "failed";
+}
+
+async function confirmGift(store: Store, session: SessionRecord, listings: Listing[], key: string): Promise<ConfirmOutcome> {
+  if (!isSettled(session)) return "skip";
+  const meta = session.metadata ?? {};
+  if (!saleHandles(store).has(meta.store ?? "")) return "skip";
+  const product = listings.find((p) => p.id === meta.product);
+  if (!product) return "skip";
+  const base = storeBase(store);
+  const outcome = await deliverGift({
+    store,
+    session: session as Parameters<typeof deliverGift>[0]["session"],
+    product,
+    base,
+    from: fromStore(store),
+    recordStart: async (email, productId, start) => {
+      const course = productId === product.id ? product : await readListing(store, productId);
+      if (course?.course) await recordEnrollment(store, email, productId, start);
+    },
+    ordersLink: (email) => ordersLinkFor(store, email, base),
+  });
+  if (outcome !== "skip") await redisPipeline([["SET", key, "sent", "EX", SENT_MARK_SECONDS]]);
+  return outcome === "given" ? "sent" : outcome === "already" ? "already" : "skip";
 }
 
 /** One offer taken in one click after paying, as Stripe charged it. */
