@@ -27,7 +27,8 @@ import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { StripeError, onAccount, platformKey } from "@/lib/stripe-account";
 import type { Store } from "@/lib/store";
-import { sellsAny } from "@/lib/catalog";
+import { readListings, sellsAny } from "@/lib/catalog";
+import { canOffer, saveOn } from "@/lib/save-offer";
 
 /** How long the emailed link keeps working. */
 export const MANAGE_LINK_SECONDS = 60 * 60;
@@ -315,6 +316,205 @@ export async function openPortal(store: Store, token: string, origin: string): P
     return { ok: true, url: made.url };
   } catch (error) {
     console.error("opening the membership portal failed", error);
+    return { ok: false, reason: "error" };
+  }
+}
+
+// ---- Leaving one membership, with an offer made once ---------------------
+
+/** A membership as the member's own page lists it. */
+export type Membership = {
+  id: string;
+  /** What it is, by the product's name in the store today. */
+  title: string;
+  /** Each payment, in the currency's smallest unit. */
+  amount: number;
+  currency: string;
+  interval: string;
+  intervalCount: number;
+  /**
+   * When it stops, if the member already cancelled and it is running out the
+   * time they paid for. Null while it runs on. A membership in this state has
+   * no Cancel button: there is nothing left to cancel.
+   */
+  endsAt: number | null;
+};
+
+const SUB_PATTERN = /^sub_[A-Za-z0-9]{6,64}$/;
+/** Once the offer has been made on a membership, it is never made again. */
+const offeredKey = (account: string, subscription: string) => `nl:save:${account}:${subscription}`;
+
+type SubRow = {
+  id?: unknown;
+  status?: unknown;
+  customer?: unknown;
+  metadata?: Record<string, string> | null;
+  cancel_at_period_end?: unknown;
+  cancel_at?: unknown;
+  current_period_end?: unknown;
+  items?: {
+    data?: {
+      current_period_end?: unknown;
+      price?: { unit_amount?: unknown; currency?: unknown; recurring?: { interval?: unknown; interval_count?: unknown } | null };
+    }[];
+  };
+};
+
+/** The grant behind a live link, read without spending one of its opens. */
+async function grantOf(store: Store, token: string): Promise<Grant | null> {
+  if (!MANAGE_TOKEN_PATTERN.test(token) || !isRedisConfigured()) return null;
+  const [raw] = await redisPipeline([["GET", await tokenKey(token)]]);
+  const grant = parseGrant(raw);
+  return grant && grant.a === store.stripeAccountId ? grant : null;
+}
+
+/** When a subscription stops, if it is set to; null while it runs on. */
+function endsAtOf(sub: SubRow): number | null {
+  const at = typeof sub.cancel_at === "number" && sub.cancel_at > 0 ? sub.cancel_at : 0;
+  if (at) return at;
+  if (sub.cancel_at_period_end !== true) return null;
+  // Stripe moved the period's end onto the items in 2025; an older account
+  // may still carry it on the subscription. Read both, item first, as
+  // lib/billing.ts does.
+  const fromItem = sub.items?.data?.[0]?.current_period_end;
+  if (typeof fromItem === "number") return fromItem;
+  return typeof sub.current_period_end === "number" ? sub.current_period_end : 0;
+}
+
+/** The live memberships of this store held by one of the creator's customers. */
+async function subsOf(store: Store, grant: Grant): Promise<SubRow[]> {
+  const handles = saleHandles(store);
+  const listed = (await onAccount(
+    "GET",
+    grant.a,
+    `/subscriptions?customer=${encodeURIComponent(grant.c)}&status=all&limit=20`,
+  )) as Listed;
+  const rows = Array.isArray(listed.data) ? (listed.data as SubRow[]) : [];
+  return rows.filter(
+    (sub) =>
+      typeof sub.id === "string" &&
+      SUB_PATTERN.test(sub.id) &&
+      typeof sub.status === "string" &&
+      LIVE.has(sub.status) &&
+      handles.has(sub.metadata?.store ?? "") &&
+      // A payment plan pays for something already delivered and ends by
+      // itself; it is not a membership and is not cancelled from here.
+      sub.metadata?.kind !== "plan",
+  );
+}
+
+/**
+ * The memberships behind a live link, for the page to list. Null when the
+ * link is not good, so the page can say so rather than show an empty list.
+ *
+ * Reading this spends nothing: opening the page is still not an action, and a
+ * mail scanner that follows the link changes nothing and uses up nothing.
+ */
+export async function membershipsFor(store: Store, token: string): Promise<Membership[] | null> {
+  const grant = await grantOf(store, token);
+  if (!grant) return null;
+  let subs: SubRow[];
+  try {
+    subs = await subsOf(store, grant);
+  } catch (error) {
+    console.error("listing a member's memberships failed", error);
+    return [];
+  }
+  const ids = [...new Set(subs.map((s) => s.metadata?.product ?? "").filter(Boolean))];
+  const titles = new Map(ids.length ? (await readListings(store, ids).catch(() => [])).map((p) => [p.id, p.title]) : []);
+  return subs.map((sub) => {
+    const price = sub.items?.data?.[0]?.price;
+    return {
+      id: sub.id as string,
+      title: titles.get(sub.metadata?.product ?? "") || "Your membership",
+      amount: typeof price?.unit_amount === "number" ? price.unit_amount : 0,
+      currency: typeof price?.currency === "string" ? price.currency : store.currency,
+      interval: typeof price?.recurring?.interval === "string" ? price.recurring.interval : "month",
+      intervalCount: typeof price?.recurring?.interval_count === "number" ? price.recurring.interval_count : 1,
+      endsAt: endsAtOf(sub),
+    };
+  });
+}
+
+/**
+ * Opens Stripe's own cancellation page for one membership, carrying the
+ * creator's offer the first time — and only the first time — it can be made
+ * and honoured on that membership.
+ *
+ * The subscription is checked against the link before anything is asked of
+ * Stripe: it has to belong to the very customer the link was issued for, on
+ * this store's account, and be one this store sold. A link cannot be used to
+ * cancel somebody else's membership by changing the id in the form.
+ *
+ * What happens afterwards is Stripe's to say. Its confirmation page shows
+ * whichever thing the member did — took the offer, or cancelled — in Stripe's
+ * own words, so nothing written here can describe it wrongly.
+ */
+export async function openCancel(store: Store, token: string, subscription: string, origin: string): Promise<OpenResult> {
+  if (!SUB_PATTERN.test(subscription)) return { ok: false, reason: "error" };
+  const grant = await grantOf(store, token);
+  if (!grant) return { ok: false, reason: "expired" };
+
+  // The same counter as the portal button: one link opens Stripe a limited
+  // number of times, whichever button is pressed.
+  const key = await opensKey(token);
+  const [, count] = await redisPipeline([
+    ["SET", key, "0", "EX", MANAGE_LINK_SECONDS, "NX"],
+    ["INCR", key],
+  ]);
+  if (Number(count) > MAX_OPENS) return { ok: false, reason: "used" };
+
+  try {
+    const sub = (await subsOf(store, grant)).find((s) => s.id === subscription);
+    // Not this member's, not this store's, or already ended: the same answer
+    // for all three, so the form cannot be used to learn which.
+    if (!sub || endsAtOf(sub) !== null) return { ok: false, reason: "error" };
+
+    const price = sub.items?.data?.[0]?.price;
+    const interval = typeof price?.recurring?.interval === "string" ? price.recurring.interval : "";
+    const every = typeof price?.recurring?.interval_count === "number" ? price.recurring.interval_count : 1;
+    const offer = store.save;
+    // Claimed before Stripe is asked, with NX: two presses at once make one
+    // offer, and a member who backs out of Stripe's page and presses Cancel
+    // again is not shown it a second time.
+    let withOffer = false;
+    if (saveOn(store) && canOffer(offer, interval, every)) {
+      const [claimed] = await redisPipeline([["SET", offeredKey(grant.a, subscription), String(Date.now()), "NX"]]);
+      withOffer = claimed !== null;
+    }
+
+    const body = new URLSearchParams({
+      customer: grant.c,
+      configuration: await portalConfiguration(store, origin),
+      return_url: `${origin}/@${store.handle}/manage?token=${token}`,
+      "flow_data[type]": "subscription_cancel",
+      "flow_data[subscription_cancel][subscription]": subscription,
+      "flow_data[after_completion][type]": "hosted_confirmation",
+    });
+    if (withOffer) {
+      body.set("flow_data[subscription_cancel][retention][type]", "coupon_offer");
+      body.set("flow_data[subscription_cancel][retention][coupon_offer][coupon]", offer.coupon);
+    }
+
+    let made: Record<string, unknown>;
+    try {
+      made = await onAccount("POST", grant.a, "/billing_portal/sessions", body);
+    } catch (error) {
+      // Refused: the creator may have deleted the coupon, or the portal
+      // set-up, in their own dashboard. The member came to cancel, and letting
+      // them is the one thing this must never fail at — so the set-up is made
+      // again and the offer is left out, once. The mark is kept, so a coupon
+      // that no longer exists is not tried again on this membership.
+      if (!(error instanceof StripeError) || (error.status !== 400 && error.status !== 404)) throw error;
+      body.set("configuration", await portalConfiguration(store, origin, true));
+      body.delete("flow_data[subscription_cancel][retention][type]");
+      body.delete("flow_data[subscription_cancel][retention][coupon_offer][coupon]");
+      made = await onAccount("POST", grant.a, "/billing_portal/sessions", body);
+    }
+    if (typeof made.url !== "string" || !made.url) return { ok: false, reason: "error" };
+    return { ok: true, url: made.url };
+  } catch (error) {
+    console.error("opening the cancellation page failed", error);
     return { ok: false, reason: "error" };
   }
 }

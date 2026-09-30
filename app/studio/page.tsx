@@ -35,6 +35,8 @@ import { keepHandle, webhooksView } from "@/lib/webhooks";
 import { PixelEditor } from "@/components/pixel-editor";
 import { TaxEditor } from "@/components/tax-editor";
 import { RecoveryEditor } from "@/components/recovery-editor";
+import { SaveOfferEditor } from "@/components/save-offer-editor";
+import { sellsMemberships } from "@/lib/membership-manage";
 import { taxStatus } from "@/lib/tax";
 import { SITE_URL } from "@/lib/site-url";
 import { MEET_NAMES, readableTime, roomFor, seatsAt, zoneName } from "@/lib/call-setup";
@@ -969,6 +971,13 @@ export default async function StudioPage({
                   suggestedAddress={store.mail?.address ?? ""}
                   connected={Boolean(current?.stripeAccountId)}
                 />
+
+                {/* Only where there is a membership to cancel: an offer on a
+                    store that sells nothing that renews would be a setting
+                    that can never do anything. */}
+                {sellsMemberships(store) ? (
+                  <SaveOfferEditor save={store.save} connected={Boolean(current?.stripeAccountId)} />
+                ) : null}
               </>
             ) : null}
 

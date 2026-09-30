@@ -7,6 +7,7 @@ import { isBillingConfigured } from "@/lib/billing";
 import { syncSubscriptions } from "@/lib/billing-sync";
 import { moveAllStores } from "@/lib/store";
 import { pruneResearch } from "@/lib/creator-research-store";
+import { recoverFailedPayments } from "@/lib/payment-recovery";
 
 export const maxDuration = 60;
 
@@ -19,7 +20,10 @@ export const maxDuration = 60;
  *   - brings every store's "paid up" snapshot in line with its subscription
  *     at Stripe (lib/billing-sync.ts), so a store that stopped paying us
  *     stops selling, and one that paid while its way back got lost is
- *     written down.
+ *     written down;
+ *   - tells each member whose renewal failed, once, with a link that pays it
+ *     (lib/payment-recovery.ts), so a member whose card expired is not
+ *     quietly cut off without ever being asked for a new one.
  *
  * And, with the time left, one piece of upkeep: every store written before
  * products had records of their own is moved to them (lib/catalog.ts). A
@@ -63,6 +67,16 @@ async function run(request: NextRequest): Promise<Response> {
         console.error("settling store subscriptions failed", error);
       }
     }
+    // Members whose renewal failed are told, once, with a link that pays it
+    // and makes the working card the one used next time (lib/payment-recovery.ts).
+    // Before the upkeep below, because it is money agreed to, and upkeep can
+    // wait a day while a member's access cannot.
+    let recovered = null;
+    try {
+      recovered = await recoverFailedPayments(deadline);
+    } catch (error) {
+      console.error("writing about failed renewals failed", error);
+    }
     let catalogs = null;
     try {
       catalogs = await moveAllStores(deadline);
@@ -72,7 +86,7 @@ async function run(request: NextRequest): Promise<Response> {
     // Creator research answers are kept 24 months, as the privacy policy says.
     await pruneResearch().catch((error: unknown) => console.error("pruning old research answers failed", error));
     const ok = plans !== null && (billing !== null || !isBillingConfigured());
-    return Response.json({ ok, ...(plans ?? {}), billing, catalogs }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ok, ...(plans ?? {}), billing, recovered, catalogs }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
   } finally {
     await redisPipeline([["DEL", "nl:plans:lock"]]).catch(() => {});
   }
