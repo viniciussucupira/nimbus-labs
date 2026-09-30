@@ -9,8 +9,8 @@
  * What a creator sets is small on purpose: whether it is on, what share of a
  * sale an affiliate earns — for the whole store, and differently for any
  * product they choose — how long after a click a purchase still counts, and
- * when they pay. Who is let in is always the creator's decision, one
- * application at a time.
+ * when they pay. Who is let in is the creator's decision, one application at
+ * a time — or, when they choose, anybody who has bought from them.
  *
  * The last two are the promise. An affiliate who cannot see when they will be
  * paid has to ask, and asking is the thing every complaint about every
@@ -47,6 +47,13 @@ export type AffiliateSetting = {
    * on a sale that is later refunded has to be asked back by hand.
    */
   hold: number;
+  /**
+   * Whether anybody who bought from the store may join at once, without an
+   * application waiting on the creator: the thanks page and the purchase email
+   * offer them their own link. What Stan calls Affiliate Share and Skool calls
+   * member affiliates. A buyer the creator declined or removed stays out.
+   */
+  buyers: boolean;
 };
 
 /** The published limits. */
@@ -69,6 +76,7 @@ export const NO_AFFILIATES: AffiliateSetting = {
   rates: {},
   payday: NO_PAYDAY,
   hold: 0,
+  buyers: false,
 };
 
 const whole = (value: unknown, min: number, max: number): number | null => {
@@ -98,6 +106,7 @@ export function parseAffiliateSetting(raw: unknown): AffiliateSetting {
     // programmes have always done.
     payday: whole(value.payday, NO_PAYDAY, MAX_PAYDAY) ?? NO_AFFILIATES.payday,
     hold: whole(value.hold, 0, MAX_HOLD_DAYS) ?? NO_AFFILIATES.hold,
+    buyers: value.buyers === true,
   };
 }
 

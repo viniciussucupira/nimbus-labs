@@ -19,7 +19,7 @@ import { cookies, headers } from "next/headers";
 import { clientAddress, withinLimit } from "@/lib/request-guard";
 import { UPSELL_COOKIE, funnelView, settleUpsells } from "@/lib/upsell";
 import { imageUrl } from "@/lib/product-image";
-import { noteSession } from "@/lib/affiliates";
+import { buyersJoin, noteSession } from "@/lib/affiliates";
 import { recordEnrollment } from "@/lib/learn";
 import { noteProduct, upsertContact } from "@/lib/contacts";
 import { enroll } from "@/lib/flows";
@@ -861,6 +861,21 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 />
               ))}
             </div>
+          </section>
+        ) : null}
+
+        {/* The store lets buyers take their own affiliate link (lib/affiliates.ts, joinAsBuyer). */}
+        {order.state === "paid" && sessionId && buyersJoin(store) ? (
+          <section aria-labelledby="share-title" className="st-card mt-6 p-7 sm:p-10">
+            <h2 id="share-title" className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em]">
+              {`Earn ${store.affiliates.percent}% by sharing ${store.name}`}
+            </h2>
+            <p className="st-muted mt-2 text-sm leading-relaxed">
+              {`Get your own link, without applying. When someone buys through it, you earn ${store.affiliates.percent}% of what they paid for one-time purchases, and ${store.name} pays you directly.`}
+            </p>
+            <Link href={`/@${store.handle}/affiliates?order=${encodeURIComponent(sessionId)}`} className="btn st-btn mt-6">
+              Get my link
+            </Link>
           </section>
         ) : null}
       </main>

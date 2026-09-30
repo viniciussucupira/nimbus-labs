@@ -1063,7 +1063,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Let the people who love it",
     highlight: "sell it for you",
     intro:
-      "People apply, you approve, and each affiliate gets a link and a page of their own with their clicks, sales and what they are owed. You pay them yourself: every sale lands in full in your own Stripe account.",
+      "People apply and you approve, or everyone who buys takes a link at once. Each affiliate gets a page of their own with their clicks, sales and what they are owed. You pay them yourself: every sale lands in full in your own Stripe account.",
     badge: WORKING,
     accent: "from-mint-brand to-sky-brand",
     plan: "creator",
@@ -1076,7 +1076,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "How your program runs",
         items: [
           { title: "Set the terms", body: "A share of 1% to 90%, for the whole store or product by product, and a window of 1 to 90 days after a click." },
-          { title: "Approve who you want", body: "People apply on your store's affiliate page with an email address they confirm. Nobody is in until you say so." },
+          { title: "Approve who you want", body: "People apply on your store's affiliate page with an email address they confirm, and nobody is in until you say so. Or switch on buyers joining without applying: the thanks page and the purchase email offer everyone who buys their own link, approved at once." },
           { title: "Pay what is owed", body: "Your studio shows what each affiliate earned and what you have paid. Pay them however you agree, then mark it paid." },
         ],
       },
@@ -1113,7 +1113,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Does Nimbus take a cut of affiliate sales?", a: "No. 0% of every sale, as on any other. The full amount lands in your Stripe account, and the affiliate's share is yours to pay." },
           { q: "How is a sale tied to an affiliate?", a: "Their link is your store's address with their code on the end. Following it leaves a cookie on your store's own address with the code and the time of the click, and a purchase inside your window is credited to them. Visitors in the European Economic Area, the United Kingdom, Switzerland and Brazil, whose rules require consent first, are asked in one line on the page, and the cookie is set when they allow it." },
-          { q: "What does someone need to join?", a: "An email address they can open. They apply on your store's affiliate page, confirm with the link we email, and you approve them in your studio." },
+          { q: "What does someone need to join?", a: "An email address they can open. They apply on your store's affiliate page, confirm with the link we email, and you approve them in your studio. If you let buyers join without applying, a buyer presses Get my link on the thanks page or follows the link in their purchase email, and joins with the address they paid with. Anyone you declined or removed stays out." },
         ],
       },
     ],
