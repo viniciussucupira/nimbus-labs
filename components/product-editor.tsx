@@ -1,5 +1,6 @@
 "use client";
 
+import { PodcastToggle } from "@/components/podcast-toggle";
 import { WaitlistPanel } from "@/components/waitlist-panel";
 import type { WaitlistView } from "@/lib/waitlist";
 import { useRef, useState } from "react";
@@ -1866,7 +1867,8 @@ export function ProductEditor({
                   the options rather than sitting above them unused.
                 */}
                 {product.course || product.bundle ? null : <CallEditor product={product} email={email} meetings={meetings} />}
-                {product.call || product.bundle ? null : <CourseToggle product={product} newComments={newComments[product.id] ?? 0} />}
+                {product.call || product.bundle || product.podcast ? null : <CourseToggle product={product} newComments={newComments[product.id] ?? 0} />}
+                {product.call || product.bundle || product.course ? null : <PodcastToggle product={product} />}
                 {product.priceCents > 0 && !product.hidden ? (
                   <WaitlistPanel productId={product.id} initial={waitlists[product.id] ?? null} suggestedAddress={mailAddress} />
                 ) : null}

@@ -31,6 +31,7 @@
  * person who owns them. Every function below that takes a store's key calls
  * it `email` for the first kind and works the same for the second.
  */
+import type { PodcastRef } from "@/lib/podcast-rules";
 import { cache } from "react";
 import { pointDomain } from "@/lib/domains";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -1655,7 +1656,7 @@ export async function setProductCall(
         if (product.recurring) return { ok: false, reason: "recurring" };
         if (product.options.length > 0) return { ok: false, reason: "options" };
         if (product.file || product.link) return { ok: false, reason: "delivery" };
-        if (product.course) return { ok: false, reason: "course" };
+        if (product.course || product.podcast) return { ok: false, reason: "course" };
         if (product.pwyw) return { ok: false, reason: "pwyw" };
       }
       return { ...product, call: setup };
@@ -1689,11 +1690,49 @@ export async function setProductCourse(
       if (product.options.length > 0) return { ok: false, reason: "options" };
       if (product.file || product.link) return { ok: false, reason: "delivery" };
       if (product.call) return { ok: false, reason: "call" };
+      if (product.podcast) return { ok: false, reason: "call" };
     } else if (product.course && product.course.lessons > 0) {
       return { ok: false, reason: "not_empty" };
     }
     return { ...product, course };
   });
+}
+
+export type PodcastResult =
+  | { ok: true; store: Store; product: Product }
+  | { ok: false; reason: "none" | "unknown" | "free" | "options" | "delivery" | "call" | "course" | "not_empty" | "bundle" };
+
+/**
+ * Makes a product a private podcast, or turns an empty one back into an
+ * ordinary product. The same rules as a course: it delivers its own
+ * episodes, so nothing else may be attached, and one with episodes is never
+ * turned back by one press. A podcast may be sold once or as a membership.
+ */
+export async function setProductPodcast(email: string, id: string, podcast: PodcastRef | null): Promise<PodcastResult> {
+  return onProduct<"free" | "options" | "delivery" | "call" | "course" | "not_empty" | "bundle">(email, id, (product) => {
+    if (podcast) {
+      if (isFree(product)) return { ok: false, reason: "free" };
+      if (isBundle(product)) return { ok: false, reason: "bundle" };
+      if (product.options.length > 0) return { ok: false, reason: "options" };
+      if (product.file || product.link) return { ok: false, reason: "delivery" };
+      if (product.call) return { ok: false, reason: "call" };
+      if (product.course) return { ok: false, reason: "course" };
+    } else if (product.podcast && product.podcast.episodes > 0) {
+      return { ok: false, reason: "not_empty" };
+    }
+    return { ...product, podcast };
+  });
+}
+
+/** Keeps the episode count a product carries in step with its podcast. */
+export async function setPodcastEpisodes(email: string, id: string, episodes: number): Promise<void> {
+  const store = await storeForEmail(email);
+  if (!store) return;
+  const current = await readListing(store, id);
+  if (!current?.podcast || current.podcast.episodes === episodes) return;
+  await onProduct<never>(email, id, (product) =>
+    product.podcast ? { ...product, podcast: { id: product.podcast.id, episodes } } : product,
+  );
 }
 
 /** Keeps the lesson count a product carries in step with its course. */
@@ -2206,7 +2245,7 @@ export async function editProduct(
       // A call is one paid booking. It cannot be given away or charged monthly.
       if (product.call && (fields.priceCents === 0 || recurring)) return { ok: false, reason: "call" };
       // A course is sold. Giving lessons away for an email address is not built.
-      if (product.course && fields.priceCents === 0) return { ok: false, reason: "course" };
+      if ((product.course || product.podcast) && fields.priceCents === 0) return { ok: false, reason: "course" };
       // A bundle is one sale of several things at one price: never free, never
       // charged again and again, never priced by its buyer (lib/bundle-rules.ts).
       if (isBundle(product) && (fields.priceCents === 0 || recurring || pwywCents !== null)) return { ok: false, reason: "bundle" };
@@ -2347,7 +2386,7 @@ async function changeDelivery(
     // A call delivers a booking, a course its lessons and a bundle its
     // products, not a file or a link of their own.
     if (giving && product.id === id && product.call) return { ok: false as const, reason: "call" as const };
-    if (giving && product.id === id && product.course) return { ok: false as const, reason: "course" as const };
+    if (giving && product.id === id && (product.course || product.podcast)) return { ok: false as const, reason: "course" as const };
     if (giving && product.id === id && isBundle(product)) return { ok: false as const, reason: "bundle" as const };
     const done = rewriteDelivery(product, id, change);
     if (!done) return { ok: false as const, reason: "unknown" as const };
@@ -2556,7 +2595,7 @@ export async function addOption(
     // Several prices on something given away would put a price on it.
     if (isFree(product)) return { ok: false, reason: "free" };
     if (product.call) return { ok: false, reason: "call" };
-    if (product.course) return { ok: false, reason: "course" };
+    if (product.course || product.podcast) return { ok: false, reason: "course" };
     // A bundle has one price for everything in it.
     if (isBundle(product)) return { ok: false, reason: "bundle" };
     // The buyer would be choosing a price twice.

@@ -116,6 +116,8 @@ export type Purchase = {
   bumpItems: PurchaseItems | null;
   /** Given as a gift (lib/gifts.ts): the name of whoever gave it, "someone" when they gave none. */
   giftFrom?: string | null;
+  /** A private podcast opens as a feed of the buyer's own (lib/podcast-access.ts). */
+  podcastProduct?: string | null;
 };
 
 /** The products of a list on an order, each with what it hands over now. */
@@ -293,10 +295,11 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       const added = meta.bump ? await find(meta.bump) : null;
       const bump = added && (added.file || added.link) ? { title: added.title, file: added.file, link: added.link } : null;
       const courseProduct = product.course ? product.id : null;
+      const podcastProduct = product.podcast ? product.id : null;
       // A bundle, bought or ticked: its products, from the list on the order.
       const items = await linesOf(find, bundleFromMeta(meta, "bundle"));
       const bumpItems = added ? await linesOf(find, bundleFromMeta(meta, "bump_bundle")) : null;
-      if (!delivery && !bump && !courseProduct && !items && !bumpItems) continue;
+      if (!delivery && !bump && !courseProduct && !podcastProduct && !items && !bumpItems) continue;
 
       if (typeof session.customer === "string" && CUSTOMER_PATTERN.test(session.customer)) customers.add(session.customer);
       found.set(id, {
@@ -310,6 +313,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         productId: product.id,
         bumpId: (bump || bumpItems) && added ? added.id : null,
         courseProduct,
+        podcastProduct,
         main: courseProduct ? null : delivery,
         bump,
         items,
@@ -363,11 +367,13 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       const { delivery } = deliveryOf(product, undefined);
       const items = given.items?.length ? await linesOf(find, given.items) : null;
       const courseProduct = product.course ? product.id : null;
-      if (!delivery && !courseProduct && !items) continue;
+      const podcastProduct = product.podcast ? product.id : null;
+      if (!delivery && !courseProduct && !podcastProduct && !items) continue;
       found.set(reference, {
         reference,
         kind: "imported",
         giftFrom: await giftFrom(given.job),
+        podcastProduct,
         title: product.title,
         option: null,
         paidAt: given.at,

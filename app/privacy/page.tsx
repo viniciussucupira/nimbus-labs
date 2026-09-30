@@ -189,6 +189,16 @@ export default function PrivacyPage() {
           Stripe asks the buyer for the address it needs to work the tax out,
           under Stripe&apos;s own privacy policy; we do not keep it.
         </p>
+        <p id="podcasts">
+          <strong className="text-black">Private podcasts.</strong>{" "}
+          When you get the feed of a private podcast you bought, we keep your
+          email address with a private feed address made for you, so your
+          podcast app can read it. Each time the app reads the feed or fetches
+          an episode, we check that your address still holds the podcast, and
+          we count those reads to stop a feed from being shared; we do not
+          keep which episodes you play. The creator sees neither your feed nor
+          what you listen to.
+        </p>
         <p id="gifts">
           <strong className="text-black">Gifts.</strong>{" "}
           When you buy something as a gift, we keep the recipient&apos;s email

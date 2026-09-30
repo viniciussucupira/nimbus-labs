@@ -105,6 +105,8 @@ export function canSellProduct(store: Store, product: Listing): boolean {
   if (product.call) return product.options.length === 0 && product.recurring === null;
   // A course delivers its lessons: it is ready once it has one.
   if (product.course) return product.options.length === 0 && product.course.lessons > 0;
+  // A private podcast delivers its episodes: it is ready once it has one.
+  if (product.podcast) return product.options.length === 0 && product.podcast.episodes > 0;
   if (product.options.length > 0) return sellableOptions(product).length > 0;
   return product.file !== null || product.link !== null;
 }

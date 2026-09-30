@@ -253,6 +253,13 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can I sell a private podcast?",
+        a: [
+          "Yes, on the $29 plan. Under a paid product in your studio, choose \u201cSell this as a private podcast\u201d, then put out episodes as MP3 or M4A files. It can be sold once or as a membership, and goes on sale with its first episode.",
+          "Each buyer gets a feed of their own, from the thanks page, their confirmation email or their list of purchases, and adds it to Apple Podcasts, Overcast, Pocket Casts or most other apps in one tap; new episodes arrive there like any show's. Spotify does not take private feeds. Every time the app reads the feed or fetches an episode, we check that the buyer still has it, so a refund or a membership that ends empties their feed within minutes. Podcast directories and search engines are told to keep out.",
+        ],
+      },
+      {
         q: "Can I run a sale, like Black Friday?",
         a: [
           "Yes, on the $29 plan. In your studio, under \u201cA sale across the store\u201d, pick a percentage, when it starts and ends (at most 31 days), and whether it covers every product it can or only some. While it runs, your store and each product's page show the old price crossed out, the new one and when it ends, and Stripe takes it off at checkout with no code to type.",

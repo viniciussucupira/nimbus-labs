@@ -211,7 +211,13 @@ export function confirmationFor(
   }
 
   lines.push("");
-  if (product.course) {
+  if (product.podcast) {
+    lines.push(
+      `Add the podcast to your app: ${base}/podcast/${product.id}`,
+      "",
+      `Type ${email} on that page and a link to your own private feed comes straight away. It works in Apple Podcasts, Overcast, Pocket Casts and most other podcast apps, for as long as you have it.`,
+    );
+  } else if (product.course) {
     lines.push(
       `Start the course: ${base}/course/${product.id}`,
       "",

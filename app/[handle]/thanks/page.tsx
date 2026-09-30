@@ -643,6 +643,17 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     {`Downloads here work for about ${hours} more ${hours === 1 ? "hour" : "hours"}; courses and links keep working. After that nothing is lost: choose \u201cGet it again\u201d at the foot of ${store.name}'s page, type the address you paid with, and a link to all of it is emailed to you.`}
                   </p>
                 </>
+              ) : order.product.podcast ? (
+                <>
+                  <form action="/api/store/podcast/open" method="post">
+                    <input type="hidden" name="handle" value={store.handle} />
+                    <input type="hidden" name="session_id" value={sessionId ?? ""} />
+                    <button type="submit" className="btn st-btn btn-lg mt-7">Add it to your podcast app</button>
+                  </form>
+                  <p className="st-muted mt-5 text-sm">
+                    {`You get a feed of your own, for Apple Podcasts, Overcast, Pocket Casts or most other apps. On another device, open ${store.name}'s store, find the podcast and ask for it by email: it goes to ${order.email ?? "the address you paid with"}.`}
+                  </p>
+                </>
               ) : order.product.course ? (
                 <>
                   <form action="/api/store/course/start" method="post">

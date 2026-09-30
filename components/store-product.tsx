@@ -118,6 +118,10 @@ export function ProductFacts({
     facts.push(`Bundle of ${inside.length} products${worth ? ` \u00b7 ${worth}` : ""}`);
   }
   if (product.call) facts.push(callLine(product.call));
+  if (product.podcast && product.podcast.episodes > 0) {
+    const n = product.podcast.episodes;
+    facts.push(`Private podcast, ${n} ${n === 1 ? "episode" : "episodes"}, in your own podcast app`);
+  }
   if (product.recurring && (product.recurring.trialDays > 0 || product.recurring.payments > 0)) {
     const price = `${formatMoney(fromPriceCents(product), store.currency)}`;
     facts.push(`${options.length > 1 ? "From " : ""}${membershipPrice(product.recurring, price)}`.replace(/^([a-z])/, (c) => c.toUpperCase()));
