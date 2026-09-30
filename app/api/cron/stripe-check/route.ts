@@ -7,7 +7,9 @@ import { type Check, verifyPackages, verifyTiers } from "@/lib/verify-stripe";
 import { SUPPORT_EMAIL } from "@/lib/creator-research";
 import { SITE_URL } from "@/lib/site-url";
 
-export const maxDuration = 60;
+// A run takes about half a minute, most of it Stripe charging and updating
+// test subscriptions; room is left so a slow day at Stripe is not cut off.
+export const maxDuration = 180;
 
 const LAST = "nl:stripe-check:last";
 
