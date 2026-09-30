@@ -24,6 +24,9 @@ const MESSAGES: Record<string, string> = {
   rate: `A product's own share is a whole number from 0 to ${MAX_COMMISSION}; 0 leaves it out.`,
   amount: "Type the amount you paid, like 25 or 25.50.",
   date: "Pick the day you paid it.",
+  nothing: "Nobody is owed anything right now, so there was nothing to write down.",
+  refunds:
+    "Stripe could not be asked about refunds just now, so what is owed is not settled. Try again in a moment rather than record a payout against a guess.",
   unknown: "That affiliate or payout is no longer on record. Reload the page.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
@@ -84,6 +87,26 @@ async function post(payload: Record<string, unknown>): Promise<string | null> {
   }
 }
 
+/**
+ * Writing down a whole batch the creator has just paid in their own provider.
+ * Separate from `post` because it answers with how many payouts it wrote, and
+ * because it is the one call that touches several affiliates at once.
+ */
+async function postBatch(payload: Record<string, unknown>): Promise<{ written: number } | { error: string }> {
+  try {
+    const response = await fetch("/api/store/affiliates/payout-batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; written?: number };
+    if (data.ok) return { written: Number(data.written) || 0 };
+    return { error: MESSAGES[data.error ?? ""] ?? MESSAGES.server_error };
+  } catch {
+    return { error: MESSAGES.server_error };
+  }
+}
+
 /** The studio's affiliate programme: terms, applications, the book and payouts. */
 export function AffiliateStudio({
   handle,
@@ -117,6 +140,11 @@ export function AffiliateStudio({
   const owedTotal = rows.reduce((sum, r) => sum + Math.max(0, r.owed), 0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<{ where: string; text: string } | null>(null);
+  // Everyone owed something today: what one batch file holds.
+  const owedNow = rows.filter((r) => r.owed > 0 && r.affiliate.status === "approved");
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchDate, setBatchDate] = useState(today);
+  const [batchReference, setBatchReference] = useState("");
 
   async function act(where: string, payload: Record<string, unknown>, confirmation: string): Promise<boolean> {
     setBusy(where);
@@ -175,6 +203,109 @@ export function AffiliateStudio({
             </form>
             <span className="text-sm text-ink-soft">{`Owed now, in all: ${money(owedTotal, currency)}`}</span>
           </div>
+          {owedNow.length ? (
+            <div className="mt-5 rounded-2xl border border-line bg-paper p-4">
+              <h3 className="font-semibold text-ink">Pay everyone at once</h3>
+              <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+                {`${owedNow.length} ${owedNow.length === 1 ? "affiliate is" : "affiliates are"} owed ${money(owedTotal, currency)}. Download the batch, upload it to your own PayPal or Wise, and the money goes straight from your account to theirs. It never passes through Nimbus, so there is no payout to wait for.`}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <form action="/api/store/affiliates/payout-batch" method="get">
+                  <StoreField />
+                  <input type="hidden" name="provider" value="paypal" />
+                  <button type="submit" className="btn btn-secondary btn-sm">
+                    <Icon name="download" size={16} />
+                    PayPal Payouts file
+                  </button>
+                </form>
+                <form action="/api/store/affiliates/payout-batch" method="get">
+                  <StoreField />
+                  <input type="hidden" name="provider" value="worksheet" />
+                  <button type="submit" className="btn btn-secondary btn-sm">
+                    <Icon name="download" size={16} />
+                    Worksheet for Wise or a bank
+                  </button>
+                </form>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-ink-soft">
+                The PayPal file uploads as it is. Wise only reads a file built from the template it gives you, so paste the
+                worksheet into that template — and fill in the name column yourself: Wise wants the name on your affiliate&rsquo;s
+                bank account, and we never asked them for it.
+              </p>
+              {batchOpen ? (
+                <form
+                  className="mt-4 rounded-xl border-2 border-violet-brand/30 bg-white p-3"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setBusy("batch");
+                    setError(null);
+                    const done = await postBatch({ date: batchDate, reference: batchReference });
+                    setBusy(null);
+                    if ("error" in done) {
+                      setError({ where: "batch", text: done.error });
+                      return;
+                    }
+                    setBatchOpen(false);
+                    setBatchReference("");
+                    toast(`${done.written} ${done.written === 1 ? "payout" : "payouts"} written down.`);
+                    router.refresh();
+                  }}
+                >
+                  <div className="grid gap-3 sm:grid-cols-[10rem_minmax(0,1fr)]">
+                    <label className="block" htmlFor="batch-d">
+                      <span className="field-label">Paid on</span>
+                      <input
+                        id="batch-d"
+                        type="date"
+                        value={batchDate}
+                        max={today}
+                        onChange={(e) => setBatchDate(e.target.value)}
+                        className="field"
+                        required
+                      />
+                    </label>
+                    <label className="block" htmlFor="batch-r">
+                      <span className="field-label">Reference (optional)</span>
+                      <input
+                        id="batch-r"
+                        type="text"
+                        maxLength={80}
+                        value={batchReference}
+                        placeholder="PayPal batch 5TY0..."
+                        onChange={(e) => setBatchReference(e.target.value)}
+                        className="field"
+                      />
+                    </label>
+                  </div>
+                  <p className="mt-2 text-xs text-ink-soft">
+                    This writes one payout for each of the {owedNow.length} owed right now, against what the book says at this
+                    moment. It records a payment you already made; no money moves from here.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="submit" className="btn btn-primary btn-sm" disabled={busy !== null} aria-busy={busy === "batch"}>
+                      Write the batch down
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setBatchOpen(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  type="button"
+                  className="mt-3 min-h-[36px] text-sm font-bold text-violet-deep underline underline-offset-4"
+                  onClick={() => {
+                    setBatchDate(today);
+                    setBatchReference("");
+                    setBatchOpen(true);
+                  }}
+                >
+                  I have paid this batch
+                </button>
+              )}
+              {errorAt("batch")}
+            </div>
+          ) : null}
           {elsewhere > 0 ? (
             <p className="mt-3 text-xs text-ink-soft">
               {`${elsewhere} ${elsewhere === 1 ? "sale or payout is" : "sales and payouts are"} in another currency, from before your store charged in ${currency.toUpperCase()}. ${elsewhere === 1 ? "It is" : "They are"} listed with ${elsewhere === 1 ? "its" : "their"} own currency and left out of these totals, because amounts in two currencies do not add up.`}

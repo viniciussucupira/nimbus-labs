@@ -62,6 +62,7 @@ import {
   CREATOR,
   type CommunityConfig,
   type Member,
+  type Space,
   memberKey,
   readConfig,
   readMember,
@@ -219,6 +220,50 @@ async function ticketFor(store: Store, ids: string[], email: string, cacheKey: s
   }
   await redisPipeline([["SET", cacheKey, JSON.stringify({ v: version, ok }), "EX", ok ? OPEN_SECONDS : SHUT_SECONDS]]);
   return ok;
+}
+
+/**
+ * Whether somebody the community let in may see one space: the creator
+ * always; a member when the space is for everyone, or when their address
+ * holds one of the products it is kept for — among those that still open the
+ * community.
+ *
+ * This is the same gate an event uses (lib/community-events.ts mayAttend),
+ * and deliberately so: a space kept for the buyers of one product is worth
+ * nothing if the answer can be got at from somewhere else, so there is one
+ * answer, cached under the community's own version, and it moves the moment
+ * the creator changes what opens the community.
+ */
+export async function maySeeSpace(
+  store: Store,
+  config: CommunityConfig,
+  space: { id: string; only: string[] },
+  viewer: { owner: boolean; email: string },
+): Promise<boolean> {
+  if (viewer.owner) return true;
+  if (!space.only.length) return true;
+  const ids = space.only.filter((p) => config.access.includes(p));
+  if (!ids.length) return true;
+  const id = store.community?.id;
+  if (!id) return false;
+  return holdsAnyOf(store, ids, viewer.email, `nl:cm:${id}:sp:ok:${space.id}:${emailKey(viewer.email)}`, String(config.v));
+}
+
+/**
+ * The spaces one viewer may see, in the creator's order. One Stripe answer
+ * per gated space at worst, and each is cached.
+ */
+export async function visibleSpaces(
+  store: Store,
+  config: CommunityConfig,
+  viewer: { owner: boolean; email: string },
+): Promise<Space[]> {
+  if (viewer.owner) return config.spaces;
+  const gated = config.spaces.filter((s) => s.only.length);
+  if (!gated.length) return config.spaces;
+  const allowed = await Promise.all(gated.map((s) => maySeeSpace(store, config, s, viewer)));
+  const mine = new Set(gated.filter((_, i) => allowed[i]).map((s) => s.id));
+  return config.spaces.filter((s) => !s.only.length || mine.has(s.id));
 }
 
 /** Forgets Stripe's answer for one address, so the next request asks again. */

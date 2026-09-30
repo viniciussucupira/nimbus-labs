@@ -24,6 +24,8 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
   noemail: { text: "Posted. It was not emailed: emailing announcements is part of Pro, with your email settings filled in.", tone: "warn" },
   noreaders: { text: "Posted. Nobody has asked for announcement emails yet, so none were sent." },
   commented: { text: "Comment added." },
+  edited: { text: "Saved. It is marked as edited, so nobody is replying to words that quietly changed." },
+  notyours: { text: "Only the person who wrote it can rewrite it.", tone: "warn" },
   liked: { text: "Like updated." },
   reported: { text: "Reported. The creator sees it in their moderation queue; nobody else is told who reported it." },
   deleted: { text: "Deleted." },
@@ -58,6 +60,7 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
   eventlocked: { text: "This event is for members who have one of the products named on it.", tone: "warn" },
   host: { text: "You host this event, so there is no place for you to take.", tone: "warn" },
   nospace: { text: "There is no space to post in yet.", tone: "warn" },
+  spacelocked: { text: "That space is for members who have one of the products it is kept for.", tone: "warn" },
   out: { text: "Your session here ended. Ask for a new link below.", tone: "warn" },
   off: { text: "This community is closed right now.", tone: "warn" },
   error: { text: "Something went wrong on our side. Nothing was changed; try again in a moment.", tone: "warn" },
@@ -189,12 +192,15 @@ export function Carry({
   post,
   from,
   space,
+  extra,
 }: {
   store: Store;
   action: string;
   post?: string;
   from: "feed" | "space" | "post" | "you";
   space?: string | null;
+  /** Anything else the action needs, such as which comment it acts on. */
+  extra?: Record<string, string>;
 }) {
   return (
     <>
@@ -203,6 +209,7 @@ export function Carry({
       <input type="hidden" name="from" value={from} />
       {post ? <input type="hidden" name="post" value={post} /> : null}
       {space ? <input type="hidden" name="space" value={space} /> : null}
+      {extra ? Object.entries(extra).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />) : null}
     </>
   );
 }
@@ -316,6 +323,13 @@ export function PostCard({
               </>
             ) : null}
             <time dateTime={new Date(post.at * 1000).toISOString()}>{whenWords(post.at)}</time>
+            {post.ed ? (
+              <>
+                <span aria-hidden="true">·</span>
+                {/* Said out loud, because people reply to what a post said. */}
+                <span title={`Edited ${whenWords(post.ed)}`}>Edited</span>
+              </>
+            ) : null}
           </p>
         </div>
       </header>
@@ -417,6 +431,11 @@ export function PostCard({
                 <ActButton store={store} action="report" post={post.id} from={from} space={space}>
                   Report to the creator
                 </ActButton>
+              ) : null}
+              {mine ? (
+                <Link href={`${link}?edit=post`} className="cm-menu-item">
+                  Edit the post
+                </Link>
               ) : null}
               {viewer.owner || mine ? (
                 <ActButton store={store} action="delete" post={post.id} from={from} space={space} className="cm-menu-item cm-danger" confirm="Delete this post, with its comments, for good?">

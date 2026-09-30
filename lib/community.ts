@@ -66,6 +66,14 @@ export type Space = {
   about: string;
   /** Only the creator starts posts here; members still comment. */
   creatorOnly: boolean;
+  /**
+   * Only the buyers of these of the community's products, the way an event
+   * can be kept for some of them (lib/community-events.ts). Empty means every
+   * member. A product named here that no longer opens the community is
+   * ignored, so nobody is shut out by a product the creator took off the
+   * community's own list.
+   */
+  only: string[];
 };
 
 export type CommunityConfig = {
@@ -121,6 +129,12 @@ export type Post = {
   kind: "post" | "announcement";
   /** Hidden by the creator: gone for members, kept for the creator to restore. */
   hid: boolean;
+  /**
+   * When it was last edited, in seconds, or 0 for never. Shown to everyone
+   * who can see the post: a reader deserves to know the words changed after
+   * the replies under them were written.
+   */
+  ed: number;
 };
 
 export type Comment = {
@@ -131,6 +145,8 @@ export type Comment = {
   text: string;
   at: number;
   hid: boolean;
+  /** When it was last edited, in seconds, or 0 for never. */
+  ed: number;
 };
 
 const base = (id: string) => `nl:cm:${id}`;
@@ -164,7 +180,7 @@ export function freshConfig(storeName: string): CommunityConfig {
     name: `${storeName} Community`.slice(0, MAX_COMMUNITY_NAME),
     about: "",
     access: [],
-    spaces: [{ id: newItemId(), name: "General", about: "", creatorOnly: false }],
+    spaces: [{ id: newItemId(), name: "General", about: "", creatorOnly: false, only: [] }],
     start: null,
     pinned: [],
     v: 1,
@@ -182,7 +198,14 @@ function parseConfig(raw: unknown): CommunityConfig | null {
       if (!entry || typeof entry !== "object" || !ITEM_ID.test(String(entry.id))) continue;
       const name = cleanLine(entry.name, MAX_SPACE_NAME);
       if (!name) continue;
-      spaces.push({ id: entry.id, name, about: cleanLine(entry.about, MAX_SPACE_ABOUT), creatorOnly: entry.creatorOnly === true });
+      spaces.push({
+        id: entry.id,
+        name,
+        about: cleanLine(entry.about, MAX_SPACE_ABOUT),
+        creatorOnly: entry.creatorOnly === true,
+        // Spaces made before a space could be kept for some buyers have none.
+        only: ids(entry.only, 50).filter((p) => p.length <= 40),
+      });
       if (spaces.length >= MAX_SPACES) break;
     }
     return {
@@ -437,6 +460,8 @@ function parsePost(raw: unknown): Post | null {
       at: typeof v.at === "number" ? v.at : 0,
       kind: v.kind === "announcement" ? "announcement" : "post",
       hid: v.hid === true,
+      // Posts written before posts could be edited have none.
+      ed: typeof v.ed === "number" ? v.ed : 0,
     };
   } catch {
     return null;
@@ -481,6 +506,7 @@ export async function createPost(id: string, input: NewPost): Promise<{ ok: true
     at: now(),
     kind: input.kind,
     hid: false,
+    ed: 0,
   };
   await redisPipeline([
     ["SET", postKey(id, post.id), JSON.stringify(post)],
@@ -492,6 +518,25 @@ export async function createPost(id: string, input: NewPost): Promise<{ ok: true
 
 export async function setPostHidden(id: string, post: Post, hidden: boolean): Promise<void> {
   await redisPipeline([["SET", postKey(id, post.id), JSON.stringify({ ...post, hid: hidden })]]);
+}
+
+/**
+ * Rewrites a post's words, and marks when.
+ *
+ * Only the words: never the space it is in, never its picture, never who
+ * wrote it and never the number that fixes its place in the feed — so a post
+ * cannot be edited into somebody else's, or moved somewhere it was never
+ * approved for. The caller has checked that this is the author, and has
+ * cleaned the text the same way a new post is cleaned.
+ *
+ * The edit is stamped rather than silent, because people reply to what a post
+ * said, and a reader who cannot see that the words changed is being misled by
+ * the software rather than by the author.
+ */
+export async function editPost(id: string, post: Post, input: { title: string; text: string }): Promise<Post> {
+  const next: Post = { ...post, title: input.title, text: input.text, ed: now() };
+  await redisPipeline([["SET", postKey(id, post.id), JSON.stringify(next)]]);
+  return next;
 }
 
 /** Takes a post away for good, with its comments, likes and reports. */
@@ -593,6 +638,7 @@ function parseComment(raw: unknown): Comment | null {
       text: typeof v.text === "string" ? v.text : "",
       at: typeof v.at === "number" ? v.at : 0,
       hid: v.hid === true,
+      ed: typeof v.ed === "number" ? v.ed : 0,
     };
   } catch {
     return null;
@@ -640,9 +686,20 @@ export async function addComment(
     if (!above) return { ok: false, reason: "parent" };
     parent = above.parent || above.id;
   }
-  const comment: Comment = { id: newItemId(), parent, a: input.author, text: input.text, at: now(), hid: false };
+  const comment: Comment = { id: newItemId(), parent, a: input.author, text: input.text, at: now(), hid: false, ed: 0 };
   await redisPipeline([["HSET", commentsKey(id, post), comment.id, JSON.stringify(comment)]]);
   return { ok: true, comment };
+}
+
+/**
+ * Rewrites a comment's words, and marks when. Only the words: never who wrote
+ * it, and never which comment it answers, so an edit cannot move a reply on
+ * to another thread. The caller has checked that this is the author.
+ */
+export async function editComment(id: string, post: string, comment: Comment, text: string): Promise<Comment> {
+  const next: Comment = { ...comment, text, ed: now() };
+  await redisPipeline([["HSET", commentsKey(id, post), comment.id, JSON.stringify(next)]]);
+  return next;
 }
 
 export async function setCommentHidden(id: string, post: string, comment: Comment, hidden: boolean): Promise<void> {

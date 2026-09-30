@@ -119,13 +119,18 @@ export async function POST(request: NextRequest) {
       if (!name) return fail("space_name");
       const about = cleanLine(body.about, MAX_SPACE_ABOUT);
       const creatorOnly = body.creatorOnly === true;
+      // Kept for the buyers of some of the community's own products. Anything
+      // that does not open the community is dropped rather than saved, so the
+      // list here can never name a product that lets nobody in.
+      const asked = Array.isArray(body.only) ? body.only.filter((p): p is string => typeof p === "string") : [];
+      const only = [...new Set(asked)].filter((p) => config.access.includes(p)).slice(0, 50);
       if (action === "space-add") {
         if (config.spaces.length >= MAX_SPACES) return fail("too_many");
-        return save({ ...config, spaces: [...config.spaces, { id: newItemId(), name, about, creatorOnly }] });
+        return save({ ...config, spaces: [...config.spaces, { id: newItemId(), name, about, creatorOnly, only }] });
       }
       const spaceId = text(body.id, 12);
       if (!config.spaces.some((s) => s.id === spaceId)) return fail("unknown", 404);
-      return save({ ...config, spaces: config.spaces.map((s) => (s.id === spaceId ? { ...s, name, about, creatorOnly } : s)) });
+      return save({ ...config, spaces: config.spaces.map((s) => (s.id === spaceId ? { ...s, name, about, creatorOnly, only } : s)) });
     }
 
     if (action === "space-move") {
