@@ -1,3 +1,4 @@
+import { freshCounts } from "@/lib/lesson-comments";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
@@ -377,6 +378,14 @@ const STORES_NOTICES: Record<string, { title: string; body: string }> = {
     body: "Nothing was deleted. Try again in a moment.",
   },
 };
+
+/** Comments under each course's lessons since the creator last opened that course's studio page. */
+async function newCommentsFor(products: { id: string; course?: { id: string } | null }[]): Promise<Record<string, number>> {
+  const courses = products.filter((p) => p.course).map((p) => [p.id, p.course!.id] as const);
+  if (!courses.length) return {};
+  const counts = await freshCounts(courses.map(([, c]) => c)).catch(() => new Map<string, number>());
+  return Object.fromEntries(courses.map(([product, c]) => [product, counts.get(c) ?? 0]));
+}
 
 export default async function StudioPage({
   searchParams,
@@ -815,6 +824,7 @@ export default async function StudioPage({
                   currency={store.currency}
                   meetings={meetAccounts}
                   ai={isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
+                  newComments={await newCommentsFor(shelf?.products ?? [])}
                 />
               </div>
             ) : (

@@ -13,6 +13,9 @@ import { CourseOutline } from "@/components/course-outline";
 import { LessonText } from "@/components/lesson-text";
 import { LessonQuiz } from "@/components/lesson-quiz";
 import { readListing } from "@/lib/catalog";
+import { LessonComments } from "@/components/lesson-comments";
+import { commenterName, commentsOn, lessonComments } from "@/lib/lesson-comments";
+import { CREATOR_AUTHOR, SHOWN_THREADS, commentClock, threadsFor } from "@/lib/lesson-comments-rules";
 
 type Params = {
   params: Promise<{ handle: string; product: string; lesson: string }>;
@@ -64,6 +67,17 @@ export default async function LessonPage({ params, searchParams }: Params) {
     lesson.quiz && student ? attemptOf(course.id, lesson.id, who) : Promise.resolve<Attempt | null>(null),
   ]);
   const quizMode = access.state === "open" && access.learner.owner ? "owner" : student && open ? "student" : "visitor";
+  // Comments are for the course's students and its creator; a visitor on a
+  // free preview sees none of them.
+  const reader = access.state === "open" && open ? (access.learner.owner ? CREATOR_AUTHOR : who) : null;
+  const [talking, comments, myName] = reader
+    ? await Promise.all([
+        commentsOn(course.id),
+        lessonComments(course.id, lesson.id),
+        reader === CREATOR_AUTHOR ? Promise.resolve("") : commenterName(course.id, reader),
+      ])
+    : [false, [], ""];
+  const threads = reader && talking ? threadsFor(comments, reader).slice(0, SHOWN_THREADS) : [];
   const mustPass = Boolean(student && quiz && lesson.quiz?.required && !passed.has(lesson.id));
 
   const order = lessonsInOrder(course);
@@ -197,7 +211,7 @@ export default async function LessonPage({ params, searchParams }: Params) {
             </div>
           </article>
 
-          <aside className="st-card h-fit p-5 sm:p-6">
+          <aside className="st-card h-fit p-5 sm:p-6 lg:row-span-2">
             <p className="st-label">In this course</p>
             <div className="mt-3">
               <CourseOutline course={course} base={base} start={start} done={done} current={lesson.id} held={held} />
@@ -206,6 +220,20 @@ export default async function LessonPage({ params, searchParams }: Params) {
               <Link href={base} className="btn st-btn btn-block mt-5">Get the whole course</Link>
             ) : null}
           </aside>
+
+          {reader && talking ? (
+            <div className="min-w-0 lg:col-start-1 lg:row-start-2">
+              <LessonComments
+                threads={threads}
+                reader={reader}
+                storeName={store.name}
+                hidden={{ handle: store.handle, product: product.id, lesson: lesson.id }}
+                myName={myName}
+                notice={typeof query.c === "string" ? query.c : ""}
+                now={commentClock()}
+              />
+            </div>
+          ) : null}
         </div>
       </main>
     </div>
