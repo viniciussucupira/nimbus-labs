@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { feed, postNumbers, readMembers, readPosts } from "@/lib/community";
-import { accessProducts, communityViewer } from "@/lib/community-access";
+import { accessProducts, communityViewer, visibleSpaces } from "@/lib/community-access";
 import { communityFolder } from "@/lib/community-image";
 import { announcementReach, canAnnounceByEmail } from "@/lib/community-mail";
 import { ITEM_ID } from "@/lib/community-text";
@@ -63,15 +63,29 @@ export default async function CommunityPage({ params, searchParams }: Params) {
   }
 
   const { config, owner, key, canWrite, member } = viewer;
-  const space = typeof query.space === "string" && ITEM_ID.test(query.space) ? config.spaces.find((s) => s.id === query.space) ?? null : null;
+  // Spaces kept for the buyers of some products are not in this list for
+  // anybody else, and neither are their posts: the gate is asked here, once,
+  // and everything below reads only what came back.
+  const spaces = await visibleSpaces(store, config, { owner, email: viewer.email });
+  const mineIds = new Set(spaces.map((s) => s.id));
+  const askedSpace = typeof query.space === "string" && ITEM_ID.test(query.space) ? query.space : "";
+  // A space they may not see answers the same as one that is not there.
+  if (askedSpace && !mineIds.has(askedSpace)) redirect(`${`/@${store.handle}/community`}?n=spacelocked`);
+  const space = askedSpace ? spaces.find((s) => s.id === askedSpace) ?? null : null;
   const beforeRaw = typeof query.before === "string" ? Number(query.before) : NaN;
   const before = Number.isInteger(beforeRaw) && beforeRaw > 0 ? beforeRaw : null;
   const page = await feed(id, { space: space?.id ?? null, before, withHidden: owner });
   // The Start here post and the pinned ones lead the first page of the whole feed.
   const topIds = !space && !before ? [...new Set([config.start, ...config.pinned].filter((p): p is string => Boolean(p)))] : [];
   const topFound = topIds.length ? await readPosts(id, topIds) : [];
-  const top = topIds.map((t) => topFound.find((p) => p.id === t)).filter((p): p is NonNullable<typeof p> => Boolean(p && (owner || !p.hid)));
-  const stream = page.posts.filter((p) => !topIds.includes(p.id));
+  // The spaces this viewer is gated out of. A post in a space that no longer
+  // exists is not one of them, and stays where it always was.
+  const shut = new Set(config.spaces.filter((s) => s.only.length && !mineIds.has(s.id)).map((s) => s.id));
+  const open = (p: { sp: string }) => !shut.has(p.sp);
+  const top = topIds
+    .map((t) => topFound.find((p) => p.id === t))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p && (owner || !p.hid) && open(p)));
+  const stream = page.posts.filter((p) => !topIds.includes(p.id) && open(p));
   const shown = [...top, ...stream];
   const [members, numbers] = await Promise.all([readMembers(id, shown.map((p) => p.a)), postNumbers(id, shown, key)]);
   const reach = owner ? await announcementReach(id) : 0;
@@ -91,7 +105,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
               <li>
                 <Link href={home} aria-current={!space ? "page" : undefined} className="cm-side">All posts</Link>
               </li>
-              {config.spaces.map((s) => (
+              {spaces.map((s) => (
                 <li key={s.id}>
                   <Link href={`${home}?space=${s.id}`} aria-current={space?.id === s.id ? "page" : undefined} className="cm-side">
                     <span className="min-w-0 truncate">{s.name}</span>
@@ -108,7 +122,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
               <li className="shrink-0">
                 <Link href={home} aria-current={!space ? "page" : undefined} className="cm-chip">All posts</Link>
               </li>
-              {config.spaces.map((s) => (
+              {spaces.map((s) => (
                 <li key={s.id} className="shrink-0">
                   <Link href={`${home}?space=${s.id}`} aria-current={space?.id === s.id ? "page" : undefined} className="cm-chip">{s.name}</Link>
                 </li>
@@ -150,7 +164,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
                 key={space?.id ?? "all"}
                 handle={store.handle}
                 folder={communityFolder(id)}
-                spaces={config.spaces.map((s) => ({ id: s.id, name: s.name, creatorOnly: s.creatorOnly }))}
+                spaces={spaces.map((s) => ({ id: s.id, name: s.name, creatorOnly: s.creatorOnly }))}
                 current={space?.id ?? null}
                 owner={owner}
                 from={from}

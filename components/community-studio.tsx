@@ -183,7 +183,7 @@ export function CommunityStudio({
             <Basics handle={handle} address={address} on={on} config={config} busy={busy} run={run} problem={problem} totals={totals} canEmail={canEmail} />
             {events}
             <Access config={config} products={products} busy={busy} run={run} problem={problem} />
-            <Spaces config={config} busy={busy} run={run} problem={problem} />
+            <Spaces config={config} products={products} busy={busy} run={run} problem={problem} />
           </>
         ) : (
           events
@@ -398,6 +398,7 @@ function SpaceRow({
   only,
   busy,
   run,
+  open,
 }: {
   space: Space;
   first: boolean;
@@ -405,12 +406,18 @@ function SpaceRow({
   only: boolean;
   busy: string | null;
   run: Runner;
+  /** The products that open the community: what a space may be kept for. */
+  open: { id: string; title: string }[];
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(space.name);
   const [about, setAbout] = useState(space.about);
   const [creatorOnly, setCreatorOnly] = useState(space.creatorOnly);
+  // Named for what it is, because this component already has an `only` prop
+  // that means "this is the only space".
+  const [keptFor, setKeptFor] = useState<string[]>(space.only);
   const where = `space-${space.id}`;
+  const kept = open.filter((p) => space.only.includes(p.id));
   return (
     <li className="py-3">
       {editing ? (
@@ -418,7 +425,7 @@ function SpaceRow({
           className="space-y-3"
           onSubmit={async (event) => {
             event.preventDefault();
-            const answer = await run(where, { action: "space-edit", id: space.id, name, about, creatorOnly }, "Space saved.");
+            const answer = await run(where, { action: "space-edit", id: space.id, name, about, creatorOnly, only: keptFor }, "Space saved.");
             if (answer.ok) setEditing(false);
           }}
         >
@@ -434,6 +441,7 @@ function SpaceRow({
             <input type="checkbox" className="h-5 w-5" checked={creatorOnly} onChange={(e) => setCreatorOnly(e.target.checked)} />
             Only I start posts here (members still comment)
           </label>
+          <OnlyPicker open={open} only={keptFor} setOnly={setKeptFor} />
           <div className="flex flex-wrap gap-2">
             <button type="submit" className="btn btn-primary btn-sm" disabled={busy !== null}>Save</button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>Cancel</button>
@@ -445,6 +453,9 @@ function SpaceRow({
             <p className="break-words font-semibold text-ink">
               {space.name}
               {space.creatorOnly ? <span className="tag ml-2 align-middle">Only you post</span> : null}
+              {kept.length ? (
+                <span className="tag ml-2 align-middle">{`Buyers of ${kept.length === 1 ? kept[0].title : `${kept.length} products`}`}</span>
+              ) : null}
             </p>
             {space.about ? <p className="text-sm text-ink-soft">{space.about}</p> : null}
           </div>
@@ -477,10 +488,63 @@ function SpaceRow({
   );
 }
 
-function Spaces({ config, busy, run, problem }: { config: CommunityConfig; busy: string | null; run: Runner; problem: Problem }) {
+/**
+ * The products a space may be kept for: only those that already open the
+ * community, because a space kept for a product that lets nobody in would
+ * shut everybody out.
+ */
+function OnlyPicker({
+  open,
+  only,
+  setOnly,
+}: {
+  open: { id: string; title: string }[];
+  only: string[];
+  setOnly: (next: string[]) => void;
+}) {
+  if (!open.length) return null;
+  return (
+    <fieldset>
+      <legend className="field-label">Keep it for the buyers of</legend>
+      <p className="mt-1 text-xs text-ink-soft">
+        Leave every box empty and the space is for every member. Tick one or more and only members who have one of them see
+        the space, its posts and its address — everybody else sees no sign of it.
+      </p>
+      <div className="mt-2 space-y-1.5">
+        {open.map((product) => (
+          <label key={product.id} className="flex min-h-6 items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-5 w-5 shrink-0"
+              checked={only.includes(product.id)}
+              onChange={(e) => setOnly(e.target.checked ? [...only, product.id] : only.filter((p) => p !== product.id))}
+            />
+            <span className="min-w-0 break-words">{product.title}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+function Spaces({
+  config,
+  products,
+  busy,
+  run,
+  problem,
+}: {
+  config: CommunityConfig;
+  products: ProductChoice[];
+  busy: string | null;
+  run: Runner;
+  problem: Problem;
+}) {
   const [name, setName] = useState("");
   const [about, setAbout] = useState("");
   const [creatorOnly, setCreatorOnly] = useState(false);
+  const [only, setOnly] = useState<string[]>([]);
+  const open = products.filter((p) => config.access.includes(p.id)).map((p) => ({ id: p.id, title: p.title }));
   const full = config.spaces.length >= MAX_SPACES;
   return (
     <section className="card mt-8 p-6 sm:p-8" aria-labelledby="cm-spaces-title">
@@ -501,6 +565,7 @@ function Spaces({ config, busy, run, problem }: { config: CommunityConfig; busy:
             only={config.spaces.length <= 1}
             busy={busy}
             run={run}
+            open={open}
           />
         ))}
       </ul>
@@ -511,11 +576,12 @@ function Spaces({ config, busy, run, problem }: { config: CommunityConfig; busy:
           className="mt-5 rounded-[var(--r-md)] bg-paper p-4"
           onSubmit={async (event) => {
             event.preventDefault();
-            const answer = await run("space-add", { action: "space-add", name, about, creatorOnly }, "Space added.");
+            const answer = await run("space-add", { action: "space-add", name, about, creatorOnly, only }, "Space added.");
             if (answer.ok) {
               setName("");
               setAbout("");
               setCreatorOnly(false);
+              setOnly([]);
             }
           }}
         >
@@ -534,6 +600,9 @@ function Spaces({ config, busy, run, problem }: { config: CommunityConfig; busy:
             <input type="checkbox" className="h-5 w-5" checked={creatorOnly} onChange={(e) => setCreatorOnly(e.target.checked)} />
             Only I start posts here (members still comment)
           </label>
+          <div className="mt-3">
+            <OnlyPicker open={open} only={only} setOnly={setOnly} />
+          </div>
           <button type="submit" className="btn btn-secondary btn-sm mt-3" aria-busy={busy === "space-add"} disabled={busy !== null}>Add space</button>
         </form>
       ) : null}

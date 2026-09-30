@@ -5,8 +5,8 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage, type Store } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { CREATOR, type Comment, type Member, postNumbers, readComments, readMembers, readPost } from "@/lib/community";
-import { communityViewer } from "@/lib/community-access";
-import { ITEM_ID, MAX_COMMENT_TEXT, whenWords } from "@/lib/community-text";
+import { communityViewer, maySeeSpace } from "@/lib/community-access";
+import { ITEM_ID, MAX_COMMENT_TEXT, MAX_POST_TEXT, MAX_POST_TITLE, whenWords } from "@/lib/community-text";
 import {
   ActButton,
   Carry,
@@ -36,6 +36,7 @@ function CommentItem({
   members,
   who,
   replies,
+  editing = false,
 }: {
   store: Store;
   post: string;
@@ -43,11 +44,14 @@ function CommentItem({
   members: Map<string, Member>;
   who: Who;
   replies?: React.ReactNode;
+  /** Open as a form, because the author asked to rewrite it. */
+  editing?: boolean;
 }) {
   const name = authorName(store, comment.a, members);
   const mine = comment.a === who.key;
   const top = !comment.parent;
   const extra = { comment: comment.id };
+  const here = `/@${store.handle}/community/post/${post}`;
   return (
     <li id={`comment-${comment.id}`} className="scroll-mt-28">
       <div className={`flex items-start gap-3 ${comment.hid ? "cm-hidden" : ""}`}>
@@ -59,10 +63,34 @@ function CommentItem({
               {comment.a === CREATOR ? <CreatorBadge /> : null}
               {comment.hid ? <span className="cm-badge cm-badge-warn">Hidden from members</span> : null}
             </p>
-            <PostText text={comment.text} className="mt-1 text-[0.95rem]" />
+            {editing ? (
+              <form action="/api/store/community" method="post" className="mt-1">
+                <Carry store={store} action="edit-comment" post={post} from="post" extra={extra} />
+                <label htmlFor={`edit-text-${comment.id}`} className="sr-only">Rewrite your comment</label>
+                <textarea
+                  id={`edit-text-${comment.id}`}
+                  name="text"
+                  required
+                  rows={3}
+                  maxLength={MAX_COMMENT_TEXT}
+                  defaultValue={comment.text}
+                  className="st-field resize-y text-[0.95rem]"
+                />
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button type="submit" className="cm-pill">Save</button>
+                  <Link href={`${here}#comment-${comment.id}`} className="cm-quiet-link cm-mini text-xs font-semibold">Cancel</Link>
+                </div>
+              </form>
+            ) : (
+              <PostText text={comment.text} className="mt-1 text-[0.95rem]" />
+            )}
           </div>
           <div className="st-muted mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs font-semibold">
             <time dateTime={new Date(comment.at * 1000).toISOString()}>{whenWords(comment.at)}</time>
+            {comment.ed ? <span title={`Edited ${whenWords(comment.ed)}`}>Edited</span> : null}
+            {who.canWrite && mine && !editing ? (
+              <Link href={`${here}?edit=${comment.id}#comment-${comment.id}`} className="cm-quiet-link cm-mini">Edit</Link>
+            ) : null}
             {who.canWrite && !who.owner && !mine ? (
               <ActButton store={store} action="report" post={post} from="post" extra={extra} className="cm-quiet-link cm-mini">Report</ActButton>
             ) : null}
@@ -114,6 +142,12 @@ export default async function CommunityPostPage({ params, searchParams }: Params
   if (!post || (post.hid && !viewer.owner)) redirect(`${home}?n=gone`);
 
   const { config, owner, key, canWrite } = viewer;
+  // A post in a space kept for the buyers of some products is not reachable
+  // by its address either.
+  const itsSpace = config.spaces.find((s) => s.id === post.sp);
+  if (itsSpace && !(await maySeeSpace(store, config, itsSpace, { owner, email: viewer.email }))) {
+    redirect(`${home}?n=spacelocked`);
+  }
   const query = await searchParams;
   const notice = NOTICES[typeof query.n === "string" ? query.n : ""] ?? null;
   const all = await readComments(id, post.id);
@@ -122,6 +156,11 @@ export default async function CommunityPostPage({ params, searchParams }: Params
   const visible = (c: Comment) => owner || !c.hid;
   const tops = all.filter((c) => !c.parent);
   const repliesOf = (c: Comment) => all.filter((r) => r.parent === c.id && visible(r));
+  // ?edit=post, or ?edit=<comment>. Only ever the author's own, and only
+  // while they may still write here.
+  const asked = typeof query.edit === "string" ? query.edit : "";
+  const editingPost = asked === "post" && canWrite && post.a === key;
+  const editingComment = asked && asked !== "post" && canWrite ? (all.find((c) => c.id === asked && c.a === key && !c.hid)?.id ?? "") : "";
 
   return (
     <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
@@ -133,7 +172,40 @@ export default async function CommunityPostPage({ params, searchParams }: Params
         </p>
         {notice ? <p className={`cm-flash mb-5 ${notice.tone === "warn" ? "cm-flash-warn" : ""}`} role="status">{notice.text}</p> : null}
 
-        <PostCard store={store} post={post} config={config} members={members} numbers={numbers.get(post.id)} viewer={who} from="post" full />
+        {editingPost ? (
+          <form action="/api/store/community" method="post" className="st-card p-5 sm:p-6">
+            <Carry store={store} action="edit" post={post.id} from="post" />
+            <h1 className="font-display text-lg font-semibold tracking-[-0.01em]">Edit your post</h1>
+            <label htmlFor="edit-title" className="st-label mt-4 block">Title</label>
+            <input
+              id="edit-title"
+              name="title"
+              maxLength={MAX_POST_TITLE}
+              defaultValue={post.title}
+              className="st-field mt-2"
+              autoComplete="off"
+            />
+            <label htmlFor="edit-text" className="st-label mt-4 block">Post</label>
+            <textarea
+              id="edit-text"
+              name="text"
+              rows={8}
+              maxLength={MAX_POST_TEXT}
+              defaultValue={post.text}
+              className="st-field mt-2 resize-y"
+            />
+            <p className="st-muted mt-3 text-sm">
+              The words only. The space it is in and its picture stay as they are, and it will be marked as edited — people
+              reply to what a post said, and they should be able to see that it changed.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <button type="submit" className="btn st-btn">Save the post</button>
+              <Link href={`${home}/post/${post.id}`} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">Cancel</Link>
+            </div>
+          </form>
+        ) : (
+          <PostCard store={store} post={post} config={config} members={members} numbers={numbers.get(post.id)} viewer={who} from="post" full />
+        )}
 
         <section id="comments" aria-labelledby="comments-title" className="st-card mt-4 scroll-mt-28 p-5 sm:p-6">
           <h2 id="comments-title" className="text-base font-bold">{`Comments (${all.filter(visible).length})`}</h2>
@@ -151,7 +223,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
                       <p className="st-muted text-sm italic">The creator hid this comment.</p>
                       <ul className="cm-thread mt-3 space-y-4">
                         {replies.map((r) => (
-                          <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} />
+                          <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} editing={editingComment === r.id} />
                         ))}
                       </ul>
                     </li>
@@ -165,11 +237,12 @@ export default async function CommunityPostPage({ params, searchParams }: Params
                     comment={comment}
                     members={members}
                     who={who}
+                    editing={editingComment === comment.id}
                     replies={
                       replies.length ? (
                         <ul className="cm-thread mt-3 space-y-4">
                           {replies.map((r) => (
-                            <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} />
+                            <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} editing={editingComment === r.id} />
                           ))}
                         </ul>
                       ) : null

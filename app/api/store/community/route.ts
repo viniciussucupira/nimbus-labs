@@ -12,6 +12,8 @@ import {
   createPost,
   deleteComment,
   deletePost,
+  editComment,
+  editPost,
   moderateMember,
   readComment,
   readPost,
@@ -24,7 +26,7 @@ import {
   within,
   withPin,
 } from "@/lib/community";
-import { communityViewer } from "@/lib/community-access";
+import { communityViewer, maySeeSpace } from "@/lib/community-access";
 import { checkCommunityImage } from "@/lib/community-image";
 import { blobImages, dropCommunityImage, noteCommunityUpload, takeCommunityUpload } from "@/lib/community-files";
 import { advanceAnnouncement, queueAnnouncement } from "@/lib/community-mail";
@@ -125,6 +127,9 @@ export async function POST(request: NextRequest) {
       const chosen = config.spaces.find((s) => s.id === space) ?? config.spaces[0];
       if (!chosen) return back(home, "nospace");
       if (chosen.creatorOnly && !owner) return back(fromPage, "creatoronly");
+      // A space kept for the buyers of some products: the same gate the feed
+      // asks, asked again here, because a form can be sent from anywhere.
+      if (!(await maySeeSpace(store, config, chosen, { owner, email: viewer.email }))) return back(home, "spacelocked");
       const title = cleanLine(form.get("title"), MAX_POST_TITLE);
       const text = cleanText(form.get("text"), MAX_POST_TEXT);
       const path = field("img", 120);
@@ -176,9 +181,15 @@ export async function POST(request: NextRequest) {
       return back(`${home}/post/${made.post.id}`, "posted");
     }
 
-    // Everything else acts on a post that is there, and that this viewer can see.
+    // Everything else acts on a post that is there, and that this viewer can
+    // see — including the space it sits in, so a gated space cannot be
+    // reached by sending a form with one of its post ids.
     const post = await readPost(id, postId);
     if (!post || (post.hid && !owner)) return back(home, "gone");
+    const itsSpace = config.spaces.find((s) => s.id === post.sp);
+    if (itsSpace && !(await maySeeSpace(store, config, itsSpace, { owner, email: viewer.email }))) {
+      return back(home, "spacelocked");
+    }
 
     if (action === "comment") {
       const text = cleanText(form.get("text"), MAX_COMMENT_TEXT);
@@ -190,6 +201,35 @@ export async function POST(request: NextRequest) {
       const made = await addComment(id, post.id, { parent: ITEM_ID.test(parent) ? parent : "", author: key, text });
       if (!made.ok) return back(postPage, made.reason === "full" ? "fullcomments" : "gone");
       return back(postPage, "commented", `comment-${made.comment.id}`);
+    }
+
+    // ---------------------------------------------------- rewriting your own
+    // Only the author, and only the words. The creator moderates with hide
+    // and delete, which are their own actions and say so; nobody rewrites
+    // what somebody else is on record as having said.
+    if (action === "edit") {
+      // `key` is CREATOR for the creator (lib/community-access.ts), so this
+      // one test is the author test for both.
+      if (post.a !== key) return back(postPage, "notyours", `post-${post.id}`);
+      const title = cleanLine(form.get("title"), MAX_POST_TITLE);
+      const text = cleanText(form.get("text"), MAX_POST_TEXT);
+      if (!text && !post.img) return back(postPage, "empty", `post-${post.id}`);
+      if (linkCount(`${title}\n${text}`) > MAX_LINKS_IN_POST) return back(postPage, "links", `post-${post.id}`);
+      if (!owner && !(await within(id, key, "post"))) return back(postPage, "slow", `post-${post.id}`);
+      await editPost(id, post, { title, text });
+      return back(postPage, "edited", `post-${post.id}`);
+    }
+
+    if (action === "edit-comment") {
+      const comment = await readComment(id, post.id, field("comment", 12));
+      if (!comment || (comment.hid && !owner)) return back(postPage, "gone");
+      if (comment.a !== key) return back(postPage, "notyours", `comment-${comment.id}`);
+      const text = cleanText(form.get("text"), MAX_COMMENT_TEXT);
+      if (!text) return back(postPage, "empty", `comment-${comment.id}`);
+      if (linkCount(text) > MAX_LINKS_IN_COMMENT) return back(postPage, "links", `comment-${comment.id}`);
+      if (!owner && !(await within(id, key, "comment"))) return back(postPage, "slow", `comment-${comment.id}`);
+      await editComment(id, post.id, comment, text);
+      return back(postPage, "edited", `comment-${comment.id}`);
     }
 
     if (action === "like") {
