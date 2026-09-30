@@ -20,6 +20,7 @@ import {
   setPostHidden,
   withPin,
 } from "@/lib/community";
+import { parseDmSetting } from "@/lib/community-dm";
 import { forgetTicket } from "@/lib/community-access";
 import { dropCommunityImage } from "@/lib/community-files";
 import {
@@ -36,6 +37,7 @@ import {
 const ACTIONS = new Set([
   "enable",
   "settings",
+  "messages",
   "access",
   "space-add",
   "space-edit",
@@ -105,6 +107,15 @@ export async function POST(request: NextRequest) {
       const name = cleanLine(body.name, MAX_COMMUNITY_NAME);
       if (!name) return fail("name");
       return save({ ...config, name, about: cleanText(body.about, MAX_COMMUNITY_ABOUT) });
+    }
+
+    // Who may write to whom. Off is off: with `on` false the page is gone and
+    // the route refuses, rather than the form merely being hidden.
+    if (action === "messages") {
+      return save({
+        ...config,
+        dm: parseDmSetting({ on: body.on === true, between: body.between === true, ask: body.ask !== false }),
+      });
     }
 
     if (action === "access") {

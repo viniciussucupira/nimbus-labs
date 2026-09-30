@@ -66,6 +66,8 @@ export const RATE_LIMITS = {
   report: { limit: 20, seconds: 24 * 60 * 60, words: "20 reports a day" },
   upload: { limit: 10, seconds: 60 * 60, words: "10 pictures an hour" },
   rsvp: { limit: 30, seconds: 60 * 60, words: "30 RSVPs or canceled RSVPs an hour" },
+  dm: { limit: 60, seconds: 60 * 60, words: "60 messages an hour" },
+  dmNew: { limit: 10, seconds: 24 * 60 * 60, words: "10 new conversations a day" },
 } as const;
 
 export type RateKind = keyof typeof RATE_LIMITS;

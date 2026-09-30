@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { postNumbers, readMembers, readPosts } from "@/lib/community";
+import { requestCount } from "@/lib/community-dm";
 import { communityViewer, visibleSpaces } from "@/lib/community-access";
 import { MAX_QUERY_LENGTH, queryWords, search } from "@/lib/community-search";
 import { pollViews } from "@/lib/community-polls";
@@ -68,11 +69,13 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
   // down and are dropped, and saying so beats letting somebody wonder why
   // their phrase behaved oddly.
   const dropped = wanted.length !== page.used.length || (asked.trim() !== "" && wanted.length === 0);
+  // The badge on the Messages link: nothing to read, nothing shown.
+  const waiting = config.dm.on ? await requestCount(id, key) : 0;
 
   return (
     <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <ConfirmDeletes />
-      <CommunityBar store={store} config={config} tab={null} signedIn query={asked} />
+      <CommunityBar store={store} config={config} tab={null} signedIn query={asked} messages={config.dm.on} requests={waiting} />
       <main id="content" className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <p className="mb-4">
           <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">Back to the feed</Link>
