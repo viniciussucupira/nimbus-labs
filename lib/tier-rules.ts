@@ -99,3 +99,43 @@ export function direction(from: { priceCents: number; interval: string }, to: { 
   if (from.interval !== to.interval) return "same";
   return to.priceCents > from.priceCents ? "up" : to.priceCents < from.priceCents ? "down" : "same";
 }
+
+type Line = {
+  amount?: unknown;
+  proration?: unknown;
+  parent?: { subscription_item_details?: { proration?: unknown } | null } | null;
+  period?: { start?: unknown } | null;
+  discount_amounts?: { amount?: unknown }[] | null;
+  taxes?: { amount?: unknown; tax_behavior?: unknown }[] | null;
+  tax_amounts?: { amount?: unknown; inclusive?: unknown }[] | null;
+};
+
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+/**
+ * What a switch charges at once (above zero) or credits (below zero), from
+ * Stripe's preview of it.
+ *
+ * The preview is the customer's NEXT invoice, which can hold the renewal at
+ * the end of the period as well as the switch itself, so its total is not
+ * what the switch costs. Stripe's own advice is to read the lines marked as
+ * prorations (docs.stripe.com/api/invoices/create_preview). Besides those, a
+ * line whose period starts at the switch is charged with it too: a move
+ * between a monthly and a yearly plan starts a new period there and then.
+ * Tax added on top of a line and discounts taken off it are counted; a
+ * credit the customer already holds with the store comes off what is charged.
+ */
+export function dueNow(invoice: { lines?: { data?: Line[] | null } | null; starting_balance?: unknown }, at: number): number {
+  let sum = 0;
+  for (const line of invoice.lines?.data ?? []) {
+    const proration = line.parent?.subscription_item_details?.proration === true || line.proration === true;
+    const startsNow = Math.abs(num(line.period?.start) - at) <= 120;
+    if (!proration && !startsNow) continue;
+    sum += num(line.amount);
+    for (const d of line.discount_amounts ?? []) sum -= num(d.amount);
+    for (const t of line.taxes ?? []) if (t.tax_behavior === "exclusive") sum += num(t.amount);
+    for (const t of line.tax_amounts ?? []) if (t.inclusive === false) sum += num(t.amount);
+  }
+  const credit = Math.min(0, num(invoice.starting_balance));
+  return sum > 0 ? Math.max(0, sum + credit) : sum;
+}

@@ -27,7 +27,7 @@ import { StripeError, onAccount } from "@/lib/stripe-account";
 import { readListings } from "@/lib/catalog";
 import { canSellProduct } from "@/lib/store-checkout";
 import { type Membership, endsAtOf, grantOf, subsOf } from "@/lib/membership-manage";
-import { canTier, direction, productOfSub } from "@/lib/tier-rules";
+import { canTier, direction, dueNow, productOfSub } from "@/lib/tier-rules";
 import { formatMoney } from "@/lib/money";
 import { membershipPrice } from "@/lib/product-recurring";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
@@ -80,29 +80,54 @@ export function choicesFor(store: Store, membership: Membership, tiers: Listing[
     }));
 }
 
+/** The price a tier is switched onto, as Stripe is sent it: it names the product it hands over. */
+export function tierPriceBody(store: Store, product: Listing): URLSearchParams {
+  return new URLSearchParams({
+    currency: store.currency,
+    unit_amount: String(product.priceCents),
+    "recurring[interval]": product.recurring?.interval ?? "month",
+    "product_data[name]": product.title.slice(0, 250),
+    "product_data[metadata][store]": store.handle,
+    "product_data[metadata][product]": product.id,
+    // Read at every door: the product this price hands over (lib/tier-rules.ts).
+    "metadata[product]": product.id,
+    "metadata[store]": store.handle,
+    "metadata[made_by]": "nimbus-labs",
+  });
+}
+
+/** Stripe's preview of a switch, worked out at the second `at`. */
+export function previewBody(customer: string, subscription: string, itemId: string, price: string, at: number): URLSearchParams {
+  return new URLSearchParams({
+    customer,
+    subscription,
+    "subscription_details[items][0][id]": itemId,
+    "subscription_details[items][0][price]": price,
+    "subscription_details[proration_behavior]": "always_invoice",
+    "subscription_details[proration_date]": String(at),
+  });
+}
+
+/** The switch itself, at the same second: charged at once, and made only if it is paid. */
+export function switchBody(itemId: string, price: string, at: number): URLSearchParams {
+  const body = new URLSearchParams({
+    "items[0][id]": itemId,
+    "items[0][price]": price,
+    proration_behavior: "always_invoice",
+    proration_date: String(at),
+    payment_behavior: "pending_if_incomplete",
+  });
+  body.append("expand[]", "latest_invoice");
+  return body;
+}
+
 /** The price a tier is switched onto, made once on the creator's account and reused. */
 export async function tierPrice(store: Store, product: Listing): Promise<string> {
   const account = store.stripeAccountId as string;
   const key = priceKey(account, product, store.currency);
   const [cached] = await redisPipeline([["GET", key]]);
   if (typeof cached === "string" && PRICE_PATTERN.test(cached)) return cached;
-  const made = await onAccount(
-    "POST",
-    account,
-    "/prices",
-    new URLSearchParams({
-      currency: store.currency,
-      unit_amount: String(product.priceCents),
-      "recurring[interval]": product.recurring?.interval ?? "month",
-      "product_data[name]": product.title.slice(0, 250),
-      "product_data[metadata][store]": store.handle,
-      "product_data[metadata][product]": product.id,
-      // Read at every door: the product this price hands over (lib/tier-rules.ts).
-      "metadata[product]": product.id,
-      "metadata[store]": store.handle,
-      "metadata[made_by]": "nimbus-labs",
-    }),
-  );
+  const made = await onAccount("POST", account, "/prices", tierPriceBody(store, product));
   const id = typeof made.id === "string" ? made.id : "";
   if (!PRICE_PATTERN.test(id)) throw new Error("Stripe returned no price");
   await redisPipeline([["SET", key, id, "EX", 400 * 86_400]]);
@@ -150,20 +175,9 @@ export async function previewSwitch(store: Store, token: string, subscription: s
     if ("reason" in found) return { ok: false, reason: found.reason };
     const price = await tierPrice(store, found.to);
     const at = Math.floor(Date.now() / 1000);
-    const invoice = await onAccount(
-      "POST",
-      found.grant.a,
-      "/invoices/create_preview",
-      new URLSearchParams({
-        customer: found.grant.c,
-        subscription,
-        "subscription_details[items][0][id]": found.itemId,
-        "subscription_details[items][0][price]": price,
-        "subscription_details[proration_behavior]": "always_invoice",
-        "subscription_details[proration_date]": String(at),
-      }),
-    );
-    const due = typeof invoice.total === "number" ? invoice.total : 0;
+    const invoice = await onAccount("POST", found.grant.a, "/invoices/create_preview", previewBody(found.grant.c, subscription, found.itemId, price, at));
+    // What the switch itself charges, not the whole next invoice (lib/tier-rules.ts).
+    const due = dueNow(invoice as Parameters<typeof dueNow>[0], at);
     return {
       ok: true,
       preview: {
@@ -201,15 +215,7 @@ export async function switchTier(store: Store, token: string, subscription: stri
       if ("reason" in found) return { ok: false, reason: found.reason };
       const account = found.grant.a;
       const price = await tierPrice(store, found.to);
-      const body = new URLSearchParams({
-        "items[0][id]": found.itemId,
-        "items[0][price]": price,
-        proration_behavior: "always_invoice",
-        proration_date: String(at),
-        payment_behavior: "pending_if_incomplete",
-      });
-      body.append("expand[]", "latest_invoice");
-      const updated = await onAccount("POST", account, `/subscriptions/${encodeURIComponent(subscription)}`, body);
+      const updated = await onAccount("POST", account, `/subscriptions/${encodeURIComponent(subscription)}`, switchBody(found.itemId, price, at));
       if (updated.pending_update) {
         // Declined, or the bank asked for a step the member was not there to
         // take: nothing changed. The invoice left open is voided so nothing is owed.
@@ -250,8 +256,10 @@ async function tell(store: Store, account: string, found: Found, updated: Record
   }
   if (!email) return;
   await Promise.all([forgetPaid(store, email), forgetTicket(store, email)]).catch(() => {});
-  const invoice = updated.latest_invoice as { total?: unknown; currency?: unknown } | null;
-  const total = typeof invoice?.total === "number" && !found.trialing ? invoice.total : 0;
+  const invoice = updated.latest_invoice as { total?: unknown; amount_paid?: unknown; currency?: unknown } | null;
+  // What the card paid, after any credit the member already had; a credit when below zero.
+  const raw = typeof invoice?.total === "number" && !found.trialing ? invoice.total : 0;
+  const total = raw > 0 && typeof invoice?.amount_paid === "number" ? invoice.amount_paid : raw;
   const currency = typeof invoice?.currency === "string" ? invoice.currency : store.currency;
   const paid =
     found.trialing

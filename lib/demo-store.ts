@@ -125,6 +125,38 @@ async function stripeRequest(
   return data;
 }
 
+/**
+ * One request to the demo's sandbox account, answered whatever its status,
+ * for checking this site's own Stripe requests against Stripe itself
+ * (lib/verify-stripe.ts). Test mode only, like everything here: a live key is
+ * refused before anything is sent.
+ */
+export async function onDemoAccount(
+  method: "GET" | "POST" | "DELETE",
+  path: string,
+  body?: URLSearchParams,
+  version?: string,
+): Promise<{ status: number; data: Record<string, unknown> }> {
+  const key = getSecretKey();
+  if (!key) throw new Error("Demo checkout is not configured");
+  const { response, data } = await timed(STRIPE_TIMEOUT_MS, async (signal) => {
+    const response = await fetch(`${STRIPE_API}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Stripe-Account": DEMO_CONNECTED_ACCOUNT,
+        ...(version ? { "Stripe-Version": version } : {}),
+        ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
+      },
+      body,
+      cache: "no-store",
+      signal,
+    });
+    return { response, data: (await response.json()) as Record<string, unknown> };
+  });
+  return { status: response.status, data };
+}
+
 export async function createDemoCheckout(
   origin: string,
   option: DemoOption,
