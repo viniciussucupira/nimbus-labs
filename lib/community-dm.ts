@@ -49,6 +49,7 @@
  * is what makes one conversation rather than two halves of one.
  */
 import { redisPipeline } from "@/lib/redis";
+import { holdsAll } from "@/lib/community-search";
 import { CREATOR } from "@/lib/community";
 
 const base = (id: string) => `nl:cm:${id}`;
@@ -325,4 +326,50 @@ export async function thread(id: string, who: string, pair: string): Promise<Thr
 /** Everything a conversation leaves behind, for when a member is removed. */
 export function dmKeys(id: string, who: string): string[] {
   return [inboxKey(id, who), askedKey(id, who), shutKey(id, who)];
+}
+
+/** How many of a person's conversations one search reads, the most recent first. */
+export const SEARCH_CONVERSATIONS = 30;
+/** How many of the latest messages of each it reads. */
+export const SEARCH_MESSAGES = 200;
+/** How many conversations are read in one request, so no reply is ever large. */
+const SEARCH_BATCH = 10;
+
+export type MessageHit = { pair: string; other: string; message: Message };
+
+/**
+ * The messages in this person's own conversations that hold every word
+ * searched for, newest first.
+ *
+ * Only ever their own. The conversations read are the ones in their inbox,
+ * which holds nothing but the pairs they are one half of; nothing here takes a
+ * pair from outside, so there is no id to change to read somebody else's.
+ *
+ * Read rather than indexed, and bounded where the page can say so: the
+ * SEARCH_CONVERSATIONS most recent conversations, the last SEARCH_MESSAGES
+ * messages of each. A private message is the last thing that should sit in a
+ * second copy, word by word, in an index that has to be kept in step with a
+ * list that trims itself — and a person looking for something said to them is
+ * nearly always looking for something recent.
+ *
+ * Each request carries at most SEARCH_BATCH conversations, so a person with
+ * long conversations never asks Redis for one enormous reply.
+ */
+export async function searchMessages(id: string, who: string, used: string[]): Promise<MessageHit[]> {
+  if (!used.length) return [];
+  const [raw] = await redisPipeline([["ZREVRANGE", inboxKey(id, who), 0, SEARCH_CONVERSATIONS - 1]]);
+  const pairs = (Array.isArray(raw) ? raw.map(String) : []).filter((pair) => otherIn(pair, who) !== "");
+  const hits: MessageHit[] = [];
+  for (let at = 0; at < pairs.length; at += SEARCH_BATCH) {
+    const batch = pairs.slice(at, at + SEARCH_BATCH);
+    const rows = await redisPipeline(batch.map((pair) => ["LRANGE", chatKey(id, pair), -SEARCH_MESSAGES, -1]));
+    batch.forEach((pair, i) => {
+      const list = Array.isArray(rows[i]) ? (rows[i] as unknown[]) : [];
+      for (const entry of list) {
+        const message = parseMessage(entry);
+        if (message && holdsAll(message.text, used)) hits.push({ pair, other: otherIn(pair, who), message });
+      }
+    });
+  }
+  return hits.sort((a, b) => b.message.at - a.message.at);
 }
