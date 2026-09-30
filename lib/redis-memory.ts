@@ -285,6 +285,62 @@ export class MemoryRedis {
         const limited = at >= 0 ? page.slice(Number(args[at + 1]), Number(args[at + 1]) + Number(args[at + 2])) : page;
         return limited.map((e) => e.member);
       }
+      case "ZREVRANGEBYSCORE": {
+        // Note the order: max first, then min, the reverse of ZRANGEBYSCORE.
+        // Getting that round the wrong way gives an empty answer rather than
+        // an error, so a search would quietly find nothing and every check
+        // about it would pass for the wrong reason.
+        const edge = (raw: string) => {
+          if (raw === "-inf") return { value: -Infinity, open: false };
+          if (raw === "+inf") return { value: Infinity, open: false };
+          if (raw.startsWith("(")) return { value: Number(raw.slice(1)), open: true };
+          return { value: Number(raw), open: false };
+        };
+        const to = edge(args[0]);
+        const from = edge(args[1]);
+        const page = [...this.zset(key)]
+          .reverse()
+          .filter(
+            (e) =>
+              (from.open ? e.score > from.value : e.score >= from.value) &&
+              (to.open ? e.score < to.value : e.score <= to.value),
+          );
+        const flags = args.map((a) => a.toUpperCase());
+        const at = flags.indexOf("LIMIT");
+        const limited = at >= 0 ? page.slice(Number(args[at + 1]), Number(args[at + 1]) + Number(args[at + 2])) : page;
+        if (flags.includes("WITHSCORES")) return limited.flatMap((e) => [e.member, String(e.score)]);
+        return limited.map((e) => e.member);
+      }
+      case "ZINTERSTORE": {
+        // ZINTERSTORE dest numkeys key... [AGGREGATE MAX]. The destination is
+        // `key`; the sources follow the count.
+        const howMany = Number(args[0]);
+        const sources = args.slice(1, 1 + howMany);
+        const flags = args.map((a) => a.toUpperCase());
+        const how = flags.indexOf("AGGREGATE") >= 0 ? flags[flags.indexOf("AGGREGATE") + 1] : "SUM";
+        const [firstKey, ...restKeys] = sources;
+        for (const one of sources) this.live(one);
+        const held = new Map<string, number>();
+        for (const entry of this.zset(firstKey ?? "")) held.set(entry.member, entry.score);
+        for (const other of restKeys) {
+          const theirs = new Map(this.zset(other).map((e) => [e.member, e.score]));
+          for (const [member, score] of [...held]) {
+            const found = theirs.get(member);
+            if (found === undefined) {
+              held.delete(member);
+              continue;
+            }
+            held.set(member, how === "MAX" ? Math.max(score, found) : how === "MIN" ? Math.min(score, found) : score + found);
+          }
+        }
+        const made = [...held].map(([member, score]) => ({ score, member }));
+        made.sort((a, b) => a.score - b.score || a.member.localeCompare(b.member));
+        this.data.set(key, made);
+        this.until.delete(key);
+        // Redis answers with how many are in the set it just made, which is
+        // what the search reads its total from.
+        return made.length;
+      }
       case "ZREVRANGE": {
         const z = [...this.zset(key)].reverse();
         const [from, to] = [Number(args[0]), Number(args[1])];

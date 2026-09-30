@@ -67,6 +67,7 @@ import { fold, icsText, icsTime } from "@/lib/ics-write";
 import { holdsAnyOf } from "@/lib/community-access";
 import { type CommunityConfig, newItemId } from "@/lib/community";
 import { LockBusyError, setIfHeld, withLock } from "@/lib/redis-lock";
+import { indexEvent, unindexEvent } from "@/lib/community-index";
 import {
   EVENT_LENGTHS,
   EVENT_WRITES_PER_HOUR,
@@ -201,7 +202,7 @@ export async function readEvent(id: string, event: string): Promise<CommunityEve
   return parseEvent(raw);
 }
 
-async function readEvents(id: string, ids: string[]): Promise<CommunityEvent[]> {
+export async function readEvents(id: string, ids: string[]): Promise<CommunityEvent[]> {
   const wanted = ids.filter((e) => ITEM_ID.test(e));
   if (!wanted.length) return [];
   const rows = await redisPipeline(wanted.map((e) => ["GET", eventKey(id, e)]));
@@ -230,6 +231,18 @@ export async function upcomingEvents(id: string, now = Date.now()): Promise<Comm
   const { ids } = flatIds(raw);
   const events = await readEvents(id, ids);
   return events.filter((e) => !isOver(e, now)).sort((a, b) => a.start - b.start || a.id.localeCompare(b.id));
+}
+
+/**
+ * Every event a community holds, soonest first, for the one-time walk that
+ * puts what already exists into the search index (lib/community-index.ts).
+ * Bounded by what a community keeps, which is what the index holds anyway.
+ */
+export async function allEvents(id: string): Promise<CommunityEvent[]> {
+  if (!isRedisConfigured()) return [];
+  const [raw] = await redisPipeline([["ZRANGEBYSCORE", indexKey(id), "-inf", "+inf", "WITHSCORES", "LIMIT", 0, MAX_KEPT_EVENTS]]);
+  const { ids } = flatIds(raw);
+  return readEvents(id, ids);
 }
 
 export type PastPage = { events: CommunityEvent[]; next: number | null };
@@ -399,6 +412,9 @@ export async function createEvent(store: Store, input: EventInput, now = Date.no
     ["ZADD", indexKey(id), event.start, event.id],
     ...(entries.length ? [["ZADD", EVENT_QUEUE, ...entries]] : []),
   ]);
+  // Findable from the search box as soon as it exists. Never allowed to stop
+  // an event being made.
+  await indexEvent(id, event).catch(() => {});
   return { ok: true, event };
 }
 
@@ -434,6 +450,9 @@ async function changeEvent(
           ...(entries.length ? [["ZADD", EVENT_QUEUE, ...entries]] : []),
         ]);
       }
+      // Its title and its description can change without it moving an inch,
+      // so the index is rewritten on every change rather than only on a move.
+      await indexEvent(id, event).catch(() => {});
       return { ok: true as const, event, before, moved };
     });
   } catch (error) {
@@ -504,6 +523,7 @@ async function forgetEvent(id: string, event: CommunityEvent): Promise<void> {
     ["DEL", eventKey(id, event.id), rsvpKey(id, event.id), countKey(id, event.id)],
     ["ZREM", indexKey(id), event.id],
   ]);
+  await unindexEvent(id, event.id).catch(() => {});
 }
 
 /** Takes an event away for good: only one that is cancelled or over, so nobody coming is left without word. */

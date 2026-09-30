@@ -1,6 +1,6 @@
 /**
- * Searching a community: the words in its posts and in the comments under
- * them, back to the thread they were written in.
+ * Searching a community: its posts and the comments under them, the lessons of
+ * the courses sold with it, its events, and the people in it.
  *
  * This is the one thing a community needs more of the longer it runs. A feed
  * answers "what is new"; nothing in a feed answers "has this been asked
@@ -8,11 +8,31 @@
  * for. Without it the same question is answered again every week, by hand, by
  * the creator.
  *
+ * Why it reaches past posts, measured rather than assumed (checked 30 September
+ * 2026): Skool searches posts, comments, course content and members from one
+ * box. Circle searches posts, comments, lesson titles and bodies, members with
+ * their profile fields, events and messages. Mighty Networks searches posts,
+ * comments, coursework, members and events. Whop documents search only of its
+ * marketplace and of direct messages. Stan documents no search at all. A
+ * community here that could only find posts was behind three of the four that
+ * document anything.
+ *
  * How it is kept, all under the community's own id:
  *
- *   nl:cm:<id>:w:<token>   posts containing that word, scored by post number
- *   nl:cm:<id>:wi:<post>   the words that post is indexed under
- *   nl:cm:<id>:q:<nonce>   one search's working set, gone within the minute
+ *   nl:cm:<id>:w:<token>    posts holding that word, scored by post number
+ *   nl:cm:<id>:wi:<post>    the words that post is indexed under
+ *   nl:cm:<id>:wl:<token>   lessons, scored by their place in the course
+ *   nl:cm:<id>:wil:<lesson> the words that lesson is indexed under
+ *   nl:cm:<id>:we:<token>   events, scored by when they start
+ *   nl:cm:<id>:wie:<event>  the words that event is indexed under
+ *   nl:cm:<id>:wm:<token>   members, scored by when they joined
+ *   nl:cm:<id>:wim:<member> the words that member is indexed under
+ *   nl:cm:<id>:q:<nonce>    one search's working set, gone within the minute
+ *
+ * Each kind is its own index and keeps its own order, and that is also how the
+ * results are shown — four lists, not one pile sorted by a number that means a
+ * post's place in one and an hour of the day in another. Posts keep the keys
+ * they always had, so no store rebuilds an index that is already correct.
  *
  * A hit is a POST, never a comment on its own: the thread is what somebody is
  * looking for, and a comment away from its thread answers nothing. A post is
@@ -42,17 +62,46 @@
  *     never reaches it.
  *   - Words are matched whole, not by prefix. "pay" does not find "payment".
  *
- * Nothing here decides who may see what. The caller filters the posts that
- * come back through the same space gate the feed uses, so a space kept for
- * the buyers of one product stays out of everybody else's results.
+ * Nothing here decides who may see what, and that matters more now than it did
+ * with posts alone. The caller filters everything that comes back through the
+ * same gates the pages themselves use: a space through the feed's gate, a
+ * lesson through whether that address holds the product the course is sold
+ * with, an event through mayAttend, a member through whether they asked to be
+ * listed. Searching is not a way around a door, and a title is content — a
+ * lesson called "The $40k month spreadsheet" tells somebody who has not bought it
+ * something they did not pay for.
  */
 import { randomBytes } from "node:crypto";
 import { redisPipeline } from "@/lib/redis";
 import { MAX_COMMENTS_PER_POST } from "@/lib/community-text";
 
 const base = (id: string) => `nl:cm:${id}`;
-const wordKey = (id: string, word: string) => `${base(id)}:w:${word}`;
-const indexKey = (id: string, post: string) => `${base(id)}:wi:${post}`;
+
+/**
+ * What can be searched for. Each is indexed apart from the others and keeps
+ * its own natural order, which is also how the results are shown: four lists,
+ * not one pile sorted by a number that means something different in each.
+ *
+ * Verified against the field on 30 September 2026, so that what is built here
+ * is measured rather than guessed: Skool searches posts, comments, course
+ * content and members; Circle searches posts, comments, lesson titles and
+ * bodies, members, events and messages; Mighty Networks searches posts,
+ * comments, coursework, members and events; Whop documents search of its
+ * marketplace and of direct messages, and of nothing else in a community;
+ * Stan documents no search at all.
+ */
+export type SearchKind = "post" | "lesson" | "event" | "member";
+
+/**
+ * The letter each kind's keys carry. Posts have none, because posts were
+ * indexed before there was more than one kind and their keys are already
+ * written in every store that has a community. Changing them would mean
+ * rebuilding an index that is correct, to no end.
+ */
+const MARK: Record<SearchKind, string> = { post: "", lesson: "l", event: "e", member: "m" };
+
+const wordKey = (id: string, kind: SearchKind, word: string) => `${base(id)}:w${MARK[kind]}:${word}`;
+const indexKey = (id: string, kind: SearchKind, thing: string) => `${base(id)}:wi${MARK[kind]}:${thing}`;
 
 /** As many distinct words as one post and its comments may be indexed under. */
 export const MAX_INDEXED_WORDS = 600;
@@ -111,31 +160,53 @@ function distinct(parts: string[]): string[] {
  * results. Only the difference is written, so a comment that adds no new word
  * costs one read and no write.
  */
-export async function indexPost(id: string, post: string, n: number, parts: string[]): Promise<void> {
+export async function index(
+  id: string,
+  kind: SearchKind,
+  thing: string,
+  score: number,
+  parts: string[],
+): Promise<void> {
   const next = distinct(parts);
-  const [raw] = await redisPipeline([["SMEMBERS", indexKey(id, post)]]);
+  const [raw] = await redisPipeline([["SMEMBERS", indexKey(id, kind, thing)]]);
   const before = new Set(Array.isArray(raw) ? raw.map(String) : []);
   const after = new Set(next);
   const added = next.filter((word) => !before.has(word));
   const gone = [...before].filter((word) => !after.has(word));
-  if (!added.length && !gone.length) return;
+  // The score can move on its own — an event put back an hour, a lesson
+  // dragged up its module — so a thing whose words are unchanged still has to
+  // have its place rewritten.
+  const rescore = added.length === 0 && gone.length === 0 ? [...after] : [];
+  if (!added.length && !gone.length && !rescore.length) return;
   await redisPipeline([
-    ...added.map((word) => ["ZADD", wordKey(id, word), n, post]),
-    ...gone.map((word) => ["ZREM", wordKey(id, word), post]),
-    ...(added.length ? [["SADD", indexKey(id, post), ...added]] : []),
-    ...(gone.length ? [["SREM", indexKey(id, post), ...gone]] : []),
+    ...added.map((word) => ["ZADD", wordKey(id, kind, word), score, thing]),
+    ...rescore.map((word) => ["ZADD", wordKey(id, kind, word), score, thing]),
+    ...gone.map((word) => ["ZREM", wordKey(id, kind, word), thing]),
+    ...(added.length ? [["SADD", indexKey(id, kind, thing), ...added]] : []),
+    ...(gone.length ? [["SREM", indexKey(id, kind, thing), ...gone]] : []),
   ]);
 }
 
-/** Takes a deleted post out of the index entirely. */
-export async function unindexPost(id: string, post: string): Promise<void> {
-  const [raw] = await redisPipeline([["SMEMBERS", indexKey(id, post)]]);
+/** Takes something that is gone out of the index entirely. */
+export async function unindex(id: string, kind: SearchKind, thing: string): Promise<void> {
+  const [raw] = await redisPipeline([["SMEMBERS", indexKey(id, kind, thing)]]);
   const held = Array.isArray(raw) ? raw.map(String) : [];
   await redisPipeline([
-    ...held.map((word) => ["ZREM", wordKey(id, word), post]),
-    ["DEL", indexKey(id, post)],
+    ...held.map((word) => ["ZREM", wordKey(id, kind, word), thing]),
+    ["DEL", indexKey(id, kind, thing)],
   ]);
 }
+
+/**
+ * Writes what a post is findable by. `parts` is its title, its text and the
+ * text of every comment under it; `n` is its feed number, which orders the
+ * results.
+ */
+export const indexPost = (id: string, post: string, n: number, parts: string[]) =>
+  index(id, "post", post, n, parts);
+
+/** Takes a deleted post out of the index entirely. */
+export const unindexPost = (id: string, post: string) => unindex(id, "post", post);
 
 /** What a search is actually looking for: whole words, deduplicated, capped. */
 export function queryWords(raw: string): string[] {
@@ -143,15 +214,26 @@ export function queryWords(raw: string): string[] {
 }
 
 export type SearchPage = {
-  /** Post ids, newest first. */
+  /** The ids found, in that kind's own order. */
   posts: string[];
   /** The number to ask for the next page with, or null at the end. */
   next: number | null;
   /** The words actually searched for, after the common ones were dropped. */
   used: string[];
+  /**
+   * How many match in all, not how many are on this page. The tabs show this,
+   * and a tab reading "20" over two hundred matches is a number that means
+   * nothing. It costs one ZCARD for a single word and nothing at all for
+   * several, because ZINTERSTORE already answers with it.
+   *
+   * It is counted before the gate: some of these may be a lesson the searcher
+   * has not bought or an event they may not attend, and the page says what it
+   * can actually show rather than this number.
+   */
+  total: number;
 };
 
-const EMPTY: SearchPage = { posts: [], next: null, used: [] };
+const EMPTY: SearchPage = { posts: [], next: null, used: [], total: 0 };
 
 /**
  * The posts holding every one of these words, newest first.
@@ -160,30 +242,38 @@ const EMPTY: SearchPage = { posts: [], next: null, used: [] };
  * page just read. Asking for a page never repeats or skips a post, however
  * many are written while somebody reads the results.
  */
-export async function search(id: string, raw: string, before: number | null = null): Promise<SearchPage> {
+export async function search(
+  id: string,
+  raw: string,
+  before: number | null = null,
+  kind: SearchKind = "post",
+): Promise<SearchPage> {
   const used = queryWords(raw);
   if (!used.length) return EMPTY;
   const max = before === null ? "+inf" : `(${before}`;
   // One word needs no working set: its own list is already the answer.
   if (used.length === 1) {
-    const [rows] = await redisPipeline([
-      ["ZREVRANGEBYSCORE", wordKey(id, used[0]), max, "-inf", "WITHSCORES", "LIMIT", 0, SEARCH_PAGE],
+    const [rows, held] = await redisPipeline([
+      ["ZREVRANGEBYSCORE", wordKey(id, kind, used[0]), max, "-inf", "WITHSCORES", "LIMIT", 0, SEARCH_PAGE],
+      ["ZCARD", wordKey(id, kind, used[0])],
     ]);
-    return { ...readPage(rows), used };
+    return { ...readPage(rows), used, total: Number(held) || 0 };
   }
   // Several words: every one of them has to be there. The working set is this
   // one search's alone and lets go of itself within the minute.
   const work = `${base(id)}:q:${randomBytes(9).toString("hex")}`;
   try {
     const [count] = await redisPipeline([
-      ["ZINTERSTORE", work, used.length, ...used.map((word) => wordKey(id, word)), "AGGREGATE", "MAX"],
+      ["ZINTERSTORE", work, used.length, ...used.map((word) => wordKey(id, kind, word)), "AGGREGATE", "MAX"],
       ["EXPIRE", work, WORK_SECONDS],
     ]);
     if (!Number(count)) return { ...EMPTY, used };
     const [rows] = await redisPipeline([
       ["ZREVRANGEBYSCORE", work, max, "-inf", "WITHSCORES", "LIMIT", 0, SEARCH_PAGE],
     ]);
-    return { ...readPage(rows), used };
+    // ZINTERSTORE answers with how many are in the set it just made, which is
+    // the whole match count, so nothing extra is asked for it.
+    return { ...readPage(rows), used, total: Number(count) || 0 };
   } finally {
     await redisPipeline([["DEL", work]]).catch(() => {});
   }
@@ -199,6 +289,33 @@ function readPage(rows: unknown): { posts: string[]; next: number | null } {
     last = Number(flat[i + 1]) || last;
   }
   return { posts, next: posts.length === SEARCH_PAGE && last > 0 ? last : null };
+}
+
+/**
+ * Every kind at once, each in its own list.
+ *
+ * Four searches, run together rather than one after another: they share
+ * nothing, and a member waiting four round trips to be told which tab to press
+ * would be a worse search than the narrow one this replaces.
+ */
+export async function searchEverything(
+  id: string,
+  raw: string,
+  kinds: readonly SearchKind[] = ["post", "lesson", "event", "member"],
+): Promise<Record<SearchKind, SearchPage>> {
+  const done = await Promise.all(
+    kinds.map((kind) => search(id, raw, null, kind).catch(() => ({ ...EMPTY }))),
+  );
+  const out: Record<SearchKind, SearchPage> = {
+    post: { ...EMPTY },
+    lesson: { ...EMPTY },
+    event: { ...EMPTY },
+    member: { ...EMPTY },
+  };
+  kinds.forEach((kind, at) => {
+    out[kind] = done[at];
+  });
+  return out;
 }
 
 /** The text of a post and its comments, for indexing. Comments are bounded. */

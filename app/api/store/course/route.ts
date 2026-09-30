@@ -6,6 +6,7 @@ import { guardStoreWrite, text } from "@/lib/store-request";
 import { readLink } from "@/lib/product-link";
 import { ownsPath, safeFileName, type ProductFile } from "@/lib/product-file";
 import {
+  type Course,
   type CourseEdit,
   MAX_BODY_LENGTH,
   cleanBody,
@@ -26,6 +27,7 @@ import { EMAIL_PATTERN } from "@/lib/auth";
 import { dropQuiz, readQuiz, readQuizFor, resetTries, saveQuiz, setupOf } from "@/lib/quiz";
 import { CERT_ID_PATTERN, withdrawCertificate } from "@/lib/certificate";
 import { readListing } from "@/lib/catalog";
+import { communityOf, courseChanged, unindexCourse } from "@/lib/community-index";
 import { LockBusyError, withLock } from "@/lib/redis-lock";
 
 const OPS = new Set([
@@ -107,11 +109,22 @@ export async function POST(request: NextRequest) {
       const course = await readCourse(courseInfo.id);
       if (!course) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
 
+      // Every write to the outline goes through here, so the community's
+      // search index is level with the course after any of them — including
+      // whatever branch is added to this handler next. Indexing never decides
+      // whether a save succeeded: the creator's change is written either way.
+      const community = communityOf(store);
+      const save = async (next: Course) => {
+        await saveCourse(next);
+        if (community) await courseChanged(community, product, course, next).catch(() => {});
+      };
+
       if (action === "disable") {
         if (lessonCount(course) > 0) return Response.json({ ok: false, error: "not_empty" }, { status: 400 });
         const result = await setProductCourse(ref, id, null);
         if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
         await dropCourse(course);
+        if (community) await unindexCourse(community, product.id, course).catch(() => {});
         await registerDrip(store, product, { ...course, modules: [] });
         return Response.json({ ok: true });
       }
@@ -129,7 +142,7 @@ export async function POST(request: NextRequest) {
         if (body.quiz === null) {
           const result = editCourse(course, { op: "quiz", lessonId, quiz: null });
           if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
-          await saveCourse(result.course);
+          await save(result.course);
           await dropQuiz(course.id, lessonId);
           return Response.json({ ok: true, course: result.course });
         }
@@ -142,14 +155,14 @@ export async function POST(request: NextRequest) {
         await saveQuiz(course.id, lessonId, read.quiz);
         const result = editCourse(course, { op: "quiz", lessonId, quiz: setupOf(read.quiz) });
         if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
-        await saveCourse(result.course);
+        await save(result.course);
         return Response.json({ ok: true, course: result.course, quiz: read.quiz });
       }
 
       if (action === "cert") {
         const result = editCourse(course, { op: "certificate", on: body.on === true });
         if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
-        await saveCourse(result.course);
+        await save(result.course);
         return Response.json({ ok: true, course: result.course });
       }
 
@@ -182,7 +195,7 @@ export async function POST(request: NextRequest) {
           hasBody: cleaned.length > 0,
         });
         if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
-        await saveCourse(result.course);
+        await save(result.course);
         return Response.json({ ok: true, course: result.course });
       }
 
@@ -234,7 +247,7 @@ export async function POST(request: NextRequest) {
       if (!result.ok) {
         return Response.json({ ok: false, error: result.reason }, { status: result.reason === "unknown" ? 404 : 400 });
       }
-      await saveCourse(result.course);
+      await save(result.course);
       const lessons = lessonCount(result.course);
       if (lessons !== courseInfo.lessons) await setCourseLessons(ref, id, lessons);
       if (edit.op === "lesson-remove") {
