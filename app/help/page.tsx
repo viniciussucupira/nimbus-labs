@@ -7,6 +7,8 @@ import { SiteNav } from "@/components/site-nav";
 import { isDomainsConfigured } from "@/lib/domains";
 import { HelpSearch } from "@/components/help-search";
 import { CopyLink } from "@/components/copy-link";
+import { formatMoney } from "@/lib/money";
+import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
 /** An anchor for one answer, from its question. */
 function answerId(q: string): string {
@@ -199,6 +201,14 @@ const SECTIONS: Section[] = [
         q: "What about refunds on the Nimbus subscription itself?",
         a: [
           "Ask within 14 days of a charge and we refund that charge in full, including renewals. You can cancel at any time and keep access until the end of the period you already paid for. The refund policy page has the exact wording.",
+        ],
+      },
+      {
+        q: "Do I get anything for inviting another creator?",
+        a: [
+          `Yes: ${INVITE_SHARE_PERCENT}% of every payment they make to us, for as long as they pay, on either plan, monthly or yearly. Your invite link is in your studio, under Invite creators. It counts when they accept it and then make their first store, and not for an account that paid us before, or one of your own.`,
+          `It is credit on your own Nimbus Labs plan, not cash. It is added ${INVITE_HOLD_DAYS} days after each of their payments, once its refund window has closed, and Stripe takes it off your next bills by itself; two creators on the same plan as yours pay for it, and anything left over stays on your account. If you have not started your plan yet, it waits until you do.`,
+          `The creator you invite gets ${formatMoney(INVITE_BONUS_CENTS, "usd")} of credit on their own plan ${INVITE_HOLD_DAYS} days after their first payment. For comparison, Stan pays 20% of each payment in cash, only while you pay Stan too, and names no bonus for the creator invited, in its help center article 'What is Stan's Referral Program?', read on September 30, 2026.`,
         ],
       },
     ],

@@ -7,6 +7,8 @@ import { PasskeySignIn } from "@/components/passkey-signin";
 import { ToastOnLoad } from "@/components/toast";
 import { isConnectConfigured } from "@/lib/stripe-connect";
 import { TRIAL_DAYS } from "@/lib/plan";
+import { formatMoney } from "@/lib/money";
+import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS } from "@/lib/creator-invite-rules";
 
 export const metadata: Metadata = {
   title: "Start your store — Nimbus Labs",
@@ -15,7 +17,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const NOTICES: Record<string, { title: string; body: string }> = {
+const NOTICES: Record<string, { title: string; body: string; tone?: "success" }> = {
+  "invite-accepted": {
+    title: "Your invite is saved on this browser",
+    body: `Type your email below, open the link we send, and take your store address. The invite counts for that store: ${INVITE_HOLD_DAYS} days after your first payment, ${formatMoney(INVITE_BONUS_CENTS, "usd")} of credit goes on your plan.`,
+    tone: "success",
+  },
   expired: {
     title: "That link no longer works",
     body: "A login link works once and lasts 15 minutes. Ask for a fresh one below.",
@@ -139,7 +146,7 @@ export default async function SignInPage({
 
           {confirmation ? <ToastOnLoad message={confirmation} param="status" /> : null}
           {notice ? (
-            <div className="notice notice-warn mt-6" role="status">
+            <div className={`notice ${notice.tone === "success" ? "notice-success" : "notice-warn"} mt-6`} role="status">
               <p className="font-semibold">{notice.title}</p>
               <p className="mt-1">{notice.body}</p>
             </div>

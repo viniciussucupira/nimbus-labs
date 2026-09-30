@@ -9,6 +9,8 @@ import {
 import { storeCookie } from "@/lib/studio-route";
 import { isRedisConfigured } from "@/lib/redis";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
+import { recordInvite } from "@/lib/creator-invites";
+import { INVITE_COOKIE, INVITE_CODE_PATTERN } from "@/lib/creator-invite-rules";
 
 const MAX_BODY_BYTES = 2_000;
 
@@ -66,8 +68,23 @@ export async function POST(request: NextRequest) {
         { status: result.reason === "already" || result.reason === "too_many" ? 409 : 400 },
       );
     }
-    const response = Response.json({ ok: true, handle: result.store.handle, store: result.store.sid });
+    // An invite accepted before signing up (lib/creator-invites.ts) counts for
+    // an account's first store only. Never in the way of the store itself:
+    // whatever happens here, the store is made and the creator goes on.
+    const invite = request.cookies.get(INVITE_COOKIE)?.value ?? "";
+    let invited = false;
+    if (body.another !== true && INVITE_CODE_PATTERN.test(invite)) {
+      invited = await recordInvite(result.store, invite).then(
+        (r) => r === "recorded",
+        (error) => {
+          console.error("writing down an invite failed", error);
+          return false;
+        },
+      );
+    }
+    const response = Response.json({ ok: true, handle: result.store.handle, store: result.store.sid, invited });
     response.headers.append("Set-Cookie", storeCookie(result.store.sid, request));
+    if (invite) response.headers.append("Set-Cookie", `${INVITE_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure`);
     return response;
   } catch (error) {
     console.error("claiming a handle failed", error);

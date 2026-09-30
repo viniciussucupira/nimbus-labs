@@ -75,6 +75,7 @@ async function onPlatform(
   method: "GET" | "POST" | "DELETE",
   path: string,
   body?: URLSearchParams,
+  pinned?: { version?: string; idempotencyKey?: string },
 ): Promise<Record<string, unknown>> {
   const key = platformKey();
   if (!key) throw new Error("Billing is not configured");
@@ -85,6 +86,8 @@ async function onPlatform(
       method,
       headers: {
         Authorization: `Bearer ${key}`,
+        ...(pinned?.version ? { "Stripe-Version": pinned.version } : {}),
+        ...(pinned?.idempotencyKey ? { "Idempotency-Key": pinned.idempotencyKey.slice(0, 255) } : {}),
         ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}),
       },
       body,
@@ -104,6 +107,22 @@ async function onPlatform(
     );
   }
   return data;
+}
+
+/**
+ * One request on our own account at a pinned API version, for a caller whose
+ * reading depends on the shape of what comes back (invoices moved their
+ * subscription and payments under new names in 2025). `idempotencyKey` for a
+ * write that must never happen twice.
+ */
+export function onPlatformAt(
+  version: string,
+  method: "GET" | "POST",
+  path: string,
+  body?: URLSearchParams,
+  idempotencyKey?: string,
+): Promise<Record<string, unknown>> {
+  return onPlatform(method, path, body, { version, idempotencyKey });
 }
 
 /** Our products at Stripe, one per plan, under names we choose. */

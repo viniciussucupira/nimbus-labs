@@ -8,11 +8,12 @@ import { syncSubscriptions } from "@/lib/billing-sync";
 import { moveAllStores } from "@/lib/store";
 import { pruneResearch } from "@/lib/creator-research-store";
 import { recoverFailedPayments } from "@/lib/payment-recovery";
+import { settleInvites } from "@/lib/creator-invite-credit";
 
 export const maxDuration = 60;
 
 /**
- * Run on a schedule by Vercel, once a day, for the two jobs that keep money
+ * Run on a schedule by Vercel, once a day, for the jobs that keep money
  * where it was agreed to be:
  *
  *   - gives every paid payment plan its end, so no buyer is ever charged
@@ -23,7 +24,10 @@ export const maxDuration = 60;
  *     written down;
  *   - tells each member whose renewal failed, once, with a link that pays it
  *     (lib/payment-recovery.ts), so a member whose card expired is not
- *     quietly cut off without ever being asked for a new one.
+ *     quietly cut off without ever being asked for a new one;
+ *   - adds the credit creators earned by inviting other creators
+ *     (lib/creator-invite-credit.ts), once each payment's refund window has
+ *     closed.
  *
  * And, with the time left, one piece of upkeep: every store written before
  * products had records of their own is moved to them (lib/catalog.ts). A
@@ -77,6 +81,14 @@ async function run(request: NextRequest): Promise<Response> {
     } catch (error) {
       console.error("writing about failed renewals failed", error);
     }
+    // Invited creators' payments, past their refund window, become credit on
+    // the plan of whoever invited them (lib/creator-invite-credit.ts).
+    let invites = null;
+    try {
+      invites = await settleInvites(deadline);
+    } catch (error) {
+      console.error("adding invite credit failed", error);
+    }
     let catalogs = null;
     try {
       catalogs = await moveAllStores(deadline);
@@ -86,7 +98,7 @@ async function run(request: NextRequest): Promise<Response> {
     // Creator research answers are kept 24 months, as the privacy policy says.
     await pruneResearch().catch((error: unknown) => console.error("pruning old research answers failed", error));
     const ok = plans !== null && (billing !== null || !isBillingConfigured());
-    return Response.json({ ok, ...(plans ?? {}), billing, recovered, catalogs }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ok, ...(plans ?? {}), billing, recovered, invites, catalogs }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
   } finally {
     await redisPipeline([["DEL", "nl:plans:lock"]]).catch(() => {});
   }

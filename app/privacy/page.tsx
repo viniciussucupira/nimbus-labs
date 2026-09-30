@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="September 28, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="September 30, 2026">
       <p>
         Nimbus Labs (“Nimbus Labs,” “we,” “us,” or “our”) is an independent
         software studio. This Privacy Policy explains how we collect, use,
@@ -335,6 +335,22 @@ export default function PrivacyPage() {
           affiliate sees only their own figures. It is kept with the
           store&apos;s records. We never hold or pay out an affiliate&apos;s
           money: the creator pays them.
+        </p>
+        <p id="invites">
+          <strong className="text-black">Creators inviting creators.</strong>{" "}
+          A creator&apos;s studio gives them an invite link for other
+          creators. Opening it sets nothing. Pressing &ldquo;Accept the
+          invite&rdquo; sets a cookie named <code>nl_invite</code> holding the
+          invite&apos;s code, for 60 days, and it is removed when a store is
+          made. When the first store of a new account is made with it, we keep
+          which store invited which, and when. To add the credit the invite
+          earns, we read from our own Stripe account the payments the invited
+          account made to us, and keep, for each, the amount credited, its
+          date and whether it is on the plan yet. The inviting creator sees the
+          invited store&apos;s public name and address, when it was made,
+          whether it is in its trial, paying or not, and the credit it earned
+          them, and never its email address or what it sells or earns. Kept
+          while either store exists.
         </p>
         <p id="calendars">
           <strong className="text-black">Calendars a creator connects.</strong>{" "}

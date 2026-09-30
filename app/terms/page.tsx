@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
 import { isDomainsConfigured } from "@/lib/domains";
+import { formatMoney } from "@/lib/money";
+import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Nimbus Labs",
@@ -12,7 +14,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   const domains = isDomainsConfigured();
   return (
-    <LegalPage title="Terms of Service" lastUpdated="September 28, 2026">
+    <LegalPage title="Terms of Service" lastUpdated="September 30, 2026">
       <p>
         These Terms of Service (“Terms”) govern your access to and use of the
         websites, products, and subscription services operated by Nimbus Labs
@@ -265,7 +267,34 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="6. Cancellation">
+      <LegalSection title="6. Creator invites" id="invites">
+        <p>
+          Your studio gives you a link to invite other creators. When someone
+          accepts your invite and then makes the first store of a new
+          account, that store counts as invited by you. It does not count if
+          the account belongs to you, if it had paid us before it was invited,
+          or if another invite was accepted for it first.
+        </p>
+        <p>
+          For every payment an invited account makes to us for its stores,
+          we add {INVITE_SHARE_PERCENT}% of the amount actually paid, less any
+          refund or credit given back on it, as credit on your account,{" "}
+          {INVITE_HOLD_DAYS} days after the payment. After its first payment,
+          the invited account gets {formatMoney(INVITE_BONUS_CENTS, "usd")} of
+          credit on its own account, at the same time. Credit is applied by
+          our payment provider to your next charges until it is used up. It is
+          not paid out in cash, cannot be transferred, and is not refunded if
+          you cancel.
+        </p>
+        <p>
+          We may withhold or reverse credit earned through abuse, such as
+          invites to accounts you control, and we may change or end this
+          program for payments made after we give notice; credit already added
+          stays yours.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="7. Cancellation">
         <p>
           You may cancel your subscription at any time, for any reason. After
           you cancel, you will not be charged for future billing periods. You
@@ -274,7 +303,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Refunds">
+      <LegalSection title="8. Refunds">
         <p>
           Refunds of what you pay <em>us</em> are governed by our{" "}
           <Link
@@ -293,7 +322,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="8. Intellectual property">
+      <LegalSection title="9. Intellectual property">
         <p>
           Nimbus Labs and its licensors own all rights in the Services,
           including the software, branding, design, and documentation. These
@@ -315,7 +344,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="9. Disclaimer of warranties">
+      <LegalSection title="10. Disclaimer of warranties">
         <p>
           THE SERVICES ARE PROVIDED “AS IS” AND “AS AVAILABLE.” TO THE MAXIMUM
           EXTENT PERMITTED BY LAW, WE DISCLAIM ALL WARRANTIES, EXPRESS OR
@@ -325,7 +354,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="10. Limitation of liability">
+      <LegalSection title="11. Limitation of liability">
         <p>
           TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, NIMBUS LABS AND
           ITS OWNERS, OFFICERS, AND CONTRACTORS WILL NOT BE LIABLE FOR ANY
@@ -349,7 +378,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="11. Indemnification">
+      <LegalSection title="12. Indemnification">
         <p>
           You agree to indemnify and hold Nimbus Labs harmless from claims
           arising out of your User Content, the products you sell through a
@@ -358,7 +387,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="12. Termination">
+      <LegalSection title="13. Termination">
         <p>
           We may suspend or terminate your access if you breach these Terms, if
           required by law, or if we discontinue the Services. Upon termination,
@@ -375,7 +404,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="13. Changes to these Terms">
+      <LegalSection title="14. Changes to these Terms">
         <p>
           We may update these Terms from time to time. The &ldquo;Last
           updated&rdquo; date at the top of this page will change when we do. Material changes
@@ -384,7 +413,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="14. Governing law">
+      <LegalSection title="15. Governing law">
         <p>
           These Terms are governed by the laws of the Federative Republic of
           Brazil, without regard to conflict-of-law rules. Courts located in
@@ -393,7 +422,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="15. Contact">
+      <LegalSection title="16. Contact">
         <p>
           Nimbus Labs
           <br />
