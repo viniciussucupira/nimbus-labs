@@ -25,6 +25,7 @@
  * Progress is kept per course and per student: which lessons they marked done
  * and when they last came back. That is all, and the creator sees it.
  */
+import { currentMeta } from "@/lib/tier-rules";
 import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { issueSignedToken, presignUrl } from "@/lib/blob";
@@ -156,6 +157,12 @@ export async function recordEnrollment(store: Store, email: string, productId: s
   ]);
 }
 
+/** Forgets Stripe's answer for one address, so its next page asks again: a membership switched to another tier (lib/tier-switch.ts). */
+export async function forgetPaid(store: Store, email: string): Promise<void> {
+  if (!isRedisConfigured()) return;
+  await redisPipeline([["DEL", paidCacheKey(store, email)]]);
+}
+
 /** Takes a course off an address's ledger: a gift taken back by a refund (lib/gifts.ts). */
 export async function dropEnrollment(store: Store, email: string, productId: string): Promise<void> {
   if (!isRedisConfigured()) return;
@@ -200,7 +207,8 @@ async function paidAtStripe(store: Store, email: string): Promise<Ledger> {
     const listed = (await onAccount("GET", account, `/checkout/sessions?${query}`)) as Listed;
     const rows = Array.isArray(listed.data) ? (listed.data as Record<string, unknown>[]) : [];
     for (const session of rows) {
-      const meta = (session.metadata ?? {}) as Record<string, string>;
+      // A membership switched to another tier hands over what it is on now (lib/tier-rules.ts).
+      const meta = currentMeta((session.metadata ?? {}) as Record<string, string>, session);
       if (!handles.has(meta.store ?? "")) continue;
       if (!isSettled(session)) continue;
       // The course bought, or a course in a bundle bought or ticked at

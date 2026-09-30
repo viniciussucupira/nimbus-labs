@@ -1,4 +1,7 @@
 import { SaleEditor } from "@/components/sale-editor";
+import { TierEditor } from "@/components/tier-editor";
+import { canTier } from "@/lib/tier-rules";
+import { tierWords } from "@/lib/tier-switch";
 import { saleClock, saleable } from "@/lib/store-sale";
 import { waitlistViews } from "@/lib/waitlist";
 import { freshCounts } from "@/lib/lesson-comments";
@@ -399,6 +402,16 @@ async function saleCandidates(store: Store): Promise<{ id: string; title: string
   if (!ids.length) return [];
   const listings = await readListings(store, ids).catch(() => []);
   return listings.filter(saleable).map((p) => ({ id: p.id, title: p.title }));
+}
+
+/** Memberships that can be tiers: running until canceled, at one price (lib/tier-rules.ts). */
+async function tierCandidates(store: Store): Promise<{ id: string; title: string; words: string }[]> {
+  const ids = store.catalog.items
+    .filter((item) => (item.kind & KIND.recurring) !== 0 && (item.kind & KIND.hidden) === 0 && item.options.length === 0)
+    .map((item) => item.id);
+  if (!ids.length) return [];
+  const listings = await readListings(store, ids).catch(() => []);
+  return listings.filter(canTier).map((p) => ({ id: p.id, title: p.title, words: tierWords(store, p) }));
 }
 
 export default async function StudioPage({
@@ -1018,6 +1031,11 @@ export default async function StudioPage({
                   connected={Boolean(current?.stripeAccountId)}
                   now={saleClock()}
                 />
+
+                {await (async () => {
+                  const tiers = await tierCandidates(store);
+                  return tiers.length ? <TierEditor initial={store.tiers} memberships={tiers} /> : null;
+                })()}
 
                 <PixelEditor pixels={store.pixels} />
 

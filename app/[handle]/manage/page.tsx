@@ -6,6 +6,7 @@ import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { MANAGE_LINK_SECONDS, type Membership, canManage, membershipsFor } from "@/lib/membership-manage";
 import { formatMoney } from "@/lib/money";
+import { choicesFor, liveTiers } from "@/lib/tier-switch";
 
 export const metadata: Metadata = {
   title: "Your membership — Nimbus Labs",
@@ -42,6 +43,26 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     title: "This link has been used too many times",
     body: "Ask for a new one below; it takes a few seconds.",
   },
+  switched: {
+    title: "Your membership was switched",
+    body: "What the new plan includes is open to you now, and a receipt is on its way to your inbox.",
+  },
+  declined: {
+    title: "The card was not charged, so nothing changed",
+    body: "Your bank declined the payment or asked for a step we could not show here. Update your card with \u201cChange card or see receipts\u201d below, then try the switch again.",
+  },
+  stale: {
+    title: "That price was more than 15 minutes old",
+    body: "Nothing was changed. Pick the plan again to see the price as it stands now.",
+  },
+  busy: {
+    title: "A switch was already under way",
+    body: "Wait a moment and look at your membership below before trying again.",
+  },
+  "cannot-switch": {
+    title: "That switch cannot be made",
+    body: "The plan may no longer be offered, or the membership may be canceled or waiting on a payment. Nothing was changed.",
+  },
 };
 
 /**
@@ -66,6 +87,8 @@ export default async function ManagePage({ params, searchParams }: Params) {
   // action, so a mail scanner following the link changes and uses up nothing.
   const memberships: Membership[] | null = token ? await membershipsFor(store, token) : null;
   const live = memberships !== null;
+  // The plans each membership can switch to (lib/tier-switch.ts).
+  const tiers = memberships?.length ? await liveTiers(store).catch(() => []) : [];
   const available = canManage(store);
   const notice = token && !live ? NOTICES.expired : NOTICES[status] ?? null;
   const hours = Math.round(MANAGE_LINK_SECONDS / 3600);
@@ -162,6 +185,32 @@ export default async function ManagePage({ params, searchParams }: Params) {
                           </button>
                         </form>
                       ) : null}
+                      {(() => {
+                        const choices = choicesFor(store, m, tiers);
+                        if (!choices.length) return null;
+                        return (
+                          <details className="mt-3 w-full basis-full">
+                            <summary className="cursor-pointer text-sm font-semibold" style={{ color: "var(--st-text)" }}>
+                              Switch plan
+                            </summary>
+                            <ul className="mt-2 space-y-2">
+                              {choices.map((c) => (
+                                <li key={c.id}>
+                                  <Link
+                                    prefetch={false}
+                                    href={`/@${store.handle}/manage/switch?token=${token}&sub=${m.id}&to=${c.id}`}
+                                    className="st-row text-sm"
+                                  >
+                                    <span className="basis-full font-bold" style={{ color: "var(--st-text)" }}>{c.title}</span>
+                                    <span className="st-muted -mt-2 basis-full">{`${c.words}${c.way === "up" ? " · upgrade" : c.way === "down" ? " · downgrade" : ""}`}</span>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                            <p className="st-muted mt-2 text-xs">You see the exact amount before anything is charged.</p>
+                          </details>
+                        );
+                      })()}
                     </li>
                   ))}
                 </ul>

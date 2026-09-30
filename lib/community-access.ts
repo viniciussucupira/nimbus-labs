@@ -43,6 +43,7 @@
  *   nl:cm:link:<hash>:opens       how often it was used (at most 10)
  *   nl:rl:cm:ip:<hash>, nl:rl:cm:addr:<hash>   how often a link was asked for
  */
+import { currentMeta } from "@/lib/tier-rules";
 import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
@@ -116,7 +117,8 @@ export async function paidForAny(store: Store, email: string, ids: Set<string>):
     query.append("expand[]", "data.payment_intent.latest_charge");
     const listed = (await onAccount("GET", account, `/checkout/sessions?${query}`)) as Listed;
     for (const session of rows(listed)) {
-      const meta = (session.metadata ?? {}) as Record<string, string>;
+      // A membership switched to another tier hands over what it is on now (lib/tier-rules.ts).
+      const meta = currentMeta((session.metadata ?? {}) as Record<string, string>, session);
       if (!handles.has(meta.store ?? "")) continue;
       if (!isSettled(session)) continue;
       if (refunded(session.payment_intent)) continue;

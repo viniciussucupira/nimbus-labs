@@ -29,6 +29,7 @@ import { StripeError, onAccount, platformKey } from "@/lib/stripe-account";
 import type { Store } from "@/lib/store";
 import { readListings, sellsAny } from "@/lib/catalog";
 import { canOffer, saveOn } from "@/lib/save-offer";
+import { productOfSub } from "@/lib/tier-rules";
 
 /** How long the emailed link keeps working. */
 export const MANAGE_LINK_SECONDS = 60 * 60;
@@ -156,7 +157,7 @@ function senderAddress(): string {
 
 export type ManageRequest = "sent" | "email" | "limited" | "unavailable" | "error";
 
-type Grant = {
+export type Grant = {
   /** The connected account the membership is on. */
   a: string;
   /** The creator's customer who owns it. */
@@ -206,7 +207,9 @@ export async function requestManageLink(input: {
       "",
       link,
       "",
-      "Open the link and press the button. Stripe then shows your membership: you can cancel it, change the card it is paid with, or see your receipts. If you cancel, it stays on until the end of the period you have already paid for, and nothing more is charged.",
+      store.tiers.length
+        ? "Open the link to see your membership. From there you can switch to another plan, seeing the exact amount before anything is charged, or cancel it, change the card it is paid with, or see your receipts. If you cancel, it stays on until the end of the period you have already paid for, and nothing more is charged."
+        : "Open the link and press the button. Stripe then shows your membership: you can cancel it, change the card it is paid with, or see your receipts. If you cancel, it stays on until the end of the period you have already paid for, and nothing more is charged.",
       "",
       "The link works for one hour. If you did not ask for this, ignore this email; nothing happens unless the link is used.",
       "",
@@ -325,6 +328,11 @@ export async function openPortal(store: Store, token: string, origin: string): P
 /** A membership as the member's own page lists it. */
 export type Membership = {
   id: string;
+  /** The product it is on now: switching tiers changes it (lib/tier-rules.ts). */
+  product: string;
+  /** Stripe's state for it, and whether it was sold to end after a set number of payments. */
+  status: string;
+  fixedEnd: boolean;
   /** What it is, by the product's name in the store today. */
   title: string;
   /** Each payment, in the currency's smallest unit. */
@@ -344,7 +352,7 @@ const SUB_PATTERN = /^sub_[A-Za-z0-9]{6,64}$/;
 /** Once the offer has been made on a membership, it is never made again. */
 const offeredKey = (account: string, subscription: string) => `nl:save:${account}:${subscription}`;
 
-type SubRow = {
+export type SubRow = {
   id?: unknown;
   status?: unknown;
   customer?: unknown;
@@ -355,13 +363,14 @@ type SubRow = {
   items?: {
     data?: {
       current_period_end?: unknown;
-      price?: { unit_amount?: unknown; currency?: unknown; recurring?: { interval?: unknown; interval_count?: unknown } | null };
+      id?: unknown;
+      price?: { unit_amount?: unknown; currency?: unknown; metadata?: Record<string, string> | null; recurring?: { interval?: unknown; interval_count?: unknown } | null };
     }[];
   };
 };
 
 /** The grant behind a live link, read without spending one of its opens. */
-async function grantOf(store: Store, token: string): Promise<Grant | null> {
+export async function grantOf(store: Store, token: string): Promise<Grant | null> {
   if (!MANAGE_TOKEN_PATTERN.test(token) || !isRedisConfigured()) return null;
   const [raw] = await redisPipeline([["GET", await tokenKey(token)]]);
   const grant = parseGrant(raw);
@@ -369,7 +378,7 @@ async function grantOf(store: Store, token: string): Promise<Grant | null> {
 }
 
 /** When a subscription stops, if it is set to; null while it runs on. */
-function endsAtOf(sub: SubRow): number | null {
+export function endsAtOf(sub: SubRow): number | null {
   const at = typeof sub.cancel_at === "number" && sub.cancel_at > 0 ? sub.cancel_at : 0;
   if (at) return at;
   if (sub.cancel_at_period_end !== true) return null;
@@ -382,7 +391,7 @@ function endsAtOf(sub: SubRow): number | null {
 }
 
 /** The live memberships of this store held by one of the creator's customers. */
-async function subsOf(store: Store, grant: Grant): Promise<SubRow[]> {
+export async function subsOf(store: Store, grant: Grant): Promise<SubRow[]> {
   const handles = saleHandles(store);
   const listed = (await onAccount(
     "GET",
@@ -420,13 +429,17 @@ export async function membershipsFor(store: Store, token: string): Promise<Membe
     console.error("listing a member's memberships failed", error);
     return [];
   }
-  const ids = [...new Set(subs.map((s) => s.metadata?.product ?? "").filter(Boolean))];
+  const ids = [...new Set(subs.map((s) => productOfSub(s)).filter(Boolean))];
   const titles = new Map(ids.length ? (await readListings(store, ids).catch(() => [])).map((p) => [p.id, p.title]) : []);
   return subs.map((sub) => {
     const price = sub.items?.data?.[0]?.price;
+    const product = productOfSub(sub);
     return {
       id: sub.id as string,
-      title: titles.get(sub.metadata?.product ?? "") || "Your membership",
+      product,
+      status: typeof sub.status === "string" ? sub.status : "",
+      fixedEnd: Boolean(sub.metadata?.ends_after),
+      title: titles.get(product) || "Your membership",
       amount: typeof price?.unit_amount === "number" ? price.unit_amount : 0,
       currency: typeof price?.currency === "string" ? price.currency : store.currency,
       interval: typeof price?.recurring?.interval === "string" ? price.recurring.interval : "month",

@@ -514,6 +514,9 @@ export function BuyBox({
           )}${product.recurring.payments > 0 ? "" : " until you cancel"}. Cancel before the trial ends and you pay nothing.`}
         </p>
       ) : null}
+      {product.recurring && store.tiers.includes(product.id) ? (
+        <p className="st-muted mt-2 text-center text-xs">You can switch to another of this store&apos;s plans later, up or down, and see the exact amount before anything is charged.</p>
+      ) : null}
       <SaleNote store={store} product={product} />
     </form>
   );
@@ -684,7 +687,7 @@ export function ProductCard({
       {product.recurring && manageable ? (
         <p className="mt-3 text-center text-sm">
           <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">
-            Already a member? Manage or cancel
+            {store.tiers.includes(product.id) ? "Already a member? Switch plan, manage or cancel" : "Already a member? Manage or cancel"}
           </Link>
         </p>
       ) : null}

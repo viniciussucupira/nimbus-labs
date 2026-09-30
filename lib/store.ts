@@ -53,6 +53,7 @@ import { type RecoverySetting, NO_RECOVERY, parseRecovery } from "@/lib/recovery
 import { type SaveOffer, NO_SAVE, parseSaveOffer } from "@/lib/save-offer";
 import { type WinBack, NO_WINBACK, parseWinBack } from "@/lib/winback";
 import { type StoreSale, NO_SALE, parseSale } from "@/lib/store-sale";
+import { parseTiers } from "@/lib/tier-rules";
 import { type Cycle, type Tier, parseCycle, parseTier } from "@/lib/plan";
 import { COMMUNITY_ID } from "@/lib/community-text";
 import { type Bump, type Plan, canBeBumped, isOneOff } from "@/lib/product-extras";
@@ -418,6 +419,8 @@ export type Store = {
   winback: WinBack;
   /** A sale across the store, with its start and end (lib/store-sale.ts). None until the creator sets one. */
   sale: StoreSale;
+  /** Memberships a member can switch between, 2 to 6 product ids, or none (lib/tier-rules.ts). */
+  tiers: string[];
   /** The store's community, once the creator has made one (lib/community.ts). */
   community: CommunityRef | null;
   /**
@@ -657,6 +660,7 @@ function parseStore(raw: unknown): Store | null {
       save: parseSaveOffer(value.save),
       winback: parseWinBack(value.winback),
       sale: parseSale(value.sale),
+      tiers: parseTiers(value.tiers),
       // Stores written before communities existed simply have none.
       community: parseCommunityRef(value.community),
       affiliates: parseAffiliateSetting(value.affiliates),
@@ -817,6 +821,7 @@ async function freshStore(fields: {
     save: { ...NO_SAVE },
     winback: { ...NO_WINBACK },
     sale: { ...NO_SALE },
+    tiers: [],
     community: null,
     affiliates: parseAffiliateSetting(null),
     currency: DEFAULT_CURRENCY,
@@ -1894,6 +1899,12 @@ export async function setStoreSale(
   sale: StoreSale,
 ): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
   const next = await patchStore(email, () => ({ sale: parseSale(sale) }));
+  return next ? { ok: true, store: next } : { ok: false, reason: "none" };
+}
+
+/** Sets the memberships members can switch between; fewer than two is none. */
+export async function setStoreTiers(email: string, tiers: string[]): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
+  const next = await patchStore(email, () => ({ tiers: parseTiers(tiers) }));
   return next ? { ok: true, store: next } : { ok: false, reason: "none" };
 }
 
