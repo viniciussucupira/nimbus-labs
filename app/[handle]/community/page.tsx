@@ -106,7 +106,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
   return (
     <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <ConfirmDeletes />
-      <CommunityBar store={store} config={config} tab="feed" signedIn messages={config.dm.on} requests={waiting} news={news} />
+      <CommunityBar store={store} config={config} tab="feed" signedIn messages={config.dm.on} requests={waiting} news={news} room={config.chat.on} />
       <main id="content" className="mx-auto grid max-w-5xl gap-x-8 px-4 pb-16 pt-6 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <nav aria-label="Spaces" className="sticky top-24">

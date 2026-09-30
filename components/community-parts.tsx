@@ -36,6 +36,7 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
   dmoff: { text: "Messages are not switched on in this community.", tone: "warn" },
   dmbetween: { text: `Members cannot message each other here. The creator can still be written to.`, tone: "warn" },
   dmfull: { text: "That inbox is full right now, so the message was not sent.", tone: "warn" },
+  chatoff: { text: "There is no live room in this community.", tone: "warn" },
   pollclosed: { text: "That poll has closed, so the count stands as it is.", tone: "warn" },
   polloptions: { text: "A poll needs at least two answers, each with something written in it.", tone: "warn" },
   polltitle: { text: "Give the poll a question: it goes in the title.", tone: "warn" },
@@ -106,7 +107,7 @@ export function communityImageUrl(store: Store, path: string): string {
   return `/api/store/community/image?h=${encodeURIComponent(store.handle)}&f=${communityImageFile(path)}`;
 }
 
-export type Tab = "feed" | "events" | "members" | "you" | "search" | "messages" | "notifications";
+export type Tab = "feed" | "events" | "members" | "you" | "search" | "messages" | "notifications" | "chat";
 
 /** The bar across the top of every community page. */
 export function CommunityBar({
@@ -118,6 +119,7 @@ export function CommunityBar({
   messages = false,
   requests = 0,
   news = 0,
+  room = false,
 }: {
   store: Store;
   config: CommunityConfig;
@@ -131,10 +133,13 @@ export function CommunityBar({
   requests?: number;
   /** How many things happened to this person that they have not looked at. */
   news?: number;
+  /** The live room is switched on here. */
+  room?: boolean;
 }) {
   const home = `/@${store.handle}/community`;
   const tabs: { id: Tab; label: string; href: string }[] = [
     { id: "feed", label: "Feed", href: home },
+    ...(room ? [{ id: "chat" as Tab, label: "Room", href: `${home}/chat` }] : []),
     { id: "events", label: "Events", href: `${home}/events` },
     { id: "members", label: "Members", href: `${home}/members` },
     { id: "you", label: "You", href: `${home}/you` },

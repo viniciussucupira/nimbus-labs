@@ -23,10 +23,34 @@ type Entry = string | string[] | Map<string, string> | Set<string> | { score: nu
 
 export class MemoryRedis {
   private data = new Map<string, Entry>();
+  /** When a key stops existing, in ms since the epoch. */
+  private until = new Map<string, number>();
+  /**
+   * The clock, so a test can move time rather than wait for it. A cooldown
+   * measured in minutes is not a thing to sit through.
+   */
+  now = () => Date.now();
+
+  /** Moves the clock forward, for a test that has to outlast an expiry. */
+  advance(ms: number): void {
+    const to = this.now() + ms;
+    this.now = () => to;
+  }
 
   /** Everything, thrown away. */
   clear(): void {
     this.data.clear();
+    this.until.clear();
+    this.now = () => Date.now();
+  }
+
+  /** Drops a key whose time is up, before anything reads it. */
+  private live(key: string): void {
+    const ends = this.until.get(key);
+    if (ends !== undefined && this.now() >= ends) {
+      this.data.delete(key);
+      this.until.delete(key);
+    }
   }
 
   /** For a test to look at what a flow left behind. */
@@ -74,11 +98,42 @@ export class MemoryRedis {
     const name = String(rawName).toUpperCase();
     const key = String(rest[0] ?? "");
     const args = rest.slice(1).map(String);
+    this.live(key);
 
     switch (name) {
-      case "SET":
+      case "SET": {
+        const flags = args.slice(1).map((a) => a.toUpperCase());
+        // NX is the whole point of a cooldown: it either takes the key or
+        // tells the caller somebody already holds it.
+        if (flags.includes("NX") && this.data.has(key)) return null;
+        if (flags.includes("XX") && !this.data.has(key)) return null;
         this.data.set(key, args[0]);
+        // The index is into `flags`, which starts one past the value, so the
+        // seconds have to be read from `flags` too. Reading them from `args`
+        // gives NaN, the key never expires, and every test about a cooldown
+        // passes for the wrong reason.
+        const at = flags.indexOf("EX");
+        const seconds = at >= 0 ? Number(flags[at + 1]) : NaN;
+        if (Number.isFinite(seconds)) this.until.set(key, this.now() + seconds * 1000);
+        else this.until.delete(key);
         return "OK";
+      }
+      case "EXPIRE":
+        if (!this.data.has(key)) return 0;
+        this.until.set(key, this.now() + Number(args[0]) * 1000);
+        return 1;
+      case "TTL": {
+        if (!this.data.has(key)) return -2;
+        const ends = this.until.get(key);
+        if (ends === undefined) return -1;
+        return Math.max(0, Math.ceil((ends - this.now()) / 1000));
+      }
+      case "INCR": {
+        const held = this.data.get(key);
+        const next = (typeof held === "string" ? Number(held) || 0 : 0) + 1;
+        this.data.set(key, String(next));
+        return next;
+      }
       case "GET": {
         const held = this.data.get(key);
         return typeof held === "string" ? held : null;
@@ -209,6 +264,26 @@ export class MemoryRedis {
         if (end < start) return 0;
         const gone = z.splice(start, end - start + 1);
         return gone.length;
+      }
+      case "ZRANGEBYSCORE": {
+        const z = this.zset(key);
+        // "(5" means "after 5", which is how the room asks for what is new.
+        const edge = (raw: string) => {
+          if (raw === "-inf") return { value: -Infinity, open: false };
+          if (raw === "+inf") return { value: Infinity, open: false };
+          if (raw.startsWith("(")) return { value: Number(raw.slice(1)), open: true };
+          return { value: Number(raw), open: false };
+        };
+        const from = edge(args[0]);
+        const to = edge(args[1]);
+        const page = z.filter(
+          (e) =>
+            (from.open ? e.score > from.value : e.score >= from.value) &&
+            (to.open ? e.score < to.value : e.score <= to.value),
+        );
+        const at = args.map((a) => a.toUpperCase()).indexOf("LIMIT");
+        const limited = at >= 0 ? page.slice(Number(args[at + 1]), Number(args[at + 1]) + Number(args[at + 2])) : page;
+        return limited.map((e) => e.member);
       }
       case "ZREVRANGE": {
         const z = [...this.zset(key)].reverse();

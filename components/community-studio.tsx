@@ -21,6 +21,7 @@ import {
   MAX_UPCOMING_EVENTS,
 } from "@/lib/community-text";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
+import { MAX_SLOW } from "@/lib/community-chat";
 
 export type QueueRow = {
   key: string;
@@ -184,6 +185,7 @@ export function CommunityStudio({
             {events}
             <Access config={config} products={products} busy={busy} run={run} problem={problem} />
             <Messages config={config} busy={busy} run={run} problem={problem} />
+            <Room config={config} busy={busy} run={run} problem={problem} />
             <Spaces config={config} products={products} busy={busy} run={run} problem={problem} />
           </>
         ) : (
@@ -381,6 +383,100 @@ function Messages({
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <button type="submit" className="btn" disabled={!changed || busy !== null}>Save</button>
           {problem("dm")}
+        </div>
+      </form>
+    </section>
+  );
+}
+
+/**
+ * The room, and what keeps it civil.
+ *
+ * Whop documents the best moderation of any chat we compared against — a mute
+ * with a duration, a cooldown between messages, a banned-word list, blocking
+ * links, restricting posting to admins. An unmoderated room is a room the
+ * creator closes after a fortnight, so the controls come with it rather than
+ * after the first bad night.
+ */
+function Room({
+  config,
+  busy,
+  run,
+  problem,
+}: {
+  config: CommunityConfig;
+  busy: string | null;
+  run: Runner;
+  problem: Problem;
+}) {
+  const [on, setOn] = useState(config.chat.on);
+  const [slow, setSlow] = useState(String(config.chat.slow));
+  const [links, setLinks] = useState(config.chat.links);
+  const [creatorOnly, setCreatorOnly] = useState(config.chat.creatorOnly);
+  const changed =
+    on !== config.chat.on ||
+    Number(slow.trim() || 0) !== config.chat.slow ||
+    links !== config.chat.links ||
+    creatorOnly !== config.chat.creatorOnly;
+  return (
+    <section aria-labelledby="cm-room-title" className="card p-6 sm:p-8">
+      <h2 id="cm-room-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">The room</h2>
+      <p className="mt-1 text-sm text-ink-soft">
+        For the hour everybody is there at once. What is worth coming back to belongs in a post, and the room keeps its
+        last 500 messages.
+      </p>
+      <form
+        className="mt-5 space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (changed) {
+            run("room", { action: "room", on, slow: Number(slow.trim() || 0), links, creatorOnly }, on ? "Room saved." : "Room switched off.");
+          }
+        }}
+      >
+        <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-[var(--r-sm)] px-2 py-2 hover:bg-paper">
+          <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={on} onChange={(e) => setOn(e.target.checked)} />
+          <span className="text-sm">
+            <span className="block font-semibold text-ink">Open the room</span>
+            <span className="block text-ink-soft">Off, and there is no room page here at all.</span>
+          </span>
+        </label>
+        <label className={`flex min-h-[44px] items-start gap-3 rounded-[var(--r-sm)] px-2 py-2 ${on ? "cursor-pointer hover:bg-paper" : "opacity-50"}`}>
+          <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" disabled={!on} checked={creatorOnly} onChange={(e) => setCreatorOnly(e.target.checked)} />
+          <span className="text-sm">
+            <span className="block font-semibold text-ink">Only I write there</span>
+            <span className="block text-ink-soft">Everybody reads; nobody else types. For a room during a launch.</span>
+          </span>
+        </label>
+        <label className={`flex min-h-[44px] items-start gap-3 rounded-[var(--r-sm)] px-2 py-2 ${on ? "cursor-pointer hover:bg-paper" : "opacity-50"}`}>
+          <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" disabled={!on} checked={links} onChange={(e) => setLinks(e.target.checked)} />
+          <span className="text-sm">
+            <span className="block font-semibold text-ink">Web addresses may be written</span>
+            <span className="block text-ink-soft">Off is how a room stops being somewhere people drop links.</span>
+          </span>
+        </label>
+        <label className="block max-w-[16rem]" htmlFor="cm-slow">
+          <span className="field-label">A member waits between messages</span>
+          <span className="relative block">
+            <input
+              id="cm-slow"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={MAX_SLOW}
+              step={1}
+              disabled={!on}
+              value={slow}
+              onChange={(e) => setSlow(e.target.value)}
+              className="field pr-20"
+            />
+            <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-ink-soft">seconds</span>
+          </span>
+        </label>
+        <p className="text-xs text-ink-soft">0 for no wait. You are never waited on in your own room.</p>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <button type="submit" className="btn" disabled={!changed || busy !== null}>Save</button>
+          {problem("room")}
         </div>
       </form>
     </section>

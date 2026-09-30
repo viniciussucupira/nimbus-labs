@@ -182,7 +182,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
   return (
     <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <ConfirmDeletes />
-      <CommunityBar store={store} config={config} tab="feed" signedIn messages={config.dm.on} requests={waiting} news={news} />
+      <CommunityBar store={store} config={config} tab="feed" signedIn messages={config.dm.on} requests={waiting} news={news} room={config.chat.on} />
       <main id="content" className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <p className="mb-4">
           <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">Back to the feed</Link>
