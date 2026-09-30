@@ -27,6 +27,7 @@ import {
   withPin,
 } from "@/lib/community";
 import { communityViewer, maySeeSpace } from "@/lib/community-access";
+import { MAX_POLL_DAYS, parsePoll, vote } from "@/lib/community-polls";
 import { checkCommunityImage } from "@/lib/community-image";
 import { blobImages, dropCommunityImage, noteCommunityUpload, takeCommunityUpload } from "@/lib/community-files";
 import { advanceAnnouncement, queueAnnouncement } from "@/lib/community-mail";
@@ -133,7 +134,26 @@ export async function POST(request: NextRequest) {
       const title = cleanLine(form.get("title"), MAX_POST_TITLE);
       const text = cleanText(form.get("text"), MAX_POST_TEXT);
       const path = field("img", 120);
-      if (!text && !path) return back(fromPage, "empty");
+      // A poll, if this post is one: its options come as repeated fields, and
+      // a poll with fewer than two answers is not a poll and parses as none.
+      const days = Number(field("poll_days", 4));
+      const poll =
+        form.get("poll") === "1"
+          ? parsePoll({
+              options: form.getAll("poll_option").map((one) => String(one)),
+              multi: form.get("poll_multi") === "1",
+              ends:
+                Number.isInteger(days) && days > 0 && days <= MAX_POLL_DAYS
+                  ? Math.floor(Date.now() / 1000) + days * 86_400
+                  : 0,
+              quiet: form.get("poll_quiet") === "1",
+            })
+          : null;
+      if (form.get("poll") === "1" && !poll) return back(fromPage, "polloptions");
+      // A poll stands on its own: its question is the title and its answers
+      // are the post, so it does not also need words or a picture.
+      if (!text && !path && !poll) return back(fromPage, "empty");
+      if (poll && !title) return back(fromPage, "polltitle");
       if (linkCount(`${title}\n${text}`) > MAX_LINKS_IN_POST) return back(fromPage, "links");
       if (!owner && !viewer.member?.n) return back(`${home}/you`, "name");
       if (!owner && (!(await within(id, key, "post")) || !(await within(id, key, "postDay")))) return back(fromPage, "slow");
@@ -164,7 +184,7 @@ export async function POST(request: NextRequest) {
       const announce = owner && form.get("kind") === "announcement";
       // Not given back if this fails: the post may have been written anyway,
       // and a picture must never end up in two posts.
-      const made = await createPost(id, { space: chosen.id, author: key, title, text, img, kind: announce ? "announcement" : "post" });
+      const made = await createPost(id, { space: chosen.id, author: key, title, text, img, kind: announce ? "announcement" : "post", poll });
       if (!made.ok) {
         if (img) await dropCommunityImage(img.path);
         return back(fromPage, "fullposts");
@@ -230,6 +250,16 @@ export async function POST(request: NextRequest) {
       if (!owner && !(await within(id, key, "comment"))) return back(postPage, "slow", `comment-${comment.id}`);
       await editComment(id, post.id, comment, text);
       return back(postPage, "edited", `comment-${comment.id}`);
+    }
+
+    // Casting, changing or taking back a vote. An empty choice takes it back,
+    // which is the one thing none of the platforms we checked allow.
+    if (action === "vote") {
+      if (!post.poll) return back(fromPage, "gone", `post-${post.id}`);
+      if (!owner && !(await within(id, key, "like"))) return back(fromPage, "slow", `post-${post.id}`);
+      const picked = form.getAll("choice").map((one) => String(one));
+      const cast = await vote(id, post.id, post.poll, key, picked);
+      return back(fromPage, cast ? "voted" : "pollclosed", `post-${post.id}`);
     }
 
     if (action === "like") {

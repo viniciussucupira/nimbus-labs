@@ -56,6 +56,8 @@ import {
   cleanLine,
 } from "@/lib/community-text";
 import { MAX_ALT_LENGTH } from "@/lib/product-image";
+import { indexPost, partsOf, unindexPost } from "@/lib/community-search";
+import { type Poll, parsePoll, pollKeys } from "@/lib/community-polls";
 
 /** The author of what the creator writes. Never a member key, which is hex. */
 export const CREATOR = "creator";
@@ -135,6 +137,12 @@ export type Post = {
    * the replies under them were written.
    */
   ed: number;
+  /**
+   * The poll on it, or null. A post either has one from the moment it is
+   * written or never gets one: adding a poll to a post people have already
+   * replied to changes what they were replying to.
+   */
+  poll: Poll | null;
 };
 
 export type Comment = {
@@ -462,6 +470,8 @@ function parsePost(raw: unknown): Post | null {
       hid: v.hid === true,
       // Posts written before posts could be edited have none.
       ed: typeof v.ed === "number" ? v.ed : 0,
+      // Likewise for posts written before there were polls.
+      poll: parsePoll(v.poll),
     };
   } catch {
     return null;
@@ -488,6 +498,7 @@ export type NewPost = {
   text: string;
   img: CommunityImage | null;
   kind: "post" | "announcement";
+  poll: Poll | null;
 };
 
 /** Writes a post. The caller has checked who may, and cleaned what it says. */
@@ -507,13 +518,55 @@ export async function createPost(id: string, input: NewPost): Promise<{ ok: true
     kind: input.kind,
     hid: false,
     ed: 0,
+    poll: input.poll,
   };
   await redisPipeline([
     ["SET", postKey(id, post.id), JSON.stringify(post)],
     ["ZADD", feedKey(id), post.n, post.id],
     ["ZADD", spaceKey(id, post.sp), post.n, post.id],
   ]);
+  await reindex(id, post, []);
   return { ok: true, post };
+}
+
+/**
+ * Writes what this post can be found by: its own words and its comments'.
+ *
+ * Called after anything that changes either. It never throws into the
+ * caller's lap: a search index that missed one post is a worse result, while
+ * a post that failed to save because its index did would be a lost post.
+ */
+async function reindex(id: string, post: Post, comments: { text: string }[]): Promise<void> {
+  try {
+    await indexPost(id, post.id, post.n, partsOf(post, comments));
+  } catch (error) {
+    console.error("indexing a community post for search failed", error);
+  }
+}
+
+/** The same, when the comments have to be read back first. */
+async function reindexWithComments(id: string, post: Post): Promise<void> {
+  try {
+    await reindex(id, post, await readComments(id, post.id));
+  } catch (error) {
+    console.error("reading comments to index a post failed", error);
+  }
+}
+
+/**
+ * The same again, from a post's id alone: what a comment being written,
+ * rewritten or deleted has to hand. A post's words are the union of its own
+ * and all its comments', so one comment going cannot simply have its words
+ * taken out — another comment may use them too, and the post would stop being
+ * findable by words that are still in it.
+ */
+async function reindexComments(id: string, post: string): Promise<void> {
+  try {
+    const found = await readPost(id, post);
+    if (found) await reindexWithComments(id, found);
+  } catch (error) {
+    console.error("indexing a post after a comment changed failed", error);
+  }
 }
 
 export async function setPostHidden(id: string, post: Post, hidden: boolean): Promise<void> {
@@ -536,6 +589,7 @@ export async function setPostHidden(id: string, post: Post, hidden: boolean): Pr
 export async function editPost(id: string, post: Post, input: { title: string; text: string }): Promise<Post> {
   const next: Post = { ...post, title: input.title, text: input.text, ed: now() };
   await redisPipeline([["SET", postKey(id, post.id), JSON.stringify(next)]]);
+  await reindexWithComments(id, next);
   return next;
 }
 
@@ -544,11 +598,14 @@ export async function deletePost(id: string, post: Post): Promise<void> {
   const [raw] = await redisPipeline([["HKEYS", commentsKey(id, post.id)]]);
   const commentIds = Array.isArray(raw) ? (raw as string[]) : [];
   await redisPipeline([
-    ["DEL", postKey(id, post.id), commentsKey(id, post.id), likesKey(id, post.id), reportersKey(id, `p:${post.id}`)],
+    ["DEL", postKey(id, post.id), commentsKey(id, post.id), likesKey(id, post.id), reportersKey(id, `p:${post.id}`), ...pollKeys(id, post.id)],
     ["ZREM", feedKey(id), post.id],
     ["ZREM", spaceKey(id, post.sp), post.id],
     ["ZREM", reportsKey(id), `p:${post.id}`, ...commentIds.map((c) => `c:${post.id}:${c}`)],
   ]);
+  await unindexPost(id, post.id).catch((error) => {
+    console.error("taking a deleted post out of the search index failed", error);
+  });
 }
 
 export type FeedPage = { posts: Post[]; next: number | null };
@@ -688,6 +745,7 @@ export async function addComment(
   }
   const comment: Comment = { id: newItemId(), parent, a: input.author, text: input.text, at: now(), hid: false, ed: 0 };
   await redisPipeline([["HSET", commentsKey(id, post), comment.id, JSON.stringify(comment)]]);
+  await reindexComments(id, post);
   return { ok: true, comment };
 }
 
@@ -699,6 +757,7 @@ export async function addComment(
 export async function editComment(id: string, post: string, comment: Comment, text: string): Promise<Comment> {
   const next: Comment = { ...comment, text, ed: now() };
   await redisPipeline([["HSET", commentsKey(id, post), comment.id, JSON.stringify(next)]]);
+  await reindexComments(id, post);
   return next;
 }
 
@@ -715,6 +774,7 @@ export async function deleteComment(id: string, post: string, comment: Comment):
     ["ZREM", reportsKey(id), ...gone.map((c) => `c:${post}:${c}`)],
     ...gone.map((c) => ["DEL", reportersKey(id, `c:${post}:${c}`)]),
   ]);
+  await reindexComments(id, post);
 }
 
 // ------------------------------------------------------------------ reports

@@ -6,6 +6,7 @@ import { normaliseHandle, storeForPage, type Store } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { CREATOR, type Comment, type Member, postNumbers, readComments, readMembers, readPost } from "@/lib/community";
 import { communityViewer, maySeeSpace } from "@/lib/community-access";
+import { pollViews } from "@/lib/community-polls";
 import { ITEM_ID, MAX_COMMENT_TEXT, MAX_POST_TEXT, MAX_POST_TITLE, whenWords } from "@/lib/community-text";
 import {
   ActButton,
@@ -151,7 +152,11 @@ export default async function CommunityPostPage({ params, searchParams }: Params
   const query = await searchParams;
   const notice = NOTICES[typeof query.n === "string" ? query.n : ""] ?? null;
   const all = await readComments(id, post.id);
-  const [members, numbers] = await Promise.all([readMembers(id, [post.a, ...all.map((c) => c.a)]), postNumbers(id, [post], key)]);
+  const [members, numbers, polls] = await Promise.all([
+    readMembers(id, [post.a, ...all.map((c) => c.a)]),
+    postNumbers(id, [post], key),
+    pollViews(id, [post], key, owner),
+  ]);
   const who: Who = { key, owner, canWrite };
   const visible = (c: Comment) => owner || !c.hid;
   const tops = all.filter((c) => !c.parent);
@@ -204,7 +209,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
             </div>
           </form>
         ) : (
-          <PostCard store={store} post={post} config={config} members={members} numbers={numbers.get(post.id)} viewer={who} from="post" full />
+          <PostCard store={store} post={post} config={config} members={members} numbers={numbers.get(post.id)} poll={polls.get(post.id)} viewer={who} from="post" full />
         )}
 
         <section id="comments" aria-labelledby="comments-title" className="st-card mt-4 scroll-mt-28 p-5 sm:p-6">
