@@ -57,6 +57,7 @@ import {
 } from "@/lib/community-text";
 import { MAX_ALT_LENGTH } from "@/lib/product-image";
 import { indexPost, partsOf, unindexPost } from "@/lib/community-search";
+import { indexMember } from "@/lib/community-index";
 import { type Poll, parsePoll, pollKeys } from "@/lib/community-polls";
 import { type DmSetting, NO_DM, parseDmSetting } from "@/lib/community-dm";
 import { type ChatSetting, NO_CHAT, parseChatSetting } from "@/lib/community-chat";
@@ -337,6 +338,11 @@ async function patchMember(id: string, key: string, change: (member: Member) => 
       ["EVAL", CAS_MEMBER, 2, membersKey(id), dirKey(id), key, raw, JSON.stringify(next), listed, next.at],
     ]);
     if (Number(written) !== 1) continue;
+    // The search index follows the very same switch the directory does, from
+    // the very same place, so the two can never come to disagree about who is
+    // findable. Somebody who took themselves off the list is taken out of the
+    // index in the same breath.
+    await indexMember(id, next).catch(() => {});
     return next;
   }
   throw new Error("a member's record kept changing");

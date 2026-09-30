@@ -2076,6 +2076,28 @@ a.rv-line:hover {
 .st-theme-bold .cm-bar .cm-tab:focus-visible {
   outline-color: var(--st-on-accent);
 }
+/* The row of tabs over a page of search results: one per kind, each carrying
+   how many matched. Wraps rather than scrolls, because four short words fit a
+   phone and a row that scrolls hides the tab nobody thought to look for. */
+.cm-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--st-line, rgba(0, 0, 0, 0.1));
+  padding-bottom: 0.5rem;
+}
+.cm-tab-n {
+  margin-left: 0.4rem;
+  border-radius: 999px;
+  background: var(--st-accent-soft);
+  padding: 0 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+}
+.cm-tab[aria-current="page"] .cm-tab-n {
+  background: rgba(255, 255, 255, 0.24);
+}
 .cm-tab {
   display: flex;
   min-height: 40px;
