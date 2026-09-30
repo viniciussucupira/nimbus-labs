@@ -7,6 +7,7 @@
  * and leaves Nimbus with nothing to hold, skim or lose. The 0% on the home
  * page is this file.
  */
+import { currentMeta } from "@/lib/tier-rules";
 import { saleOff } from "@/lib/store-sale";
 import { GIFT_ID } from "@/lib/gift-rules";
 import { commissionRate } from "@/lib/affiliate-setting";
@@ -553,7 +554,8 @@ export async function readOrder(
     return { state: "error" };
   }
 
-  const metadata = session.metadata as Record<string, string> | null;
+  // A membership switched to another tier is read as the tier it is on now (lib/tier-rules.ts).
+  const metadata = session.metadata ? currentMeta(session.metadata as Record<string, string>, session) : null;
   // Sold under an address this store still answers to: a rename while the
   // buyer was paying does not lose them their order.
   const handles = saleHandles(store);

@@ -22,6 +22,7 @@
  * Like cancelling a membership, this works whatever state the creator's own
  * Nimbus subscription is in: somebody paid for that file, and they get it.
  */
+import { currentMeta } from "@/lib/tier-rules";
 import { packageState, readBought } from "@/lib/call-packages";
 import { giftFrom } from "@/lib/gifts";
 import { saleHandles } from "@/lib/store";
@@ -261,7 +262,8 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
     for (const session of rows(listed)) {
       const id = typeof session.id === "string" ? session.id : "";
       if (!SESSION_ID_PATTERN.test(id) || found.has(id)) continue;
-      const meta = (session.metadata ?? {}) as Record<string, string>;
+      // A membership switched to another tier hands over what it is on now (lib/tier-rules.ts).
+      const meta = currentMeta((session.metadata ?? {}) as Record<string, string>, session);
       if (!handles.has(meta.store ?? "")) continue;
       if (!isSettled(session)) continue;
       if (meta.kind === "call") continue;

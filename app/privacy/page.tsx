@@ -115,7 +115,12 @@ export default function PrivacyPage() {
           customer for one hour and, to limit abuse, one-way hashes of the
           address and of the network address that asked, also for one hour,
           and nothing else; the page says the same thing whether or not a
-          membership was found.
+          membership was found. When a member switches their membership to
+          another of the store&apos;s plans, the change is made on the
+          creator&apos;s Stripe account, which keeps the record of it, and we
+          email the member a receipt and the creator a note with the
+          member&apos;s email address and the two plans. We keep nothing more
+          about it.
         </p>
         <p>
           <strong className="text-black">Getting a purchase again.</strong>{" "}
