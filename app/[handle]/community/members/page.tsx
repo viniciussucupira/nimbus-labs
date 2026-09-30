@@ -6,6 +6,7 @@ import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { CREATOR, directory, directorySize } from "@/lib/community";
 import { communityViewer } from "@/lib/community-access";
+import { mayMessage, pairOf } from "@/lib/community-dm";
 import { DIRECTORY_PAGE } from "@/lib/community-text";
 import { CommunityBar, CreatorBadge, Face } from "@/components/community-parts";
 
@@ -41,6 +42,20 @@ export default async function CommunityMembersPage({ params, searchParams }: Par
   const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : null;
   const [page, total] = await Promise.all([directory(id, before, DIRECTORY_PAGE), directorySize(id)]);
   const listed = viewer.member?.dir && viewer.member.n;
+  const { config, key } = viewer;
+  // The link to write to somebody, where writing to them is allowed at all.
+  // Nothing is drawn for yourself, and nothing where the answer would be no:
+  // an offer that leads to a refusal is worse than no offer.
+  const writeTo = (who: string) => {
+    if (who === key || mayMessage(config.dm, key, who)) return null;
+    return (
+      <p className="mt-1">
+        <Link href={`${home}/messages/${pairOf(key, who)}`} className="cm-quiet-link cm-mini text-xs font-semibold">
+          Message
+        </Link>
+      </p>
+    );
+  };
 
   return (
     <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
@@ -69,6 +84,7 @@ export default async function CommunityMembersPage({ params, searchParams }: Par
                   <CreatorBadge />
                 </p>
                 <p className="st-muted text-sm">Runs this community</p>
+                {writeTo(CREATOR)}
               </div>
             </li>
           ) : null}
@@ -78,6 +94,7 @@ export default async function CommunityMembersPage({ params, searchParams }: Par
               <div className="min-w-0">
                 <p className="break-words font-bold">{m.n}</p>
                 <p className="st-muted text-sm">{`Joined ${joined(m.at)}`}</p>
+                {writeTo(m.k)}
               </div>
             </li>
           ))}

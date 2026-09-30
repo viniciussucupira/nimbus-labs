@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage, type Store } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { CREATOR, type Comment, type Member, postNumbers, readComments, readMembers, readPost } from "@/lib/community";
+import { requestCount } from "@/lib/community-dm";
 import { communityViewer, maySeeSpace } from "@/lib/community-access";
 import { pollViews } from "@/lib/community-polls";
 import { ITEM_ID, MAX_COMMENT_TEXT, MAX_POST_TEXT, MAX_POST_TITLE, whenWords } from "@/lib/community-text";
@@ -158,6 +159,8 @@ export default async function CommunityPostPage({ params, searchParams }: Params
     pollViews(id, [post], key, owner),
   ]);
   const who: Who = { key, owner, canWrite };
+  // The badge on the Messages link: nothing to read, nothing shown.
+  const waiting = config.dm.on ? await requestCount(id, key) : 0;
   const visible = (c: Comment) => owner || !c.hid;
   const tops = all.filter((c) => !c.parent);
   const repliesOf = (c: Comment) => all.filter((r) => r.parent === c.id && visible(r));
@@ -170,7 +173,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
   return (
     <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <ConfirmDeletes />
-      <CommunityBar store={store} config={config} tab="feed" signedIn />
+      <CommunityBar store={store} config={config} tab="feed" signedIn messages={config.dm.on} requests={waiting} />
       <main id="content" className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <p className="mb-4">
           <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">Back to the feed</Link>

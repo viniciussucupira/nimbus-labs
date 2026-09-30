@@ -2107,6 +2107,32 @@ a.rv-line:hover {
   background: var(--st-card);
   color: var(--st-text);
 }
+/* One conversation in the message list. */
+.cm-dm-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 1rem;
+  border: 1px solid var(--st-line);
+  padding: 0.7rem 0.85rem;
+  transition: border-color var(--d-base) var(--ease);
+}
+.cm-dm-row:hover {
+  border-color: var(--st-accent);
+}
+/* A message. The sender's own sit right and carry the accent, so a thread can
+   be followed without reading a single name. */
+.cm-dm-bubble {
+  max-width: 85%;
+  border-radius: 1.1rem;
+  border: 1px solid var(--st-line);
+  padding: 0.6rem 0.85rem;
+}
+.cm-dm-mine {
+  border-color: transparent;
+  background: var(--st-accent-soft);
+}
+
 /* A poll on a post. The bar sits behind the row's text rather than beside it,
    so a long answer keeps its width and never squeezes the count off the end. */
 .cm-poll {

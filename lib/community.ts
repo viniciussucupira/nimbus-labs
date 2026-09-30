@@ -58,6 +58,7 @@ import {
 import { MAX_ALT_LENGTH } from "@/lib/product-image";
 import { indexPost, partsOf, unindexPost } from "@/lib/community-search";
 import { type Poll, parsePoll, pollKeys } from "@/lib/community-polls";
+import { type DmSetting, NO_DM, parseDmSetting } from "@/lib/community-dm";
 
 /** The author of what the creator writes. Never a member key, which is hex. */
 export const CREATOR = "creator";
@@ -90,6 +91,8 @@ export type CommunityConfig = {
   pinned: string[];
   /** Goes up whenever `access` changes, so no answer about it outlives it. */
   v: number;
+  /** Whether private messages happen here, and between whom. */
+  dm: DmSetting;
 };
 
 export type Member = {
@@ -192,6 +195,9 @@ export function freshConfig(storeName: string): CommunityConfig {
     start: null,
     pinned: [],
     v: 1,
+    // Off until the creator turns it on, like everything else that lets
+    // people reach each other.
+    dm: { ...NO_DM },
   };
 }
 
@@ -224,6 +230,9 @@ function parseConfig(raw: unknown): CommunityConfig | null {
       start: typeof value.start === "string" && ITEM_ID.test(value.start) ? value.start : null,
       pinned: ids(value.pinned, MAX_PINNED).filter((id) => ITEM_ID.test(id)),
       v: typeof value.v === "number" && Number.isInteger(value.v) && value.v > 0 ? value.v : 1,
+      // Communities written down before there were messages have none, and
+      // parse as off, which is what they have always been.
+      dm: parseDmSetting(value.dm),
     };
   } catch {
     return null;

@@ -27,6 +27,14 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
   noreaders: { text: "Posted. Nobody has asked for announcement emails yet, so none were sent." },
   commented: { text: "Comment added." },
   voted: { text: "Your vote is in. You can change it, or take it back, while the poll is open." },
+  dmsent: { text: "Sent." },
+  dmasked: { text: "Sent as a request. They see it when they choose to, and it becomes a conversation if they accept." },
+  dmaccepted: { text: "Accepted. You can write to each other now." },
+  dmdeclined: { text: "Declined. It is gone, and they cannot ask again." },
+  dmunblocked: { text: "They can write to you again." },
+  dmoff: { text: "Messages are not switched on in this community.", tone: "warn" },
+  dmbetween: { text: `Members cannot message each other here. The creator can still be written to.`, tone: "warn" },
+  dmfull: { text: "That inbox is full right now, so the message was not sent.", tone: "warn" },
   pollclosed: { text: "That poll has closed, so the count stands as it is.", tone: "warn" },
   polloptions: { text: "A poll needs at least two answers, each with something written in it.", tone: "warn" },
   polltitle: { text: "Give the poll a question: it goes in the title.", tone: "warn" },
@@ -97,7 +105,7 @@ export function communityImageUrl(store: Store, path: string): string {
   return `/api/store/community/image?h=${encodeURIComponent(store.handle)}&f=${communityImageFile(path)}`;
 }
 
-export type Tab = "feed" | "events" | "members" | "you" | "search";
+export type Tab = "feed" | "events" | "members" | "you" | "search" | "messages";
 
 /** The bar across the top of every community page. */
 export function CommunityBar({
@@ -106,6 +114,8 @@ export function CommunityBar({
   tab,
   signedIn,
   query = "",
+  messages = false,
+  requests = 0,
 }: {
   store: Store;
   config: CommunityConfig;
@@ -113,6 +123,10 @@ export function CommunityBar({
   signedIn: boolean;
   /** What was searched for, so the box still holds it on the results page. */
   query?: string;
+  /** Private messages are switched on here. */
+  messages?: boolean;
+  /** How many people are waiting to be let into a conversation. */
+  requests?: number;
 }) {
   const home = `/@${store.handle}/community`;
   const tabs: { id: Tab; label: string; href: string }[] = [
@@ -120,6 +134,7 @@ export function CommunityBar({
     { id: "events", label: "Events", href: `${home}/events` },
     { id: "members", label: "Members", href: `${home}/members` },
     { id: "you", label: "You", href: `${home}/you` },
+    ...(messages ? [{ id: "messages" as Tab, label: requests ? `Messages (${requests})` : "Messages", href: `${home}/messages` }] : []),
   ];
   return (
     <header className="cm-bar relative z-30 sm:sticky sm:top-0">

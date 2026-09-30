@@ -183,6 +183,7 @@ export function CommunityStudio({
             <Basics handle={handle} address={address} on={on} config={config} busy={busy} run={run} problem={problem} totals={totals} canEmail={canEmail} />
             {events}
             <Access config={config} products={products} busy={busy} run={run} problem={problem} />
+            <Messages config={config} busy={busy} run={run} problem={problem} />
             <Spaces config={config} products={products} busy={busy} run={run} problem={problem} />
           </>
         ) : (
@@ -312,6 +313,76 @@ function Basics({
         <button type="submit" className="btn btn-secondary" aria-busy={busy === "basics"} disabled={!changed || busy !== null}>Save</button>
       </form>
       {problem("basics")}
+    </section>
+  );
+}
+
+/**
+ * Private messages: whether they happen, between whom, and whether a stranger
+ * has to ask first.
+ *
+ * The third switch is the one no other platform we checked offers, and it is
+ * on by default. A community where anybody can write to anybody unasked is a
+ * community the creator eventually switches messaging off in; a request queue
+ * costs an honest sender one step and costs an unwanted one everything.
+ */
+function Messages({
+  config,
+  busy,
+  run,
+  problem,
+}: {
+  config: CommunityConfig;
+  busy: string | null;
+  run: Runner;
+  problem: Problem;
+}) {
+  const [on, setOn] = useState(config.dm.on);
+  const [between, setBetween] = useState(config.dm.between);
+  const [ask, setAsk] = useState(config.dm.ask);
+  const changed = on !== config.dm.on || between !== config.dm.between || ask !== config.dm.ask;
+  return (
+    <section aria-labelledby="cm-dm-title" className="card p-6 sm:p-8">
+      <h2 id="cm-dm-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Private messages</h2>
+      <p className="mt-1 text-sm text-ink-soft">
+        You can never read a conversation you are not in, and neither can we. That is not a setting.
+      </p>
+      <form
+        className="mt-5 space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (changed) run("dm", { action: "messages", on, between, ask }, on ? "Messages saved." : "Messages switched off.");
+        }}
+      >
+        <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-[var(--r-sm)] px-2 py-2 hover:bg-paper">
+          <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={on} onChange={(e) => setOn(e.target.checked)} />
+          <span className="text-sm">
+            <span className="block font-semibold text-ink">Let people message privately</span>
+            <span className="block text-ink-soft">Off, and there is no message page here at all.</span>
+          </span>
+        </label>
+        <label className={`flex min-h-[44px] items-start gap-3 rounded-[var(--r-sm)] px-2 py-2 ${on ? "cursor-pointer hover:bg-paper" : "opacity-50"}`}>
+          <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" disabled={!on} checked={between} onChange={(e) => setBetween(e.target.checked)} />
+          <span className="text-sm">
+            <span className="block font-semibold text-ink">Members can message each other</span>
+            <span className="block text-ink-soft">Off, and only you can be written to — and you can still reply.</span>
+          </span>
+        </label>
+        <label className={`flex min-h-[44px] items-start gap-3 rounded-[var(--r-sm)] px-2 py-2 ${on && between ? "cursor-pointer hover:bg-paper" : "opacity-50"}`}>
+          <input type="checkbox" className="mt-1 h-5 w-5 shrink-0" disabled={!on || !between} checked={ask} onChange={(e) => setAsk(e.target.checked)} />
+          <span className="text-sm">
+            <span className="block font-semibold text-ink">A stranger has to ask first</span>
+            <span className="block text-ink-soft">
+              The first message from someone a member has never spoken to waits in its own list until they accept it.
+              Declining removes it and stops that person asking again.
+            </span>
+          </span>
+        </label>
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <button type="submit" className="btn" disabled={!changed || busy !== null}>Save</button>
+          {problem("dm")}
+        </div>
+      </form>
     </section>
   );
 }
