@@ -31,6 +31,9 @@ import {
   MAX_SPACES,
   MAX_SPACE_ABOUT,
   MAX_SPACE_NAME,
+  MAX_QUESTION,
+  MAX_QUESTIONS,
+  MAX_WELCOME,
   ITEM_ID,
   cleanLine,
   cleanText,
@@ -47,6 +50,7 @@ const ACTIONS = new Set([
   "space-move",
   "space-remove",
   "rewards",
+  "onboarding",
   "member",
   "dismiss",
   "report-hide",
@@ -177,6 +181,15 @@ export async function POST(request: NextRequest) {
       if (rewards.some((r) => !courses.has(r.product))) return fail("rewards");
       await saveRewards(id, rewards);
       return Response.json({ ok: true, rewards });
+    }
+
+    // Welcoming a new member: the questions asked before a first post, and the
+    // message sent privately on a first visit (lib/community-access.ts).
+    if (action === "onboarding") {
+      const asked = Array.isArray(body.questions) ? body.questions : [];
+      const questions = asked.map((q) => cleanLine(q, MAX_QUESTION)).filter(Boolean);
+      if (questions.length > MAX_QUESTIONS) return fail("questions");
+      return save({ ...config, questions, welcome: cleanText(body.welcome, MAX_WELCOME) });
     }
 
     if (action === "space-move") {

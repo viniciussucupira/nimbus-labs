@@ -163,6 +163,17 @@ export default async function CommunityPage({ params, searchParams }: Params) {
             </div>
           ) : null}
           {member?.muted ? <p className="cm-flash cm-flash-warn mb-5">{NOTICES.muted.text}</p> : null}
+          {member && !member.muted && (!member.n || (config.questions.length > 0 && !member.qa)) ? (
+            <div className="st-note mb-5 text-sm" role="status">
+              <strong>{`Welcome to ${config.name}.`}</strong>{" "}
+              {!member.n && config.questions.length && !member.qa
+                ? `Before your first post, choose the name members see and answer ${store.name}'s ${config.questions.length === 1 ? "question" : "questions"}. `
+                : !member.n
+                  ? "Before your first post, choose the name members see. "
+                  : `Before your first post, answer ${store.name}'s ${config.questions.length === 1 ? "question" : "questions"}. `}
+              <Link href={`${home}/you`} className="font-semibold underline underline-offset-4">It takes a minute</Link>
+            </div>
+          ) : null}
 
           {space ? (
             <div className="mb-5">

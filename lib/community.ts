@@ -52,9 +52,14 @@ import {
   MAX_SPACES,
   MAX_SPACE_ABOUT,
   MAX_SPACE_NAME,
+  MAX_ANSWER,
+  MAX_QUESTION,
+  MAX_QUESTIONS,
+  MAX_WELCOME,
   RATE_LIMITS,
   type RateKind,
   cleanLine,
+  cleanText,
 } from "@/lib/community-text";
 import { MAX_ALT_LENGTH } from "@/lib/product-image";
 import { indexPost, partsOf, unindexPost } from "@/lib/community-search";
@@ -105,6 +110,10 @@ export type CommunityConfig = {
   dm: DmSetting;
   /** The live room: whether it exists, and how it is kept civil. */
   chat: ChatSetting;
+  /** Asked of every member before their first post or comment; the answers are the creator's to read. */
+  questions: string[];
+  /** Sent privately to a member the first time they come in, from the creator, when messages are on. */
+  welcome: string;
 };
 
 export type Member = {
@@ -132,6 +141,12 @@ export type Member = {
   removed: boolean;
   /** The token in their unsubscribe link, made the first time they are emailed. */
   t: string;
+  /** Their answers to the creator's questions, in the order asked. */
+  q: string[];
+  /** The questions as they were when answered, so a question reworded later never sits over an old answer. */
+  qq: string[];
+  /** When they answered, in seconds; 0 until they have. */
+  qa: number;
 };
 
 export type CommunityImage = { path: string; w: number; h: number; alt: string };
@@ -218,6 +233,8 @@ export function freshConfig(storeName: string): CommunityConfig {
     // people reach each other.
     dm: { ...NO_DM },
     chat: { ...NO_CHAT },
+    questions: [],
+    welcome: "",
   };
 }
 
@@ -257,6 +274,12 @@ function parseConfig(raw: unknown): CommunityConfig | null {
       dm: parseDmSetting(value.dm),
       // Likewise for a community written down before there was a room.
       chat: parseChatSetting(value.chat),
+      // And before new members were welcomed: none asked, nothing sent.
+      questions: (Array.isArray(value.questions) ? value.questions : [])
+        .map((q) => cleanLine(q, MAX_QUESTION))
+        .filter(Boolean)
+        .slice(0, MAX_QUESTIONS),
+      welcome: typeof value.welcome === "string" ? value.welcome.slice(0, MAX_WELCOME) : "",
     };
   } catch {
     return null;
@@ -294,6 +317,9 @@ function parseMember(raw: unknown): Member | null {
       muted: v.muted === true,
       removed: v.removed === true,
       t: typeof v.t === "string" && /^[0-9a-f]{40}$/.test(v.t) ? v.t : "",
+      q: Array.isArray(v.q) ? v.q.filter((a): a is string => typeof a === "string").map((a) => a.slice(0, MAX_ANSWER)).slice(0, MAX_QUESTIONS) : [],
+      qa: typeof v.qa === "number" ? v.qa : 0,
+      qq: Array.isArray(v.qq) ? v.qq.filter((a): a is string => typeof a === "string").map((a) => a.slice(0, MAX_QUESTION)).slice(0, MAX_QUESTIONS) : [],
     };
   } catch {
     return null;
@@ -372,17 +398,21 @@ export async function touchMember(id: string, email: string, existing: Member | 
   }
   const [size] = await redisPipeline([["HLEN", membersKey(id)]]);
   if (Number(size) >= MAX_MEMBERS) return null;
-  const member: Member = { k: key, e: normaliseEmail(email), n: "", h: "", dir: false, mail: false, at, seen: at, muted: false, removed: false, t: "" };
+  const member: Member = { k: key, e: normaliseEmail(email), n: "", h: "", dir: false, mail: false, at, seen: at, muted: false, removed: false, t: "", q: [], qa: 0, qq: [] };
   // HSETNX: two first visits at once make one record, not two.
   await redisPipeline([["HSETNX", membersKey(id), key, JSON.stringify(member)]]);
   return (await readMember(id, key)) ?? member;
 }
 
-/** A member's own choices: the name they are seen by, the directory, the emails. */
+/**
+ * A member's own choices: the name they are seen by, the directory, the
+ * emails — and, when given, their answers to the creator's questions, which
+ * count as answered once each one asked has something in it.
+ */
 export async function setProfile(
   id: string,
   member: Member,
-  change: { name: string; dir: boolean; mail: boolean },
+  change: { name: string; dir: boolean; mail: boolean; answers?: string[]; questions?: string[] },
 ): Promise<Member> {
   const name = cleanLine(change.name, MAX_DISPLAY_NAME);
   // The handle is taken before the name is written, so a member is never left
@@ -390,9 +420,31 @@ export async function setProfile(
   // which may carry a number when somebody already held the plain one.
   const handle = await claimHandle(id, member.k, name, member.h);
   return (
-    (await patchMember(id, member.k, () => ({ n: name, h: handle, dir: change.dir && Boolean(name), mail: change.mail }))) ??
-    member
+    (await patchMember(id, member.k, (now) => ({
+      n: name,
+      h: handle,
+      dir: change.dir && Boolean(name),
+      mail: change.mail,
+      ...(change.answers && change.questions ? answersFor(change.answers, change.questions, now.qa) : {}),
+    }))) ?? member
   );
+}
+
+/**
+ * A member's answers as they are kept: cleaned, one per question asked, with
+ * the questions themselves, and answered only when every question has one.
+ * The time they first answered is kept when they change an answer later.
+ */
+export function answersFor(
+  raw: string[],
+  questions: string[],
+  before: number,
+  now = Math.floor(Date.now() / 1000),
+): Pick<Member, "q" | "qq" | "qa"> {
+  const asked = questions.slice(0, MAX_QUESTIONS);
+  const q = asked.map((_, i) => cleanText(raw[i] ?? "", MAX_ANSWER));
+  const complete = asked.length > 0 && q.every(Boolean);
+  return { q, qq: asked, qa: complete ? before || now : 0 };
 }
 
 /** Switches a member's announcement emails off (the unsubscribe link) or on. */

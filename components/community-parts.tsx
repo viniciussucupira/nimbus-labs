@@ -58,6 +58,7 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
   links: { text: "That has more web addresses than a post or comment may carry. Take a few out.", tone: "warn" },
   slow: { text: "That is a lot in a short time. Wait a little, then try again.", tone: "warn" },
   name: { text: "Choose the name other members see you by, then post.", tone: "warn" },
+  questions: { text: "Answer the questions below once, then post and comment as you like.", tone: "warn" },
   image: { text: "That picture could not be checked. Try a JPEG, PNG or WebP.", tone: "warn" },
   creatoronly: { text: "Only the creator starts posts in that space. You can still comment.", tone: "warn" },
   level: { text: "Starting a post in that space opens at a higher level. You can still read and comment; the leaderboard shows how levels are reached.", tone: "warn" },
