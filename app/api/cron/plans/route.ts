@@ -9,6 +9,7 @@ import { moveAllStores } from "@/lib/store";
 import { pruneResearch } from "@/lib/creator-research-store";
 import { recoverFailedPayments } from "@/lib/payment-recovery";
 import { settleInvites } from "@/lib/creator-invite-credit";
+import { sendWinBacks } from "@/lib/winback-send";
 
 export const maxDuration = 60;
 
@@ -25,6 +26,8 @@ export const maxDuration = 60;
  *   - tells each member whose renewal failed, once, with a link that pays it
  *     (lib/payment-recovery.ts), so a member whose card expired is not
  *     quietly cut off without ever being asked for a new one;
+ *   - sends a former member who agreed to hear from the creator one
+ *     come-back offer, days after their membership ended (lib/winback-send.ts);
  *   - adds the credit creators earned by inviting other creators
  *     (lib/creator-invite-credit.ts), once each payment's refund window has
  *     closed.
@@ -81,6 +84,14 @@ async function run(request: NextRequest): Promise<Response> {
     } catch (error) {
       console.error("writing about failed renewals failed", error);
     }
+    // Former members who agreed to hear from the creator: one come-back
+    // offer, the chosen number of days after their membership ended.
+    let comeBack = null;
+    try {
+      comeBack = await sendWinBacks(deadline);
+    } catch (error) {
+      console.error("sending come-back offers failed", error);
+    }
     // Invited creators' payments, past their refund window, become credit on
     // the plan of whoever invited them (lib/creator-invite-credit.ts).
     let invites = null;
@@ -98,7 +109,7 @@ async function run(request: NextRequest): Promise<Response> {
     // Creator research answers are kept 24 months, as the privacy policy says.
     await pruneResearch().catch((error: unknown) => console.error("pruning old research answers failed", error));
     const ok = plans !== null && (billing !== null || !isBillingConfigured());
-    return Response.json({ ok, ...(plans ?? {}), billing, recovered, invites, catalogs }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ok, ...(plans ?? {}), billing, recovered, comeBack, invites, catalogs }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
   } finally {
     await redisPipeline([["DEL", "nl:plans:lock"]]).catch(() => {});
   }

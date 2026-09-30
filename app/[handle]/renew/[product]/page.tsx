@@ -11,13 +11,26 @@ import { canManage } from "@/lib/membership-manage";
 import { canRecover } from "@/lib/buyer-orders";
 import { productPath } from "@/components/store-product";
 import { readListing } from "@/lib/catalog";
+import { readWinBack } from "@/lib/winback-send";
+import { winbackWords } from "@/lib/winback";
 
 export const metadata: Metadata = {
   title: "Your membership has ended — Nimbus Labs",
   robots: { index: false, follow: false },
 };
 
-type Params = { params: Promise<{ handle: string; product: string }> };
+type Params = {
+  params: Promise<{ handle: string; product: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+/** What the come-back button can answer (app/api/store/come-back/open). */
+const OFFER_NOTICES: Record<string, string> = {
+  expired: "This offer has ended. You can still come back at the usual price below.",
+  unavailable: "This offer cannot be used for this membership any more. You can still come back at the usual price below, if it is offered.",
+  refused: "The offer could not be applied just now. You can come back at the usual price below, or reply to the email it came in.",
+  limited: "Too many tries for now. Wait a few minutes and press the button again.",
+};
 
 /**
  * Where a former member lands when they open something their membership used
@@ -30,8 +43,11 @@ type Params = { params: Promise<{ handle: string; product: string }> };
  * reads the same for whoever opens it, and it is only reached from a door
  * that has just checked the membership with Stripe.
  */
-export default async function RenewPage({ params }: Params) {
+export default async function RenewPage({ params, searchParams }: Params) {
   const { handle: raw, product: productId } = await params;
+  const query = await searchParams;
+  const back = typeof query.back === "string" ? query.back : "";
+  const status = typeof query.status === "string" ? query.status : "";
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
@@ -44,6 +60,12 @@ export default async function RenewPage({ params }: Params) {
       ? membershipPrice(product.recurring, `${formatMoney(fromPriceCents(product), store.currency)}`)
       : null;
   const needsChoice = product ? product.options.length > 0 : false;
+  // A come-back email's link (lib/winback-send.ts): the offer it carries, for
+  // the address it was sent to, while it lasts.
+  const offer = back && product && selling ? await readWinBack(store, product.id, back).catch(() => null) : null;
+  const until = offer
+    ? new Date(offer.until * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })
+    : "";
 
   return (
     <div
@@ -74,7 +96,29 @@ export default async function RenewPage({ params }: Params) {
               : `This membership is no longer running, and ${store.name} no longer lists it.`}
           </p>
 
-          {product && selling ? (
+          {back && (!offer || OFFER_NOTICES[status]) ? (
+            <div className="st-note mt-6 text-sm" role="status">
+              {OFFER_NOTICES[status] ?? OFFER_NOTICES.expired}
+            </div>
+          ) : null}
+
+          {offer && product && !OFFER_NOTICES[status] ? (
+            <form action="/api/store/come-back/open" method="post" className="mt-7">
+              <input type="hidden" name="handle" value={store.handle} />
+              <input type="hidden" name="product" value={product.id} />
+              <input type="hidden" name="back" value={back} />
+              <p className="st-price text-sm">Your come-back offer</p>
+              <p className="font-display mt-2 text-2xl font-semibold leading-tight tracking-[-0.02em]">
+                {winbackWords(offer)}
+              </p>
+              <p className="st-muted mt-2 text-sm">
+                {`For ${offer.email}, until ${until}. Applied on Stripe's page before you pay; no free trial this time.`}
+              </p>
+              <button type="submit" className="btn st-btn btn-lg btn-block mt-5">
+                Come back with this offer
+              </button>
+            </form>
+          ) : product && selling ? (
             needsChoice ? (
               <Link href={productPath(store, product)} className="btn st-btn btn-lg btn-block mt-7">
                 {`Renew ${product.title}`}

@@ -39,6 +39,8 @@ import { ApiKeyEditor } from "@/components/api-key-editor";
 import { listKeys } from "@/lib/api-keys";
 import { INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 import { SaveOfferEditor } from "@/components/save-offer-editor";
+import { WinBackEditor } from "@/components/winback-editor";
+import { winbacksSent } from "@/lib/winback-send";
 import { sellsMemberships } from "@/lib/membership-manage";
 import { taxStatus } from "@/lib/tax";
 import { SITE_URL } from "@/lib/site-url";
@@ -985,7 +987,15 @@ export default async function StudioPage({
                     store that sells nothing that renews would be a setting
                     that can never do anything. */}
                 {sellsMemberships(store) ? (
-                  <SaveOfferEditor save={store.save} connected={Boolean(current?.stripeAccountId)} />
+                  <>
+                    <SaveOfferEditor save={store.save} connected={Boolean(current?.stripeAccountId)} />
+                    <WinBackEditor
+                      winback={store.winback}
+                      connected={Boolean(current?.stripeAccountId)}
+                      suggestedAddress={store.recovery.address || store.mail?.address || ""}
+                      sent={await winbacksSent(store).catch(() => 0)}
+                    />
+                  </>
                 ) : null}
               </>
             ) : null}

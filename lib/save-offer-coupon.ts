@@ -18,7 +18,13 @@ const COUPON_PATTERN = /^[A-Za-z0-9_-]{3,64}$/;
  * rule is kept here, where it can be kept exactly, rather than by a counter on
  * the coupon that would run out across the whole store.
  */
-export async function makeSaveCoupon(store: Store, percent: number, months: number): Promise<string> {
+export async function makeSaveCoupon(
+  store: Store,
+  percent: number,
+  months: number,
+  /** Which offer it is for: the one on the cancel page, or the come-back email (lib/winback.ts). */
+  purpose: "save-offer" | "win-back" = "save-offer",
+): Promise<string> {
   const account = store.stripeAccountId;
   if (!account) throw new Error("no Stripe account to make the coupon on");
   const made = await onAccount(
@@ -31,9 +37,9 @@ export async function makeSaveCoupon(store: Store, percent: number, months: numb
       ...(months === 1 ? {} : { duration_in_months: String(months) }),
       // What the creator sees in their own Stripe dashboard, so a coupon they
       // did not make by hand is not a mystery.
-      name: `Stay offer: ${percent}% off`.slice(0, 40),
+      name: `${purpose === "win-back" ? "Come-back offer" : "Stay offer"}: ${percent}% off`.slice(0, 40),
       "metadata[made_by]": "nimbus-labs",
-      "metadata[purpose]": "save-offer",
+      "metadata[purpose]": purpose,
     }),
   );
   const id = typeof made.id === "string" ? made.id : "";

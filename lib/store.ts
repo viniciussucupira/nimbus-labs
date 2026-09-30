@@ -49,6 +49,7 @@ import { type Pixels, NO_PIXELS, parsePixels } from "@/lib/pixels";
 import { type TaxSetting, NO_TAX, parseTax } from "@/lib/tax";
 import { type RecoverySetting, NO_RECOVERY, parseRecovery } from "@/lib/recovery-setting";
 import { type SaveOffer, NO_SAVE, parseSaveOffer } from "@/lib/save-offer";
+import { type WinBack, NO_WINBACK, parseWinBack } from "@/lib/winback";
 import { type Cycle, type Tier, parseCycle, parseTier } from "@/lib/plan";
 import { COMMUNITY_ID } from "@/lib/community-text";
 import { type Bump, type Plan, canBeBumped, isOneOff } from "@/lib/product-extras";
@@ -407,6 +408,11 @@ export type Store = {
    * (lib/save-offer.ts). Off for every store until its creator sets one.
    */
   save: SaveOffer;
+  /**
+   * The come-back offer emailed to somebody whose membership ended
+   * (lib/winback.ts). Off for every store until its creator sets one.
+   */
+  winback: WinBack;
   /** The store's community, once the creator has made one (lib/community.ts). */
   community: CommunityRef | null;
   /**
@@ -644,6 +650,7 @@ function parseStore(raw: unknown): Store | null {
       // Stores written before the offer existed have none, as every store
       // does until its creator sets one.
       save: parseSaveOffer(value.save),
+      winback: parseWinBack(value.winback),
       // Stores written before communities existed simply have none.
       community: parseCommunityRef(value.community),
       affiliates: parseAffiliateSetting(value.affiliates),
@@ -802,6 +809,7 @@ async function freshStore(fields: {
     tax: { ...NO_TAX },
     recovery: { ...NO_RECOVERY },
     save: { ...NO_SAVE },
+    winback: { ...NO_WINBACK },
     community: null,
     affiliates: parseAffiliateSetting(null),
     currency: DEFAULT_CURRENCY,
@@ -1813,6 +1821,14 @@ export async function setSaveOffer(
   save: SaveOffer,
 ): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
   const next = await patchStore(email, () => ({ save: parseSaveOffer(save) }));
+  return next ? { ok: true, store: next } : { ok: false, reason: "none" };
+}
+
+export async function setWinBack(
+  email: string,
+  winback: WinBack,
+): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
+  const next = await patchStore(email, () => ({ winback: parseWinBack(winback) }));
   return next ? { ok: true, store: next } : { ok: false, reason: "none" };
 }
 
