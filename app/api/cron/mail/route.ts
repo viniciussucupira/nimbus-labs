@@ -1,3 +1,5 @@
+import { runLaunches } from "@/lib/waitlist";
+import { readListing } from "@/lib/catalog";
 import type { NextRequest } from "next/server";
 import { cronAllowed } from "@/lib/request-guard";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -49,7 +51,7 @@ export const maxDuration = 60;
  *
  *    0–12 s  the checkout pass
  *   –16 s    the one-click offers waiting on Stripe
- *   –30 s    the creators' emails: broadcasts, sequence steps, community
+ *   –30 s    the creators' emails: broadcasts, sequence steps, waitlist launches, community
  *            announcements (the announcements check each member's access
  *            25 at a time, lib/mail.ts CHECKED_BATCH_SIZE, so one piece is
  *            a few seconds, not a hundred Stripe lookups)
@@ -141,6 +143,14 @@ async function run(request: NextRequest, started: number): Promise<Response> {
     } catch (error) {
       console.error("sending community announcements failed", error);
     }
+    // The one email to a waitlist when its product goes on sale
+    // (lib/waitlist.ts), in the same slot as the creators' other emails.
+    let launches = 0;
+    try {
+      launches = await runLaunches(storeForHandle, readListing, deadline);
+    } catch (error) {
+      console.error("sending waitlist launches failed", error);
+    }
     // Reminders are kept apart from the creators' own emails: one failing
     // never stops the other, and the next run picks up whatever was left.
     // They get ten seconds even after a long send, so a busy newsletter day
@@ -170,7 +180,7 @@ async function run(request: NextRequest, started: number): Promise<Response> {
     // Nothing started after fifty: a webhook try can take eight more, and the
     // whole run has sixty.
     const webhooks = await runWebhooks(webhooksBy, meetingsCutoff);
-    return Response.json({ ok: true, checkouts, offers, broadcasts, announcements, ...steps, calls, events, reviews, webhooks }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ok: true, checkouts, offers, broadcasts, announcements, launches, ...steps, calls, events, reviews, webhooks }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("the email job failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });

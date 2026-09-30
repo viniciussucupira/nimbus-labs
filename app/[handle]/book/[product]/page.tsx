@@ -1,3 +1,4 @@
+import { isSoon } from "@/lib/waitlist";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -96,7 +97,7 @@ export default async function BookPage({ params, searchParams }: Params) {
   if (moving) return <MovePage store={store} product={product} session={moving} status={status} />;
 
   const notice = NOTICES[status] ?? null;
-  const open = canSellProduct(store, product);
+  const open = canSellProduct(store, product) && !(await isSoon(store, product.id).catch(() => false));
   const read = open ? await slotsForProduct(store, product) : null;
   const days = read ? read.days : null;
   const starts = days ? days.flatMap((day) => day.starts) : [];

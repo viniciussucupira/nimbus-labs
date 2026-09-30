@@ -1,3 +1,4 @@
+import { waitlistViews } from "@/lib/waitlist";
 import { freshCounts } from "@/lib/lesson-comments";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -825,6 +826,8 @@ export default async function StudioPage({
                   meetings={meetAccounts}
                   ai={isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
                   newComments={await newCommentsFor(shelf?.products ?? [])}
+                  waitlists={await waitlistViews(store, (shelf?.products ?? []).map((p) => p.id)).catch(() => ({}))}
+                  mailAddress={store.mail?.address ?? store.winback?.address ?? ""}
                 />
               </div>
             ) : (
