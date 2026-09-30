@@ -1,0 +1,239 @@
+/**
+ * How a store's memberships are doing, in the numbers a subscription business
+ * is run on: recurring revenue, members, churn and trials that became paying.
+ *
+ * Measured before it was built (30 September 2026): Whop shows MRR, ARR,
+ * churn rate, churned revenue and trial conversion; Circle shows MRR, churn
+ * and trial conversion from its payments page. Stan's analytics count store
+ * visits and sales. Here the figures are worked out from the creator's own
+ * Stripe account — every membership of this store Stripe holds — so they
+ * are the creator's own truth, not a copy that can drift.
+ *
+ * What each figure means, exactly, because a number nobody can check is a
+ * number nobody should act on:
+ *
+ *   - Monthly recurring revenue: every paying membership (active, or with a
+ *     payment being retried), at its list price, before discounts and tax,
+ *     turned into a month — a yearly one counts a twelfth, a weekly one 52
+ *     twelfths. Memberships still in their free trial are counted apart.
+ *   - Churn over 30 days: of the memberships that were paying 30 days ago,
+ *     the share that has ended since.
+ *   - Trials that became paying: of the free trials that ended in the last
+ *     90 days, how many were still running a day after the trial ended.
+ *
+ * Payment plans are not memberships and are left out. Only one currency is
+ * summed, the store's own; memberships sold in another before the store
+ * changed its currency are counted as members and said apart.
+ *
+ * Read at most MAX_PAGES pages of 100 and kept CACHE_SECONDS, so the page
+ * that shows them asks Stripe at most once every few minutes.
+ */
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { onAccount } from "@/lib/stripe-account";
+import { type Store, saleHandles } from "@/lib/store";
+
+const MAX_PAGES = 20;
+const CACHE_SECONDS = 10 * 60;
+const DAY = 86_400;
+
+export type Sub = {
+  id: string;
+  status: string;
+  product: string;
+  /** In the currency's smallest unit, per interval, quantity included. */
+  amount: number;
+  currency: string;
+  interval: string;
+  count: number;
+  start: number;
+  ended: number;
+  trialEnd: number;
+};
+
+export type ProductNumbers = { product: string; members: number; trialing: number; mrr: number };
+
+export type Numbers = {
+  currency: string;
+  mrr: number;
+  paying: number;
+  trialing: number;
+  /** Paying members whose latest payment failed and is being retried. */
+  atRisk: number;
+  /** MRR the at-risk members make up. */
+  atRiskMrr: number;
+  /** Ended in the last 30 days, and the MRR they made up. */
+  ended30: number;
+  endedMrr30: number;
+  /** 0 to 1, or null with nobody paying 30 days ago. */
+  churn30: number | null;
+  /** Trials that ended in the last 90 days, and how many became paying. */
+  trialsEnded: number;
+  trialsConverted: number;
+  /** Memberships in a currency other than the store's, not in the sums. */
+  elsewhere: number;
+  byProduct: ProductNumbers[];
+  /** Whether every membership Stripe holds was read. */
+  complete: boolean;
+  at: number;
+};
+
+const LIVE = new Set(["active", "trialing", "past_due"]);
+const PAYING = new Set(["active", "past_due"]);
+
+/**
+ * One payment, as a month's worth: what MRR adds up. Not rounded: twelve
+ * yearly members at $290 are $290 a month, not $290.04, so the sums are
+ * rounded once, at the end.
+ */
+export function monthly(amount: number, interval: string, count: number): number {
+  const every = Math.max(1, count);
+  const perMonth = interval === "year" ? 1 / 12 : interval === "week" ? 52 / 12 : interval === "day" ? 365 / 12 : 1;
+  return (amount * perMonth) / every;
+}
+
+/** The numbers, from memberships as read. Pure, so the tests can feed it. */
+export function numbersFrom(subs: Sub[], currency: string, now: number, complete = true): Numbers {
+  const t30 = now - 30 * DAY;
+  const t90 = now - 90 * DAY;
+  const byProduct = new Map<string, ProductNumbers>();
+  const out: Numbers = {
+    currency,
+    mrr: 0,
+    paying: 0,
+    trialing: 0,
+    atRisk: 0,
+    atRiskMrr: 0,
+    ended30: 0,
+    endedMrr30: 0,
+    churn30: null,
+    trialsEnded: 0,
+    trialsConverted: 0,
+    elsewhere: 0,
+    byProduct: [],
+    complete,
+    at: now,
+  };
+  let payingThen = 0;
+  let churned = 0;
+  for (const sub of subs) {
+    const own = sub.currency === currency;
+    if (!own && LIVE.has(sub.status)) out.elsewhere += 1;
+    const month = own ? monthly(sub.amount, sub.interval, sub.count) : 0;
+    const row = byProduct.get(sub.product) ?? { product: sub.product, members: 0, trialing: 0, mrr: 0 };
+    if (PAYING.has(sub.status)) {
+      out.paying += 1;
+      out.mrr += month;
+      row.members += 1;
+      row.mrr += month;
+      if (sub.status === "past_due") {
+        out.atRisk += 1;
+        out.atRiskMrr += month;
+      }
+    } else if (sub.status === "trialing") {
+      out.trialing += 1;
+      row.trialing += 1;
+    }
+    if (row.members || row.trialing) byProduct.set(sub.product, row);
+
+    const endedAt = sub.ended || 0;
+    if (endedAt > t30 && endedAt <= now) {
+      out.ended30 += 1;
+      out.endedMrr30 += month;
+    }
+    // Paying 30 days ago: begun before then, not ended before then, and past
+    // any free trial by then.
+    const payingAtStart = sub.start < t30 && (!endedAt || endedAt > t30) && (!sub.trialEnd || sub.trialEnd < t30);
+    if (payingAtStart) {
+      payingThen += 1;
+      if (endedAt && endedAt <= now) churned += 1;
+    }
+    // A trial that ended in the last 90 days: converted when the membership
+    // was still running a day after it ended.
+    if (sub.trialEnd && sub.trialEnd >= t90 && sub.trialEnd <= now - DAY) {
+      out.trialsEnded += 1;
+      if (!endedAt || endedAt > sub.trialEnd + DAY) out.trialsConverted += 1;
+    }
+  }
+  out.churn30 = payingThen > 0 ? churned / payingThen : null;
+  out.mrr = Math.round(out.mrr);
+  out.atRiskMrr = Math.round(out.atRiskMrr);
+  out.endedMrr30 = Math.round(out.endedMrr30);
+  out.byProduct = [...byProduct.values()]
+    .map((row) => ({ ...row, mrr: Math.round(row.mrr) }))
+    .sort((a, b) => b.mrr - a.mrr || b.members - a.members);
+  return out;
+}
+
+type Raw = {
+  id?: unknown;
+  status?: unknown;
+  metadata?: Record<string, string> | null;
+  currency?: unknown;
+  start_date?: unknown;
+  ended_at?: unknown;
+  trial_end?: unknown;
+  items?: { data?: { quantity?: unknown; price?: { unit_amount?: unknown; recurring?: { interval?: unknown; interval_count?: unknown } | null } | null }[] } | null;
+};
+
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+
+/** A membership as Stripe holds it, when it is one of this store's (not a plan). */
+export function readSub(raw: Raw, handles: Set<string>): Sub | null {
+  const meta = raw.metadata ?? {};
+  if (!handles.has(meta.store ?? "") || !meta.product || meta.kind === "plan") return null;
+  const item = raw.items?.data?.[0];
+  const unit = num(item?.price?.unit_amount);
+  const quantity = num(item?.quantity) || 1;
+  return {
+    id: typeof raw.id === "string" ? raw.id : "",
+    status: typeof raw.status === "string" ? raw.status : "",
+    product: meta.product,
+    amount: unit * quantity,
+    currency: typeof raw.currency === "string" ? raw.currency : "",
+    interval: typeof item?.price?.recurring?.interval === "string" ? item.price.recurring.interval : "month",
+    count: num(item?.price?.recurring?.interval_count) || 1,
+    start: num(raw.start_date),
+    ended: num(raw.ended_at),
+    trialEnd: num(raw.trial_end),
+  };
+}
+
+const cacheKey = (store: Store) => `nl:mnum:${store.statsId}`;
+
+/** This store's membership numbers, from its Stripe account, kept a few minutes. */
+export async function membershipNumbers(store: Store, fresh = false, now = Date.now()): Promise<Numbers | null> {
+  if (!store.stripeAccountId || !store.statsId) return null;
+  if (!fresh && isRedisConfigured()) {
+    const [cached] = await redisPipeline([["GET", cacheKey(store)]]);
+    if (typeof cached === "string") {
+      try {
+        return JSON.parse(cached) as Numbers;
+      } catch {
+        // Read again below.
+      }
+    }
+  }
+  const handles = saleHandles(store);
+  const subs: Sub[] = [];
+  let after = "";
+  let complete = false;
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const query = new URLSearchParams({ status: "all", limit: "100" });
+    if (after) query.set("starting_after", after);
+    const listed = await onAccount("GET", store.stripeAccountId, `/subscriptions?${query}`);
+    const rows = (Array.isArray(listed.data) ? listed.data : []) as Raw[];
+    for (const raw of rows) {
+      const sub = readSub(raw, handles);
+      if (sub) subs.push(sub);
+    }
+    const last = rows[rows.length - 1];
+    if (listed.has_more !== true || !last || typeof last.id !== "string") {
+      complete = true;
+      break;
+    }
+    after = last.id;
+  }
+  const numbers = numbersFrom(subs, store.currency, Math.floor(now / 1000), complete);
+  if (isRedisConfigured()) await redisPipeline([["SET", cacheKey(store), JSON.stringify(numbers), "EX", CACHE_SECONDS]]);
+  return numbers;
+}

@@ -711,6 +711,10 @@ export default async function StudioPage({
                 ...(may("settings") && meetOn && (meet?.providers ?? offeredProviders(store)).length > 0
                   ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${(meet?.providers ?? offeredProviders(store)).map((p) => MEET_NAMES[p]).join(" or ")} links, made for your bookings and live events.`, icon: "video" as const }]
                   : []),
+                // Read from the creator's own Stripe account (lib/membership-numbers.ts).
+                ...(may("stats") && sellsMemberships(store)
+                  ? [{ href: studioPath(store, "", "memberships"), title: "Membership numbers", text: "Monthly recurring revenue, churn and trials that became paying.", icon: "chart" as const }]
+                  : []),
                 // The credit lands on the plan, so whoever may handle the plan (lib/creator-invites.ts).
                 ...(billingReady && may("billing")
                   ? [{ href: studioPath(store, "", "invite"), title: "Invite creators", text: `${INVITE_SHARE_PERCENT}% of every payment they make goes on your plan.`, icon: "percent" as const }]
