@@ -64,6 +64,8 @@ import { SITE_URL } from "@/lib/site-url";
 import {
   AFFILIATE_CODE_PATTERN,
   MAX_AFFILIATES,
+  MAX_COMMISSION,
+  MIN_COMMISSION,
   commissionOn,
   commissionRate,
   readViaCookie,
@@ -121,6 +123,14 @@ export type Affiliate = {
   decidedAt: number;
   /** Where they said they would share the store, in their words. */
   note: string;
+  /**
+   * A share the creator set for this affiliate alone, in percent, replacing
+   * the store's and each product's (lib/affiliate-setting.ts commissionRate).
+   * Null: the program's own shares.
+   */
+  rate: number | null;
+  /** The PayPal address they asked to be paid at; empty: the address they joined with. */
+  paypal: string;
 };
 
 /** A sale that came through an affiliate's link. */
@@ -189,10 +199,59 @@ function parseAffiliate(raw: unknown): Affiliate | null {
       appliedAt: typeof value.appliedAt === "number" ? value.appliedAt : 0,
       decidedAt: typeof value.decidedAt === "number" ? value.decidedAt : 0,
       note: typeof value.note === "string" ? value.note : "",
+      rate:
+        typeof value.rate === "number" && Number.isInteger(value.rate) && value.rate >= MIN_COMMISSION && value.rate <= MAX_COMMISSION
+          ? value.rate
+          : null,
+      paypal: typeof value.paypal === "string" && EMAIL_PATTERN.test(value.paypal) ? value.paypal : "",
     };
   } catch {
     return null;
   }
+}
+
+/** Where an affiliate is paid through PayPal: the address they asked for, or the one they joined with. */
+export function payAddress(affiliate: Pick<Affiliate, "email" | "paypal">): string {
+  return affiliate.paypal || affiliate.email;
+}
+
+/** Sets, or clears with null, the share one affiliate earns. */
+export async function setAffiliateRate(store: Store, id: string, rate: number | null): Promise<Affiliate | null> {
+  const affiliate = await readAffiliate(store, id);
+  if (!affiliate) return null;
+  if (rate !== null && (!Number.isInteger(rate) || rate < MIN_COMMISSION || rate > MAX_COMMISSION)) return null;
+  const next: Affiliate = { ...affiliate, rate };
+  await writeAffiliate(store, next);
+  return next;
+}
+
+/**
+ * The affiliate choosing the PayPal address they are paid at, from their own
+ * signed-in page. Where money goes is the one thing on that page worth taking
+ * over, so the address they joined with is told every time it changes.
+ */
+export async function setPayAddress(store: Store, affiliate: Affiliate, raw: string): Promise<{ ok: true } | { ok: false; reason: "email" }> {
+  const typed = raw.trim().slice(0, MAX_EMAIL_LENGTH);
+  const paypal = typed ? normaliseEmail(typed) : "";
+  if (paypal && !EMAIL_PATTERN.test(paypal)) return { ok: false, reason: "email" };
+  const value = paypal === normaliseEmail(affiliate.email) ? "" : paypal;
+  if (value === affiliate.paypal) return { ok: true };
+  await writeAffiliate(store, { ...affiliate, paypal: value });
+  if (isSenderConfigured()) {
+    await sendEmail({
+      from: `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`,
+      to: affiliate.email,
+      subject: `Where ${store.name} pays you changed`,
+      text: [
+        `The PayPal address ${store.name} pays your affiliate commissions to is now: ${value || affiliate.email}.`,
+        "",
+        "If you did not change it, open your affiliate page, change it back and sign out on every browser, then tell the store by replying to this email:",
+        `${SITE_URL}/@${store.handle}/affiliates`,
+      ].join("\n"),
+      replyTo: store.email,
+    }).catch((error) => console.error("telling an affiliate their pay address changed failed", error));
+  }
+  return { ok: true };
 }
 
 function parseReferral(raw: unknown): Referral | null {
@@ -420,7 +479,7 @@ export async function openAffiliateLink(store: Store, token: string): Promise<Op
       if (!affiliate) return { ok: false, reason: "expired" };
     } else {
       const code = await claimCode(store, grant.e, id);
-      affiliate = { id, email: grant.e, code, status: "pending", appliedAt: Date.now(), decidedAt: 0, note: grant.n };
+      affiliate = { id, email: grant.e, code, status: "pending", appliedAt: Date.now(), decidedAt: 0, note: grant.n, rate: null, paypal: "" };
       await writeAffiliate(store, affiliate);
       created = true;
     }
@@ -530,7 +589,7 @@ export async function joinAsBuyer(store: Store, sessionId: string): Promise<Join
     } else {
       const code = await claimCode(store, email, id);
       const now = Date.now();
-      affiliate = { id, email, code, status: "approved", appliedAt: now, decidedAt: now, note: "Joined after buying" };
+      affiliate = { id, email, code, status: "approved", appliedAt: now, decidedAt: now, note: "Joined after buying", rate: null, paypal: "" };
       await writeAffiliate(store, affiliate);
       created = true;
     }
@@ -590,7 +649,7 @@ export async function decide(store: Store, id: string, decision: Decision): Prom
         "",
         affiliateLink(store, affiliate.code),
         "",
-        `A one-time purchase made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you ${store.affiliates.percent}% of what the buyer paid before tax${Object.keys(store.affiliates.rates).length ? " (some products earn a different share; your page lists them)" : ""}. Memberships and payment plans do not earn, and a refunded sale earns nothing.`,
+        `A one-time purchase made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you ${affiliate.rate ?? store.affiliates.percent}% of what the buyer paid before tax${affiliate.rate === null && Object.keys(store.affiliates.rates).length ? " (some products earn a different share; your page lists them)" : ""}. Memberships and payment plans do not earn, and a refunded sale earns nothing.`,
         "",
         `Your clicks, sales and earnings: ${SITE_URL}/@${store.handle}/affiliates`,
         "",
@@ -679,7 +738,7 @@ export async function attributionFor(
   store: Store,
   productId: string,
   cookies: { via: string | undefined; session: string | undefined },
-): Promise<{ aff: string; rate: number } | null> {
+): Promise<{ aff: string; rate: number; own: number | null } | null> {
   if (!affiliatesOn(store)) return null;
   const click = readViaCookie(cookies.via);
   if (!click) return null;
@@ -689,7 +748,7 @@ export async function attributionFor(
   if (!affiliate) return null;
   const own = await affiliateForSession(store, cookies.session);
   if (own?.id === affiliate.id) return null;
-  return { aff: affiliate.id, rate: commissionRate(store.affiliates, productId) };
+  return { aff: affiliate.id, rate: commissionRate(store.affiliates, productId, affiliate.rate), own: affiliate.rate };
 }
 
 /** The share an offer after paying earns the affiliate the order came through. */
@@ -697,7 +756,7 @@ export async function funnelRate(store: Store, affId: string, productId: string)
   if (!affiliatesOn(store)) return 0;
   const affiliate = await readAffiliate(store, affId);
   if (affiliate?.status !== "approved") return 0;
-  return commissionRate(store.affiliates, productId);
+  return commissionRate(store.affiliates, productId, affiliate.rate);
 }
 
 async function writeReferral(store: Store, referral: Referral): Promise<void> {

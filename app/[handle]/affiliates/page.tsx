@@ -229,6 +229,11 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                   <p className="st-muted mt-2 text-sm">
                     {`Or add ?via=${affiliate.code} to the address of any page of this store.`}
                   </p>
+                  {affiliate.rate !== null ? (
+                    <p className="st-muted mt-2 text-sm">
+                      {`${store.name} set your share at ${affiliate.rate}% of what a buyer pays before tax, on every one-time purchase through your link, except any product they took out of the program.`}
+                    </p>
+                  ) : null}
                 </>
               ) : affiliate.status === "pending" ? (
                 <p className="st-muted mt-5 leading-relaxed">
@@ -318,6 +323,40 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                     </>
                   ) : null}
                 </>
+              ) : null}
+
+              {affiliate.status === "approved" ? (
+                <form id="payto" action="/api/store/affiliates/payto" method="post" className="mt-8 scroll-mt-24 space-y-2">
+                  <input type="hidden" name="handle" value={store.handle} />
+                  <label htmlFor="aff-paypal" className="st-label">
+                    Where PayPal pays you
+                  </label>
+                  <input
+                    id="aff-paypal"
+                    type="email"
+                    name="paypal"
+                    maxLength={254}
+                    autoComplete="email"
+                    defaultValue={affiliate.paypal}
+                    placeholder={affiliate.email}
+                    className="st-field"
+                  />
+                  <p className="st-muted text-sm">
+                    {`When ${store.name} pays you through PayPal, it goes to this address. Leave it empty to be paid at ${affiliate.email}. We email ${affiliate.email} whenever it changes.`}
+                  </p>
+                  {status === "payto" || status === "payto-email" || status === "payto-slow" ? (
+                    <p className={`st-note text-sm${status === "payto" ? "" : " font-semibold"}`} role="status">
+                      {status === "payto"
+                        ? "Saved."
+                        : status === "payto-email"
+                          ? "That does not look like an email address. Nothing was changed."
+                          : "Too many changes for now. Try again in an hour."}
+                    </p>
+                  ) : null}
+                  <button type="submit" className="btn btn-secondary btn-sm">
+                    Save my PayPal address
+                  </button>
+                </form>
               ) : null}
 
               <form action="/api/store/affiliates/signout" method="post" className="mt-8">

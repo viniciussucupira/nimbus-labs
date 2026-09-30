@@ -154,7 +154,7 @@ export async function createCheckout(
      * The affiliate whose link the buyer followed, still inside the store's
      * window, and the share this product earns them (lib/affiliates.ts).
      */
-    via?: { aff: string; rate: number } | null;
+    via?: { aff: string; rate: number; own?: number | null } | null;
     /**
      * A come-back offer's coupon (lib/winback.ts), applied by Stripe to this
      * checkout alone. It replaces the box for typing a code: Stripe takes one
@@ -315,7 +315,8 @@ export async function createCheckout(
   // be thrown away on the front product's 0% before the bump was ever looked
   // at.
   const added = body.get("metadata[bump]") && bump ? bump : null;
-  const addedRate = added ? commissionRate(store.affiliates, added.target.id) : 0;
+  // The affiliate's own share, when the creator set one for them, applies to the add-on too.
+  const addedRate = added ? commissionRate(store.affiliates, added.target.id, extras.via?.own ?? null) : 0;
   if (extras.via && !recurring && (extras.via.rate > 0 || addedRate > 0)) {
     body.set("metadata[via]", extras.via.aff);
     body.set("metadata[via_rate]", String(extras.via.rate));

@@ -34,7 +34,7 @@
  * file — an affiliate whose sales were in a currency the store has since
  * changed away from is left out of the totals there, and so is left out here.
  */
-import { MAX_REFERENCE_LENGTH, type Affiliate, type Book, type Row, addPayout } from "@/lib/affiliates";
+import { MAX_REFERENCE_LENGTH, type Affiliate, type Book, type Row, addPayout, payAddress } from "@/lib/affiliates";
 import { plainAmount } from "@/lib/money";
 import type { Store } from "@/lib/store";
 
@@ -110,7 +110,7 @@ export function paypalCsv(lines: BatchLine[], currency: string, note: string): s
     lines
       .map((line) =>
         [
-          cell(line.affiliate.email),
+          cell(payAddress(line.affiliate)),
           paypalAmount(line.cents, currency),
           code,
           cell(line.affiliate.code),

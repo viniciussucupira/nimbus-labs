@@ -3,7 +3,7 @@ import { StoreFullError, setAffiliateSetting, storeForEmail } from "@/lib/store"
 import { readMoney } from "@/lib/money";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { parseAffiliateSetting } from "@/lib/affiliate-setting";
-import { MAX_REFERENCE_LENGTH, addPayout, decide, removePayout } from "@/lib/affiliates";
+import { MAX_REFERENCE_LENGTH, addPayout, decide, removePayout, setAffiliateRate } from "@/lib/affiliates";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -16,7 +16,9 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  * `{ action: "approve" | "decline" | "remove" | "restore", id }`;
  * `{ action: "payout", id, amount: "25.50", date: "2026-09-26", reference }`,
  *   which only writes down a payment the creator made themselves;
- * `{ action: "unpay", payout }`, to take back one written down by mistake.
+ * `{ action: "unpay", payout }`, to take back one written down by mistake;
+ * `{ action: "rate", id, rate: 1-90 | null }`, a share for this affiliate
+ *   alone, or back to the program's own shares.
  */
 export async function POST(request: NextRequest) {
   const guarded = await guardStoreWrite(request, "settings", 16_000);
@@ -62,6 +64,12 @@ export async function POST(request: NextRequest) {
         reference: text(body.reference, MAX_REFERENCE_LENGTH * 2),
       });
       return payout ? Response.json({ ok: true }) : fail("unknown");
+    }
+    if (action === "rate") {
+      const rate = body.rate === null || body.rate === "" ? null : Number(body.rate);
+      if (rate !== null && !Number.isInteger(rate)) return fail("rate");
+      const done = await setAffiliateRate(store, text(body.id, 20), rate);
+      return done ? Response.json({ ok: true, rate: done.rate }) : fail(rate === null ? "unknown" : "rate");
     }
     if (action === "unpay") {
       return (await removePayout(store, text(body.payout, 20))) ? Response.json({ ok: true }) : fail("unknown");

@@ -155,8 +155,12 @@ export function payoutPromise(setting: AffiliateSetting, storeName: string): str
 }
 
 /** What an affiliate earns on this product, in percent; 0 when it is left out. */
-export function commissionRate(setting: AffiliateSetting, productId: string): number {
+export function commissionRate(setting: AffiliateSetting, productId: string, affiliateRate: number | null = null): number {
   const own = setting.rates[productId];
+  // A share set for one affiliate (lib/affiliates.ts, Affiliate.rate) replaces
+  // the store's and each product's — except on a product set to 0%, which the
+  // creator took out of the program and which stays out for everyone.
+  if (affiliateRate !== null) return own === 0 ? 0 : affiliateRate;
   return typeof own === "number" ? own : setting.percent;
 }
 

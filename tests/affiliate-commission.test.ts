@@ -79,12 +79,12 @@ async function main(): Promise<void> {
   is(
     "a product set to 0% still names the affiliate",
     await attributionFor(front, "front", { via: clicked(), session: undefined }),
-    { aff: AFF, rate: 0 },
+    { aff: AFF, rate: 0, own: null },
   );
   is(
     "a product with a share of its own carries it",
     await attributionFor(both, "front", { via: clicked(), session: undefined }),
-    { aff: AFF, rate: 20 },
+    { aff: AFF, rate: 20, own: null },
   );
   is(
     "no click, nobody credited",

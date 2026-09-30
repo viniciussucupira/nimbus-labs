@@ -727,6 +727,8 @@ function Member({
   const [amount, setAmount] = useState(row.owed > 0 ? moneyField(row.owed, currency) : "");
   const [date, setDate] = useState(today);
   const [reference, setReference] = useState("");
+  const [rating, setRating] = useState(false);
+  const [rate, setRate] = useState(affiliate.rate === null ? "" : String(affiliate.rate));
   const tag = STATUS_TAG[affiliate.status];
 
   return (
@@ -752,6 +754,40 @@ function Member({
           </div>
         ))}
       </dl>
+
+      {/* A share for this affiliate alone (lib/affiliate-setting.ts commissionRate). */}
+      <div className="mt-3 text-sm text-ink-soft">
+        {rating ? (
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const done = await act(where, { action: "rate", id: affiliate.id, rate: rate.trim() === "" ? null : Number(rate) }, "Share saved. It applies to sales from now on.");
+              if (done) setRating(false);
+            }}
+          >
+            <label className="block" htmlFor={`${where}-rate`}>
+              <span className="field-label">Their share, %</span>
+              <input id={`${where}-rate`} type="number" min={1} max={90} step={1} value={rate} onChange={(e) => setRate(e.target.value)} className="field w-28" placeholder="Program's" />
+            </label>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={busy !== null}>
+              Save
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setRating(false)}>
+              Cancel
+            </button>
+            <p className="basis-full text-xs">1% to 90% on every product, except products you set to 0%. Leave it empty for the program&rsquo;s own shares. Sales already made keep what they earned.</p>
+          </form>
+        ) : (
+          <p>
+            {affiliate.rate === null ? "Earns your program's shares. " : `Earns ${affiliate.rate}% on every product, except those set to 0%. `}
+            <button type="button" className="font-bold text-violet-deep underline underline-offset-4" onClick={() => setRating(true)}>
+              {affiliate.rate === null ? "Set a share for them" : "Change"}
+            </button>
+          </p>
+        )}
+        {affiliate.paypal ? <p className="mt-1 [overflow-wrap:anywhere]">{`Paid through PayPal at ${affiliate.paypal}, the address they chose.`}</p> : null}
+      </div>
 
       {paying ? (
         <form
