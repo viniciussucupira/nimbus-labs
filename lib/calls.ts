@@ -519,6 +519,12 @@ export async function holdAndCheckout(input: {
   origin: string;
   /** The affiliate whose link the buyer followed, and the share it earns. */
   via?: { aff: string; rate: number } | null;
+  /**
+   * A session from a package already paid for (lib/call-packages.ts): the
+   * checkout carries a coupon for the whole of it, so nothing is charged, and
+   * the package's address, so the booking is theirs.
+   */
+  fromPackage?: { id: string; coupon: string; email: string; back: string } | null;
 }): Promise<HoldResult> {
   const { store, product, start, origin } = input;
   const setup = product.call;
@@ -569,11 +575,19 @@ export async function holdAndCheckout(input: {
       cancel_url: `${origin}/@${store.handle}/book/${product.id}`,
     });
     if (product.summary) body.set("line_items[0][price_data][product_data][description]", product.summary);
-    if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
+    const pkg = input.fromPackage ?? null;
+    if (pkg) {
+      body.set("discounts[0][coupon]", pkg.coupon);
+      body.set("customer_email", pkg.email);
+      body.set("metadata[package]", pkg.id);
+      body.set("cancel_url", pkg.back);
+      // Nothing is paid, so Stripe makes no payment of it to carry these.
+      for (const key of [...body.keys()]) if (key.startsWith("payment_intent_data")) body.delete(key);
+    } else if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
     // Sent by an affiliate: credited to them, at today's share (lib/affiliates.ts).
     // A booking is one product, with nothing else able to ride along, so a
     // share of nothing is a sale that earns nothing and is not written down.
-    if (input.via && input.via.rate > 0) {
+    if (input.via && input.via.rate > 0 && !pkg) {
       body.set("metadata[via]", input.via.aff);
       body.set("metadata[via_rate]", String(input.via.rate));
       body.set("payment_intent_data[metadata][via]", input.via.aff);
@@ -1071,7 +1085,7 @@ export async function confirmBooking(input: {
     to: store.email,
     subject: `New booking: ${product.title}, ${readableTime(start, setup.tz)}`,
     text: [
-      `${buyerEmail ?? "A buyer"} booked ${product.title} (${minutes} minutes) and paid on your Stripe account.`,
+      `${buyerEmail ?? "A buyer"} booked ${product.title} (${minutes} minutes) ${input.amountCents === 0 ? "as one session of a package they bought from you, so nothing more was charged" : "and paid on your Stripe account"}.`,
       "",
       ...(input.answers?.length
         ? ["What they answered before paying:", ...input.answers.map((answer) => `${answer.label}: ${answer.value}`), ""]

@@ -199,6 +199,16 @@ export default function PrivacyPage() {
           keep which episodes you play. The creator sees neither your feed nor
           what you listen to.
         </p>
+        <p id="packages">
+          <strong className="text-black">Packages of sessions.</strong>{" "}
+          When you buy a package of calls, we keep your email address, which
+          payment it was, how many sessions it holds, its last day to book,
+          and which bookings were made from it, so you can book the rest from
+          the link we email you and see how many are left. A package with a
+          last day to book is kept until a year after that day; one with no
+          time limit is kept for as long as it can be used. Each session is a
+          booking like any other and is kept the same way.
+        </p>
         <p id="gifts">
           <strong className="text-black">Gifts.</strong>{" "}
           When you buy something as a gift, we keep the recipient&apos;s email

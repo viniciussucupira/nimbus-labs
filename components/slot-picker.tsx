@@ -55,6 +55,7 @@ export function SlotPicker({
   price,
   left,
   move,
+  pkg,
 }: {
   starts: number[];
   creatorTz: string;
@@ -66,6 +67,8 @@ export function SlotPicker({
   left?: Record<string, number>;
   /** The checkout session of a booking being moved. */
   move?: string;
+  /** A package's booking token: the session comes from it, and nothing is charged (lib/call-packages.ts). */
+  pkg?: string;
 }) {
   const tz = useSyncExternalStore(
     noop,
@@ -109,6 +112,7 @@ export function SlotPicker({
       {move ? <input type="hidden" name="session" value={move} /> : null}
       <input type="hidden" name="product" value={productId} />
       <input type="hidden" name="tz" value={tz} />
+      {pkg ? <input type="hidden" name="pkg" value={pkg} /> : null}
 
       {/* A fieldset is as wide as its widest child unless told otherwise,
           which would push the row of days out of the card. */}
@@ -179,12 +183,14 @@ export function SlotPicker({
           </p>
         ) : null}
         <button type="submit" className="btn st-btn btn-lg btn-block">
-          {move ? "Move my booking to this time" : `Continue to payment — ${price}`}
+          {move ? "Move my booking to this time" : pkg ? "Book this time from my package" : `Continue to payment — ${price}`}
         </button>
         <p className="st-muted mt-3 text-center text-xs">
           {move
             ? "Nothing is charged. Your old time is freed for somebody else."
-            : "The time is kept for you for 30 minutes while you pay."}
+            : pkg
+              ? "You confirm it on the next page; nothing is charged."
+              : "The time is kept for you for 30 minutes while you pay."}
         </p>
       </div>
     </form>

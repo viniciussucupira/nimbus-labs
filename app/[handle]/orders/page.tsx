@@ -353,6 +353,15 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                               Open the course
                             </Link>
                           ) : null}
+                          {typeof purchase.packageLeft === "number" ? (
+                            purchase.packageBook ? (
+                              <Link href={purchase.packageBook} className="btn st-btn btn-block">
+                                {`Book a session (${purchase.packageLeft} left)`}
+                              </Link>
+                            ) : (
+                              <p className="st-muted text-sm">{purchase.packageExpired ? "The time to book this package's sessions has passed." : "Every session of this package is booked."}</p>
+                            )
+                          ) : null}
                           {purchase.podcastProduct && feeds.has(purchase.podcastProduct) ? (
                             <Link href={`/@${store.handle}/podcast/${purchase.podcastProduct}?t=${feeds.get(purchase.podcastProduct)}`} className="btn st-btn btn-block">
                               Add the podcast to your app

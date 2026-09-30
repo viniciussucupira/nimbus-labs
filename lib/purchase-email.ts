@@ -34,6 +34,7 @@
  * its licence key when it hands one out — kept under the offer's payment,
  * the same reference the thanks page and the list of purchases use.
  */
+import { recordPackage } from "@/lib/call-packages";
 import { deliverGift } from "@/lib/gifts";
 import { ordersLinkFor } from "@/lib/buyer-orders";
 import { saleHandles } from "@/lib/store";
@@ -363,6 +364,14 @@ export async function confirmPurchase(
   // Bought for somebody else: handed to them, and the buyer gets a receipt
   // that says so (lib/gifts.ts), instead of the usual confirmation.
   if (session.metadata?.gift) return confirmGift(store, session, listings, key);
+  // A package of calls: written down, and its booking link emailed (lib/call-packages.ts).
+  if (session.metadata?.kind === "package") {
+    const product = listings.find((p) => p.id === session.metadata?.product);
+    if (!product || !saleHandles(store).has(session.metadata?.store ?? "")) return "skip";
+    const bought = await recordPackage({ store, session, product, base: storeBase(store), from: fromStore(store) });
+    if (bought) await redisPipeline([["SET", key, "sent", "EX", SENT_MARK_SECONDS]]);
+    return bought ? "sent" : "skip";
+  }
   if (!confirmationFor(store, session, Date.now() / 1000, [], listings)) return "skip";
   const letter = confirmationFor(store, session, Date.now() / 1000, await keysFor(store, session, listings), listings);
   if (!letter) return "skip";

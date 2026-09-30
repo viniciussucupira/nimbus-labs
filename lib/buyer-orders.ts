@@ -22,6 +22,7 @@
  * Like cancelling a membership, this works whatever state the creator's own
  * Nimbus subscription is in: somebody paid for that file, and they get it.
  */
+import { packageState, readBought } from "@/lib/call-packages";
 import { giftFrom } from "@/lib/gifts";
 import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
@@ -118,6 +119,10 @@ export type Purchase = {
   giftFrom?: string | null;
   /** A private podcast opens as a feed of the buyer's own (lib/podcast-access.ts). */
   podcastProduct?: string | null;
+  /** A package of calls: where its sessions are booked, and how many are left (lib/call-packages.ts). */
+  packageBook?: string | null;
+  packageLeft?: number;
+  packageExpired?: boolean;
 };
 
 /** The products of a list on an order, each with what it hands over now. */
@@ -262,6 +267,34 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       if (meta.kind === "call") continue;
       // A gift is on its recipient's list, not its buyer's (lib/gifts.ts).
       if (meta.gift) continue;
+      // A package of calls: its sessions left, and the way to book them (lib/call-packages.ts).
+      if (meta.kind === "package") {
+        const bought = await readBought(id);
+        const product = bought ? await find(meta.product) : null;
+        if (!bought || !product) continue;
+        if (await purchaseRefunded(account, session)) continue;
+        const state = await packageState(bought);
+        found.set(id, {
+          reference: id,
+          kind: "sale",
+          title: `${product.title}, ${bought.total} sessions`,
+          option: null,
+          paidAt: typeof session.created === "number" ? session.created : 0,
+          member: false,
+          ended: false,
+          productId: product.id,
+          bumpId: null,
+          courseProduct: null,
+          main: null,
+          bump: null,
+          items: null,
+          bumpItems: null,
+          packageBook: state.left > 0 ? `/@${store.handle}/book/${product.id}?pkg=${bought.token}` : null,
+          packageLeft: state.left,
+          packageExpired: state.expired,
+        });
+        continue;
+      }
       const product = await find(meta.product);
       if (!product || product.call) continue;
       if (await purchaseRefunded(account, session)) continue;

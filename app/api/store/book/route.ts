@@ -1,3 +1,4 @@
+import { holdSession, prepareSession } from "@/lib/call-packages";
 import { isSoon } from "@/lib/waitlist";
 import { type NextRequest, after } from "next/server";
 import { linkOrigin, originFrom } from "@/lib/request-origin";
@@ -37,6 +38,8 @@ export async function POST(request: NextRequest) {
   let productId = "";
   let start = NaN;
   let tz = "";
+  // A session of a package already paid for (lib/call-packages.ts).
+  let pkg = "";
   try {
     const form = await (await limited(request, MAX_BODY_BYTES)).formData();
     const read = (name: string) => {
@@ -48,6 +51,7 @@ export async function POST(request: NextRequest) {
     const rawStart = read("start");
     start = /^\d{12,14}$/.test(rawStart) ? Number(rawStart) : NaN;
     tz = read("tz").slice(0, 64);
+    pkg = read("pkg").slice(0, 60);
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -64,7 +68,7 @@ export async function POST(request: NextRequest) {
   const back = (status: string) =>
     new Response(null, {
       status: 303,
-      headers: { Location: `${origin}/@${store.handle}/book/${product.id}?status=${status}`, "Cache-Control": "no-store" },
+      headers: { Location: `${origin}/@${store.handle}/book/${product.id}?status=${status}${pkg ? `&pkg=${encodeURIComponent(pkg)}` : ""}`, "Cache-Control": "no-store" },
     });
 
   if (!canSellProduct(store, product)) return back("unavailable");
@@ -85,8 +89,28 @@ export async function POST(request: NextRequest) {
     via: request.cookies.get(viaCookieName(store.handle))?.value,
     session: request.cookies.get(affiliateCookieName(store.handle))?.value,
   }).catch(() => null);
-  const result = await holdAndCheckout({ store, product, start, buyerTz: tz, origin: linkOrigin(request, store), via });
+  // From a package: checked, and the session's coupon made, before the time is held.
+  const prepared = pkg ? await prepareSession(store, pkg, linkOrigin(request, store)) : null;
+  if (prepared && !prepared.ok) return back(`pkg-${prepared.reason}`);
+  const result = await holdAndCheckout({
+    store,
+    product,
+    start,
+    buyerTz: tz,
+    origin: linkOrigin(request, store),
+    via,
+    fromPackage: prepared && prepared.ok ? prepared.fromPackage : null,
+  });
   if (!result.ok) return back(result.reason);
+  // The session counts against the package from now; if another tab took the
+  // last one meanwhile, this time is let go again.
+  if (prepared && prepared.ok && prepared.checkout) {
+    const counted = await holdSession(prepared.checkout, result.session, Math.floor(Date.now() / 1000) + HOLD_SECONDS).catch(() => false);
+    if (!counted) {
+      await releaseOwnHold(store, result.session).catch(() => {});
+      return back("pkg-used");
+    }
+  }
   after(() => countHit(request, store, { kind: "checkout", id: product.id }));
   const secure = origin.startsWith("https://") ? "; Secure" : "";
   return new Response(null, {

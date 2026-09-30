@@ -1,3 +1,5 @@
+import { PackageOffer } from "@/components/store-product";
+import { boughtByToken, packageState } from "@/lib/call-packages";
 import { isSoon } from "@/lib/waitlist";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -38,6 +40,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 const NOTICES: Record<string, { title: string; body: string }> = {
+  "pkg-used": { title: "Your package has no sessions left", body: "Every session of it is booked or being booked. Nothing was charged." },
+  "pkg-expired": { title: "Your package's time to book has passed", body: "Nothing was charged. Reply to your package's email to ask the creator." },
+  "pkg-refunded": { title: "This package was refunded", body: "It books nothing more. Nothing was charged." },
+  "pkg-gone": { title: "That package link does not work", body: "Use the link in your package's email. Nothing was charged." },
+  "pkg-error": { title: "We could not book from your package just now", body: "Nothing was charged. Try again in a moment." },
   taken: {
     title: "That time was just taken",
     body: "Somebody booked it a moment before you, or it is being paid for right now. Pick another; nothing was charged.",
@@ -97,6 +104,11 @@ export default async function BookPage({ params, searchParams }: Params) {
   if (moving) return <MovePage store={store} product={product} session={moving} status={status} />;
 
   const notice = NOTICES[status] ?? null;
+  // Booking from a package (lib/call-packages.ts): how many are left, said up top.
+  const pkgToken = typeof query.pkg === "string" ? query.pkg : "";
+  const found = pkgToken ? await boughtByToken(pkgToken) : null;
+  const pkg = found && found.bought.s === store.statsId && found.bought.p === product.id ? found : null;
+  const pkgState = pkg ? await packageState(pkg.bought) : null;
   const open = canSellProduct(store, product) && !(await isSoon(store, product.id).catch(() => false));
   const read = open ? await slotsForProduct(store, product) : null;
   const days = read ? read.days : null;
@@ -136,6 +148,19 @@ export default async function BookPage({ params, searchParams }: Params) {
             <p className="st-muted mt-2 text-sm font-semibold">{callLine(setup)}</p>
             {product.summary ? <p className="st-muted mt-3 leading-relaxed">{product.summary}</p> : null}
 
+            {pkgState ? (
+              <p className="mt-5 rounded-2xl px-4 py-3 text-sm" style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }} role="status">
+                <strong>{pkgState.expired ? "Your package's time to book has passed" : `Booking from your package: ${pkgState.left} of ${pkgState.total} left`}</strong>
+                {pkgState.until && !pkgState.expired ? ` · book by ${new Date(pkgState.until * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" })}` : ""}
+              </p>
+            ) : pkgToken ? (
+              <p className="st-note mt-5 text-sm" role="alert">That package link is not for this call, or no longer works. Use the link in your package&apos;s email.</p>
+            ) : open && product.callPackage ? (
+              <div className="mt-5">
+                <PackageOffer store={store} product={product} />
+              </div>
+            ) : null}
+
             {notice ? (
               <div className="st-note mt-6" role="alert">
                 <p className="font-bold" style={{ color: "var(--st-text)" }}>{notice.title}</p>
@@ -170,6 +195,7 @@ export default async function BookPage({ params, searchParams }: Params) {
                 minutes={setup.minutes}
                 price={formatMoney(product.priceCents, store.currency)}
                 left={setup.seats > 1 ? read.left : undefined}
+                pkg={pkg && pkgState && pkgState.left > 0 ? pkgToken : undefined}
               />
             )}
           </div>
