@@ -1,27 +1,31 @@
 /**
- * Session packages and membership tiers, run against Stripe itself.
+ * Session packages and membership tiers, run against Stripe itself, every
+ * day, by a scheduled job (app/api/cron/stripe-check).
  *
  * In Stripe's test mode, on the demo's sandbox account (lib/demo-store.ts):
  * no real money, and nothing on any creator's account. Every request is
  * built by the very functions the features use (callCheckoutBody,
  * sessionCouponBody, packageCheckoutBody, tierPriceBody, previewBody,
- * switchBody), so what passes here is what the site sends.
+ * switchBody), so a change that breaks what the site sends breaks here.
  *
- *   tiers        a member moves up, down, and from monthly to yearly: the
- *                amount the member page would show equals what Stripe charges;
- *                a declined card changes nothing and is voided; the tier the
- *                doors read follows the switch
- *   package-open a paid package checkout and a free session checkout are made;
- *                the free one is opened in a browser and completed
- *   package-check the free session reads as settled with nothing charged, and
- *                its coupon cannot be used twice
+ *   tiers     a member moves up, down, and from monthly to yearly: the amount
+ *             the member page would show equals what Stripe charges; a
+ *             declined card changes nothing and is voided; the tier the doors
+ *             read follows the switch
+ *   packages  a package's paid checkout and a session's free checkout are
+ *             accepted, the free one at $0, and the session's coupon is good
+ *             for one use only
+ *
+ * Completing the free checkout takes a browser, which a scheduled job has
+ * not: that was done by hand on September 30, 2026, and Stripe read it as
+ * paid, with nothing charged and the coupon then refused a second time.
+ * Everything made here is taken away again at the end of each run.
  */
 import { onDemoAccount } from "@/lib/demo-store";
 import { callCheckoutBody, NO_COST_VERSION } from "@/lib/calls";
 import { packageCheckoutBody, sessionCouponBody } from "@/lib/call-packages";
 import { previewBody, switchBody, tierPriceBody } from "@/lib/tier-switch";
 import { currentMeta, dueNow, productOfSub } from "@/lib/tier-rules";
-import { isSettled } from "@/lib/instant-pay";
 import type { Listing, Product, Store } from "@/lib/store";
 
 export type Check = { check: string; ok: boolean; detail: string };
@@ -35,19 +39,20 @@ function tier(id: string, title: string, cents: number, interval: "month" | "yea
   return { id, title, priceCents: cents, recurring: { interval, trialDays: 0, payments: 0 } } as unknown as Listing;
 }
 
-/** A store as the builders read it: the signed-in store, in dollars, so amounts are comparable. */
-function asUsd(store: Store): Store {
-  return { ...store, currency: "usd" } as Store;
+/** A store as the builders read it: in dollars, without tax or discount codes. */
+export function checkStore(): Store {
+  return { handle: "stripe-check", name: "Stripe check", currency: "usd", hasDiscounts: false, tax: { enabled: false, included: false } } as unknown as Store;
 }
 
-export async function verifyTiers(store: Store): Promise<Check[]> {
+export async function verifyTiers(): Promise<Check[]> {
   const out: Check[] = [];
-  const s = asUsd(store);
+  const s = checkStore();
   const note = (check: string, ok: boolean, detail: string) => out.push({ check, ok, detail });
   const A = tier("verify-basic", "Verify Basic", 1500, "month");
   const B = tier("verify-plus", "Verify Plus", 3500, "month");
   const C = tier("verify-yearly", "Verify Yearly", 15000, "year");
   const made: string[] = [];
+  const customers: string[] = [];
   try {
     const prices: Record<string, string> = {};
     for (const t of [A, B, C]) {
@@ -63,6 +68,7 @@ export async function verifyTiers(store: Store): Promise<Check[]> {
         "/customers",
         new URLSearchParams({ email, payment_method: "pm_card_visa", "invoice_settings[default_payment_method]": "pm_card_visa" }),
       );
+      if (customer.status === 200) customers.push(str(customer.data.id));
       const sub = await onDemoAccount(
         "POST",
         "/subscriptions",
@@ -121,6 +127,7 @@ export async function verifyTiers(store: Store): Promise<Check[]> {
     );
   } finally {
     for (const id of made) await onDemoAccount("DELETE", `/subscriptions/${id}`).catch(() => null);
+    for (const id of customers) await onDemoAccount("DELETE", `/customers/${id}`).catch(() => null);
   }
   return out;
 }
@@ -129,56 +136,52 @@ function sessionProduct(): Product {
   return { id: "verify-call", title: "Verification call", summary: "", priceCents: 12000, fields: [] } as unknown as Product;
 }
 
-export async function openPackageSession(store: Store, origin: string): Promise<Check[] & { url?: string; session?: string; coupon?: string }> {
-  const s = asUsd(store);
-  const out = [] as Check[] & { url?: string; session?: string; coupon?: string };
-  const pkgListing = { id: "verify-call", title: "Verification call" } as unknown as Listing;
-  const bought = await onDemoAccount("POST", "/checkout/sessions", packageCheckoutBody(s, pkgListing, { sessions: 5, priceCents: 50000, days: 90 }, origin));
-  out.push({ check: "the package's own checkout is accepted", ok: bought.status === 200, detail: bought.status === 200 ? `${str(bought.data.id)}, $${num(bought.data.amount_total) / 100}` : err(bought) });
-
-  const coupon = await onDemoAccount("POST", "/coupons", sessionCouponBody("cs_test_verification"));
-  if (coupon.status !== 200) return Object.assign(out, [{ check: "the session's coupon", ok: false, detail: err(coupon) }]);
-  const start = Date.now() + 3 * 86_400_000;
-  const body = callCheckoutBody({
-    store: s,
-    product: sessionProduct(),
-    start,
-    end: start + 3_600_000,
-    buyerTz: "America/New_York",
-    origin,
-    via: null,
-    fromPackage: { id: "cs_test_verification", coupon: str(coupon.data.id), email: "verify+package@example.com", back: `${origin}/@${s.handle}` },
-  });
-  const free = await onDemoAccount("POST", "/checkout/sessions", body, NO_COST_VERSION);
-  out.push({
-    check: "a session from a package: a checkout with nothing to pay is accepted",
-    ok: free.status === 200 && num(free.data.amount_total) === 0,
-    detail: free.status === 200 ? `${str(free.data.id)}, total ${num(free.data.amount_total)}` : err(free),
-  });
-  out.url = str(free.data.url);
-  out.session = str(free.data.id);
-  out.coupon = str(coupon.data.id);
-  return out;
-}
-
-export async function checkPackageSession(store: Store, origin: string, session: string, coupon: string): Promise<Check[]> {
+export async function verifyPackages(origin: string): Promise<Check[]> {
+  const s = checkStore();
   const out: Check[] = [];
-  const got = await onDemoAccount("GET", `/checkout/sessions/${encodeURIComponent(session)}`);
-  out.push({
-    check: "once completed, the free session reads as settled, with nothing charged",
-    ok: isSettled(got.data) && num(got.data.amount_total) === 0,
-    detail: `status ${str(got.data.status)}, payment ${str(got.data.payment_status)}, total ${num(got.data.amount_total)}, payment made ${got.data.payment_intent ? "yes" : "none"}`,
-  });
-  const c = await onDemoAccount("GET", `/coupons/${encodeURIComponent(coupon)}`);
-  out.push({ check: "its coupon was used once", ok: num(c.data.times_redeemed) === 1 && c.data.valid === false, detail: `times redeemed ${num(c.data.times_redeemed)}, still valid ${String(c.data.valid)}` });
-  // The same coupon on a second checkout: it must not make another session free.
-  const start = Date.now() + 4 * 86_400_000;
-  const again = await onDemoAccount(
-    "POST",
-    "/checkout/sessions",
-    callCheckoutBody({ store: asUsd(store), product: sessionProduct(), start, end: start + 3_600_000, buyerTz: "UTC", origin, via: null, fromPackage: { id: "cs_test_verification", coupon, email: "verify+package@example.com", back: origin } }),
-    NO_COST_VERSION,
-  );
-  out.push({ check: "the coupon cannot make a second session free", ok: again.status !== 200, detail: again.status === 200 ? `accepted: ${str(again.data.id)}` : err(again) });
+  const opened: string[] = [];
+  const pkgListing = { id: "verify-call", title: "Verification call" } as unknown as Listing;
+  try {
+    const bought = await onDemoAccount("POST", "/checkout/sessions", packageCheckoutBody(s, pkgListing, { sessions: 5, priceCents: 50000, days: 90 }, origin));
+    if (bought.status === 200) opened.push(str(bought.data.id));
+    out.push({
+      check: "the package's own checkout is accepted, at its price",
+      ok: bought.status === 200 && num(bought.data.amount_total) === 50000,
+      detail: bought.status === 200 ? `total ${num(bought.data.amount_total)}` : err(bought),
+    });
+
+    const coupon = await onDemoAccount("POST", "/coupons", sessionCouponBody("cs_test_verification"));
+    if (coupon.status !== 200) return [...out, { check: "the session's coupon is made", ok: false, detail: err(coupon) }];
+    out.push({
+      check: "the session's coupon takes all of it, once",
+      ok: num(coupon.data.percent_off) === 100 && num(coupon.data.max_redemptions) === 1 && str(coupon.data.duration) === "once",
+      detail: `${num(coupon.data.percent_off)}% off, ${num(coupon.data.max_redemptions)} use, ${str(coupon.data.duration)}`,
+    });
+    const start = Date.now() + 3 * 86_400_000;
+    const free = await onDemoAccount(
+      "POST",
+      "/checkout/sessions",
+      callCheckoutBody({
+        store: s,
+        product: sessionProduct(),
+        start,
+        end: start + 3_600_000,
+        buyerTz: "America/New_York",
+        origin,
+        via: null,
+        fromPackage: { id: "cs_test_verification", coupon: str(coupon.data.id), email: "verify+package@example.com", back: `${origin}/@${s.handle}` },
+      }),
+      NO_COST_VERSION,
+    );
+    if (free.status === 200) opened.push(str(free.data.id));
+    out.push({
+      check: "a session from a package: a checkout with nothing to pay is accepted",
+      ok: free.status === 200 && num(free.data.amount_total) === 0,
+      detail: free.status === 200 ? `total ${num(free.data.amount_total)}` : err(free),
+    });
+    await onDemoAccount("DELETE", `/coupons/${encodeURIComponent(str(coupon.data.id))}`).catch(() => null);
+  } finally {
+    for (const id of opened) await onDemoAccount("POST", `/checkout/sessions/${encodeURIComponent(id)}/expire`, new URLSearchParams()).catch(() => null);
+  }
   return out;
 }
