@@ -190,6 +190,17 @@ export async function holdsAnyOf(store: Store, ids: string[], email: string, cac
   return ticketFor(store, ids, email, cacheKey, version);
 }
 
+/**
+ * The same question for any product, without a community: whether this
+ * address holds one of `ids` now — paid and not refunded, a membership still
+ * running, given for free, brought over or given as a gift. For a private
+ * podcast's feed (lib/podcast-access.ts). Cached like the community's answer.
+ */
+export async function holdsProducts(store: Store, ids: string[], email: string, cacheKey: string, version: string): Promise<boolean> {
+  if (!isRedisConfigured()) return false;
+  return ticketFor(store, ids, email, cacheKey, version);
+}
+
 async function ticketFor(store: Store, ids: string[], email: string, cacheKey: string, version: number | string): Promise<boolean> {
   // Which products let in, and whether each is free, is in the store record.
   const products = ids.flatMap((pid) => {

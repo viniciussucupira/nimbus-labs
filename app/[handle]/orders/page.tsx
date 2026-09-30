@@ -1,3 +1,4 @@
+import { feedToken } from "@/lib/podcast-access";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -155,6 +156,15 @@ export default async function OrdersPage({ params, searchParams }: Params) {
     }
   }
   const notice = token && !email ? NOTICES.expired : failed ? NOTICES.error : NOTICES[status] ?? null;
+
+  // A private podcast opens as this address's own feed (lib/podcast-access.ts).
+  const feeds = new Map<string, string>();
+  if (email && purchases) {
+    for (const pid of new Set(purchases.filter((p) => p.podcastProduct && !p.ended).map((p) => p.podcastProduct as string))) {
+      const feed = await feedToken(store, pid, email).catch(() => null);
+      if (feed) feeds.set(pid, feed);
+    }
+  }
 
   // The licence key of each purchase that has one, read — or given, if the
   // thanks page and the confirmation email never got the chance — per sale.
@@ -341,6 +351,11 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                           {purchase.courseProduct ? (
                             <Link href={`/@${store.handle}/course/${purchase.courseProduct}`} className="btn st-btn btn-block">
                               Open the course
+                            </Link>
+                          ) : null}
+                          {purchase.podcastProduct && feeds.has(purchase.podcastProduct) ? (
+                            <Link href={`/@${store.handle}/podcast/${purchase.podcastProduct}?t=${feeds.get(purchase.podcastProduct)}`} className="btn st-btn btn-block">
+                              Add the podcast to your app
                             </Link>
                           ) : null}
                           {purchase.main ? (

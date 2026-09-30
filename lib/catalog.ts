@@ -35,6 +35,7 @@
  * store record replaced, in one write. Until that write lands the old record
  * is the store, complete, and doing it again writes the same records.
  */
+import { type PodcastRef, parsePodcastRef } from "@/lib/podcast-rules";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { type ProductFile, parseProductFile } from "@/lib/product-file";
 import { type ProductOption, parseOptions } from "@/lib/product-option";
@@ -146,6 +147,11 @@ export type Product = {
    * many lessons it has, kept here so a store page knows without reading it.
    */
   course: CourseRef | null;
+  /**
+   * When this is a private podcast (lib/podcast-rules.ts): which record holds
+   * its episodes, and how many it has. Absent or null for anything else.
+   */
+  podcast?: PodcastRef | null;
   /** The product's picture, shown on the store page and its own page. */
   image: ProductImage | null;
   /** How its card is drawn on the store page. */
@@ -271,6 +277,7 @@ export function parseProduct(entry: unknown): Product | null {
     funnel: parseFunnel(value.funnel) ?? funnelFromUpsell(parseBump(value.upsell)),
     plan: parsePlan(value.plan),
     course: parseCourseRef(value.course),
+    podcast: parsePodcastRef(value.podcast),
     image: parseProductImage(value.image),
     display: parseDisplay(value.display),
     fields: parseFields(value.fields),
@@ -313,6 +320,7 @@ export function listingOf(product: Listing): Listing {
     bump: product.bump,
     plan: product.plan,
     course: product.course,
+    podcast: product.podcast ?? null,
     image: product.image,
     display: product.display,
     pwyw: product.pwyw,
