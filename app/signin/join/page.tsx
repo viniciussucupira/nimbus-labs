@@ -62,7 +62,7 @@ export default async function JoinPage({
           </form>
           <p className="mt-4 text-sm text-ink-soft">
             Joining puts this address on the team and opens the store in its studio. If the address has no account here
-            yet, joining also logs you in; if it already has one, you log in the usual way afterwards. There is no
+            yet, joining also logs you in; if it already has one, you log in the usual way afterward. There is no
             password: log in with a link sent to this address, or a passkey if you add one. The invitation works once,
             and only for this address.
           </p>

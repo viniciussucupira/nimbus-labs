@@ -29,9 +29,9 @@ export function JsonLd({ data }: { data: object }) {
   );
 }
 
-const ORGANISATION = {
+const ORGANIZATION = {
   "@type": "Organization",
-  "@id": `${SITE_URL}/#organisation`,
+  "@id": `${SITE_URL}/#organization`,
   name: "Nimbus Labs",
   url: SITE_URL,
   logo: `${SITE_URL}/icons/icon-512.png`,
@@ -47,13 +47,13 @@ export function SiteData() {
       data={{
         "@context": "https://schema.org",
         "@graph": [
-          ORGANISATION,
+          ORGANIZATION,
           {
             "@type": "WebSite",
             "@id": `${SITE_URL}/#website`,
             url: SITE_URL,
             name: "Nimbus Labs",
-            publisher: { "@id": `${SITE_URL}/#organisation` },
+            publisher: { "@id": `${SITE_URL}/#organization` },
             inLanguage: "en",
           },
         ],
@@ -89,7 +89,7 @@ export function HomeData({ questions }: { questions: { q: string; a: string }[] 
             applicationCategory: "BusinessApplication",
             operatingSystem: "Web",
             url: SITE_URL,
-            publisher: { "@id": `${SITE_URL}/#organisation` },
+            publisher: { "@id": `${SITE_URL}/#organization` },
             description: `A store page for creators, with a ${TRIAL_DAYS}-day free trial. Sales are direct charges on the creator's own Stripe account; Nimbus takes 0% of them.`,
             offers: [offer("creator"), offer("pro")],
           },
@@ -123,7 +123,7 @@ export function ArticleData({ post }: { post: BlogPost }) {
         articleSection: post.category,
         image: `${SITE_URL}/blog/${post.slug}/opengraph-image`,
         author: { "@type": "Person", name: "Vinicius Sucupira" },
-        publisher: { "@id": `${SITE_URL}/#organisation` },
+        publisher: { "@id": `${SITE_URL}/#organization` },
         mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
         inLanguage: "en",
       }}

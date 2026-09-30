@@ -214,7 +214,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
                       <input type="hidden" name="handle" value={store.handle} />
                       <input type="hidden" name="product" value={product.id} />
                       <label htmlFor="cert-name" className="st-muted block text-sm">
-                        You finished the course. Type your name exactly as it should be printed; it cannot be changed afterwards.
+                        You finished the course. Type your name exactly as it should be printed; it cannot be changed afterward.
                       </label>
                       {certNotice ? (
                         <p className="mt-2 text-sm font-semibold" role="alert" style={{ color: "var(--st-text)" }}>

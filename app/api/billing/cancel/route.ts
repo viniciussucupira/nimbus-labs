@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       await setSubscription(ref, { active: false });
       return away(origin, studio("billing=ended"));
     }
-    return away(origin, studio(intent === "cancel" ? "billing=cancelling" : "billing=resumed"));
+    return away(origin, studio(intent === "cancel" ? "billing=canceling" : "billing=resumed"));
   } catch (error) {
     // Stripe refuses to change a subscription that is already over. Ask what
     // it is doing before saying so, because a refusal for any other reason

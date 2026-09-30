@@ -394,7 +394,7 @@ export default function PrivacyPage() {
           sent for 30 days so it is never sent twice, and each delivery, with
           the answer the address gave, for up to seven days.
         </p>
-        <p id="licence-keys">
+        <p id="license-keys">
           <strong className="text-black">License keys.</strong> When a creator
           sells a product with license keys, we keep each key with the sale it
           went to, when, and the buyer&apos;s email address, so the buyer can

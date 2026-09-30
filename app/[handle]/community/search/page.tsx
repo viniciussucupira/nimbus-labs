@@ -307,7 +307,7 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                     </Link>
                     <p className="st-muted mt-1 text-sm">
                       {readableTime(event.start, event.tz)}
-                      {state === "cancelled" ? " · Cancelled" : state === "over" ? " · Over" : ""}
+                      {state === "cancelled" ? " · Canceled" : state === "over" ? " · Over" : ""}
                     </p>
                   </li>
                 ))}

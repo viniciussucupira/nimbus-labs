@@ -476,7 +476,7 @@ export const PAGES: TopicPage[] = [
           ["Visits, sources and conversion", "Yes", "Yes \u2014 7, 30 and 90 days and all time, with UTM tags, counted without cookies, sales read from your own Stripe account, and CSV files of sales, visits and sources"],
           ["Public API and webhooks", "None published", "Both, on the $29 plan. Webhooks: up to five addresses, seven events, signed, for Zapier's Catch Hook, Make or your own server. An API that reads your list, members, a course's students, your affiliates and your bookings, with up to five keys; it changes nothing"],
           ["Importing your list", "A CSV, up to 5,000 imported contacts per store in all, each sent an email to opt in again", "A CSV, up to 50,000 rows a file on a list of up to 100,000, only people you confirm agreed, never anyone who unsubscribed here. Nobody is emailed because of it"],
-          ["Importing products", "Not in their help center", "A CSV, up to 500 a file, as drafts: title, price, description and link. Files, pictures and lessons are added afterwards"],
+          ["Importing products", "Not in their help center", "A CSV, up to 500 a file, as drafts: title, price, description and link. Files, pictures and lessons are added afterward"],
           ["Past buyers from another platform", "Access granted one customer at a time, to downloads, courses and the community, with no bulk undo", "A CSV, up to 20,000 a file: files, links, courses, bundles and the community, and one email to them if you choose. Not memberships or calls, and no undo in one step"],
         ],
       },
