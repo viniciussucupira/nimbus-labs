@@ -14,7 +14,7 @@
  *   - a figure more than 15 minutes old is not used.
  */
 import { addProduct, claimHandle, ensureStatsId, setProductLink, setStoreTiers, setStripeAccount, setSubscription, storeForEmail } from "@/lib/store";
-import { canTier, currentMeta, direction, parseTiers, productOfSub } from "@/lib/tier-rules";
+import { canTier, currentMeta, direction, dueNow, parseTiers, productOfSub } from "@/lib/tier-rules";
 import { choicesFor, liveTiers, previewSwitch, switchTier } from "@/lib/tier-switch";
 import { membershipsFor, requestManageLink } from "@/lib/membership-manage";
 import { store as redis } from "./redis-stub";
@@ -53,13 +53,28 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
     });
   }
   if (method === "POST" && path === "/prices") return json({ id: "price_Tier00000001" });
-  if (method === "POST" && path === "/invoices/create_preview") return json({ total: 1240, currency: "usd" });
+  if (method === "POST" && path === "/invoices/create_preview") {
+    // Stripe's next invoice: the switch's prorations, and the renewal at the period's end.
+    const at = Number(body.get("subscription_details[proration_date]"));
+    return json({
+      total: 3240,
+      currency: "usd",
+      starting_balance: 0,
+      lines: {
+        data: [
+          { amount: -500, parent: { subscription_item_details: { proration: true } }, period: { start: at } },
+          { amount: 1740, parent: { subscription_item_details: { proration: true } }, period: { start: at } },
+          { amount: 2000, parent: { subscription_item_details: { proration: false } }, period: { start: at + 20 * 86_400 } },
+        ],
+      },
+    });
+  }
   if (method === "POST" && path === "/subscriptions/sub_Member0001") {
     if (body.get("items[0][price]")) {
       return json(
         declined
           ? { id: "sub_Member0001", pending_update: { expires_at: 1 }, latest_invoice: { id: "in_Declined0001", status: "open", total: 1240 } }
-          : { id: "sub_Member0001", pending_update: null, latest_invoice: { id: "in_Paid0001", status: "paid", total: 1240, currency: "usd" } },
+          : { id: "sub_Member0001", pending_update: null, latest_invoice: { id: "in_Paid0001", status: "paid", total: 1240, amount_paid: 1240, currency: "usd" } },
       );
     }
     return json({ id: "sub_Member0001" });
@@ -78,6 +93,22 @@ async function main(): Promise<void> {
   const member = { priceCents: 1000, recurring: { interval: "month", payments: 0 }, options: [] };
   is("a membership that runs until canceled, at one price", [canTier(member), canTier({ ...member, recurring: { interval: "month", payments: 12 } }), canTier({ ...member, recurring: null }), canTier({ ...member, pwyw: { minCents: 100 } })], [true, false, false, false]);
   is("up or down on the same schedule, neither across schedules", [direction({ priceCents: 1000, interval: "month" }, { priceCents: 10000, interval: "year" }), direction({ priceCents: 1000, interval: "month" }, { priceCents: 2000, interval: "month" }), direction({ priceCents: 2000, interval: "month" }, { priceCents: 1000, interval: "month" })], ["same", "up", "down"]);
+
+  part("What a switch charges, read from Stripe's preview");
+  // Stripe's own example (docs.stripe.com/billing/subscriptions/prorations, "Preview a proration"):
+  // $10 to $32.52 a month; the preview totals $36.27 with next month's renewal in it.
+  const docs = { starting_balance: 0, lines: { data: [
+    { amount: -166, proration: true, period: { start: 1598982148 } },
+    { amount: 541, proration: true, period: { start: 1598982148 } },
+    { amount: 3252, proration: false, period: { start: 1599427688 } },
+  ] } };
+  is("only the switch, not the renewal after it", dueNow(docs, 1598982148), 375);
+  is("a credit the member holds comes off it", dueNow({ ...docs, starting_balance: -300 }, 1598982148), 75);
+  is("down is a credit", dueNow({ lines: { data: [{ amount: -900, parent: { subscription_item_details: { proration: true } }, period: { start: 100 } }] } }, 100), -900);
+  is("monthly to yearly: the new year is charged now, less the credit", dueNow({ lines: { data: [
+    { amount: -750, parent: { subscription_item_details: { proration: true } }, period: { start: 100 } },
+    { amount: 15000, parent: { subscription_item_details: { proration: false } }, period: { start: 100 }, discount_amounts: [{ amount: 1500 }], taxes: [{ amount: 900, tax_behavior: "exclusive" }] },
+  ] } }, 100), 13650);
 
   part("The tier a subscription is on now");
   const sub = (priceProduct: string | null, subProduct: string) => ({ metadata: { product: subProduct }, items: { data: [{ price: { metadata: priceProduct ? { product: priceProduct } : {} } }] } });

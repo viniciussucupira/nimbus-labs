@@ -22,7 +22,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { normaliseEmail } from "@/lib/auth";
 import { StripeError, onAccount } from "@/lib/stripe-account";
 import { isConfirmed } from "@/lib/calls";
-import { isSettled } from "@/lib/instant-pay";
+import { inTheCurrencyShown, isSettled, onlyInstantMethods } from "@/lib/instant-pay";
 import { purchaseRefunded } from "@/lib/refunds";
 import { sendEmail } from "@/lib/email";
 import { formatMoney } from "@/lib/money";
@@ -98,8 +98,8 @@ export async function packageState(bought: Bought, at = now()): Promise<PackageS
 }
 
 /** Opens the checkout that buys a package, on the creator's own account. */
-export async function packageCheckout(store: Store, product: Listing, pkg: CallPackage, origin: string): Promise<{ url: string; id: string }> {
-  if (!store.stripeAccountId) throw new Error("This store has no account");
+/** The checkout that buys a package, as Stripe is sent it. */
+export function packageCheckoutBody(store: Store, product: Listing, pkg: CallPackage, origin: string): URLSearchParams {
   const name = `${product.title} — ${pkg.sessions} sessions`;
   const body = new URLSearchParams({
     mode: "payment",
@@ -123,7 +123,17 @@ export async function packageCheckout(store: Store, product: Listing, pkg: CallP
   });
   if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
   applyTax(store, body);
-  const made = await onAccount("POST", store.stripeAccountId, "/checkout/sessions", body);
+  // Like every checkout here: only ways to pay that settle while the buyer is
+  // on the page, in the currency the page showed (lib/instant-pay.ts).
+  onlyInstantMethods(body);
+  inTheCurrencyShown(body);
+  return body;
+}
+
+/** Opens the checkout that buys a package, on the creator's own account. */
+export async function packageCheckout(store: Store, product: Listing, pkg: CallPackage, origin: string): Promise<{ url: string; id: string }> {
+  if (!store.stripeAccountId) throw new Error("This store has no account");
+  const made = await onAccount("POST", store.stripeAccountId, "/checkout/sessions", packageCheckoutBody(store, product, pkg, origin));
   if (typeof made.url !== "string" || typeof made.id !== "string") throw new Error("Stripe returned no checkout");
   return { url: made.url, id: made.id };
 }
@@ -187,6 +197,19 @@ export async function recordPackage(input: { store: Store; session: Session; pro
   return bought;
 }
 
+/** The coupon that makes one session of a package free: all of it, once, for one checkout. */
+export function sessionCouponBody(checkout: string): URLSearchParams {
+  return new URLSearchParams({
+    percent_off: "100",
+    duration: "once",
+    max_redemptions: "1",
+    name: "Session from a package",
+    "metadata[made_by]": "nimbus-labs",
+    "metadata[purpose]": "call-package",
+    "metadata[package]": checkout,
+  });
+}
+
 export type BookResult =
   | { ok: true; fromPackage: { id: string; coupon: string; email: string; back: string } }
   | { ok: false; reason: "gone" | "used" | "expired" | "refunded" | "error" };
@@ -207,20 +230,7 @@ export async function prepareSession(store: Store, token: string, origin: string
     const session = await onAccount("GET", store.stripeAccountId, `/checkout/sessions/${encodeURIComponent(found.checkout)}?expand[]=payment_intent.latest_charge`);
     if (!isSettled(session)) return { ok: false, reason: "gone" };
     if (await purchaseRefunded(store.stripeAccountId, session)) return { ok: false, reason: "refunded" };
-    const coupon = await onAccount(
-      "POST",
-      store.stripeAccountId,
-      "/coupons",
-      new URLSearchParams({
-        percent_off: "100",
-        duration: "once",
-        max_redemptions: "1",
-        name: "Session from a package",
-        "metadata[made_by]": "nimbus-labs",
-        "metadata[purpose]": "call-package",
-        "metadata[package]": found.checkout,
-      }),
-    );
+    const coupon = await onAccount("POST", store.stripeAccountId, "/coupons", sessionCouponBody(found.checkout));
     const id = typeof coupon.id === "string" ? coupon.id : "";
     if (!id) return { ok: false, reason: "error" };
     return {

@@ -511,6 +511,82 @@ export type HoldResult =
  * and the hold stops two buyers from winning the same seat at once — the
  * only seat of a one-to-one call, or the last of a group call.
  */
+/**
+ * The checkout of one booking, as Stripe is sent it: its price, what the
+ * store needs to know about it, and — for a session from a package — the
+ * coupon that makes it free. Kept apart from the holding of the time so the
+ * same request can be checked against Stripe itself (app/api/verify/stripe).
+ */
+export function callCheckoutBody(input: {
+  store: Store;
+  product: Product;
+  start: number;
+  end: number;
+  buyerTz: string;
+  origin: string;
+  via: { aff: string; rate: number } | null;
+  fromPackage: { id: string; coupon: string; email: string; back: string } | null;
+}): URLSearchParams {
+  const { store, product, start, end, buyerTz, origin } = input;
+  const pkg = input.fromPackage;
+  // Said in the buyer's own time zone: they are the one reading Stripe's page.
+  const when = `${readableTime(start, buyerTz)} (${zoneName(start, buyerTz)})`;
+  const name = `${product.title} \u2014 ${when}`;
+  const body = new URLSearchParams({
+    mode: "payment",
+    locale: "en",
+    "line_items[0][quantity]": "1",
+    // In the store's own currency (lib/money.ts), like every price it has.
+    "line_items[0][price_data][currency]": store.currency,
+    "line_items[0][price_data][unit_amount]": String(product.priceCents),
+    "line_items[0][price_data][product_data][name]": name.slice(0, 250),
+    "metadata[store]": store.handle,
+    "metadata[product]": product.id,
+    "metadata[title]": name.slice(0, 480),
+    "metadata[kind]": "call",
+    "metadata[start]": String(start),
+    "metadata[end]": String(end),
+    "metadata[tz]": buyerTz,
+    "payment_intent_data[metadata][store]": store.handle,
+    "payment_intent_data[metadata][product]": product.id,
+    "payment_intent_data[metadata][kind]": "call",
+    "payment_intent_data[metadata][start]": String(start),
+    success_url: `${origin}/@${store.handle}/thanks?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/@${store.handle}/book/${product.id}`,
+  });
+  if (product.summary) body.set("line_items[0][price_data][product_data][description]", product.summary);
+  if (pkg) {
+    body.set("discounts[0][coupon]", pkg.coupon);
+    body.set("customer_email", pkg.email);
+    body.set("metadata[package]", pkg.id);
+    body.set("cancel_url", pkg.back);
+    // Nothing is paid, so Stripe makes no payment of it to carry these.
+    for (const key of [...body.keys()]) if (key.startsWith("payment_intent_data")) body.delete(key);
+  } else if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
+  // Sent by an affiliate: credited to them, at today's share (lib/affiliates.ts).
+  // A booking is one product, with nothing else able to ride along, so a
+  // share of nothing is a sale that earns nothing and is not written down.
+  if (input.via && input.via.rate > 0 && !pkg) {
+    body.set("metadata[via]", input.via.aff);
+    body.set("metadata[via_rate]", String(input.via.rate));
+    body.set("payment_intent_data[metadata][via]", input.via.aff);
+  }
+  // What the creator wants to know before the call, asked before paying.
+  applyCheckoutFields(body, product.fields);
+  applyTax(store, body);
+  onlyInstantMethods(body);
+  inTheCurrencyShown(body);
+  // Stripe will not keep a checkout open for less than half an hour, counted
+  // from when it makes it, so the closing time is set at the last moment;
+  // the hold is counted from after, and lasts a minute longer, so the time
+  // is never released while the page that pays for it is still open.
+  body.set("expires_at", String(checkoutClosesAt()));
+  return body;
+}
+
+/** The API version a checkout with nothing to pay is made at (lib/call-packages.ts). */
+export const NO_COST_VERSION = "2026-08-26.dahlia";
+
 export async function holdAndCheckout(input: {
   store: Store;
   product: Product & { call: CallSetup };
@@ -549,61 +625,14 @@ export async function holdAndCheckout(input: {
     }
     if (!isBookable(setup, now, busy, start, product.id)) return { ok: false, reason: "taken" };
 
-    // Said in the buyer's own time zone: they are the one reading Stripe's page.
-    const when = `${readableTime(start, buyerTz)} (${zoneName(start, buyerTz)})`;
-    const name = `${product.title} \u2014 ${when}`;
-    const body = new URLSearchParams({
-      mode: "payment",
-      locale: "en",
-      "line_items[0][quantity]": "1",
-      // In the store's own currency (lib/money.ts), like every price it has.
-      "line_items[0][price_data][currency]": store.currency,
-      "line_items[0][price_data][unit_amount]": String(product.priceCents),
-      "line_items[0][price_data][product_data][name]": name.slice(0, 250),
-      "metadata[store]": store.handle,
-      "metadata[product]": product.id,
-      "metadata[title]": name.slice(0, 480),
-      "metadata[kind]": "call",
-      "metadata[start]": String(start),
-      "metadata[end]": String(end),
-      "metadata[tz]": buyerTz,
-      "payment_intent_data[metadata][store]": store.handle,
-      "payment_intent_data[metadata][product]": product.id,
-      "payment_intent_data[metadata][kind]": "call",
-      "payment_intent_data[metadata][start]": String(start),
-      success_url: `${origin}/@${store.handle}/thanks?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/@${store.handle}/book/${product.id}`,
-    });
-    if (product.summary) body.set("line_items[0][price_data][product_data][description]", product.summary);
     const pkg = input.fromPackage ?? null;
-    if (pkg) {
-      body.set("discounts[0][coupon]", pkg.coupon);
-      body.set("customer_email", pkg.email);
-      body.set("metadata[package]", pkg.id);
-      body.set("cancel_url", pkg.back);
-      // Nothing is paid, so Stripe makes no payment of it to carry these.
-      for (const key of [...body.keys()]) if (key.startsWith("payment_intent_data")) body.delete(key);
-    } else if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
-    // Sent by an affiliate: credited to them, at today's share (lib/affiliates.ts).
-    // A booking is one product, with nothing else able to ride along, so a
-    // share of nothing is a sale that earns nothing and is not written down.
-    if (input.via && input.via.rate > 0 && !pkg) {
-      body.set("metadata[via]", input.via.aff);
-      body.set("metadata[via_rate]", String(input.via.rate));
-      body.set("payment_intent_data[metadata][via]", input.via.aff);
-    }
-    // What the creator wants to know before the call, asked before paying.
-    applyCheckoutFields(body, product.fields);
-    applyTax(store, body);
-    onlyInstantMethods(body);
-    inTheCurrencyShown(body);
-    // Stripe will not keep a checkout open for less than half an hour, counted
-    // from when it makes it, so the closing time is set at the last moment;
-    // the hold is counted from after, and lasts a minute longer, so the time
-    // is never released while the page that pays for it is still open.
-    body.set("expires_at", String(checkoutClosesAt()));
+    const body = callCheckoutBody({ store, product, start, end, buyerTz, origin, via: input.via ?? null, fromPackage: pkg });
 
-    const session = await onAccount("POST", store.stripeAccountId, "/checkout/sessions", body);
+    // A session from a package is a checkout with nothing to pay, which Stripe
+    // takes only at API version 2023-08-16 or later
+    // (docs.stripe.com/payments/checkout/no-cost-orders). A creator's own
+    // account may default to an older one, so that checkout names its version.
+    const session = await onAccount("POST", store.stripeAccountId, "/checkout/sessions", body, pkg ? NO_COST_VERSION : undefined);
     if (typeof session.url !== "string" || !session.url || typeof session.id !== "string") {
       return { ok: false, reason: "error" };
     }
