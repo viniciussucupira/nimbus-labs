@@ -121,7 +121,13 @@ export async function POST(request: NextRequest) {
     if (action === "profile") {
       if (!viewer.member) return back(`${home}/you`, "full");
       const name = cleanLine(form.get("name"), MAX_DISPLAY_NAME);
-      await setProfile(id, viewer.member, { name, dir: form.get("dir") === "1", mail: form.get("mail") === "1" });
+      await setProfile(id, viewer.member, {
+        name,
+        dir: form.get("dir") === "1",
+        mail: form.get("mail") === "1",
+        // The creator's questions, when there are any (the page sends one field per question).
+        ...(config.questions.length ? { answers: form.getAll("answer").map(String), questions: config.questions } : {}),
+      });
       return back(`${home}/you`, "saved");
     }
 
@@ -166,6 +172,7 @@ export async function POST(request: NextRequest) {
       if (poll && !title) return back(fromPage, "polltitle");
       if (linkCount(`${title}\n${text}`) > MAX_LINKS_IN_POST) return back(fromPage, "links");
       if (!owner && !viewer.member?.n) return back(`${home}/you`, "name");
+      if (!owner && config.questions.length && !viewer.member?.qa) return back(`${home}/you`, "questions");
       if (!owner && (!(await within(id, key, "post")) || !(await within(id, key, "postDay")))) return back(fromPage, "slow");
       let img: CommunityImage | null = null;
       if (path) {
@@ -235,6 +242,7 @@ export async function POST(request: NextRequest) {
       if (!text) return back(postPage, "empty", "reply");
       if (linkCount(text) > MAX_LINKS_IN_COMMENT) return back(postPage, "links", "reply");
       if (!owner && !viewer.member?.n) return back(`${home}/you`, "name");
+      if (!owner && config.questions.length && !viewer.member?.qa) return back(`${home}/you`, "questions");
       if (!owner && !(await within(id, key, "comment"))) return back(postPage, "slow", "reply");
       const parent = field("parent", 12);
       const made = await addComment(id, post.id, { parent: ITEM_ID.test(parent) ? parent : "", author: key, text });

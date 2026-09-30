@@ -6,7 +6,7 @@ import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { communityViewer } from "@/lib/community-access";
 import { canAnnounceByEmail } from "@/lib/community-mail";
-import { MAX_DISPLAY_NAME } from "@/lib/community-text";
+import { MAX_ANSWER, MAX_DISPLAY_NAME } from "@/lib/community-text";
 import { Carry, CommunityBar, NOTICES } from "@/components/community-parts";
 import { levelOf, pointsOf, toNextLevel } from "@/lib/community-points";
 
@@ -66,6 +66,27 @@ export default async function CommunityYouPage({ params, searchParams }: Params)
                 </p>
               ) : null}
             </div>
+            {viewer.config.questions.length ? (
+              <fieldset className="space-y-4">
+                <legend className="st-label">{`${store.name} asks everyone who joins`}</legend>
+                <p className="st-muted -mt-2 text-sm">
+                  {`Answered once, before your first post or comment. Only ${store.name} reads your answers; other members never see them.`}
+                </p>
+                {viewer.config.questions.map((question, i) => (
+                  <div key={i}>
+                    <label htmlFor={`you-answer-${i}`} className="block text-sm font-semibold">{question}</label>
+                    <textarea
+                      id={`you-answer-${i}`}
+                      name="answer"
+                      rows={2}
+                      maxLength={MAX_ANSWER}
+                      defaultValue={member.q[i] ?? ""}
+                      className="st-field mt-2 resize-y"
+                    />
+                  </div>
+                ))}
+              </fieldset>
+            ) : null}
             <label className="flex min-h-6 items-start gap-3">
               <input type="checkbox" name="dir" value="1" defaultChecked={member.dir} className="mt-0.5 h-5 w-5 shrink-0" />
               <span>

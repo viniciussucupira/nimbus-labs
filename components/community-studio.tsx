@@ -19,6 +19,9 @@ import {
   RATE_LIMITS,
   MAX_EVENT_CAP,
   MAX_UPCOMING_EVENTS,
+  MAX_QUESTION,
+  MAX_QUESTIONS,
+  MAX_WELCOME,
 } from "@/lib/community-text";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 import { MAX_SLOW } from "@/lib/community-chat";
@@ -48,6 +51,8 @@ export type StudioMember = {
   mail: boolean;
   /** All-time points (lib/community-points.ts). */
   points: number;
+  /** Their answers to the questions asked when they joined, with each question. */
+  answers: { q: string; a: string }[];
 };
 
 type ProductChoice = { id: string; title: string; free: boolean; kind: string };
@@ -65,6 +70,7 @@ const MESSAGES: Record<string, string> = {
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   invalid: "That could not be read. Nothing was changed.",
   rewards: "Pick one of your courses for each level, or no course.",
+  questions: `Ask up to ${MAX_QUESTIONS} questions.`,
   level: "Pick who may start posts here.",
   store_full: "Your store has reached the most it can hold. Remove something, or shorten a long list of choices, first.",
   server_error: "Something went wrong on our side. Try again in a moment.",
@@ -195,6 +201,7 @@ export function CommunityStudio({
             <Basics handle={handle} address={address} on={on} config={config} busy={busy} run={run} problem={problem} totals={totals} canEmail={canEmail} />
             {events}
             <Access config={config} products={products} busy={busy} run={run} problem={problem} />
+            <Welcome config={config} busy={busy} run={run} problem={problem} />
             <Messages config={config} busy={busy} run={run} problem={problem} />
             <Room config={config} busy={busy} run={run} problem={problem} />
             <Spaces config={config} products={products} busy={busy} run={run} problem={problem} />
@@ -709,6 +716,77 @@ function OnlyPicker({
   );
 }
 
+/**
+ * Welcoming a new member (lib/community-access.ts): up to MAX_QUESTIONS
+ * questions, answered once before a first post or comment and read only by
+ * the creator, and a message sent privately on a member's first visit.
+ */
+function Welcome({ config, busy, run, problem }: { config: CommunityConfig; busy: string | null; run: Runner; problem: Problem }) {
+  const [questions, setQuestions] = useState<string[]>(
+    Array.from({ length: MAX_QUESTIONS }, (_, i) => config.questions[i] ?? ""),
+  );
+  const [welcome, setWelcome] = useState(config.welcome);
+  const asked = questions.map((q) => q.trim()).filter(Boolean);
+  const changed = JSON.stringify(asked) !== JSON.stringify(config.questions) || welcome.trim() !== config.welcome.trim();
+  return (
+    <section className="card mt-8 p-6 sm:p-8" aria-labelledby="cm-welcome-title">
+      <h2 id="cm-welcome-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Welcoming new members</h2>
+      <p className="mt-2 text-ink-soft">
+        Know who joined, and make them feel expected. Both are optional. The questions are asked of every member who has
+        not answered yet, before their next post or comment; the message goes to members who come in from now on.
+      </p>
+      <form
+        className="mt-4 space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (changed) run("welcome", { action: "onboarding", questions: asked, welcome }, "Saved.");
+        }}
+      >
+        <fieldset className="space-y-2">
+          <legend className="field-label">{`Questions for everyone who joins (up to ${MAX_QUESTIONS})`}</legend>
+          <p className="text-xs text-ink-soft">
+            Answered once, on their You page, before their first post or comment. Only you read the answers, under Members below.
+          </p>
+          {questions.map((q, i) => (
+            <div key={i}>
+              <label htmlFor={`cm-question-${i}`} className="sr-only">{`Question ${i + 1}`}</label>
+              <input
+                id={`cm-question-${i}`}
+                className="field"
+                maxLength={MAX_QUESTION}
+                placeholder={i === 0 ? "What brought you here?" : i === 1 ? "What do you want to be able to do in 90 days?" : "A third question, if you want one"}
+                value={q}
+                onChange={(e) => setQuestions((all) => all.map((x, n) => (n === i ? e.target.value : x)))}
+              />
+            </div>
+          ))}
+        </fieldset>
+        <div>
+          <label htmlFor="cm-welcome" className="field-label">A welcome message, sent privately on their first visit</label>
+          <textarea
+            id="cm-welcome"
+            className="field mt-1 resize-y"
+            rows={4}
+            maxLength={MAX_WELCOME}
+            placeholder="Welcome in! Start with the pinned post, then say hello in Introductions."
+            value={welcome}
+            onChange={(e) => setWelcome(e.target.value)}
+          />
+          <p className="mt-1 text-xs text-ink-soft">
+            {config.dm.on
+              ? "It arrives in their Messages, from you, once. They can reply to it."
+              : "It is sent only while private messages are on (below): switch them on for it to go out."}
+          </p>
+        </div>
+        <button type="submit" className="btn btn-primary btn-sm" aria-busy={busy === "welcome"} disabled={busy !== null || !changed}>
+          Save
+        </button>
+      </form>
+      {problem("welcome")}
+    </section>
+  );
+}
+
 /** Who may start a post in a space: any member, or members from a level on. */
 function LevelPicker({ id, level, setLevel }: { id: string; level: number; setLevel: (n: number) => void }) {
   return (
@@ -1015,6 +1093,19 @@ function Members({
                     {m.removed ? <span className="tag ml-2 align-middle">Taken out</span> : m.muted ? <span className="tag ml-2 align-middle">Muted</span> : null}
                   </p>
                   <p className="break-all text-sm text-ink-soft">{m.email}</p>
+                  {m.answers.length ? (
+                    <details className="mt-1 text-sm">
+                      <summary className="cursor-pointer font-semibold text-violet-deep">Their answers</summary>
+                      <dl className="mt-1 space-y-1">
+                        {m.answers.map((x, i) => (
+                          <div key={i}>
+                            <dt className="text-xs text-ink-mute">{x.q}</dt>
+                            <dd className="whitespace-pre-line break-words text-ink">{x.a || "—"}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </details>
+                  ) : null}
                   <p className="text-xs text-ink-mute">
                     {`Level ${levelOf(m.points)} · ${m.points} ${m.points === 1 ? "point" : "points"} · Joined ${day(m.joined)} · last here ${day(m.seen)}${m.listed ? " · in the directory" : ""}${m.mail ? " · wants the community's emails" : ""}`}
                   </p>

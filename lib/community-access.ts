@@ -68,6 +68,7 @@ import {
   readMember,
   touchMember,
 } from "@/lib/community";
+import { send as sendMessage } from "@/lib/community-dm";
 
 const OPEN_SECONDS = 5 * 60;
 const SHUT_SECONDS = 60;
@@ -317,6 +318,12 @@ export async function communityViewer(store: Store, cookies: CookieJar): Promise
   if (existing?.removed) return { state: "removed", config, email: learner.email };
   if (!(await holdsTicket(store, config, learner.email))) return { state: "closed", config, email: learner.email };
   const member = await touchMember(id, learner.email, existing);
+  // The first time somebody comes in, the creator's welcome, sent privately
+  // from the creator, where messages are on (lib/community-dm.ts). Once: the
+  // record did not exist before this request, and the one made is theirs.
+  if (!existing && member) {
+    await welcome(id, config, member.k).catch((error) => console.error("sending a community welcome failed", error));
+  }
   return {
     state: "in",
     config,
@@ -326,6 +333,20 @@ export async function communityViewer(store: Store, cookies: CookieJar): Promise
     member,
     canWrite: Boolean(member && !member.muted),
   };
+}
+
+/**
+ * Sends the creator's welcome to a member who has just come in for the first
+ * time, privately, from the creator — once, whatever happens at the same
+ * moment: two first requests both find no record, and the mark lets only one
+ * of them send. Nothing is sent while private messages are off.
+ */
+export async function welcome(id: string, config: CommunityConfig, member: string): Promise<boolean> {
+  if (!config.welcome.trim() || !config.dm.on) return false;
+  const [first] = await redisPipeline([["HSETNX", `nl:cm:${id}:wel`, member, Math.floor(Date.now() / 1000)]]);
+  if (Number(first) !== 1) return false;
+  const sent = await sendMessage(id, config.dm, CREATOR, member, config.welcome);
+  return sent.ok;
 }
 
 // ------------------------------------------------------------ emailed links

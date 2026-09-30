@@ -166,6 +166,7 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
       listed: m.dir && Boolean(m.n),
       mail: m.mail,
       points: points.get(m.k) ?? 0,
+      answers: m.qa ? m.qq.map((q, i) => ({ q, a: m.q[i] ?? "" })) : [],
     }));
     totals = { members: first.total, listed, posts, reach };
 

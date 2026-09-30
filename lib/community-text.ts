@@ -40,6 +40,16 @@ export const MAX_LINKS_IN_COMMENT = 5;
 /** The name a member chooses to be seen by. Never their email address. */
 export const MAX_DISPLAY_NAME = 40;
 
+/**
+ * Welcoming a new member: up to MAX_QUESTIONS questions the creator asks,
+ * answered once before a member's first post or comment, and one message
+ * sent to them privately the first time they come in.
+ */
+export const MAX_QUESTIONS = 3;
+export const MAX_QUESTION = 200;
+export const MAX_ANSWER = 500;
+export const MAX_WELCOME = 1_000;
+
 /** How many posts may be pinned to the top of the feed at once. */
 export const MAX_PINNED = 3;
 /** Every post a community holds, and every comment under one post. */
