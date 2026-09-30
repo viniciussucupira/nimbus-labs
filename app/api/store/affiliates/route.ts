@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { StoreFullError, setAffiliateSetting, storeForEmail } from "@/lib/store";
 import { readMoney } from "@/lib/money";
 import { guardStoreWrite, text } from "@/lib/store-request";
-import { parseAffiliateSetting } from "@/lib/affiliate-setting";
+import { MAX_COMMISSION, MIN_COMMISSION, parseAffiliateSetting } from "@/lib/affiliate-setting";
 import { MAX_REFERENCE_LENGTH, addPayout, decide, removePayout, setAffiliateRate } from "@/lib/affiliates";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -68,8 +68,9 @@ export async function POST(request: NextRequest) {
     if (action === "rate") {
       const rate = body.rate === null || body.rate === "" ? null : Number(body.rate);
       if (rate !== null && !Number.isInteger(rate)) return fail("rate");
+      if (rate !== null && (rate < MIN_COMMISSION || rate > MAX_COMMISSION)) return fail("rate");
       const done = await setAffiliateRate(store, text(body.id, 20), rate);
-      return done ? Response.json({ ok: true, rate: done.rate }) : fail(rate === null ? "unknown" : "rate");
+      return done ? Response.json({ ok: true, rate: done.rate }) : fail("unknown");
     }
     if (action === "unpay") {
       return (await removePayout(store, text(body.payout, 20))) ? Response.json({ ok: true }) : fail("unknown");
