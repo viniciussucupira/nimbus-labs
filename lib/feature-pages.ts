@@ -409,6 +409,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "Every tool on your own account",
         intro: "Stan's pricing page, read on September 20, 2026, puts discount codes, order bumps, upsells and payment plans on its $99 plan.",
         items: [
+          { icon: "clock", title: "A sale with a real end", body: "Pick a percentage and when it starts and ends, for every product or only some. While it runs the old price is crossed out on your store and on each product's page, with when it ends, and Stripe takes it off with no code to type. At the end it stops by itself, and the discount stops working at Stripe too." },
           { icon: "percent", title: "Discount codes", body: "A word you choose, a percentage or an amount off, and a cap on uses if you want one. Up to twenty codes, kept as coupons on your own Stripe." },
           { icon: "plus", title: "Add it at checkout", body: "A box above the buy button offers another of your products at a price of your own. Never pre-checked for the buyer." },
           { icon: "bolt", title: "One click after paying", body: "The thank-you page offers one more product, or up to five in a row as a funnel, charged to the card just used. Only in that browser, for an hour, and only after a card, Apple Pay or Google Pay payment.", href: "/platform/funnels" },

@@ -253,6 +253,13 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can I run a sale, like Black Friday?",
+        a: [
+          "Yes, on the $29 plan. In your studio, under \u201cA sale across the store\u201d, pick a percentage, when it starts and ends (at most 31 days), and whether it covers every product it can or only some. While it runs, your store and each product's page show the old price crossed out, the new one and when it ends, and Stripe takes it off at checkout with no code to type.",
+          "It ends by itself at the time you set: the prices go back, and the discount stops working at Stripe too. It covers products bought once at one price. Memberships, calls, products with price options or a price the buyer chooses keep their price, and on a product with a payment plan the sale price is for paying in full, as its page says.",
+        ],
+      },
+      {
         q: "Can my buyers give something as a gift?",
         a: [
           "Yes, on any paid product bought once that hands over a file, a link, a course or a bundle. Under the buy button on its page there is \u201cBuy it as a gift\u201d: the buyer types the recipient's email, their own name and a message, and pays on Stripe's page as for anything else, on your own Stripe account.",

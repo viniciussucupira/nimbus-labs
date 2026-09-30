@@ -1,3 +1,4 @@
+import { endsWords, saleClock, saleRunning } from "@/lib/store-sale";
 import { soonProducts } from "@/lib/waitlist";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -230,6 +231,12 @@ export default async function StorePage({ params, searchParams }: Params) {
 
           {total > 0 ? (
             <>
+              {saleRunning(store.sale, saleClock()) ? (
+                <p className="st-card mb-4 px-5 py-4 text-center font-semibold" style={{ color: "var(--st-accent-text)" }} role="status">
+                  {`${store.sale.name ? `${store.sale.name}: ` : ""}${store.sale.percent}% off the products with the old price crossed out · ${endsWords(store.sale.ends, saleClock())}`}
+                  <span className="st-muted mt-1 block text-sm font-normal">Prices below already show it; no code needed.</span>
+                </p>
+              ) : null}
               <ul className="space-y-4">
                 {listings.map((product, index) => (
                   <ProductCard

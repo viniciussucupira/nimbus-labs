@@ -1,3 +1,5 @@
+import { SaleEditor } from "@/components/sale-editor";
+import { saleClock, saleable } from "@/lib/store-sale";
 import { waitlistViews } from "@/lib/waitlist";
 import { freshCounts } from "@/lib/lesson-comments";
 import type { Metadata } from "next";
@@ -15,8 +17,9 @@ import {
   setSubscription,
   storeFolder,
   type Listing,
+  type Store,
 } from "@/lib/store";
-import { productCount, readKind, readListings, sellsAny, studioShelf } from "@/lib/catalog";
+import { KIND, productCount, readKind, readListings, sellsAny, studioShelf } from "@/lib/catalog";
 import { HandleForm } from "@/components/handle-form";
 import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
@@ -386,6 +389,16 @@ async function newCommentsFor(products: { id: string; course?: { id: string } | 
   if (!courses.length) return {};
   const counts = await freshCounts(courses.map(([, c]) => c)).catch(() => new Map<string, number>());
   return Object.fromEntries(courses.map(([product, c]) => [product, counts.get(c) ?? 0]));
+}
+
+/** The products a store-wide sale can cover (lib/store-sale.ts), by title, for the sale's picker. */
+async function saleCandidates(store: Store): Promise<{ id: string; title: string }[]> {
+  const ids = store.catalog.items
+    .filter((item) => (item.kind & KIND.paid) !== 0 && (item.kind & (KIND.call | KIND.recurring | KIND.hidden)) === 0 && item.options.length === 0)
+    .map((item) => item.id);
+  if (!ids.length) return [];
+  const listings = await readListings(store, ids).catch(() => []);
+  return listings.filter(saleable).map((p) => ({ id: p.id, title: p.title }));
 }
 
 export default async function StudioPage({
@@ -998,6 +1011,13 @@ export default async function StudioPage({
             {may("settings") ? (
               <>
                 <DiscountEditor selling={current ? canSell(current) : false} currency={store.currency} />
+
+                <SaleEditor
+                  initial={store.sale}
+                  products={await saleCandidates(store)}
+                  connected={Boolean(current?.stripeAccountId)}
+                  now={saleClock()}
+                />
 
                 <PixelEditor pixels={store.pixels} />
 

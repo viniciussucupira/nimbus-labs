@@ -50,6 +50,7 @@ import { type TaxSetting, NO_TAX, parseTax } from "@/lib/tax";
 import { type RecoverySetting, NO_RECOVERY, parseRecovery } from "@/lib/recovery-setting";
 import { type SaveOffer, NO_SAVE, parseSaveOffer } from "@/lib/save-offer";
 import { type WinBack, NO_WINBACK, parseWinBack } from "@/lib/winback";
+import { type StoreSale, NO_SALE, parseSale } from "@/lib/store-sale";
 import { type Cycle, type Tier, parseCycle, parseTier } from "@/lib/plan";
 import { COMMUNITY_ID } from "@/lib/community-text";
 import { type Bump, type Plan, canBeBumped, isOneOff } from "@/lib/product-extras";
@@ -413,6 +414,8 @@ export type Store = {
    * (lib/winback.ts). Off for every store until its creator sets one.
    */
   winback: WinBack;
+  /** A sale across the store, with its start and end (lib/store-sale.ts). None until the creator sets one. */
+  sale: StoreSale;
   /** The store's community, once the creator has made one (lib/community.ts). */
   community: CommunityRef | null;
   /**
@@ -651,6 +654,7 @@ function parseStore(raw: unknown): Store | null {
       // does until its creator sets one.
       save: parseSaveOffer(value.save),
       winback: parseWinBack(value.winback),
+      sale: parseSale(value.sale),
       // Stores written before communities existed simply have none.
       community: parseCommunityRef(value.community),
       affiliates: parseAffiliateSetting(value.affiliates),
@@ -810,6 +814,7 @@ async function freshStore(fields: {
     recovery: { ...NO_RECOVERY },
     save: { ...NO_SAVE },
     winback: { ...NO_WINBACK },
+    sale: { ...NO_SALE },
     community: null,
     affiliates: parseAffiliateSetting(null),
     currency: DEFAULT_CURRENCY,
@@ -1829,6 +1834,14 @@ export async function setWinBack(
   winback: WinBack,
 ): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
   const next = await patchStore(email, () => ({ winback: parseWinBack(winback) }));
+  return next ? { ok: true, store: next } : { ok: false, reason: "none" };
+}
+
+export async function setStoreSale(
+  email: string,
+  sale: StoreSale,
+): Promise<{ ok: true; store: Store } | { ok: false; reason: "none" }> {
+  const next = await patchStore(email, () => ({ sale: parseSale(sale) }));
   return next ? { ok: true, store: next } : { ok: false, reason: "none" };
 }
 

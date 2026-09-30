@@ -1,3 +1,4 @@
+import { endsWords, saleClock, saleOff, salePrice } from "@/lib/store-sale";
 import Link from "next/link";
 import { isFree, syncTakesBuyer, type Listing, type Store } from "@/lib/store";
 import { formatMoney } from "@/lib/money";
@@ -31,6 +32,45 @@ export function pricePill(product: Listing, currency: string): string {
   const options = sellableOptions(product);
   const every = product.recurring ? ` ${everyLabel(product.recurring.interval)}` : "";
   return `${options.length > 1 ? "from " : ""}${formatMoney(fromPriceCents(product), currency)}${every}`;
+}
+
+/** The percentage a running store-wide sale takes off this product now, or 0 (lib/store-sale.ts). */
+export function offNow(store: Store, product: Listing): number {
+  return store.sale ? saleOff(store.sale, product, saleClock()) : 0;
+}
+
+/**
+ * The price pill, with the old price crossed out while a sale covers the
+ * product. What is crossed out is the product's price, never a made-up one.
+ */
+export function PriceTag({ store, product }: { store: Store; product: Listing }) {
+  const off = offNow(store, product);
+  if (!off) return <>{pricePill(product, store.currency)}</>;
+  return (
+    <>
+      <s className="st-muted mr-1.5 font-normal">
+        <span className="sr-only">Was </span>
+        {formatMoney(product.priceCents, store.currency)}
+      </s>
+      <span className="sr-only">now </span>
+      {formatMoney(salePrice(product.priceCents, off), store.currency)}
+    </>
+  );
+}
+
+/** "Black Friday: 30% off · Ends in 2 days", under the buy button while a sale covers it. */
+export function SaleNote({ store, product }: { store: Store; product: Listing }) {
+  const off = offNow(store, product);
+  if (!off) return null;
+  const end = new Date(store.sale.ends * 1000);
+  return (
+    <p className="mt-2 text-center text-sm font-semibold" style={{ color: "var(--st-accent-text)" }}>
+      {`${store.sale.name ? `${store.sale.name}: ` : ""}${off}% off · ${endsWords(store.sale.ends, saleClock())}`}
+      <span className="st-muted block text-xs font-normal">
+        {`Until ${end.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" })}. Taken off on the payment page, no code needed${activePlan(product) ? "; the sale price is for paying in full" : ""}.`}
+      </span>
+    </p>
+  );
 }
 
 /** What a card says about a call: one person, a group, or dated live sessions. */
@@ -152,7 +192,7 @@ export function GiftBox({ store, product, problem = "" }: { store: Store; produc
           <textarea className="st-field mt-2" name="gift_message" rows={3} maxLength={500} />
         </label>
         <button type="submit" className="btn st-btn btn-block">
-          {`Buy as a gift — ${formatMoney(product.priceCents, store.currency)}`}
+          {`Buy as a gift — ${formatMoney(salePrice(product.priceCents, offNow(store, product)), store.currency)}`}
         </button>
         <p className="st-muted text-xs">
           {`You pay on Stripe's page. Right after, they get one email from ${store.name} with your name, your message and a link to open it on their own address. You get the receipt, not a copy.`}
@@ -250,6 +290,8 @@ export function BuyBox({
   const plan = activePlan(product);
   const pwyw = activePwyw(product);
   const trial = product.recurring && product.recurring.trialDays > 0 ? product.recurring.trialDays : 0;
+  // A store-wide sale on this product right now (lib/store-sale.ts): its price everywhere below.
+  const off = offNow(store, product);
 
   if (isFree(product)) {
     return canGiveProduct(store, product) ? (
@@ -361,7 +403,7 @@ export function BuyBox({
                 <input id={`pf-${product.id}`} type="radio" name="pay" value="full" defaultChecked className="h-4 w-4" />
                 <span className="font-bold">Pay in full</span>
               </span>
-              <span className="font-semibold tabular-nums">{`${formatMoney(product.priceCents, store.currency)}`}</span>
+              <span className="font-semibold tabular-nums">{`${formatMoney(salePrice(product.priceCents, off), store.currency)}`}</span>
             </label>
             <label htmlFor={`pp-${product.id}`} className="st-option">
               <span className="flex items-center gap-3">
@@ -379,7 +421,7 @@ export function BuyBox({
           <span className="flex items-start gap-3">
             <input id={`b-${product.id}`} type="checkbox" name="bump" value="yes" className="mt-1 h-4 w-4 shrink-0" />
             <span>
-              <span className="block font-bold">{`Add ${extra.target.title} for ${formatMoney(extra.bump.priceCents, store.currency)}`}</span>
+              <span className="block font-bold">{`Add ${extra.target.title} for ${formatMoney(salePrice(extra.bump.priceCents, off), store.currency)}`}</span>
               {extra.target.bundle ? (
                 <span className="st-muted mt-0.5 block text-sm">{`A bundle of ${extra.target.bundle.length} products, each yours to open straight after paying.`}</span>
               ) : null}
@@ -412,7 +454,7 @@ export function BuyBox({
                   : "Buy the one you picked"
                 : product.recurring
                   ? `Subscribe — ${formatMoney(product.priceCents, store.currency)}${every}`
-                  : `Buy for ${formatMoney(product.priceCents, store.currency)}`}
+                  : `Buy for ${formatMoney(salePrice(product.priceCents, off), store.currency)}`}
         </span>
         {/* With the box ticked, the button says the new total. */}
         {plan ? <span className="plan-on">{`Start the plan: ${formatMoney(plan.amountCents, store.currency)} today`}</span> : null}
@@ -425,7 +467,7 @@ export function BuyBox({
           <span className="bump-on">
             {options.length > 0
               ? `Buy it with ${extra.target.title}`
-              : `Buy both for ${formatMoney(product.priceCents + extra.bump.priceCents, store.currency)}`}
+              : `Buy both for ${formatMoney(salePrice(product.priceCents, off) + salePrice(extra.bump.priceCents, off), store.currency)}`}
           </span>
         ) : null}
       </button>
@@ -442,6 +484,7 @@ export function BuyBox({
           )}${product.recurring.payments > 0 ? "" : " until you cancel"}. Cancel before the trial ends and you pay nothing.`}
         </p>
       ) : null}
+      <SaleNote store={store} product={product} />
     </form>
   );
 }
@@ -493,7 +536,7 @@ export function pageAction(
         ? `Start the ${trial}-day free trial`
         : product.recurring
           ? `Subscribe — ${formatMoney(product.priceCents, store.currency)}${every}`
-          : `Buy for ${formatMoney(product.priceCents, store.currency)}`,
+          : `Buy for ${formatMoney(salePrice(product.priceCents, offNow(store, product)), store.currency)}`,
   };
 }
 
@@ -567,7 +610,7 @@ export function ProductCard({
           {product.title}
         </Link>
       </h2>
-      <p className="st-price text-base">{pricePill(product, store.currency)}</p>
+      <p className="st-price text-base"><PriceTag store={store} product={product} /></p>
     </div>
   );
 
@@ -646,7 +689,7 @@ export function ProductCard({
                 {product.title}
               </Link>
             </h2>
-            <p className="st-price mt-2 text-sm">{pricePill(product, store.currency)}</p>
+            <p className="st-price mt-2 text-sm"><PriceTag store={store} product={product} /></p>
             {stars ? <div>{stars}</div> : null}
             <ProductFacts store={store} product={product} bundleItems={bundleItems} />
             {/* Beside the picture on a wide screen, where there is room for it. */}
