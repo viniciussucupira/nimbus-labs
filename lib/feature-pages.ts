@@ -1078,7 +1078,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Let the people who love it",
     highlight: "sell it for you",
     intro:
-      "People apply and you approve, or everyone who buys takes a link at once. Each affiliate gets a page of their own with their clicks, sales and what they are owed. You pay them yourself: every sale lands in full in your own Stripe account.",
+      "People apply and you approve, or everyone who buys takes a link at once. Each affiliate gets a page of their own with their clicks, sales and what they are owed. You pay them from your own PayPal in one press, or by itself on your payday: every sale lands in full in your own Stripe account, and nothing is held.",
     badge: WORKING,
     accent: "from-mint-brand to-sky-brand",
     plan: "creator",
@@ -1092,13 +1092,13 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { title: "Set the terms", body: "A share of 1% to 90%, for the whole store or product by product, and a window of 1 to 90 days after a click." },
           { title: "Approve who you want", body: "People apply on your store's affiliate page with an email address they confirm, and nobody is in until you say so. Or switch on buyers joining without applying: the thanks page and the purchase email offer everyone who buys their own link, approved at once." },
-          { title: "Pay what is owed", body: "Your studio shows what each affiliate earned and what you have paid. Pay them however you agree, then mark it paid." },
+          { title: "Pay what is owed", body: "Connect your own PayPal Business account and pay everyone owed in one press, or let it pay by itself on your payday. Or download the batch for PayPal or Wise and mark it paid." },
         ],
       },
       {
         kind: "note",
-        title: "We do not pay your affiliates, and we say so first",
-        body: "Stan pays its affiliates automatically, on its $99 plan. We never hold your money, so there is nothing for us to pay out from: you pay affiliates yourself, by bank transfer, PayPal or however you agree. What you get from us is the record of who sent which sale and what it earned, on the $29 plan.",
+        title: "Paid from your PayPal, not from money we hold",
+        body: "Stan pays affiliates out of your sale, on its $99 plan, after holding it for 7 business days. We never hold your money: your sale lands in full in your Stripe account at once, and your affiliates are paid from your own PayPal, in one press or by itself on your payday, on the $29 plan. It needs a PayPal Business account with PayPal's Payouts switched on, and PayPal charges you its own fee on each payment."
       },
       {
         kind: "features",
@@ -1116,7 +1116,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do",
         items: [
-          "No automatic payouts. You pay affiliates yourself and mark each payment in your studio.",
+          "Paying through us is PayPal only, from a PayPal Business account with Payouts switched on, to the email address each affiliate joined with; an affiliate with no PayPal account there has 30 days to claim it, or it comes back to you and stays owed. Wise or a bank transfer is a file you upload yourself.",
           "Memberships and payment plans earn no commission; one-off sales and booked calls do.",
           "A dispute on your Stripe account does not cancel a commission by itself: check your dashboard before you pay.",
           "Contracts, tax forms and payments between you and your affiliates are yours to arrange.",

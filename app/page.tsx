@@ -162,7 +162,7 @@ const GROUPS: Group[] = [
       ...(DOMAINS ? [{ title: "Your own domain", body: "shop.yourname.com opens your store, certificate included.", pro: true }] : []),
       { title: "Verified reviews", body: "Only from buyers who paid. You can answer them, never edit them." },
       { title: "Your email platform", body: "Mailchimp, Kit, beehiiv or MailerLite, fed only with people who agreed." },
-      { title: "Affiliates", body: "A link and a page for each one. You pay them yourself." },
+      { title: "Affiliates", body: "A link and a page for each one. Paid from your own PayPal in one press." },
       { title: "Ad pixels", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount." },
       { title: "Webhooks", body: "Sales, leads and bookings, sent to Zapier, Make or your own server." },
       { title: "Your photo, your color", body: "Four themes, ten colors or your own, each checked for contrast." },
@@ -738,7 +738,7 @@ export default function Home() {
                 <div>
                   <p className="font-semibold text-ink">Where Stan is ahead today</p>
                   <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                    Stan has PayPal at checkout, affiliates paid automatically, automatic Instagram
+                    Stan has PayPal at checkout, affiliates paid with no PayPal account of your own, automatic Instagram
                     replies, Zoom links made for each booking and webinar, and an iPhone app. We do not have those, and we say so on every page that could make you think otherwise.
                   </p>
                 </div>

@@ -3,7 +3,8 @@ import { creatorFrom } from "@/lib/studio-route";
 import { storeForEmail } from "@/lib/store";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { MAX_REFERENCE_LENGTH, readBook } from "@/lib/affiliates";
-import { type BatchProvider, batchFile, batchTotal, owedLines, recordBatch } from "@/lib/affiliate-payouts";
+import { type BatchProvider, batchFile, batchTotal, recordBatch } from "@/lib/affiliate-payouts";
+import { onTheirWay, payableLines } from "@/lib/paypal-payouts";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -24,7 +25,8 @@ export async function GET(request: NextRequest) {
   const { store } = creator;
   try {
     const book = await readBook(store);
-    const lines = owedLines(book);
+    // Anyone with a PayPal payment on its way is left out, so nobody is paid twice.
+    const lines = payableLines(book, await onTheirWay(store));
     if (!lines.length) {
       return new Response("Nobody is owed anything right now.", { status: 409, headers: { "Cache-Control": "no-store" } });
     }
@@ -71,13 +73,19 @@ export async function POST(request: NextRequest) {
     // known, and writing payouts against a guess is how a book starts lying.
     if (!book.refundsChecked) return fail("refunds", 409);
 
-    const lines = owedLines(book);
+    const away = await onTheirWay(store);
+    const lines = payableLines(book, away);
     if (!lines.length) return fail("nothing", 409);
 
-    const done = await recordBatch(store, book, {
-      date,
-      reference: text(body.reference, MAX_REFERENCE_LENGTH * 2),
-    });
+    const done = await recordBatch(
+      store,
+      book,
+      {
+        date,
+        reference: text(body.reference, MAX_REFERENCE_LENGTH * 2),
+      },
+      away,
+    );
     return Response.json({
       ok: true,
       written: done.written,

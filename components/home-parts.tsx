@@ -356,7 +356,7 @@ const INCLUDED = [
   "Up to three prices on any product, bundles of 2 to 20 products, pay what you want, discount codes and payment plans",
   "15 currencies, and Apple Pay, Google Pay, Klarna and the other ways to pay you switch on in Stripe",
   "Offers before and after paying: a box at checkout, and up to five one-click offers after",
-  "An affiliate program with a page for each affiliate; you pay them yourself",
+  "An affiliate program with a page for each affiliate, paid from your own PayPal in one press",
   "Ad pixels, and your own numbers counted without cookies, as CSV files too",
   "License keys, stamped PDFs, course quizzes and certificates",
   "A private video room for each booking if you want one, and calendar sync for your calls",
