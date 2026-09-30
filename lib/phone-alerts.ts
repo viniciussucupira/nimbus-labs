@@ -62,7 +62,7 @@ import { type Permission, type Role, can } from "@/lib/team-roles";
 import { memberStores, readTeam } from "@/lib/team";
 import { type PushFetchHooks, type Subscription, readSubscription, sendPush, vapidKeys, vapidKeysFor } from "@/lib/web-push";
 
-export const PHONE_EVENTS = ["sale", "booking", "report", "affiliate", "live"] as const;
+export const PHONE_EVENTS = ["sale", "booking", "report", "affiliate", "live", "comment"] as const;
 export type PhoneEvent = (typeof PHONE_EVENTS)[number];
 
 /** Devices one person may have on one store. */
@@ -75,7 +75,8 @@ const MAX_STORE_DEVICES = MAX_DEVICES * 6;
  * sale's amount is a number of the store's (stats) or an order (orders); a
  * booking is an order; a report is the community's; an application is the
  * affiliate programme's, a setting; a live event about to start is the
- * community's, which everyone who helps run it may see.
+ * community's, which everyone who helps run it may see; a comment under a
+ * lesson is the course's, which whoever edits products may answer.
  */
 const EVENT_NEEDS: Record<PhoneEvent, Permission[]> = {
   sale: ["orders", "stats"],
@@ -83,6 +84,7 @@ const EVENT_NEEDS: Record<PhoneEvent, Permission[]> = {
   report: ["community"],
   affiliate: ["settings"],
   live: ["community"],
+  comment: ["products"],
 };
 
 /** The events a role may be told about, in the studio's order. */
@@ -327,7 +329,7 @@ async function deliver(store: Store, device: Device, event: PhoneEvent | "test",
     // saving power; the rest waits for it.
     urgency: event === "sale" || event === "booking" || event === "live" || event === "test" ? "high" : "normal",
     // A newer report or application replaces one still waiting at the push service.
-    topic: event === "report" || event === "affiliate" ? `nimbus-${event}` : undefined,
+    topic: event === "report" || event === "affiliate" || event === "comment" ? `nimbus-${event}` : undefined,
     // A live event's notice is no use once the event has started.
     ttlSeconds: event === "test" ? 600 : event === "live" ? 900 : 86400,
     hooks: hooksForTests,
@@ -378,7 +380,7 @@ export async function alertCreator(
   if (!listening.length) return 0;
   const [fresh] = await redisPipeline([["SET", seenKey(statsId, event, options.seed), "1", "NX", "EX", SEEN_SECONDS]]);
   if (fresh === null) return 0;
-  if (event === "report" || event === "affiliate") {
+  if (event === "report" || event === "affiliate" || event === "comment") {
     const [, count] = await redisPipeline([
       ["SET", quietKey(statsId, event), "0", "EX", 3600, "NX"],
       ["INCR", quietKey(statsId, event)],

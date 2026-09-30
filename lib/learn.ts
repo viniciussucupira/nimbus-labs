@@ -477,6 +477,24 @@ function displayName(name: string): string {
   return name.replace(/["\\<>\r\n]/g, "").trim().slice(0, 60) || "A store";
 }
 
+/** The From line of every email sent for a store's courses. */
+export function courseSender(store: Store): string {
+  return `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`;
+}
+
+/** A student's own address, as they gave it, by the key of it; null if they never opened the course. */
+export async function studentEmail(courseId: string, key: string): Promise<string | null> {
+  if (!isRedisConfigured()) return null;
+  const [raw] = await redisPipeline([["HGET", studentsKey(courseId), key]]);
+  if (typeof raw !== "string") return null;
+  try {
+    const row = JSON.parse(raw) as StudentRow;
+    return typeof row.e === "string" && row.e ? row.e : null;
+  } catch {
+    return null;
+  }
+}
+
 function senderAddress(): string {
   const match = NIMBUS_FROM.match(/<([^>]+)>/);
   return (match ? match[1] : NIMBUS_FROM).trim();

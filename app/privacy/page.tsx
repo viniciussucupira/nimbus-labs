@@ -203,6 +203,17 @@ export default function PrivacyPage() {
           on a list so the course stays closed to them. To check who bought a
           course, we ask the creator&apos;s own Stripe account by email address.
         </p>
+        <p id="lesson-comments">
+          <strong className="text-black">Comments under lessons.</strong>{" "}
+          A student who comments under a lesson chooses a name, and we keep that
+          name, what they wrote and when, until they or the creator delete it or
+          the course is deleted. The creator and the other students of that
+          course see the name and the words; nobody sees the student&apos;s email
+          address. When the creator answers a comment, we email the student who
+          wrote it, at most once an hour for each lesson. A creator who asked
+          for it gets a notification on their phone with the lesson and the
+          start of the comment, without the name.
+        </p>
         <p>
           <strong className="text-black">A one-click offer after paying.</strong>{" "}
           When a product is followed by a one-click offer, Stripe keeps the

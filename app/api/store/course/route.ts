@@ -1,3 +1,7 @@
+import { originFrom } from "@/lib/request-origin";
+import { addComment, deleteComment, dropLessonComments, readComment, setCommentsOn, setHidden } from "@/lib/lesson-comments";
+import { COMMENT_ID_PATTERN, CREATOR_AUTHOR } from "@/lib/lesson-comments-rules";
+import { tellStudent } from "@/lib/lesson-comment-notify";
 import type { NextRequest } from "next/server";
 import { MAX_AI_LESSONS, MAX_AI_MODULES } from "@/lib/ai-rules";
 import { del, head } from "@/lib/blob";
@@ -18,6 +22,7 @@ import {
   filesInCourse,
   findLesson,
   lessonCount,
+  lessonsInOrder,
   readBody,
   readCourse,
   saveBody,
@@ -104,6 +109,47 @@ export async function POST(request: NextRequest) {
     }
 
     if (!product.course) return Response.json({ ok: false, error: "not_course" }, { status: 400 });
+
+    // Comments under lessons (lib/lesson-comments.ts): kept apart from the
+    // outline, so none of these waits for the outline's lock.
+    if (action.startsWith("cm-")) {
+      const courseId = product.course.id;
+      if (action === "cm-on") {
+        await setCommentsOn(courseId, body.on === true);
+        return Response.json({ ok: true });
+      }
+      const commentId = text(body.comment, 20);
+      const comment = COMMENT_ID_PATTERN.test(commentId) ? await readComment(courseId, commentId) : null;
+      if (!comment) return Response.json({ ok: false, error: "gone" }, { status: 404 });
+      if (action === "cm-hide") {
+        await setHidden(courseId, commentId, body.hidden === true);
+        return Response.json({ ok: true });
+      }
+      if (action === "cm-delete") {
+        await deleteComment(courseId, commentId);
+        return Response.json({ ok: true });
+      }
+      if (action === "cm-reply") {
+        const course = await readCourse(courseId);
+        const found = course ? findLesson(course, comment.lesson) : null;
+        if (!found) return Response.json({ ok: false, error: "gone" }, { status: 404 });
+        const result = await addComment({ courseId, lessonId: comment.lesson, by: CREATOR_AUTHOR, text: body.text, parent: comment.parent ?? comment.id });
+        if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
+        if (result.parent) {
+          await tellStudent({
+            store,
+            product,
+            courseId,
+            lessonTitle: found.lesson.title,
+            parent: result.parent,
+            reply: result.comment,
+            origin: originFrom(request),
+          }).catch((error) => console.error("a comment answer email failed", error));
+        }
+        return Response.json({ ok: true, comment: result.comment.id });
+      }
+      return Response.json({ ok: false, error: "invalid" }, { status: 400 });
+    }
     // One change at a time per course: each reads the whole outline and writes it
     // back, so two at once (two lessons uploading, two tabs) would drop one.
     const courseInfo = product.course;
@@ -264,6 +310,11 @@ export async function POST(request: NextRequest) {
       if (edit.op === "lesson-remove") {
         await dropBody(course.id, edit.lessonId);
         await dropQuiz(course.id, edit.lessonId);
+      }
+      if (edit.op === "lesson-remove" || edit.op === "module-remove") {
+        const kept = new Set(lessonsInOrder(result.course).map(({ lesson }) => lesson.id));
+        const gone = lessonsInOrder(course).map(({ lesson }) => lesson.id).filter((l) => !kept.has(l));
+        await dropLessonComments(course.id, gone).catch((error) => console.error("could not delete a lesson's comments", error));
       }
       if (edit.op === "module-edit" || edit.op === "module-remove" || edit.op === "lesson-add" || edit.op === "outline") {
         await registerDrip(store, product, result.course);

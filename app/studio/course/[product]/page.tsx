@@ -1,3 +1,6 @@
+import { CourseCommentsStudio, type StudioComment } from "@/components/course-comments-studio";
+import { commentsOn, markSeen, recentComments } from "@/lib/lesson-comments";
+import { CREATOR_AUTHOR, commentClock } from "@/lib/lesson-comments-rules";
 import type { Metadata } from "next";
 import { aiLeft, isAiConfigured } from "@/lib/ai";
 import Link from "next/link";
@@ -63,6 +66,29 @@ export default async function StudioCoursePage({
   const passed = quizLessons.length ? await passedFor(course.id, students.map((s) => emailKey(s.email))) : [];
   const certificates = await certificatesFor(course.id);
   const standing = certificates.list.filter((c) => !c.withdrawnAt).length;
+  // The newest comments under the lessons, marked new since this page last showed them.
+  const [talking, recent] = await Promise.all([commentsOn(course.id), recentComments(course.id, 50)]);
+  await markSeen(course.id);
+  const titles = new Map(lessonsInOrder(course).map(({ lesson }) => [lesson.id, lesson.title]));
+  const byId = new Map(recent.comments.map((c) => [c.id, c]));
+  const shownComments: StudioComment[] = recent.comments
+    .filter((c) => titles.has(c.lesson))
+    .map((c) => {
+      const parent = c.parent ? byId.get(c.parent) : undefined;
+      return {
+        id: c.id,
+        lessonId: c.lesson,
+        lessonTitle: titles.get(c.lesson) ?? "",
+        name: c.name,
+        fromCreator: c.by === CREATOR_AUTHOR,
+        text: c.text,
+        at: c.at,
+        hidden: c.hidden,
+        answerTo: c.parent ? (parent ? (parent.by === CREATOR_AUTHOR ? store.name : parent.name) : "") : null,
+        parentId: c.parent,
+        fresh: c.at > recent.seen && c.by !== CREATOR_AUTHOR,
+      };
+    });
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -105,6 +131,15 @@ export default async function StudioCoursePage({
           folder={folder}
           title={product.title}
           ai={isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
+        />
+
+        <CourseCommentsStudio
+          productId={product.id}
+          storeName={store.name}
+          initialOn={talking}
+          initial={shownComments}
+          lessonHref={view.role === "owner" ? `/@${store.handle}/course/${product.id}` : null}
+          now={commentClock()}
         />
 
         <section className="card mt-8 p-6 sm:p-8" aria-labelledby="certificate-title">

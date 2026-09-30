@@ -21,7 +21,7 @@ const MESSAGES: Record<string, string> = {
 };
 
 /** Turning a product into a course, and the way to its lessons once it is one. */
-export function CourseToggle({ product }: { product: Product }) {
+export function CourseToggle({ product, newComments = 0 }: { product: Product; newComments?: number }) {
   const studioHref = useStudioHref();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -37,9 +37,16 @@ export function CourseToggle({ product }: { product: Product }) {
         <p className="mt-1 text-sm text-ink-soft">
           {n === 0 ? "Add the first lesson and it can go on sale." : "Buyers open it with their email address, on any device, with no password."}
         </p>
-        <Link href={studioHref(`/studio/course/${product.id}`)} className="btn btn-primary btn-sm mt-3">
-          {n === 0 ? "Add lessons" : "Edit the course"}
-        </Link>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Link href={studioHref(`/studio/course/${product.id}`)} className="btn btn-primary btn-sm">
+            {n === 0 ? "Add lessons" : "Edit the course"}
+          </Link>
+          {newComments > 0 ? (
+            <Link href={`${studioHref(`/studio/course/${product.id}`)}#comments`} className="text-sm font-semibold text-violet-deep underline underline-offset-4">
+              {`${newComments} new ${newComments === 1 ? "comment" : "comments"} to read`}
+            </Link>
+          ) : null}
+        </div>
       </div>
     );
   }

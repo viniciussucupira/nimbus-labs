@@ -285,6 +285,19 @@ export class MemoryRedis {
         const gone = z.splice(start, end - start + 1);
         return gone.length;
       }
+      case "ZCOUNT": {
+        const edge = (raw: string) => {
+          if (raw === "-inf") return { value: -Infinity, open: false };
+          if (raw === "+inf") return { value: Infinity, open: false };
+          if (raw.startsWith("(")) return { value: Number(raw.slice(1)), open: true };
+          return { value: Number(raw), open: false };
+        };
+        const from = edge(args[0]);
+        const to = edge(args[1]);
+        return this.zset(key).filter(
+          (e) => (from.open ? e.score > from.value : e.score >= from.value) && (to.open ? e.score < to.value : e.score <= to.value),
+        ).length;
+      }
       case "ZRANGEBYSCORE": {
         const z = this.zset(key);
         // "(5" means "after 5", which is how the room asks for what is new.

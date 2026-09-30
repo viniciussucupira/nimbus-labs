@@ -1305,6 +1305,7 @@ export function ProductEditor({
   currency = "usd",
   meetings = [],
   ai = { on: false, left: 0 },
+  newComments = {},
 }: {
   /** The products shown: every one, or one page of a long list. */
   products: Product[];
@@ -1340,6 +1341,8 @@ export function ProductEditor({
   meetings?: MeetAccount[];
   /** Whether the writing help is on for this person, and what is left of the month (lib/ai.ts). */
   ai?: { on: boolean; left: number };
+  /** Per course product, the comments under its lessons since its studio page was last opened. */
+  newComments?: Record<string, number>;
 }) {
   const router = useRouter();
   const sid = useStudioStore();
@@ -1855,7 +1858,7 @@ export function ProductEditor({
                   the options rather than sitting above them unused.
                 */}
                 {product.course || product.bundle ? null : <CallEditor product={product} email={email} meetings={meetings} />}
-                {product.call || product.bundle ? null : <CourseToggle product={product} />}
+                {product.call || product.bundle ? null : <CourseToggle product={product} newComments={newComments[product.id] ?? 0} />}
                 {product.call || product.course ? null : <BundleToggle product={product} />}
 
                 {product.call || product.course || product.bundle ? null : (
