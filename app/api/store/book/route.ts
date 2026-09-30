@@ -1,3 +1,4 @@
+import { isSoon } from "@/lib/waitlist";
 import { type NextRequest, after } from "next/server";
 import { linkOrigin, originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
     });
 
   if (!canSellProduct(store, product)) return back("unavailable");
+  if (await isSoon(store, product.id).catch(() => false)) return back("unavailable");
   if (!Number.isFinite(start)) return back("invalid");
   // Each try holds a time for half an hour while Stripe's page is open, so
   // one connection gets fifteen in ten minutes per store: enough to change

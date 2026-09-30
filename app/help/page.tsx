@@ -253,6 +253,14 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can I take a waitlist before something goes on sale?",
+        a: [
+          "Yes, on any paid product. In your studio, check \u201cComing soon, with a waitlist\u201d under the product: its card and its page then take an email address instead of a payment, and no checkout opens. Each address is confirmed from its own inbox before it counts, and the box to hear more from you starts empty.",
+          "When it is ready, press \u201cPut it on sale and tell the waitlist\u201d. It goes on sale that moment, and everyone who confirmed gets one email with its link, its price and a note from you if you write one, with the postal address US law asks for at the foot. That is the only email a waitlist sends; afterwards its addresses are deleted, and whoever checked the box is on your list.",
+          "You see how many are waiting and how many confirmed. The emails go out in batches every five minutes and do not count toward your monthly email allowance.",
+        ],
+      },
+      {
         q: "Can I sell a membership?",
         a: [
           "Yes. Any product can charge on a schedule instead of once: daily, weekly, monthly or yearly. The subscription is created on your own Stripe account, like every other charge here, so the member is your customer, in your dashboard, and we take 0% of the renewals too.",

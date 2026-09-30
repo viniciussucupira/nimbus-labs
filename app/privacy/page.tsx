@@ -189,6 +189,19 @@ export default function PrivacyPage() {
           Stripe asks the buyer for the address it needs to work the tax out,
           under Stripe&apos;s own privacy policy; we do not keep it.
         </p>
+        <p id="waitlists">
+          <strong className="text-black">Waitlists.</strong>{" "}
+          When you join the waitlist for something a creator has not put on
+          sale yet, we keep your email address, when you joined and whether you
+          checked the box to hear from the creator otherwise, and we email you a
+          button to confirm it. Once it is confirmed, you get one email when the
+          product goes on sale; then the waitlist&apos;s addresses are deleted.
+          Only if you checked the box is your address added to the
+          creator&apos;s list, once confirmed. The creator sees how many people
+          are waiting, not who. Unconfirmed sign-ups are kept until the product
+          goes on sale, and a link in every waitlist email removes your address
+          at any time.
+        </p>
         <p>
           <strong className="text-black">Courses.</strong>{" "}
           When someone buys a course, we note the email address they paid with

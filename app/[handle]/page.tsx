@@ -1,3 +1,4 @@
+import { soonProducts } from "@/lib/waitlist";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
@@ -166,6 +167,7 @@ export default async function StorePage({ params, searchParams }: Params) {
   );
   const rated = await ratings;
   const bundleItems = await inBundles;
+  const soon = await soonProducts(store).catch(() => new Set<string>());
   const left = new Map<string, number>();
   listings.forEach((product, i) => {
     const count = counts[i];
@@ -243,6 +245,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                     manageable={manageable}
                     rating={rated.get(product.id) ?? null}
                     bundleItems={bundleItems.get(product.id) ?? null}
+                    soon={soon.has(product.id)}
                   />
                 ))}
               </ul>

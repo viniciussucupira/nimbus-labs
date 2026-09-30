@@ -117,6 +117,50 @@ export function ProductFacts({
 }
 
 /**
+ * A product coming soon: an address for its waitlist, confirmed from the
+ * inbox before it counts. The box to hear more from the creator starts
+ * empty, like every such box here.
+ */
+export function WaitlistForm({ store, product }: { store: Store; product: Listing }) {
+  return (
+    <form id="waitlist" action="/api/store/waitlist/join" method="post" className="mt-4 scroll-mt-24 space-y-3">
+      <input type="hidden" name="handle" value={store.handle} />
+      <input type="hidden" name="product" value={product.id} />
+      <div aria-hidden="true" className="hidden">
+        <label>
+          Leave this empty
+          <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+        </label>
+      </div>
+      <p className="text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>Coming soon</p>
+      <label htmlFor={`w-${product.id}`} className="st-label">
+        Your email
+      </label>
+      <input
+        id={`w-${product.id}`}
+        type="email"
+        name="email"
+        required
+        maxLength={254}
+        autoComplete="email"
+        placeholder="you@example.com"
+        className="st-field"
+      />
+      <label htmlFor={`wc-${product.id}`} className="st-muted flex cursor-pointer items-start gap-3 text-sm">
+        <input id={`wc-${product.id}`} type="checkbox" name="consent" value="yes" className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>{`Also send me other emails from ${store.name}. I can unsubscribe whenever I like.`}</span>
+      </label>
+      <button type="submit" className="btn st-btn btn-block">
+        Tell me when it is out
+      </button>
+      <p className="st-muted text-xs">
+        {`You confirm from your inbox, then get one email when it goes on sale, and that is all. Your address goes to ${store.name} only if you checked the box.`}
+      </p>
+    </form>
+  );
+}
+
+/**
  * The part of a product a buyer acts on: the form that gives it away, the
  * button that books a call, or the form that opens a checkout, with its
  * price options, plan, box for the product offered alongside and box for the
@@ -135,6 +179,7 @@ export function BuyBox({
   selling,
   related,
   ready = true,
+  soon = false,
 }: {
   store: Store;
   product: Listing;
@@ -148,7 +193,10 @@ export function BuyBox({
   selling: boolean;
   /** For a bundle: whether it holds enough to hand over right now. */
   ready?: boolean;
+  /** Coming soon: a waitlist instead of a way to pay (lib/waitlist.ts). */
+  soon?: boolean;
 }) {
+  if (soon && !isFree(product)) return <WaitlistForm store={store} product={product} />;
   const options = sellableOptions(product);
   const every = product.recurring ? ` ${everyLabel(product.recurring.interval)}` : "";
   const soldOut = remaining === 0;
@@ -368,7 +416,10 @@ export function pageAction(
   selling: boolean,
   /** What its order bump offers, read by the page (lib/catalog.ts), as the buy box is given it. */
   related: Listing[],
+  /** Coming soon: the buttons lead to its waitlist (lib/waitlist.ts). */
+  soon = false,
 ): { action: PageAction; label: string } {
+  if (soon && !isFree(product)) return { action: { kind: "link", href: "#waitlist" }, label: "Join the waitlist" };
   if (isFree(product)) {
     return canGiveProduct(store, product)
       ? { action: { kind: "link", href: "#get" }, label: "Get it free" }
@@ -422,6 +473,7 @@ export function ProductCard({
   eager = false,
   rating = null,
   bundleItems = null,
+  soon = false,
 }: {
   store: Store;
   product: Listing;
@@ -431,6 +483,8 @@ export function ProductCard({
   writes: boolean;
   selling: boolean;
   manageable: boolean;
+  /** Coming soon: a waitlist instead of a way to pay (lib/waitlist.ts). */
+  soon?: boolean;
   /** Near the top of the page: the picture is fetched straight away. */
   eager?: boolean;
   /** Its buyers' reviews, shown only when lib/reviews.ts says a page may. */
@@ -490,10 +544,10 @@ export function ProductCard({
 
   const rest = (
     <>
-      {plan && canSellProduct(store, product) ? (
+      {plan && canSellProduct(store, product) && !soon ? (
         <p className="st-muted mt-1 text-sm font-semibold">{`or ${planWords(plan, store.currency)}`}</p>
       ) : null}
-      {remaining !== null ? (
+      {remaining !== null && !soon ? (
         <p className="mt-2 text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>
           {soldOut ? "Sold out" : `${remaining.toLocaleString("en-US")} left`}
         </p>
@@ -506,6 +560,7 @@ export function ProductCard({
         writes={writes}
         selling={selling}
         ready={!product.bundle || (bundleItems?.length ?? 0) >= MIN_BUNDLE_ITEMS}
+        soon={soon}
       />
       {product.recurring && manageable ? (
         <p className="mt-3 text-center text-sm">

@@ -1,3 +1,4 @@
+import { isSoon } from "@/lib/waitlist";
 import { type NextRequest, after } from "next/server";
 import { linkOrigin, originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle, syncTakesBuyer } from "@/lib/store";
@@ -88,6 +89,8 @@ export async function POST(request: NextRequest) {
   // Refused here rather than at Stripe, so a buyer never reaches a card form
   // for something that could not have been delivered anyway.
   if (!canSellProduct(store, product)) return away(`/@${store.handle}`);
+  // Coming soon: its page takes a waitlist sign-up, and no checkout opens (lib/waitlist.ts).
+  if (await isSoon(store, product.id).catch(() => false)) return away(`/@${store.handle}/p/${product.id}#waitlist`);
   // A bundle that holds too little that can be handed over right now is not sold.
   if (product.bundle && deliverableItems(product, await readListings(store, product.bundle)).length < MIN_BUNDLE_ITEMS) {
     return away(`/@${store.handle}`);

@@ -1,3 +1,4 @@
+import { isSoon } from "@/lib/waitlist";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -146,10 +147,10 @@ function About({ blocks }: { blocks: Block[] }) {
  * and described without an offer rather than with a wrong one. The rating is
  * there only when the page shows one, with the same average and count.
  */
-function productData(store: Store, product: Listing, description: string, soldOut: boolean, summary: Summary | null) {
+function productData(store: Store, product: Listing, description: string, soldOut: boolean, summary: Summary | null, soon = false) {
   const url = `${SITE_URL}${productPath(store, product)}`;
   const options = sellableOptions(product);
-  const availability = `https://schema.org/${soldOut ? "SoldOut" : "InStock"}`;
+  const availability = `https://schema.org/${soon ? "OutOfStock" : soldOut ? "SoldOut" : "InStock"}`;
   const offers = product.recurring
     ? null
     : options.length > 1
@@ -214,6 +215,8 @@ export default async function ProductPage({ params }: Params) {
   if (asked !== store.handle && !reachedOn) permanentRedirect(productPath(store, product));
 
   const selling = canSell(store);
+  // Coming soon: a waitlist where the buy box would be (lib/waitlist.ts).
+  const soon = await isSoon(store, product.id).catch(() => false);
   const rehearsal = selling && isConnectInTestMode();
   const [about, stock, noKeys, page, summary, related, inside] = await Promise.all([
     product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""),
@@ -307,7 +310,7 @@ export default async function ProductPage({ params }: Params) {
           {remaining === 0 ? "Sold out" : `${remaining.toLocaleString("en-US")} left`}
         </p>
       ) : null}
-      <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} />
+      <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} />
       {product.recurring && canManage(store) ? (
         <p className="mt-3 text-center text-sm">
           <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">
@@ -346,7 +349,7 @@ export default async function ProductPage({ params }: Params) {
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
-      <JsonLd data={productData(store, product, description, remaining === 0, summary)} />
+      <JsonLd data={productData(store, product, description, remaining === 0, summary, soon)} />
       <main id="content" className={`relative mx-auto ${wide ? "max-w-3xl" : "max-w-2xl"} px-4 pb-16 pt-10 sm:pt-14`}>
         {children}
       </main>
@@ -405,7 +408,7 @@ export default async function ProductPage({ params }: Params) {
   // right under the hero, where an ad's visitor lands; something paid has
   // its buy box after the blocks, and the buttons in between lead to it or
   // straight to the checkout.
-  const { action, label } = pageAction(store, product, remaining, selling, related);
+  const { action, label } = pageAction(store, product, remaining, selling, related, soon);
   const ctx: BlockContext = {
     storeName: store.name,
     productTitle: product.title,

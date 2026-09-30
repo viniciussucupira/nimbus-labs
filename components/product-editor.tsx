@@ -1,5 +1,7 @@
 "use client";
 
+import { WaitlistPanel } from "@/components/waitlist-panel";
+import type { WaitlistView } from "@/lib/waitlist";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CallEditor, type MeetAccount } from "@/components/call-editor";
@@ -1306,6 +1308,8 @@ export function ProductEditor({
   meetings = [],
   ai = { on: false, left: 0 },
   newComments = {},
+  waitlists = {},
+  mailAddress = "",
 }: {
   /** The products shown: every one, or one page of a long list. */
   products: Product[];
@@ -1343,6 +1347,10 @@ export function ProductEditor({
   ai?: { on: boolean; left: number };
   /** Per course product, the comments under its lessons since its studio page was last opened. */
   newComments?: Record<string, number>;
+  /** Per product with a waitlist, where it stands (lib/waitlist.ts). */
+  waitlists?: Record<string, WaitlistView>;
+  /** The store's postal address for email, offered for a launch email's foot. */
+  mailAddress?: string;
 }) {
   const router = useRouter();
   const sid = useStudioStore();
@@ -1859,6 +1867,9 @@ export function ProductEditor({
                 */}
                 {product.course || product.bundle ? null : <CallEditor product={product} email={email} meetings={meetings} />}
                 {product.call || product.bundle ? null : <CourseToggle product={product} newComments={newComments[product.id] ?? 0} />}
+                {product.priceCents > 0 && !product.hidden ? (
+                  <WaitlistPanel productId={product.id} initial={waitlists[product.id] ?? null} suggestedAddress={mailAddress} />
+                ) : null}
                 {product.call || product.course ? null : <BundleToggle product={product} />}
 
                 {product.call || product.course || product.bundle ? null : (
