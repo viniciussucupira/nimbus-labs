@@ -346,6 +346,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "video", title: "Or a private video room", body: "Switch it on and each booking gets its own Jitsi Meet room, a link nobody can guess, with nothing to set up. A group call or a live session has one room per time, shared by everyone booked into it." },
           { icon: "shield", title: "Never booked twice", body: "A time being paid for is held, so two people can never pay for the same time, or for the last seat." },
           { icon: "users", title: "Group calls", body: "Up to 50 people at each time. Buyers see how many seats are left." },
+          { icon: "gift", title: "Packages of sessions", body: "Sell 2 to 20 sessions at one price, with 30 days to a year to use them, or no limit. The buyer pays once and books each session from their own link whenever they like, with the reminders, meeting link and moves of any booking. Their purchases show how many are left." },
           { icon: "video", title: "Live sessions on dates", body: "Up to 50 dates per product, each with 1 to 500 seats, its own length and its own link. Sales close when you say, up to 72 hours before." },
           { icon: "mail", title: "Reminders", body: "A day and an hour before, to every buyer in their time zone, with the link to join. You get one per time, listing everyone booked." },
           { icon: "refresh", title: "Buyers move their own booking", body: "Up to twice, from the link in their email, until the notice you set before the call. Nothing is charged or refunded." },

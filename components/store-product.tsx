@@ -1,3 +1,4 @@
+import { packageLimitWords, packageSaving } from "@/lib/call-package-rules";
 import { endsWords, saleClock, saleOff, salePrice } from "@/lib/store-sale";
 import Link from "next/link";
 import { isFree, syncTakesBuyer, type Listing, type Store } from "@/lib/store";
@@ -157,6 +158,28 @@ export function ProductFacts({
         </p>
       ) : null}
     </>
+  );
+}
+
+/**
+ * A weekly call's package, beside its single price (lib/call-package-rules.ts):
+ * several sessions paid at once and booked one at a time.
+ */
+export function PackageOffer({ store, product }: { store: Store; product: Listing }) {
+  const pkg = product.callPackage;
+  if (!pkg || product.call?.kind !== "weekly") return null;
+  const saving = packageSaving(pkg, product.priceCents);
+  return (
+    <form action="/api/store/package" method="post" className="mt-3" data-checkout="">
+      <input type="hidden" name="handle" value={store.handle} />
+      <input type="hidden" name="product" value={product.id} />
+      <button type="submit" className="btn btn-block" style={{ border: "1px solid var(--st-line-strong)", color: "var(--st-text)", background: "var(--st-card)" }}>
+        {`Buy ${pkg.sessions} sessions — ${formatMoney(pkg.priceCents, store.currency)}`}
+      </button>
+      <p className="st-muted mt-2 text-center text-xs">
+        {`${saving > 0 ? `${formatMoney(saving, store.currency)} less than ${pkg.sessions} booked one by one. ` : ""}Paid once, each booked when you like. ${packageLimitWords(pkg)}.`}
+      </p>
+    </form>
   );
 }
 
@@ -349,9 +372,12 @@ export function BuyBox({
       return <p className="st-muted mt-4 text-sm">No dates on sale right now.</p>;
     }
     return (
-      <Link prefetch={false} href={`/@${store.handle}/book/${product.id}`} className="btn st-btn btn-block mt-4">
-        {`${product.call.kind === "live" ? "Pick a session" : "Pick a time"} — ${formatMoney(product.priceCents, store.currency)}`}
-      </Link>
+      <>
+        <Link prefetch={false} href={`/@${store.handle}/book/${product.id}`} className="btn st-btn btn-block mt-4">
+          {`${product.call.kind === "live" ? "Pick a session" : "Pick a time"} — ${formatMoney(product.priceCents, store.currency)}`}
+        </Link>
+        <PackageOffer store={store} product={product} />
+      </>
     );
   }
 

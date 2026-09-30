@@ -31,6 +31,7 @@
  * person who owns them. Every function below that takes a store's key calls
  * it `email` for the first kind and works the same for the second.
  */
+import type { CallPackage } from "@/lib/call-package-rules";
 import type { PodcastRef } from "@/lib/podcast-rules";
 import { cache } from "react";
 import { pointDomain } from "@/lib/domains";
@@ -1733,6 +1734,18 @@ export async function setPodcastEpisodes(email: string, id: string, episodes: nu
   await onProduct<never>(email, id, (product) =>
     product.podcast ? { ...product, podcast: { id: product.podcast.id, episodes } } : product,
   );
+}
+
+/**
+ * Offers a weekly call as a package of sessions too, or stops offering it
+ * (null). Only a call booked in weekly hours: dated live sessions are bought
+ * one date at a time.
+ */
+export async function setCallPackage(email: string, id: string, pkg: CallPackage | null): Promise<{ ok: true; store: Store; product: Product } | { ok: false; reason: "none" | "unknown" | "call" }> {
+  return onProduct<"call">(email, id, (product) => {
+    if (pkg && product.call?.kind !== "weekly") return { ok: false, reason: "call" };
+    return { ...product, callPackage: pkg };
+  });
 }
 
 /** Keeps the lesson count a product carries in step with its course. */

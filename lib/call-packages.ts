@@ -1,0 +1,252 @@
+/**
+ * Packages of calls, sold, kept and spent (the rules are in
+ * lib/call-package-rules.ts).
+ *
+ *   nl:pkg:<checkout>        a package bought: who, which call, how many, until when, its sessions
+ *   nl:pkg:t:<sha(token)>    the checkout a booking link's token stands for
+ *
+ * The purchase is a checkout of its own on the creator's Stripe account
+ * (metadata kind "package"). Each session is then booked like any call, on a
+ * checkout that a single-use coupon for the whole of it makes free, and that
+ * carries metadata "package" — so the booking, its reminders, its meeting
+ * link, its move and the creator's list of bookings are exactly those of a
+ * call bought on its own, and none of that had to learn anything new.
+ *
+ * A session counts as spent from the moment its time is held; if the buyer
+ * leaves Stripe's page without finishing, it comes back once the hold is
+ * over. A package refunded in full books nothing more. A package with a last
+ * day to book is kept a year past it, then dropped.
+ */
+import { createHash, randomBytes } from "node:crypto";
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { normaliseEmail } from "@/lib/auth";
+import { StripeError, onAccount } from "@/lib/stripe-account";
+import { isConfirmed } from "@/lib/calls";
+import { isSettled } from "@/lib/instant-pay";
+import { purchaseRefunded } from "@/lib/refunds";
+import { sendEmail } from "@/lib/email";
+import { formatMoney } from "@/lib/money";
+import { applyTax } from "@/lib/tax";
+import { withLock } from "@/lib/redis-lock";
+import { type CallPackage, packageLimitWords } from "@/lib/call-package-rules";
+import type { Listing, Store } from "@/lib/store";
+
+export const PACKAGE_TOKEN = /^[0-9a-f]{48}$/;
+const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
+/** A held session is counted as spent a little past its hold, until the mail job has confirmed or freed it. */
+const HOLD_GRACE_SECONDS = 15 * 60;
+
+export type Hold = { session: string; until: number };
+export type Bought = {
+  /** The store's statsId, its handle when bought, the call product. */
+  s: string;
+  h: string;
+  p: string;
+  /** Who bought it: the address that books its sessions. */
+  e: string;
+  total: number;
+  /** When bought, and the last moment to book, in seconds; 0 is no limit. */
+  at: number;
+  until: number;
+  token: string;
+  /** Every session booked or being booked from it. */
+  holds: Hold[];
+};
+
+const sha = (v: string) => createHash("sha256").update(v).digest("hex");
+const pkgKey = (checkout: string) => `nl:pkg:${checkout}`;
+const tokenKey = (token: string) => `nl:pkg:t:${sha(token)}`;
+const now = () => Math.floor(Date.now() / 1000);
+/** Kept a year past its last day to book; a package with no limit is kept as long as it can be used. */
+const KEEP_AFTER_SECONDS = 365 * 86_400;
+const keep = (bought: Bought): string[] => (bought.until ? ["EX", String(Math.max(60, bought.until + KEEP_AFTER_SECONDS - now()))] : []);
+
+export async function readBought(checkout: string): Promise<Bought | null> {
+  if (!SESSION_ID.test(checkout) || !isRedisConfigured()) return null;
+  const [raw] = await redisPipeline([["GET", pkgKey(checkout)]]);
+  if (typeof raw !== "string") return null;
+  try {
+    return JSON.parse(raw) as Bought;
+  } catch {
+    return null;
+  }
+}
+
+export async function boughtByToken(token: string): Promise<{ checkout: string; bought: Bought } | null> {
+  if (!PACKAGE_TOKEN.test(token) || !isRedisConfigured()) return null;
+  const [checkout] = await redisPipeline([["GET", tokenKey(token)]]);
+  if (typeof checkout !== "string") return null;
+  const bought = await readBought(checkout);
+  return bought && bought.token === token ? { checkout, bought } : null;
+}
+
+/** Sessions spent: booked, or held now. */
+export async function spent(bought: Bought, at = now()): Promise<number> {
+  let n = 0;
+  for (const hold of bought.holds) {
+    if (hold.until + HOLD_GRACE_SECONDS > at || (await isConfirmed(hold.session))) n += 1;
+  }
+  return n;
+}
+
+export type PackageState = { left: number; total: number; expired: boolean; until: number };
+
+export async function packageState(bought: Bought, at = now()): Promise<PackageState> {
+  const used = await spent(bought, at);
+  const expired = bought.until > 0 && at > bought.until;
+  return { left: expired ? 0 : Math.max(0, bought.total - used), total: bought.total, expired, until: bought.until };
+}
+
+/** Opens the checkout that buys a package, on the creator's own account. */
+export async function packageCheckout(store: Store, product: Listing, pkg: CallPackage, origin: string): Promise<{ url: string; id: string }> {
+  if (!store.stripeAccountId) throw new Error("This store has no account");
+  const name = `${product.title} — ${pkg.sessions} sessions`;
+  const body = new URLSearchParams({
+    mode: "payment",
+    locale: "en",
+    "line_items[0][quantity]": "1",
+    "line_items[0][price_data][currency]": store.currency,
+    "line_items[0][price_data][unit_amount]": String(pkg.priceCents),
+    "line_items[0][price_data][product_data][name]": name.slice(0, 250),
+    "line_items[0][price_data][product_data][description]": `${pkg.sessions} sessions, each booked when you like. ${packageLimitWords(pkg)}.`,
+    "metadata[store]": store.handle,
+    "metadata[product]": product.id,
+    "metadata[title]": name.slice(0, 480),
+    "metadata[kind]": "package",
+    "metadata[sessions]": String(pkg.sessions),
+    "metadata[days]": String(pkg.days),
+    "payment_intent_data[metadata][store]": store.handle,
+    "payment_intent_data[metadata][product]": product.id,
+    "payment_intent_data[metadata][kind]": "package",
+    success_url: `${origin}/@${store.handle}/thanks?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/@${store.handle}/book/${product.id}`,
+  });
+  if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
+  applyTax(store, body);
+  const made = await onAccount("POST", store.stripeAccountId, "/checkout/sessions", body);
+  if (typeof made.url !== "string" || typeof made.id !== "string") throw new Error("Stripe returned no checkout");
+  return { url: made.url, id: made.id };
+}
+
+type Session = {
+  id?: unknown;
+  status?: unknown;
+  payment_status?: unknown;
+  created?: unknown;
+  amount_total?: unknown;
+  currency?: unknown;
+  metadata?: Record<string, string> | null;
+  customer_details?: { email?: unknown } | null;
+};
+
+/**
+ * Writes a paid package down, once, and emails its buyer the link that books
+ * its sessions. Returns the package, or null when this checkout is not one.
+ */
+export async function recordPackage(input: { store: Store; session: Session; product: Listing; base: string; from: string }): Promise<Bought | null> {
+  const { store, session, product, base } = input;
+  const meta = session.metadata ?? {};
+  const checkout = typeof session.id === "string" ? session.id : "";
+  if (meta.kind !== "package" || !SESSION_ID.test(checkout) || !isSettled(session) || !store.statsId) return null;
+  const existing = await readBought(checkout);
+  if (existing) return existing;
+  const email = typeof session.customer_details?.email === "string" ? normaliseEmail(session.customer_details.email) : "";
+  if (!email) return null;
+  const at = typeof session.created === "number" ? session.created : now();
+  const days = Number(meta.days) || 0;
+  const total = Math.max(1, Math.min(20, Number(meta.sessions) || 0));
+  const token = randomBytes(24).toString("hex");
+  const bought: Bought = { s: store.statsId, h: store.handle, p: product.id, e: email, total, at, until: days ? at + days * 86_400 : 0, token, holds: [] };
+  const [fresh] = await redisPipeline([["SET", pkgKey(checkout), JSON.stringify(bought), "NX", ...keep(bought)]]);
+  if (fresh === null) return readBought(checkout);
+  await redisPipeline([["SET", tokenKey(token), checkout, ...keep(bought)]]);
+  const amount = typeof session.amount_total === "number" ? session.amount_total : 0;
+  const currency = typeof session.currency === "string" && session.currency ? session.currency : store.currency;
+  await sendEmail({
+    from: input.from,
+    to: email,
+    subject: `Your ${total} sessions: ${product.title}`.slice(0, 200),
+    text: [
+      `Thank you for buying from ${store.name}. This is your confirmation.`,
+      "",
+      `What you bought: ${product.title}, ${total} sessions`,
+      `Paid: ${formatMoney(amount, currency)}`,
+      `Order reference: ${checkout}`,
+      bought.until ? `Book them by: ${new Date(bought.until * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}` : "No time limit to book them.",
+      "",
+      "Book each session, whenever you like, here:",
+      `${base}/book/${product.id}?pkg=${token}`,
+      "",
+      "Keep this email: that link is how you book the rest. Each one gets its own confirmation, reminders and meeting link, and can be moved like any booking.",
+      "",
+      `Charged by ${store.name} on their own Stripe account. Questions go to ${store.name} by replying to this email.`,
+    ].join("\n"),
+    replyTo: store.email,
+    idempotencyKey: `nimbus-package:${checkout}`,
+  }).catch((error) => console.error("a package confirmation failed", error));
+  return bought;
+}
+
+export type BookResult =
+  | { ok: true; fromPackage: { id: string; coupon: string; email: string; back: string } }
+  | { ok: false; reason: "gone" | "used" | "expired" | "refunded" | "error" };
+
+/**
+ * Makes ready one session's checkout from a package: checks it is still
+ * paid, not used up and not past its date, and makes the single-use coupon
+ * that takes the whole session off. The session is counted by `holdSession`
+ * once its time is held.
+ */
+export async function prepareSession(store: Store, token: string, origin: string): Promise<BookResult & { checkout?: string }> {
+  const found = await boughtByToken(token);
+  if (!found || found.bought.s !== store.statsId || !store.stripeAccountId) return { ok: false, reason: "gone" };
+  const state = await packageState(found.bought);
+  if (state.expired) return { ok: false, reason: "expired" };
+  if (state.left <= 0) return { ok: false, reason: "used" };
+  try {
+    const session = await onAccount("GET", store.stripeAccountId, `/checkout/sessions/${encodeURIComponent(found.checkout)}?expand[]=payment_intent.latest_charge`);
+    if (!isSettled(session)) return { ok: false, reason: "gone" };
+    if (await purchaseRefunded(store.stripeAccountId, session)) return { ok: false, reason: "refunded" };
+    const coupon = await onAccount(
+      "POST",
+      store.stripeAccountId,
+      "/coupons",
+      new URLSearchParams({
+        percent_off: "100",
+        duration: "once",
+        max_redemptions: "1",
+        name: "Session from a package",
+        "metadata[made_by]": "nimbus-labs",
+        "metadata[purpose]": "call-package",
+        "metadata[package]": found.checkout,
+      }),
+    );
+    const id = typeof coupon.id === "string" ? coupon.id : "";
+    if (!id) return { ok: false, reason: "error" };
+    return {
+      ok: true,
+      checkout: found.checkout,
+      fromPackage: { id: found.checkout, coupon: id, email: found.bought.e, back: `${origin}/@${store.handle}/book/${found.bought.p}?pkg=${token}` },
+    };
+  } catch (error) {
+    if (!(error instanceof StripeError)) console.error("preparing a package session failed", error);
+    return { ok: false, reason: "error" };
+  }
+}
+
+/**
+ * Counts a held session against its package, under a lock, and says no when
+ * another tab took the last one first — in which case the caller lets the
+ * time go again.
+ */
+export async function holdSession(checkout: string, session: string, until: number): Promise<boolean> {
+  return withLock(`nl:pkg:${checkout}:lock`, 30, 10_000, async () => {
+    const bought = await readBought(checkout);
+    if (!bought) return false;
+    const state = await packageState(bought);
+    if (state.left <= 0) return false;
+    bought.holds.push({ session, until });
+    await redisPipeline([["SET", pkgKey(checkout), JSON.stringify(bought), ...keep(bought)]]);
+    return true;
+  });
+}

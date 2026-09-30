@@ -35,6 +35,7 @@
  * store record replaced, in one write. Until that write lands the old record
  * is the store, complete, and doing it again writes the same records.
  */
+import { type CallPackage, parseCallPackage } from "@/lib/call-package-rules";
 import { type PodcastRef, parsePodcastRef } from "@/lib/podcast-rules";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { type ProductFile, parseProductFile } from "@/lib/product-file";
@@ -152,6 +153,11 @@ export type Product = {
    * its episodes, and how many it has. Absent or null for anything else.
    */
   podcast?: PodcastRef | null;
+  /**
+   * For a weekly call: several sessions sold at once, booked one at a time
+   * (lib/call-package-rules.ts). Absent or null when it offers none.
+   */
+  callPackage?: CallPackage | null;
   /** The product's picture, shown on the store page and its own page. */
   image: ProductImage | null;
   /** How its card is drawn on the store page. */
@@ -278,6 +284,7 @@ export function parseProduct(entry: unknown): Product | null {
     plan: parsePlan(value.plan),
     course: parseCourseRef(value.course),
     podcast: parsePodcastRef(value.podcast),
+    callPackage: parseCallPackage(value.callPackage),
     image: parseProductImage(value.image),
     display: parseDisplay(value.display),
     fields: parseFields(value.fields),
@@ -321,6 +328,7 @@ export function listingOf(product: Listing): Listing {
     plan: product.plan,
     course: product.course,
     podcast: product.podcast ?? null,
+    callPackage: product.callPackage ?? null,
     image: product.image,
     display: product.display,
     pwyw: product.pwyw,

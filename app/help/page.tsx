@@ -307,6 +307,14 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can I sell a package of sessions, like 5 calls booked one at a time?",
+        a: [
+          "Yes, on a call with weekly hours. Under the call in your studio, open \u201cAlso sell a package of sessions\u201d and choose how many sessions (2 to 20), the price for all of them, and how long the buyer has to use them: 30, 60, 90, 180 or 365 days, or no limit. The call's page then offers the package beside the single session, with what it saves when it saves anything.",
+          "The buyer pays once, on your own Stripe account, and gets an email with a link of their own. Each time they open it, they pick a free time on the call's page and confirm it on Stripe's page with nothing to pay. Every session is a booking like any other: the calendar file, the reminders, the meeting link, moving it up to twice, and Upcoming calls in your studio. Their list of purchases shows how many sessions are left.",
+          "A session counts from the moment its time is held; if the buyer leaves Stripe's page without confirming, it comes back within an hour. After the last day to use them, or after a full refund of the package, no more sessions can be booked; sessions already booked stay booked. A group call with weekly hours can be sold as a package too, one seat per session; live sessions on dates cannot. The box for a discount code is not shown when booking from a package.",
+        ],
+      },
+      {
         q: "Can I offer something extra, before or after they pay, or sell a limited number?",
         a: [
           "Yes, all three. Under any one-off product you can offer another of your products at a price of your own: the buyer sees a box above the buy button, checks it if they want it, and the button says the new total. It is never checked for them. Both are paid in one checkout and both are delivered on the thank-you page.",

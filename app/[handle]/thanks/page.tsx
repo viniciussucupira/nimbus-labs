@@ -1,3 +1,4 @@
+import { recordPackage } from "@/lib/call-packages";
 import { readGift } from "@/lib/gifts";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -26,7 +27,7 @@ import { noteProduct, upsertContact } from "@/lib/contacts";
 import { enroll } from "@/lib/flows";
 import { canRecover } from "@/lib/buyer-orders";
 import { after } from "next/server";
-import { CONFIRM_WITHIN_SECONDS, canConfirm, confirmPurchase } from "@/lib/purchase-email";
+import { CONFIRM_WITHIN_SECONDS, canConfirm, confirmPurchase, fromStore, storeBase } from "@/lib/purchase-email";
 import { readConfig } from "@/lib/community";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { renewPath } from "@/lib/membership-access";
@@ -143,6 +144,45 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     ? await withinLimit("thanks-view", `${clientAddress({ headers: await headers() })}|${store.handle}`, VIEWS_PER_TEN_MINUTES, 600)
     : true;
   const order: Order | { state: "slow" } = allowed ? await readOrder(store, sessionId) : { state: "slow" };
+
+  // A package of calls (lib/call-packages.ts): written down once, with the
+  // link that books its sessions, shown here and emailed.
+  const packageMeta = order.state === "paid" ? ((order.record.metadata ?? {}) as Record<string, string>) : {};
+  if (order.state === "paid" && packageMeta.kind === "package" && sessionId) {
+    const bought = await recordPackage({ store, session: order.record as Parameters<typeof recordPackage>[0]["session"], product: order.product, base: storeBase(store), from: fromStore(store) }).catch(() => null);
+    const record = order.record as SaleRecord;
+    after(() => noteSale(store, record).catch((error) => console.error("telling about a sale failed", error)));
+    await noteSession(store, order.record as Parameters<typeof noteSession>[1]).catch((error) => console.error("noting an affiliate sale failed", error));
+    const book = bought ? `/@${store.handle}/book/${order.product.id}?pkg=${bought.token}` : null;
+    return (
+      <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+        <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
+          <div className="st-card p-7 sm:p-10">
+            <p className="st-price text-sm">Paid</p>
+            <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{`Your ${bought?.total ?? packageMeta.sessions} sessions are ready`}</h1>
+            <p className="st-muted mt-4 text-lg">
+              {"You bought "}
+              <strong style={{ color: "var(--st-text)" }}>{order.product.title}</strong>
+              {`, ${bought?.total ?? packageMeta.sessions} sessions, from ${store.name} for ${formatMoney(order.amount, order.currency)}. Book each one whenever you like; nothing more is charged.`}
+            </p>
+            {bought?.until ? (
+              <p className="st-muted mt-3">{`Book them by ${new Date(bought.until * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}.`}</p>
+            ) : null}
+            {book ? (
+              <Link href={book} className="btn st-btn btn-lg mt-7">Book your first session</Link>
+            ) : (
+              <p className="st-note mt-6 text-sm">We could not get your booking link just now. Refresh this page in a moment; it is also on its way to your email.</p>
+            )}
+            <p className="st-muted mt-5 text-sm">{`The same link is in the email sent to ${order.email ?? "the address you paid with"}: keep it, it is how you book the rest.`}</p>
+            <StoreTracking
+              store={store}
+              event={{ type: "purchase", id: sessionId, value: toMajor(order.amount, order.currency), currency: order.currency, productId: order.product.id, title: order.product.title }}
+            />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // Bought for somebody else: nothing is handed over here. The sale is
   // counted as any other, the gift goes to its recipient (lib/gifts.ts,
@@ -526,6 +566,8 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 {store.name}
                 {order.product.recurring && order.trialDays > 0
                   ? ". Nothing was charged today"
+                  : booked && order.record.metadata && (order.record.metadata as Record<string, string>).package
+                    ? ", as one session of your package. Nothing more was charged"
                   : ` for ${
                       order.product.recurring
                         ? `${formatMoney(order.amount, order.currency)} ${everyLabel(order.product.recurring.interval)}`
