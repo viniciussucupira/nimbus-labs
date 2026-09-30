@@ -1,9 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MAX_CHAT_TEXT } from "@/lib/community-chat";
+import { type ChatRefusal, MAX_CHAT_TEXT, refusalWords } from "@/lib/community-chat";
 
 type Message = { i: number; a: string; text: string; at: number };
+
+const REFUSALS = new Set<string>([
+  "off", "empty", "links", "slow", "hourly", "creatorOnly", "muted", "full", "name", "out", "unknown",
+]);
+const isRefusal = (value: unknown): value is ChatRefusal => typeof value === "string" && REFUSALS.has(value);
 
 /**
  * The room, as it is read and written.
@@ -135,19 +140,10 @@ export function CommunityRoom({
       if (!data.ok || !data.message) {
         // Back in the box: nothing anybody typed is lost to a refusal.
         setText(words);
-        setError(
-          data.error === "slow"
-            ? `One message every ${slow} seconds here. ${data.wait ?? slow} to go.`
-            : data.error === "links"
-              ? "Web addresses are not written in this room."
-              : data.error === "muted"
-                ? "You can read here, but not write."
-                : data.error === "creatorOnly"
-                  ? "Only the creator writes in this room."
-                  : data.error === "name"
-                    ? "Choose a name on your own page first."
-                    : "That did not send. Try again in a moment.",
-        );
+        // Every reason has its own sentence, in one place beside the refusals
+        // themselves (lib/community-chat.ts). Anything unrecognised is the
+        // honest generic one rather than a guess.
+        setError(refusalWords(isRefusal(data.error) ? data.error : "unknown", slow, data.wait));
         return;
       }
       cursor.current = Math.max(cursor.current, data.message.i);

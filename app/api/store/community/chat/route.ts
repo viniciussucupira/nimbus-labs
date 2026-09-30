@@ -70,7 +70,11 @@ export async function POST(request: NextRequest) {
     // The hourly ceiling on top of the cooldown: one stops a flood in a
     // minute, the other stops one over an afternoon.
     if (!owner && !(await within(id, key, "comment"))) {
-      return Response.json({ ok: false, error: "slow" }, { status: 429 });
+      // "hourly", not "slow": the ceiling over an afternoon is a different
+      // thing from the wait between two messages, and telling somebody they
+      // are waiting thirty seconds when they are waiting an hour is a lie the
+      // room used to tell.
+      return Response.json({ ok: false, error: "hourly" }, { status: 429 });
     }
     const said = await say(id, config.chat, key, owner, text(body.text, MAX_CHAT_TEXT));
     if (!said.ok) {

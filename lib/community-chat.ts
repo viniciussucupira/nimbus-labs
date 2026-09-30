@@ -181,6 +181,59 @@ export async function clearRoom(id: string): Promise<void> {
   await redisPipeline([["DEL", roomKey(id)]]);
 }
 
+/**
+ * Every way a message can be refused, and what the person is told.
+ *
+ * Kept here, beside the refusals themselves, and exhaustive on purpose: a
+ * reason without its own sentence falls back to "try again in a moment",
+ * which is wrong for most of these and actively false for two — somebody
+ * whose access has ended will never succeed by trying again, and somebody who
+ * hit the hourly ceiling is not waiting on the per-message cooldown.
+ *
+ * `slow` and `hourly` are deliberately separate. The route used to answer
+ * `slow` for both, and the room told a member who had written thirty times in
+ * an hour that they were waiting thirty seconds.
+ */
+export type ChatRefusal =
+  | "off"
+  | "empty"
+  | "links"
+  | "slow"
+  | "hourly"
+  | "creatorOnly"
+  | "muted"
+  | "full"
+  | "name"
+  | "out"
+  | "unknown";
+
+export function refusalWords(reason: ChatRefusal, slow: number, wait?: number): string {
+  switch (reason) {
+    case "slow":
+      return `One message every ${slow} seconds here. ${wait ?? slow} to go.`;
+    case "hourly":
+      return "That is as much as anybody may write in an hour. It opens again shortly.";
+    case "links":
+      return "Web addresses are not written in this room.";
+    case "creatorOnly":
+      return "Only the creator writes in this room.";
+    case "muted":
+      return "You can read here, but not write.";
+    case "name":
+      return "Choose a name on your own page first.";
+    case "full":
+      return "This community is full, so nothing can be written right now.";
+    case "off":
+      return "The room has been closed.";
+    case "out":
+      return "Your place here has ended, so this no longer takes messages.";
+    case "empty":
+      return "There was nothing to send.";
+    case "unknown":
+      return "That did not send. Try again in a moment.";
+  }
+}
+
 /** How many messages the room holds right now. */
 export async function roomSize(id: string): Promise<number> {
   const [n] = await redisPipeline([["ZCARD", roomKey(id)]]);
