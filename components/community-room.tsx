@@ -1,9 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MAX_CHAT_TEXT } from "@/lib/community-chat";
+import { type ChatRefusal, MAX_CHAT_TEXT, refusalWords } from "@/lib/community-chat";
 
 type Message = { i: number; a: string; text: string; at: number };
+
+const REFUSALS = new Set<string>([
+  "off", "empty", "links", "slow", "hourly", "creatorOnly", "muted", "full", "name", "out", "unknown",
+]);
+const isRefusal = (value: unknown): value is ChatRefusal => typeof value === "string" && REFUSALS.has(value);
 
 /**
  * The room, as it is read and written.
@@ -54,6 +59,10 @@ export function CommunityRoom({
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  // Emptying the room asks twice rather than opening a browser dialog: a
+  // dialog stops everything on the page until it is answered, and this is a
+  // thing done in a hurry.
+  const [emptying, setEmptying] = useState(false);
   const cursor = useRef(firstCursor);
   const list = useRef<HTMLUListElement>(null);
   const atBottom = useRef(true);
@@ -131,19 +140,10 @@ export function CommunityRoom({
       if (!data.ok || !data.message) {
         // Back in the box: nothing anybody typed is lost to a refusal.
         setText(words);
-        setError(
-          data.error === "slow"
-            ? `One message every ${slow} seconds here. ${data.wait ?? slow} to go.`
-            : data.error === "links"
-              ? "Web addresses are not written in this room."
-              : data.error === "muted"
-                ? "You can read here, but not write."
-                : data.error === "creatorOnly"
-                  ? "Only the creator writes in this room."
-                  : data.error === "name"
-                    ? "Choose a name on your own page first."
-                    : "That did not send. Try again in a moment.",
-        );
+        // Every reason has its own sentence, in one place beside the refusals
+        // themselves (lib/community-chat.ts). Anything unrecognised is the
+        // honest generic one rather than a guess.
+        setError(refusalWords(isRefusal(data.error) ? data.error : "unknown", slow, data.wait));
         return;
       }
       cursor.current = Math.max(cursor.current, data.message.i);
@@ -155,6 +155,49 @@ export function CommunityRoom({
       setError("That did not send. Try again in a moment.");
     } finally {
       setSending(false);
+    }
+  }
+
+  /** Takes one message out of the room. The creator's, on anything in it. */
+  async function remove(i: number) {
+    setError(null);
+    try {
+      const response = await fetch("/api/store/community/chat", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle, action: "unsay", number: i }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean };
+      if (!data.ok) {
+        setError("That message could not be removed.");
+        return;
+      }
+      setMessages((held) => held.filter((m) => m.i !== i));
+    } catch {
+      setError("That message could not be removed.");
+    }
+  }
+
+  /** Empties it. What a creator does after a bad night. */
+  async function empty() {
+    setError(null);
+    try {
+      const response = await fetch("/api/store/community/chat", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle, action: "clear" }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean };
+      if (!data.ok) {
+        setError("The room could not be emptied.");
+        return;
+      }
+      setMessages([]);
+      setEmptying(false);
+    } catch {
+      setError("The room could not be emptied.");
     }
   }
 
@@ -183,7 +226,18 @@ export function CommunityRoom({
                     <p className="text-xs font-bold">{names[message.a] ?? "A member"}</p>
                   ) : null}
                   <p className="cm-text text-[0.95rem]">{message.text}</p>
-                  <p className="st-muted mt-0.5 text-right text-[0.7rem] font-semibold">{when(message.at)}</p>
+                  <p className="st-muted mt-0.5 flex items-center justify-end gap-2 text-[0.7rem] font-semibold">
+                    {owner ? (
+                      <button
+                        type="button"
+                        className="cm-quiet-link cm-mini cm-danger"
+                        onClick={() => void remove(message.i)}
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                    <span>{when(message.at)}</span>
+                  </p>
                 </div>
               </li>
             );
@@ -214,6 +268,24 @@ export function CommunityRoom({
       )}
 
       {error ? <p className="cm-flash cm-flash-warn mt-3" role="status">{error}</p> : null}
+
+      {owner && messages.length ? (
+        <p className="mt-3">
+          {emptying ? (
+            <span className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-semibold">Empty the room, for everybody?</span>
+              <button type="button" className="cm-pill cm-danger" onClick={() => void empty()}>Yes, empty it</button>
+              <button type="button" className="cm-quiet-link cm-mini text-xs font-semibold" onClick={() => setEmptying(false)}>
+                Keep it
+              </button>
+            </span>
+          ) : (
+            <button type="button" className="cm-quiet-link cm-mini text-xs font-semibold" onClick={() => setEmptying(true)}>
+              Empty the room
+            </button>
+          )}
+        </p>
+      ) : null}
 
       <p className="st-muted mt-3 text-xs">
         {[

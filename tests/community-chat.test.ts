@@ -6,7 +6,18 @@
  * quietly lets everybody through, with nothing in between and nothing visible
  * either way.
  */
-import { MAX_CHAT_KEPT, MAX_SLOW, clearRoom, parseChatSetting, room, roomSize, say, unsay } from "@/lib/community-chat";
+import {
+  type ChatRefusal,
+  MAX_CHAT_KEPT,
+  MAX_SLOW,
+  clearRoom,
+  parseChatSetting,
+  refusalWords,
+  room,
+  roomSize,
+  say,
+  unsay,
+} from "@/lib/community-chat";
 import { advance } from "./redis-stub";
 import { done, is, part } from "./check";
 
@@ -76,6 +87,30 @@ async function main() {
   is("never more than the cap", await roomSize(ID), MAX_CHAT_KEPT);
   const tail = await room(ID);
   is("and what it kept is the newest", tail.messages[tail.messages.length - 1].text, `message ${MAX_CHAT_KEPT + 19}`);
+
+  part("Every refusal has its own words");
+  // Exhaustive on purpose. A reason without a sentence falls back to "try
+  // again in a moment", which is wrong for most of these and false for two:
+  // somebody whose place has ended will never succeed by trying again, and
+  // somebody who hit the hourly ceiling is not waiting on the cooldown.
+  const reasons: ChatRefusal[] = [
+    "off", "empty", "links", "slow", "hourly", "creatorOnly", "muted", "full", "name", "out", "unknown",
+  ];
+  const said = reasons.map((reason) => refusalWords(reason, 30, 12));
+  is("none is empty", said.every((one) => one.length > 10), true);
+  is("none repeats another", new Set(said).size, reasons.length);
+  is("the cooldown says how long is left", refusalWords("slow", 30, 12), "One message every 30 seconds here. 12 to go.");
+  is(
+    "the hourly ceiling is NOT the cooldown's sentence",
+    refusalWords("hourly", 30, 12) === refusalWords("slow", 30, 12),
+    false,
+  );
+  is(
+    "somebody whose place ended is not told to try again",
+    refusalWords("out", 30).includes("try again"),
+    false,
+  );
+  is("a full community is not told to try again", refusalWords("full", 30).includes("try again"), false);
 
   done();
 }
