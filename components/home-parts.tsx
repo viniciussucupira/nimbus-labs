@@ -1,5 +1,6 @@
 "use client";
 
+import { AI_MONTHLY } from "@/lib/ai-rules";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
@@ -364,6 +365,7 @@ const INCLUDED = [
   "Sign-in without passwords, and a full refund that closes access by itself",
   "Free products that build an email list you can download",
   "Your list, products and past buyers brought over from another platform, from a spreadsheet",
+  `Product descriptions and course outlines drafted with AI from your own words, ${AI_MONTHLY.creator} drafts a month (${AI_MONTHLY.trial} during the free trial)`,
 ];
 
 const PRO_INCLUDED = [
@@ -374,6 +376,7 @@ const PRO_INCLUDED = [
   "One-click unsubscribe in every email, honored for good",
   "Community announcements emailed to the members who asked for them, counted in the same monthly allowance",
   "One email that asks each buyer for a review, 3 to 30 days after buying",
+  `Emails drafted with AI too, and ${AI_MONTHLY.pro} drafts a month in all`,
 ];
 
 function PlanCard({
