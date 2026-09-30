@@ -57,6 +57,7 @@ import {
 } from "@/lib/community-text";
 import { MAX_ALT_LENGTH } from "@/lib/product-image";
 import { indexPost, partsOf, unindexPost } from "@/lib/community-search";
+import { type Poll, parsePoll, pollKeys } from "@/lib/community-polls";
 
 /** The author of what the creator writes. Never a member key, which is hex. */
 export const CREATOR = "creator";
@@ -136,6 +137,12 @@ export type Post = {
    * the replies under them were written.
    */
   ed: number;
+  /**
+   * The poll on it, or null. A post either has one from the moment it is
+   * written or never gets one: adding a poll to a post people have already
+   * replied to changes what they were replying to.
+   */
+  poll: Poll | null;
 };
 
 export type Comment = {
@@ -463,6 +470,8 @@ function parsePost(raw: unknown): Post | null {
       hid: v.hid === true,
       // Posts written before posts could be edited have none.
       ed: typeof v.ed === "number" ? v.ed : 0,
+      // Likewise for posts written before there were polls.
+      poll: parsePoll(v.poll),
     };
   } catch {
     return null;
@@ -489,6 +498,7 @@ export type NewPost = {
   text: string;
   img: CommunityImage | null;
   kind: "post" | "announcement";
+  poll: Poll | null;
 };
 
 /** Writes a post. The caller has checked who may, and cleaned what it says. */
@@ -508,6 +518,7 @@ export async function createPost(id: string, input: NewPost): Promise<{ ok: true
     kind: input.kind,
     hid: false,
     ed: 0,
+    poll: input.poll,
   };
   await redisPipeline([
     ["SET", postKey(id, post.id), JSON.stringify(post)],
@@ -587,7 +598,7 @@ export async function deletePost(id: string, post: Post): Promise<void> {
   const [raw] = await redisPipeline([["HKEYS", commentsKey(id, post.id)]]);
   const commentIds = Array.isArray(raw) ? (raw as string[]) : [];
   await redisPipeline([
-    ["DEL", postKey(id, post.id), commentsKey(id, post.id), likesKey(id, post.id), reportersKey(id, `p:${post.id}`)],
+    ["DEL", postKey(id, post.id), commentsKey(id, post.id), likesKey(id, post.id), reportersKey(id, `p:${post.id}`), ...pollKeys(id, post.id)],
     ["ZREM", feedKey(id), post.id],
     ["ZREM", spaceKey(id, post.sp), post.id],
     ["ZREM", reportsKey(id), `p:${post.id}`, ...commentIds.map((c) => `c:${post.id}:${c}`)],

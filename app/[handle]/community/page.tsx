@@ -6,6 +6,7 @@ import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { feed, postNumbers, readMembers, readPosts } from "@/lib/community";
 import { accessProducts, communityViewer, visibleSpaces } from "@/lib/community-access";
+import { pollViews } from "@/lib/community-polls";
 import { communityFolder } from "@/lib/community-image";
 import { announcementReach, canAnnounceByEmail } from "@/lib/community-mail";
 import { ITEM_ID } from "@/lib/community-text";
@@ -87,7 +88,11 @@ export default async function CommunityPage({ params, searchParams }: Params) {
     .filter((p): p is NonNullable<typeof p> => Boolean(p && (owner || !p.hid) && open(p)));
   const stream = page.posts.filter((p) => !topIds.includes(p.id) && open(p));
   const shown = [...top, ...stream];
-  const [members, numbers] = await Promise.all([readMembers(id, shown.map((p) => p.a)), postNumbers(id, shown, key)]);
+  const [members, numbers, polls] = await Promise.all([
+    readMembers(id, shown.map((p) => p.a)),
+    postNumbers(id, shown, key),
+    pollViews(id, shown, key, owner),
+  ]);
   const reach = owner ? await announcementReach(id) : 0;
   const home = `/@${store.handle}/community`;
   const from = space ? "space" : "feed";
@@ -190,6 +195,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
                     config={config}
                     members={members}
                     numbers={numbers.get(post.id)}
+                    poll={polls.get(post.id)}
                     viewer={{ key, owner, canWrite }}
                     from={from}
                     space={space?.id ?? null}

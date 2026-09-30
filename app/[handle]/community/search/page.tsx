@@ -7,6 +7,7 @@ import { lookStyle } from "@/lib/store-look";
 import { postNumbers, readMembers, readPosts } from "@/lib/community";
 import { communityViewer, visibleSpaces } from "@/lib/community-access";
 import { MAX_QUERY_LENGTH, queryWords, search } from "@/lib/community-search";
+import { pollViews } from "@/lib/community-polls";
 import { CommunityBar, NOTICES, PostCard } from "@/components/community-parts";
 import { ConfirmDeletes } from "@/components/community-composer";
 
@@ -58,9 +59,10 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
   // space that no longer exists is not gated, and stays findable.
   const shut = new Set(config.spaces.filter((s) => s.only.length && !mineIds.has(s.id)).map((s) => s.id));
   const found = (await readPosts(id, page.posts)).filter((p) => (owner || !p.hid) && !shut.has(p.sp));
-  const [members, numbers] = await Promise.all([
+  const [members, numbers, polls] = await Promise.all([
     readMembers(id, found.map((p) => p.a)),
     postNumbers(id, found, key),
+    pollViews(id, found, key, owner),
   ]);
   // The words that were actually looked for: "the" and "to" narrow nothing
   // down and are dropped, and saying so beats letting somebody wonder why
@@ -117,6 +119,7 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                       config={config}
                       members={members}
                       numbers={numbers.get(post.id)}
+                      poll={polls.get(post.id)}
                       viewer={{ key, owner, canWrite }}
                       from="feed"
                     />

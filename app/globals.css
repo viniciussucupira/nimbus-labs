@@ -2107,6 +2107,60 @@ a.rv-line:hover {
   background: var(--st-card);
   color: var(--st-text);
 }
+/* A poll on a post. The bar sits behind the row's text rather than beside it,
+   so a long answer keeps its width and never squeezes the count off the end. */
+.cm-poll {
+  border: 1px solid var(--st-line);
+  border-radius: 1rem;
+  padding: 0.85rem;
+}
+.cm-poll fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.cm-poll-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  overflow: hidden;
+  min-height: 42px;
+  border-radius: 0.7rem;
+  border: 1px solid var(--st-line);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.9375rem;
+  cursor: pointer;
+}
+fieldset:disabled .cm-poll-row {
+  cursor: default;
+}
+.cm-poll-mine {
+  border-color: var(--st-accent);
+}
+.cm-poll-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 0;
+  background: var(--st-accent-soft);
+  transition: width var(--d-base) var(--ease);
+}
+.cm-poll-row > input,
+.cm-poll-row > span:not(.cm-poll-bar) {
+  position: relative;
+  z-index: 1;
+}
+.cm-poll-count {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  opacity: 0.75;
+}
+.cm-poll-build {
+  border: 1px solid var(--st-line);
+  border-radius: 1rem;
+  padding: 0.85rem;
+}
+
 /* The search box in the community bar. Sits on the bar in every theme, so it
    borrows the bar's own text colour rather than the page's. */
 .cm-search {

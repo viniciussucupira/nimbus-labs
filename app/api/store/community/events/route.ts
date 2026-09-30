@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         const space = config.spaces.find((s) => s.id === text(body.space, 12)) ?? config.spaces[0];
         if (space) {
           const words = announcementText(store, event);
-          const posted = await createPost(id, { space: space.id, author: CREATOR, title: words.title, text: words.text, img: null, kind: "announcement" });
+          const posted = await createPost(id, { space: space.id, author: CREATOR, title: words.title, text: words.text, img: null, kind: "announcement", poll: null });
           if (posted.ok) {
             await setEventPost(store, event.id, posted.post.id);
             event = { ...event, post: posted.post.id };

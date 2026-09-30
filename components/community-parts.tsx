@@ -6,6 +6,7 @@ import { CREATOR, type CommunityConfig, type Member, type Post } from "@/lib/com
 import { communityImageFile } from "@/lib/community-image";
 import { initialOf, segments, whenWords } from "@/lib/community-text";
 import { MAX_QUERY_LENGTH } from "@/lib/community-search";
+import { type PollView, pollWhen } from "@/lib/community-polls";
 
 /**
  * The pieces every community page is made of: the bar across the top, a
@@ -25,6 +26,10 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
   noemail: { text: "Posted. It was not emailed: emailing announcements is part of Pro, with your email settings filled in.", tone: "warn" },
   noreaders: { text: "Posted. Nobody has asked for announcement emails yet, so none were sent." },
   commented: { text: "Comment added." },
+  voted: { text: "Your vote is in. You can change it, or take it back, while the poll is open." },
+  pollclosed: { text: "That poll has closed, so the count stands as it is.", tone: "warn" },
+  polloptions: { text: "A poll needs at least two answers, each with something written in it.", tone: "warn" },
+  polltitle: { text: "Give the poll a question: it goes in the title.", tone: "warn" },
   edited: { text: "Saved. It is marked as edited, so nobody is replying to words that quietly changed." },
   notyours: { text: "Only the person who wrote it can rewrite it.", tone: "warn" },
   liked: { text: "Like updated." },
@@ -292,12 +297,103 @@ export function CreatorBadge() {
 const CUT = 600;
 
 /** One post, in a feed or on its own page. */
+/**
+ * The poll on a post: the answers, the bars, and the one form that casts,
+ * changes or takes back a vote.
+ *
+ * Deliberate, and stated on the card itself rather than left to be assumed:
+ * a vote is tied to the person who cast it, because a poll that let one
+ * person vote a thousand times counts nothing. The creator is shown the
+ * tally, never who chose what. Saying so is the difference between a poll
+ * people trust and one they answer carefully.
+ */
+function PollBox({
+  store,
+  post,
+  view,
+  viewer,
+  from,
+  space,
+}: {
+  store: Store;
+  post: Post;
+  view: PollView;
+  viewer: { key: string; owner: boolean; canWrite: boolean };
+  from: "feed" | "space" | "post";
+  space?: string | null;
+}) {
+  const { poll, counts, total, mine, closed, showing } = view;
+  const when = pollWhen(poll);
+  const voted = mine.length > 0;
+  const open = !closed && viewer.canWrite;
+  const share = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
+  return (
+    <form action="/api/store/community" method="post" className="cm-poll mt-4">
+      <Carry store={store} action="vote" post={post.id} from={from} space={space} />
+      <fieldset disabled={!open}>
+        <legend className="sr-only">{post.title || "Poll"}</legend>
+        <ul className="space-y-1.5">
+          {poll.options.map((option) => {
+            const n = counts[option.id] ?? 0;
+            const picked = mine.includes(option.id);
+            return (
+              <li key={option.id}>
+                <label className={`cm-poll-row ${picked ? "cm-poll-mine" : ""}`}>
+                  <input
+                    type={poll.multi ? "checkbox" : "radio"}
+                    name="choice"
+                    value={option.id}
+                    defaultChecked={picked}
+                    className="h-4 w-4 shrink-0"
+                  />
+                  <span className="min-w-0 flex-1 break-words">{option.text}</span>
+                  {showing ? (
+                    <span className="cm-poll-count tabular-nums">{`${share(n)}%`}</span>
+                  ) : null}
+                  {showing ? (
+                    <span aria-hidden="true" className="cm-poll-bar" style={{ width: `${share(n)}%` }} />
+                  ) : null}
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+        {open ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button type="submit" className="cm-pill">{voted ? "Change my vote" : "Vote"}</button>
+            {voted ? (
+              // Sending the form with nothing chosen takes the vote back.
+              <button type="submit" name="choice" value="" className="cm-quiet-link cm-mini text-xs font-semibold">
+                Take my vote back
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </fieldset>
+      <p className="st-muted mt-2 text-xs font-semibold">
+        {[
+          showing ? `${total} ${total === 1 ? "vote" : "votes"}` : "Results are hidden until this closes",
+          poll.multi ? "Pick as many as you like" : "Pick one",
+          when,
+          closed ? "" : viewer.canWrite ? "" : "You cannot vote here",
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      </p>
+      <p className="st-muted mt-1 text-xs">
+        {`Your vote is counted against your account, so it can only count once. ${store.name} sees the totals, never who chose what.`}
+      </p>
+    </form>
+  );
+}
+
 export function PostCard({
   store,
   post,
   config,
   members,
   numbers,
+  poll,
   viewer,
   from,
   space,
@@ -308,6 +404,8 @@ export function PostCard({
   config: CommunityConfig;
   members: Map<string, Member>;
   numbers: { likes: number; liked: boolean; comments: number } | undefined;
+  /** The poll on this post, already read, or undefined when it has none. */
+  poll?: PollView;
   viewer: { key: string; owner: boolean; canWrite: boolean };
   from: "feed" | "space" | "post";
   space?: string | null;
@@ -387,6 +485,7 @@ export function PostCard({
           className="cm-img mt-4"
         />
       ) : null}
+      {poll ? <PollBox store={store} post={post} view={poll} viewer={viewer} from={from} space={space} /> : null}
 
       <footer className="mt-4 flex flex-wrap items-center gap-2">
         {viewer.canWrite ? (

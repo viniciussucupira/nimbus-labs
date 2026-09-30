@@ -5,6 +5,7 @@ import { uploadPresigned } from "@vercel/blob/client";
 import { shrink } from "@/components/product-image-editor";
 import { IMAGE_ACCEPT, MAX_ALT_LENGTH, MAX_SOURCE_BYTES } from "@/lib/product-image";
 import { MAX_POST_TEXT, MAX_POST_TITLE } from "@/lib/community-text";
+import { MAX_POLL_DAYS, MAX_POLL_OPTIONS, MAX_POLL_OPTION_TEXT, MIN_POLL_OPTIONS } from "@/lib/community-polls";
 
 type SpaceChoice = { id: string; name: string; creatorOnly: boolean };
 
@@ -73,6 +74,13 @@ export function CommunityComposer({
   const [percent, setPercent] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(false);
+  // A poll is decided when the post is written and never after: adding one to
+  // a post people have already replied to changes what they replied to.
+  const [poll, setPoll] = useState(false);
+  const [options, setOptions] = useState(["", ""]);
+  const [multi, setMulti] = useState(false);
+  const [quiet, setQuiet] = useState(false);
+  const [days, setDays] = useState("");
   const input = useRef<HTMLInputElement>(null);
 
   // The picture button is only offered once the script that sends it runs:
@@ -181,6 +189,73 @@ export function CommunityComposer({
         className="st-field mt-3 min-h-[7rem] resize-y"
         aria-describedby="post-count"
       />
+      {poll ? (
+        <div className="cm-poll-build mt-3">
+          <p className="text-sm font-bold">Answers</p>
+          <p className="st-muted mt-0.5 text-xs">The question goes in the title. Empty answers are left out.</p>
+          <ul className="mt-2 space-y-2">
+            {options.map((one, i) => (
+              <li key={i} className="flex items-center gap-2">
+                <label htmlFor={`poll-option-${i}`} className="sr-only">{`Answer ${i + 1}`}</label>
+                <input
+                  id={`poll-option-${i}`}
+                  name="poll_option"
+                  value={one}
+                  maxLength={MAX_POLL_OPTION_TEXT}
+                  onChange={(e) => setOptions(options.map((o, j) => (j === i ? e.target.value : o)))}
+                  placeholder={`Answer ${i + 1}`}
+                  className="st-field min-w-0 flex-1 !min-h-[40px] !py-2 text-sm"
+                  autoComplete="off"
+                />
+                {options.length > MIN_POLL_OPTIONS ? (
+                  <button
+                    type="button"
+                    className="cm-quiet-link cm-mini text-xs font-semibold"
+                    onClick={() => setOptions(options.filter((_, j) => j !== i))}
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          {options.length < MAX_POLL_OPTIONS ? (
+            <button type="button" className="cm-pill mt-2" onClick={() => setOptions([...options, ""])}>
+              Add an answer
+            </button>
+          ) : (
+            <p className="st-muted mt-2 text-xs">{`${MAX_POLL_OPTIONS} answers is the most a poll can hold.`}</p>
+          )}
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="poll_multi" value="1" checked={multi} onChange={(e) => setMulti(e.target.checked)} className="h-4 w-4" />
+              <span>Let people pick more than one</span>
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" name="poll_quiet" value="1" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} className="h-4 w-4" />
+              <span>Hide the count until it closes</span>
+            </label>
+          </div>
+          <label htmlFor="poll-days" className="mt-3 block text-sm">
+            <span className="font-semibold">Closes after</span>
+            <span className="mt-1 flex items-center gap-2">
+              <input
+                id="poll-days"
+                name="poll_days"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={MAX_POLL_DAYS}
+                value={days}
+                onChange={(e) => setDays(e.target.value)}
+                placeholder="never"
+                className="st-field !min-h-[40px] !py-2 w-28 text-sm"
+              />
+              <span className="st-muted text-xs">days. Leave it empty and it stays open.</span>
+            </span>
+          </label>
+        </div>
+      ) : null}
       <p id="post-count" className="st-muted mt-1 text-right text-xs" aria-live="polite">
         {left < 500 ? `${left} characters left` : "Web addresses become links."}
       </p>
@@ -246,6 +321,10 @@ export function CommunityComposer({
         ) : (
           <span />
         )}
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input type="checkbox" name="poll" value="1" checked={poll} onChange={(e) => setPoll(e.target.checked)} className="h-4 w-4" />
+          <span>Ask a poll</span>
+        </label>
         <button type="submit" className="btn st-btn" disabled={busy || sent} aria-busy={sent}>
           {announce ? "Post the announcement" : "Post"}
         </button>
