@@ -59,6 +59,7 @@ import { MAX_ALT_LENGTH } from "@/lib/product-image";
 import { indexPost, partsOf, unindexPost } from "@/lib/community-search";
 import { type Poll, parsePoll, pollKeys } from "@/lib/community-polls";
 import { type DmSetting, NO_DM, parseDmSetting } from "@/lib/community-dm";
+import { type ChatSetting, NO_CHAT, parseChatSetting } from "@/lib/community-chat";
 import { claimHandle } from "@/lib/community-mentions";
 
 /** The author of what the creator writes. Never a member key, which is hex. */
@@ -94,6 +95,8 @@ export type CommunityConfig = {
   v: number;
   /** Whether private messages happen here, and between whom. */
   dm: DmSetting;
+  /** The live room: whether it exists, and how it is kept civil. */
+  chat: ChatSetting;
 };
 
 export type Member = {
@@ -205,6 +208,7 @@ export function freshConfig(storeName: string): CommunityConfig {
     // Off until the creator turns it on, like everything else that lets
     // people reach each other.
     dm: { ...NO_DM },
+    chat: { ...NO_CHAT },
   };
 }
 
@@ -240,6 +244,8 @@ function parseConfig(raw: unknown): CommunityConfig | null {
       // Communities written down before there were messages have none, and
       // parse as off, which is what they have always been.
       dm: parseDmSetting(value.dm),
+      // Likewise for a community written down before there was a room.
+      chat: parseChatSetting(value.chat),
     };
   } catch {
     return null;

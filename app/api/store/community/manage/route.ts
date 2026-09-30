@@ -21,6 +21,7 @@ import {
   withPin,
 } from "@/lib/community";
 import { parseDmSetting } from "@/lib/community-dm";
+import { parseChatSetting } from "@/lib/community-chat";
 import { forgetTicket } from "@/lib/community-access";
 import { dropCommunityImage } from "@/lib/community-files";
 import {
@@ -38,6 +39,7 @@ const ACTIONS = new Set([
   "enable",
   "settings",
   "messages",
+  "room",
   "access",
   "space-add",
   "space-edit",
@@ -115,6 +117,20 @@ export async function POST(request: NextRequest) {
       return save({
         ...config,
         dm: parseDmSetting({ on: body.on === true, between: body.between === true, ask: body.ask !== false }),
+      });
+    }
+
+    // The room, and what keeps it civil. Off is off: the page is gone and the
+    // route refuses, rather than the form merely being hidden.
+    if (action === "room") {
+      return save({
+        ...config,
+        chat: parseChatSetting({
+          on: body.on === true,
+          slow: Number(body.slow),
+          links: body.links !== false,
+          creatorOnly: body.creatorOnly === true,
+        }),
       });
     }
 

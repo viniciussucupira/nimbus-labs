@@ -2118,6 +2118,20 @@ a.rv-line:hover {
   text-underline-offset: 2px;
 }
 
+/* The room. A fixed height that scrolls on its own, so the page around it
+   stays where it is while messages arrive. */
+.cm-room {
+  height: min(60vh, 32rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--st-line);
+  border-radius: 1rem;
+  padding: 0.35rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
 /* One conversation in the message list. */
 .cm-dm-row {
   display: flex;
