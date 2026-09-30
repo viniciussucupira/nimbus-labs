@@ -151,7 +151,7 @@ const DOMAIN_LINE =
 const NOT_BUILT = [
   "PayPal at checkout: Stripe offers it only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein, and does not support it for the direct charges every sale here is made with",
   "Writing every booking into your calendar as an event: only calls set to Google Meet are written there, other bookings come as a feed you subscribe to, and calendars are read for busy times",
-  "Paying affiliates automatically: you pay them yourself",
+  "Paying affiliates with no PayPal account of your own: they are paid from your PayPal, in one press or on your payday, never from money we hold",
   "One editor that chains several pages into a funnel, and a thank-you page of your own",
   "Automatic replies on Instagram",
   "An API that changes your store: the API reads, and webhooks send",

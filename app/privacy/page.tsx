@@ -412,7 +412,14 @@ export default function PrivacyPage() {
           store&apos;s address, for 30 days. The creator sees all of this; an
           affiliate sees only their own figures. It is kept with the
           store&apos;s records. We never hold or pay out an affiliate&apos;s
-          money: the creator pays them.
+          money: the creator pays them. A creator who pays from their own
+          PayPal through us gives us the Client ID and Secret of an app in
+          their PayPal Business account; we keep the Secret encrypted, never
+          show it again and delete both when they disconnect. Each time they
+          pay, we send PayPal each affiliate&apos;s email address, the amount
+          and a note, and PayPal sends the money from the creator&apos;s PayPal
+          to the affiliate&apos;s, under PayPal&apos;s own privacy policy; we
+          keep which PayPal batch and payment paid which affiliate.
         </p>
         <p id="invites">
           <strong className="text-black">Creators inviting creators.</strong>{" "}

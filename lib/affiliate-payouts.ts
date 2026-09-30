@@ -195,8 +195,10 @@ export async function recordBatch(
   store: Store,
   book: Book,
   input: { date: string; reference: string },
+  /** Affiliates with a PayPal payment on its way (lib/paypal-payouts.ts): never written down twice. */
+  away: Set<string> = new Set(),
 ): Promise<RecordedBatch> {
-  const lines = owedLines(book);
+  const lines = owedLines(book).filter((line) => !away.has(line.affiliate.id));
   const reference = input.reference.replace(/\s+/g, " ").trim().slice(0, MAX_REFERENCE_LENGTH);
   let written = 0;
   let cents = 0;

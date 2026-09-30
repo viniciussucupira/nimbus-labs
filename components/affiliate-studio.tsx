@@ -128,6 +128,8 @@ export function AffiliateStudio({
   today,
   currency = "usd",
   elsewhere = 0,
+  away = [],
+  payPanel = null,
 }: {
   handle: string;
   setting: AffiliateSetting;
@@ -141,6 +143,10 @@ export function AffiliateStudio({
   currency?: Currency;
   /** Sales and payouts in another currency, left out of the totals. */
   elsewhere?: number;
+  /** Affiliates with a PayPal payment on its way (lib/paypal-payouts.ts): not in any new batch. */
+  away?: string[];
+  /** Paying from the creator's own PayPal (components/paypal-payouts.tsx), shown above the files. */
+  payPanel?: React.ReactNode;
 }) {
   const router = useRouter();
   const pending = rows.filter((r) => r.affiliate.status === "pending");
@@ -152,7 +158,7 @@ export function AffiliateStudio({
   // Everyone who can be paid today: what one batch file holds. A sale still
   // inside the wait is owed but not payable, so the two totals differ while
   // anything is clearing.
-  const owedNow = rows.filter((r) => r.payable > 0 && r.affiliate.status === "approved");
+  const owedNow = rows.filter((r) => r.payable > 0 && r.affiliate.status === "approved" && !away.includes(r.affiliate.id));
   const batchTotal = owedNow.reduce((sum, r) => sum + r.payable, 0);
   const waitingTotal = rows.reduce((sum, r) => sum + r.waiting, 0);
   const [batchOpen, setBatchOpen] = useState(false);
@@ -216,6 +222,7 @@ export function AffiliateStudio({
             </form>
             <span className="text-sm text-ink-soft">{`Owed now, in all: ${money(owedTotal, currency)}`}</span>
           </div>
+          {payPanel}
           {owedNow.length ? (
             <div className="mt-5 rounded-2xl border border-line bg-paper p-4">
               <h3 className="font-semibold text-ink">Pay everyone at once</h3>

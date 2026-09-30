@@ -24,7 +24,8 @@ import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/site-url";
 import { storesAfter, type Store } from "@/lib/store";
 import { affiliatesOn, readBook } from "@/lib/affiliates";
-import { owedLines, batchTotal } from "@/lib/affiliate-payouts";
+import { batchTotal } from "@/lib/affiliate-payouts";
+import { onTheirWay, payableLines, payWithPayPal, paysAutomatically } from "@/lib/paypal-payouts";
 import { ordinal } from "@/lib/affiliate-setting";
 import { formatMoney } from "@/lib/money";
 
@@ -101,12 +102,58 @@ export function paydayEmail(input: {
   return { subject: `${amount} to pay your affiliates today`, text: lines.join("\n") };
 }
 
+/** The payday email of a store that pays by itself: what PayPal was asked to send, or why not. */
+export function autoPayEmail(paid: Awaited<ReturnType<typeof payWithPayPal>>, currency: string): { subject: string; text: string } {
+  const studio = `${SITE_URL}/studio/affiliates`;
+  if (paid.ok) {
+    const amount = formatMoney(paid.cents, currency);
+    const who = `${paid.people} ${paid.people === 1 ? "affiliate" : "affiliates"}`;
+    return {
+      subject: `${amount} sent to ${who} from your PayPal`,
+      text: [
+        "Hello,",
+        "",
+        `It is your affiliate payday, and you asked us to pay by ourselves. ${amount} went to ${who} from your own PayPal, in PayPal batch ${paid.batch}.`,
+        "",
+        "Each payment shows as paid on your affiliate page, and on the affiliate's own page, as soon as PayPal confirms it. Anyone PayPal cannot pay stays owed, to be paid again. The money went from your PayPal to theirs; it never passed through us.",
+        studio,
+        "",
+        "— Nimbus Labs",
+      ].join("\n"),
+    };
+  }
+  const why: Record<string, string> = {
+    funds: "your PayPal balance did not cover it. Add money to your PayPal balance",
+    refused: "PayPal refused the app you connected. Connect it again, with Payouts switched on",
+    reconnect: "the app you connected has to be connected again",
+    "not-connected": "no PayPal app is connected",
+    busy: "another payment was being sent at the same moment",
+    refunds: "we could not check every refund on your Stripe account just now",
+    nothing: "nobody is owed anything that has cleared",
+    error: "PayPal could not be reached",
+  };
+  return {
+    subject: "Your affiliates were not paid today",
+    text: [
+      "Hello,",
+      "",
+      `It is your affiliate payday, and nothing was sent: ${why[paid.reason] ?? why.error}. Nothing left your PayPal.`,
+      "",
+      "Open your affiliate page to pay them with one press, or download the batch for PayPal or Wise:",
+      studio,
+      "",
+      "— Nimbus Labs",
+    ].join("\n"),
+  };
+}
+
 /** One store, if today is its payday and anybody is owed. True when sent. */
 async function payday(store: Store, month: string, dayOfMonth: number): Promise<boolean> {
   if (!affiliatesOn(store) || store.affiliates.payday !== dayOfMonth) return false;
   if (!store.statsId || !store.email) return false;
   const book = await readBook(store);
-  const lines = owedLines(book);
+  // Anyone with a PayPal payment already on its way is not due again.
+  const lines = payableLines(book, await onTheirWay(store));
   // Nobody to pay is not a message worth sending, and it must not spend the
   // month's claim either: a sale that lands later today should still be able
   // to bring the email.
@@ -114,6 +161,13 @@ async function payday(store: Store, month: string, dayOfMonth: number): Promise<
   // Claimed last, so that whichever run gets here first is the only one that
   // sends. A second run reads the same book and stops here.
   if (!(await claimMonth(store.statsId, month))) return false;
+  // Paying by itself, from the creator's own PayPal (lib/paypal-payouts.ts):
+  // the email then says what was sent, or why it could not be.
+  if (book.refundsChecked && (await paysAutomatically(store))) {
+    const paid = await payWithPayPal(store);
+    const { subject, text } = autoPayEmail(paid, book.currency);
+    return sendEmail({ from: NIMBUS_FROM, to: store.email, subject, text, idempotencyKey: `aff-payday-${store.statsId}-${month}` });
+  }
   const { subject, text } = paydayEmail({
     storeName: store.name,
     payday: store.affiliates.payday,

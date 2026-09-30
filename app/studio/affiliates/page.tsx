@@ -9,6 +9,9 @@ import { affiliateLink, readBook } from "@/lib/affiliates";
 import { isSenderConfigured } from "@/lib/email";
 import { canSell } from "@/lib/store-checkout";
 import { AffiliateStudio } from "@/components/affiliate-studio";
+import { PayPalPayouts } from "@/components/paypal-payouts";
+import { onTheirWay, payableLines, readPayPal, settlePayPal } from "@/lib/paypal-payouts";
+import { batchTotal } from "@/lib/affiliate-payouts";
 
 type Params = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
@@ -33,6 +36,9 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
   const { view } = found;
   const { store } = view;
 
+  // What PayPal paid since the last look is written into the book first (lib/paypal-payouts.ts).
+  await settlePayPal(store).catch((error) => console.error("settling PayPal payouts failed", error));
+  const [paypal, away] = await Promise.all([readPayPal(store).catch(() => null), onTheirWay(store).catch(() => new Set<string>())]);
   const book = await readBook(store).catch((error) => {
     console.error("reading the affiliate book failed", error);
     return null;
@@ -110,6 +116,19 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
           today={new Date().toISOString().slice(0, 10)}
           currency={store.currency}
           elsewhere={book?.elsewhere ?? 0}
+          away={[...away]}
+          payPanel={
+            book ? (
+              <PayPalPayouts
+                initial={paypal}
+                people={payableLines(book, away).length}
+                cents={batchTotal(payableLines(book, away))}
+                currency={store.currency}
+                onTheirWay={away.size}
+                payday={store.affiliates.payday}
+              />
+            ) : null
+          }
         />
       </main>
       </StudioStorePin>
