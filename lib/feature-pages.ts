@@ -195,7 +195,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "users", title: "Your list of students", body: "See every student, and take one off the course if you need to." },
           { icon: "cap", title: "Quizzes and certificates", body: "Up to 20 questions after any lesson, a pass mark, and a certificate with a page anyone can open to check it.", href: "/platform/quizzes-and-certificates" },
           { icon: "chat", title: "A community for students", body: "Your store's community can open to the buyers of a course, for questions and work shared where everyone can learn from it.", href: "/platform/community" },
-          { icon: "video", title: "Live Q&As for a course", body: "A live event in your community can be kept for the buyers of the course, with a replay afterwards.", href: "/platform/live-events" },
+          { icon: "video", title: "Live Q&As for a course", body: "A live event in your community can be kept for the buyers of the course, with a replay afterward.", href: "/platform/live-events" },
           { icon: "door", title: "Students from another platform", body: "Import the people who bought the course elsewhere, up to 20,000 a file, and they open it here with the email they bought with.", href: "/platform/switching-to-nimbus" },
         ],
       },
@@ -531,7 +531,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "deliver",
     menu: { label: "Instant delivery", description: "On screen when paid, and back by email whenever it is lost.", icon: "bolt" },
-    related: ["licence-keys", "pdf-stamping", "price-options", "courses"],
+    related: ["license-keys", "pdf-stamping", "price-options", "courses"],
     blocks: [
       {
         kind: "how",
@@ -552,7 +552,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "shield", title: "Nothing that runs", body: "Programs, installers and scripts are refused, so a taken-over account cannot hand out malware." },
           { icon: "mail", title: "A confirmation email", body: "Every buyer gets one from your store's name: what they bought, what they paid and the way back to it. Replies reach you." },
           { icon: "refresh", title: "Sent again from your studio", body: "A buyer who cannot find it? Send the purchase email again from your list of sales. It goes only to the address they paid with." },
-          { icon: "key", title: "A license key with each sale", body: "One key per buyer, never given twice, on the thank-you page, in the email and in their list of purchases.", href: "/platform/licence-keys" },
+          { icon: "key", title: "A license key with each sale", body: "One key per buyer, never given twice, on the thank-you page, in the email and in their list of purchases.", href: "/platform/license-keys" },
           { icon: "file", title: "The buyer's email on their PDF", body: "Switch on stamping and every page of the PDF they download carries their email, the date and their order.", href: "/platform/pdf-stamping" },
         ],
       },
@@ -1293,7 +1293,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     ],
   },
   {
-    slug: "licence-keys",
+    slug: "license-keys",
     section: "platform",
     eyebrow: "License keys",
     title: "A unique key",
@@ -1342,7 +1342,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about license keys",
         items: [
-          { q: "How does my software check a key?", a: "It asks /api/store/licence with your store's address, the product and the key, and gets back valid, revoked or unknown. It can be called from a website or an app, up to 120 times a minute from one connection." },
+          { q: "How does my software check a key?", a: "It asks /api/store/license with your store's address, the product and the key, and gets back valid, revoked or unknown. It can be called from a website or an app, up to 120 times a minute from one connection." },
           { q: "Can I use keys my own system already made?", a: "Yes. Upload them as a text or CSV file. A key that was already uploaded is skipped, so it can never go to two buyers." },
         ],
       },
@@ -1361,7 +1361,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "deliver",
     menu: { label: "PDF stamping", description: "The buyer's email on every page of their PDF.", icon: "file" },
-    related: ["instant-delivery", "licence-keys", "price-options", "courses"],
+    related: ["instant-delivery", "license-keys", "price-options", "courses"],
     blocks: [
       {
         kind: "how",
@@ -1852,7 +1852,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     plan: "creator",
     group: "paid",
     menu: { label: "Security", description: "Sign-in, checkout, files and refunds, in plain words.", icon: "shield" },
-    related: ["your-stripe", "instant-delivery", "webhooks", "licence-keys"],
+    related: ["your-stripe", "instant-delivery", "webhooks", "license-keys"],
     blocks: [
       {
         kind: "features",
@@ -2165,7 +2165,7 @@ export const CREATOR_PAGES: TopicPage[] = [
           { icon: "list", title: "Limited editions that are real", body: "The count shown is the true one, and the last copy is never sold twice.", href: "/platform/checkout" },
           { icon: "target", title: "Pixels for your ads", body: "Meta, Google, TikTok and Pinterest, with each purchase and its amount, on the $29 plan.", href: "/platform/insights" },
           { icon: "globe", title: "Your own domain", body: "shop.yourstudio.com on Pro, with the certificate made for you.", href: "/platform/domain" },
-          { icon: "key", title: "License keys", body: "A unique key with each sale, for plugins and apps, checked by your software through a public address.", href: "/platform/licence-keys" },
+          { icon: "key", title: "License keys", body: "A unique key with each sale, for plugins and apps, checked by your software through a public address.", href: "/platform/license-keys" },
           { icon: "file", title: "Stamped PDFs", body: "The buyer's email on every page of a guide or a color book, so anyone thinking of sharing it thinks twice.", href: "/platform/pdf-stamping" },
           { icon: "star", title: "Reviews from real buyers", body: "Stars and words only people who paid can leave, on the product's card and its page.", href: "/platform/reviews" },
         ],

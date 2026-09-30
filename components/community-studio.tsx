@@ -696,7 +696,7 @@ function OnlyPicker({
     <fieldset>
       <legend className="field-label">Keep it for the buyers of</legend>
       <p className="mt-1 text-xs text-ink-soft">
-        Leave every box empty and the space is for every member. Tick one or more and only members who have one of them see
+        Leave every box empty and the space is for every member. Check one or more and only members who have one of them see
         the space, its posts and its address — everybody else sees no sign of it.
       </p>
       <div className="mt-2 space-y-1.5">

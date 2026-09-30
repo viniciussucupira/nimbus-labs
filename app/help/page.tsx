@@ -369,7 +369,7 @@ const SECTIONS: Section[] = [
       {
         q: "Can I build a sales page or a landing page?",
         a: [
-          "Yes, on every plan. Any product's own page can be built from up to 30 blocks: a hero with the product's picture or a video from YouTube, Vimeo or Loom, text, benefits, what is inside, about you, questions, your guarantee, buttons and reviews. It has its own title and description for search engines, and a share picture drawn from the product's picture, name, price and stars. For a free product the page asks for the email, and afterwards can show one of your paid products next.",
+          "Yes, on every plan. Any product's own page can be built from up to 30 blocks: a hero with the product's picture or a video from YouTube, Vimeo or Loom, text, benefits, what is inside, about you, questions, your guarantee, buttons and reviews. It has its own title and description for search engines, and a share picture drawn from the product's picture, name, price and stars. For a free product the page asks for the email, and afterward can show one of your paid products next.",
           "Every block is plain text in your store's theme: no custom code or styles. A button leads to the checkout the store already has, so a page can never state a price of its own.",
         ],
       },

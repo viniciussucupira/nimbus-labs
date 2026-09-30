@@ -283,7 +283,7 @@ export async function createBillingCheckout(
     // The store rides along, so an owner of several comes back to the one
     // they were paying for, and the way back writes it down on that one.
     success_url: `${origin}/api/billing/return?session_id={CHECKOUT_SESSION_ID}${store.sid ? `&store=${store.sid}` : ""}`,
-    cancel_url: `${origin}/studio?${store.sid ? `store=${store.sid}&` : ""}billing=cancelled`,
+    cancel_url: `${origin}/studio?${store.sid ? `store=${store.sid}&` : ""}billing=canceled`,
   });
   if (customerId && CUSTOMER_PATTERN.test(customerId)) {
     body.set("customer", customerId);
@@ -567,7 +567,7 @@ export type SwitchResult =
   /** Already on that plan. */
   | { kind: "same" }
   /** Not now: cancelled, not in good standing, or a change is already waiting. */
-  | { kind: "refused"; reason: "cancelling" | "standing" | "pending" };
+  | { kind: "refused"; reason: "canceling" | "standing" | "pending" };
 
 const INVOICE_PAGE = /^https:\/\/invoice\.stripe\.com\//;
 const LOCAL_PAGE = /^http:\/\/127\.0\.0\.1:\d+\//;
@@ -592,7 +592,7 @@ export async function switchPlan(
   const status = typeof subscription.status === "string" ? subscription.status : "";
   if (status !== "active" && status !== "trialing") return { kind: "refused", reason: "standing" };
   if (subscription.cancel_at_period_end === true || (typeof subscription.cancel_at === "number" && subscription.cancel_at > 0)) {
-    return { kind: "refused", reason: "cancelling" };
+    return { kind: "refused", reason: "canceling" };
   }
   if (subscription.pending_update) return { kind: "refused", reason: "pending" };
   const now = planOf(subscription);

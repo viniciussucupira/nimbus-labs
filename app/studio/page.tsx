@@ -183,12 +183,19 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
 };
 
 
+/** Addresses made before the notices were spelled the American way, still understood. */
+const BILLING_ALIASES: Record<string, string> = {
+  cancelling: "canceling",
+  cancelled: "canceled",
+  "switch-cancelling": "switch-canceling",
+};
+
 const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
   on: {
     title: "You are subscribed",
     body: "Your store can take money as soon as your Stripe account is connected and cleared, if it is not already. If your plan started with a free trial, nothing is charged until the trial ends. You can cancel on this page at any time.",
   },
-  cancelling: {
+  canceling: {
     title: "Canceled",
     body: "Nothing more will be charged. Your store keeps taking payments until the date below, and you can change your mind on this page until then.",
   },
@@ -212,7 +219,7 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
     title: "Stripe has not confirmed the payment yet",
     body: "The subscription exists but is not in good standing yet. Reload this page in a moment; nothing here was lost.",
   },
-  cancelled: {
+  canceled: {
     title: "Nothing was started",
     body: "You closed the payment page. No card was charged and your store is exactly as you left it.",
   },
@@ -240,7 +247,7 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
     title: "Nothing to change",
     body: "You are already billed that way.",
   },
-  "switch-cancelling": {
+  "switch-canceling": {
     title: "Your subscription is set to stop",
     body: "Keep it first, with the button below, and then choose how often to pay. Nothing was changed.",
   },
@@ -400,7 +407,7 @@ export default async function StudioPage({
   const notice =
     ADDRESS_NOTICES[typeof params.address === "string" ? params.address : ""] ??
     STRIPE_NOTICES[typeof params.stripe === "string" ? params.stripe : ""] ??
-    BILLING_NOTICES[typeof params.billing === "string" ? params.billing : ""] ??
+    BILLING_NOTICES[BILLING_ALIASES[String(params.billing)] ?? (typeof params.billing === "string" ? params.billing : "")] ??
     TEAM_NOTICES[typeof params.team === "string" ? params.team : ""] ??
     STORES_NOTICES[typeof params.stores === "string" ? params.stores : ""] ??
     (found.ok && found.fellBack ? TEAM_NOTICES.gone : undefined);

@@ -186,7 +186,7 @@ export function LicenceKeyEditor({ product, handle }: { product: Product; handle
   const { setup, counts } = loaded;
   const pool = setup.source === "pool";
   const low = pool && counts.left <= setup.lowAt;
-  const checkUrl = `${SITE_URL}/api/store/licence?store=${encodeURIComponent(handle)}&product=${encodeURIComponent(product.id)}&key=`;
+  const checkUrl = `${SITE_URL}/api/store/license?store=${encodeURIComponent(handle)}&product=${encodeURIComponent(product.id)}&key=`;
 
   return (
     <section className="mt-3 rounded-[var(--r-sm)] border border-line bg-white p-4" aria-label={`License keys for ${product.title}`}>
