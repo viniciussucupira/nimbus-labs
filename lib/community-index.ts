@@ -152,7 +152,10 @@ export async function indexMember(communityId: string, member: Member): Promise<
     communityId,
     "member",
     member.k,
-    Math.floor(member.at / 1000) || 1,
+    // Already in seconds (lib/community.ts, now()). The first version divided
+    // it by a thousand as if it were milliseconds, which kept the order but
+    // tied everybody who came within the same quarter of an hour.
+    member.at || 1,
     [member.n, member.h],
   ).catch(() => {});
 }

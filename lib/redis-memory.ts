@@ -196,6 +196,14 @@ export class MemoryRedis {
       }
       case "HLEN":
         return this.hash(key).size;
+      case "HSCAN": {
+        // HSCAN key cursor [COUNT n]. COUNT is only a hint in Redis, so
+        // answering everything at once with the cursor back at "0" is a reply
+        // a real server may give; a caller that pages correctly handles both.
+        const flat: string[] = [];
+        for (const [field, value] of this.hash(key)) flat.push(field, value);
+        return ["0", flat];
+      }
       case "HINCRBY": {
         const hash = this.hash(key);
         const next = (Number(hash.get(args[0])) || 0) + Number(args[1]);
