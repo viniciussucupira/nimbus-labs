@@ -196,6 +196,17 @@ export class MemoryRedis {
       }
       case "HLEN":
         return this.hash(key).size;
+      case "SCAN": {
+        // SCAN cursor [MATCH pattern] [COUNT n]: here the "key" is the cursor.
+        // Every match at once, with the cursor back at "0", as HSCAN does.
+        const flags = args.map((a) => a.toUpperCase());
+        const at = flags.indexOf("MATCH");
+        const pattern = at >= 0 ? args[at + 1] : "*";
+        const matcher = new RegExp(`^${pattern.split("*").map((part) => part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join(".*")}$`);
+        for (const k of [...this.data.keys()]) this.live(k);
+        const found = [...this.data.keys()].filter((k) => matcher.test(k));
+        return ["0", found];
+      }
       case "HSCAN": {
         // HSCAN key cursor [COUNT n]. COUNT is only a hint in Redis, so
         // answering everything at once with the cursor back at "0" is a reply

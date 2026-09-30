@@ -150,6 +150,16 @@ export async function createCheckout(
      * window, and the share this product earns them (lib/affiliates.ts).
      */
     via?: { aff: string; rate: number } | null;
+    /**
+     * A come-back offer's coupon (lib/winback.ts), applied by Stripe to this
+     * checkout alone. It replaces the box for typing a code: Stripe takes one
+     * or the other.
+     */
+    coupon?: string;
+    /** The address the checkout opens with, fixed, for an offer made to one person. */
+    email?: string;
+    /** No free trial: somebody coming back has had theirs. */
+    noTrial?: boolean;
   } = {},
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
@@ -260,7 +270,13 @@ export async function createCheckout(
   // buyer who may not come back. What a code takes off is worked out by Stripe
   // from a coupon on the creator's own account; no amount is decided here.
   // Not where the buyer chooses the price: they already name the amount.
-  if (store.hasDiscounts && !pwyw) body.set("allow_promotion_codes", "true");
+  if (extras.coupon && !pwyw) {
+    body.set("discounts[0][coupon]", extras.coupon);
+    body.set("metadata[winback]", "yes");
+  } else if (store.hasDiscounts && !pwyw) {
+    body.set("allow_promotion_codes", "true");
+  }
+  if (extras.email) body.set("customer_email", extras.email);
 
   if (extras.buyerKey) body.set("metadata[buyer_key]", extras.buyerKey);
   if (extras.news) body.set("metadata[news]", "yes");
@@ -297,9 +313,10 @@ export async function createCheckout(
     body.set("subscription_data[metadata][store]", store.handle);
     body.set("subscription_data[metadata][product]", product.id);
     if (chosen) body.set("subscription_data[metadata][option]", chosen.id);
+    if (extras.coupon) body.set("subscription_data[metadata][winback]", "yes");
     // Days free before the first payment. The card is taken now, as the store
     // page says, and nothing is charged until the trial is over.
-    if (membership.trialDays > 0) {
+    if (membership.trialDays > 0 && !extras.noTrial) {
       body.set("subscription_data[trial_period_days]", String(membership.trialDays));
       body.set("metadata[trial_days]", String(membership.trialDays));
     }

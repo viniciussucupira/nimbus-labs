@@ -93,6 +93,20 @@ export default function PrivacyPage() {
           good, so that store never sends them a reminder again.
         </p>
         <p>
+          <strong className="text-black">A come-back offer.</strong> Only on
+          stores whose creator switched it on, and only to somebody who agreed
+          to hear from that creator and has not left their list: some days
+          after a membership ends, we read from the creator&apos;s Stripe
+          account when it ended, which product it was and the address it was
+          paid from, and email that address once, on the creator&apos;s behalf,
+          with a discount to come back. We keep a mark that the email for that
+          membership was handled, for 90 days; a one-way hash of the address
+          and the product for 180 days, so nobody gets two such emails about
+          the same thing; and the link in the email, tied to the address, the
+          product and the offer, for 14 days. It carries the creator&apos;s
+          list&apos;s own one-click unsubscribe.
+        </p>
+        <p>
           <strong className="text-black">Managing a membership.</strong> When
           a member asks for a link to manage or cancel their membership, we use
           the email address they type to look for their membership on the
