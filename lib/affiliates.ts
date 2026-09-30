@@ -571,8 +571,17 @@ export async function recordClick(
 
 /**
  * Who a checkout is credited to, read from the click cookie: an approved
- * affiliate, within the store's window, on a product that earns a share —
- * and never the browser of that affiliate themselves.
+ * affiliate, within the store's window — and never the browser of that
+ * affiliate themselves.
+ *
+ * `rate` is this product's own share, and it may be 0. That is deliberate.
+ * An order can hold more than this product: a bump rides in the same charge
+ * and earns its own product's share. So whether the order earns anything at
+ * all is not knowable here, only where the order is finally assembled, and
+ * the guard belongs there — in lib/store-checkout.ts for a checkout, in
+ * lib/calls.ts for a booking. Deciding it here voided the bump's commission
+ * whenever the main product happened to be set to 0%, which is exactly the
+ * case a creator uses to pay on the add-on and not on the front offer.
  */
 export async function attributionFor(
   store: Store,
@@ -584,13 +593,11 @@ export async function attributionFor(
   if (!click) return null;
   const now = Math.floor(Date.now() / 1000);
   if (click.at > now + 60 || now - click.at > store.affiliates.days * 86_400) return null;
-  const rate = commissionRate(store.affiliates, productId);
-  if (rate <= 0) return null;
   const affiliate = await approvedByCode(store, click.code);
   if (!affiliate) return null;
   const own = await affiliateForSession(store, cookies.session);
   if (own?.id === affiliate.id) return null;
-  return { aff: affiliate.id, rate };
+  return { aff: affiliate.id, rate: commissionRate(store.affiliates, productId) };
 }
 
 /** The share an offer after paying earns the affiliate the order came through. */

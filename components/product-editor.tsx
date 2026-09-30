@@ -6,6 +6,7 @@ import { CallEditor, type MeetAccount } from "@/components/call-editor";
 import { CourseToggle } from "@/components/course-toggle";
 import { BundleToggle } from "@/components/bundle-toggle";
 import { CheckoutExtras, bumpChoices } from "@/components/checkout-extras";
+import type { ExtraNotes } from "@/lib/extras-notes";
 import type { BumpChoice, ProductPaging } from "@/lib/catalog";
 import { CheckoutFieldsEditor } from "@/components/checkout-fields-editor";
 import { ProductImageEditor } from "@/components/product-image-editor";
@@ -153,7 +154,21 @@ function typedFree(price: string): boolean {
   return /^0+(\.0{1,2})?$/.test(price.trim());
 }
 
-async function send(payload: Record<string, unknown>, currency: Currency): Promise<string | null> {
+/**
+ * Saves a change, and brings back both what was wrong and what went quiet.
+ *
+ * `quiet` is the part that is new: a saved change can stop buyers being shown
+ * something on a *different* product — a checkout box that offered the product
+ * whose price just came down, an after-paying offer, a payment plan the new
+ * price outgrew. The server works out which, because it takes the whole store
+ * to know (app/api/store/product/route.ts), and the creator is told here rather
+ * than finding out from the takings.
+ */
+async function send(
+  payload: Record<string, unknown>,
+  currency: Currency,
+): Promise<{ problem: string | null; quiet: string[] }> {
+  const wrong = (message: string) => ({ problem: message, quiet: [] });
   try {
     const response = await fetch("/api/store/product", {
       method: "POST",
@@ -165,27 +180,26 @@ async function send(payload: Record<string, unknown>, currency: Currency): Promi
       error?: string;
       limit?: number;
       reason?: string;
+      quiet?: string[];
     };
-    if (data.ok) return null;
+    if (data.ok) return { problem: null, quiet: Array.isArray(data.quiet) ? data.quiet : [] };
     if (data.error === "link") {
       // The server says which way the link was wrong; the creator gets that
       // sentence rather than a generic failure they cannot act on.
-      return (
-        LINK_PROBLEMS[data.reason as LinkProblem] ?? LINK_PROBLEMS.shape
-      );
+      return wrong(LINK_PROBLEMS[data.reason as LinkProblem] ?? LINK_PROBLEMS.shape);
     }
     if (data.error === "too_many") {
-      return `A store lists up to ${(data.limit ?? MAX_PRODUCTS).toLocaleString("en-US")} things, and yours is full. Remove one to add another.`;
+      return wrong(`A store lists up to ${(data.limit ?? MAX_PRODUCTS).toLocaleString("en-US")} things, and yours is full. Remove one to add another.`);
     }
     if (data.error === "pwyw") {
       const why = (data as { pwyw?: string }).pwyw ?? "";
-      if (why === "free") return pwywFree(currency);
-      return why === "suggested" || !PWYW_MESSAGES[why] ? pwywSuggested(currency) : PWYW_MESSAGES[why];
+      if (why === "free") return wrong(pwywFree(currency));
+      return wrong(why === "suggested" || !PWYW_MESSAGES[why] ? pwywSuggested(currency) : PWYW_MESSAGES[why]);
     }
-    if (data.error === "price") return productPrice(currency);
-    return MESSAGES[data.error ?? ""] ?? MESSAGES.server_error;
+    if (data.error === "price") return wrong(productPrice(currency));
+    return wrong(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
   } catch {
-    return MESSAGES.server_error;
+    return wrong(MESSAGES.server_error);
   }
 }
 
@@ -1256,6 +1270,7 @@ export function ProductEditor({
   paging = null,
   choices,
   named = {},
+  notes = {},
   folder,
   imageFolder,
   handle,
@@ -1276,6 +1291,12 @@ export function ProductEditor({
   choices?: BumpChoice[];
   /** The names of the products the ones shown offer at checkout now. */
   named?: Record<string, string>;
+  /**
+   * Per product, whichever of its extras buyers are not being shown, and why
+   * (lib/extras-notes.ts). Worked out on the server, because the reason often
+   * lies in a product that is not on this page.
+   */
+  notes?: Record<string, ExtraNotes>;
   folder: string;
   /** The store's own folder for product pictures (lib/store.ts imageFolder). */
   imageFolder: string;
@@ -1305,6 +1326,11 @@ export function ProductEditor({
   const [fileError, setFileError] = useState<{ id: string; message: string } | null>(
     null,
   );
+  /**
+   * What the last save stopped buyers being shown, one sentence per thing.
+   * Empty on every ordinary save, which is nearly all of them.
+   */
+  const [silenced, setSilenced] = useState<string[]>([]);
 
   const total = totalGiven ?? products.length;
   const full = total >= MAX_PRODUCTS;
@@ -1420,7 +1446,7 @@ export function ProductEditor({
   async function linkTo(id: string, url: string) {
     setFileError(null);
     setFileBusyId(id);
-    const problem = await send({ action: "link", id, link: url }, currency);
+    const { problem } = await send({ action: "link", id, link: url }, currency);
     setFileBusyId(null);
     if (problem) {
       setFileError({ id, message: problem });
@@ -1432,7 +1458,7 @@ export function ProductEditor({
   async function unlink(id: string) {
     setFileError(null);
     setFileBusyId(id);
-    const problem = await send({ action: "unlink", id }, currency);
+    const { problem } = await send({ action: "unlink", id }, currency);
     setFileBusyId(null);
     if (problem) {
       setFileError({ id, message: problem });
@@ -1444,13 +1470,16 @@ export function ProductEditor({
   async function run(payload: Record<string, unknown>, done: () => void, confirmation?: string) {
     setBusy(true);
     setError(null);
-    const problem = await send(payload, currency);
+    const { problem, quiet } = await send(payload, currency);
     setBusy(false);
     if (problem) {
       setError(problem);
       return;
     }
     done();
+    // Kept on the page rather than in a toast: each line names a product to go
+    // and change, which is not something to read in three seconds.
+    setSilenced(quiet);
     if (confirmation) toast(confirmation);
     router.refresh();
   }
@@ -1838,7 +1867,7 @@ export function ProductEditor({
                 </>
                 )}
 
-                <CheckoutExtras product={product} choices={offerable} named={named} />
+                <CheckoutExtras product={product} choices={offerable} named={named} notes={notes[product.id]} />
                 <div className="mt-2">
                   <CheckoutFieldsEditor product={product} />
                 </div>
@@ -1903,6 +1932,36 @@ export function ProductEditor({
         >
           {error}
         </p>
+      ) : null}
+
+      {/*
+        What the save just silenced. Every one of these is a change to some
+        other product than the one the creator was looking at, which is why it
+        has to be said here and not left to be noticed: a checkout box that
+        offered the product whose price came down, an offer after paying, a
+        payment plan a raised price outgrew. It stays until it is dismissed,
+        because each line names a product to go and change.
+      */}
+      {silenced.length ? (
+        <div className="notice notice-warn mt-3" role="status">
+          <p className="font-semibold">
+            {silenced.length === 1
+              ? "That change stopped buyers being shown one thing:"
+              : `That change stopped buyers being shown ${silenced.length} things:`}
+          </p>
+          <ul className="mt-1 list-disc space-y-1 pl-5">
+            {silenced.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="mt-2 text-sm font-bold underline underline-offset-4"
+            onClick={() => setSilenced([])}
+          >
+            Got it
+          </button>
+        </div>
       ) : null}
 
       {/*

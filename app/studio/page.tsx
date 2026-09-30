@@ -780,6 +780,7 @@ export default async function StudioPage({
                   paging={shelf?.paging ?? null}
                   choices={shelf?.choices}
                   named={shelf?.named}
+                  notes={shelf?.notes}
                   folder={folder}
                   imageFolder={pictures}
                   handle={store.handle}

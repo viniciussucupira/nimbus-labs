@@ -571,7 +571,9 @@ export async function holdAndCheckout(input: {
     if (product.summary) body.set("line_items[0][price_data][product_data][description]", product.summary);
     if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
     // Sent by an affiliate: credited to them, at today's share (lib/affiliates.ts).
-    if (input.via) {
+    // A booking is one product, with nothing else able to ride along, so a
+    // share of nothing is a sale that earns nothing and is not written down.
+    if (input.via && input.via.rate > 0) {
       body.set("metadata[via]", input.via.aff);
       body.set("metadata[via_rate]", String(input.via.rate));
       body.set("payment_intent_data[metadata][via]", input.via.aff);

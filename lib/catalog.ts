@@ -49,6 +49,7 @@ import { type CheckoutField, parseFields } from "@/lib/checkout-fields";
 import { type KeySetup, activeKeys, parseKeySetup } from "@/lib/key-setup";
 import { type DisplayStyle, type ProductImage, parseDisplay, parseProductImage } from "@/lib/product-image";
 import { deliveredIds, parseBundleItems } from "@/lib/bundle-rules";
+import { type ExtraNotes, allExtraNotes } from "@/lib/extras-notes";
 import type { Store } from "@/lib/store";
 
 /**
@@ -690,6 +691,13 @@ export async function studioShelf(
   paging: ProductPaging | null;
   choices: BumpChoice[];
   named: Record<string, string>;
+  /**
+   * Which products have an extra set up that buyers are not being shown, and
+   * why (lib/extras-notes.ts). Worked out here because it needs the whole
+   * store: the product a checkout box offers is often not on this page, and a
+   * product that stopped qualifying to be offered is not in `choices` at all.
+   */
+  notes: Record<string, ExtraNotes>;
 }> {
   const ids = productIds(store);
   const positions = Object.fromEntries(ids.map((id, i) => [id, i]));
@@ -701,7 +709,14 @@ export async function studioShelf(
     );
   if (ids.length <= STUDIO_PAGE_SIZE) {
     const products = await readProducts(store);
-    return { products, positions, paging: null, choices: choose(products), named: namesOf(products, new Map(products.map((p) => [p.id, p.title]))) };
+    return {
+      products,
+      positions,
+      paging: null,
+      choices: choose(products),
+      named: namesOf(products, new Map(products.map((p) => [p.id, p.title]))),
+      notes: allExtraNotes(products, products, store.currency),
+    };
   }
   const query = typeof params.q === "string" ? params.q.replace(/\s+/g, " ").trim().slice(0, 80) : "";
   const asked = typeof params.pp === "string" && /^\d{1,4}$/.test(params.pp) ? Number(params.pp) : 1;
@@ -718,6 +733,8 @@ export async function studioShelf(
     paging: { page, pages, query, matches: matches.length, from, size: STUDIO_PAGE_SIZE },
     choices: choose(listings),
     named: namesOf(products, new Map(listings.map((l) => [l.id, l.title]))),
+    // Only the products on this page are asked about, against the whole store.
+    notes: allExtraNotes(products, listings, store.currency),
   };
 }
 

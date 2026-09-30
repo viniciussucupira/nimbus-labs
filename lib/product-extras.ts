@@ -82,15 +82,148 @@ export function canBeBumped(product: Listing): boolean {
   );
 }
 
+/**
+ * Why a checkout offer a creator has set up is not being shown.
+ *
+ * Every one of these is reachable by changing a *different* product than the
+ * one the offer is set on. Lower the price of the thing being offered below
+ * what the box charges for it and the box stops appearing; give that product
+ * several prices, a limited number, or its own monthly charge, and the same.
+ * The studio used to go on saying "Offers X for $9 at checkout" through all
+ * of it, so a creator could lose an add-on for months and only ever see it in
+ * the takings.
+ *
+ * Kept beside the rule it explains, and exhaustive, so a rule added to one is
+ * a compiler error in the other.
+ */
+export type BumpPause =
+  /** This product is no longer a plain one-off sale. */
+  | "kind"
+  /** Buyers name their own price here, and a chosen amount is a checkout on its own. */
+  | "pwyw"
+  /** The product it offers is no longer in the store. */
+  | "gone"
+  /** It ended up pointing at itself. */
+  | "itself"
+  /** That product is given away now, and there is no price to offer it at. */
+  | "targetFree"
+  /** That product is charged again and again now, and this offers one payment. */
+  | "targetRecurring"
+  /** That product is a booking now, and a booking is made on its own page. */
+  | "targetCall"
+  /** That product has several prices to choose between. */
+  | "targetOptions"
+  /** Buyers name their own price on that product. */
+  | "targetPwyw"
+  /** That product has a limited number for sale, which only its own checkout counts. */
+  | "targetLimited"
+  /** Nothing is behind that product to hand over. */
+  | "targetEmpty"
+  /** The box charges more for it than buying it on its own does. */
+  | "dearer";
+
+/**
+ * Why this product cannot be the thing offered, or null when it can.
+ *
+ * The same rules an offer after paying goes by (lib/funnel.ts), which is why
+ * this is exported: one vocabulary of reasons for both, so a creator reads the
+ * same sentence wherever they meet it.
+ */
+export function bumpTargetPause(target: Listing): BumpPause | null {
+  // Three separate reasons, said separately. One sentence offering the creator
+  // a choice of three things that might be wrong is the same defect the room's
+  // refusals had: the code knows which, so it says which.
+  if (target.call !== null) return "targetCall";
+  if (target.recurring !== null) return "targetRecurring";
+  if (target.priceCents <= 0) return "targetFree";
+  if (target.options.length > 0) return "targetOptions";
+  if (target.pwyw) return "targetPwyw";
+  if (target.stock !== null) return "targetLimited";
+  if (target.file === null && target.link === null && (target.bundle?.length ?? 0) < MIN_BUNDLE_ITEMS) return "targetEmpty";
+  return null;
+}
+
+/**
+ * The checkout offer as it stands: being shown, set up but not being shown, or
+ * not set up at all.
+ *
+ * `activeBump` is this, with the reason thrown away. Both read from one set of
+ * rules on purpose: a studio that decides for itself whether an offer is live
+ * is a studio that will eventually disagree with the checkout.
+ */
+export function bumpState(
+  products: Listing[],
+  product: Listing,
+): { bump: Bump; target: Listing } | { paused: BumpPause; bump: Bump } | null {
+  const bump = product.bump;
+  if (!bump) return null;
+  // Stripe lets a chosen amount be the only line of its checkout.
+  if (!isOneOff(product)) return { paused: "kind", bump };
+  if (product.pwyw) return { paused: "pwyw", bump };
+  const target = products.find((p) => p.id === bump.productId);
+  if (!target) return { paused: "gone", bump };
+  if (target.id === product.id) return { paused: "itself", bump };
+  const wrong = bumpTargetPause(target);
+  if (wrong) return { paused: wrong, bump };
+  // Never dearer than buying it on its own.
+  if (bump.priceCents > target.priceCents) return { paused: "dearer", bump };
+  return { bump, target };
+}
+
 /** The bump a buyer may be offered on this product right now, or null. */
 export function activeBump(products: Listing[], product: Listing): { bump: Bump; target: Listing } | null {
-  // Stripe lets a chosen amount be the only line of its checkout.
-  if (!product.bump || !isOneOff(product) || product.pwyw) return null;
-  const target = products.find((p) => p.id === product.bump!.productId);
-  if (!target || target.id === product.id || !canBeBumped(target)) return null;
-  // Never dearer than buying it on its own.
-  if (product.bump.priceCents > target.priceCents) return null;
-  return { bump: product.bump, target };
+  const state = bumpState(products, product);
+  return state && "target" in state ? state : null;
+}
+
+/**
+ * Where the offer sits, because the same reason has to read right in two
+ * places: a box the buyer ticks before paying, and an offer shown after they
+ * have paid (lib/funnel.ts). Rendering the sentences for the funnel showed the
+ * words "the box charges more" under a list of offers where there is no box.
+ */
+export type OfferPlace = "box" | "offer";
+
+/**
+ * What the creator is told, and what to change to get the offer back.
+ *
+ * `offer` is the name of the product being offered, when the store still has
+ * it. Every sentence names the product to change, because the thing that
+ * broke the offer is almost never the product the offer is set on.
+ */
+export function bumpPauseWords(why: BumpPause, offer: string, where: OfferPlace = "box"): string {
+  const it = offer || "that product";
+  // "the box" / "this offer", so one set of reasons reads right in both places.
+  const here = where === "box" ? "the box" : "this offer";
+  const Here = where === "box" ? "The box" : "This offer";
+  const its = where === "box" ? "the box's" : "this offer's";
+  const kind = where === "box" ? "A checkout box" : "An offer after paying";
+  switch (why) {
+    case "kind":
+      return "A checkout box only goes on a product with one price, sold once.";
+    case "pwyw":
+      return "Buyers name their own price here, and a chosen amount has to be the only thing in its checkout.";
+    case "gone":
+      return `The product ${here} offered is no longer in your store. Pick another one.`;
+    case "itself":
+      return `${Here} points at this same product. Pick another one.`;
+    case "targetFree":
+      return `${it} is given away now, so there is no price to offer it at. Put a price on ${it}, or offer something else.`;
+    case "targetRecurring":
+      return `${it} is charged again and again now, and ${here} is one payment. ${kind} offers a product sold once.`;
+    case "targetCall":
+      return `${it} is a booking now, and a booking is made on its own page, for a time. Offer something else.`;
+    case "targetOptions":
+      return `${it} has several prices to choose between, and ${here} offers one thing at one price. Take the options off ${it}, or offer something else.`;
+    case "targetPwyw":
+      return `Buyers name their own price on ${it}, so there is no one price to offer it at.`;
+    case "targetLimited":
+      return `${it} has a limited number for sale, and only its own checkout counts against that number. Take the limit off ${it}, or offer something else.`;
+    case "targetEmpty":
+      return `There is no file, link or bundle behind ${it} to hand over. Add one to ${it}.`;
+    case "dearer":
+      return `${Here} charges more for ${it} than buying it on its own does. Lower ${its} price, or raise the price of ${it}.`;
+  }
 }
 
 /** Whether a product's quantity is limited right now. */
@@ -124,11 +257,51 @@ export function parsePlan(raw: unknown): Plan | null {
  * The plan a buyer may choose for this product, or null. A plan never adds up
  * to less than paying at once, and it is offered on a product with one price.
  */
-export function activePlan(product: Listing): Plan | null {
+/** Why a payment plan a creator has set up is not being offered. */
+export type PlanPause =
+  /** No longer a plain one-off sale. */
+  | "kind"
+  /** Several prices to choose between: the plan has one amount. */
+  | "options"
+  /** Buyers name their own price, so there is nothing fixed to spread. */
+  | "pwyw"
+  /** The payments no longer add up to the full price — usually because the price went up. */
+  | "short";
+
+/**
+ * The payment plan as it stands, with the reason when it is not being offered.
+ *
+ * `short` is the one that catches creators out: raise the product's price and
+ * the plan that used to cover it stops being offered, silently, while the
+ * studio goes on printing "3 monthly payments of $110".
+ */
+export function planState(product: Listing): { plan: Plan } | { paused: PlanPause; plan: Plan } | null {
   const plan = product.plan;
-  if (!plan || !isOneOff(product) || product.options.length > 0 || product.pwyw) return null;
-  if (plan.payments * plan.amountCents < product.priceCents) return null;
-  return plan;
+  if (!plan) return null;
+  if (!isOneOff(product)) return { paused: "kind", plan };
+  if (product.options.length > 0) return { paused: "options", plan };
+  if (product.pwyw) return { paused: "pwyw", plan };
+  if (plan.payments * plan.amountCents < product.priceCents) return { paused: "short", plan };
+  return { plan };
+}
+
+export function activePlan(product: Listing): Plan | null {
+  const state = planState(product);
+  return state && !("paused" in state) ? state.plan : null;
+}
+
+/** What the creator is told, and what to change to get the plan back. */
+export function planPauseWords(why: PlanPause, plan: Plan, priceCents: number, currency: string): string {
+  switch (why) {
+    case "kind":
+      return "A payment plan only goes on a product with one price, sold once.";
+    case "options":
+      return "This product has several prices to choose between, and a plan spreads one price.";
+    case "pwyw":
+      return "Buyers name their own price here, so there is no fixed price to spread.";
+    case "short":
+      return `${plan.payments} payments of ${formatMoney(plan.amountCents, currency)} come to ${formatMoney(plan.payments * plan.amountCents, currency)}, less than the ${formatMoney(priceCents, currency)} price. Raise each payment, add one, or lower the price.`;
+  }
 }
 
 /** "3 monthly payments of $110", in the store's currency. */

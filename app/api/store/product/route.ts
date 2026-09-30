@@ -24,7 +24,8 @@ import { dropReviews } from "@/lib/reviews";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { dropCourse, filesInCourse, readCourse } from "@/lib/course";
 import { dropStamped } from "@/lib/pdf-stamp";
-import { readListing } from "@/lib/catalog";
+import { idsOfKind, readAllListings, readListing, readProducts } from "@/lib/catalog";
+import { quietedBy } from "@/lib/extras-notes";
 
 const ACTIONS = new Set(["add", "edit", "remove", "move", "link", "unlink", "visibility"]);
 
@@ -32,6 +33,40 @@ const ACTIONS = new Set(["add", "edit", "remove", "move", "link", "unlink", "vis
 type Outcome =
   | { ok: true; product: Product | null }
   | { ok: false; reason: string; limit?: number; pwyw?: string };
+
+/**
+ * What a saved change has just stopped buyers being shown.
+ *
+ * A price cut on one product silences every checkout box and after-paying offer
+ * that charged more for it than it now costs, on products the creator is not
+ * looking at. Raise a price and the payment plan that used to cover it stops
+ * being offered. All of that was already true and none of it was said; the
+ * creator found out from the takings. Now the save says it.
+ *
+ * Only the products that carry a funnel are read in full — the catalog knows
+ * which those are — so a store with two thousand products does not read two
+ * thousand records to answer one price change.
+ */
+async function silenced(email: string, changedId: string): Promise<string[]> {
+  try {
+    const store = await storeForEmail(email);
+    if (!store) return [];
+    const all = await readAllListings(store);
+    const deep = new Set([...idsOfKind(store, "funnel"), changedId]);
+    const full = await readProducts(store, deep);
+    // Every product as something with a funnel field: the ones read in full as
+    // they are, the rest as their listing with no funnel on it.
+    const byId = new Map(full.map((p) => [p.id, p]));
+    const products: Product[] = all.map(
+      (listing) => byId.get(listing.id) ?? ({ ...listing, fields: [], funnel: null } as Product),
+    );
+    return quietedBy(changedId, products, all, store.currency);
+  } catch (error) {
+    // A change is never refused because this could not be worked out.
+    console.error("could not work out what a change silenced", error);
+    return [];
+  }
+}
 
 /** How firmly to answer when a change is refused. */
 const STATUS: Record<string, number> = {
@@ -191,7 +226,12 @@ export async function POST(request: NextRequest) {
         { status: STATUS[result.reason] ?? 400 },
       );
     }
-    return Response.json({ ok: true, product: result.product });
+    // Said only where something can actually have been silenced: a price, a
+    // shape, or a product going off the store (its own id changes nothing, but
+    // everything that offered it does).
+    const quiet =
+      (action === "edit" || action === "visibility" || action === "remove") && id ? await silenced(ref, id) : [];
+    return Response.json({ ok: true, product: result.product, quiet: quiet.length ? quiet : undefined });
   } catch (error) {
     if (error instanceof StoreFullError) {
       return Response.json({ ok: false, error: "store_full" }, { status: 409 });

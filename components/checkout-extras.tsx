@@ -19,6 +19,7 @@ import {
   planWords,
 } from "@/lib/product-extras";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
+import type { ExtraNotes } from "@/lib/extras-notes";
 
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
@@ -49,16 +50,43 @@ export function bumpChoices(products: Listing[]): BumpChoice[] {
   return products.filter((p) => canBeBumped(p)).map((p) => ({ id: p.id, title: p.title, priceCents: p.priceCents }));
 }
 
+/**
+ * An extra that is set up but not being shown, said plainly where it is set up.
+ *
+ * The studio used to print "Offers Templates for $9 at checkout" whether or not
+ * a buyer ever saw the box. Every reason it can be quiet comes from a change to
+ * some *other* product — a price cut, a limit, an option — so a creator had no
+ * way of connecting the two, and the first sign was the takings.
+ */
+function Quiet({ lines }: { lines: string[] }) {
+  if (!lines.length) return null;
+  // One line is the reason itself and reads as a sentence. Several means the
+  // first is a heading over the rest — a funnel with some offers dark — and
+  // only that one is bold. Rendering these showed a whole amber paragraph in
+  // bold, which is a shout where a sentence was wanted.
+  const heading = lines.length > 1;
+  return (
+    <p className="notice notice-warn mt-1" role="status">
+      {lines.map((line, i) => (
+        <span key={line} className={i === 0 ? (heading ? "font-semibold" : "") : "mt-1 block"}>{line}</span>
+      ))}
+    </p>
+  );
+}
+
 export function CheckoutExtras({
   product,
   choices,
   named,
+  notes,
 }: {
   product: Product;
   /** Every product of the store that can be offered in the box, read by the page. */
   choices: BumpChoice[];
   /** The name of the product this one offers now, whether or not it is still a choice. */
   named: Record<string, string>;
+  /** Whichever of this product's extras buyers are not being shown (lib/extras-notes.ts). */
+  notes?: ExtraNotes;
 }) {
   const studioHref = useStudioHref();
   const router = useRouter();
@@ -69,7 +97,15 @@ export function CheckoutExtras({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOneOff(product)) return null;
+  // A product that is no longer a plain one-off has none of these controls —
+  // they do not apply to it. What it may still have is extras stored from when
+  // it was one, and those are exactly the ones a creator cannot see going
+  // quiet, because the panel that would have told them is not drawn. So the
+  // reason is said on its own, and nothing else is.
+  if (!isOneOff(product)) {
+    const orphans = [notes?.bump, notes?.plan, ...(notes?.funnel ?? [])].filter((line): line is string => Boolean(line));
+    return orphans.length ? <div className="mt-3"><Quiet lines={orphans} /></div> : null;
+  }
 
   async function send(payload: Record<string, unknown>, confirmation: string) {
     setBusy(true);
@@ -150,23 +186,40 @@ export function CheckoutExtras({
       )}
 
       {/* A chosen amount has to be the only thing in its checkout. */}
-      {product.pwyw ? null : <OfferBlock kind="bump" product={product} named={named} candidates={candidates} busy={busy} open={open === "bump"} onOpen={() => setOpen("bump")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "bump" ? error : null} />}
+      {product.pwyw ? (
+        // The box does not go on a product whose buyers name the price, so
+        // there is no control here — only the reason, when one is stored.
+        <Quiet lines={notes?.bump ? [notes.bump] : []} />
+      ) : (
+        <div>
+          <OfferBlock kind="bump" product={product} named={named} candidates={candidates} paused={Boolean(notes?.bump)} busy={busy} open={open === "bump"} onOpen={() => setOpen("bump")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "bump" ? error : null} />
+          {open === "bump" || !notes?.bump ? null : <Quiet lines={[notes.bump]} />}
+        </div>
+      )}
       {product.funnel ? (
-        <p className="text-sm text-ink-soft">
-          <span className="font-semibold text-ink">
-            {`${product.funnel.steps.length === 1 ? "One offer" : `${product.funnel.steps.length} offers`} after paying`}
-          </span>
-          {" \u00b7 "}
-          <Link href={studioHref(`/studio/funnels?product=${product.id}`)} className={link}>Edit the funnel</Link>
-        </p>
+        <div>
+          <p className="text-sm text-ink-soft">
+            <span className={`font-semibold ${notes?.funnelOff ? "text-ink-soft" : "text-ink"}`}>
+              {`${product.funnel.steps.length === 1 ? "One offer" : `${product.funnel.steps.length} offers`} after paying`}
+            </span>
+            {" \u00b7 "}
+            <Link href={studioHref(`/studio/funnels?product=${product.id}`)} className={link}>Edit the funnel</Link>
+          </p>
+          <Quiet lines={notes?.funnel ?? []} />
+        </div>
       ) : (
         <Link href={studioHref(`/studio/funnels?product=${product.id}`)} className={`block ${link}`}>
           Offer more after they pay
         </Link>
       )}
-      {product.options.length === 0 && !product.pwyw ? (
-        <PlanBlock product={product} busy={busy} open={open === "plan"} onOpen={() => setOpen("plan")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "plan" ? error : null} />
-      ) : null}
+      {product.options.length > 0 || product.pwyw ? (
+        <Quiet lines={notes?.plan ? [notes.plan] : []} />
+      ) : (
+        <div>
+          <PlanBlock product={product} paused={Boolean(notes?.plan)} busy={busy} open={open === "plan"} onOpen={() => setOpen("plan")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "plan" ? error : null} />
+          {open === "plan" || !notes?.plan ? null : <Quiet lines={[notes.plan]} />}
+        </div>
+      )}
       {error && open === null ? <p className="notice notice-error" role="alert">{error}</p> : null}
     </div>
   );
@@ -176,6 +229,11 @@ const OFFER_TEXT = {
   bump: {
     add: "Offer another product at checkout",
     on: (title: string, price: string) => `Offers ${title} for ${price} at checkout`,
+    // The same line for a box that is set up and not being shown. "Offers
+    // Templates for $29.00 at checkout" is simply false then, and printing it
+    // in bold above the reason it is false is the defect this whole change is
+    // about, in miniature.
+    paused: (title: string, price: string) => `Paused: ${title} for ${price} at checkout`,
     stop: "Stop offering it",
     save: "Save the offer",
     saved: "Checkout offer saved.",
@@ -189,6 +247,7 @@ function OfferBlock({
   product,
   named,
   candidates,
+  paused,
   busy,
   open,
   onOpen,
@@ -200,6 +259,8 @@ function OfferBlock({
   product: Product;
   named: Record<string, string>;
   candidates: BumpChoice[];
+  /** Whether this box is set up but not being shown (lib/extras-notes.ts). */
+  paused: boolean;
   busy: boolean;
   open: boolean;
   onOpen: () => void;
@@ -287,7 +348,9 @@ function OfferBlock({
   if (current && currentTarget?.title) {
     return (
       <p className="text-sm text-ink-soft">
-        <span className="font-semibold text-ink">{text.on(currentTarget.title, formatMoney(current.priceCents, currency))}</span>
+        <span className={`font-semibold ${paused ? "text-ink-soft" : "text-ink"}`}>
+          {(paused ? text.paused : text.on)(currentTarget.title, formatMoney(current.priceCents, currency))}
+        </span>
         {" \u00b7 "}
         <button type="button" className={link} onClick={onOpen}>Change</button>
         {" \u00b7 "}
@@ -304,6 +367,7 @@ function OfferBlock({
 
 function PlanBlock({
   product,
+  paused,
   busy,
   open,
   onOpen,
@@ -312,6 +376,8 @@ function PlanBlock({
   error,
 }: {
   product: Product;
+  /** Whether the plan is set up but not being offered (lib/extras-notes.ts). */
+  paused: boolean;
   busy: boolean;
   open: boolean;
   onOpen: () => void;
@@ -396,7 +462,9 @@ function PlanBlock({
   if (current) {
     return (
       <p className="text-sm text-ink-soft">
-        <span className="font-semibold text-ink">{`Payment plan: ${planWords(current, currency)}`}</span>
+        <span className={`font-semibold ${paused ? "text-ink-soft" : "text-ink"}`}>
+          {paused ? `Payment plan, paused: ${planWords(current, currency)}` : `Payment plan: ${planWords(current, currency)}`}
+        </span>
         {" \u00b7 "}
         <button type="button" className={link} onClick={onOpen}>Change</button>
         {" \u00b7 "}
