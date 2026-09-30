@@ -9,6 +9,8 @@ import { communityViewer } from "@/lib/community-access";
 import { whenWords } from "@/lib/community-text";
 import { type Notice, markSeen, noticesFor } from "@/lib/community-notify";
 import { requestCount } from "@/lib/community-dm";
+import { canPush, deviceCount, publicKey } from "@/lib/community-push";
+import { CommunityPushToggle } from "@/components/community-push-toggle";
 import { CommunityBar, Face, authorName } from "@/components/community-parts";
 
 type Params = { params: Promise<{ handle: string }> };
@@ -52,6 +54,7 @@ export default async function NotificationsPage({ params }: Params) {
   const { notices } = await noticesFor(id, key);
   const members = await readMembers(id, notices.map((n) => n.by));
   const waiting = config.dm.on ? await requestCount(id, key) : 0;
+  const devices = canPush() ? await deviceCount(id, key) : 0;
   // Read is read. Done after the list is built, so this visit still shows
   // what was new when they arrived.
   await markSeen(id, key);
@@ -67,6 +70,8 @@ export default async function NotificationsPage({ params }: Params) {
         <p className="st-muted mt-1 text-sm">
           Only things that happened to you: somebody answered your post, answered your comment, or named you with an @.
         </p>
+
+        <CommunityPushToggle handle={store.handle} publicKey={publicKey()} devices={devices} />
 
         {notices.length === 0 ? (
           <div className="st-note mt-6 text-center">
