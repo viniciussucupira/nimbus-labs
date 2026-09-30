@@ -10,8 +10,11 @@ import {
   type AffiliateSetting,
   MAX_COMMISSION,
   MAX_COOKIE_DAYS,
+  MAX_HOLD_DAYS,
+  MAX_PAYDAY,
   MIN_COMMISSION,
   MIN_COOKIE_DAYS,
+  ordinal,
 } from "@/lib/affiliate-setting";
 import type { Affiliate, AffiliateStatus, LineStatus, Payout } from "@/lib/affiliates";
 import { StoreField } from "@/components/studio-store-pin";
@@ -22,6 +25,8 @@ const MESSAGES: Record<string, string> = {
   percent: `Type a whole share from ${MIN_COMMISSION} to ${MAX_COMMISSION} percent.`,
   days: `Type a whole number of days from ${MIN_COOKIE_DAYS} to ${MAX_COOKIE_DAYS}.`,
   rate: `A product's own share is a whole number from 0 to ${MAX_COMMISSION}; 0 leaves it out.`,
+  payday: `Pick a day from the 1st to the ${MAX_PAYDAY}th, or no fixed day.`,
+  hold: `Type a whole number of days from 0 to ${MAX_HOLD_DAYS}.`,
   amount: "Type the amount you paid, like 25 or 25.50.",
   date: "Pick the day you paid it.",
   nothing: "Nobody is owed anything right now, so there was nothing to write down.",
@@ -42,6 +47,10 @@ type Row = {
   earned: number;
   paid: number;
   owed: number;
+  /** Of what is owed, the part still inside the creator's wait. */
+  waiting: number;
+  /** What a batch can pay today: owed, less what is still waiting. */
+  payable: number;
   link: string;
 };
 
@@ -140,8 +149,12 @@ export function AffiliateStudio({
   const owedTotal = rows.reduce((sum, r) => sum + Math.max(0, r.owed), 0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<{ where: string; text: string } | null>(null);
-  // Everyone owed something today: what one batch file holds.
-  const owedNow = rows.filter((r) => r.owed > 0 && r.affiliate.status === "approved");
+  // Everyone who can be paid today: what one batch file holds. A sale still
+  // inside the wait is owed but not payable, so the two totals differ while
+  // anything is clearing.
+  const owedNow = rows.filter((r) => r.payable > 0 && r.affiliate.status === "approved");
+  const batchTotal = owedNow.reduce((sum, r) => sum + r.payable, 0);
+  const waitingTotal = rows.reduce((sum, r) => sum + r.waiting, 0);
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchDate, setBatchDate] = useState(today);
   const [batchReference, setBatchReference] = useState("");
@@ -207,8 +220,13 @@ export function AffiliateStudio({
             <div className="mt-5 rounded-2xl border border-line bg-paper p-4">
               <h3 className="font-semibold text-ink">Pay everyone at once</h3>
               <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-                {`${owedNow.length} ${owedNow.length === 1 ? "affiliate is" : "affiliates are"} owed ${money(owedTotal, currency)}. Download the batch, upload it to your own PayPal or Wise, and the money goes straight from your account to theirs. It never passes through Nimbus, so there is no payout to wait for.`}
+                {`${owedNow.length} ${owedNow.length === 1 ? "affiliate" : "affiliates"} can be paid ${money(batchTotal, currency)} today. Download the batch, upload it to your own PayPal or Wise, and the money goes straight from your account to theirs. It never passes through Nimbus, so there is no payout to wait for.`}
               </p>
+              {waitingTotal > 0 ? (
+                <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+                  {`${money(waitingTotal, currency)} more is still inside your ${setting.hold}-day wait and is not in this file. It joins the next one once that time has passed.`}
+                </p>
+              ) : null}
               <div className="mt-4 flex flex-wrap gap-3">
                 <form action="/api/store/affiliates/payout-batch" method="get">
                   <StoreField />
@@ -461,6 +479,8 @@ function Terms({
   const [enabled, setEnabled] = useState(setting.enabled);
   const [percent, setPercent] = useState(String(setting.percent));
   const [days, setDays] = useState(String(setting.days));
+  const [payday, setPayday] = useState(String(setting.payday));
+  const [hold, setHold] = useState(String(setting.hold));
   const [rates, setRates] = useState<Record<string, string>>(
     Object.fromEntries(Object.entries(setting.rates).map(([id, n]) => [id, String(n)])),
   );
@@ -479,7 +499,15 @@ function Terms({
               .map(([id, v]) => [id, Number(v.trim())]),
           );
           onSave(
-            { action: "settings", enabled, percent: Number(percent.trim()), days: Number(days.trim()), rates: chosen },
+            {
+              action: "settings",
+              enabled,
+              percent: Number(percent.trim()),
+              days: Number(days.trim()),
+              payday: Number(payday.trim()),
+              hold: Number(hold.trim()),
+              rates: chosen,
+            },
             enabled ? "Affiliate program saved." : "Affiliate program switched off.",
           );
         }}
@@ -542,6 +570,55 @@ function Terms({
         </div>
         <p className="mt-2 text-xs text-ink-soft">
           {`From ${MIN_COMMISSION} to ${MAX_COMMISSION}%, of what the buyer paid before tax, and a window of ${MIN_COOKIE_DAYS} to ${MAX_COOKIE_DAYS} days after their last click. A change applies to sales from then on; a sale keeps the share it was made at. Visitors from the European Economic Area, the UK, Switzerland and Brazil are asked first, because the rules there require it, and their click is remembered once they allow it.`}
+        </p>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <label className="block" htmlFor="aff-payday">
+            <span className="field-label">You pay on the</span>
+            <select
+              id="aff-payday"
+              value={payday}
+              onChange={(e) => setPayday(e.target.value)}
+              className="field"
+            >
+              <option value="0">No fixed day</option>
+              {Array.from({ length: MAX_PAYDAY }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={String(d)}>{`${ordinal(d)} of each month`}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block" htmlFor="aff-hold">
+            <span className="field-label">A sale waits</span>
+            <span className="relative block">
+              <input
+                id="aff-hold"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={MAX_HOLD_DAYS}
+                step={1}
+                value={hold}
+                onChange={(e) => setHold(e.target.value)}
+                className="field pr-14"
+                required
+              />
+              <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-ink-soft">days</span>
+            </span>
+          </label>
+        </div>
+        <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+          <strong className="font-semibold text-ink">
+            {Number(payday.trim()) >= 1
+              ? `Your affiliates will read: paid on the ${ordinal(Number(payday.trim()))} of each month${
+                  Number(hold.trim()) > 0
+                    ? `, on sales at least ${hold.trim()} ${Number(hold.trim()) === 1 ? "day" : "days"} old.`
+                    : "."
+                }`
+              : "Your affiliates will read: no payment day set, paid when you choose."}
+          </strong>{" "}
+          Make the wait match your refund policy. Money already paid to an affiliate on a sale that is refunded later has
+          to be asked back by hand, and the wait is what stops that happening. On the day itself we email you the batch,
+          so paying is not something you have to remember.
         </p>
 
         {credited.length ? (

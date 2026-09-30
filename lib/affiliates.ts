@@ -720,6 +720,18 @@ export type Row = {
   paid: number;
   /** earned - paid; below zero when refunds came after a payout. */
   owed: number;
+  /**
+   * Of what is owed, the part still inside the creator's wait, and so not in
+   * a batch yet. Never below zero. It is 0 for every store that set no wait,
+   * which is what every store did before there was one.
+   */
+  waiting: number;
+  /**
+   * What can be paid today: owed less what is still waiting, floored at what
+   * is owed so a payout made ahead of time is not counted twice. Below zero
+   * when refunds landed after a payout, exactly as `owed` is.
+   */
+  payable: number;
 };
 
 export type Book = {
@@ -823,18 +835,31 @@ export async function readBook(store: Store, only?: string): Promise<Book> {
   }
   const lines = referrals.map((r) => settleLine(r, r.pi ? refunds.get(r.pi) ?? 0 : 0)).sort((a, b) => b.at - a.at);
 
+  // A sale made less than the creator's wait ago is not payable yet, so their
+  // refund window can pass before the money leaves them. `hold` is 0 for a
+  // store that set none, and then `until` is now and nothing is ever waiting.
+  const until = Math.floor(Date.now() / 1000) - store.affiliates.hold * 86_400;
   const rows = affiliates
     .map((affiliate): Row => {
       const own = lines.filter((l) => l.aff === affiliate.id && l.currency === store.currency);
       const earned = own.reduce((sum, l) => sum + l.commission, 0);
       const out = paid.filter((p) => p.aff === affiliate.id && p.currency === store.currency).reduce((sum, p) => sum + p.cents, 0);
+      const waiting = own.filter((l) => l.at > until).reduce((sum, l) => sum + l.commission, 0);
+      const owed = earned - out;
       return {
         affiliate,
         clicks: clickCount.get(affiliate.id) ?? 0,
         sales: own.filter((l) => l.commission > 0).length,
         earned,
         paid: out,
-        owed: earned - out,
+        owed,
+        waiting,
+        // What has cleared, less what has been paid — never more than is owed
+        // in all, and never a negative number of its own making: a creator who
+        // has already paid past what cleared simply has nothing to pay today.
+        // Owing nothing, or being owed money back after a refund, is `owed`'s
+        // to say, and is carried through unchanged.
+        payable: owed <= 0 ? owed : Math.max(0, Math.min(owed, earned - waiting - out)),
       };
     })
     .sort((a, b) => b.owed - a.owed || b.affiliate.appliedAt - a.affiliate.appliedAt);

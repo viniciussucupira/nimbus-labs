@@ -7,7 +7,7 @@ import { normaliseHandle, storeForPage } from "@/lib/store";
 import { formatMoney } from "@/lib/money";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
-import { commissionRate } from "@/lib/affiliate-setting";
+import { commissionRate, nextPayday, paydayWords, payoutPromise } from "@/lib/affiliate-setting";
 import {
   MAX_NOTE_LENGTH,
   affiliateCookieName,
@@ -93,6 +93,8 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
   const terms = store.affiliates;
   const book = affiliate ? await readBook(store, affiliate.id) : null;
   const row = book?.rows[0] ?? null;
+  // The next day the creator said they pay, or null when they promised none.
+  const due = nextPayday(terms.payday);
   const notice = token && !linkFor ? NOTICES.expired : NOTICES[status] ?? null;
   // Products that earn differently from the store-wide share, by name.
   // Only products with a rate of their own can differ, so only those are read.
@@ -250,8 +252,21 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                     ))}
                   </dl>
                   <p className="st-muted mt-3 text-sm">
-                    {`Paid to you so far: ${money(row.paid, book.currency)}. ${store.name} pays you directly, not Nimbus Labs, which never holds this money: ask them how and when they pay.`}
+                    {`Paid to you so far: ${money(row.paid, book.currency)}. ${store.name} pays you directly, out of their own account. Nimbus Labs never holds this money, so there is no balance here to wait on and nothing to claim before a deadline.`}
                   </p>
+                  <div className="st-note mt-4 text-sm" role="status">
+                    <p className="font-semibold" style={{ color: "var(--st-text)" }}>
+                      {payoutPromise(store.affiliates, store.name)}
+                    </p>
+                    {due ? (
+                      <p className="mt-1">{`Next payment: ${paydayWords(due)}.`}</p>
+                    ) : null}
+                    {row.waiting > 0 ? (
+                      <p className="mt-1">
+                        {`${money(row.waiting, book.currency)} of what you are owed is still inside that wait, and is not payable yet.`}
+                      </p>
+                    ) : null}
+                  </div>
                   {!book.refundsChecked ? (
                     <p className="st-note mt-4 text-sm" role="status">
                       Refunds could not all be checked just now, so a sale refunded recently may still show as earning. It is
@@ -325,7 +340,8 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                       `${terms.percent}% of what a buyer pays before tax, on one-time purchases made through your link (memberships and payment plans do not earn)${different.length ? "; some products differ, below" : ""}.`,
                       `A purchase counts if it is made within ${terms.days} ${terms.days === 1 ? "day" : "days"} of their last click on your link, and the last affiliate link they followed is the one credited.`,
                       "A refunded sale earns nothing, a partly refunded one earns only on what was kept, and your own purchases never earn.",
-                      `${store.name} approves every affiliate, and pays you directly: Nimbus Labs never holds this money.`,
+                      payoutPromise(terms, store.name),
+                      `${store.name} approves every affiliate, and pays you directly out of their own account: Nimbus Labs never holds this money, so there is no minimum to reach and no deadline to claim it by.`,
                     ].map((line) => (
                       <li key={line} className="flex gap-3">
                         <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--st-accent)" }} />
