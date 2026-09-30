@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { aiLeft, isAiConfigured } from "@/lib/ai";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -98,7 +99,13 @@ export default async function StudioCoursePage({
           </span>
         </div>
 
-        <CourseEditor productId={product.id} initial={course} folder={folder} />
+        <CourseEditor
+          productId={product.id}
+          initial={course}
+          folder={folder}
+          title={product.title}
+          ai={isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
+        />
 
         <section className="card mt-8 p-6 sm:p-8" aria-labelledby="certificate-title">
           <div className="flex flex-wrap items-center justify-between gap-2">

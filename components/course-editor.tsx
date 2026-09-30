@@ -27,6 +27,9 @@ import {
 import { LINK_PROBLEMS, type LinkProblem } from "@/lib/product-link";
 import { useStudioHref } from "@/components/studio-store-pin";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
+import { AiAssist, AiOn } from "@/components/ai-assist";
+
+type Outline = { modules: { title: string; lessons: string[] }[] };
 
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
@@ -69,7 +72,21 @@ function problem(answer: Answer): string {
 const small = "text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40";
 
 /** Building a course: modules, lessons, and what each lesson holds. */
-export function CourseEditor({ productId, initial, folder }: { productId: string; initial: Course; folder: string }) {
+export function CourseEditor({
+  productId,
+  initial,
+  folder,
+  title = "",
+  ai = { on: false, left: 0 },
+}: {
+  productId: string;
+  initial: Course;
+  folder: string;
+  /** The course's name, for the writing help. */
+  title?: string;
+  /** Whether the writing help is on, and what is left of the month (lib/ai.ts). */
+  ai?: { on: boolean; left: number };
+}) {
   const studioHref = useStudioHref();
   const router = useRouter();
   const [course, setCourse] = useState<Course>(initial);
@@ -77,6 +94,8 @@ export function CourseEditor({ productId, initial, folder }: { productId: string
   const [error, setError] = useState<string | null>(null);
   const [openLesson, setOpenLesson] = useState<string | null>(null);
   const [newModule, setNewModule] = useState("");
+  // An outline the writing help proposed, waiting for the creator to add it or not.
+  const [proposal, setProposal] = useState<Outline | null>(null);
 
   async function run(payload: Record<string, unknown>): Promise<Answer> {
     setBusy(true);
@@ -112,6 +131,57 @@ export function CourseEditor({ productId, initial, folder }: { productId: string
           onError={setError}
         />
       ))}
+
+      <AiOn value={ai}>
+        <AiAssist<Outline>
+          title="Draft the outline with AI"
+          hint="Say what the course covers and who it is for. A list of modules and lessons comes back for you to look at, and nothing is added until you say so."
+          placeholder="Sourdough from scratch for complete beginners: starter, first loaf, shaping, scoring, and fixing what went wrong."
+          payload={() => ({ kind: "outline", title })}
+          onResult={(value) => setProposal(value)}
+          done="Here is the outline. Add it as it is, or discard it."
+        />
+        {proposal ? (
+          <section className="card p-6 sm:p-8" aria-labelledby="outline-title">
+            <h2 id="outline-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">A proposed outline</h2>
+            <ol className="mt-3 space-y-3 text-sm">
+              {proposal.modules.map((unit, i) => (
+                <li key={i}>
+                  <p className="font-semibold text-ink">{`${i + 1}. ${unit.title}`}</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-6 text-ink-soft">
+                    {unit.lessons.map((lesson, n) => (
+                      <li key={n}>{lesson}</li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-3 text-sm text-ink-soft">
+              Each lesson is added with its title only: its video, text and files are yours to add, and any title can be changed.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={busy}
+                aria-busy={busy}
+                onClick={async () => {
+                  const answer = await run({ action: "edit", op: "outline", modules: proposal.modules });
+                  if (answer.ok) {
+                    setProposal(null);
+                    toast("The modules and lessons are added.");
+                  }
+                }}
+              >
+                {`Add these ${proposal.modules.length} modules`}
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setProposal(null)}>
+                Discard it
+              </button>
+            </div>
+          </section>
+        ) : null}
+      </AiOn>
 
       <form
         className="card p-6 sm:p-8"

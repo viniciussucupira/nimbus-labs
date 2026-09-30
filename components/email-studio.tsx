@@ -1,5 +1,8 @@
 "use client";
 
+import { AiAssist, AiOn } from "@/components/ai-assist";
+import { EMAIL_GOALS, type EmailGoal } from "@/lib/ai-rules";
+
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
@@ -110,6 +113,10 @@ export function EmailStudio(props: {
   canSend: boolean;
   canSettings: boolean;
   canExport: boolean;
+  /** Each product's own address, for an email about it. */
+  links?: Record<string, string>;
+  /** Whether the writing help is on, and what is left of the month (lib/ai.ts). */
+  ai?: { on: boolean; left: number };
 }) {
   const ready = props.mail !== null;
   // The draft open in the composer; a new key starts the composer afresh.
@@ -119,15 +126,18 @@ export function EmailStudio(props: {
       <div className="min-w-0">
         {ready ? (
           <>
-            <Compose
-              key={open ? `${open.id}-${open.savedAt}` : "new"}
-              email={props.email}
-              products={props.products}
-              counts={props.counts}
-              canSend={props.canSend}
-              draft={open}
-              onDone={() => setOpen(null)}
-            />
+            <AiOn value={props.ai ?? { on: false, left: 0 }}>
+              <Compose
+                key={open ? `${open.id}-${open.savedAt}` : "new"}
+                email={props.email}
+                products={props.products}
+                links={props.links ?? {}}
+                counts={props.counts}
+                canSend={props.canSend}
+                draft={open}
+                onDone={() => setOpen(null)}
+              />
+            </AiOn>
             <Drafts drafts={props.drafts} products={props.products} open={open} onOpen={setOpen} />
             <History broadcasts={props.broadcasts} products={props.products} canSend={props.canSend} />
             {props.canSend ? <Flows flows={props.flows} products={props.products} /> : null}
@@ -289,6 +299,7 @@ function ListCard({
 function Compose(props: {
   email: string;
   products: { id: string; title: string }[];
+  links: Record<string, string>;
   counts: { mailable: number };
   canSend: boolean;
   /** A draft opened into the composer, or null for a new email. */
@@ -306,6 +317,9 @@ function Compose(props: {
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // What the writing help is asked to write, and about which product.
+  const [goal, setGoal] = useState<EmailGoal>("announce");
+  const [about, setAbout] = useState("");
 
   useEffect(() => {
     let live = true;
@@ -359,6 +373,43 @@ function Compose(props: {
         ) : null}
       </div>
       <div className="mt-4 space-y-4">
+        <AiAssist<{ subject: string; body: string }>
+          title="Write a draft with AI"
+          hint="Pick what the email is for, and say in a few words what you want it to say. The subject and the email below are filled in for you to read and change."
+          placeholder="The recipe pack is out: 40 weeknight dinners, $27, and the first 10 pages are free to read on the page."
+          extra={
+            <div className="grid gap-3">
+              <label className="block">
+                <span className="field-label">It is to</span>
+                <select className="field mt-2" value={goal} onChange={(e) => setGoal(e.target.value as EmailGoal)}>
+                  {EMAIL_GOALS.map((g) => (
+                    <option key={g.id} value={g.id}>{g.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="field-label">About</span>
+                <select className="field mt-2" value={about} onChange={(e) => setAbout(e.target.value)}>
+                  <option value="">No product in particular</option>
+                  {props.products.map((p) => (
+                    <option key={p.id} value={p.id}>{p.title}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          }
+          payload={() => ({
+            kind: "email",
+            goal,
+            product: props.products.find((p) => p.id === about)?.title ?? "",
+            link: about ? props.links[about] ?? "" : "",
+          })}
+          onResult={(value) => {
+            setSubject(value.subject);
+            setBody(value.body);
+          }}
+          done="The subject and the email below are filled in. Read them, change anything, then save or send."
+        />
         <label className="block">
           <span className="field-label">Subject</span>
           <input className="field mt-2" maxLength={150} value={subject} onChange={(e) => setSubject(e.target.value)} />

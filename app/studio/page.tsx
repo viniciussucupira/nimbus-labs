@@ -40,6 +40,7 @@ import { listKeys } from "@/lib/api-keys";
 import { INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 import { SaveOfferEditor } from "@/components/save-offer-editor";
 import { WinBackEditor } from "@/components/winback-editor";
+import { aiLeft, isAiConfigured } from "@/lib/ai";
 import { winbacksSent } from "@/lib/winback-send";
 import { sellsMemberships } from "@/lib/membership-manage";
 import { taxStatus } from "@/lib/tax";
@@ -806,6 +807,7 @@ export default async function StudioPage({
                   email={store.email}
                   currency={store.currency}
                   meetings={meetAccounts}
+                  ai={isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
                 />
               </div>
             ) : (

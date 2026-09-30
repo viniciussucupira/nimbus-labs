@@ -183,7 +183,9 @@ export type CourseEdit =
   | { op: "media"; lessonId: string; kind: "video" | "file"; file: ProductFile }
   | { op: "media-remove"; lessonId: string; pathname: string }
   | { op: "quiz"; lessonId: string; quiz: QuizSetup | null }
-  | { op: "certificate"; on: boolean };
+  | { op: "certificate"; on: boolean }
+  /** Several modules at once, each with its lessons by title: an outline taken from the writing help (lib/ai.ts). */
+  | { op: "outline"; modules: { title: unknown; lessons: unknown[] }[] };
 
 export type EditResult =
   | { ok: true; course: Course; removed: ProductFile[]; addedId?: string }
@@ -245,6 +247,30 @@ export function editCourse(course: Course, edit: CourseEdit): EditResult {
       // should never vanish in one press.
       if (unit.lessons.length > 0) return { ok: false, reason: "not_empty" };
       return { ok: true, course: { ...course, modules: modules.filter((m) => m.id !== edit.moduleId) }, removed: [] };
+    }
+    case "outline": {
+      const adding = edit.modules.filter((m) => Array.isArray(m.lessons));
+      const newLessons = adding.reduce((n, m) => n + m.lessons.length, 0);
+      if (!adding.length) return { ok: false, reason: "unknown" };
+      if (modules.length + adding.length > MAX_MODULES || lessonCount(course) + newLessons > MAX_LESSONS) {
+        return { ok: false, reason: "too_many" };
+      }
+      const made: CourseModule[] = adding.map((m, i) => ({
+        id: newItemId(),
+        title: cleanTitle(m.title, `Module ${modules.length + i + 1}`),
+        dripDays: 0,
+        lessons: m.lessons.map((title, n) => ({
+          id: newItemId(),
+          title: cleanTitle(title, `Lesson ${n + 1}`),
+          preview: false,
+          video: null,
+          files: [],
+          link: null,
+          hasBody: false,
+          quiz: null,
+        })),
+      }));
+      return { ok: true, course: { ...course, modules: [...modules, ...made] }, removed: [] };
     }
     case "lesson-add": {
       if (lessonCount(course) >= MAX_LESSONS) return { ok: false, reason: "too_many" };
