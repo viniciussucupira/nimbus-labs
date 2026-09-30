@@ -252,7 +252,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { title: "Choose how often", body: "Daily, weekly, monthly or yearly, on any paid product that delivers a file, a link or a course. Calls and bundles are sold once." },
           { title: "The member subscribes", body: "The subscription is made on your own Stripe account, like every charge here, with 0% to us on every renewal." },
-          { title: "They leave on their own", body: "Under every membership: “Already a member? Manage or cancel.” An emailed link opens Stripe's own page for their membership." },
+          { title: "They leave on their own", body: "Under every membership: “Already a member? Manage or cancel.” An emailed link opens their memberships, each with its own Cancel, and Stripe's own page for the card and the receipts." },
         ],
       },
       {
@@ -261,6 +261,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "bank", title: "Your customer, not ours", body: "Members sit in your Stripe dashboard. If you ever leave Nimbus, the paying members stay with you." },
           { icon: "door", title: "Canceling on their own", body: "On Stripe's page, at the end of the period already paid for. Nobody has to write to you and wait." },
+          { icon: "gift", title: "An offer before they go", body: "If you choose, a member who presses Cancel is offered a discount you set — 10% to 50% off one to three payments — once per membership, on Stripe's own page, and declines it in one press. An offer of more than one payment is made only on monthly memberships." },
+          { icon: "card", title: "When a card fails", body: "The member gets one email with a link that pays that renewal and makes the card that worked the one used next time. It says when the card on file is tried again, or that it will not be." },
           { icon: "card", title: "Card changes without you", body: "The member changes their card and sees their receipts on the same page." },
           { icon: "book", title: "A course that stays open", body: "A course sold as a membership is open while the member pays, and closes when it ends." },
           { icon: "gift", title: "A free trial, said plainly", body: "1 to 90 days. The card is saved at the start and nothing is charged until the trial ends. The page and the button say so, and the confirmation email gives the date of the first payment." },
@@ -775,7 +777,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "A community for the people",
     highlight: "who bought from you",
     intro:
-      "One members' area on your store, with spaces, posts, comments, likes and live events, open only to the buyers of the products you choose. Members come in with a link sent to their email: no account, no password.",
+      "One members' area on your store, with spaces, posts, comments, a live room, private messages, search and live events, open only to the buyers of the products you choose. Members come in with a link sent to their email: no account, no password.",
     badge: WORKING,
     accent: "from-violet-brand to-mint-brand",
     plan: "creator",
@@ -796,10 +798,14 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "features",
         title: "What the community holds",
         items: [
-          { icon: "list", title: "Up to 20 spaces", body: "Each with its own name and a line about what it is for. A space can be yours alone to post in, with members still commenting." },
-          { icon: "type", title: "Posts with a picture", body: "A title of up to 120 characters, up to 5,000 characters of text and one picture." },
+          { icon: "list", title: "Up to 20 spaces", body: "Each with its own name and a line about what it is for. A space can be open to the whole community or kept for the buyers of the products you choose, and it can be yours alone to post in, with members still commenting." },
+          { icon: "type", title: "Posts with a picture, and polls", body: "A title of up to 120 characters, up to 5,000 characters of text and one picture, which its writer can edit afterward, marked as edited for everyone. A post can carry a poll of up to 12 answers, one choice or several, with an end date if you want one." },
           { icon: "chat", title: "Comments, replies and likes", body: "Comments of up to 2,000 characters, one level of replies, up to 300 under a post, and one like per member on each post." },
           { icon: "pin", title: "Pinned posts and Start here", body: "Up to three posts held at the top, and one post every member sees first." },
+          { icon: "bolt", title: "A live room", body: "A room for talking while everyone is there, which keeps its last 500 messages. You can slow it down to one message every few seconds or minutes, keep web addresses out, keep it for your own messages, remove any message, empty it or close it." },
+          { icon: "lock", title: "Private messages", body: "Members write to you privately, and to each other if you allow it. You can have a first message wait until the person it is sent to accepts it, and anyone can decline and not hear from that person again." },
+          { icon: "eye", title: "One search box", body: "Posts and every comment under them, the lessons of the courses a member has, the events, the people in the directory, the room and the member's own messages. Each result is shown only to somebody who may open it." },
+          { icon: "sparkle", title: "Mentions and notifications", body: "Members mention each other with @. They are told when somebody mentions them, comments on their post or answers their comment, in the community and, if they allow it, as a notification on their computer or phone." },
           { icon: "mail", title: "Announcements", body: "Posts labeled as yours. On Pro they can also go by email to the members who checked the box for it, with a one-click unsubscribe." },
           { icon: "video", title: "Live events", body: "Workshops and Q&As on the community's calendar, with RSVPs, reminders, a private video room in the page and replays.", href: "/platform/live-events" },
           { icon: "users", title: "A member directory they opt into", body: "Members choose the name they are seen by and whether to be listed. Their email address is never shown to other members." },
@@ -822,10 +828,11 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do yet",
         intro: "Said here so nobody signs up expecting it.",
         items: [
-          "No live chat or private messages. Posts and comments appear when a page is opened, not as they are written.",
+          "Posts and comments appear when a page is opened, not as they are written. The room checks for new messages every few seconds while it is open.",
           "Live events happen in a private Jitsi Meet room, at your own meeting link or in a Google Meet made on your connected Google Calendar. Unlike Stan's webinars, no Zoom link is made for you yet: connecting Zoom opens to every store once Zoom approves our app; until then, the Zoom option does not show.",
-          "No search, mentions, polls, or emails about replies. Posts cannot be edited once written.",
-          "One community per store, and every space is open to every member: a space cannot be kept for the buyers of one product.",
+          "No emails about replies or mentions: those are told in the community and as notifications on a computer or phone. On iPhone, a notification needs the page added to the home screen, as Apple requires.",
+          "Search does not listen to what is said inside a video: only titles and written text are searched. Private messages are searched in a member's 30 most recent conversations.",
+          "One community per store.",
           "Up to 10,000 posts and 50,000 members in one community.",
           "No app-store app. It opens in the browser, and in your store's app on the home screen.",
         ],
@@ -1208,7 +1215,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do",
         items: [
           "There is no Nimbus app in Zapier's directory. In Zapier, use its Webhooks by Zapier trigger, Catch Hook.",
-          "Webhooks only send. There is no public API to read or change your store; the one public address is the license key check.",
+          "Webhooks only send. To read your store from your own tools, use an API key: the API reads your list, members, a course's students, your affiliates and your bookings, and changes nothing. The developers page lists every address.",
           "Up to five addresses per store, https only, and redirects are not followed.",
         ],
       },
