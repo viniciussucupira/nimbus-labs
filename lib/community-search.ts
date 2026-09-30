@@ -208,6 +208,19 @@ export const indexPost = (id: string, post: string, n: number, parts: string[]) 
 /** Takes a deleted post out of the index entirely. */
 export const unindexPost = (id: string, post: string) => unindex(id, "post", post);
 
+/**
+ * Whether a text holds every one of these words, as whole words.
+ *
+ * The same test the index applies, for the places searched by reading rather
+ * than by index — the room, and a person's own messages — so a word finds the
+ * same things everywhere it is typed.
+ */
+export function holdsAll(text: string, used: string[]): boolean {
+  if (!used.length) return false;
+  const has = new Set(words(text));
+  return used.every((word) => has.has(word));
+}
+
 /** What a search is actually looking for: whole words, deduplicated, capped. */
 export function queryWords(raw: string): string[] {
   return [...new Set(words(raw.slice(0, MAX_QUERY_LENGTH)))].slice(0, MAX_QUERY_WORDS);

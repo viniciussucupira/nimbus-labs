@@ -36,6 +36,7 @@
  */
 import { redisPipeline } from "@/lib/redis";
 import { cleanText, linkCount } from "@/lib/community-text";
+import { holdsAll } from "@/lib/community-search";
 
 const base = (id: string) => `nl:cm:${id}`;
 const roomKey = (id: string) => `${base(id)}:ch`;
@@ -238,4 +239,26 @@ export function refusalWords(reason: ChatRefusal, slow: number, wait?: number): 
 export async function roomSize(id: string): Promise<number> {
   const [n] = await redisPipeline([["ZCARD", roomKey(id)]]);
   return Number(n) || 0;
+}
+
+/**
+ * The messages still in the room that hold every word searched for, newest
+ * first.
+ *
+ * Read straight from the room rather than from an index, on purpose. The room
+ * keeps its last MAX_CHAT_KEPT messages and forgets the rest; an index would
+ * have to be told about every message that falls off the end, and the day it
+ * missed one it would find messages the room no longer has. Reading the room
+ * itself is one request for at most MAX_CHAT_KEPT short messages, and cannot
+ * disagree with what is there.
+ *
+ * Matched exactly as every other search here is — whole words, accents folded,
+ * the common ones dropped (lib/community-search.ts) — so a word finds the same
+ * things in the room as it does in the feed.
+ */
+export async function searchRoom(id: string, used: string[]): Promise<ChatMessage[]> {
+  if (!used.length) return [];
+  const [raw] = await redisPipeline([["ZREVRANGE", roomKey(id), 0, MAX_CHAT_KEPT - 1]]);
+  const rows = (Array.isArray(raw) ? raw : []).map(parse).filter((m): m is ChatMessage => m !== null);
+  return rows.filter((message) => holdsAll(message.text, used));
 }

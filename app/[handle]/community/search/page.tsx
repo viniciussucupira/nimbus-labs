@@ -5,13 +5,16 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { postNumbers, readMembers, readPosts } from "@/lib/community";
-import { mayMessage, pairOf, requestCount } from "@/lib/community-dm";
+import { SEARCH_CONVERSATIONS, SEARCH_MESSAGES, mayMessage, pairOf, requestCount, searchMessages } from "@/lib/community-dm";
+import { CREATOR } from "@/lib/community";
+import { searchRoom } from "@/lib/community-chat";
 import { unreadCount } from "@/lib/community-notify";
 import { communityViewer, visibleSpaces } from "@/lib/community-access";
 import { type SearchKind, MAX_QUERY_LENGTH, queryWords, search, searchEverything } from "@/lib/community-search";
 import { walkCommunity } from "@/lib/community-walk";
 import { eventsFound, lessonsFound, membersFound } from "@/lib/community-found";
 import { readableTime } from "@/lib/call-setup";
+import { whenWords } from "@/lib/community-text";
 import { pollViews } from "@/lib/community-polls";
 import { CommunityBar, Face, NOTICES, PostCard } from "@/components/community-parts";
 import { ConfirmDeletes } from "@/components/community-composer";
@@ -26,15 +29,32 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const TABS: { kind: SearchKind; label: string; one: string; many: string }[] = [
+/**
+ * The four indexed kinds, and the two read straight from where they are kept:
+ * the room, and this person's own messages (lib/community-chat.ts,
+ * lib/community-dm.ts). The last two only appear where the creator has them on.
+ */
+type Tab = SearchKind | "room" | "dm";
+
+const ALL_TABS: { kind: Tab; label: string; one: string; many: string }[] = [
   { kind: "post", label: "Posts", one: "post", many: "posts" },
   { kind: "lesson", label: "Lessons", one: "lesson", many: "lessons" },
   { kind: "event", label: "Events", one: "event", many: "events" },
   { kind: "member", label: "People", one: "person", many: "people" },
+  { kind: "room", label: "Room", one: "message", many: "messages" },
+  { kind: "dm", label: "Messages", one: "message", many: "messages" },
 ];
 
-const isKind = (value: unknown): value is SearchKind =>
-  value === "post" || value === "lesson" || value === "event" || value === "member";
+/** How many matches from the room, or from one's messages, are listed. The newest. */
+const SHOWN_TALK = 50;
+
+/** "a, b, and c", as American English lists things, whatever the count. */
+const inWords = (items: string[]) =>
+  items.length <= 2 ? items.join(" and ") : `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+
+const isTab = (value: unknown): value is Tab =>
+  value === "post" || value === "lesson" || value === "event" || value === "member" || value === "room" || value === "dm";
+const indexed = (tab: Tab): tab is SearchKind => tab !== "room" && tab !== "dm";
 
 /**
  * What has been said, taught, planned and joined here.
@@ -73,8 +93,10 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
   const notice = NOTICES[typeof query.n === "string" ? query.n : ""] ?? null;
   const beforeRaw = typeof query.before === "string" ? Number(query.before) : NaN;
   const before = Number.isInteger(beforeRaw) && beforeRaw > 0 ? beforeRaw : null;
-  const chosen: SearchKind | null = isKind(query.k) ? query.k : null;
   const { config, owner, key, canWrite, email } = viewer;
+  // The room and messages are tabs only where the creator has them on.
+  const TABS = ALL_TABS.filter((t) => (t.kind === "room" ? config.chat.on : t.kind === "dm" ? config.dm.on : true));
+  const chosen: Tab | null = isTab(query.k) && TABS.some((t) => t.kind === query.k) ? query.k : null;
 
   const wanted = queryWords(asked);
 
@@ -89,15 +111,25 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
   // back with its own first page, so the tab being read needs nothing more —
   // unless it is being paged, which is one search for that one kind.
   const pages = wanted.length ? await searchEverything(id, asked) : null;
+  const used = pages?.post.used ?? [];
+  // Read, not indexed, so there is nothing that can fall out of step: the room
+  // as it is now, and this person's own recent conversations and no one else's.
+  const [roomHits, dmHits] = used.length
+    ? await Promise.all([
+        config.chat.on ? searchRoom(id, used).catch(() => []) : Promise.resolve([]),
+        config.dm.on ? searchMessages(id, key, used).catch(() => []) : Promise.resolve([]),
+      ])
+    : [[], []];
+  const count = (t: Tab) =>
+    t === "room" ? roomHits.length : t === "dm" ? dmHits.length : (pages?.[t].total ?? 0);
   // Nobody pressed a tab yet, so open the first one holding anything. Landing
   // on an empty Posts tab with four lessons sitting one press away reads as
   // "nothing found", and the member has to notice a small number to learn
   // otherwise. Posts when everything is empty, so the page is never tabless.
-  const tab: SearchKind =
-    chosen ?? (pages ? (TABS.find((t) => pages[t.kind].total > 0)?.kind ?? "post") : "post");
-  const first = pages?.[tab] ?? { posts: [], next: null, used: [], total: 0 };
-  const page = before !== null && pages ? await search(id, asked, before, tab) : first;
-  const used = pages?.post.used ?? [];
+  const tab: Tab = chosen ?? (pages ? (TABS.find((t) => count(t.kind) > 0)?.kind ?? "post") : "post");
+  const empty = { posts: [], next: null, used: [], total: 0 };
+  const first = indexed(tab) ? (pages?.[tab] ?? empty) : empty;
+  const page = indexed(tab) && before !== null && pages ? await search(id, asked, before, tab) : first;
 
   const spaces = await visibleSpaces(store, config, { owner, email });
   const mineIds = new Set(spaces.map((s) => s.id));
@@ -115,8 +147,12 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
   const events = tab === "event" ? await eventsFound(store, config, page.posts, gate) : [];
   const people = tab === "member" ? await membersFound(id, page.posts) : [];
 
+  const talk = tab === "room" ? roomHits.slice(0, SHOWN_TALK) : [];
+  const mine = tab === "dm" ? dmHits.slice(0, SHOWN_TALK) : [];
+  // Names for whoever wrote what is listed, never their addresses.
+  const talkers = [...talk.map((m) => m.a), ...mine.map((h) => h.other)].filter((a) => a !== CREATOR);
   const [members, numbers, polls] = await Promise.all([
-    readMembers(id, posts.map((p) => p.a)),
+    readMembers(id, [...posts.map((p) => p.a), ...talkers]),
     postNumbers(id, posts, key),
     pollViews(id, posts, key, owner),
   ]);
@@ -128,9 +164,20 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
   const waiting = config.dm.on ? await requestCount(id, key) : 0;
   const news = await unreadCount(id, key);
 
-  const shown = tab === "post" ? posts.length : tab === "lesson" ? lessons.length : tab === "event" ? events.length : people.length;
-  const here = TABS.find((t) => t.kind === tab)!;
-  const link = (kind: SearchKind) => `${home}/search?q=${encodeURIComponent(asked)}${kind === "post" ? "" : `&k=${kind}`}`;
+  const shown =
+    tab === "post" ? posts.length
+    : tab === "lesson" ? lessons.length
+    : tab === "event" ? events.length
+    : tab === "member" ? people.length
+    : tab === "room" ? talk.length
+    : mine.length;
+  const here = TABS.find((t) => t.kind === tab) ?? ALL_TABS[0];
+  const link = (kind: Tab) => `${home}/search?q=${encodeURIComponent(asked)}${kind === "post" ? "" : `&k=${kind}`}`;
+  const nameOf = (who: string) => (who === CREATOR ? store.name : members.get(who)?.n || "A member");
+  // "5 min ago", "Sep 4": the way every post here says when it was written.
+  // A clock time made on the server would be in the server's time zone, and a
+  // member in New York would read "2:13 PM" for a message sent at 10:13.
+  const at = (seconds: number) => whenWords(seconds);
   // Some of what the index found on this page is behind a door this reader is
   // not through. Counted against THIS page and never against the total, which
   // spans every page: "4 more are in something you do not have" under a page
@@ -154,8 +201,14 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
 
         {!asked.trim() ? (
           <p className="st-muted mt-2">
-            Type in the box above to look through the posts here and every comment under them, the lessons of the courses
-            you have, what is on the calendar, and the people in the directory.
+            {`Type in the box above to look through ${inWords([
+              "the posts here and every comment under them",
+              "the lessons of the courses you have",
+              "what is on the calendar",
+              "the people in the directory",
+              ...(config.chat.on ? ["the room"] : []),
+              ...(config.dm.on ? ["your own messages"] : []),
+            ])}.`}
           </p>
         ) : wanted.length === 0 ? (
           <p className="st-muted mt-2">
@@ -169,7 +222,7 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                 disappears makes somebody wonder where it went. */}
             <nav className="cm-tabs mt-4" aria-label="What to search">
               {TABS.map((t) => {
-                const n = pages?.[t.kind].total ?? 0;
+                const n = count(t.kind);
                 const on = t.kind === tab;
                 return (
                   <Link
@@ -187,8 +240,8 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
 
             <p className="st-muted mt-3 text-sm">
               {shown === 0
-                ? `No ${here.many} hold all of those words.`
-                : `${shown === 1 ? `1 ${here.one} holds` : `${shown} ${here.many} hold`} all of ${used.length === 1 ? "that word" : "those words"}.`}
+                ? `No ${here.many} hold ${used.length === 1 ? "that word" : "all of those words"}.`
+                : `${shown === 1 ? `1 ${here.one} holds` : `${shown} ${here.many} hold`} ${used.length === 1 ? "that word" : "all of those words"}.`}
               {dropped && used.length ? ` Searched for: ${used.join(", ")}.` : ""}
               {held > 0
                 ? ` ${held === 1 ? "One more match on this page is" : `${held} more matches on this page are`} in something you do not have.`
@@ -280,6 +333,55 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                   </li>
                 ))}
               </ul>
+            ) : null}
+
+            {tab === "room" ? (
+              <ul className="mt-5 space-y-3">
+                {talk.map((m) => (
+                  <li key={m.i} className="st-card p-4">
+                    <p className="text-xs font-bold">{nameOf(m.a)}</p>
+                    <p className="cm-text mt-1">{m.text}</p>
+                    <p className="st-muted mt-1 text-xs font-semibold">
+                      {at(m.at)}
+                      {" · "}
+                      <Link href={`${home}/chat`} className="cm-quiet-link underline underline-offset-4">Open the room</Link>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            {tab === "dm" ? (
+              <ul className="mt-5 space-y-3">
+                {mine.map((h) => (
+                  <li key={`${h.pair}.${h.message.at}.${h.message.a}`} className="st-card p-4">
+                    <p className="text-xs font-bold">
+                      {h.message.a === key ? `You, to ${nameOf(h.other)}` : nameOf(h.message.a)}
+                    </p>
+                    <p className="cm-text mt-1">{h.message.text}</p>
+                    <p className="st-muted mt-1 text-xs font-semibold">
+                      {at(h.message.at)}
+                      {" · "}
+                      <Link href={`${home}/messages/${h.pair}`} className="cm-quiet-link underline underline-offset-4">Open the conversation</Link>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            {/* What the room and messages searched, said where it matters: a
+                search that read the last 500 messages of the room, or 30
+                conversations, should not let somebody think it read everything
+                ever written. */}
+            {tab === "room" ? (
+              <p className="st-muted mt-5 text-xs">
+                {`The room keeps its last 500 messages, and those are what is searched.${roomHits.length > SHOWN_TALK ? ` The ${SHOWN_TALK} newest matches are shown.` : ""}`}
+              </p>
+            ) : null}
+            {tab === "dm" ? (
+              <p className="st-muted mt-5 text-xs">
+                {`Only your own conversations are searched: your ${SEARCH_CONVERSATIONS} most recent, and the last ${SEARCH_MESSAGES} messages of each.${dmHits.length > SHOWN_TALK ? ` The ${SHOWN_TALK} newest matches are shown.` : ""}`}
+              </p>
             ) : null}
 
             {page.next ? (
