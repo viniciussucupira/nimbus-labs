@@ -7,6 +7,7 @@
  * and leaves Nimbus with nothing to hold, skim or lose. The 0% on the home
  * page is this file.
  */
+import { saleOff } from "@/lib/store-sale";
 import { GIFT_ID } from "@/lib/gift-rules";
 import { commissionRate } from "@/lib/affiliate-setting";
 import { saleHandles } from "@/lib/store";
@@ -277,9 +278,16 @@ export async function createCheckout(
   // buyer who may not come back. What a code takes off is worked out by Stripe
   // from a coupon on the creator's own account; no amount is decided here.
   // Not where the buyer chooses the price: they already name the amount.
+  // A sale across the store (lib/store-sale.ts): taken off by Stripe with the
+  // creator's own coupon, with no code to type, while it runs. Not on a
+  // payment plan: the page says the sale price is for paying in full.
+  const saleOffNow = !extras.coupon && !plan ? saleOff(store.sale, product, Math.floor(Date.now() / 1000)) : 0;
   if (extras.coupon && !pwyw) {
     body.set("discounts[0][coupon]", extras.coupon);
     body.set("metadata[winback]", "yes");
+  } else if (saleOffNow > 0) {
+    body.set("discounts[0][coupon]", store.sale.coupon);
+    body.set("metadata[sale]", String(saleOffNow));
   } else if (store.hasDiscounts && !pwyw) {
     body.set("allow_promotion_codes", "true");
   }

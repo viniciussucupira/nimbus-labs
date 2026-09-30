@@ -1,3 +1,4 @@
+import { salePrice } from "@/lib/store-sale";
 import { isSoon } from "@/lib/waitlist";
 import { canGift } from "@/lib/gift-rules";
 import type { Metadata } from "next";
@@ -26,7 +27,7 @@ import { SITE_URL } from "@/lib/site-url";
 import { EMPTY_PAGE, type SalesPage } from "@/lib/sales-page";
 import { readPage } from "@/lib/sales-page-store";
 import { type Summary, REVIEWS_ON_PAGE, average, showsRating, summaryOf, visibleReviews } from "@/lib/reviews";
-import { BuyBox, GiftBox, ProductFacts, pageAction, pricePill, productPath } from "@/components/store-product";
+import { BuyBox, GiftBox, PriceTag, ProductFacts, offNow, pageAction, productPath } from "@/components/store-product";
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { StoreTracking } from "@/components/store-tracking";
@@ -168,7 +169,9 @@ function productData(store: Store, product: Listing, description: string, soldOu
       : {
           "@type": "Offer",
           priceCurrency: store.currency.toUpperCase(),
-          price: isFree(product) ? "0" : moneyField(options[0]?.priceCents ?? product.priceCents, store.currency),
+          price: isFree(product) ? "0" : moneyField(salePrice(options[0]?.priceCents ?? product.priceCents, offNow(store, product)), store.currency),
+          // A sale's price is said with the moment it ends (lib/store-sale.ts).
+          ...(offNow(store, product) ? { priceValidUntil: new Date(store.sale.ends * 1000).toISOString().slice(0, 10) } : {}),
           availability,
           url,
         };
@@ -388,7 +391,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
               <h1 className="font-display min-w-0 text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">
                 {product.title}
               </h1>
-              <p className="st-price text-base">{pricePill(product, store.currency)}</p>
+              <p className="st-price text-base"><PriceTag store={store} product={product} /></p>
             </div>
             {summary ? <RatingLine summary={summary} href="#reviews" className="mt-2" /> : null}
             <ProductFacts store={store} product={product} bundleItems={inside} linkCourse={false} />
@@ -430,7 +433,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const hero = first?.kind === "hero" ? first : null;
   const rest = hero ? others : page.blocks;
   const placed = page.blocks.find((block) => block.kind === "reviews");
-  const pill = <p className="st-price text-sm">{pricePill(product, store.currency)}</p>;
+  const pill = <p className="st-price text-sm"><PriceTag store={store} product={product} /></p>;
   const rating = summary ? <RatingLine summary={summary} href="#reviews" /> : null;
 
   const buySection = (
@@ -439,7 +442,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
         <h2 id="buy-title" className="font-display min-w-0 text-xl font-semibold leading-snug tracking-[-0.01em] sm:text-2xl">
           {free ? `Get ${product.title}` : product.title}
         </h2>
-        <p className="st-price text-base">{pricePill(product, store.currency)}</p>
+        <p className="st-price text-base"><PriceTag store={store} product={product} /></p>
       </div>
       <ProductFacts store={store} product={product} linkCourse={false} bundleItems={inside} />
       {bundleList}
