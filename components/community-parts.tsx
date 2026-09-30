@@ -383,9 +383,10 @@ function PollBox({
   const open = !closed && viewer.canWrite;
   const share = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
   return (
-    <form action="/api/store/community" method="post" className="cm-poll mt-4">
-      <Carry store={store} action="vote" post={post.id} from={from} space={space} />
-      <fieldset disabled={!open}>
+    <div className="cm-poll mt-4">
+      <form action="/api/store/community" method="post">
+        <Carry store={store} action="vote" post={post.id} from={from} space={space} />
+        <fieldset disabled={!open}>
         <legend className="sr-only">{post.title || "Poll"}</legend>
         <ul className="space-y-1.5">
           {poll.options.map((option) => {
@@ -414,17 +415,21 @@ function PollBox({
           })}
         </ul>
         {open ? (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-3">
             <button type="submit" className="cm-pill">{voted ? "Change my vote" : "Vote"}</button>
-            {voted ? (
-              // Sending the form with nothing chosen takes the vote back.
-              <button type="submit" name="choice" value="" className="cm-quiet-link cm-mini text-xs font-semibold">
-                Take my vote back
-              </button>
-            ) : null}
           </div>
         ) : null}
-      </fieldset>
+        </fieldset>
+      </form>
+      {open && voted ? (
+        // Its own form, with no choice field in it at all. Inside the first
+        // one the checked option is sent too, and an empty value next to a
+        // real one is simply the real one: the button did nothing, silently.
+        <form action="/api/store/community" method="post" className="mt-2">
+          <Carry store={store} action="vote" post={post.id} from={from} space={space} />
+          <button type="submit" className="cm-quiet-link cm-mini text-xs font-semibold">Take my vote back</button>
+        </form>
+      ) : null}
       <p className="st-muted mt-2 text-xs font-semibold">
         {[
           showing ? `${total} ${total === 1 ? "vote" : "votes"}` : "Results are hidden until this closes",
@@ -438,7 +443,7 @@ function PollBox({
       <p className="st-muted mt-1 text-xs">
         {`Your vote is counted against your account, so it can only count once. ${store.name} sees the totals, never who chose what.`}
       </p>
-    </form>
+    </div>
   );
 }
 
