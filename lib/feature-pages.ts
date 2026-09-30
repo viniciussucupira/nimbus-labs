@@ -1117,6 +1117,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do",
         items: [
           "Paying through us is PayPal only, from a PayPal Business account with Payouts switched on, to the email address each affiliate joined with; an affiliate with no PayPal account there has 30 days to claim it, or it comes back to you and stays owed. Wise or a bank transfer is a file you upload yourself.",
+          "A PayPal account in Brazil can send these payments only in Brazilian reais, to accounts in Brazil, under PayPal's own terms there, so paying through us does not work from one; the batch file still does.",
           "Memberships and payment plans earn no commission; one-off sales and booked calls do.",
           "A dispute on your Stripe account does not cancel a commission by itself: check your dashboard before you pay.",
           "Contracts, tax forms and payments between you and your affiliates are yours to arrange.",
