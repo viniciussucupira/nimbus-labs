@@ -134,6 +134,7 @@ const RESERVED = new Set([
   "for",
   "help",
   "home",
+  "invite",
   "legal",
   "login",
   "mission",

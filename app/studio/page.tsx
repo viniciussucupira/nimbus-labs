@@ -37,6 +37,7 @@ import { TaxEditor } from "@/components/tax-editor";
 import { RecoveryEditor } from "@/components/recovery-editor";
 import { ApiKeyEditor } from "@/components/api-key-editor";
 import { listKeys } from "@/lib/api-keys";
+import { INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 import { SaveOfferEditor } from "@/components/save-offer-editor";
 import { sellsMemberships } from "@/lib/membership-manage";
 import { taxStatus } from "@/lib/tax";
@@ -707,6 +708,10 @@ export default async function StudioPage({
                 // Only once the deployment has the Google or Zoom app's keys (lib/meet-providers.ts).
                 ...(may("settings") && meetOn && (meet?.providers ?? offeredProviders(store)).length > 0
                   ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${(meet?.providers ?? offeredProviders(store)).map((p) => MEET_NAMES[p]).join(" or ")} links, made for your bookings and live events.`, icon: "video" as const }]
+                  : []),
+                // The credit lands on the plan, so whoever may handle the plan (lib/creator-invites.ts).
+                ...(billingReady && may("billing")
+                  ? [{ href: studioPath(store, "", "invite"), title: "Invite creators", text: `${INVITE_SHARE_PERCENT}% of every payment they make goes on your plan.`, icon: "percent" as const }]
                   : []),
                 // Everyone on the store, for their own devices (lib/phone-alerts.ts).
                 { href: studioPath(store, "", "phone"), title: "Phone notifications", text: "A buzz for sales, bookings, community reports, affiliate applications and live events, on your own devices.", icon: "phone" as const },
