@@ -268,15 +268,25 @@ export async function createCheckout(
   // Sent by an affiliate: who, and the share as it is today, kept with the
   // charge so a later change of terms never changes what this sale earned.
   // Only a single payment is credited, not a membership or a payment plan.
-  if (extras.via && !recurring) {
+  //
+  // The order is what earns, not the front product. A bump that made it into
+  // the charge is here by now, so this is the first point at which the whole
+  // of what is being bought is known — and so the right place to ask whether
+  // any of it earns a share. A creator who pays nothing on the front offer
+  // and 30% on the add-on has an ordinary arrangement, and the credit used to
+  // be thrown away on the front product's 0% before the bump was ever looked
+  // at.
+  const added = body.get("metadata[bump]") && bump ? bump : null;
+  const addedRate = added ? commissionRate(store.affiliates, added.target.id) : 0;
+  if (extras.via && !recurring && (extras.via.rate > 0 || addedRate > 0)) {
     body.set("metadata[via]", extras.via.aff);
     body.set("metadata[via_rate]", String(extras.via.rate));
     body.set("payment_intent_data[metadata][via]", extras.via.aff);
     // A bump rides in the same order: its own share, which may be none, is
     // kept beside it, so it earns what the creator set for that product.
-    if (body.get("metadata[bump]") && bump) {
-      body.set("metadata[bump_cents]", String(bump.bump.priceCents));
-      body.set("metadata[bump_rate]", String(commissionRate(store.affiliates, bump.target.id)));
+    if (added) {
+      body.set("metadata[bump_cents]", String(added.bump.priceCents));
+      body.set("metadata[bump_rate]", String(addedRate));
     }
   }
 

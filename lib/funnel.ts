@@ -22,7 +22,15 @@
  * Pure, so the studio and the server apply the same rules.
  */
 import type { Listing, Product } from "@/lib/store";
-import { type Bump, MIN_BUMP_CENTS, canBeBumped, isOneOff } from "@/lib/product-extras";
+import {
+  type Bump,
+  type BumpPause,
+  MIN_BUMP_CENTS,
+  bumpPauseWords,
+  bumpTargetPause,
+  canBeBumped,
+  isOneOff,
+} from "@/lib/product-extras";
 
 export type FunnelStep = {
   /** Its own id, so an answer can point at it. */
@@ -153,20 +161,77 @@ export function funnelProblem(funnel: Funnel, products: Listing[], owner: Listin
   return null;
 }
 
+/**
+ * Why one offer of a funnel is not being shown.
+ *
+ * The same vocabulary a checkout box uses (lib/product-extras.ts), plus the
+ * one reason only an offer here can have: a price below the smallest a card
+ * can be charged.
+ */
+export type StepPause = BumpPause | "tooLittle";
+
+/** Why this offer cannot be shown as the store stands, or null when it can. */
+export function stepPause(products: Listing[], step: FunnelStep, ownerId?: string): StepPause | null {
+  const target = products.find((p) => p.id === step.productId);
+  if (!target) return "gone";
+  if (ownerId !== undefined && target.id === ownerId) return "itself";
+  const wrong = bumpTargetPause(target);
+  if (wrong) return wrong;
+  if (step.priceCents < MIN_BUMP_CENTS) return "tooLittle";
+  if (step.priceCents > target.priceCents) return "dearer";
+  return null;
+}
+
+/**
+ * What the creator is told about one offer, and what to change to get it back.
+ *
+ * The shared reasons are worded for an offer after paying rather than a box at
+ * checkout: rendering these showed "the box charges more for Recipe Vault"
+ * printed under a list of offers with no box anywhere near them.
+ */
+export function stepPauseWords(why: StepPause, offer: string): string {
+  if (why === "tooLittle") {
+    return "The price of this offer is below the smallest amount a card can be charged. Raise it.";
+  }
+  return bumpPauseWords(why, offer, "offer");
+}
+
 /** Whether an offer can be shown right now, as the store stands. */
 export function stepOffered(products: Listing[], step: FunnelStep): Listing | null {
-  const target = products.find((p) => p.id === step.productId);
-  if (!target || !canBeBumped(target)) return null;
-  if (step.priceCents < MIN_BUMP_CENTS || step.priceCents > target.priceCents) return null;
-  return target;
+  if (stepPause(products, step)) return null;
+  return products.find((p) => p.id === step.productId) ?? null;
+}
+
+/**
+ * The funnel as it stands: how many of its offers a buyer would meet, which
+ * ones are dark and why, and whether the whole thing is off.
+ *
+ * A funnel is the extra a creator is least likely to notice going quiet: it
+ * lives behind a payment, on a page they see once while testing and never
+ * again. Four offers where one product got a price cut is four offers that
+ * still read as set up in the studio and are never shown to anybody.
+ */
+export function funnelHealth(
+  products: Listing[],
+  product: Listing & Pick<Product, "funnel">,
+): { shown: number; dark: { step: FunnelStep; why: StepPause }[]; off: "kind" | "none" | null } | null {
+  const funnel = product.funnel;
+  if (!funnel) return null;
+  if (!isOneOff(product)) return { shown: 0, dark: [], off: "kind" };
+  const dark: { step: FunnelStep; why: StepPause }[] = [];
+  let shown = 0;
+  for (const step of funnel.steps) {
+    const why = stepPause(products, step, product.id);
+    if (why) dark.push({ step, why });
+    else shown += 1;
+  }
+  return { shown, dark, off: shown === 0 ? "none" : null };
 }
 
 /** The funnel that follows paying for this product, or null. */
 export function activeFunnel(products: Listing[], product: Listing & Pick<Product, "funnel">): Funnel | null {
-  if (!product.funnel || !isOneOff(product)) return null;
-  // At least one offer has to be showable, or nothing follows at all.
-  const any = product.funnel.steps.some((step) => step.productId !== product.id && stepOffered(products, step));
-  return any ? product.funnel : null;
+  const health = funnelHealth(products, product);
+  return health && health.off === null ? product.funnel : null;
 }
 
 /** Offers nothing leads to: kept, but never shown until something does. */
