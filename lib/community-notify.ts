@@ -22,11 +22,13 @@
  * either — a post the creator took down should not keep reaching into
  * somebody's day.
  *
- * This list is also where push notifications would be sent from, if they are
- * ever sent: what is missing for those is a service worker and a key pair,
- * not a decision about what is worth telling somebody.
+ * A phone is told at the same moment, from here, so the two can never say
+ * different things: whatever is worth a row in somebody's list is worth
+ * waking their phone for, and nothing else is. What the phone is sent is
+ * thinner still — who did what, and where to go, never the words.
  */
 import { redisPipeline } from "@/lib/redis";
+import { pushMembers } from "@/lib/community-push";
 
 const base = (id: string) => `nl:cm:${id}`;
 const listKey = (id: string, who: string) => `${base(id)}:nt:${who}`;
@@ -84,6 +86,8 @@ export async function tell(
   id: string,
   to: string[],
   notice: Omit<Notice, "at" | "words"> & { words: string },
+  /** Where a phone should be sent, and by what name. Left out, none is sent. */
+  phone?: { handle: string; who: string },
 ): Promise<void> {
   const who = [...new Set(to)].filter((one) => one && one !== notice.by);
   if (!who.length) return;
@@ -98,6 +102,25 @@ export async function tell(
   } catch (error) {
     console.error("filing a community notification failed", error);
   }
+  if (!phone) return;
+  // The words are deliberately absent: a notification is read on a lock
+  // screen, and this one says who did what and where, nothing more.
+  const said =
+    notice.kind === "reply"
+      ? `${phone.who} answered your post`
+      : notice.kind === "answer"
+        ? `${phone.who} answered your comment`
+        : `${phone.who} named you`;
+  await pushMembers(id, who, {
+    title: said,
+    body: "Open the community to read it.",
+    url: notice.comment
+      ? `/@${phone.handle}/community/post/${notice.post}#comment-${notice.comment}`
+      : `/@${phone.handle}/community/post/${notice.post}`,
+    // One per post: a second answer replaces the first rather than stacking
+    // up ten times overnight.
+    tag: notice.post,
+  }).catch((error) => console.error("pushing a community notification failed", error));
 }
 
 /** What happened to somebody, newest first, and how many are new. */

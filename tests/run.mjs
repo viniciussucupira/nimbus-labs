@@ -39,7 +39,18 @@ try {
     });
     console.log(`\n=== ${file} ===`);
     const { spawnSync } = await import("node:child_process");
-    const run = spawnSync(process.execPath, [bundle], { stdio: "inherit" });
+    const run = spawnSync(process.execPath, [bundle], {
+      stdio: "inherit",
+      env: {
+        ...process.env,
+        // A deployment's own secret, which the VAPID keys are derived from
+        // (lib/web-push.ts). A fixed one here, so a test that needs push to
+        // exist gets the same key pair every run and never reaches anything
+        // real; without it, push is correctly unavailable and every check
+        // about devices would pass for the wrong reason.
+        NIMBUS_DATA_KEY: process.env.NIMBUS_DATA_KEY ?? "tests-only-not-a-real-deployment-secret",
+      },
+    });
     if (run.status !== 0) failed += 1;
   }
 } finally {

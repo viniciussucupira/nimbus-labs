@@ -193,7 +193,12 @@ export async function POST(request: NextRequest) {
       }
       if (!made.post.hid) {
         const named = await whoIs(id, mentionsIn(`${title}\n${text}`));
-        await tell(id, [...named.values()], { kind: "mention", post: made.post.id, comment: "", by: key, words: title || text });
+        await tell(
+          id,
+          [...named.values()],
+          { kind: "mention", post: made.post.id, comment: "", by: key, words: title || text },
+          { handle: store.handle, who: owner ? store.name : viewer.member?.n || "Somebody" },
+        );
       }
       if (announce && form.get("email") === "1") {
         const queued = await queueAnnouncement(store, config, made.post);
@@ -232,12 +237,17 @@ export async function POST(request: NextRequest) {
       if (!post.hid) {
         const named = await whoIs(id, mentionsIn(text));
         const above = made.comment.parent ? await readComment(id, post.id, made.comment.parent) : null;
-        await tell(id, [post.a], { kind: "reply", post: post.id, comment: made.comment.id, by: key, words: text });
+        // The name a phone shows: the creator's store name, or the name this
+        // member chose. Never an address, and never "a member" on a phone —
+        // a notification nobody can place is a notification nobody opens.
+        const doer = owner ? store.name : viewer.member?.n || "Somebody";
+        const phone = { handle: store.handle, who: doer };
+        await tell(id, [post.a], { kind: "reply", post: post.id, comment: made.comment.id, by: key, words: text }, phone);
         if (above && above.a !== post.a) {
-          await tell(id, [above.a], { kind: "answer", post: post.id, comment: made.comment.id, by: key, words: text });
+          await tell(id, [above.a], { kind: "answer", post: post.id, comment: made.comment.id, by: key, words: text }, phone);
         }
         const others = [...named.values()].filter((one) => one !== post.a && one !== above?.a);
-        await tell(id, others, { kind: "mention", post: post.id, comment: made.comment.id, by: key, words: text });
+        await tell(id, others, { kind: "mention", post: post.id, comment: made.comment.id, by: key, words: text }, phone);
       }
       return back(postPage, "commented", `comment-${made.comment.id}`);
     }
