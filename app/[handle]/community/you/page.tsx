@@ -55,6 +55,13 @@ export default async function CommunityYouPage({ params, searchParams }: Params)
               <label htmlFor="you-name" className="st-label">The name other members see</label>
               <input id="you-name" name="name" defaultValue={member.n} maxLength={MAX_DISPLAY_NAME} autoComplete="nickname" placeholder="Your first name, or a nickname" className="st-field mt-2" />
               <p className="st-muted mt-1 text-sm">Needed to post or comment. Your email address is never shown to other members.</p>
+              {member.h ? (
+                <p className="st-muted mt-1 text-sm">
+                  {`Others name you by typing `}
+                  <span className="font-semibold" style={{ color: "var(--st-text)" }}>{`@${member.h}`}</span>
+                  {`. It follows your name, so changing one changes the other.`}
+                </p>
+              ) : null}
             </div>
             <label className="flex min-h-6 items-start gap-3">
               <input type="checkbox" name="dir" value="1" defaultChecked={member.dir} className="mt-0.5 h-5 w-5 shrink-0" />

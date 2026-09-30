@@ -7,6 +7,7 @@ import { lookStyle } from "@/lib/store-look";
 import { feed, postNumbers, readMembers, readPosts } from "@/lib/community";
 import { accessProducts, communityViewer, visibleSpaces } from "@/lib/community-access";
 import { requestCount } from "@/lib/community-dm";
+import { unreadCount } from "@/lib/community-notify";
 import { pollViews } from "@/lib/community-polls";
 import { communityFolder } from "@/lib/community-image";
 import { announcementReach, canAnnounceByEmail } from "@/lib/community-mail";
@@ -97,6 +98,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
   const reach = owner ? await announcementReach(id) : 0;
   // The badge on the Messages link: nothing to read, nothing shown.
   const waiting = config.dm.on ? await requestCount(id, key) : 0;
+  const news = await unreadCount(id, key);
   const home = `/@${store.handle}/community`;
   const from = space ? "space" : "feed";
   const openTo = await accessProducts(store, config);
@@ -104,7 +106,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
   return (
     <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <ConfirmDeletes />
-      <CommunityBar store={store} config={config} tab="feed" signedIn messages={config.dm.on} requests={waiting} />
+      <CommunityBar store={store} config={config} tab="feed" signedIn messages={config.dm.on} requests={waiting} news={news} />
       <main id="content" className="mx-auto grid max-w-5xl gap-x-8 px-4 pb-16 pt-6 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
         <aside className="hidden lg:block">
           <nav aria-label="Spaces" className="sticky top-24">

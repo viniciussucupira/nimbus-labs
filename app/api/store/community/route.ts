@@ -28,6 +28,8 @@ import {
 } from "@/lib/community";
 import { communityViewer, maySeeSpace } from "@/lib/community-access";
 import { MAX_POLL_DAYS, parsePoll, vote } from "@/lib/community-polls";
+import { mentionsIn, whoIs } from "@/lib/community-mentions";
+import { tell } from "@/lib/community-notify";
 import { checkCommunityImage } from "@/lib/community-image";
 import { blobImages, dropCommunityImage, noteCommunityUpload, takeCommunityUpload } from "@/lib/community-files";
 import { advanceAnnouncement, queueAnnouncement } from "@/lib/community-mail";
@@ -189,6 +191,10 @@ export async function POST(request: NextRequest) {
         if (img) await dropCommunityImage(img.path);
         return back(fromPage, "fullposts");
       }
+      if (!made.post.hid) {
+        const named = await whoIs(id, mentionsIn(`${title}\n${text}`));
+        await tell(id, [...named.values()], { kind: "mention", post: made.post.id, comment: "", by: key, words: title || text });
+      }
       if (announce && form.get("email") === "1") {
         const queued = await queueAnnouncement(store, config, made.post);
         if (queued.ok) {
@@ -220,6 +226,19 @@ export async function POST(request: NextRequest) {
       const parent = field("parent", 12);
       const made = await addComment(id, post.id, { parent: ITEM_ID.test(parent) ? parent : "", author: key, text });
       if (!made.ok) return back(postPage, made.reason === "full" ? "fullcomments" : "gone");
+      // Who hears about it: the post's author, the author of the comment this
+      // answers, and anybody named in it. A hidden post reaches nobody — one
+      // the creator took down should not keep arriving in somebody's day.
+      if (!post.hid) {
+        const named = await whoIs(id, mentionsIn(text));
+        const above = made.comment.parent ? await readComment(id, post.id, made.comment.parent) : null;
+        await tell(id, [post.a], { kind: "reply", post: post.id, comment: made.comment.id, by: key, words: text });
+        if (above && above.a !== post.a) {
+          await tell(id, [above.a], { kind: "answer", post: post.id, comment: made.comment.id, by: key, words: text });
+        }
+        const others = [...named.values()].filter((one) => one !== post.a && one !== above?.a);
+        await tell(id, others, { kind: "mention", post: post.id, comment: made.comment.id, by: key, words: text });
+      }
       return back(postPage, "commented", `comment-${made.comment.id}`);
     }
 

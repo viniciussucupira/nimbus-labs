@@ -2107,6 +2107,17 @@ a.rv-line:hover {
   background: var(--st-card);
   color: var(--st-text);
 }
+/* An @ that names somebody. Reads as a name, not as a web address. */
+.cm-mention {
+  font-weight: 700;
+  color: var(--st-accent);
+  text-decoration: none;
+}
+.cm-mention:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 /* One conversation in the message list. */
 .cm-dm-row {
   display: flex;

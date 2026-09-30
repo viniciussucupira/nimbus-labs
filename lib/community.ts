@@ -59,6 +59,7 @@ import { MAX_ALT_LENGTH } from "@/lib/product-image";
 import { indexPost, partsOf, unindexPost } from "@/lib/community-search";
 import { type Poll, parsePoll, pollKeys } from "@/lib/community-polls";
 import { type DmSetting, NO_DM, parseDmSetting } from "@/lib/community-dm";
+import { claimHandle } from "@/lib/community-mentions";
 
 /** The author of what the creator writes. Never a member key, which is hex. */
 export const CREATOR = "creator";
@@ -102,6 +103,12 @@ export type Member = {
   e: string;
   /** The name they chose to be seen by; empty until they choose one. */
   n: string;
+  /**
+   * What others type after an @ to name them: their name folded to lower
+   * case, with a number on the end if it was taken. Empty until they choose
+   * a name, and a member without one simply cannot be mentioned.
+   */
+  h: string;
   /** Listed in the member directory. */
   dir: boolean;
   /** Asked to be emailed the creator's announcements. */
@@ -260,6 +267,9 @@ function parseMember(raw: unknown): Member | null {
       k: v.k,
       e: v.e,
       n: typeof v.n === "string" ? v.n.slice(0, MAX_DISPLAY_NAME) : "",
+      // Members written down before there were handles have none until they
+      // next save their name.
+      h: typeof v.h === "string" ? v.h : "",
       dir: v.dir === true,
       mail: v.mail === true,
       at: typeof v.at === "number" ? v.at : 0,
@@ -340,7 +350,7 @@ export async function touchMember(id: string, email: string, existing: Member | 
   }
   const [size] = await redisPipeline([["HLEN", membersKey(id)]]);
   if (Number(size) >= MAX_MEMBERS) return null;
-  const member: Member = { k: key, e: normaliseEmail(email), n: "", dir: false, mail: false, at, seen: at, muted: false, removed: false, t: "" };
+  const member: Member = { k: key, e: normaliseEmail(email), n: "", h: "", dir: false, mail: false, at, seen: at, muted: false, removed: false, t: "" };
   // HSETNX: two first visits at once make one record, not two.
   await redisPipeline([["HSETNX", membersKey(id), key, JSON.stringify(member)]]);
   return (await readMember(id, key)) ?? member;
@@ -353,7 +363,14 @@ export async function setProfile(
   change: { name: string; dir: boolean; mail: boolean },
 ): Promise<Member> {
   const name = cleanLine(change.name, MAX_DISPLAY_NAME);
-  return (await patchMember(id, member.k, () => ({ n: name, dir: change.dir && Boolean(name), mail: change.mail }))) ?? member;
+  // The handle is taken before the name is written, so a member is never left
+  // named but unmentionable. Claiming gives back what they ended up with,
+  // which may carry a number when somebody already held the plain one.
+  const handle = await claimHandle(id, member.k, name, member.h);
+  return (
+    (await patchMember(id, member.k, () => ({ n: name, h: handle, dir: change.dir && Boolean(name), mail: change.mail }))) ??
+    member
+  );
 }
 
 /** Switches a member's announcement emails off (the unsubscribe link) or on. */
