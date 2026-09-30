@@ -127,9 +127,11 @@ export default async function MessagesPage({ params, searchParams }: Params) {
             <div className="st-note mt-3 text-center">
               <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing here yet</p>
               <p className="mt-1 text-sm">
-                {config.dm.between
-                  ? "Open somebody's name in the members list to write to them."
-                  : `Only ${store.name} can be written to here, from their name in the members list.`}
+                {owner
+                  ? "Open a member's name in the members list to write to them."
+                  : config.dm.between
+                    ? "Open somebody's name in the members list to write to them."
+                    : `Only ${store.name} can be written to here, from their name in the members list.`}
               </p>
             </div>
           ) : (
