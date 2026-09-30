@@ -253,6 +253,14 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can my buyers give something as a gift?",
+        a: [
+          "Yes, on any paid product bought once that hands over a file, a link, a course or a bundle. Under the buy button on its page there is \u201cBuy it as a gift\u201d: the buyer types the recipient's email, their own name and a message, and pays on Stripe's page as for anything else, on your own Stripe account.",
+          "The recipient gets one email with the buyer's name, the message and a link to open it. It is theirs on their own address, as if they had bought it: the download, the course with its modules opening from the day it was paid, the community it opens. The buyer gets the receipt and does not get a copy. A full refund takes the gift back within minutes.",
+          "Memberships, calls, products with price options, a price the buyer chooses or licence keys cannot be given.",
+        ],
+      },
+      {
         q: "Can I take a waitlist before something goes on sale?",
         a: [
           "Yes, on any paid product. In your studio, check \u201cComing soon, with a waitlist\u201d under the product: its card and its page then take an email address instead of a payment, and no checkout opens. Each address is confirmed from its own inbox before it counts, and the box to hear more from you starts empty.",

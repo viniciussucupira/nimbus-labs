@@ -316,7 +316,9 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                             purchase.member ? "Membership, still running" : null,
                             purchase.ended ? "Membership, ended" : null,
                             purchase.kind === "upsell" ? "Added after paying" : null,
-                            purchase.kind === "imported"
+                            purchase.kind === "imported" && purchase.giftFrom
+                              ? `A gift from ${purchase.giftFrom}${purchase.paidAt ? `, on ${DATE.format(new Date(purchase.paidAt * 1000))}` : ""}`
+                              : purchase.kind === "imported"
                               ? `Brought over from another platform${purchase.paidAt ? ` on ${DATE.format(new Date(purchase.paidAt * 1000))}` : ""}`
                               : purchase.paidAt
                                 ? `Bought on ${DATE.format(new Date(purchase.paidAt * 1000))}`

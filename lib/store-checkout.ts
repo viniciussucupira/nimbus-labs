@@ -7,6 +7,7 @@
  * and leaves Nimbus with nothing to hold, skim or lose. The 0% on the home
  * page is this file.
  */
+import { GIFT_ID } from "@/lib/gift-rules";
 import { commissionRate } from "@/lib/affiliate-setting";
 import { saleHandles } from "@/lib/store";
 import type { Listing, Product, Store } from "@/lib/store";
@@ -160,9 +161,15 @@ export async function createCheckout(
     email?: string;
     /** No free trial: somebody coming back has had theirs. */
     noTrial?: boolean;
+    /**
+     * Bought for somebody else (lib/gifts.ts): paid at once, with nothing
+     * added at checkout and no offer after it, and handed to the recipient.
+     */
+    gift?: string;
   } = {},
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
+  if (extras.gift) extras = { ...extras, bump: false, plan: false, upsellKey: undefined };
   // A call is booked for a time, through its own door, never bought blind.
   if (product.call) throw new Error("A call is booked, not bought directly");
 
@@ -278,7 +285,11 @@ export async function createCheckout(
   }
   if (extras.email) body.set("customer_email", extras.email);
 
-  if (extras.buyerKey) body.set("metadata[buyer_key]", extras.buyerKey);
+  if (extras.gift) {
+    body.set("metadata[gift]", extras.gift);
+    if (!recurring) body.set("payment_intent_data[metadata][gift]", extras.gift);
+  }
+  if (extras.buyerKey && !extras.gift) body.set("metadata[buyer_key]", extras.buyerKey);
   if (extras.news) body.set("metadata[news]", "yes");
 
   // Sent by an affiliate: who, and the share as it is today, kept with the
@@ -476,6 +487,11 @@ export type Order =
       membership: "live" | "ended" | null;
       /** The checkout's own id, which a licence key and a stamped copy are kept under. */
       reference: string;
+      /**
+       * Bought for somebody else (lib/gifts.ts): what it hands over is theirs,
+       * and nothing is handed over here. Null for an ordinary purchase.
+       */
+      gift: string | null;
       /** What it was charged in, as Stripe says: the store's currency when it was bought. */
       currency: string;
       /**
@@ -606,6 +622,7 @@ export async function readOrder(
   return {
     state: "paid",
     membership,
+    gift: typeof metadata?.gift === "string" && GIFT_ID.test(metadata.gift) ? metadata.gift : null,
     reference: sessionId,
     call,
     bump,

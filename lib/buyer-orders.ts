@@ -22,6 +22,7 @@
  * Like cancelling a membership, this works whatever state the creator's own
  * Nimbus subscription is in: somebody paid for that file, and they get it.
  */
+import { giftFrom } from "@/lib/gifts";
 import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
@@ -113,6 +114,8 @@ export type Purchase = {
   items: PurchaseItems | null;
   /** When the product ticked at checkout is a bundle: its products. */
   bumpItems: PurchaseItems | null;
+  /** Given as a gift (lib/gifts.ts): the name of whoever gave it, "someone" when they gave none. */
+  giftFrom?: string | null;
 };
 
 /** The products of a list on an order, each with what it hands over now. */
@@ -255,6 +258,8 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       if (!handles.has(meta.store ?? "")) continue;
       if (!isSettled(session)) continue;
       if (meta.kind === "call") continue;
+      // A gift is on its recipient's list, not its buyer's (lib/gifts.ts).
+      if (meta.gift) continue;
       const product = await find(meta.product);
       if (!product || product.call) continue;
       if (await purchaseRefunded(account, session)) continue;
@@ -347,8 +352,9 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
     }
   }
 
-  // Brought over from another platform by the creator: no payment here, so
-  // nothing on Stripe to read, and shown as exactly that.
+  // Brought over from another platform by the creator, or given as a gift:
+  // no payment by this address, so nothing on Stripe to read under it, and
+  // shown as exactly that.
   if (store.pastBuyers && store.statsId) {
     for (const given of await importedFor(store, email)) {
       const product = await find(given.productId);
@@ -361,6 +367,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       found.set(reference, {
         reference,
         kind: "imported",
+        giftFrom: await giftFrom(given.job),
         title: product.title,
         option: null,
         paidAt: given.at,
@@ -464,12 +471,25 @@ export async function requestOrdersLink(input: {
       "",
       "If you did not ask for this, ignore this email; nothing happens unless the link is opened.",
       "",
-      purchases.some((p) => p.kind === "imported")
+      purchases.some((p) => p.kind === "imported" && !p.giftFrom)
         ? `Sent by Nimbus Labs on behalf of ${name}. What you bought here was charged by ${name} on their own Stripe account; what ${name} brought over from another platform was not charged again.`
         : `Sent by Nimbus Labs on behalf of ${name}. Every purchase was charged by ${name} on their own Stripe account.`,
     ].join("\n"),
   });
   return sent ? "sent" : "error";
+}
+
+/**
+ * A link to the list of purchases for one address, made without asking:
+ * for someone who was just given something (lib/gifts.ts), whose email is
+ * the proof. Null when this store's purchases cannot be listed.
+ */
+export async function ordersLinkFor(store: Store, email: string, base: string): Promise<string | null> {
+  if (!isRedisConfigured()) return null;
+  const token = randomBytes(32).toString("hex");
+  const grant: Grant = { a: grantAccount(store), e: normaliseEmail(email) };
+  await redisPipeline([["SET", tokenKey(token), JSON.stringify(grant), "EX", ORDERS_LINK_SECONDS]]);
+  return `${base}/orders?token=${token}`;
 }
 
 /** The address a live link was issued to, for this store only. */

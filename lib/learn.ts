@@ -156,6 +156,15 @@ export async function recordEnrollment(store: Store, email: string, productId: s
   ]);
 }
 
+/** Takes a course off an address's ledger: a gift taken back by a refund (lib/gifts.ts). */
+export async function dropEnrollment(store: Store, email: string, productId: string): Promise<void> {
+  if (!isRedisConfigured()) return;
+  await redisPipeline([
+    ["HDEL", ledgerKey(store, email), productId],
+    ["DEL", paidCacheKey(store, email)],
+  ]);
+}
+
 type Listed = { data?: unknown };
 
 /** What Stripe says about one address's courses here. */
