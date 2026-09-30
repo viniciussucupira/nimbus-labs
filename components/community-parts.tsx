@@ -5,6 +5,7 @@ import { formatMoney } from "@/lib/money";
 import { CREATOR, type CommunityConfig, type Member, type Post } from "@/lib/community";
 import { communityImageFile } from "@/lib/community-image";
 import { initialOf, segments, whenWords } from "@/lib/community-text";
+import { MAX_QUERY_LENGTH } from "@/lib/community-search";
 
 /**
  * The pieces every community page is made of: the bar across the top, a
@@ -91,7 +92,7 @@ export function communityImageUrl(store: Store, path: string): string {
   return `/api/store/community/image?h=${encodeURIComponent(store.handle)}&f=${communityImageFile(path)}`;
 }
 
-export type Tab = "feed" | "events" | "members" | "you";
+export type Tab = "feed" | "events" | "members" | "you" | "search";
 
 /** The bar across the top of every community page. */
 export function CommunityBar({
@@ -99,11 +100,14 @@ export function CommunityBar({
   config,
   tab,
   signedIn,
+  query = "",
 }: {
   store: Store;
   config: CommunityConfig;
   tab: Tab | null;
   signedIn: boolean;
+  /** What was searched for, so the box still holds it on the results page. */
+  query?: string;
 }) {
   const home = `/@${store.handle}/community`;
   const tabs: { id: Tab; label: string; href: string }[] = [
@@ -141,6 +145,23 @@ export function CommunityBar({
               ))}
             </ul>
           </nav>
+        ) : null}
+        {signedIn ? (
+          // Its own form, and a GET: a search is a place you can send somebody,
+          // go back to, and bookmark, so it belongs in the address.
+          <form action={`${home}/search`} method="get" role="search" className="w-full sm:w-56">
+            <label htmlFor="cm-search" className="sr-only">Search this community</label>
+            <input
+              id="cm-search"
+              type="search"
+              name="q"
+              defaultValue={query}
+              maxLength={MAX_QUERY_LENGTH}
+              placeholder="Search posts and comments"
+              className="cm-search"
+              autoComplete="off"
+            />
+          </form>
         ) : null}
       </div>
     </header>
