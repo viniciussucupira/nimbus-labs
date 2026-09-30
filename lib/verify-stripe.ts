@@ -81,11 +81,13 @@ export async function verifyTiers(store: Store): Promise<Check[]> {
       const updated = await onDemoAccount("POST", `/subscriptions/${m.sub}`, switchBody(m.item, prices[to.id], at));
       if (updated.status !== 200) return note(`${label}: switch`, false, err(updated));
       const inv = (updated.data.latest_invoice ?? {}) as Record<string, unknown>;
-      const charged = num(inv.total);
+      // What the member's card paid for a charge (after any credit they held);
+      // the invoice's total for a credit, which is what goes on their balance.
+      const charged = num(inv.total) > 0 ? num(inv.amount_paid) : num(inv.total);
       note(
         `${label}: the amount the member page shows is what Stripe charges`,
         shown === charged && !updated.data.pending_update,
-        `shown ${shown}, Stripe's invoice ${charged} (${str(inv.status)}), paid ${num(inv.amount_paid)}; whole next invoice in the preview was ${num(preview.data.total)}`,
+        `shown ${shown}; Stripe's invoice ${num(inv.total)} (${str(inv.status)}), card paid ${num(inv.amount_paid)}; the whole next invoice in the preview was ${num(preview.data.total)}`,
       );
       const after = await onDemoAccount("GET", `/subscriptions/${m.sub}`);
       const now = productOfSub(after.data);
