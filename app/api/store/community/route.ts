@@ -22,6 +22,7 @@ import {
   setCommentHidden,
   setPostHidden,
   setProfile,
+  toggleCommentLike,
   toggleLike,
   within,
   withPin,
@@ -47,6 +48,7 @@ import {
 } from "@/lib/community-text";
 import { limited } from "@/lib/request-guard";
 import { alertCreator } from "@/lib/phone-alerts";
+import { award, levelOf, pointsOf } from "@/lib/community-points";
 
 /** The most a form here may weigh: a full post with its picture's details. */
 const MAX_FORM_BYTES = 40_000;
@@ -133,6 +135,12 @@ export async function POST(request: NextRequest) {
       // A space kept for the buyers of some products: the same gate the feed
       // asks, asked again here, because a form can be sent from anywhere.
       if (!(await maySeeSpace(store, config, chosen, { owner, email: viewer.email }))) return back(home, "spacelocked");
+      // A space that opens for posting at a level (lib/community-points.ts).
+      // Reading and commenting stay open to every member.
+      if (!owner && chosen.level >= 2) {
+        const points = (await pointsOf(id, [key])).get(key) ?? 0;
+        if (levelOf(points) < chosen.level) return back(fromPage, "level");
+      }
       const title = cleanLine(form.get("title"), MAX_POST_TITLE);
       const text = cleanText(form.get("text"), MAX_POST_TEXT);
       const path = field("img", 120);
@@ -291,10 +299,22 @@ export async function POST(request: NextRequest) {
       return back(fromPage, cast ? "voted" : "pollclosed", `post-${post.id}`);
     }
 
+    // A like is a point to the author (lib/community-points.ts), never to
+    // the one who gives it: liking your own post is allowed and earns nothing.
     if (action === "like") {
       if (!owner && !(await within(id, key, "like"))) return back(fromPage, "slow", `post-${post.id}`);
-      await toggleLike(id, post.id, key);
+      const added = await toggleLike(id, post.id, key);
+      if (post.a !== key) await award(id, post.a, added ? 1 : -1);
       return back(fromPage, "liked", `post-${post.id}`);
+    }
+
+    if (action === "like-comment") {
+      const comment = await readComment(id, post.id, field("comment", 12));
+      if (!comment || (comment.hid && !owner)) return back(postPage, "gone");
+      if (!owner && !(await within(id, key, "like"))) return back(postPage, "slow", `comment-${comment.id}`);
+      const added = await toggleCommentLike(id, post.id, comment.id, key);
+      if (comment.a !== key) await award(id, comment.a, added ? 1 : -1);
+      return back(postPage, "liked", `comment-${comment.id}`);
     }
 
     if (action === "report") {

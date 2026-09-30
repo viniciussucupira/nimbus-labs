@@ -22,6 +22,7 @@ import {
 } from "@/lib/community-text";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 import { MAX_SLOW } from "@/lib/community-chat";
+import { LEVELS, MAX_LEVEL, type Reward, levelOf } from "@/lib/community-levels";
 
 export type QueueRow = {
   key: string;
@@ -45,6 +46,8 @@ export type StudioMember = {
   removed: boolean;
   listed: boolean;
   mail: boolean;
+  /** All-time points (lib/community-points.ts). */
+  points: number;
 };
 
 type ProductChoice = { id: string; title: string; free: boolean; kind: string };
@@ -61,6 +64,8 @@ const MESSAGES: Record<string, string> = {
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   invalid: "That could not be read. Nothing was changed.",
+  rewards: "Pick one of your courses for each level, or no course.",
+  level: "Pick who may start posts here.",
   store_full: "Your store has reached the most it can hold. Remove something, or shorten a long list of choices, first.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
@@ -101,6 +106,8 @@ export function CommunityStudio({
   canSettings = true,
   isOwner = true,
   events = null,
+  rewards = [],
+  courses = [],
 }: {
   handle: string;
   address: string;
@@ -121,6 +128,10 @@ export function CommunityStudio({
   isOwner?: boolean;
   /** The live events section (components/community-events-studio.tsx), drawn after the basics. */
   events?: React.ReactNode;
+  /** Which course each level hands over (lib/community-points.ts). */
+  rewards?: Reward[];
+  /** The store's courses: what a level can hand over. */
+  courses?: { id: string; title: string }[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -187,6 +198,7 @@ export function CommunityStudio({
             <Messages config={config} busy={busy} run={run} problem={problem} />
             <Room config={config} busy={busy} run={run} problem={problem} />
             <Spaces config={config} products={products} busy={busy} run={run} problem={problem} />
+            <Levels config={config} rewards={rewards} courses={courses} busy={busy} run={run} problem={problem} />
           </>
         ) : (
           events
@@ -583,6 +595,7 @@ function SpaceRow({
   // Named for what it is, because this component already has an `only` prop
   // that means "this is the only space".
   const [keptFor, setKeptFor] = useState<string[]>(space.only);
+  const [level, setLevel] = useState(space.level);
   const where = `space-${space.id}`;
   const kept = open.filter((p) => space.only.includes(p.id));
   return (
@@ -592,7 +605,7 @@ function SpaceRow({
           className="space-y-3"
           onSubmit={async (event) => {
             event.preventDefault();
-            const answer = await run(where, { action: "space-edit", id: space.id, name, about, creatorOnly, only: keptFor }, "Space saved.");
+            const answer = await run(where, { action: "space-edit", id: space.id, name, about, creatorOnly, only: keptFor, level: creatorOnly ? 0 : level }, "Space saved.");
             if (answer.ok) setEditing(false);
           }}
         >
@@ -608,6 +621,7 @@ function SpaceRow({
             <input type="checkbox" className="h-5 w-5" checked={creatorOnly} onChange={(e) => setCreatorOnly(e.target.checked)} />
             Only I start posts here (members still comment)
           </label>
+          {!creatorOnly ? <LevelPicker id={`${where}-level`} level={level} setLevel={setLevel} /> : null}
           <OnlyPicker open={open} only={keptFor} setOnly={setKeptFor} />
           <div className="flex flex-wrap gap-2">
             <button type="submit" className="btn btn-primary btn-sm" disabled={busy !== null}>Save</button>
@@ -620,6 +634,7 @@ function SpaceRow({
             <p className="break-words font-semibold text-ink">
               {space.name}
               {space.creatorOnly ? <span className="tag ml-2 align-middle">Only you post</span> : null}
+              {!space.creatorOnly && space.level >= 2 ? <span className="tag ml-2 align-middle">{`Posting from Level ${space.level}`}</span> : null}
               {kept.length ? (
                 <span className="tag ml-2 align-middle">{`Buyers of ${kept.length === 1 ? kept[0].title : `${kept.length} products`}`}</span>
               ) : null}
@@ -694,6 +709,108 @@ function OnlyPicker({
   );
 }
 
+/** Who may start a post in a space: any member, or members from a level on. */
+function LevelPicker({ id, level, setLevel }: { id: string; level: number; setLevel: (n: number) => void }) {
+  return (
+    <div>
+      <label htmlFor={id} className="field-label">Who starts posts here</label>
+      <select id={id} className="field mt-1" value={level} onChange={(e) => setLevel(Number(e.target.value))}>
+        <option value={0}>Any member</option>
+        {LEVELS.slice(1).map((at, i) => (
+          <option key={i + 2} value={i + 2}>{`Members from Level ${i + 2} (${at.toLocaleString("en-US")} points)`}</option>
+        ))}
+      </select>
+      <p className="mt-1 text-xs text-ink-soft">Everyone can still read it and comment. A like a member gets from somebody else is one point.</p>
+    </div>
+  );
+}
+
+/**
+ * Levels, and the course each can hand over (lib/community-points.ts). A course
+ * given this way opens for a member the day they reach the level, free, and
+ * stays theirs.
+ */
+function Levels({
+  config,
+  rewards,
+  courses,
+  busy,
+  run,
+  problem,
+}: {
+  config: CommunityConfig;
+  rewards: Reward[];
+  courses: { id: string; title: string }[];
+  busy: string | null;
+  run: Runner;
+  problem: Problem;
+}) {
+  const [chosen, setChosen] = useState<Record<number, string>>(Object.fromEntries(rewards.map((r) => [r.level, r.product])));
+  const list = Object.entries(chosen)
+    .filter(([, product]) => product)
+    .map(([level, product]) => ({ level: Number(level), product }));
+  const changed = JSON.stringify(list.sort((a, b) => a.level - b.level)) !== JSON.stringify(rewards);
+  const spacesAt = (level: number) => config.spaces.filter((s) => !s.creatorOnly && s.level === level).map((s) => s.name);
+  return (
+    <section className="card mt-8 p-6 sm:p-8" aria-labelledby="cm-levels-title">
+      <h2 id="cm-levels-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Levels and rewards</h2>
+      <p className="mt-2 text-ink-soft">
+        {`Every like a member's post or comment gets from somebody else is one point, and points make ${MAX_LEVEL} levels. Members see the leaderboard for 7 days, 30 days and all time, and exactly what each level opens. A level can hand over one of your courses, free: it opens for a member the day they reach it, and stays theirs.`}
+      </p>
+      {courses.length === 0 ? (
+        <p className="mt-3 text-sm text-ink-soft">You have no course yet. Make one, and a level here can hand it over.</p>
+      ) : null}
+      <form
+        className="mt-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (changed) run("levels", { action: "rewards", rewards: list }, "Levels saved.");
+        }}
+      >
+        <ul className="divide-y divide-line">
+          {LEVELS.map((at, i) => {
+            const level = i + 1;
+            const spaces = spacesAt(level);
+            return (
+              <li key={level} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2.5">
+                <span className="min-w-0">
+                  <span className="block font-semibold text-ink">{`Level ${level}`}</span>
+                  <span className="block text-xs text-ink-soft">
+                    {`${at.toLocaleString("en-US")} points`}
+                    {spaces.length ? ` · Starts posts in ${spaces.join(", ")}` : ""}
+                  </span>
+                </span>
+                {level >= 2 && courses.length ? (
+                  <span className="w-full sm:w-64">
+                    <label htmlFor={`cm-reward-${level}`} className="sr-only">{`Course Level ${level} hands over`}</label>
+                    <select
+                      id={`cm-reward-${level}`}
+                      className="field"
+                      value={chosen[level] ?? ""}
+                      onChange={(e) => setChosen((all) => ({ ...all, [level]: e.target.value }))}
+                    >
+                      <option value="">No course</option>
+                      {courses.map((c) => (
+                        <option key={c.id} value={c.id}>{c.title}</option>
+                      ))}
+                    </select>
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+        {courses.length ? (
+          <button type="submit" className="btn btn-primary btn-sm mt-4" aria-busy={busy === "levels"} disabled={busy !== null || !changed}>
+            Save levels
+          </button>
+        ) : null}
+      </form>
+      {problem("levels")}
+    </section>
+  );
+}
+
 function Spaces({
   config,
   products,
@@ -711,6 +828,7 @@ function Spaces({
   const [about, setAbout] = useState("");
   const [creatorOnly, setCreatorOnly] = useState(false);
   const [only, setOnly] = useState<string[]>([]);
+  const [level, setLevel] = useState(0);
   const open = products.filter((p) => config.access.includes(p.id)).map((p) => ({ id: p.id, title: p.title }));
   const full = config.spaces.length >= MAX_SPACES;
   return (
@@ -725,7 +843,7 @@ function Spaces({
       <ul className="mt-3 divide-y divide-line">
         {config.spaces.map((space, i) => (
           <SpaceRow
-            key={`${space.id}-${space.name}-${space.about}-${space.creatorOnly}`}
+            key={`${space.id}-${space.name}-${space.about}-${space.creatorOnly}-${space.level}`}
             space={space}
             first={i === 0}
             last={i === config.spaces.length - 1}
@@ -743,12 +861,13 @@ function Spaces({
           className="mt-5 rounded-[var(--r-md)] bg-paper p-4"
           onSubmit={async (event) => {
             event.preventDefault();
-            const answer = await run("space-add", { action: "space-add", name, about, creatorOnly, only }, "Space added.");
+            const answer = await run("space-add", { action: "space-add", name, about, creatorOnly, only, level: creatorOnly ? 0 : level }, "Space added.");
             if (answer.ok) {
               setName("");
               setAbout("");
               setCreatorOnly(false);
               setOnly([]);
+              setLevel(0);
             }
           }}
         >
@@ -767,6 +886,11 @@ function Spaces({
             <input type="checkbox" className="h-5 w-5" checked={creatorOnly} onChange={(e) => setCreatorOnly(e.target.checked)} />
             Only I start posts here (members still comment)
           </label>
+          {!creatorOnly ? (
+            <div className="mt-3">
+              <LevelPicker id="cm-space-level" level={level} setLevel={setLevel} />
+            </div>
+          ) : null}
           <div className="mt-3">
             <OnlyPicker open={open} only={only} setOnly={setOnly} />
           </div>
@@ -892,7 +1016,7 @@ function Members({
                   </p>
                   <p className="break-all text-sm text-ink-soft">{m.email}</p>
                   <p className="text-xs text-ink-mute">
-                    {`Joined ${day(m.joined)} · last here ${day(m.seen)}${m.listed ? " · in the directory" : ""}${m.mail ? " · wants the community's emails" : ""}`}
+                    {`Level ${levelOf(m.points)} · ${m.points} ${m.points === 1 ? "point" : "points"} · Joined ${day(m.joined)} · last here ${day(m.seen)}${m.listed ? " · in the directory" : ""}${m.mail ? " · wants the community's emails" : ""}`}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3">

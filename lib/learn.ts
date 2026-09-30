@@ -31,6 +31,7 @@ import { issueSignedToken, presignUrl } from "@/lib/blob";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, SESSION_COOKIE, emailForSession, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { earnedCourses } from "@/lib/community-points";
 import { onAccount } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
 import { isLive } from "@/lib/membership-access";
@@ -306,6 +307,21 @@ async function courseLedger(store: Store, email: string): Promise<Ledger> {
       : recorded.get(product.id) ?? fromStripe.get(product.id);
     const opens = start ?? (product.recurring ? undefined : given.get(product.id));
     if (opens !== undefined && Number.isFinite(opens)) result.set(product.id, opens);
+  }
+
+  // A course the creator hands over at a community level (lib/community-points.ts),
+  // to a member who reached it. While the community is switched off nothing
+  // new is handed over, and what already was stays.
+  if (store.community?.id) {
+    try {
+      const earned = await earnedCourses(store.community.id, emailKey(email), Date.now(), store.community.on);
+      for (const product of courses) {
+        const at = earned.get(product.id);
+        if (product.course && !result.has(product.id) && at !== undefined) result.set(product.id, at);
+      }
+    } catch (error) {
+      console.error("reading courses earned by level failed", error);
+    }
   }
 
   // A student the creator took off the course stays off it.

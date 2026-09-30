@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { hasProduct } from "@/lib/catalog";
+import { hasProduct, readKind } from "@/lib/catalog";
+import { MAX_LEVEL, parseRewards, saveRewards } from "@/lib/community-points";
 import { StoreFullError, setCommunity, storeForEmail } from "@/lib/store";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import {
@@ -45,6 +46,7 @@ const ACTIONS = new Set([
   "space-edit",
   "space-move",
   "space-remove",
+  "rewards",
   "member",
   "dismiss",
   "report-hide",
@@ -151,13 +153,30 @@ export async function POST(request: NextRequest) {
       // list here can never name a product that lets nobody in.
       const asked = Array.isArray(body.only) ? body.only.filter((p): p is string => typeof p === "string") : [];
       const only = [...new Set(asked)].filter((p) => config.access.includes(p)).slice(0, 50);
+      // The level a member needs to start a post here (lib/community-points.ts); 0 for none.
+      const wanted = Number(body.level ?? 0);
+      if (!Number.isInteger(wanted) || wanted < 0 || wanted > MAX_LEVEL) return fail("level");
+      const level = wanted >= 2 ? wanted : 0;
       if (action === "space-add") {
         if (config.spaces.length >= MAX_SPACES) return fail("too_many");
-        return save({ ...config, spaces: [...config.spaces, { id: newItemId(), name, about, creatorOnly, only }] });
+        return save({ ...config, spaces: [...config.spaces, { id: newItemId(), name, about, creatorOnly, only, level }] });
       }
       const spaceId = text(body.id, 12);
       if (!config.spaces.some((s) => s.id === spaceId)) return fail("unknown", 404);
-      return save({ ...config, spaces: config.spaces.map((s) => (s.id === spaceId ? { ...s, name, about, creatorOnly, only } : s)) });
+      return save({ ...config, spaces: config.spaces.map((s) => (s.id === spaceId ? { ...s, name, about, creatorOnly, only, level } : s)) });
+    }
+
+    // Which of the creator's courses a level hands over (lib/community-points.ts).
+    // Only a course of this store, and one per level; anything else is refused
+    // rather than dropped, so what the studio shows is what was saved.
+    if (action === "rewards") {
+      const asked = Array.isArray(body.rewards) ? body.rewards : [];
+      const rewards = parseRewards(asked);
+      if (rewards.length !== asked.length) return fail("rewards");
+      const courses = new Set((await readKind(store, "course")).filter((p) => p.course).map((p) => p.id));
+      if (rewards.some((r) => !courses.has(r.product))) return fail("rewards");
+      await saveRewards(id, rewards);
+      return Response.json({ ok: true, rewards });
     }
 
     if (action === "space-move") {
