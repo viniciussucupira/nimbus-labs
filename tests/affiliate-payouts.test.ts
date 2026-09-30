@@ -42,12 +42,12 @@ is("21st", ordinal(21), "21st");
 is("23rd", ordinal(23), "23rd");
 is(
   "a day and a wait",
-  payoutPromise({ enabled: true, percent: 20, days: 30, rates: {}, payday: 5, hold: 14 }, "Harbor Kitchen"),
+  payoutPromise({ enabled: true, percent: 20, days: 30, rates: {}, payday: 5, hold: 14, buyers: false }, "Harbor Kitchen"),
   "Harbor Kitchen pays on the 5th of each month. A sale is payable 14 days after it is made, so a refund in that time comes off it first.",
 );
 is(
   "no day promised says so plainly",
-  payoutPromise({ enabled: true, percent: 20, days: 30, rates: {}, payday: 0, hold: 0 }, "Harbor Kitchen"),
+  payoutPromise({ enabled: true, percent: 20, days: 30, rates: {}, payday: 0, hold: 0, buyers: false }, "Harbor Kitchen"),
   "Harbor Kitchen has not set a payment day, and pays when they choose.",
 );
 

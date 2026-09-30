@@ -325,7 +325,10 @@ export default function PrivacyPage() {
           one-way hash of the visitor&apos;s network address and browser for
           two days. When a purchase counts, we note which product, when, what
           was paid before tax and in all, and the share it earns, and never
-          the buyer&apos;s name or email address. When someone applies to be an
+          the buyer&apos;s name or email address. Where a creator lets buyers
+          join without applying, a buyer who presses &ldquo;Get my link&rdquo;
+          joins with the email address their order was paid with, which we read
+          from the creator&apos;s Stripe account for that order. When someone applies to be an
           affiliate, we keep their email address, the note they wrote, their
           code, when they applied and what the creator decided, their clicks
           and sales, and the payments the creator records to them with the

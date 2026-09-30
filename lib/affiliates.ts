@@ -39,6 +39,10 @@
  *   - applying needs the address to be real — the application only exists
  *     once its emailed link is opened — and is capped per hour, per
  *     connection and per address.
+ *   - where the creator lets buyers join on their own, the proof is the
+ *     order itself: the checkout's id, which only the thanks page and the
+ *     purchase email carry, is read back from the creator's Stripe account,
+ *     and the address that paid is the one that joins.
  *
  * Records, under the store's own stats id so they move with the store:
  *
@@ -453,6 +457,94 @@ export async function openAffiliateLink(store: Store, token: string): Promise<Op
       { title: "New affiliate application", body: `Someone applied to promote ${store.name}. Approve or decline them in your studio.`, url: store.sid ? `/studio/affiliates?store=${store.sid}` : "/studio/affiliates" },
       { seed: affiliate.id },
     ).catch((error) => console.error("an application notification failed", error));
+  }
+  return { ok: true, session, affiliate, created };
+}
+
+/** Whether buyers may join this store's programme on their own (lib/affiliate-setting.ts). */
+export function buyersJoin(store: Store): boolean {
+  return affiliatesOn(store) && store.affiliates.buyers;
+}
+
+const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
+
+/**
+ * The address that paid for a checkout of this store, read from the creator's
+ * own Stripe account, or null. The checkout's id is what the thanks page and
+ * the purchase email already carry as the buyer's proof of the order, so it
+ * proves the same thing here: this is the person who paid.
+ */
+export async function buyerOfOrder(store: Store, sessionId: string): Promise<string | null> {
+  if (!SESSION_ID.test(sessionId) || !store.stripeAccountId) return null;
+  let session: Record<string, unknown>;
+  try {
+    session = await onAccount("GET", store.stripeAccountId, `/checkout/sessions/${encodeURIComponent(sessionId)}`);
+  } catch {
+    return null;
+  }
+  const meta = (session.metadata ?? {}) as Record<string, string>;
+  if (!saleHandles(store).has(meta.store ?? "")) return null;
+  if (!isSettled(session)) return null;
+  const details = session.customer_details as { email?: unknown } | null | undefined;
+  const email = typeof details?.email === "string" ? details.email : typeof session.customer_email === "string" ? session.customer_email : "";
+  return email && EMAIL_PATTERN.test(email) ? normaliseEmail(email) : null;
+}
+
+export type JoinResult =
+  | { ok: true; session: string; affiliate: Affiliate; created: boolean }
+  | { ok: false; reason: "unavailable" | "order" | "owner" | "declined" | "full" };
+
+/**
+ * A buyer taking their own link, where the creator lets buyers join: made
+ * and approved at once, or — for a buyer who had applied and was waiting —
+ * approved now. Somebody the creator declined or removed is not let back in
+ * this way: that decision was theirs.
+ */
+export async function joinAsBuyer(store: Store, sessionId: string): Promise<JoinResult> {
+  if (!buyersJoin(store)) return { ok: false, reason: "unavailable" };
+  const email = await buyerOfOrder(store, sessionId);
+  if (!email) return { ok: false, reason: "order" };
+  if (email === normaliseEmail(store.email)) return { ok: false, reason: "owner" };
+  const statsId = store.statsId as string;
+
+  let affiliate: Affiliate | null = null;
+  let created = false;
+  const [knownId] = await redisPipeline([["HGET", emailsKey(statsId), email]]);
+  if (typeof knownId === "string") affiliate = await readAffiliate(store, knownId);
+  if (affiliate) {
+    if (affiliate.status === "declined" || affiliate.status === "removed") return { ok: false, reason: "declined" };
+    if (affiliate.status === "pending") {
+      affiliate = { ...affiliate, status: "approved", decidedAt: Date.now() };
+      await writeAffiliate(store, affiliate);
+    }
+  } else {
+    const [count] = await redisPipeline([["HLEN", peopleKey(statsId)]]);
+    if (Number(count) >= MAX_AFFILIATES) return { ok: false, reason: "full" };
+    const id = randomBytes(6).toString("hex");
+    const [won] = await redisPipeline([["HSETNX", emailsKey(statsId), email, id]]);
+    if (Number(won) !== 1) {
+      // The same buyer pressing twice at once: the other press made them.
+      const [other] = await redisPipeline([["HGET", emailsKey(statsId), email]]);
+      affiliate = typeof other === "string" ? await readAffiliate(store, other) : null;
+      if (!affiliate) return { ok: false, reason: "order" };
+    } else {
+      const code = await claimCode(store, email, id);
+      const now = Date.now();
+      affiliate = { id, email, code, status: "approved", appliedAt: now, decidedAt: now, note: "Joined after buying" };
+      await writeAffiliate(store, affiliate);
+      created = true;
+    }
+  }
+
+  const session = randomBytes(32).toString("hex");
+  await redisPipeline([["SET", sessionKey(session), JSON.stringify({ s: statsId, a: affiliate.id }), "EX", AFFILIATE_SESSION_SECONDS]]);
+  if (created) {
+    await alertCreator(
+      store,
+      "affiliate",
+      { title: "A buyer became an affiliate", body: `Someone who bought from ${store.name} took their own link to share it.`, url: store.sid ? `/studio/affiliates?store=${store.sid}` : "/studio/affiliates" },
+      { seed: affiliate.id },
+    ).catch((error) => console.error("a new-affiliate notification failed", error));
   }
   return { ok: true, session, affiliate, created };
 }

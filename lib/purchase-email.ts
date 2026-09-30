@@ -268,6 +268,16 @@ export function confirmationFor(
     );
   }
 
+  // Where the creator lets buyers take their own affiliate link
+  // (lib/affiliates.ts, joinAsBuyer): the order is the proof, so the email
+  // that carries it can offer the link.
+  if (store.affiliates.enabled && store.affiliates.buyers && store.statsId && amount > 0) {
+    lines.push(
+      "",
+      `Earn ${store.affiliates.percent}% by sharing ${name}: get your own link, without applying, at ${base}/affiliates?order=${id}`,
+    );
+  }
+
   lines.push(
     "",
     `${name}: ${base}`,

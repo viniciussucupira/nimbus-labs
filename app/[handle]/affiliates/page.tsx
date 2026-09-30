@@ -14,6 +14,7 @@ import {
   affiliateForSession,
   affiliateLink,
   affiliatesOn,
+  buyersJoin,
   canApply,
   linkEmail,
   readBook,
@@ -59,6 +60,14 @@ const NOTICES: Record<string, { title: string; body: string }> = {
     title: "This link has expired",
     body: "An emailed link works once, within 24 hours. Ask for a new one below; it takes a few seconds.",
   },
+  order: {
+    title: "That order could not be read",
+    body: "Open the link in your purchase email again, or apply below with the address you bought with.",
+  },
+  declined: {
+    title: "You cannot join from your order",
+    body: "This store decided on this address before. Write to the store if you think that should change.",
+  },
   signedout: {
     title: "You are signed out on this browser",
     body: "To see your affiliate page again, ask for a new link below.",
@@ -86,6 +95,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
   const query = await searchParams;
   const token = typeof query.token === "string" ? query.token : "";
   const status = typeof query.status === "string" ? query.status : "";
+  const order = typeof query.order === "string" && /^cs_(test|live)_[A-Za-z0-9]{10,200}$/.test(query.order) ? query.order : "";
   const linkFor = token ? await linkEmail(store, token) : null;
   const affiliate = await affiliateForSession(store, (await cookies()).get(affiliateCookieName(store.handle))?.value);
   const on = affiliatesOn(store);
@@ -182,15 +192,17 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
             </>
           ) : affiliate ? (
             <>
-              {status === "applied" || status === "welcome" ? (
+              {status === "applied" || status === "welcome" || status === "joined" ? (
                 <div className="st-note mb-6" role="status">
                   <p className="font-bold" style={{ color: "var(--st-text)" }}>
-                    {status === "applied" ? "Your application is in" : "You are signed in on this browser"}
+                    {status === "applied" ? "Your application is in" : status === "joined" ? "Your link is ready" : "You are signed in on this browser"}
                   </p>
                   <p className="mt-1 text-sm">
                     {status === "applied"
                       ? `${store.name} has been told. If they approve it, you get an email with your link.`
-                      : "You stay signed in on this browser for 30 days."}
+                      : status === "joined"
+                        ? "Share it anywhere. You stay signed in on this browser for 30 days, and the same form below emails you the way back."
+                        : "You stay signed in on this browser for 30 days."}
                   </p>
                 </div>
               ) : null}
@@ -315,6 +327,25 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                 </button>
               </form>
             </>
+          ) : order && buyersJoin(store) ? (
+            <>
+              <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">
+                {`Earn ${terms.percent}% by sharing ${store.name}`}
+              </h1>
+              <p className="st-muted mt-4 text-lg leading-relaxed">
+                {`You bought from ${store.name}, so you can have your own link now, without applying. A one-time purchase made through it within ${terms.days} ${terms.days === 1 ? "day" : "days"} of a click earns you ${terms.percent}% of what the buyer paid before tax.`}
+              </p>
+              <form action="/api/store/affiliates/join" method="post" className="mt-7">
+                <input type="hidden" name="handle" value={store.handle} />
+                <input type="hidden" name="order" value={order} />
+                <button type="submit" className="btn st-btn btn-lg btn-block">
+                  Get my link
+                </button>
+              </form>
+              <p className="st-muted mt-4 text-sm">
+                {`${payoutPromise(terms, store.name)} ${store.name} pays you directly; Nimbus Labs never holds this money. You join with the address you bought with.`}
+              </p>
+            </>
           ) : status === "sent" ? (
             <>
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">Check your inbox</h1>
@@ -341,7 +372,9 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                       `A purchase counts if it is made within ${terms.days} ${terms.days === 1 ? "day" : "days"} of their last click on your link, and the last affiliate link they followed is the one credited.`,
                       "A refunded sale earns nothing, a partly refunded one earns only on what was kept, and your own purchases never earn.",
                       payoutPromise(terms, store.name),
-                      `${store.name} approves every affiliate, and pays you directly out of their own account: Nimbus Labs never holds this money, so there is no minimum to reach and no deadline to claim it by.`,
+                      store.affiliates.buyers
+                        ? `Anybody who bought from ${store.name} can join at once, from their order; everyone else applies and ${store.name} decides. ${store.name} pays you directly out of their own account: Nimbus Labs never holds this money, so there is no minimum to reach and no deadline to claim it by.`
+                        : `${store.name} approves every affiliate, and pays you directly out of their own account: Nimbus Labs never holds this money, so there is no minimum to reach and no deadline to claim it by.`,
                     ].map((line) => (
                       <li key={line} className="flex gap-3">
                         <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--st-accent)" }} />
