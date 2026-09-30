@@ -1,0 +1,135 @@
+/**
+ * Telling somebody something happened to them.
+ *
+ * Stan's own help centre says it plainly: "All Community notifications are
+ * sent via email!", and the member's only choice is daily, weekly or never —
+ * with the creator able to override a member's "never" on any post they tick
+ * a box for. There is no in-app list to come back to. Circle, Skool, Mighty
+ * Networks, Whop and Kajabi all have one.
+ *
+ * So there is one here, and it is the honest kind: it holds only things that
+ * happened TO this person — somebody answered their post, answered their
+ * comment, or named them — and never "there is new activity", which is not
+ * news about anybody and is the reason people switch notifications off.
+ *
+ * Kept under the community's own id:
+ *
+ *   nl:cm:<id>:nt:<who>    what happened to them, newest first (sorted set)
+ *   nl:cm:<id>:nt:s:<who>  when they last looked
+ *
+ * Nobody is ever told about their own doing: answering your own post, or
+ * naming yourself, notifies nobody. A hidden post's comments notify nobody
+ * either — a post the creator took down should not keep reaching into
+ * somebody's day.
+ *
+ * This list is also where push notifications would be sent from, if they are
+ * ever sent: what is missing for those is a service worker and a key pair,
+ * not a decision about what is worth telling somebody.
+ */
+import { redisPipeline } from "@/lib/redis";
+
+const base = (id: string) => `nl:cm:${id}`;
+const listKey = (id: string, who: string) => `${base(id)}:nt:${who}`;
+const seenKey = (id: string, who: string) => `${base(id)}:nt:s:${who}`;
+
+/** How many one person's list holds. Older ones fall off the end. */
+export const MAX_NOTICES = 100;
+export const NOTICE_PAGE = 30;
+
+export type NoticeKind = "reply" | "answer" | "mention";
+
+export type Notice = {
+  kind: NoticeKind;
+  /** The post it happened on. */
+  post: string;
+  /** The comment, when it was one. */
+  comment: string;
+  /** Who did it: CREATOR or a member key. */
+  by: string;
+  /** The first words of what they wrote, for the list. */
+  words: string;
+  at: number;
+};
+
+const now = () => Math.floor(Date.now() / 1000);
+const SNIP = 140;
+
+function parse(raw: unknown): Notice | null {
+  if (typeof raw !== "string" || !raw) return null;
+  try {
+    const v = JSON.parse(raw) as Partial<Notice>;
+    if (typeof v.post !== "string" || typeof v.by !== "string") return null;
+    const kind: NoticeKind = v.kind === "answer" ? "answer" : v.kind === "mention" ? "mention" : "reply";
+    return {
+      kind,
+      post: v.post,
+      comment: typeof v.comment === "string" ? v.comment : "",
+      by: v.by,
+      words: typeof v.words === "string" ? v.words : "",
+      at: typeof v.at === "number" ? v.at : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Files one thing for each of these people, leaving out whoever did it.
+ *
+ * Never throws into the caller: a comment that failed to save because a
+ * notification did would be a lost comment, and a notification that never
+ * arrived is a smaller loss than the thing it was about.
+ */
+export async function tell(
+  id: string,
+  to: string[],
+  notice: Omit<Notice, "at" | "words"> & { words: string },
+): Promise<void> {
+  const who = [...new Set(to)].filter((one) => one && one !== notice.by);
+  if (!who.length) return;
+  const row = JSON.stringify({ ...notice, words: notice.words.slice(0, SNIP), at: now() } satisfies Notice);
+  try {
+    await redisPipeline(
+      who.flatMap((one) => [
+        ["ZADD", listKey(id, one), now(), row],
+        ["ZREMRANGEBYRANK", listKey(id, one), 0, -(MAX_NOTICES + 1)],
+      ]),
+    );
+  } catch (error) {
+    console.error("filing a community notification failed", error);
+  }
+}
+
+/** What happened to somebody, newest first, and how many are new. */
+export async function noticesFor(id: string, who: string): Promise<{ notices: Notice[]; unread: number }> {
+  const [raw, seen] = await redisPipeline([
+    ["ZREVRANGE", listKey(id, who), 0, NOTICE_PAGE - 1],
+    ["GET", seenKey(id, who)],
+  ]);
+  const notices = (Array.isArray(raw) ? raw : []).map(parse).filter((n): n is Notice => n !== null);
+  const last = Number(seen) || 0;
+  return { notices, unread: notices.filter((n) => n.at > last).length };
+}
+
+/** Just the count, for the badge on every page. */
+export async function unreadCount(id: string, who: string): Promise<number> {
+  const [raw, seen] = await redisPipeline([
+    ["ZREVRANGE", listKey(id, who), 0, MAX_NOTICES - 1, "WITHSCORES"],
+    ["GET", seenKey(id, who)],
+  ]);
+  const flat = Array.isArray(raw) ? raw.map(String) : [];
+  const last = Number(seen) || 0;
+  let n = 0;
+  for (let i = 1; i < flat.length; i += 2) if ((Number(flat[i]) || 0) > last) n += 1;
+  return n;
+}
+
+/** Marks everything up to now as looked at. */
+export async function markSeen(id: string, who: string): Promise<void> {
+  await redisPipeline([["SET", seenKey(id, who), String(now())]]).catch(() => {});
+}
+
+/** What a member leaves behind when they are removed. */
+export function noticeKeys(id: string, who: string): string[] {
+  return [listKey(id, who), seenKey(id, who)];
+}

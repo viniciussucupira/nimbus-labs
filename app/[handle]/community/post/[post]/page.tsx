@@ -6,8 +6,10 @@ import { normaliseHandle, storeForPage, type Store } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { CREATOR, type Comment, type Member, postNumbers, readComments, readMembers, readPost } from "@/lib/community";
 import { requestCount } from "@/lib/community-dm";
+import { unreadCount } from "@/lib/community-notify";
 import { communityViewer, maySeeSpace } from "@/lib/community-access";
 import { pollViews } from "@/lib/community-polls";
+import { mentionsIn, whoIs } from "@/lib/community-mentions";
 import { ITEM_ID, MAX_COMMENT_TEXT, MAX_POST_TEXT, MAX_POST_TITLE, whenWords } from "@/lib/community-text";
 import {
   ActButton,
@@ -39,6 +41,7 @@ function CommentItem({
   who,
   replies,
   editing = false,
+  named,
 }: {
   store: Store;
   post: string;
@@ -48,6 +51,8 @@ function CommentItem({
   replies?: React.ReactNode;
   /** Open as a form, because the author asked to rewrite it. */
   editing?: boolean;
+  /** The @ in this page that belong to somebody. */
+  named: Map<string, string>;
 }) {
   const name = authorName(store, comment.a, members);
   const mine = comment.a === who.key;
@@ -84,7 +89,7 @@ function CommentItem({
                 </div>
               </form>
             ) : (
-              <PostText text={comment.text} className="mt-1 text-[0.95rem]" />
+              <PostText text={comment.text} className="mt-1 text-[0.95rem]" named={named} store={store} />
             )}
           </div>
           <div className="st-muted mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs font-semibold">
@@ -161,6 +166,10 @@ export default async function CommunityPostPage({ params, searchParams }: Params
   const who: Who = { key, owner, canWrite };
   // The badge on the Messages link: nothing to read, nothing shown.
   const waiting = config.dm.on ? await requestCount(id, key) : 0;
+  const news = await unreadCount(id, key);
+  // Which @ in this post and its comments belong to somebody. Looked up once,
+  // for the whole page.
+  const named = await whoIs(id, mentionsIn([post.title, post.text, ...all.map((c) => c.text)].join("\n")));
   const visible = (c: Comment) => owner || !c.hid;
   const tops = all.filter((c) => !c.parent);
   const repliesOf = (c: Comment) => all.filter((r) => r.parent === c.id && visible(r));
@@ -173,7 +182,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
   return (
     <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <ConfirmDeletes />
-      <CommunityBar store={store} config={config} tab="feed" signedIn messages={config.dm.on} requests={waiting} />
+      <CommunityBar store={store} config={config} tab="feed" signedIn messages={config.dm.on} requests={waiting} news={news} />
       <main id="content" className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <p className="mb-4">
           <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">Back to the feed</Link>
@@ -212,7 +221,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
             </div>
           </form>
         ) : (
-          <PostCard store={store} post={post} config={config} members={members} numbers={numbers.get(post.id)} poll={polls.get(post.id)} viewer={who} from="post" full />
+          <PostCard store={store} post={post} config={config} members={members} numbers={numbers.get(post.id)} poll={polls.get(post.id)} viewer={who} from="post" full named={named} />
         )}
 
         <section id="comments" aria-labelledby="comments-title" className="st-card mt-4 scroll-mt-28 p-5 sm:p-6">
@@ -231,7 +240,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
                       <p className="st-muted text-sm italic">The creator hid this comment.</p>
                       <ul className="cm-thread mt-3 space-y-4">
                         {replies.map((r) => (
-                          <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} editing={editingComment === r.id} />
+                          <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} editing={editingComment === r.id} named={named} />
                         ))}
                       </ul>
                     </li>
@@ -246,11 +255,12 @@ export default async function CommunityPostPage({ params, searchParams }: Params
                     members={members}
                     who={who}
                     editing={editingComment === comment.id}
+                    named={named}
                     replies={
                       replies.length ? (
                         <ul className="cm-thread mt-3 space-y-4">
                           {replies.map((r) => (
-                            <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} editing={editingComment === r.id} />
+                            <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} editing={editingComment === r.id} named={named} />
                           ))}
                         </ul>
                       ) : null

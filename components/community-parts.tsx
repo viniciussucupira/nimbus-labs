@@ -6,6 +6,7 @@ import { CREATOR, type CommunityConfig, type Member, type Post } from "@/lib/com
 import { communityImageFile } from "@/lib/community-image";
 import { initialOf, segments, whenWords } from "@/lib/community-text";
 import { MAX_QUERY_LENGTH } from "@/lib/community-search";
+import { withMentions } from "@/lib/community-mentions";
 import { type PollView, pollWhen } from "@/lib/community-polls";
 
 /**
@@ -105,7 +106,7 @@ export function communityImageUrl(store: Store, path: string): string {
   return `/api/store/community/image?h=${encodeURIComponent(store.handle)}&f=${communityImageFile(path)}`;
 }
 
-export type Tab = "feed" | "events" | "members" | "you" | "search" | "messages";
+export type Tab = "feed" | "events" | "members" | "you" | "search" | "messages" | "notifications";
 
 /** The bar across the top of every community page. */
 export function CommunityBar({
@@ -116,6 +117,7 @@ export function CommunityBar({
   query = "",
   messages = false,
   requests = 0,
+  news = 0,
 }: {
   store: Store;
   config: CommunityConfig;
@@ -127,6 +129,8 @@ export function CommunityBar({
   messages?: boolean;
   /** How many people are waiting to be let into a conversation. */
   requests?: number;
+  /** How many things happened to this person that they have not looked at. */
+  news?: number;
 }) {
   const home = `/@${store.handle}/community`;
   const tabs: { id: Tab; label: string; href: string }[] = [
@@ -135,6 +139,7 @@ export function CommunityBar({
     { id: "members", label: "Members", href: `${home}/members` },
     { id: "you", label: "You", href: `${home}/you` },
     ...(messages ? [{ id: "messages" as Tab, label: requests ? `Messages (${requests})` : "Messages", href: `${home}/messages` }] : []),
+    { id: "notifications" as Tab, label: news ? `News (${news})` : "News", href: `${home}/notifications` },
   ];
   return (
     <header className="cm-bar relative z-30 sm:sticky sm:top-0">
@@ -210,14 +215,49 @@ export function authorName(store: Store, author: string, members: Map<string, Me
 }
 
 /** A member's words, with their web addresses as links and their line breaks kept. */
-export function PostText({ text, className = "" }: { text: string; className?: string }) {
+export function PostText({
+  text,
+  className = "",
+  named,
+  store,
+}: {
+  text: string;
+  className?: string;
+  /**
+   * The handles in this text that belong to somebody, already looked up. An
+   * @ that names nobody is left exactly as it was written: turning it into a
+   * link would be the software inventing a person.
+   */
+  named?: Map<string, string>;
+  store?: Store;
+}) {
+  const parts = named && named.size && store ? withMentions(segments(text), named) : null;
+  if (!parts) {
+    return (
+      <p className={`cm-text ${className}`}>
+        {segments(text).map((part, i) =>
+          part.kind === "link" ? (
+            <a key={i} href={part.href} target="_blank" rel="nofollow ugc noopener noreferrer">
+              {part.text}
+            </a>
+          ) : (
+            <span key={i}>{part.text}</span>
+          ),
+        )}
+      </p>
+    );
+  }
   return (
     <p className={`cm-text ${className}`}>
-      {segments(text).map((part, i) =>
+      {parts.map((part, i) =>
         part.kind === "link" ? (
           <a key={i} href={part.href} target="_blank" rel="nofollow ugc noopener noreferrer">
             {part.text}
           </a>
+        ) : part.kind === "mention" ? (
+          <Link key={i} href={`/@${store!.handle}/community/members`} className="cm-mention">
+            {part.text}
+          </Link>
         ) : (
           <span key={i}>{part.text}</span>
         ),
@@ -413,6 +453,7 @@ export function PostCard({
   from,
   space,
   full = false,
+  named,
 }: {
   store: Store;
   post: Post;
@@ -425,6 +466,8 @@ export function PostCard({
   from: "feed" | "space" | "post";
   space?: string | null;
   full?: boolean;
+  /** The @ in this post that belong to somebody. */
+  named?: Map<string, string>;
 }) {
   const home = `/@${store.handle}/community`;
   const name = authorName(store, post.a, members);
@@ -480,7 +523,7 @@ export function PostCard({
       <h2 id={labelId} className={`font-display mt-3 break-words text-lg font-semibold leading-snug tracking-[-0.01em] sm:text-xl ${post.title ? "" : "sr-only"}`}>
         {full ? post.title || `A post by ${name}` : <Link href={link} className="st-title-link">{post.title || `A post by ${name}`}</Link>}
       </h2>
-      {shown ? <PostText text={shown} className="mt-2" /> : null}
+      {shown ? <PostText text={shown} className="mt-2" named={named} store={store} /> : null}
       {long ? (
         <p className="mt-2 text-sm font-semibold">
           <Link href={link} className="cm-quiet-link underline underline-offset-4">Read the whole post</Link>
