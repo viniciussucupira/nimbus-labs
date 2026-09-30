@@ -10,7 +10,9 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /**
  * The creator running their affiliate programme, one action at a time:
  *
- * `{ action: "settings", enabled, percent, days, rates: { <product>: 0-90 } }`;
+ * `{ action: "settings", enabled, percent, days, payday, hold, rates: { <product>: 0-90 } }`,
+ *   where `payday` is the day of the month they pay (1-28, or 0 for no promised
+ *   day) and `hold` is how many days a sale waits before it can be paid;
  * `{ action: "approve" | "decline" | "remove" | "restore", id }`;
  * `{ action: "payout", id, amount: "25.50", date: "2026-09-26", reference }`,
  *   which only writes down a payment the creator made themselves;
@@ -29,6 +31,8 @@ export async function POST(request: NextRequest) {
       // Out-of-range numbers are refused, not quietly replaced by the defaults.
       if (Number(body.percent) !== setting.percent) return fail("percent");
       if (Number(body.days) !== setting.days) return fail("days");
+      if (Number(body.payday) !== setting.payday) return fail("payday");
+      if (Number(body.hold) !== setting.hold) return fail("hold");
       const asked = body.rates && typeof body.rates === "object" ? Object.keys(body.rates as object).length : 0;
       if (asked !== Object.keys(setting.rates).length) return fail("rate");
       const result = await setAffiliateSetting(guarded.ref, setting);

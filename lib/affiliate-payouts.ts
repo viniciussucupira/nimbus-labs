@@ -51,16 +51,20 @@ export type BatchLine = {
 };
 
 /**
- * Who is owed something today, most owed first, capped at what one file
- * holds. `owed` can be below zero when refunds landed after a payout; those
- * are not a payment and are left out.
+ * Who can be paid today, most owed first, capped at what one file holds.
+ *
+ * `payable`, not `owed`: a sale still inside the creator's wait is owed but
+ * not yet payable, so that their refund window passes before the money leaves
+ * them. A store that set no wait has the two equal, and this is the same list
+ * it always was. `payable` can be below zero when refunds landed after a
+ * payout; that is money to come back, not a payment, and is left out.
  */
 export function owedLines(book: Book): BatchLine[] {
   return book.rows
-    .filter((row: Row) => row.owed > 0 && row.affiliate.status === "approved")
-    .sort((a, b) => b.owed - a.owed)
+    .filter((row: Row) => row.payable > 0 && row.affiliate.status === "approved")
+    .sort((a, b) => b.payable - a.payable)
     .slice(0, MAX_BATCH_ROWS)
-    .map((row) => ({ affiliate: row.affiliate, cents: row.owed }));
+    .map((row) => ({ affiliate: row.affiliate, cents: row.payable }));
 }
 
 /** What the whole batch comes to, in the currency's smallest unit. */
