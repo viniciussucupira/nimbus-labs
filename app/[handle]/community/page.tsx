@@ -12,6 +12,7 @@ import { pollViews } from "@/lib/community-polls";
 import { communityFolder } from "@/lib/community-image";
 import { announcementReach, canAnnounceByEmail } from "@/lib/community-mail";
 import { ITEM_ID } from "@/lib/community-text";
+import { levelOf, pointsOf } from "@/lib/community-points";
 import {
   CommunityBar,
   Gate,
@@ -90,11 +91,16 @@ export default async function CommunityPage({ params, searchParams }: Params) {
     .filter((p): p is NonNullable<typeof p> => Boolean(p && (owner || !p.hid) && open(p)));
   const stream = page.posts.filter((p) => !topIds.includes(p.id) && open(p));
   const shown = [...top, ...stream];
-  const [members, numbers, polls] = await Promise.all([
+  const [members, numbers, polls, points] = await Promise.all([
     readMembers(id, shown.map((p) => p.a)),
     postNumbers(id, shown, key),
     pollViews(id, shown, key, owner),
+    pointsOf(id, [...shown.map((p) => p.a), key]),
   ]);
+  // Each author's level, and this member's own, for the spaces that open at one.
+  const levels = new Map([...points].map(([k, n]) => [k, levelOf(n)]));
+  const myLevel = levels.get(key) ?? 1;
+  const locked = (s: { level: number }) => !owner && s.level >= 2 && myLevel < s.level;
   const reach = owner ? await announcementReach(id) : 0;
   // The badge on the Messages link: nothing to read, nothing shown.
   const waiting = config.dm.on ? await requestCount(id, key) : 0;
@@ -163,18 +169,24 @@ export default async function CommunityPage({ params, searchParams }: Params) {
               <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">{space.name}</h1>
               {space.about ? <p className="st-muted mt-1">{space.about}</p> : null}
               {space.creatorOnly ? <p className="st-muted mt-1 text-sm">{`Only ${store.name} starts posts here. Everyone can comment.`}</p> : null}
+              {!space.creatorOnly && space.level >= 2 ? (
+                <p className="st-muted mt-1 text-sm">
+                  {`Starting a post here opens at Level ${space.level}${locked(space) ? `; you are at Level ${myLevel}` : ""}. Everyone can comment. `}
+                  <Link href={`${home}/leaderboard`} className="font-semibold underline underline-offset-4">How levels work</Link>
+                </p>
+              ) : null}
             </div>
           ) : (
             <h1 className="sr-only">{config.name}</h1>
           )}
 
-          {canWrite && !before ? (
+          {canWrite && !before && !(space && locked(space)) ? (
             <div className="mb-6">
               <CommunityComposer
                 key={space?.id ?? "all"}
                 handle={store.handle}
                 folder={communityFolder(id)}
-                spaces={spaces.map((s) => ({ id: s.id, name: s.name, creatorOnly: s.creatorOnly }))}
+                spaces={spaces.map((s) => ({ id: s.id, name: s.name, creatorOnly: s.creatorOnly, locked: locked(s) }))}
                 current={space?.id ?? null}
                 owner={owner}
                 from={from}
@@ -188,7 +200,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
           {shown.length === 0 ? (
             <div className="st-note text-center">
               <p className="font-bold" style={{ color: "var(--st-text)" }}>{before ? "Nothing older" : "No posts here yet"}</p>
-              <p className="mt-1 text-sm">{before ? "That is everything." : canWrite ? "Be the first: say hello, ask something, share a win." : "When somebody posts, it shows up here."}</p>
+              <p className="mt-1 text-sm">{before ? "That is everything." : canWrite && !(space && locked(space)) ? "Be the first: say hello, ask something, share a win." : "When somebody posts, it shows up here."}</p>
             </div>
           ) : (
             <ul className="space-y-4">
@@ -204,6 +216,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
                     viewer={{ key, owner, canWrite }}
                     from={from}
                     space={space?.id ?? null}
+                    levels={levels}
                   />
                 </li>
               ))}

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { type Reward, pointsOf, readRewards } from "@/lib/community-points";
 import { readAllListings } from "@/lib/catalog";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -77,6 +78,7 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
   let queue: QueueRow[] = [];
   let members: StudioMember[] = [];
   let totals = { members: 0, listed: 0, posts: 0, reach: 0 };
+  let rewards: Reward[] = [];
   let coming: StudioEvent[] = [];
   let over: StudioEvent[] = [];
   // Google Calendar and Zoom (lib/meet-connect.ts): which accounts an event
@@ -151,6 +153,8 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
       cursor = next.next;
     }
     all.sort((a, b) => b.seen - a.seen);
+    const points = await pointsOf(id, all.slice(0, MEMBERS_SHOWN).map((m) => m.k));
+    rewards = await readRewards(id);
     members = all.slice(0, MEMBERS_SHOWN).map((m) => ({
       key: m.k,
       email: m.e,
@@ -161,6 +165,7 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
       removed: m.removed,
       listed: m.dir && Boolean(m.n),
       mail: m.mail,
+      points: points.get(m.k) ?? 0,
     }));
     totals = { members: first.total, listed, posts, reach };
 
@@ -238,6 +243,8 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
           canEmail={canAnnounceByEmail(store)}
           canSettings={can(view.role, "settings")}
           isOwner={view.role === "owner"}
+          rewards={rewards}
+          courses={listings.filter((p) => p.course).map((p) => ({ id: p.id, title: p.title }))}
           events={
             config ? (
               <CommunityEventsStudio

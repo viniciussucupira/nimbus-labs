@@ -14,6 +14,7 @@
  *   nl:cm:<id>:sp:<space>     the posts of one space, by number (sorted set)
  *   nl:cm:<id>:c:<post>       the comments under one post (hash)
  *   nl:cm:<id>:l:<post>       who liked one post (set of member keys)
+ *   nl:cm:<id>:lc:<post>:<c>  who liked one comment (set of member keys)
  *   nl:cm:<id>:m              everyone who has come in: key -> Member (hash)
  *   nl:cm:<id>:dir            those who chose to be listed, by joining time
  *   nl:cm:<id>:rep            reported posts and comments, newest first
@@ -80,6 +81,12 @@ export type Space = {
    * community's own list.
    */
   only: string[];
+  /**
+   * The level a member needs to start a post here (lib/community-points.ts),
+   * or 0 for none. Every member still reads it and comments in it: a level
+   * opens the right to start a conversation, never the right to take part.
+   */
+  level: number;
 };
 
 export type CommunityConfig = {
@@ -179,6 +186,7 @@ const feedKey = (id: string) => `${base(id)}:feed`;
 const spaceKey = (id: string, space: string) => `${base(id)}:sp:${space}`;
 const commentsKey = (id: string, post: string) => `${base(id)}:c:${post}`;
 const likesKey = (id: string, post: string) => `${base(id)}:l:${post}`;
+const commentLikesKey = (id: string, post: string, comment: string) => `${base(id)}:lc:${post}:${comment}`;
 const membersKey = (id: string) => `${base(id)}:m`;
 const dirKey = (id: string) => `${base(id)}:dir`;
 const reportsKey = (id: string) => `${base(id)}:rep`;
@@ -202,7 +210,7 @@ export function freshConfig(storeName: string): CommunityConfig {
     name: `${storeName} Community`.slice(0, MAX_COMMUNITY_NAME),
     about: "",
     access: [],
-    spaces: [{ id: newItemId(), name: "General", about: "", creatorOnly: false, only: [] }],
+    spaces: [{ id: newItemId(), name: "General", about: "", creatorOnly: false, only: [], level: 0 }],
     start: null,
     pinned: [],
     v: 1,
@@ -231,6 +239,8 @@ function parseConfig(raw: unknown): CommunityConfig | null {
         creatorOnly: entry.creatorOnly === true,
         // Spaces made before a space could be kept for some buyers have none.
         only: ids(entry.only, 50).filter((p) => p.length <= 40),
+        // Spaces made before there were levels need none.
+        level: Number.isInteger(entry.level) && entry.level >= 2 && entry.level <= 9 ? entry.level : 0,
       });
       if (spaces.length >= MAX_SPACES) break;
     }
@@ -636,7 +646,7 @@ export async function deletePost(id: string, post: Post): Promise<void> {
   const [raw] = await redisPipeline([["HKEYS", commentsKey(id, post.id)]]);
   const commentIds = Array.isArray(raw) ? (raw as string[]) : [];
   await redisPipeline([
-    ["DEL", postKey(id, post.id), commentsKey(id, post.id), likesKey(id, post.id), reportersKey(id, `p:${post.id}`), ...pollKeys(id, post.id)],
+    ["DEL", postKey(id, post.id), commentsKey(id, post.id), likesKey(id, post.id), reportersKey(id, `p:${post.id}`), ...pollKeys(id, post.id), ...commentIds.map((c) => commentLikesKey(id, post.id, c))],
     ["ZREM", feedKey(id), post.id],
     ["ZREM", spaceKey(id, post.sp), post.id],
     ["ZREM", reportsKey(id), `p:${post.id}`, ...commentIds.map((c) => `c:${post.id}:${c}`)],
@@ -709,6 +719,35 @@ export async function toggleLike(id: string, post: string, who: string): Promise
   if (Number(added) === 1) return true;
   await redisPipeline([["SREM", likesKey(id, post), who]]);
   return false;
+}
+
+/** The same for a comment: one like per member, a second press takes it back. */
+export async function toggleCommentLike(id: string, post: string, comment: string, who: string): Promise<boolean> {
+  const [added] = await redisPipeline([["SADD", commentLikesKey(id, post, comment), who]]);
+  if (Number(added) === 1) return true;
+  await redisPipeline([["SREM", commentLikesKey(id, post, comment), who]]);
+  return false;
+}
+
+/** How many liked each comment under a post, and whether this member did. */
+export async function commentNumbers(
+  id: string,
+  post: string,
+  comments: Comment[],
+  viewer: string | null,
+): Promise<Map<string, { likes: number; liked: boolean }>> {
+  const out = new Map<string, { likes: number; liked: boolean }>();
+  if (!comments.length) return out;
+  const rows = await redisPipeline(
+    comments.flatMap((c) => [
+      ["SCARD", commentLikesKey(id, post, c.id)],
+      ["SISMEMBER", commentLikesKey(id, post, c.id), viewer ?? "-"],
+    ]),
+  );
+  comments.forEach((c, i) => {
+    out.set(c.id, { likes: Number(rows[i * 2]) || 0, liked: rows[i * 2 + 1] === 1 || rows[i * 2 + 1] === "1" });
+  });
+  return out;
 }
 
 /** Pins a post to the top, or unpins it. Refused past MAX_PINNED. */
@@ -809,6 +848,7 @@ export async function deleteComment(id: string, post: string, comment: Comment):
   const gone = [comment.id, ...all.map((c) => c.id)];
   await redisPipeline([
     ["HDEL", commentsKey(id, post), ...gone],
+    ["DEL", ...gone.map((c) => commentLikesKey(id, post, c))],
     ["ZREM", reportsKey(id), ...gone.map((c) => `c:${post}:${c}`)],
     ...gone.map((c) => ["DEL", reportersKey(id, `c:${post}:${c}`)]),
   ]);

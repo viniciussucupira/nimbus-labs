@@ -800,7 +800,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "list", title: "Up to 20 spaces", body: "Each with its own name and a line about what it is for. A space can be open to the whole community or kept for the buyers of the products you choose, and it can be yours alone to post in, with members still commenting." },
           { icon: "type", title: "Posts with a picture, and polls", body: "A title of up to 120 characters, up to 5,000 characters of text and one picture, which its writer can edit afterward, marked as edited for everyone. A post can carry a poll of up to 12 answers, one choice or several, with an end date if you want one." },
-          { icon: "chat", title: "Comments, replies and likes", body: "Comments of up to 2,000 characters, one level of replies, up to 300 under a post, and one like per member on each post." },
+          { icon: "chat", title: "Comments, replies and likes", body: "Comments of up to 2,000 characters, one level of replies, up to 300 under a post, and one like per member on each post and each comment." },
+          { icon: "star", title: "Points, levels and a leaderboard", body: "Every like a member's post or comment gets from somebody else is one point, and points make 9 levels, shown beside every name. A leaderboard for 7 days, 30 days and all time. A space can open for posting at a level, and a level can hand over one of your courses, free, for good." },
           { icon: "pin", title: "Pinned posts and Start here", body: "Up to three posts held at the top, and one post every member sees first." },
           { icon: "bolt", title: "A live room", body: "A room for talking while everyone is there, which keeps its last 500 messages. You can slow it down to one message every few seconds or minutes, keep web addresses out, keep it for your own messages, remove any message, empty it or close it." },
           { icon: "lock", title: "Private messages", body: "Members write to you privately, and to each other if you allow it. You can have a first message wait until the person it is sent to accepts it, and anyone can decline and not hear from that person again." },
@@ -841,6 +842,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about the community",
         items: [
+          { q: "How are points counted?", a: "One point for every like a member's post or comment gets from somebody else, and one taken away if that like is taken back. Your own likes earn you nothing, and the creator collects no points. Levels start at 5, 20, 65, 155, 515, 2,015, 8,015 and 33,015 points, and the leaderboard page shows every member exactly what each level opens." },
           { q: "Who can see what is posted?", a: "Only the people let in, and you. Community pages and their pictures are shown only to a browser that is let in, and they are kept out of search engines." },
           { q: "Can members see each other's email addresses?", a: "No. Other members see only the name someone chose, and the directory lists only those who asked to be listed. You see members' addresses in your studio, because they are your buyers." },
           { q: "What happens after a refund?", a: "A payment you refund in full on your Stripe account stops opening the community, within five minutes." },

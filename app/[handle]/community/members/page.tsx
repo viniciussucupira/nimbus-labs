@@ -8,7 +8,8 @@ import { CREATOR, directory, directorySize } from "@/lib/community";
 import { communityViewer } from "@/lib/community-access";
 import { mayMessage, pairOf } from "@/lib/community-dm";
 import { DIRECTORY_PAGE } from "@/lib/community-text";
-import { CommunityBar, CreatorBadge, Face } from "@/components/community-parts";
+import { CommunityBar, CreatorBadge, Face, LevelBadge } from "@/components/community-parts";
+import { levelOf, pointsOf } from "@/lib/community-points";
 
 type Params = { params: Promise<{ handle: string }>; searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
@@ -42,6 +43,7 @@ export default async function CommunityMembersPage({ params, searchParams }: Par
   const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : null;
   const [page, total] = await Promise.all([directory(id, before, DIRECTORY_PAGE), directorySize(id)]);
   const listed = viewer.member?.dir && viewer.member.n;
+  const points = await pointsOf(id, page.members.map((m) => m.k));
   const { config, key } = viewer;
   // The link to write to somebody, where writing to them is allowed at all.
   // Nothing is drawn for yourself, and nothing where the answer would be no:
@@ -92,7 +94,10 @@ export default async function CommunityMembersPage({ params, searchParams }: Par
             <li key={m.k} className="st-card flex items-center gap-3 p-4">
               <Face store={store} author={m.k} name={m.n} size={44} />
               <div className="min-w-0">
-                <p className="break-words font-bold">{m.n}</p>
+                <p className="flex flex-wrap items-center gap-2 font-bold">
+                  <span className="break-words">{m.n}</span>
+                  <LevelBadge level={levelOf(points.get(m.k) ?? 0)} />
+                </p>
                 <p className="st-muted text-sm">{`Joined ${joined(m.at)}`}</p>
                 {writeTo(m.k)}
               </div>

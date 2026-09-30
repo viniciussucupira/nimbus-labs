@@ -2112,6 +2112,24 @@ a.rv-line:hover {
 .cm-tab[aria-current="page"] .cm-tab-n {
   background: rgba(255, 255, 255, 0.24);
 }
+/* How far a member is towards their next level (the leaderboard page). */
+.cm-progress {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--st-accent-soft);
+}
+.cm-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--st-accent);
+}
+/* The viewer's own row on the leaderboard. */
+.cm-me {
+  outline: 2px solid var(--st-accent);
+  outline-offset: -2px;
+}
 .cm-tab {
   display: flex;
   min-height: 40px;
@@ -2499,6 +2517,10 @@ fieldset:disabled .cm-poll-row {
   align-items: center;
   font-size: 0.75rem;
   font-weight: 650;
+}
+/* A comment this member liked. */
+.cm-liked {
+  color: var(--st-accent-text);
 }
 .cm-reply > summary {
   list-style: none;

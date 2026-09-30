@@ -7,7 +7,8 @@ import { IMAGE_ACCEPT, MAX_ALT_LENGTH, MAX_SOURCE_BYTES } from "@/lib/product-im
 import { MAX_POST_TEXT, MAX_POST_TITLE } from "@/lib/community-text";
 import { MAX_POLL_DAYS, MAX_POLL_OPTIONS, MAX_POLL_OPTION_TEXT, MIN_POLL_OPTIONS } from "@/lib/community-polls";
 
-type SpaceChoice = { id: string; name: string; creatorOnly: boolean };
+/** `locked`: opens for posting at a level this member has not reached (lib/community-points.ts). */
+type SpaceChoice = { id: string; name: string; creatorOnly: boolean; locked?: boolean };
 
 const MESSAGES: Record<string, string> = {
   unreadable: "That picture could not be opened. Try a JPEG, PNG or WebP.",
@@ -54,7 +55,7 @@ export function CommunityComposer({
   reach: number;
   named: boolean;
 }) {
-  const open = spaces.filter((s) => owner || !s.creatorOnly);
+  const open = spaces.filter((s) => owner || (!s.creatorOnly && !s.locked));
   const initial = open.find((s) => s.id === current)?.id ?? open[0]?.id ?? "";
   const [space, setSpace] = useState(initial);
   const [text, setText] = useState("");

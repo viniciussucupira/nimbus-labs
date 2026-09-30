@@ -8,6 +8,7 @@ import { communityViewer } from "@/lib/community-access";
 import { canAnnounceByEmail } from "@/lib/community-mail";
 import { MAX_DISPLAY_NAME } from "@/lib/community-text";
 import { Carry, CommunityBar, NOTICES } from "@/components/community-parts";
+import { levelOf, pointsOf, toNextLevel } from "@/lib/community-points";
 
 type Params = { params: Promise<{ handle: string }>; searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
@@ -30,6 +31,8 @@ export default async function CommunityYouPage({ params, searchParams }: Params)
   const query = await searchParams;
   const notice = NOTICES[typeof query.n === "string" ? query.n : ""] ?? null;
   const member = viewer.member;
+  const points = member ? (await pointsOf(store.community.id, [member.k])).get(member.k) ?? 0 : 0;
+  const toNext = toNextLevel(points);
 
   return (
     <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
@@ -84,6 +87,17 @@ export default async function CommunityYouPage({ params, searchParams }: Params)
             <button type="submit" className="btn st-btn">Save</button>
           </form>
         )}
+
+        {member ? (
+          <div className="st-card mt-6 p-6">
+            <p className="font-bold">{`Level ${levelOf(points)}`}</p>
+            <p className="st-muted mt-2 text-sm">
+              {`${points} ${points === 1 ? "point" : "points"}: one for every like your posts and comments get from somebody else.`}
+              {toNext !== null ? ` ${toNext} more ${toNext === 1 ? "reaches" : "reach"} Level ${levelOf(points) + 1}.` : " That is the top level."}
+            </p>
+            <Link href={`${home}/leaderboard`} className="cm-pill mt-4">See the leaderboard and what levels open</Link>
+          </div>
+        ) : null}
 
         <div className="st-card mt-6 p-6">
           <p className="font-bold">This device</p>

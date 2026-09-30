@@ -60,6 +60,7 @@ export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
   name: { text: "Choose the name other members see you by, then post.", tone: "warn" },
   image: { text: "That picture could not be checked. Try a JPEG, PNG or WebP.", tone: "warn" },
   creatoronly: { text: "Only the creator starts posts in that space. You can still comment.", tone: "warn" },
+  level: { text: "Starting a post in that space opens at a higher level. You can still read and comment; the leaderboard shows how levels are reached.", tone: "warn" },
   muted: { text: "The creator has muted you here: you can read, and cannot post, comment or like.", tone: "warn" },
   full: { text: "This community has as many members as it can hold, so there is no member record for you: you can read, but cannot post, comment, like or save your choices. Tell the creator.", tone: "warn" },
   fullposts: { text: "This community holds as many posts as it can. The creator can delete old ones to make room.", tone: "warn" },
@@ -107,7 +108,7 @@ export function communityImageUrl(store: Store, path: string): string {
   return `/api/store/community/image?h=${encodeURIComponent(store.handle)}&f=${communityImageFile(path)}`;
 }
 
-export type Tab = "feed" | "events" | "members" | "you" | "search" | "messages" | "notifications" | "chat";
+export type Tab = "feed" | "events" | "members" | "leaderboard" | "you" | "search" | "messages" | "notifications" | "chat";
 
 /** The bar across the top of every community page. */
 export function CommunityBar({
@@ -142,6 +143,7 @@ export function CommunityBar({
     ...(room ? [{ id: "chat" as Tab, label: "Room", href: `${home}/chat` }] : []),
     { id: "events", label: "Events", href: `${home}/events` },
     { id: "members", label: "Members", href: `${home}/members` },
+    { id: "leaderboard", label: "Leaderboard", href: `${home}/leaderboard` },
     { id: "you", label: "You", href: `${home}/you` },
     ...(messages ? [{ id: "messages" as Tab, label: requests ? `Messages (${requests})` : "Messages", href: `${home}/messages` }] : []),
     { id: "notifications" as Tab, label: news ? `News (${news})` : "News", href: `${home}/notifications` },
@@ -165,9 +167,9 @@ export function CommunityBar({
         </Link>
         {signedIn ? (
           <nav aria-label="Community" className="w-full sm:w-auto">
-            <ul className="flex gap-1">
+            <ul className="flex flex-wrap gap-1">
               {tabs.map((t) => (
-                <li key={t.id} className="flex-1 sm:flex-none">
+                <li key={t.id} className="flex-none">
                   <Link href={t.href} aria-current={tab === t.id ? "page" : undefined} className="cm-tab">
                     {t.label}
                   </Link>
@@ -354,6 +356,16 @@ export function CreatorBadge() {
   return <span className="cm-badge cm-badge-creator">Creator</span>;
 }
 
+/** A member's level (lib/community-points.ts), beside their name everywhere they write. */
+export function LevelBadge({ level }: { level: number | undefined }) {
+  if (!level) return null;
+  return (
+    <span className="cm-badge" title={`Level ${level}`}>
+      {`Level ${level}`}
+    </span>
+  );
+}
+
 const CUT = 600;
 
 /** One post, in a feed or on its own page. */
@@ -464,11 +476,14 @@ export function PostCard({
   space,
   full = false,
   named,
+  levels,
 }: {
   store: Store;
   post: Post;
   config: CommunityConfig;
   members: Map<string, Member>;
+  /** Each author's level, by member key. */
+  levels?: Map<string, number>;
   numbers: { likes: number; liked: boolean; comments: number } | undefined;
   /** The poll on this post, already read, or undefined when it has none. */
   poll?: PollView;
@@ -500,7 +515,7 @@ export function PostCard({
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.95rem] font-bold leading-tight">
             <span className="min-w-0 break-words">{name}</span>
-            {post.a === CREATOR ? <CreatorBadge /> : null}
+            {post.a === CREATOR ? <CreatorBadge /> : <LevelBadge level={levels?.get(post.a)} />}
           </p>
           <p className="st-muted mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm">
             {place ? (

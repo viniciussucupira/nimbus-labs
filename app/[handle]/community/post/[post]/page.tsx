@@ -4,7 +4,8 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage, type Store } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
-import { CREATOR, type Comment, type Member, postNumbers, readComments, readMembers, readPost } from "@/lib/community";
+import { CREATOR, type Comment, type Member, commentNumbers, postNumbers, readComments, readMembers, readPost } from "@/lib/community";
+import { levelOf, pointsOf } from "@/lib/community-points";
 import { requestCount } from "@/lib/community-dm";
 import { unreadCount } from "@/lib/community-notify";
 import { communityViewer, maySeeSpace } from "@/lib/community-access";
@@ -17,6 +18,7 @@ import {
   CommunityBar,
   CreatorBadge,
   Face,
+  LevelBadge,
   NOTICES,
   PostCard,
   PostText,
@@ -42,12 +44,18 @@ function CommentItem({
   replies,
   editing = false,
   named,
+  likes,
+  levels,
 }: {
   store: Store;
   post: string;
   comment: Comment;
   members: Map<string, Member>;
   who: Who;
+  /** How many liked it, and whether this viewer did. */
+  likes: Map<string, { likes: number; liked: boolean }>;
+  /** Each author's level (lib/community-points.ts). */
+  levels: Map<string, number>;
   replies?: React.ReactNode;
   /** Open as a form, because the author asked to rewrite it. */
   editing?: boolean;
@@ -67,7 +75,7 @@ function CommentItem({
           <div className="cm-bubble">
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-bold leading-tight">
               <span className="break-words">{name}</span>
-              {comment.a === CREATOR ? <CreatorBadge /> : null}
+              {comment.a === CREATOR ? <CreatorBadge /> : <LevelBadge level={levels.get(comment.a)} />}
               {comment.hid ? <span className="cm-badge cm-badge-warn">Hidden from members</span> : null}
             </p>
             {editing ? (
@@ -95,6 +103,18 @@ function CommentItem({
           <div className="st-muted mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs font-semibold">
             <time dateTime={new Date(comment.at * 1000).toISOString()}>{whenWords(comment.at)}</time>
             {comment.ed ? <span title={`Edited ${whenWords(comment.ed)}`}>Edited</span> : null}
+            {(() => {
+              const n = likes.get(comment.id) ?? { likes: 0, liked: false };
+              const label = `${n.liked ? "Liked" : "Like"}${n.likes ? ` · ${n.likes}` : ""}`;
+              return who.canWrite ? (
+                <ActButton store={store} action="like-comment" post={post} from="post" extra={extra} className={`cm-quiet-link cm-mini ${n.liked ? "cm-liked" : ""}`}>
+                  <span aria-hidden="true">{label}</span>
+                  <span className="sr-only">{`${n.liked ? "Unlike" : "Like"} this comment, ${n.likes} ${n.likes === 1 ? "like" : "likes"}`}</span>
+                </ActButton>
+              ) : n.likes ? (
+                <span>{`${n.likes} ${n.likes === 1 ? "like" : "likes"}`}</span>
+              ) : null;
+            })()}
             {who.canWrite && mine && !editing ? (
               <Link href={`${here}?edit=${comment.id}#comment-${comment.id}`} className="cm-quiet-link cm-mini">Edit</Link>
             ) : null}
@@ -158,11 +178,14 @@ export default async function CommunityPostPage({ params, searchParams }: Params
   const query = await searchParams;
   const notice = NOTICES[typeof query.n === "string" ? query.n : ""] ?? null;
   const all = await readComments(id, post.id);
-  const [members, numbers, polls] = await Promise.all([
+  const [members, numbers, polls, likes, points] = await Promise.all([
     readMembers(id, [post.a, ...all.map((c) => c.a)]),
     postNumbers(id, [post], key),
     pollViews(id, [post], key, owner),
+    commentNumbers(id, post.id, all, key),
+    pointsOf(id, [post.a, ...all.map((c) => c.a)]),
   ]);
+  const levels = new Map([...points].map(([k, n]) => [k, levelOf(n)]));
   const who: Who = { key, owner, canWrite };
   // The badge on the Messages link: nothing to read, nothing shown.
   const waiting = config.dm.on ? await requestCount(id, key) : 0;
@@ -221,7 +244,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
             </div>
           </form>
         ) : (
-          <PostCard store={store} post={post} config={config} members={members} numbers={numbers.get(post.id)} poll={polls.get(post.id)} viewer={who} from="post" full named={named} />
+          <PostCard store={store} post={post} config={config} members={members} numbers={numbers.get(post.id)} poll={polls.get(post.id)} viewer={who} from="post" full named={named} levels={levels} />
         )}
 
         <section id="comments" aria-labelledby="comments-title" className="st-card mt-4 scroll-mt-28 p-5 sm:p-6">
@@ -240,7 +263,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
                       <p className="st-muted text-sm italic">The creator hid this comment.</p>
                       <ul className="cm-thread mt-3 space-y-4">
                         {replies.map((r) => (
-                          <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} editing={editingComment === r.id} named={named} />
+                          <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} editing={editingComment === r.id} named={named} likes={likes} levels={levels} />
                         ))}
                       </ul>
                     </li>
@@ -256,11 +279,13 @@ export default async function CommunityPostPage({ params, searchParams }: Params
                     who={who}
                     editing={editingComment === comment.id}
                     named={named}
+                    likes={likes}
+                    levels={levels}
                     replies={
                       replies.length ? (
                         <ul className="cm-thread mt-3 space-y-4">
                           {replies.map((r) => (
-                            <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} editing={editingComment === r.id} named={named} />
+                            <CommentItem key={r.id} store={store} post={post.id} comment={r} members={members} who={who} editing={editingComment === r.id} named={named} likes={likes} levels={levels} />
                           ))}
                         </ul>
                       ) : null

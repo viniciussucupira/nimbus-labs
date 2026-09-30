@@ -349,6 +349,38 @@ export class MemoryRedis {
         // what the search reads its total from.
         return made.length;
       }
+      case "ZINCRBY": {
+        const z = this.zset(key);
+        const by = Number(args[0]);
+        const member = args[1];
+        const at = z.findIndex((e) => e.member === member);
+        const score = (at >= 0 ? z[at].score : 0) + by;
+        if (at >= 0) z[at].score = score;
+        else z.push({ score, member });
+        z.sort((a, b) => a.score - b.score || a.member.localeCompare(b.member));
+        this.data.set(key, z);
+        return String(score);
+      }
+      case "ZUNIONSTORE": {
+        // ZUNIONSTORE dest numkeys key... — scores summed, as Redis does by default.
+        const howMany = Number(args[0]);
+        const sources = args.slice(1, 1 + howMany);
+        const held = new Map<string, number>();
+        for (const one of sources) {
+          this.live(one);
+          for (const entry of this.zset(one)) held.set(entry.member, (held.get(entry.member) ?? 0) + entry.score);
+        }
+        const made = [...held].map(([member, score]) => ({ score, member }));
+        made.sort((a, b) => a.score - b.score || a.member.localeCompare(b.member));
+        this.data.set(key, made);
+        this.until.delete(key);
+        return made.length;
+      }
+      case "ZREVRANK": {
+        const z = [...this.zset(key)].reverse();
+        const at = z.findIndex((e) => e.member === args[0]);
+        return at >= 0 ? at : null;
+      }
       case "ZREVRANGE": {
         const z = [...this.zset(key)].reverse();
         const [from, to] = [Number(args[0]), Number(args[1])];
