@@ -405,7 +405,9 @@ export default function PrivacyPage() {
           joins with the email address their order was paid with, which we read
           from the creator&apos;s Stripe account for that order. When someone applies to be an
           affiliate, we keep their email address, the note they wrote, their
-          code, when they applied and what the creator decided, their clicks
+          code, when they applied and what the creator decided, the PayPal
+          address they choose to be paid at, if they give one (we email the
+          address they joined with whenever it changes), their clicks
           and sales, and the payments the creator records to them with the
           date and reference the creator types. An affiliate who signs in to
           their page keeps a cookie named <code>nl_aff_</code> followed by the

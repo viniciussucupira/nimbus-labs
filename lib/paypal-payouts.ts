@@ -30,7 +30,7 @@
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { canSeal, seal, unseal } from "@/lib/secret-box";
-import { type Book, addPayout, readBook } from "@/lib/affiliates";
+import { type Book, addPayout, payAddress, readBook } from "@/lib/affiliates";
 import { type BatchLine, batchTotal, owedLines, payoutNote } from "@/lib/affiliate-payouts";
 import { plainAmount } from "@/lib/money";
 import { withLock } from "@/lib/redis-lock";
@@ -208,7 +208,8 @@ export function batchBody(store: Store, lines: BatchLine[], senderBatchId: strin
     items: lines.map((line) => ({
       recipient_type: "EMAIL",
       amount: { currency: store.currency.toUpperCase(), value: plainAmount(line.cents, store.currency) },
-      receiver: line.affiliate.email.slice(0, 127),
+      // The PayPal address the affiliate chose on their page, or the one they joined with.
+      receiver: payAddress(line.affiliate).slice(0, 127),
       note,
       sender_item_id: line.affiliate.id.slice(0, 63),
     })),

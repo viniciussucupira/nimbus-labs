@@ -1110,6 +1110,8 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "shield", title: "Hard to game", body: "No commission on an affiliate's own purchase, a click counted once per visitor per day, and your own clicks not counted." },
           { icon: "download", title: "The book, as a file", body: "Download who is owed what as a CSV, and note each payment with its date and reference." },
           { icon: "users", title: "Up to 1,000 people", body: "Per store, applications included. You approve or decline each one." },
+          { icon: "star", title: "A share for one affiliate", body: "Give your best partner 40% while everyone else earns 20%: 1% to 90% for one affiliate, on every product except those you set to 0%. Sales already made keep what they earned." },
+          { icon: "mail", title: "They choose where PayPal pays them", body: "On their own page, each affiliate gives the PayPal address to pay them at, and the address they joined with hears of every change. Otherwise they are paid at the address they joined with." },
         ],
       },
       {
