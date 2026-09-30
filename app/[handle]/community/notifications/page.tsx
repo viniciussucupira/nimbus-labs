@@ -72,9 +72,13 @@ export default async function NotificationsPage({ params }: Params) {
           <div className="st-note mt-6 text-center">
             <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing yet</p>
             <p className="mt-1 text-sm">
-              {viewer.member?.h
-                ? `When somebody answers you or writes @${viewer.member.h}, it shows up here.`
-                : "Choose a name on your own page, and people will be able to name you with an @."}
+              {/* The creator has no member record and no chosen name: their
+                  handle is @creator, in every community, always. */}
+              {viewer.owner
+                ? "When somebody answers you or writes @creator, it shows up here."
+                : viewer.member?.h
+                  ? `When somebody answers you or writes @${viewer.member.h}, it shows up here.`
+                  : "Choose a name on your own page, and people will be able to name you with an @."}
             </p>
           </div>
         ) : (
