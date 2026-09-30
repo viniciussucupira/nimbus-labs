@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { aiLeft, isAiConfigured } from "@/lib/ai";
+import { productLink } from "@/lib/checkout-recovery";
 import { readAllListings } from "@/lib/catalog";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -137,6 +139,8 @@ export default async function StudioEmailPage({ searchParams }: Params) {
               productId: b.productId,
             }))}
             flows={flows.map((f) => ({ ...f, stats: stats.get(f.id) ?? { started: 0, sent: 0 } }))}
+            links={Object.fromEntries(listings.map((p) => [p.id, productLink(store, p.id)]))}
+            ai={isAiConfigured() && can(role, "draft") ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
           />
         )}
       </main>

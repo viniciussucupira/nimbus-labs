@@ -128,9 +128,10 @@ export class MemoryRedis {
         if (ends === undefined) return -1;
         return Math.max(0, Math.ceil((ends - this.now()) / 1000));
       }
-      case "INCR": {
+      case "INCR":
+      case "DECR": {
         const held = this.data.get(key);
-        const next = (typeof held === "string" ? Number(held) || 0 : 0) + 1;
+        const next = (typeof held === "string" ? Number(held) || 0 : 0) + (name === "DECR" ? -1 : 1);
         this.data.set(key, String(next));
         return next;
       }

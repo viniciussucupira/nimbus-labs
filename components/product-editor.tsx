@@ -23,6 +23,7 @@ import {
 } from "@/lib/store";
 import { type Currency, fieldPrefix, formatMoney, moneyField, priceExample, priceBounds, rangeWords, readMoney } from "@/lib/money";
 import { StoreCurrency, useStoreCurrency } from "@/components/store-currency";
+import { AiAssist, AiOn } from "@/components/ai-assist";
 import {
   ACCEPT_ATTRIBUTE,
   MAX_FILE_BYTES,
@@ -274,6 +275,30 @@ function ProductForm({
           className="field mt-2"
         />
       </div>
+
+      <AiAssist<{ summary: string; about: string }>
+        title="Write the description with AI"
+        hint="A few words in your own voice: what it is, who it is for, what is inside. A draft of both descriptions below is written from them."
+        placeholder="40 weeknight recipes, each on one page, for busy parents who cook for picky kids. Shopping lists included."
+        payload={() => ({
+          kind: "product",
+          title: draft.title,
+          price: draft.price,
+          productKind: product?.course
+            ? "course"
+            : product?.call
+              ? "call"
+              : product?.recurring
+                ? "membership"
+                : product?.bundle
+                  ? "bundle"
+                  : product?.link
+                    ? "link"
+                    : "download",
+        })}
+        onResult={(value) => setDraft({ ...draft, summary: value.summary, about: value.about })}
+        done="Both descriptions below are filled in. Read them, change anything, then save."
+      />
 
       <div>
         <label
@@ -1279,6 +1304,7 @@ export function ProductEditor({
   email,
   currency = "usd",
   meetings = [],
+  ai = { on: false, left: 0 },
 }: {
   /** The products shown: every one, or one page of a long list. */
   products: Product[];
@@ -1312,6 +1338,8 @@ export function ProductEditor({
   currency?: Currency;
   /** The Google Calendar or Zoom accounts calls can make meetings on (lib/meet-connect.ts). */
   meetings?: MeetAccount[];
+  /** Whether the writing help is on for this person, and what is left of the month (lib/ai.ts). */
+  ai?: { on: boolean; left: number };
 }) {
   const router = useRouter();
   const sid = useStudioStore();
@@ -1541,6 +1569,7 @@ export function ProductEditor({
 
   return (
     <StoreCurrency value={currency}>
+    <AiOn value={ai}>
     <div className="card mt-8 p-6 sm:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
@@ -2001,6 +2030,7 @@ export function ProductEditor({
         linked on the public page.
       </p>
     </div>
+    </AiOn>
     </StoreCurrency>
   );
 }

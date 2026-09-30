@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { MAX_AI_LESSONS, MAX_AI_MODULES } from "@/lib/ai-rules";
 import { del, head } from "@/lib/blob";
 import { setCourseLessons, setProductCourse, storeForEmail, storeFolder } from "@/lib/store";
 import { jsonAccess } from "@/lib/studio-route";
@@ -31,6 +32,7 @@ import { communityOf, courseChanged, unindexCourse } from "@/lib/community-index
 import { LockBusyError, withLock } from "@/lib/redis-lock";
 
 const OPS = new Set([
+  "outline",
   "module-add",
   "module-edit",
   "module-move",
@@ -231,6 +233,15 @@ export async function POST(request: NextRequest) {
             link = read.url;
           }
           edit = { op, lessonId: text(body.lessonId, 20), title: body.title, preview: body.preview, link };
+        } else if (op === "outline") {
+          const asked = Array.isArray(body.modules) ? body.modules.slice(0, MAX_AI_MODULES) : [];
+          edit = {
+            op,
+            modules: asked.map((m) => {
+              const unit = (m && typeof m === "object" ? m : {}) as { title?: unknown; lessons?: unknown };
+              return { title: unit.title, lessons: Array.isArray(unit.lessons) ? unit.lessons.slice(0, MAX_AI_LESSONS) : [] };
+            }),
+          };
         } else if (op === "module-add") edit = { op, title: body.title };
         else if (op === "module-edit") edit = { op, moduleId: text(body.moduleId, 20), title: body.title, dripDays: body.dripDays };
         else if (op === "module-move") edit = { op, moduleId: text(body.moduleId, 20), direction };
@@ -254,7 +265,7 @@ export async function POST(request: NextRequest) {
         await dropBody(course.id, edit.lessonId);
         await dropQuiz(course.id, edit.lessonId);
       }
-      if (edit.op === "module-edit" || edit.op === "module-remove" || edit.op === "lesson-add") {
+      if (edit.op === "module-edit" || edit.op === "module-remove" || edit.op === "lesson-add" || edit.op === "outline") {
         await registerDrip(store, product, result.course);
       }
 

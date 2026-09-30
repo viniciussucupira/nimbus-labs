@@ -818,6 +818,14 @@ export default function PrivacyPage() {
             provider, which stores the records this policy describes;
           </li>
           <li>
+            <strong className="text-black">Anthropic</strong>, whose model
+            writes a draft when a creator asks the studio for one (a
+            product&apos;s description, a course outline or an email), and
+            which receives only what that creator typed into the box for it,
+            the product&apos;s name, price and kind, and the store&apos;s
+            name; never anything about their buyers, members or list;
+          </li>
+          <li>
             <strong className="text-black">Unsplash</strong>, which serves the
             photographs on our own pages straight to your browser and so
             receives your network address and browser, as any site that serves
@@ -839,7 +847,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          Our own service providers (Vercel, Upstash and Resend) may use the
+          Our own service providers (Vercel, Upstash, Resend and Anthropic) may use the
           information only to provide their services to us or as required by
           law. Stripe, the services a creator connects and the ad platforms a
           creator adds handle what they receive under their own terms and
