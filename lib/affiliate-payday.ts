@@ -26,7 +26,7 @@ import { storesAfter, type Store } from "@/lib/store";
 import { affiliatesOn, readBook } from "@/lib/affiliates";
 import { owedLines, batchTotal } from "@/lib/affiliate-payouts";
 import { ordinal } from "@/lib/affiliate-setting";
-import { plainAmount } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 
 /** How long the mark on a month lasts: long enough that next month is a new one. */
 const CLAIM_SECONDS = 40 * 86_400;
@@ -69,7 +69,10 @@ export function paydayEmail(input: {
   hold: number;
   refundsChecked: boolean;
 }): { subject: string; text: string } {
-  const amount = `${plainAmount(input.totalCents, input.currency)} ${input.currency.toUpperCase()}`;
+  // What can be paid today, not what is owed in all: when a wait is set the
+  // two differ, and a subject line that calls the smaller number "owed" tells
+  // the creator something untrue about their own book.
+  const amount = formatMoney(input.totalCents, input.currency);
   const who = `${input.people} ${input.people === 1 ? "affiliate" : "affiliates"}`;
   const studio = `${SITE_URL}/studio/affiliates`;
   const lines = [
@@ -85,7 +88,7 @@ export function paydayEmail(input: {
   if (input.waitingCents > 0) {
     lines.push(
       "",
-      `A further ${plainAmount(input.waitingCents, input.currency)} ${input.currency.toUpperCase()} is still inside your ${input.hold}-day wait and is not in this batch. It joins the next one.`,
+      `A further ${formatMoney(input.waitingCents, input.currency)} is owed but still inside your ${input.hold}-day wait, so it is not in this batch. It joins the next one.`,
     );
   }
   if (!input.refundsChecked) {
@@ -95,7 +98,7 @@ export function paydayEmail(input: {
     );
   }
   lines.push("", "— Nimbus Labs");
-  return { subject: `Your affiliates are owed ${amount} today`, text: lines.join("\n") };
+  return { subject: `${amount} to pay your affiliates today`, text: lines.join("\n") };
 }
 
 /** One store, if today is its payday and anybody is owed. True when sent. */
