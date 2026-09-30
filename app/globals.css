@@ -1435,6 +1435,20 @@ a.chip {
 .st-btn:hover {
   filter: brightness(1.07) saturate(1.05);
 }
+/* A row that lists one thing and is not itself a thing to press: the look of
+   a price option, without its pointer. A pointer over something that does
+   nothing when clicked is a small lie about the page. */
+.st-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--st-line-strong);
+  background: var(--st-item);
+  padding: 0.85rem 1rem;
+}
 .st-option {
   display: flex;
   cursor: pointer;

@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
-import { MANAGE_LINK_SECONDS, canManage, linkIsLive } from "@/lib/membership-manage";
+import { MANAGE_LINK_SECONDS, type Membership, canManage, membershipsFor } from "@/lib/membership-manage";
+import { formatMoney } from "@/lib/money";
 
 export const metadata: Metadata = {
   title: "Your membership — Nimbus Labs",
@@ -61,10 +62,20 @@ export default async function ManagePage({ params, searchParams }: Params) {
   const query = await searchParams;
   const token = typeof query.token === "string" ? query.token : "";
   const status = typeof query.status === "string" ? query.status : "";
-  const live = token ? await linkIsLive(token) : false;
+  // Reading the memberships spends nothing: opening this page is never an
+  // action, so a mail scanner following the link changes and uses up nothing.
+  const memberships: Membership[] | null = token ? await membershipsFor(store, token) : null;
+  const live = memberships !== null;
   const available = canManage(store);
   const notice = token && !live ? NOTICES.expired : NOTICES[status] ?? null;
   const hours = Math.round(MANAGE_LINK_SECONDS / 3600);
+  // Out loud, the way a member thinks about what they pay: "$29 a month".
+  const every = (m: Membership) => {
+    const unit = m.interval === "year" ? "year" : m.interval === "week" ? "week" : m.interval === "day" ? "day" : "month";
+    return m.intervalCount === 1 ? `a ${unit}` : `every ${m.intervalCount} ${unit}s`;
+  };
+  const endDate = (at: number) =>
+    new Date(at * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
   const form = (
     <form action="/api/store/manage" method="post" className="mt-7 space-y-3">
@@ -118,17 +129,53 @@ export default async function ManagePage({ params, searchParams }: Params) {
         <div className="st-card mt-6 p-6 sm:p-9">
           {token && live ? (
             <>
+              {notice ? (
+                <div className="st-note mb-6">
+                  <p className="font-bold" style={{ color: "var(--st-text)" }}>{notice.title}</p>
+                  <p className="mt-1 text-sm">{notice.body}</p>
+                </div>
+              ) : null}
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">
-                Your membership
+                {memberships.length > 1 ? "Your memberships" : "Your membership"}
               </h1>
-              <p className="st-muted mt-4 text-lg leading-relaxed">
-                {`Press the button and Stripe shows your membership with ${store.name}. There you can cancel it, change the card it is paid with, or see your receipts.`}
-              </p>
-              <form action="/api/store/manage/open" method="post" className="mt-7">
+
+              {/* Each membership with its own way out. Cancel goes straight to
+                  Stripe's own cancellation page for that one membership. */}
+              {memberships.length ? (
+                <ul className="mt-6 space-y-3">
+                  {memberships.map((m) => (
+                    <li key={m.id} className="st-row">
+                      <div className="min-w-0">
+                        <p className="font-bold" style={{ color: "var(--st-text)" }}>{m.title}</p>
+                        <p className="st-muted text-sm">
+                          {m.amount ? `${formatMoney(m.amount, m.currency)} ${every(m)}` : null}
+                          {m.endsAt ? `${m.amount ? " · " : ""}Ends ${endDate(m.endsAt)}` : null}
+                        </p>
+                      </div>
+                      {m.endsAt === null ? (
+                        <form action="/api/store/manage/cancel" method="post">
+                          <input type="hidden" name="handle" value={store.handle} />
+                          <input type="hidden" name="token" value={token} />
+                          <input type="hidden" name="subscription" value={m.id} />
+                          <button type="submit" className="btn btn-secondary btn-sm">
+                            Cancel
+                          </button>
+                        </form>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="st-muted mt-4 text-lg leading-relaxed">
+                  {`Stripe could not list your memberships just now. The button below opens them all on Stripe's own page, where you can cancel.`}
+                </p>
+              )}
+
+              <form action="/api/store/manage/open" method="post" className="mt-6">
                 <input type="hidden" name="handle" value={store.handle} />
                 <input type="hidden" name="token" value={token} />
                 <button type="submit" className="btn st-btn btn-lg btn-block">
-                  Open my membership
+                  {memberships.length ? "Change card or see receipts" : "Open my membership"}
                 </button>
               </form>
               <p className="st-muted mt-5 text-sm">
