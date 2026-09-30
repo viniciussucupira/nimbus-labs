@@ -245,6 +245,14 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can it write my descriptions, outlines and emails?",
+        a: [
+          "Yes, as a first draft. In your studio, a box under a product's name, above a course's modules and at the top of a new email takes a few words from you and fills in the product's short and long description, a course outline of up to 8 modules of up to 8 lessons, or an email's subject and body.",
+          "It writes in American English from only what you typed and what the product is. It is told never to invent a review, a testimonial, a number of students or sales, a result, a guarantee, a discount or a deadline, and nothing is saved, added or sent until you press the button that does it. Read it before you publish: it goes out under your name.",
+          "Each store gets 20 drafts a month on the free trial, 100 on Creator and 400 on Pro, shared between the three, and a draft that fails is not counted. The drafts are written by Anthropic's Claude, which receives what you typed, the product's name, price and kind, and your store's name, and nothing about your buyers, members or list.",
+        ],
+      },
+      {
         q: "Can I sell a membership?",
         a: [
           "Yes. Any product can charge on a schedule instead of once: daily, weekly, monthly or yearly. The subscription is created on your own Stripe account, like every other charge here, so the member is your customer, in your dashboard, and we take 0% of the renewals too.",
