@@ -33,10 +33,23 @@ const LEGAL_LINKS = [
 export function LegalPage({
   title,
   lastUpdated,
+  eyebrow = "The small print, in plain words",
+  effective = "August 15, 2026",
+  legalNav = true,
   children,
 }: {
   title: string;
   lastUpdated?: string;
+  /** The line over the title. The legal pages' own by default. */
+  eyebrow?: string;
+  /**
+   * When the terms took effect, for the legal pages. Null for a page that is
+   * not terms — the developers page borrowed this layout and, until this was
+   * a choice, said "Effective August 15, 2026" about an API made on September 30.
+   */
+  effective?: string | null;
+  /** The row of links between the legal pages. Only on the legal pages. */
+  legalNav?: boolean;
   children: React.ReactNode;
 }) {
   // The sections, read from the page itself, so the index can never list one
@@ -66,13 +79,15 @@ export function LegalPage({
       <main id="content" className="flex-1">
         <section className="surface-dawn border-b border-line">
           <div className="container-page py-14 sm:py-20">
-            <p className="eyebrow">The small print, in plain words</p>
+            <p className="eyebrow">{eyebrow}</p>
             <h1 className="t-h1 balance mt-4 max-w-3xl">{title}</h1>
             <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3 text-[0.9375rem] text-ink-mute">
-              <span className="flex items-center gap-2">
-                <Icon name="calendar" size={16} />
-                Effective August 15, 2026
-              </span>
+              {effective ? (
+                <span className="flex items-center gap-2">
+                  <Icon name="calendar" size={16} />
+                  {`Effective ${effective}`}
+                </span>
+              ) : null}
               {lastUpdated ? (
                 <span className="flex items-center gap-2">
                   <Icon name="clock" size={16} />
@@ -86,6 +101,7 @@ export function LegalPage({
                 </span>
               ) : null}
             </div>
+            {legalNav ? (
             <nav aria-label="Legal pages" className="mt-8 flex flex-wrap gap-2">
               {LEGAL_LINKS.map((l) => (
                 <Link
@@ -100,6 +116,7 @@ export function LegalPage({
                 </Link>
               ))}
             </nav>
+            ) : null}
           </div>
         </section>
 

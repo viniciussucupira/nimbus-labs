@@ -35,6 +35,8 @@ import { keepHandle, webhooksView } from "@/lib/webhooks";
 import { PixelEditor } from "@/components/pixel-editor";
 import { TaxEditor } from "@/components/tax-editor";
 import { RecoveryEditor } from "@/components/recovery-editor";
+import { ApiKeyEditor } from "@/components/api-key-editor";
+import { listKeys } from "@/lib/api-keys";
 import { SaveOfferEditor } from "@/components/save-offer-editor";
 import { sellsMemberships } from "@/lib/membership-manage";
 import { taxStatus } from "@/lib/tax";
@@ -521,6 +523,7 @@ export default async function StudioPage({
   // first time there is a call to put in it, and the busy times are read (from
   // the ten-minute copy, usually) to point out a dated session that clashes.
   if (current && callProducts.length > 0 && may("settings")) await ensureFeedToken(current).catch(() => {});
+  const apiKeys = current && may("export") ? await listKeys(current.sid).catch(() => []) : null;
   const [calendar, calendarBusyTimes, hooks] = current
     ? await Promise.all([
         callProducts.length > 0 && may("settings") ? calendarView(current).catch(() => null) : Promise.resolve(null),
@@ -669,6 +672,7 @@ export default async function StudioPage({
                 ...(may("products") ? [{ href: "#products", label: "Products" }] : []),
                 ...(calendar ? [{ href: "#calendar", label: "Calendar" }] : []),
                 ...(hooks ? [{ href: "#webhooks", label: "Webhooks" }] : []),
+              ...(apiKeys ? [{ href: "#api", label: "API" }] : []),
                 ...(sold ? [{ href: "#sales", label: "Sales" }] : []),
                 ...(may("payments") ? [{ href: "#stripe", label: "Payments" }] : []),
                 ...(billingReady && may("billing") ? [{ href: "#billing", label: "Plan" }] : []),
@@ -982,6 +986,10 @@ export default async function StudioPage({
             ) : null}
 
             {hooks ? <WebhookEditor view={hooks} /> : null}
+
+            {/* The keys a creator's own tools read the store with. The same
+                people who may take the list away as a file may hand one out. */}
+            {apiKeys ? <ApiKeyEditor keys={apiKeys} /> : null}
 
             {list && (givesAway || list.total > 0) ? (
               <div className="card mt-8 p-6 sm:p-8">

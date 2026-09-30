@@ -31,7 +31,10 @@ import { communityOf, indexCourseOf, indexEvent, indexMember } from "@/lib/commu
  * a searchable thing when they were written, and none of which any creator
  * should have to touch a button to make findable.
  */
-const INDEX_VERSION = "2";
+// 3: members are rescored in seconds, as their joining time is kept, rather
+// than the thousandths the first version divided it into. Every community is
+// walked once more, which rewrites each listed member's place.
+const INDEX_VERSION = "3";
 const markKey = (id: string) => `nl:cm:${id}:sv`;
 const walkKey = (id: string) => `nl:cm:${id}:swalk`;
 /** How long one walk may hold the community before another may try. Seconds. */

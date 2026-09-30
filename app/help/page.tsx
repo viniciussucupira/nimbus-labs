@@ -365,9 +365,11 @@ const SECTIONS: Section[] = [
         q: "Can I run a community or a webinar?",
         a: [
           "A community, yes, one per store. You choose which products open it: any paid product, a membership while it is being paid for, and free products if you want. Members come in with a link emailed to the address they bought with, and that browser stays in for 90 days. Who bought what is checked against your own Stripe account on every visit, so a membership that ends loses access within five minutes.",
-          "Inside: up to 20 spaces, posts with a title, up to 5,000 characters and one picture, comments and one level of replies, likes, up to three pinned posts and a Start here post. Members choose the name they are seen by and whether to appear in the directory; other members never see their email address. They can report a post or a comment, and you hide or delete it, mute a member or take them out. Your announcements can also go by email to members who asked for them, on Pro.",
+          "Inside: up to 20 spaces, each open to the whole community or kept for the buyers of the products you choose; posts with a title, up to 5,000 characters and one picture, which can be edited after they are written; polls of up to 12 answers; comments and one level of replies; likes; and up to three pinned posts and a Start here post. Members mention each other with @, and are told when somebody mentions them, comments on their post or answers their comment, in the community and, if they allow it, as a notification on their computer or phone (on iPhone, once the page is added to the home screen, as Apple requires).",
+          "There is a room for talking live, which you can slow down, keep for your own messages, or close. Members can write to you privately, and to each other if you allow it, with a first message that waits to be accepted if you choose. One search box looks through the posts and every comment under them, the lessons of the courses a member has, the events, the people in the directory, the room and the member's own messages.",
+          "Members choose the name they are seen by and whether to appear in the directory; other members never see their email address. They can report a post or a comment, and you hide or delete it, mute a member or take them out. Your announcements can also go by email to members who asked for them, on Pro.",
           "It also holds live events members RSVP to, with reminders, a private video room in the event's page or your own link, and replays \u2014 the next answer has the details. A webinar you want to sell to anyone, not only to members, you sell as a live session on the dates you set, with up to 500 seats each.",
-          "What it does not have: live chat, private messages, search, mentions, polls, editing a post after it is written, or spaces for one product only. Stan adds webinars to its community with Zoom or Google Meet links made automatically; ours makes Google Meet links once you connect your Google Calendar, and no Zoom links yet.",
+          "What it does not have: search does not listen to what is said inside a video, only to titles and written text. Stan adds webinars to its community with Zoom or Google Meet links made automatically; ours makes Google Meet links once you connect your Google Calendar, and no Zoom links yet.",
         ],
       },
       {
@@ -390,7 +392,8 @@ const SECTIONS: Section[] = [
         q: "Can I connect Zapier, Make or my own server?",
         a: [
           "Yes, with webhooks. Add up to five https addresses in your studio and choose the events each one hears: a sale, a membership started or canceled, a lead confirmed for a free product, a call booked or moved, and a refund. Each message is JSON, signed with an HMAC-SHA256 in its Nimbus-Signature header, and tried again over about forty hours if the address does not answer. Your studio keeps a log of the last deliveries for up to a week, and a button sends a test.",
-          "There is no Nimbus app in Zapier's directory: in Zapier, use Webhooks by Zapier with a Catch Hook. Events read from your Stripe account can take up to about five minutes to arrive. Webhooks only send; there is no public API to read or change your store.",
+          "There is no Nimbus app in Zapier's directory: in Zapier, use Webhooks by Zapier with a Catch Hook. Events read from your Stripe account can take up to about five minutes to arrive.",
+          "To read your store from your own tools instead — your list, your community's members, a course's students, your affiliates and your bookings — make an API key in your studio, on every plan. The API reads and changes nothing; the developers page lists every address and what it returns.",
         ],
       },
       {
