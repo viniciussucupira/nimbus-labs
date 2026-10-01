@@ -1,3 +1,4 @@
+import { paypalReady, takenBy } from "@/lib/paypal-sales";
 import { salePrice } from "@/lib/store-sale";
 import { isSoon } from "@/lib/waitlist";
 import { canGift } from "@/lib/gift-rules";
@@ -290,14 +291,16 @@ export default async function ProductPage({ params, searchParams }: Params) {
       />
     ) : null;
 
+  // Bought with the creator's own PayPal as well, or instead (lib/paypal-sales.ts).
+  const byPayPal = paypalReady(store, product);
   const payments = free ? null : rehearsal ? (
     <p className="st-note mt-6 text-sm">
       <strong>This checkout is running in Stripe&apos;s test mode.</strong> No real money moves through it and no
       real card is charged, so do not put a card you own into it.
     </p>
-  ) : selling ? (
+  ) : selling || byPayPal ? (
     <p className="st-muted mt-6 text-center text-sm">
-      Payment is taken by Stripe on {store.name}&apos;s own account. Nimbus never holds the money and takes none of it.
+      Payment is taken by {takenBy(selling, byPayPal)} on {store.name}&apos;s own account. Nimbus never holds the money and takes none of it.
     </p>
   ) : (
     <p className="st-note mt-6 text-sm">

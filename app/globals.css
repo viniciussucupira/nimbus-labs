@@ -1435,6 +1435,19 @@ a.chip {
 .st-btn:hover {
   filter: brightness(1.07) saturate(1.05);
 }
+/* The second way to pay, under the first: outlined, in the store's own colors. */
+.st-btn-ghost {
+  background: transparent;
+  color: var(--st-text);
+  border: 1px solid var(--st-line-strong);
+}
+.st-btn-ghost:hover {
+  border-color: var(--st-accent-text);
+}
+.st-btn-ghost:focus-visible {
+  outline: 3px solid var(--st-accent-text);
+  outline-offset: 3px;
+}
 /* A row that lists one thing and is not itself a thing to press: the look of
    a price option, without its pointer. A pointer over something that does
    nothing when clicked is a small lie about the page. */

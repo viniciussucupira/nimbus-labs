@@ -1,3 +1,4 @@
+import { paypalReady } from "@/lib/paypal-sales";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -253,6 +254,8 @@ export default async function CoursePage({ params, searchParams }: Params) {
                   <input type="hidden" name="product" value={product.id} />
                   <button type="submit" className="btn st-btn btn-lg btn-block">{`${access.state === "ended" ? "Renew" : "Buy the course"} · ${price}`}</button>
                 </form>
+              ) : paypalReady(store, product) ? (
+                <Link href={`/@${store.handle}/p/${product.id}#buy`} className="btn st-btn btn-lg btn-block">{`Buy the course with PayPal · ${price}`}</Link>
               ) : (
                 <p className="st-muted text-sm">{`${store.name}'s store is not taking payments right now.`}</p>
               )}
