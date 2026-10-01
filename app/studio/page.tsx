@@ -1,3 +1,4 @@
+import { paypalSalesConfigured } from "@/lib/paypal-sales";
 import { SaleEditor } from "@/components/sale-editor";
 import { TierEditor } from "@/components/tier-editor";
 import { canTier } from "@/lib/tier-rules";
@@ -150,6 +151,45 @@ const NEXT_WHEN_NOT = [
   "The checkout that pays into your account",
   "The list of what you have sold",
 ];
+
+const PAYPAL_NOTICES: Record<string, { title: string; body: string }> = {
+  ready: {
+    title: "PayPal says your account can take payments",
+    body: "Products PayPal can sell now show a PayPal button on your store, and the money goes straight to your PayPal account.",
+  },
+  forgotten: {
+    title: "PayPal is off for your store",
+    body: "Buyers can no longer pay with PayPal here. What was bought stays bought. To remove Nimbus's permissions from the account itself, do that in your PayPal settings.",
+  },
+  email: {
+    title: "PayPal wants your email address confirmed first",
+    body: "Open the email PayPal sent you, confirm your address, then connect again.",
+  },
+  receivable: {
+    title: "PayPal says this account cannot receive payments yet",
+    body: "Sign in to PayPal and finish what it asks for on your account, then connect again.",
+  },
+  permissions: {
+    title: "The permissions were not granted",
+    body: "PayPal did not record that you allowed Nimbus to take payments into your account. Connect again and accept on PayPal's page.",
+  },
+  id: {
+    title: "PayPal did not finish connecting your account",
+    body: "Nothing was changed. Connect again and go through every step on PayPal's page.",
+  },
+  unavailable: {
+    title: "PayPal is not switched on here yet",
+    body: "Nothing was changed.",
+  },
+  slow: {
+    title: "That was a lot of tries in an hour",
+    body: "Wait a while, then connect again.",
+  },
+  error: {
+    title: "PayPal could not be reached",
+    body: "Nothing was changed. Try again in a moment.",
+  },
+};
 
 const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
   ready: {
@@ -443,6 +483,7 @@ export default async function StudioPage({
   const notice =
     ADDRESS_NOTICES[typeof params.address === "string" ? params.address : ""] ??
     STRIPE_NOTICES[typeof params.stripe === "string" ? params.stripe : ""] ??
+    PAYPAL_NOTICES[typeof params.paypal === "string" ? params.paypal : ""] ??
     BILLING_NOTICES[BILLING_ALIASES[String(params.billing)] ?? (typeof params.billing === "string" ? params.billing : "")] ??
     TEAM_NOTICES[typeof params.team === "string" ? params.team : ""] ??
     STORES_NOTICES[typeof params.stores === "string" ? params.stores : ""] ??
@@ -1318,6 +1359,55 @@ export default async function StudioPage({
                   can move through it yet.
                 </p>
               ) : null}
+            </div>
+            ) : null}
+
+            {may("payments") && paypalSalesConfigured() ? (
+            <div id="paypal" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
+              <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
+                Sell with PayPal too
+              </p>
+              <p className="mt-2 text-ink-soft">
+                Buyers who would rather pay with PayPal pay your own PayPal
+                Business account directly, alongside Stripe or without it. You
+                connect it through PayPal&apos;s own page and grant us two things
+                only: taking payments into your account, and refunding them. We
+                keep the account&apos;s identifier, never your password or the money.
+              </p>
+              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink-soft">
+                <li>For one-time products at one price that hand over a file, a link, a course, a bundle or a podcast.</li>
+                <li>Not for memberships, payment plans, calls, price options, pay what you want, license keys or limited stock, and no add-on, gift or discount code is offered with it.</li>
+                <li>What a buyer gets is sent to the email address of their PayPal account. A refund in full in your PayPal takes it back.</li>
+                <li>Not counted in your sales numbers here or credited to affiliates yet: PayPal&apos;s own reports have these sales.</li>
+              </ul>
+              {store.paypalSeller ? (
+                <>
+                  <div className="mt-5 rounded-3xl bg-mint-brand/15 p-5">
+                    <p className="font-bold text-ink">PayPal says this account can take payments</p>
+                    <p className="mt-1 break-all font-mono text-xs text-ink-soft">{store.paypalSeller.merchant}</p>
+                    {store.paypalSeller.at ? (
+                      <p className="mt-2 text-sm text-ink-soft">
+                        {`Connected on ${new Date(store.paypalSeller.at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}.`}
+                      </p>
+                    ) : null}
+                  </div>
+                  <form action={`/api/store/paypal/disconnect${pin}`} method="post" className="mt-5">
+                    <button type="submit" className="btn btn-ghost">
+                      Stop selling with PayPal
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <form action={`/api/store/paypal/connect${pin}`} method="post" className="mt-5">
+                  <button type="submit" className="btn btn-primary">
+                    Connect your PayPal account
+                  </button>
+                  <p className="mt-3 text-sm text-ink-soft">
+                    PayPal asks you to sign in to your Business account, or open
+                    one, and to confirm what Nimbus may do. Then it sends you back here.
+                  </p>
+                </form>
+              )}
             </div>
             ) : null}
 

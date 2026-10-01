@@ -13,6 +13,7 @@ import type { PageAction } from "@/components/sales-blocks";
 import { RatingLine } from "@/components/review-list";
 import type { Summary } from "@/lib/review-summary";
 import { MIN_BUNDLE_ITEMS, worthWords } from "@/lib/bundle-rules";
+import { payPalPrice, paypalReady } from "@/lib/paypal-sales";
 
 /**
  * Where a product's own page is, under the store's address.
@@ -383,7 +384,10 @@ export function BuyBox({
 
   if (soldOut) return null;
 
+  // The creator's own PayPal, as well as Stripe or instead of it (lib/paypal-sales.ts).
+  const withPayPal = ready && paypalReady(store, product);
   if (!canSellProduct(store, product) || !ready) {
+    if (withPayPal) return <PayPalButton store={store} product={product} alone />;
     /*
       Sellable store, but this one has nothing attached to hand over. Better to
       say so than to take the money and work out the delivery afterwards.
@@ -392,6 +396,7 @@ export function BuyBox({
   }
 
   return (
+    <>
     <form action="/api/store/checkout" method="post" className="mt-4" data-checkout="">
       <input type="hidden" name="handle" value={store.handle} />
       <input type="hidden" name="product" value={product.id} />
@@ -519,6 +524,28 @@ export function BuyBox({
       ) : null}
       <SaleNote store={store} product={product} />
     </form>
+    {withPayPal ? <PayPalButton store={store} product={product} alone={false} /> : null}
+    </>
+  );
+}
+
+/**
+ * Paying with PayPal, into the creator's own PayPal account: one product at
+ * its one price, nothing added. A plain form; the price is read on the server.
+ */
+function PayPalButton({ store, product, alone }: { store: Store; product: Listing; alone: boolean }) {
+  return (
+    <form action="/api/store/paypal/checkout" method="post" className={alone ? "mt-4" : "mt-3"}>
+      <input type="hidden" name="handle" value={store.handle} />
+      <input type="hidden" name="product" value={product.id} />
+      <button type="submit" className={`btn btn-block ${alone ? "st-btn" : "st-btn-ghost"}`}>
+        {`${alone ? "Buy" : "Or pay"} with PayPal — ${formatMoney(payPalPrice(store, product), store.currency)}`}
+      </button>
+      <p className="st-muted mt-2 text-center text-xs">
+        {`Paid to ${store.name}'s own PayPal account. What you buy is sent to the email address of your PayPal account.`}
+      </p>
+      {alone ? <SaleNote store={store} product={product} /> : null}
+    </form>
   );
 }
 
@@ -554,6 +581,8 @@ export function pageAction(
   }
   if (remaining === 0) return { action: { kind: "none", text: "Sold out." }, label: "" };
   if (!canSellProduct(store, product)) {
+    // Sold through the creator's PayPal only: the buttons lead to the buy box, where PayPal's is.
+    if (paypalReady(store, product)) return { action: { kind: "link", href: "#buy" }, label: `Buy for ${formatMoney(payPalPrice(store, product), store.currency)}` };
     return { action: { kind: "none", text: selling ? "Not on sale yet." : "This store cannot take payments yet." }, label: "" };
   }
   const trial = product.recurring && product.recurring.trialDays > 0 ? product.recurring.trialDays : 0;

@@ -25,6 +25,8 @@ import type { Store } from "@/lib/store";
 export type AccountChange =
   | { kind: "stripe-connected" }
   | { kind: "stripe-disconnected" }
+  | { kind: "paypal-connected" }
+  | { kind: "paypal-disconnected" }
   | { kind: "domain-added"; name: string }
   | { kind: "domain-removed"; name: string }
   | { kind: "webhook-added"; where: string }
@@ -52,6 +54,16 @@ function describe(change: AccountChange): { subject: string; line: string } {
       return {
         subject: "Your store's Stripe account was disconnected",
         line: "The Stripe account your store was paid into was disconnected. Your store cannot take payments until one is connected again.",
+      };
+    case "paypal-connected":
+      return {
+        subject: "A PayPal account was connected to your store",
+        line: "A PayPal account was connected to your store. Buyers can now pay it directly with PayPal.",
+      };
+    case "paypal-disconnected":
+      return {
+        subject: "Your store's PayPal account was disconnected",
+        line: "The PayPal account your store sold through was disconnected. Buyers can no longer pay with PayPal until one is connected again.",
       };
     case "domain-added":
       return {

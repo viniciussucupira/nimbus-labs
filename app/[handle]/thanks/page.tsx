@@ -25,7 +25,11 @@ import { buyersJoin, noteSession } from "@/lib/affiliates";
 import { recordEnrollment } from "@/lib/learn";
 import { noteProduct, upsertContact } from "@/lib/contacts";
 import { enroll } from "@/lib/flows";
-import { canRecover } from "@/lib/buyer-orders";
+import { canRecover, ordersLinkFor } from "@/lib/buyer-orders";
+import { readPaid, stillPending } from "@/lib/paypal-sales";
+import { saleClock } from "@/lib/store-sale";
+import { readListing } from "@/lib/catalog";
+import type { Store } from "@/lib/store";
 import { after } from "next/server";
 import { CONFIRM_WITHIN_SECONDS, canConfirm, confirmPurchase, fromStore, storeBase } from "@/lib/purchase-email";
 import { readConfig } from "@/lib/community";
@@ -134,6 +138,8 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   if (!store) notFound();
 
   const query = await searchParams;
+  // Paid with PayPal (lib/paypal-sales.ts): a page of its own.
+  if (typeof query.paypal === "string" && query.paypal) return <PayPalThanks store={store} order={query.paypal.slice(0, 40)} />;
   const sessionId =
     typeof query.session_id === "string" ? query.session_id : undefined;
   // Each opening with an order in it asks the creator's Stripe account, so
@@ -997,6 +1003,79 @@ export default async function ThanksPage({ params, searchParams }: Params) {
             </Link>
           </section>
         ) : null}
+      </main>
+    </div>
+  );
+}
+
+/**
+ * After paying with PayPal: what was bought and the way to open it, or, while
+ * PayPal has not confirmed the payment, that it is waited on. The order's id
+ * comes back from PayPal to the buyer's browser; this page opens the list of
+ * purchases from it for a day, as the Stripe page does with its order.
+ */
+async function PayPalThanks({ store, order }: { store: Store; order: string }) {
+  const allowed = await withinLimit("thanks-view", `${clientAddress({ headers: await headers() })}|${store.handle}`, VIEWS_PER_TEN_MINUTES, 600);
+  const paid = allowed ? await readPaid(order) : null;
+  const ours = paid && paid.store === store.statsId ? paid : null;
+  const product = ours ? await readListing(store, ours.product) : null;
+  const waiting = !ours && allowed ? await stillPending(store, order) : false;
+  const fresh = ours ? saleClock() - ours.at < DOWNLOAD_WINDOW_SECONDS : false;
+  const link = ours && product && fresh ? await ordersLinkFor(store, ours.email, storeBase(store)).catch(() => null) : null;
+  return (
+    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+      <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
+        <div className="st-card p-7 sm:p-10">
+          {ours && product ? (
+            <>
+              <p className="st-price text-sm">Paid with PayPal</p>
+              <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">Thank you</h1>
+              <p className="st-muted mt-4 text-lg">
+                {"You bought "}
+                <strong style={{ color: "var(--st-text)" }}>{product.title}</strong>
+                {` from ${store.name} for ${formatMoney(ours.cents, ours.currency)}.`}
+              </p>
+              {link ? (
+                <a href={link} className="btn st-btn btn-lg mt-7">
+                  {product.course ? "Open the course" : "Open what you bought"}
+                </a>
+              ) : (
+                <Link href={`/@${store.handle}/orders`} className="btn st-btn btn-lg mt-7">
+                  Open your purchases
+                </Link>
+              )}
+              <p className="st-muted mt-5 text-sm">{`A receipt with the same link is on its way to ${ours.email}, the address of your PayPal account.`}</p>
+              <p className="st-muted mt-3 text-sm">{`Paid to ${store.name}'s own PayPal account.`}</p>
+              <StoreTracking
+                store={store}
+                event={{ type: "purchase", id: order, value: toMajor(ours.cents, ours.currency), currency: ours.currency, productId: product.id, title: product.title }}
+              />
+            </>
+          ) : waiting ? (
+            <>
+              <p className="st-price text-sm">Waiting for PayPal</p>
+              <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">PayPal has not confirmed this payment yet</h1>
+              <p className="st-muted mt-4">
+                Some PayPal payments, such as ones from a bank account, take a few days to clear. As soon as PayPal confirms it, what
+                you bought is emailed to the address of your PayPal account. There is nothing more to do here.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{allowed ? "We could not find this order" : "That was a lot of tries in a few minutes"}</h1>
+              <p className="st-muted mt-4">
+                {allowed
+                  ? `If PayPal shows a payment to ${store.name}, write to them by replying to PayPal's receipt.`
+                  : "Wait a few minutes, then open this page again."}
+              </p>
+            </>
+          )}
+          <div className="mt-8">
+            <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
+              {`Back to ${store.name}`}
+            </Link>
+          </div>
+        </div>
       </main>
     </div>
   );

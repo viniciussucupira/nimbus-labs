@@ -1,3 +1,4 @@
+import { sellsThroughPayPal, takenBy } from "@/lib/paypal-sales";
 import { endsWords, saleClock, saleRunning } from "@/lib/store-sale";
 import { soonProducts } from "@/lib/waitlist";
 import type { Metadata } from "next";
@@ -44,6 +45,14 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   error: {
     title: "The payment page could not be opened",
     body: "Nothing was charged. Try again in a moment.",
+  },
+  "paypal-declined": {
+    title: "PayPal did not take the payment",
+    body: "Nothing was charged. Try again with another card or account in PayPal, or pay with a card here.",
+  },
+  "paypal-error": {
+    title: "That PayPal payment could not be matched to this store",
+    body: "Nothing was handed over for it. If PayPal shows money taken, write to the store by replying to PayPal's receipt.",
   },
 };
 
@@ -127,6 +136,8 @@ export default async function StorePage({ params, searchParams }: Params) {
   if (asked !== store.handle && !reachedOn) permanentRedirect(`/@${store.handle}`);
 
   const selling = canSell(store);
+  // Sold through the creator's own PayPal as well, or instead (lib/paypal-sales.ts).
+  const byPayPal = sellsThroughPayPal(store);
   // A buyer standing in front of a checkout deserves to know it is a rehearsal
   // before typing a card number into it, not after.
   const rehearsal = selling && isConnectInTestMode();
@@ -305,9 +316,9 @@ export default async function StorePage({ params, searchParams }: Params) {
                   payment is taken by Stripe on {store.name}&apos;s own account:
                   Nimbus never holds the money and takes none of it.
                 </p>
-              ) : selling ? (
+              ) : selling || byPayPal ? (
                 <p className="st-muted mt-6 text-center text-sm">
-                  Payment is taken by Stripe on {store.name}&apos;s own account.
+                  Payment is taken by {takenBy(selling, byPayPal)} on {store.name}&apos;s own account.
                   Nimbus never holds the money and takes none of it.
                 </p>
               ) : (

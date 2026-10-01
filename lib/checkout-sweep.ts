@@ -35,6 +35,7 @@
  * second email.
  */
 import { revokeRefundedGifts } from "@/lib/gifts";
+import { sweepPayPal } from "@/lib/paypal-delivery";
 import { dropEnrollment } from "@/lib/learn";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount, platformKey } from "@/lib/stripe-account";
@@ -90,6 +91,18 @@ async function sweepStore(store: Store, counts: SweepCounts, deadline: number, r
     counts.revoked += await revokeRefundedGifts(store, deadline, (email, productId) => dropEnrollment(store, email, productId));
   } catch (error) {
     console.error("reading a store's refunds for gifts failed", store.handle, error);
+  }
+  // Sold through the creator's PayPal (lib/paypal-sales.ts): a payment PayPal
+  // held as pending is handed over once it completes, and a full refund takes
+  // the purchase back.
+  if (store.paypalSeller) {
+    try {
+      const paypal = await sweepPayPal(store, deadline);
+      counts.confirmed += paypal.cleared;
+      counts.revoked += paypal.revoked;
+    } catch (error) {
+      console.error("asking PayPal about a store's orders failed", store.handle, error);
+    }
   }
   if (reviewed) {
     try {
@@ -177,7 +190,7 @@ export async function sweepCheckouts(deadline: number): Promise<SweepCounts> {
       }
       if (Date.now() >= deadline) break;
       const reviewed = Boolean(store.stripeAccountId) && (await storeHasReviews(store).catch(() => false));
-      if (worthAsking(store) || reviewed) {
+      if (worthAsking(store) || reviewed || store.paypalSeller) {
         counts.stores += 1;
         try {
           await sweepStore(store, counts, deadline, reviewed);

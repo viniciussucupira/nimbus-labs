@@ -21,6 +21,12 @@
  *
  * One entry per product and address, written only if there is none (HSETNX),
  * so importing the same file twice gives nobody anything twice.
+ *
+ * The same record carries two kinds of purchase that did not go through the
+ * creator's Stripe either, told apart by `job`: "gift:<id>", a gift paid for
+ * by someone else (lib/gifts.ts), and "paypal:<order>", a purchase paid into
+ * the creator's own PayPal account (lib/paypal-sales.ts). Each is shown for
+ * what it is on the list of purchases, never as brought over.
  */
 import { createHash } from "node:crypto";
 import { normaliseEmail } from "@/lib/auth";

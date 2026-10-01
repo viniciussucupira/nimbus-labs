@@ -118,6 +118,8 @@ export type Purchase = {
   bumpItems: PurchaseItems | null;
   /** Given as a gift (lib/gifts.ts): the name of whoever gave it, "someone" when they gave none. */
   giftFrom?: string | null;
+  /** Paid for with PayPal, into the creator's own PayPal account (lib/paypal-sales.ts). */
+  paidWith?: "paypal";
   /** A private podcast opens as a feed of the buyer's own (lib/podcast-access.ts). */
   podcastProduct?: string | null;
   /** A package of calls: where its sessions are booked, and how many are left (lib/call-packages.ts). */
@@ -408,6 +410,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         reference,
         kind: "imported",
         giftFrom: await giftFrom(given.job),
+        ...(given.job.startsWith("paypal:") ? { paidWith: "paypal" as const } : {}),
         podcastProduct,
         title: product.title,
         option: null,
@@ -512,12 +515,20 @@ export async function requestOrdersLink(input: {
       "",
       "If you did not ask for this, ignore this email; nothing happens unless the link is opened.",
       "",
-      purchases.some((p) => p.kind === "imported" && !p.giftFrom)
-        ? `Sent by Nimbus Labs on behalf of ${name}. What you bought here was charged by ${name} on their own Stripe account; what ${name} brought over from another platform was not charged again.`
-        : `Sent by Nimbus Labs on behalf of ${name}. Every purchase was charged by ${name} on their own Stripe account.`,
+      `Sent by Nimbus Labs on behalf of ${name}. ${chargedLine(name, purchases)}`,
     ].join("\n"),
   });
   return sent ? "sent" : "error";
+}
+
+/** Who charged what, in one sentence, for the email that sends the list of purchases. */
+export function chargedLine(name: string, purchases: Pick<Purchase, "kind" | "giftFrom" | "paidWith">[]): string {
+  const brought = purchases.some((p) => p.kind === "imported" && !p.giftFrom && !p.paidWith);
+  const paypal = purchases.some((p) => p.paidWith === "paypal");
+  const where = paypal ? `on their own Stripe or PayPal account` : `on their own Stripe account`;
+  return brought
+    ? `What you bought here was charged by ${name} ${where}; what ${name} brought over from another platform was not charged again.`
+    : `Every purchase was charged by ${name} ${where}.`;
 }
 
 /**

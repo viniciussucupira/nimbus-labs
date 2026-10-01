@@ -467,7 +467,23 @@ export type Store = {
    * list of purchases knows to look for them without reading anything.
    */
   pastBuyers: boolean;
+  /**
+   * The creator's own PayPal Business account, connected through PayPal's
+   * onboarding for platforms (lib/paypal-sales.ts), so buyers can pay it
+   * directly. Null when PayPal is not connected.
+   */
+  paypalSeller: PayPalSeller | null;
 };
+
+/** A PayPal account a store sells through: PayPal's id for it, and when it was connected. */
+export type PayPalSeller = { merchant: string; at: number };
+
+function parsePayPalSeller(raw: unknown): PayPalSeller | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  if (typeof value.merchant !== "string" || !/^[A-Z0-9]{8,20}$/.test(value.merchant)) return null;
+  return { merchant: value.merchant, at: typeof value.at === "number" ? value.at : 0 };
+}
 
 /** The part of the email platform settings a store record carries. */
 export type EmailSyncRef = { buyers: "all" | "some"; products: string[] };
@@ -674,6 +690,8 @@ function parseStore(raw: unknown): Store | null {
       phoneSales: value.phoneSales === true,
       // Stores written before imports existed brought nobody over.
       pastBuyers: value.pastBuyers === true,
+      // Stores written before PayPal selling existed sell through Stripe only.
+      paypalSeller: parsePayPalSeller(value.paypalSeller),
     };
   } catch {
     return null;
@@ -830,6 +848,7 @@ async function freshStore(fields: {
     emailSync: null,
     phoneSales: false,
     pastBuyers: false,
+    paypalSeller: null,
   };
 }
 
@@ -2971,4 +2990,11 @@ export async function addDraftProducts(email: string, drafts: DraftProduct[]): P
  */
 export async function setPastBuyers(email: string): Promise<Store | null> {
   return patchStore(email, (store) => (store.pastBuyers ? null : { pastBuyers: true }));
+}
+
+/** Connects (or, with null, disconnects) the PayPal account a store sells through. */
+export async function setPayPalSeller(email: string, merchant: string | null): Promise<Store | null> {
+  const seller = merchant ? parsePayPalSeller({ merchant, at: Date.now() }) : null;
+  if (merchant && !seller) return null;
+  return patchStore(email, () => ({ paypalSeller: seller }));
 }
