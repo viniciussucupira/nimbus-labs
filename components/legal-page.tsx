@@ -121,7 +121,10 @@ export function LegalPage({
         </section>
 
         <div className="container-page py-12 sm:py-16">
-          <div className="grid gap-10 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-16">
+          {/* One column on a phone, stated as minmax(0,1fr): an unstated column grows
+              to fit its widest child, and a code sample that scrolls inside its own
+              box then drags the whole page sideways with it. */}
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-16">
             {index ? (
               <>
                 {/* Wide screens: the index keeps its place while the page moves. */}
@@ -155,7 +158,7 @@ export function LegalPage({
               <div className="hidden lg:block" />
             )}
 
-            <div>
+            <div className="min-w-0">
               <div className="legal-body max-w-[46rem] space-y-10 text-[1.0625rem] leading-[1.8] text-ink-soft">
                 {children}
               </div>
