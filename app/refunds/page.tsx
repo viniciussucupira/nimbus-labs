@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, LegalSection } from "@/components/legal-page";
 
 export const metadata: Metadata = {
-  title: "Refund Policy — Nimbus Labs",
+  title: "Refund Policy — Marktmorgen",
   description:
     "Cancel anytime. Full refund if requested within 14 days of a charge.",
 };
@@ -11,8 +11,9 @@ export default function RefundsPage() {
   return (
     <LegalPage title="Refund Policy" lastUpdated="September 28, 2026">
       <p>
-        This Refund Policy applies to what you pay Nimbus Labs, an independent
-        software studio, for the creator store at nimbuslabsai.com: the monthly
+        This Refund Policy applies to what you pay Marktmorgen, a product of
+        Solrenning, an independent software studio, for the creator store at
+        marktmorgen.com: the monthly
         or yearly subscription, on either plan, at the price shown at
         checkout.
       </p>
@@ -54,10 +55,10 @@ export default function RefundsPage() {
         <p>
           Email{" "}
           <a
-            href="mailto:support@nimbuslabsai.com"
+            href="mailto:support@marktmorgen.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            support@nimbuslabsai.com
+            support@marktmorgen.com
           </a>{" "}
           from the email address associated with your account. Please include:
         </p>
@@ -100,10 +101,10 @@ export default function RefundsPage() {
         <p>
           If you cannot reach them, write to us at{" "}
           <a
-            href="mailto:support@nimbuslabsai.com"
+            href="mailto:support@marktmorgen.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            support@nimbuslabsai.com
+            support@marktmorgen.com
           </a>{" "}
           with your order confirmation email. We cannot move money we never held, but we can
           pass your message to the creator and tell you what we did.
@@ -120,22 +121,22 @@ export default function RefundsPage() {
 
       <LegalSection title="8. Contact">
         <p>
-          Nimbus Labs
+          Marktmorgen
           <br />
           Email:{" "}
           <a
-            href="mailto:support@nimbuslabsai.com"
+            href="mailto:support@marktmorgen.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            support@nimbuslabsai.com
+            support@marktmorgen.com
           </a>
           <br />
           Website:{" "}
           <a
-            href="https://nimbuslabsai.com"
+            href="https://marktmorgen.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            nimbuslabsai.com
+            marktmorgen.com
           </a>
         </p>
       </LegalSection>

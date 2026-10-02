@@ -15,7 +15,7 @@ const BASE = /^http:\/\/127\.0\.0\.1:\d+$/.test(process.env.RESEND_API_BASE ?? "
 const API = `${BASE}/emails`;
 
 export const NIMBUS_FROM =
-  process.env.NIMBUS_FROM_EMAIL?.trim() || "Nimbus Labs <onboarding@resend.dev>";
+  process.env.NIMBUS_FROM_EMAIL?.trim() || "Marktmorgen <onboarding@resend.dev>";
 
 export const STORE_FROM =
   process.env.RECOVERY_FROM_EMAIL?.trim() ||

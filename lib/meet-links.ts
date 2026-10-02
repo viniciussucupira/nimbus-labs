@@ -457,8 +457,8 @@ export async function retryRecord(store: StoreRef, scope: string, booked: () => 
 
 function descriptionFor(record: MeetRecord): string {
   return record.group
-    ? "Booked through your Nimbus Labs store. Everyone booked is in your studio, under Upcoming calls."
-    : "Booked through your Nimbus Labs store. The booking is in your studio, under Upcoming calls.";
+    ? "Booked through your Marktmorgen store. Everyone booked is in your studio, under Upcoming calls."
+    : "Booked through your Marktmorgen store. The booking is in your studio, under Upcoming calls.";
 }
 
 /** Records with something due, oldest first, for the five-minute job. */
@@ -506,7 +506,7 @@ export async function callMeeting(input: {
     session: group ? "" : session,
     title: group ? product.title : `${product.title} with ${who}`,
     description: [
-      `Booked through your Nimbus Labs store (nimbuslabsai.com/@${store.handle}).`,
+      `Booked through your Marktmorgen store (marktmorgen.com/@${store.handle}).`,
       ...(group ? ["Everyone booked is in your studio, under Upcoming calls."] : [`Booked by ${input.buyerEmail ?? "a buyer who gave no address"}.`]),
     ].join("\n"),
     start,

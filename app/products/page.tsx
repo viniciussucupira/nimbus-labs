@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
 
-const title = "Our products — Nimbus Labs";
-const description = "Meet NativeApply, NativeReply, Retone, Kudobox, and the Nimbus Labs creator store. Find the right tool for your writing or business.";
+const title = "Our products — Solrenning";
+const description = "Meet NativeApply, NativeReply, Retone, Kudobox, and the Marktmorgen creator store. Find the right tool for your writing or business.";
 export const metadata: Metadata = {
   title, description,
   alternates: { canonical: "/products" },
@@ -25,7 +25,7 @@ const groups = [
     title: "Build your business",
     description: "Sell what you create and share what your customers say.",
     products: [
-      { name: "Nimbus Labs", initials: "N", category: "Your creator store", href: "https://nimbuslabsai.com/", domain: "nimbuslabsai.com", color: "#643caf", background: "#f2edff", description: "Create a store for digital products, courses, calls, and memberships. Buyers pay into your own Stripe account.", action: "Explore the creator store" },
+      { name: "Marktmorgen", initials: "M", category: "Your creator store", href: "https://marktmorgen.com/", domain: "marktmorgen.com", color: "#643caf", background: "#f2edff", description: "Create a store for digital products, courses, calls, and memberships. Buyers pay into your own Stripe account.", action: "Explore the creator store" },
       { name: "Kudobox", initials: "K", category: "Customer testimonials", href: "https://getkudobox.com/", domain: "getkudobox.com", color: "#486139", background: "#f0f5e9", description: "Collect testimonials with permission, review them, and display the ones you approve on your website.", action: "Explore Kudobox" },
     ],
   },
@@ -38,10 +38,10 @@ export default function ProductsPage() {
       <main id="content" className="flex-1">
         <section className="surface-dawn border-b border-line">
           <div className="container-page py-14 sm:py-20">
-            <p className="eyebrow">The Nimbus Labs family</p>
+            <p className="eyebrow">The Solrenning family</p>
             <h1 className="t-h1 mt-4 max-w-3xl">Different tools.<br /><span className="serif font-normal text-violet-deep">One independent studio.</span></h1>
             <p className="t-lead mt-6 max-w-2xl text-ink-soft">Tools for clearer writing, selling your work, and sharing customer experiences. Find the one that fits what you need today.</p>
-            <p className="mt-5 max-w-2xl text-sm leading-6 text-ink-soft">Nimbus Labs is the independent software studio run by Vinicius Sucupira. It is also the name of our creator-store product. These five products are part of the same studio.</p>
+            <p className="mt-5 max-w-2xl text-sm leading-6 text-ink-soft">Solrenning is the independent software studio run by Vinicius Sucupira. Marktmorgen, the creator store, is one of its five products.</p>
             <nav aria-label="Product categories" className="mt-7 flex flex-wrap gap-3">
               <a href="#writing" className="btn btn-secondary">Writing tools</a>
               <a href="#business" className="btn btn-secondary">Business tools</a>
@@ -70,7 +70,7 @@ export default function ProductsPage() {
           <aside className="rounded-2xl border border-line bg-white p-6 sm:p-8" aria-labelledby="separate-products">
             <h2 id="separate-products" className="text-lg font-semibold">Same studio. Separate products.</h2>
             <p className="mt-3 max-w-3xl leading-7 text-ink-soft">Each product has its own pricing, access, and terms. A subscription to one does not include the others. Visit the product&apos;s own site for its current plans and support options.</p>
-            <a href="mailto:support@nimbuslabsai.com" className="mt-4 inline-flex min-h-11 items-center font-semibold text-violet-deep underline underline-offset-4">Contact our studio</a>
+            <a href="mailto:support@marktmorgen.com" className="mt-4 inline-flex min-h-11 items-center font-semibold text-violet-deep underline underline-offset-4">Contact our studio</a>
           </aside>
         </div>
       </main>

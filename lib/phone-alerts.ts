@@ -589,7 +589,7 @@ export async function sendTest(
   ]);
   if (Number(count) > TESTS_PER_MINUTE) return { ok: false, reason: "limited" };
   const state = await deliver(store, device, "test", {
-    title: "Nimbus Studio",
+    title: "Marktmorgen Studio",
     body: "Notifications work on this device. Nothing happened in your store.",
     url: "/studio/phone",
   });

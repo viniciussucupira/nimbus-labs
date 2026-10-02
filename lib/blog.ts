@@ -563,8 +563,8 @@ export const BLOG_POSTS: BlogPost[] = [
     ],
   },
   {
-    slug: "how-nimbus-compares-with-stan",
-    title: "How Nimbus compares with Stan, written by the people building Nimbus",
+    slug: "how-marktmorgen-compares-with-stan",
+    title: "How Marktmorgen compares with Stan, written by the people building Marktmorgen",
     category: "Comparisons",
     date: "2026-09-18",
     readMinutes: 6,
@@ -576,19 +576,19 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         type: "note",
-        text: "Disclosure: we build Nimbus. Everything below about Stan comes from Stan's own website and help center, which anyone can read. Where we are worse, we say so.",
+        text: "Disclosure: we build Marktmorgen. Everything below about Stan comes from Stan's own website and help center, which anyone can read. Where we are worse, we say so.",
       },
       {
         type: "note",
-        text: "Updated on September 26, 2026, when Nimbus added a community, funnels of offers after the checkout, an affiliate program you pay out yourself, calendar sync and webhooks. The lines below say where that leaves each of us.",
+        text: "Updated on September 26, 2026, when Marktmorgen added a community, funnels of offers after the checkout, an affiliate program you pay out yourself, calendar sync and webhooks. The lines below say where that leaves each of us.",
       },
       {
         type: "note",
-        text: "Updated again on September 27, 2026, when Nimbus added sales and landing pages; reviews only buyers can write; 15 currencies; the ways to pay that a creator switches on in Stripe; Mailchimp, Kit, beehiiv and MailerLite built in; up to five stores and a team with roles; a video room for each booking; phone notifications; and up to 2,000 products.",
+        text: "Updated again on September 27, 2026, when Marktmorgen added sales and landing pages; reviews only buyers can write; 15 currencies; the ways to pay that a creator switches on in Stripe; Mailchimp, Kit, beehiiv and MailerLite built in; up to five stores and a team with roles; a video room for each booking; phone notifications; and up to 2,000 products.",
       },
       {
         type: "note",
-        text: "And later the same day, when Nimbus added live events inside the community, bundles of products, drafts, and importing a list, products and past buyers from another platform. Later still, it added Google Meet links made on your own Google Calendar.",
+        text: "And later the same day, when Marktmorgen added live events inside the community, bundles of products, drafts, and importing a list, products and past buyers from another platform. Later still, it added Google Meet links made on your own Google Calendar.",
       },
       { type: "h2", text: "What Stan is" },
       {
@@ -599,15 +599,15 @@ export const BLOG_POSTS: BlogPost[] = [
         type: "p",
         text: "That is a large product. A community in the same place as your store, with live sessions inside it, is something we both have now. Theirs are webinars members sign up for, with Zoom or Google Meet links made automatically; ours are live events members RSVP to, in a private Jitsi Meet room shown in the page, at the creator's own link, or in a Google Meet made on the creator's connected Google Calendar. No Zoom link is made for you yet.",
       },
-      { type: "h2", text: "What Nimbus is" },
+      { type: "h2", text: "What Marktmorgen is" },
       {
         type: "p",
-        text: "Nimbus is a store page for selling files, courses, memberships, communities and calls, and it is early. At its core are three things: a colorful page, price options on a product, and the file in the buyer's hands the second the payment clears.",
+        text: "Marktmorgen is a store page for selling files, courses, memberships, communities and calls, and it is early. At its core are three things: a colorful page, price options on a product, and the file in the buyer's hands the second the payment clears.",
       },
       { type: "h2", text: "The one thing we do differently" },
       {
         type: "p",
-        text: "The money. On Nimbus, the buyer pays into your own Stripe account. We never hold your balance and we take 0% of your sales — not 0% with an asterisk that points at a cut somewhere else. What we charge is the subscription, and that is the whole of what we charge.",
+        text: "The money. On Marktmorgen, the buyer pays into your own Stripe account. We never hold your balance and we take 0% of your sales — not 0% with an asterisk that points at a cut somewhere else. What we charge is the subscription, and that is the whole of what we charge.",
       },
       {
         type: "p",
@@ -672,7 +672,7 @@ export const BLOG_POSTS: BlogPost[] = [
     body: [
       {
         type: "p",
-        text: "A Nimbus store is a web page that can be installed to a phone's home screen, with its own icon, from the browser. There is no app to download — for you or for your buyers. That was a decision, and it has a cost worth explaining.",
+        text: "A Marktmorgen store is a web page that can be installed to a phone's home screen, with its own icon, from the browser. There is no app to download — for you or for your buyers. That was a decision, and it has a cost worth explaining.",
       },
       { type: "h2", text: "The buyer's side is not a close call" },
       {

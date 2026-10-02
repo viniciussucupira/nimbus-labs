@@ -7,7 +7,7 @@ import { formatMoney } from "@/lib/money";
 import { previewSwitch } from "@/lib/tier-switch";
 
 export const metadata: Metadata = {
-  title: "Switch your membership — Nimbus Labs",
+  title: "Switch your membership — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

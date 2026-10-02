@@ -32,7 +32,7 @@
  * cancellation it is, so the same one is never started twice.
  *
  * These are the community's own notices about something a member signed up
- * for, sent from the store's name through Nimbus's address like the reminders
+ * for, sent from the store's name through Marktmorgen's address like the reminders
  * before a booked call, on every plan, and not counted against Pro's monthly
  * emails.
  *
@@ -220,7 +220,7 @@ function noticeHtml(body: string, why: string): string {
 <div style="background:#ffffff;border-radius:16px;padding:28px 24px">${bodyHtml(body)}</div>
 <div style="padding:20px 8px 0;font-size:13px;line-height:1.5;color:#57534e">
 <p style="margin:0 0 8px">${escapeHtml(why)}</p>
-<p style="margin:0">Sent with Nimbus Labs.</p>
+<p style="margin:0">Sent with Marktmorgen.</p>
 </div></div></body></html>`;
 }
 
@@ -347,7 +347,7 @@ export async function advanceEventJob(
               from: storeSender(store),
               to: member.e,
               subject: words.subject.slice(0, 150),
-              text: `${words.body}\n\n—\n${words.why}\nSent with Nimbus Labs.`,
+              text: `${words.body}\n\n—\n${words.why}\nSent with Marktmorgen.`,
               html: noticeHtml(words.body, words.why),
               replyTo: store.email,
             });

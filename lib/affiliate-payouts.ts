@@ -2,7 +2,7 @@
  * Preparing an affiliate payout: the file the creator uploads to their own
  * PayPal or Wise, and the record of having paid.
  *
- * The rule from lib/affiliates.ts does not bend here. Nimbus never holds,
+ * The rule from lib/affiliates.ts does not bend here. Marktmorgen never holds,
  * moves or pays out any of this money. What this file does is turn what the
  * book says is owed into a batch file shaped the way the creator's own
  * provider reads it, so paying twenty affiliates is one upload instead of
@@ -25,7 +25,7 @@
  *   - a payout worksheet, with a header, for Wise and for a bank transfer.
  *     Wise will only read a file built from the template it gives you, so
  *     this one is for pasting into that template — and it leaves the
- *     recipient's name blank, because Nimbus never asks an affiliate for the
+ *     recipient's name blank, because Marktmorgen never asks an affiliate for the
  *     name on their bank account and will not invent one.
  *
  * Nothing here decides what is owed: that is lib/affiliates.ts readBook, which
@@ -125,7 +125,7 @@ export function paypalCsv(lines: BatchLine[], currency: string, note: string): s
 /**
  * The worksheet, for Wise's own template and for a bank transfer. The name
  * column is deliberately empty: Wise wants the name on the recipient's bank
- * account, and Nimbus never asked the affiliate for it.
+ * account, and Marktmorgen never asked the affiliate for it.
  */
 export function worksheetCsv(lines: BatchLine[], currency: string, note: string): string {
   const code = currency.toUpperCase();

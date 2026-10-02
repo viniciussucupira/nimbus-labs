@@ -50,7 +50,7 @@ async function main(): Promise<void> {
   if (!made.ok) throw new Error("no product");
   const store = (await storeForEmail("owner@example.com"))!;
   const product = (await readListing(store, made.product.id))!;
-  const origin = "https://nimbuslabsai.com";
+  const origin = "https://marktmorgen.com";
   const join = (email: string, consent = false, ip = "1.1.1.1") => joinWaitlist({ store, product, email, consent, ip, origin });
 
   part("Only a product coming soon");

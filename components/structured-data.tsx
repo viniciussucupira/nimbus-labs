@@ -32,11 +32,11 @@ export function JsonLd({ data }: { data: object }) {
 const ORGANIZATION = {
   "@type": "Organization",
   "@id": `${SITE_URL}/#organization`,
-  name: "Nimbus Labs",
+  name: "Marktmorgen",
   url: SITE_URL,
   logo: `${SITE_URL}/icons/icon-512.png`,
   description:
-    "A link-in-bio store for creators who sell files, courses, memberships and calls. Buyers pay into the creator's own Stripe account and Nimbus takes 0% of the sale.",
+    "A link-in-bio store for creators who sell files, courses, memberships and calls. Buyers pay into the creator's own Stripe account and Marktmorgen takes 0% of the sale.",
   founder: { "@type": "Person", name: "Vinicius Sucupira" },
 };
 
@@ -52,7 +52,7 @@ export function SiteData() {
             "@type": "WebSite",
             "@id": `${SITE_URL}/#website`,
             url: SITE_URL,
-            name: "Nimbus Labs",
+            name: "Marktmorgen",
             publisher: { "@id": `${SITE_URL}/#organization` },
             inLanguage: "en",
           },
@@ -85,12 +85,12 @@ export function HomeData({ questions }: { questions: { q: string; a: string }[] 
           {
             "@type": "SoftwareApplication",
             "@id": `${SITE_URL}/#app`,
-            name: "Nimbus Labs",
+            name: "Marktmorgen",
             applicationCategory: "BusinessApplication",
             operatingSystem: "Web",
             url: SITE_URL,
             publisher: { "@id": `${SITE_URL}/#organization` },
-            description: `A store page for creators, with a ${TRIAL_DAYS}-day free trial. Sales are direct charges on the creator's own Stripe account; Nimbus takes 0% of them.`,
+            description: `A store page for creators, with a ${TRIAL_DAYS}-day free trial. Sales are direct charges on the creator's own Stripe account; Marktmorgen takes 0% of them.`,
             offers: [offer("creator"), offer("pro")],
           },
           {

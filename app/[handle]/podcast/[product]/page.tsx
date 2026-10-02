@@ -9,7 +9,7 @@ import { appLinks } from "@/lib/podcast-rules";
 import { SITE_URL } from "@/lib/site-url";
 
 export const metadata: Metadata = {
-  title: "Your private podcast — Nimbus Labs",
+  title: "Your private podcast — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
@@ -21,7 +21,7 @@ type Params = {
 const NOTICES: Record<string, { title: string; body: string }> = {
   sent: {
     title: "Check your inbox",
-    body: "If that address has this podcast, a link to its own feed is on its way. It comes from the store via Nimbus Labs and usually arrives within a minute; if it is not there, look in spam.",
+    body: "If that address has this podcast, a link to its own feed is on its way. It comes from the store via Marktmorgen and usually arrives within a minute; if it is not there, look in spam.",
   },
   email: { title: "That does not look like an email address", body: "Type the address you bought it with." },
   limited: { title: "Too many requests for now", body: "Try again in an hour." },

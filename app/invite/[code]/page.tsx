@@ -13,8 +13,8 @@ import { formatMoney } from "@/lib/money";
 import { TRIAL_DAYS, priceWords } from "@/lib/plan";
 
 export const metadata: Metadata = {
-  title: "You're invited — Nimbus Labs",
-  description: "A creator invited you to Nimbus Labs: sell digital products, courses, memberships and calls from one link, with 0% of your sales taken.",
+  title: "You're invited — Marktmorgen",
+  description: "A creator invited you to Marktmorgen: sell digital products, courses, memberships and calls from one link, with 0% of your sales taken.",
   robots: { index: false, follow: false },
 };
 
@@ -42,7 +42,7 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
           <div className="container-narrow py-16 sm:py-20">
             <p className="eyebrow">An invite from @{inviter.handle}</p>
             <h1 className="t-h1 balance mt-5 text-white">
-              {who} invited you to <span className="serif font-normal text-[#cfc4ff]">Nimbus Labs</span>
+              {who} invited you to <span className="serif font-normal text-[#cfc4ff]">Marktmorgen</span>
             </h1>
             <p className="t-lead mt-6 max-w-2xl text-white/80">
               Sell digital products, courses, memberships and calls from one link. Your buyers pay into your own Stripe account,
@@ -75,7 +75,7 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
 
           {hasStore ? (
             <div className="notice notice-info mt-8" role="status">
-              <p className="font-semibold">You already have a Nimbus Labs store</p>
+              <p className="font-semibold">You already have a Marktmorgen store</p>
               <p className="mt-1">
                 Invites are for creators making their first store, so this one cannot count for you. You can invite creators
                 yourself from your studio, under Invite creators.
@@ -92,7 +92,7 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
                 <Icon name="arrow-right" size={16} />
               </a>
               <p className="mt-3 max-w-xl text-[0.875rem] text-ink-mute">
-                {`Accepting keeps this invite on this browser for ${INVITE_COOKIE_DAYS} days, so it counts when you make your store. It counts once, for a first Nimbus Labs store, and only if the account has not paid us before.`}
+                {`Accepting keeps this invite on this browser for ${INVITE_COOKIE_DAYS} days, so it counts when you make your store. It counts once, for a first Marktmorgen store, and only if the account has not paid us before.`}
               </p>
             </div>
           )}

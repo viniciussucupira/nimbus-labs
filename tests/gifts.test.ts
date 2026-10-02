@@ -81,7 +81,7 @@ async function main(): Promise<void> {
   is("kept, the address as one", [started.gift.to, started.gift.from, started.gift.message], ["friend@example.com", "Ana", "Happy birthday!\n\nEnjoy."]);
 
   part("Its checkout");
-  await createCheckout(store, (await readProduct(store, product.id))!, "https://nimbuslabsai.com", "", { gift: started.gift.id, bump: true, plan: true, upsellKey: "f".repeat(40) });
+  await createCheckout(store, (await readProduct(store, product.id))!, "https://marktmorgen.com", "", { gift: started.gift.id, bump: true, plan: true, upsellKey: "f".repeat(40) });
   const sent = checkouts[0];
   is("marked as a gift", [sent.get("metadata[gift]"), sent.get("payment_intent_data[metadata][gift]")], [started.gift.id, started.gift.id]);
   is("one payment, nothing added, no offer after", [sent.get("mode"), sent.get("line_items[1][quantity]"), sent.get("metadata[upsell_key]"), sent.get("customer_creation")], ["payment", null, null, null]);
@@ -107,10 +107,10 @@ async function main(): Promise<void> {
       store,
       session,
       product,
-      base: "https://nimbuslabsai.com/@harbor",
-      from: '"Harbor Kitchen" <hello@nimbuslabsai.com>',
+      base: "https://marktmorgen.com/@harbor",
+      from: '"Harbor Kitchen" <hello@marktmorgen.com>',
       recordStart: async (email, id, start) => void started2.push(`${email}|${id}|${start}`),
-      ordersLink: async (email) => `https://nimbuslabsai.com/@harbor/orders?token=${"a".repeat(64)}&for=${email}`,
+      ordersLink: async (email) => `https://marktmorgen.com/@harbor/orders?token=${"a".repeat(64)}&for=${email}`,
     });
   is("given", await deliver(), "given");
   is("twice is once", await deliver(), "already");

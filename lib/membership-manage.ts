@@ -10,7 +10,7 @@
  *
  * Three things are deliberate:
  *
- *   - It works whatever state the creator's own Nimbus subscription is in. A
+ *   - It works whatever state the creator's own Marktmorgen subscription is in. A
  *     store that stops paying us stops selling; it never traps anybody in a
  *     charge they want to stop.
  *   - The page answers the same whether or not the address has a membership,
@@ -199,7 +199,7 @@ export async function requestManageLink(input: {
   const name = store.name;
   const link = `${origin}/@${store.handle}/manage?token=${token}`;
   const sent = await sendEmail({
-    from: `"${displayName(name)} via Nimbus Labs" <${senderAddress()}>`,
+    from: `"${displayName(name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
     subject: `Your membership with ${name}`,
     text: [
@@ -213,7 +213,7 @@ export async function requestManageLink(input: {
       "",
       "The link works for one hour. If you did not ask for this, ignore this email; nothing happens unless the link is used.",
       "",
-      `Sent by Nimbus Labs on behalf of ${name}. The membership is charged by ${name} on their own Stripe account.`,
+      `Sent by Marktmorgen on behalf of ${name}. The membership is charged by ${name} on their own Stripe account.`,
     ].join("\n"),
   });
   return sent ? "sent" : "error";

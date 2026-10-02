@@ -41,8 +41,8 @@ export function priceWords(tier: Tier, cycle: Cycle): string {
 }
 
 export const PLAN_NAMES: Record<Tier, string> = {
-  creator: "Nimbus Labs",
-  pro: "Nimbus Labs Pro",
+  creator: "Marktmorgen",
+  pro: "Marktmorgen Pro",
 };
 
 /**

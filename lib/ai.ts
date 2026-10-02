@@ -75,7 +75,7 @@ const HONESTY = [
   "Use only the facts the creator gave you. If a detail is not given, leave it out rather than guess.",
   "Never invent a testimonial, a review, a quote, a number of students, buyers, sales or subscribers, earnings, results, a guarantee, a refund promise, a bonus, a discount, a deadline, a limited quantity or any other urgency.",
   "Never promise a result ('you will make $X', 'lose 10 pounds'). Describe what the buyer gets and who it is for, not what will happen to them.",
-  "Never mention Nimbus Labs, AI, or that this was written for the creator.",
+  "Never mention Marktmorgen, AI, or that this was written for the creator.",
 ].join("\n");
 
 const DELIVERY: Record<ProductKind, string> = {

@@ -2,7 +2,7 @@
  * Buyers a creator brought over from another platform: people who paid for a
  * course or a download somewhere else, and keep it here without paying again.
  *
- * Every other purchase on Nimbus is read from the creator's own Stripe account
+ * Every other purchase on Marktmorgen is read from the creator's own Stripe account
  * (lib/buyer-orders.ts): Stripe is the ledger. These never went through Stripe
  * — nothing was charged, and no receipt exists — so they are the one kind of
  * purchase written down here, and they are always shown for what they are:

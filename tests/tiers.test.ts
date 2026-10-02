@@ -137,7 +137,7 @@ async function main(): Promise<void> {
   const tiers = await liveTiers(store);
   is("both on sale", tiers.map((t) => t.title), ["Basic", "Pro"]);
 
-  is("the link is emailed", await requestManageLink({ store, email: "dana@example.com", ip: "203.0.113.9", origin: "https://nimbuslabsai.com" }), "sent");
+  is("the link is emailed", await requestManageLink({ store, email: "dana@example.com", ip: "203.0.113.9", origin: "https://marktmorgen.com" }), "sent");
   const link = emails.at(-1)!;
   is("which says switching is there", link.text.includes("switch to another plan"), true);
   const token = /token=([0-9a-f]{64})/.exec(link.text)![1];

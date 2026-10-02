@@ -74,7 +74,7 @@ export function CreatorResearchForm() {
           consentFollowUp
             ? "If a follow-up question would help, I'll email you."
             : consentUpdates
-              ? "I'll email you only when Nimbus Labs adds something for creators."
+              ? "I'll email you only when Marktmorgen adds something for creators."
               : "You won't get any email from us about it.",
         );
         setStatus("sent");

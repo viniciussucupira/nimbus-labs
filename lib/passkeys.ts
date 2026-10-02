@@ -9,7 +9,7 @@
  *
  * What we keep is the public half of each key and a counter; the private
  * half never leaves the creator's device, so there is nothing here that
- * would let anyone log in if it leaked. The key is bound to nimbuslabsai.com,
+ * would let anyone log in if it leaked. The key is bound to marktmorgen.com,
  * where the studio lives; a store on a creator's own domain never logs a
  * creator in. Every sign-in with a passkey needs the device's own check — a
  * fingerprint, a face, a PIN — not only its presence.
@@ -47,11 +47,11 @@ const CHALLENGE_SECONDS = 5 * 60;
 export const PASSKEY_COOKIE = "nl_pk";
 
 /**
- * Where passkeys are bound: nimbuslabsai.com. A local test run may point this
+ * Where passkeys are bound: marktmorgen.com. A local test run may point this
  * at http://localhost:<port>, and at nothing else, because a passkey for one
  * site can never be used on another and localhost is where a test browser is.
  * The production deployment ignores it, so a variable left behind by mistake
- * can never move sign-ins off nimbuslabsai.com.
+ * can never move sign-ins off marktmorgen.com.
  */
 const LOCAL =
   process.env.VERCEL_ENV !== "production" && /^http:\/\/localhost:\d{2,5}$/.test(process.env.PASSKEY_LOCAL_ORIGIN ?? "")
@@ -59,7 +59,7 @@ const LOCAL =
     : null;
 export const RP_ID = LOCAL ? "localhost" : new URL(SITE_URL).hostname;
 const ORIGIN = LOCAL ?? SITE_URL;
-const RP_NAME = "Nimbus Labs";
+const RP_NAME = "Marktmorgen";
 
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 const listKey = (email: string) => `nl:pk:${sha(`nimbus-passkeys:${normaliseEmail(email)}`).slice(0, 40)}`;
@@ -137,7 +137,7 @@ async function tell(email: string, subject: string, line: string): Promise<void>
   await sendEmail({
     from: NIMBUS_FROM,
     to: normaliseEmail(email),
-    replyTo: "support@nimbuslabsai.com",
+    replyTo: "support@marktmorgen.com",
     subject,
     text: [
       line,
@@ -222,7 +222,7 @@ export async function addPasskey(
     synced: credentialBackedUp,
   };
   await saveList(address, [...list, passkey]);
-  await tell(address, "A passkey was added to your Nimbus Labs account", `A passkey called “${headerText(passkey.name, 60)}” was added to your Nimbus Labs account (${address}). It can now log in to your studio.`);
+  await tell(address, "A passkey was added to your Marktmorgen account", `A passkey called “${headerText(passkey.name, 60)}” was added to your Marktmorgen account (${address}). It can now log in to your studio.`);
   return { ok: true, passkey };
 }
 
@@ -234,7 +234,7 @@ export async function removePasskey(email: string, id: string): Promise<boolean>
   if (!gone) return false;
   await saveList(address, list.filter((p) => p.id !== id));
   await redisPipeline([["DEL", credKey(id)]]);
-  await tell(address, "A passkey was removed from your Nimbus Labs account", `The passkey called “${headerText(gone.name, 60)}” was removed from your Nimbus Labs account (${address}). It cannot log in anymore.`);
+  await tell(address, "A passkey was removed from your Marktmorgen account", `The passkey called “${headerText(gone.name, 60)}” was removed from your Marktmorgen account (${address}). It cannot log in anymore.`);
   return true;
 }
 

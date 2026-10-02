@@ -17,11 +17,11 @@ export const HOME_QUESTIONS = [
     a: "You do. Payments go to your own Stripe account through direct charges, so payouts follow your Stripe settings and we never sit between you and your buyer's money. We charge a monthly subscription and take 0% of your sales.",
   },
   {
-    q: "What happens if Nimbus Labs disappears?",
+    q: "What happens if Marktmorgen disappears?",
     a: "Your Stripe account, your customers and your payouts stay yours, because they were never held by us. Your email list downloads as a file at any time, and a shutdown would come with notice in writing.",
   },
   {
-    q: "What does Stan have that Nimbus does not, yet?",
+    q: "What does Stan have that Marktmorgen does not, yet?",
     a: "Among other things: automatic Instagram replies, PayPal, an iPhone app from the App Store, Zoom links made for each booking and webinar, paying affiliates for you automatically, and stores with no limit on products, where ours hold 2,000. What we have in their place: a studio that installs from the browser with notifications, Google Meet links made on your own Google Calendar, a private Jitsi Meet room for each booking and each live event, and an affiliate program you pay out yourself. Each gap is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
   },
   {

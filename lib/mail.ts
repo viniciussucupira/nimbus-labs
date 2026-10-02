@@ -231,7 +231,7 @@ export function render(store: Store, subject: string, body: string, token: strin
 <p style="margin:0 0 8px">${escape(why)}</p>
 <p style="margin:0 0 8px"><a href="${escape(unsub)}" style="color:#57534e;text-decoration:underline">${escape(label)}</a> ${escape(after)}</p>
 ${address ? `<p style="margin:0 0 8px">${escape(fromName)} · ${escape(address)}</p>` : ""}
-<p style="margin:0">Sent with Nimbus Labs.</p>
+<p style="margin:0">Sent with Marktmorgen.</p>
 </div></div></body></html>`;
   const text = [
     body.trim(),
@@ -240,7 +240,7 @@ ${address ? `<p style="margin:0 0 8px">${escape(fromName)} · ${escape(address)}
     why,
     door ? `${door.label}: ${unsub}` : `Unsubscribe in one click: ${unsub}`,
     address ? `${fromName} · ${address}` : "",
-    "Sent with Nimbus Labs.",
+    "Sent with Marktmorgen.",
   ]
     .filter((line, i, all) => line !== "" || all[i - 1] !== "")
     .join("\n");

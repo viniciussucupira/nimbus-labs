@@ -14,7 +14,7 @@ import { levelOf, pointsOf } from "@/lib/community-points";
 type Params = { params: Promise<{ handle: string }>; searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
 export const metadata: Metadata = {
-  title: "Members — Nimbus Labs",
+  title: "Members — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

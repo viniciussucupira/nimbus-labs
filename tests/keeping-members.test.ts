@@ -61,7 +61,7 @@ const base = {
   storeName: "Harbor Kitchen",
   amount: "$29",
   payUrl: "https://invoice.stripe.com/i/acct_x/test_abc",
-  manageUrl: "https://nimbuslabsai.com/@harbor/manage",
+  manageUrl: "https://marktmorgen.com/@harbor/manage",
 };
 const member = failedPaymentEmail({ ...base, title: "The Inner Circle Membership", isPlan: false });
 is("the subject says what happened, from whom", member.subject, "Your payment to Harbor Kitchen didn't go through");

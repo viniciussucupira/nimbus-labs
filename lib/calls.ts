@@ -905,7 +905,7 @@ async function tellMoved(input: {
   }
 
   await sendEmail({
-    from: `"Nimbus Labs" <${senderAddress()}>`,
+    from: `"Marktmorgen" <${senderAddress()}>`,
     to: store.email,
     subject: `Moved: ${product.title}, now ${readableTime(start, setup.tz)}`,
     text: [
@@ -943,11 +943,11 @@ export function callInvite(input: {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Nimbus Labs//Paid calls//EN",
+    "PRODID:-//Marktmorgen//Paid calls//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:${input.uid}@nimbuslabsai.com`,
+    `UID:${input.uid}@marktmorgen.com`,
     `DTSTAMP:${icsTime(Date.now())}`,
     `SEQUENCE:${input.sequence ?? 0}`,
     `DTSTART:${icsTime(input.start)}`,
@@ -985,7 +985,7 @@ export function senderAddress(): string {
 
 /** The From line of an email a buyer gets about a creator's call. */
 export function storeSender(store: Store): string {
-  return `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`;
+  return `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`;
 }
 
 /**
@@ -1110,7 +1110,7 @@ export async function confirmBooking(input: {
   }
 
   await sendEmail({
-    from: `"Nimbus Labs" <${senderAddress()}>`,
+    from: `"Marktmorgen" <${senderAddress()}>`,
     to: store.email,
     subject: `New booking: ${product.title}, ${readableTime(start, setup.tz)}`,
     text: [
@@ -1222,7 +1222,7 @@ export async function tellNewLink(input: {
     if (sent) told += 1;
   }
   await sendEmail({
-    from: `"Nimbus Labs" <${senderAddress()}>`,
+    from: `"Marktmorgen" <${senderAddress()}>`,
     to: store.email,
     subject: `${name} link made: ${product.title}, ${readableTime(meeting.start, setup.tz)}`,
     text: [

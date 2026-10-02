@@ -134,7 +134,7 @@ export function HeroFlow() {
               <div className="flex items-center justify-between px-4 pb-1 pt-2.5 text-[10px] font-semibold text-ink-mute">
                 <span>9:41</span>
                 <span className="rounded-[5px] bg-white px-1.5 py-0.5 text-[9px] text-ink-soft ring-1 ring-line">
-                  nimbuslabsai.com/demo
+                  marktmorgen.com/demo
                 </span>
               </div>
               <div className="px-3.5 pb-4 pt-2">
@@ -297,7 +297,7 @@ export function HeroFlow() {
               </span>
               <span className="min-w-0">
                 <span className="block text-[12px] font-semibold text-white">Your Stripe account</span>
-                <span className="block text-[10.5px] text-white/70">Nimbus takes $0.00</span>
+                <span className="block text-[10.5px] text-white/70">Marktmorgen takes $0.00</span>
               </span>
             </span>
             <span
@@ -562,7 +562,7 @@ function CostAtVolume() {
         <thead>
           <tr className="text-ink-mute">
             <th scope="col" className="py-2 pr-2 font-semibold">Your sales</th>
-            <th scope="col" className="px-2 py-2 font-semibold text-violet-deep">Nimbus</th>
+            <th scope="col" className="px-2 py-2 font-semibold text-violet-deep">Marktmorgen</th>
             <th scope="col" className="px-2 py-2 font-semibold">Stan Creator</th>
             <th scope="col" className="py-2 pl-2 font-semibold">Gumroad</th>
           </tr>
@@ -598,7 +598,7 @@ function CostAtVolume() {
               </p>
               <dl className="mt-3 grid gap-1.5 border-t border-line pt-3 text-sm tabular-nums">
                 {[
-                  { k: "Nimbus", v: money(flat), ours: true },
+                  { k: "Marktmorgen", v: money(flat), ours: true },
                   { k: "Stan Creator", v: money(flat), ours: false },
                   { k: "Gumroad", v: money(gumroad), ours: false },
                 ].map((r) => (
@@ -613,7 +613,7 @@ function CostAtVolume() {
         })}
       </ul>
       <p className="mt-3 text-xs text-ink-mute">
-        {`Nimbus Labs and Stan's Creator plan are both $${flat} a month with 0% of sales; Nimbus Labs Pro and Stan's Creator Pro are both $${PLAN_PRICES.pro.month / 100}. Gumroad takes 10% plus 50 cents on a sale you bring yourself and has no monthly fee, so under about nine sales a month it costs less. Prices read on each company's own pricing page on September 20, 2026.`}
+        {`Marktmorgen and Stan's Creator plan are both $${flat} a month with 0% of sales; Marktmorgen Pro and Stan's Creator Pro are both $${PLAN_PRICES.pro.month / 100}. Gumroad takes 10% plus 50 cents on a sale you bring yourself and has no monthly fee, so under about nine sales a month it costs less. Prices read on each company's own pricing page on September 20, 2026.`}
       </p>
     </div>
   );

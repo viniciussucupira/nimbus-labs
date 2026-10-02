@@ -19,7 +19,7 @@ import { pageAction, pricePill, productPath } from "@/components/store-product";
 import { PageEditor } from "@/components/page-editor";
 
 export const metadata: Metadata = {
-  title: "Sales pages — Nimbus Labs",
+  title: "Sales pages — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

@@ -1,7 +1,7 @@
 /**
  * Selling with PayPal: the buyer pays straight into the creator's own PayPal
  * account, through PayPal's platform program (Multiparty), and nothing passes
- * through Nimbus.
+ * through Marktmorgen.
  *
  *   nl:ppsell:o:<order>      an order opened: which store, which product, the price asked (3 days)
  *   nl:ppsell:paid:<order>   an order paid: the capture, the buyer's address (kept 400 days)
@@ -9,10 +9,10 @@
  *   nl:ppsell:pending:<stats> orders whose payment PayPal holds as pending, until it completes or fails
  *   nl:ppsell:own:<stats>:<address hash>:<product>  the paid orders behind one address's product
  *
- * How it fits together. Nimbus is a PayPal partner; a creator connects their
+ * How it fits together. Marktmorgen is a PayPal partner; a creator connects their
  * PayPal Business account through PayPal's own onboarding (Partner Referrals
  * v2), granting it PAYMENT and REFUND. An order names the creator's account as
- * its payee, so the money is the creator's from the first second; Nimbus asks
+ * its payee, so the money is the creator's from the first second; Marktmorgen asks
  * for no fee. When the buyer comes back from PayPal, the order is captured
  * and the purchase is written down under the buyer's PayPal address with
  * lib/imported-purchases.ts — the same record a gift or a purchase brought
@@ -166,7 +166,7 @@ export function referralBody(store: Store, returnUrl: string): Record<string, un
     ],
     products: ["EXPRESS_CHECKOUT"],
     legal_consents: [{ type: "SHARE_DATA_CONSENT", granted: true }],
-    partner_config_override: { return_url: returnUrl, return_url_description: "Back to your Nimbus Labs studio" },
+    partner_config_override: { return_url: returnUrl, return_url_description: "Back to your Marktmorgen studio" },
   };
 }
 
@@ -185,7 +185,7 @@ export type SellerCheck = { ok: true; merchant: string } | { ok: false; reason: 
  * Asks PayPal which account finished onboarding for this store, by the
  * store's own tracking id — never by an id the browser brought back — and
  * checks it: it can be paid, its email address is confirmed, and it granted
- * Nimbus the permissions asked for. PayPal's own words for each.
+ * Marktmorgen the permissions asked for. PayPal's own words for each.
  */
 export async function checkSeller(trackingId: string): Promise<SellerCheck> {
   const p = partner();

@@ -151,7 +151,7 @@ async function readFeed(url: string, fallbackTz: string, now: number, fetchOptio
   const answer = await safeFetch(url, {
     maxBytes: FEED_MAX_BYTES,
     timeoutMs: FEED_TIMEOUT_MS,
-    headers: { Accept: "text/calendar, text/plain;q=0.8, */*;q=0.1", "User-Agent": "NimbusLabs-Calendar/1.0 (+https://nimbuslabsai.com)" },
+    headers: { Accept: "text/calendar, text/plain;q=0.8, */*;q=0.1", "User-Agent": "Marktmorgen-Calendar/1.0 (+https://marktmorgen.com)" },
     ...fetchOptions,
   });
   if (answer.status === 401 || answer.status === 403 || answer.status === 404 || answer.status === 410) {
@@ -395,7 +395,7 @@ export type BookedCall = {
  * Every booked call and dated session still to come (and those of the last
  * week), as a calendar file. A one-to-one call is one event named after its
  * buyer; a group call or a session is one event with everybody booked into it
- * listed. Every event id ends in @nimbuslabsai.com, which is also how a
+ * listed. Every event id ends in @marktmorgen.com, which is also how a
  * calendar read back in (above) knows these are ours and not busy time.
  */
 export function bookedCalendar(
@@ -428,7 +428,7 @@ export function bookedCalendar(
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Nimbus Labs//Bookings//EN",
+    "PRODID:-//Marktmorgen//Bookings//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${icsText(`${store.name} bookings`)}`,
@@ -458,11 +458,11 @@ export function bookedCalendar(
       ...(video ? [VIDEO_ROOM_NOTE] : []),
       ...(!room && setup?.video ? ["", "A private video room is made for it when the first person books."] : []),
       "",
-      "From your Nimbus Labs studio.",
+      "From your Marktmorgen studio.",
     ].join("\n");
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${single ? single.session : `${slot.product}-${slot.start}`}@nimbuslabsai.com`,
+      `UID:${single ? single.session : `${slot.product}-${slot.start}`}@marktmorgen.com`,
       `DTSTAMP:${icsTime(now)}`,
       `SEQUENCE:${single ? single.moves : 0}`,
       `DTSTART:${icsTime(slot.start)}`,

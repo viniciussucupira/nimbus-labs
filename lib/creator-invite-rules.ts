@@ -1,5 +1,5 @@
 /**
- * The terms of inviting another creator to Nimbus Labs, in one place.
+ * The terms of inviting another creator to Marktmorgen, in one place.
  *
  * Read by the job that adds the credit, by the studio page that shows it, by
  * the invite page a new creator lands on, and by the public pages and the
@@ -21,7 +21,7 @@
  *
  * Here it is half of every payment, for as long as they pay, and the new
  * creator gets a whole month of the plan back after their first payment. It
- * is paid as credit on the inviting creator's own Nimbus Labs plan, and that
+ * is paid as credit on the inviting creator's own Marktmorgen plan, and that
  * is said everywhere it is offered: two creators who stay pay for the plan of
  * whoever brought them, and credit beyond that stays on the account for the
  * months after. It is credit rather than cash because credit is what reaches

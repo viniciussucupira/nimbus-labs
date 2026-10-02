@@ -17,7 +17,7 @@ import { proveDomain } from "@/lib/domain-proof";
  *
  *   { action: "connect", name }   adds it, and answers with the records to add
  *   { action: "check" }           looks again, after the creator added them
- *   { action: "remove" }          takes it off; the nimbuslabsai.com address stays
+ *   { action: "remove" }          takes it off; the marktmorgen.com address stays
  *
  * Only the signed-in creator's own store is touched: nothing in the request
  * names a store.
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       if (proof === "taken") return fail("taken", 409);
       let status = await domainStatus(store.domain.name, store);
       // A domain in use elsewhere at Vercel: ask Vercel to look at its TXT record now.
-      if (status && !status.live && status.records.some((r) => r.type === "TXT" && !r.name.startsWith("_nimbus"))) {
+      if (status && !status.live && status.records.some((r) => r.type === "TXT" && !r.name.startsWith("_marktmorgen"))) {
         await verifyDomain(store.domain.name);
         status = await domainStatus(store.domain.name, store);
       }

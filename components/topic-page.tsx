@@ -309,11 +309,11 @@ function BlockView({ block }: { block: Block }) {
                 <p className="font-semibold text-ink">{row[0]}</p>
                 <dl className="mt-3 grid gap-2 text-[0.9375rem]">
                   <div className="flex gap-3">
-                    <dt className="w-20 shrink-0 text-ink-mute">{block.head[1]}</dt>
+                    <dt className="w-28 shrink-0 text-ink-mute">{block.head[1]}</dt>
                     <dd className="text-ink-soft">{row[1]}</dd>
                   </div>
                   <div className="flex gap-3">
-                    <dt className="w-20 shrink-0 font-semibold text-violet-deep">{block.head[2]}</dt>
+                    <dt className="w-28 shrink-0 font-semibold text-violet-deep">{block.head[2]}</dt>
                     <dd className="font-medium text-ink">{row[2]}</dd>
                   </div>
                 </dl>

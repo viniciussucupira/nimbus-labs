@@ -6,7 +6,7 @@ import { onboardingUrl, paypalSalesConfigured } from "@/lib/paypal-sales";
 /**
  * Sends the creator into PayPal's own onboarding to connect their PayPal
  * Business account for selling (lib/paypal-sales.ts). PayPal asks them to
- * sign in, or open an account, and to grant Nimbus the right to take
+ * sign in, or open an account, and to grant Marktmorgen the right to take
  * payments into it and refund them. Nothing here sees their password.
  */
 export async function POST(request: NextRequest) {

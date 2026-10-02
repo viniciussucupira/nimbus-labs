@@ -7,9 +7,9 @@ import { SiteNav } from "@/components/site-nav";
 import { SUPPORT_EMAIL } from "@/lib/creator-research";
 
 export const metadata: Metadata = {
-  title: "Selling digital products? Tell me what's broken — Nimbus Labs",
+  title: "Selling digital products? Tell me what's broken — Marktmorgen",
   description:
-    "Nimbus Labs is talking to creators who sell guides, courses, templates and paid calls before building its next tool. Share what's hard about selling online.",
+    "Marktmorgen is talking to creators who sell guides, courses, templates and paid calls before building its next tool. Share what's hard about selling online.",
 };
 
 const PROMISES = [
@@ -55,7 +55,7 @@ export default function CreatorsPage() {
               </h1>
               <div className="t-lead mt-6 max-w-2xl space-y-4 text-white/80">
                 <p>
-                  I&apos;m Vinicius, the founder of Nimbus Labs. Before we build our next tool, I&apos;m talking to creators
+                  I&apos;m Vinicius, the founder of Marktmorgen. Before we build our next tool, I&apos;m talking to creators
                   who sell guides, courses, templates and paid calls from their link in bio.
                 </p>
                 <p>

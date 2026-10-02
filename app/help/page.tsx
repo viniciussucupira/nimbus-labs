@@ -16,7 +16,7 @@ function answerId(q: string): string {
 }
 
 export const metadata: Metadata = {
-  title: "Help center — Nimbus Labs",
+  title: "Help center — Marktmorgen",
   description:
     "Straight answers about the store, the money, the files and what the subscription buys. If an answer is “not yet,” it says not yet.",
 };
@@ -35,11 +35,11 @@ const SECTIONS: Section[] = [
     id: "getting-started",
     emoji: "🚀",
     title: "Getting started",
-    blurb: "What Nimbus is right now, and what it costs to start.",
+    blurb: "What Marktmorgen is right now, and what it costs to start.",
     tone: "bg-lilac",
     items: [
       {
-        q: "What is Nimbus today?",
+        q: "What is Marktmorgen today?",
         a: [
           "You sign up, take your own store address and build the page: its name, its description, and what you sell with its price. You connect your own Stripe account, and once Stripe has cleared it and your plan or free trial is running, your page can take a card. The money is charged on your account, not ours.",
           "You can see the whole path before signing up. The demo store has price options on a product, a Stripe checkout made on the creator's own account, and the file delivered the second the payment clears. You can buy from it with a test card.",
@@ -154,7 +154,7 @@ const SECTIONS: Section[] = [
         ],
       },
       {
-        q: "What does Nimbus take from a sale?",
+        q: "What does Marktmorgen take from a sale?",
         a: [
           "Nothing. 0% of your sales, with no asterisk. Our only income is the subscription.",
           "Stripe charges its own processing fee on each payment, published on Stripe's own pricing page, and that is taken on your account by Stripe.",
@@ -178,7 +178,7 @@ const SECTIONS: Section[] = [
       {
         q: "Can my buyers pay with PayPal?",
         a: [
-          "Do not count on it. Nimbus runs on Stripe and only Stripe, and your buyers are offered the ways to pay you switch on in your own Stripe account. Every sale here is a direct charge on that account, and Stripe's documentation, read on September 28, 2026, lists PayPal as not supported for direct charges. Stripe also offers PayPal only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein. So even if your Stripe dashboard shows PayPal as on, your buyers should not expect it at checkout here.",
+          "Do not count on it. Marktmorgen runs on Stripe and only Stripe, and your buyers are offered the ways to pay you switch on in your own Stripe account. Every sale here is a direct charge on that account, and Stripe's documentation, read on September 28, 2026, lists PayPal as not supported for direct charges. Stripe also offers PayPal only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein. So even if your Stripe dashboard shows PayPal as on, your buyers should not expect it at checkout here.",
           "Stan lets creators take PayPal, Beacons offers it too, and on this one we are behind them. The other road would be a second, separate integration with PayPal, which means a second checkout, a second refund path and a second dispute queue to keep working. We would rather have one that never breaks than two that sometimes do.",
           "Two things follow from that, and you should know them before you sign up. You need a Stripe account in one of the 43 countries the studio offers \u2014 the United States, Canada, the United Kingdom, Australia, Japan, Singapore, Mexico and most of Europe among them, but not everywhere. And a buyer who has only a PayPal balance and no card, wallet or other way to pay cannot buy from you here.",
         ],
@@ -198,7 +198,7 @@ const SECTIONS: Section[] = [
         ],
       },
       {
-        q: "What about refunds on the Nimbus subscription itself?",
+        q: "What about refunds on the Marktmorgen subscription itself?",
         a: [
           "Ask within 14 days of a charge and we refund that charge in full, including renewals. You can cancel at any time and keep access until the end of the period you already paid for. The refund policy page has the exact wording.",
         ],
@@ -207,7 +207,7 @@ const SECTIONS: Section[] = [
         q: "Do I get anything for inviting another creator?",
         a: [
           `Yes: ${INVITE_SHARE_PERCENT}% of every payment they make to us, for as long as they pay, on either plan, monthly or yearly. Your invite link is in your studio, under Invite creators. It counts when they accept it and then make their first store, and not for an account that paid us before, or one of your own.`,
-          `It is credit on your own Nimbus Labs plan, not cash. It is added ${INVITE_HOLD_DAYS} days after each of their payments, once its refund window has closed, and Stripe takes it off your next bills by itself; two creators on the same plan as yours pay for it, and anything left over stays on your account. If you have not started your plan yet, it waits until you do.`,
+          `It is credit on your own Marktmorgen plan, not cash. It is added ${INVITE_HOLD_DAYS} days after each of their payments, once its refund window has closed, and Stripe takes it off your next bills by itself; two creators on the same plan as yours pay for it, and anything left over stays on your account. If you have not started your plan yet, it waits until you do.`,
           `The creator you invite gets ${formatMoney(INVITE_BONUS_CENTS, "usd")} of credit on their own plan ${INVITE_HOLD_DAYS} days after their first payment. For comparison, Stan pays 20% of each payment in cash, only while you pay Stan too, and names no bonus for the creator invited, in its help center article 'What is Stan's Referral Program?', read on September 30, 2026.`,
         ],
       },
@@ -453,8 +453,8 @@ const SECTIONS: Section[] = [
       {
         q: "Can I connect Zapier, Make or my own server?",
         a: [
-          "Yes, with webhooks. Add up to five https addresses in your studio and choose the events each one hears: a sale, a membership started or canceled, a lead confirmed for a free product, a call booked or moved, and a refund. Each message is JSON, signed with an HMAC-SHA256 in its Nimbus-Signature header, and tried again over about forty hours if the address does not answer. Your studio keeps a log of the last deliveries for up to a week, and a button sends a test.",
-          "There is no Nimbus app in Zapier's directory: in Zapier, use Webhooks by Zapier with a Catch Hook. Events read from your Stripe account can take up to about five minutes to arrive.",
+          "Yes, with webhooks. Add up to five https addresses in your studio and choose the events each one hears: a sale, a membership started or canceled, a lead confirmed for a free product, a call booked or moved, and a refund. Each message is JSON, signed with an HMAC-SHA256 in its Marktmorgen-Signature header, and tried again over about forty hours if the address does not answer. Your studio keeps a log of the last deliveries for up to a week, and a button sends a test.",
+          "There is no Marktmorgen app in Zapier's directory: in Zapier, use Webhooks by Zapier with a Catch Hook. Events read from your Stripe account can take up to about five minutes to arrive.",
           "To read your store from your own tools instead — your list, your community's members, a course's students, your affiliates and your bookings — make an API key in your studio, on every plan. The API reads and changes nothing; the developers page lists every address and what it returns.",
         ],
       },
@@ -483,7 +483,7 @@ const SECTIONS: Section[] = [
         a: [
           ...(isDomainsConfigured()
             ? [
-                "Yes, on Pro. In your studio, type the domain you own — shop.yourname.com, or yourname.com — and we show you the two records to add where you bought it: one that sends visitors to your store, and a TXT record that proves the domain is yours, so no other store can use it. When they show up, your store opens on that domain, with its certificate handled for you. Your nimbuslabsai.com address keeps working too, and if Pro ends, visitors to the domain are sent there.",
+                "Yes, on Pro. In your studio, type the domain you own — shop.yourname.com, or yourname.com — and we show you the two records to add where you bought it: one that sends visitors to your store, and a TXT record that proves the domain is yours, so no other store can use it. When they show up, your store opens on that domain, with its certificate handled for you. Your marktmorgen.com address keeps working too, and if Pro ends, visitors to the domain are sent there.",
               ]
             : ["Not yet. It is next on the list, on Pro, and this page will say so on the day it works."]),
         ],
@@ -546,7 +546,7 @@ const SECTIONS: Section[] = [
         q: "How are my store and my buyers protected?",
         a: [
           "Sales are charged on Stripe's own checkout, on your own Stripe account, and what a buyer is charged is worked out on our server from what you saved. You sign in with a link sent to your email that works once and stops working after 15 minutes, or with a passkey if you add one. Each sign-in starts a fresh session, and \u201cLog out of all devices\u201d at the foot of your studio closes every session at once. When your Stripe account, your domain or your webhooks change, we email you saying what changed. What each role on your team may do is checked on our server for every request, the API key of an email platform you connect is stored encrypted, and reviews can be written only for orders your Stripe account says were paid.",
-          "Store pages, on our address and on your own domain, the studio and signing in carry a strict Content-Security-Policy with a new nonce on every response, so text somebody typed cannot run as a script. Your ad pixels load only after consent where the law asks for it. Every request that changes something must come from this site, our cookies are HttpOnly and SameSite, and pages carry HSTS, nosniff, a referrer policy, Cross-Origin-Opener-Policy and a Permissions-Policy, and cannot be framed by other sites. Links we email point only at nimbuslabsai.com or your store's own domain.",
+          "Store pages, on our address and on your own domain, the studio and signing in carry a strict Content-Security-Policy with a new nonce on every response, so text somebody typed cannot run as a script. Your ad pixels load only after consent where the law asks for it. Every request that changes something must come from this site, our cookies are HttpOnly and SameSite, and pages carry HSTS, nosniff, a referrer policy, Cross-Origin-Opener-Policy and a Permissions-Policy, and cannot be framed by other sites. Links we email point only at marktmorgen.com or your store's own domain.",
           "Files are handed over as downloads that cannot run anything in the browser. A full refund on your Stripe account closes what it paid for by itself: the download at once, the course within 10 minutes, the community within 5, and the license key within about 5; a partial refund keeps access. Checkouts are limited to 20 per 10 minutes per connection per store, and bookings and forms that send an email have limits too, so a script cannot sit on your limited stock or call times. Webhooks are signed, and calendar and webhook addresses cannot reach private networks.",
           "What it does not do: there is no two-factor sign-in, because there are no passwords, so keep your email inbox safe. On a payment plan only a refund in full of the first payment is detected, and a refunded membership closes when its subscription is canceled. If our database cannot be reached, the limits let requests through rather than stop a buyer from paying.",
         ],
@@ -676,7 +676,7 @@ export default function HelpPage() {
                   .
                 </p>
               </div>
-              <a href="mailto:support@nimbuslabsai.com" className="btn btn-primary shrink-0">
+              <a href="mailto:support@marktmorgen.com" className="btn btn-primary shrink-0">
                 <Icon name="mail" size={18} />
                 Email support
               </a>

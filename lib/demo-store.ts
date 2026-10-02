@@ -53,7 +53,7 @@ export const LOWEST_PRICE_CENTS = Math.min(
 
 // Stripe sandbox connected account of the fictional creator. Charges are made
 // directly on this account (direct charges), so the money lands with the
-// creator, not with Nimbus Labs.
+// creator, not with Marktmorgen.
 export const DEMO_CONNECTED_ACCOUNT = "acct_1UGdQH6rwR1Kc2eJ";
 
 // A buyer can download the file for this long after starting checkout.

@@ -19,7 +19,7 @@ import { formatMoney } from "@/lib/money";
 import { SITE_URL } from "@/lib/site-url";
 
 export const metadata: Metadata = {
-  title: "Invite creators — Nimbus Labs",
+  title: "Invite creators — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
@@ -78,7 +78,7 @@ export default async function StudioInvitePage({ searchParams }: Params) {
           <p className="eyebrow">Invite creators</p>
           <h1 className="t-h2 mt-3">{`${INVITE_SHARE_PERCENT}% of what they pay goes on your plan`}</h1>
           <p className="mt-3 max-w-2xl text-ink-soft">
-            {`Send your link to a creator who is not on Nimbus Labs yet. For every payment they make to us, for as long as they pay, ${INVITE_SHARE_PERCENT}% of it goes on your own plan as credit. Two creators who stay on the same plan as yours pay for it. They get ${money(INVITE_BONUS_CENTS)} of credit after their first payment, too.`}
+            {`Send your link to a creator who is not on Marktmorgen yet. For every payment they make to us, for as long as they pay, ${INVITE_SHARE_PERCENT}% of it goes on your own plan as credit. Two creators who stay on the same plan as yours pay for it. They get ${money(INVITE_BONUS_CENTS)} of credit after their first payment, too.`}
           </p>
 
           {view === null ? (
@@ -176,7 +176,7 @@ export default async function StudioInvitePage({ searchParams }: Params) {
                     {[
                       `Each payment they make earns you ${INVITE_SHARE_PERCENT}% of what they actually paid, monthly or yearly, on either plan, for as long as they pay.`,
                       `It is added ${INVITE_HOLD_DAYS} days after each payment, once its refund window has closed. A refunded payment earns nothing.`,
-                      "It is credit on your Nimbus Labs plan, not cash. Stripe uses it on your next bills by itself; what is left over stays on your account for the months after.",
+                      "It is credit on your Marktmorgen plan, not cash. Stripe uses it on your next bills by itself; what is left over stays on your account for the months after.",
                       "It counts for creators making their first store whose account has not paid us before. Your own stores do not count.",
                       `They get ${money(INVITE_BONUS_CENTS)} of credit on their own plan ${INVITE_HOLD_DAYS} days after their first payment.`,
                     ].map((line) => (

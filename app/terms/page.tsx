@@ -6,9 +6,9 @@ import { formatMoney } from "@/lib/money";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Nimbus Labs",
+  title: "Terms of Service — Marktmorgen",
   description:
-    "Terms of Service for Nimbus Labs: the creator store at nimbuslabsai.com, what a creator is responsible for when they sell through it, and how payment works.",
+    "Terms of Service for Marktmorgen: the creator store at marktmorgen.com, what a creator is responsible for when they sell through it, and how payment works.",
 };
 
 export default function TermsPage() {
@@ -17,12 +17,13 @@ export default function TermsPage() {
     <LegalPage title="Terms of Service" lastUpdated="September 30, 2026">
       <p>
         These Terms of Service (“Terms”) govern your access to and use of the
-        websites, products, and subscription services operated by Nimbus Labs
-        (“Nimbus Labs,” “we,” “us,” or “our”). They cover this website and the
-        Nimbus creator store (collectively, the “Services”).
+        websites, products, and subscription services operated by Solrenning
+        under the name Marktmorgen (“Marktmorgen,” “we,” “us,” or “our”). They
+        cover this website and the Marktmorgen creator store (collectively,
+        the “Services”).
       </p>
       <p>
-        Nimbus Labs is an independent software studio. We sell software to
+        Solrenning is an independent software studio. We sell software to
         customers worldwide. By creating an account, purchasing a subscription,
         or otherwise using the Services, you agree to these Terms. If you do
         not agree, do not use the Services.
@@ -40,10 +41,10 @@ export default function TermsPage() {
           are how you sign in. You are also responsible
           for all activity that occurs under your account. Notify us promptly at{" "}
           <a
-            href="mailto:support@nimbuslabsai.com"
+            href="mailto:support@marktmorgen.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            support@nimbuslabsai.com
+            support@marktmorgen.com
           </a>{" "}
           if you believe your account has been compromised.
         </p>
@@ -68,12 +69,12 @@ export default function TermsPage() {
 
       <LegalSection title="2. The Services">
         <p>
-          <strong className="text-black">The Nimbus creator store.</strong> A
+          <strong className="text-black">The Marktmorgen creator store.</strong> A
           hosted store page where a creator sells digital files, courses,
           memberships and calls, and can run a community for their buyers and
           an affiliate program. The buyer pays into the creator&apos;s own connected Stripe
           account, and the file is delivered as soon as the payment clears.
-          Nimbus Labs takes 0% of a creator&apos;s sales; what we charge a
+          Marktmorgen takes 0% of a creator&apos;s sales; what we charge a
           creator is a subscription for the store itself.
         </p>
         <p>
@@ -98,14 +99,14 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="3. Selling through a Nimbus store">
+      <LegalSection title="3. Selling through a Marktmorgen store">
         <p>
-          This section applies if you use Nimbus to sell to your own buyers.
+          This section applies if you use Marktmorgen to sell to your own buyers.
         </p>
         <p>
           <strong className="text-black">You are the seller.</strong> Each sale
           made through your store is a contract between you and your buyer.
-          Nimbus Labs is not a party to it, is not the merchant of record for
+          Marktmorgen is not a party to it, is not the merchant of record for
           it, and does not sell your products to anyone.
         </p>
         <p>
@@ -236,8 +237,8 @@ export default function TermsPage() {
           price will not apply to a period you have already paid for.
         </p>
         <p>
-          There are two plans. Nimbus Labs, at $29 a month or $300 a year,
-          includes everything you need to sell. Nimbus Labs Pro, at $99 a month or $948
+          There are two plans. Marktmorgen, at $29 a month or $300 a year,
+          includes everything you need to sell. Marktmorgen Pro, at $99 a month or $948
           a year, adds email to your list{domains ? " and your store on a domain you own" : ""},
           with up to 50,000 emails a month,
           counted together for one-off emails, sequences, community
@@ -252,7 +253,7 @@ export default function TermsPage() {
           <p>
             A domain you add stays yours: you keep it where you bought it and
             keep its settings. While your store is on Pro it opens your store;
-            when Pro ends, its visitors are sent to your nimbuslabsai.com
+            when Pro ends, its visitors are sent to your marktmorgen.com
             address, and you can take the domain off at any time.
           </p>
         ) : null}
@@ -324,7 +325,7 @@ export default function TermsPage() {
 
       <LegalSection title="9. Intellectual property">
         <p>
-          Nimbus Labs and its licensors own all rights in the Services,
+          Marktmorgen and its licensors own all rights in the Services,
           including the software, branding, design, and documentation. These
           Terms do not grant you any right to use our name, logos, or
           trademarks except as needed to identify the Services.
@@ -332,14 +333,14 @@ export default function TermsPage() {
         <p>
           You retain ownership of what you submit to the Services (“User
           Content”) — the files, images, text and descriptions you upload to
-          your store. You grant Nimbus Labs a limited license to host, store
+          your store. You grant Marktmorgen a limited license to host, store
           and deliver User Content solely to provide the Services: to show your
           store page to the people you send there, and to hand a file to the
           buyer who paid you for it. We do not use your files or your store&apos;s
           text to train anything, and we do not sell or license them to anyone.
         </p>
         <p>
-          That license lasts as long as you keep the content on Nimbus. When you
+          That license lasts as long as you keep the content on Marktmorgen. When you
           remove a product or close your store, it ends for the content removed.
         </p>
       </LegalSection>
@@ -356,7 +357,7 @@ export default function TermsPage() {
 
       <LegalSection title="11. Limitation of liability">
         <p>
-          TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, NIMBUS LABS AND
+          TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, MARKTMORGEN AND
           ITS OWNERS, OFFICERS, AND CONTRACTORS WILL NOT BE LIABLE FOR ANY
           INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR
           ANY LOSS OF PROFITS, DATA, OR GOODWILL, ARISING FROM YOUR USE OF THE
@@ -380,9 +381,9 @@ export default function TermsPage() {
 
       <LegalSection title="12. Indemnification">
         <p>
-          You agree to indemnify and hold Nimbus Labs harmless from claims
+          You agree to indemnify and hold Marktmorgen harmless from claims
           arising out of your User Content, the products you sell through a
-          Nimbus store, your use of the Services, or your violation of these
+          Marktmorgen store, your use of the Services, or your violation of these
           Terms or applicable law.
         </p>
       </LegalSection>
@@ -424,22 +425,22 @@ export default function TermsPage() {
 
       <LegalSection title="16. Contact">
         <p>
-          Nimbus Labs
+          Marktmorgen
           <br />
           Email:{" "}
           <a
-            href="mailto:support@nimbuslabsai.com"
+            href="mailto:support@marktmorgen.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            support@nimbuslabsai.com
+            support@marktmorgen.com
           </a>
           <br />
           Website:{" "}
           <a
-            href="https://nimbuslabsai.com"
+            href="https://marktmorgen.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            nimbuslabsai.com
+            marktmorgen.com
           </a>
         </p>
       </LegalSection>

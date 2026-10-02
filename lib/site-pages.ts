@@ -93,7 +93,7 @@ export const PAGES: TopicPage[] = [
         kind: "table",
         title: "The part that decides",
         note: "Sources: Stan's help center articles 'Creator vs. Creator Pro', 'How to Connect Stan with Stripe', 'How to Cash Out Inside Stan', 'Experiment: How to Connect an Existing Stripe Account' and 'How to Subscribe on the Stan Mobile App', read on September 18, 2026; 'Can I Create More Than One Stan Store?' and 'How to Change Your Stan Username or Email', read on September 19, 2026. The rows on products, prices, trials and the customer area re-checked on Stan's help center on September 26, 2026; 'Can I Create More Than One Stan Store?' re-read, and 'Can I Grant Administrative Access to a Team Member?' and 'How Can I Add My Customer Reviews?' read on September 27, 2026, and the rows on ways to pay and currency re-checked the same day. The rows on live events, bundles and moving from another platform from 'How to Add an Integrated Webinar to Community', 'Webinar Product', the Digital Downloads category, 'How to Import Your Existing Email List into Stan' and 'How Do I Manually Give Access or Add a Customer to a Product?', read on September 27, 2026. Stan's 14-day free trial from their article 'Stan Store Pricing 2026', read on September 28, 2026, the same day every other row was re-checked on their help center and the rows on the line about you and the customer area were corrected from 'How to Add or Update Your Profile Bio' and 'Common Feature Requests On Our Radar'. The row on inviting other creators from 'What is Stan's Referral Program?', read on September 30, 2026.",
-        head: ["", "Stan", "Nimbus Labs"],
+        head: ["", "Stan", "Marktmorgen"],
         rows: [
           ["Monthly price", "$29 and $99, free for the first 14 days", "$29 and $99, free for the first 14 days"],
           ["Paid yearly", "$300 and $948 a year", "$300 and $948 a year"],
@@ -168,7 +168,7 @@ export const PAGES: TopicPage[] = [
         kind: "table",
         title: "The part that decides",
         note: "Sources: Gumroad's pricing page and their help center articles 'Gumroad's fees', 'Getting paid by Gumroad', 'Connect your Stripe account to Gumroad' and 'Sales tax on Gumroad', all re-read on September 28, 2026.",
-        head: ["", "Gumroad", "Nimbus Labs"],
+        head: ["", "Gumroad", "Marktmorgen"],
         rows: [
           ["Cut of each sale", "10% + $0.50 direct, 30% via Discover", "0%"],
           ["Card fee on top of that", "2.9% + $0.30 for card processing. Their own fees page says the 10% + $0.50 does not include credit card processing", "Stripe's 2.9% + $0.30, and nothing else"],
@@ -194,7 +194,7 @@ export const PAGES: TopicPage[] = [
         title: "The same $27 file, on both",
         items: [
           { title: "On Gumroad", body: "10% of $27 is $2.70, plus $0.50, so $3.20 goes to Gumroad. Their own fees page says that figure does not include credit card processing, so card processing at 2.9% + $0.30 — about $1.08 — comes out as well. You keep $22.72." },
-          { title: "On Nimbus", body: "We take nothing. Stripe charges you its own published rate on your own account — about $1.08 on $27 — so you keep $25.92, and you pay us a fixed monthly price." },
+          { title: "On Marktmorgen", body: "We take nothing. Stripe charges you its own published rate on your own account — about $1.08 on $27 — so you keep $25.92, and you pay us a fixed monthly price." },
           { title: "The honest break-even", body: "The difference is $3.20 a sale, which is exactly Gumroad's cut, because the card fee is paid either way. At $29 a month the two cost you the same at about nine sales of $27. Below that, Gumroad is cheaper for you. Above it, the gap grows every month and never stops." },
           { title: "At a hundred sales", body: "Gumroad's cut is $320 that month. Ours is $29, whether you sell a hundred files or a thousand." },
         ],
@@ -240,7 +240,7 @@ export const PAGES: TopicPage[] = [
         kind: "table",
         title: "The part that decides",
         note: "Sources: Beacons' pricing page and their help center articles 'Beacons Products Transaction Fees' and 'When will I receive my payout from Product/Store Sales?', read on September 18, 2026. Plan prices, the fee quoted below and the rows on order bumps, memberships and courses re-checked on their pricing page and help center on September 28, 2026.",
-        head: ["", "Beacons", "Nimbus Labs"],
+        head: ["", "Beacons", "Marktmorgen"],
         rows: [
           ["Cut of each sale", "9% on the free and $10 plans. 0% from the $30 plan up", "0%, on every plan"],
           ["Monthly price", "$0, $10, $30 and $100", "$29 and $99, free for the first 14 days"],
@@ -265,7 +265,7 @@ export const PAGES: TopicPage[] = [
         items: [
           { title: "On their free or $10 plan", body: "9% of $27 is $2.43, and Stripe takes about $1.08 on top. You keep $23.49." },
           { title: "On their $30 plan", body: "Their cut is 0%, Stripe still takes about $1.08, so you keep $25.92 — and you pay $30 that month." },
-          { title: "On Nimbus", body: "Our cut is 0%, Stripe takes about $1.08, so you keep $25.92 — and you pay $29 that month." },
+          { title: "On Marktmorgen", body: "Our cut is 0%, Stripe takes about $1.08, so you keep $25.92 — and you pay $29 that month." },
           { title: "The honest break-even", body: "The 9% costs $2.43 a sale, so their free plan and our $29 cost you the same at about 12 sales of $27 a month. At a hundred sales, their 9% is $243 that month and ours is $29. Against their $30 plan there is no money in it at all: one dollar." },
         ],
       },
@@ -296,7 +296,7 @@ export const PAGES: TopicPage[] = [
         kind: "facts",
         title: "Performance score on mobile",
         items: [
-          { value: "97–100", label: "Nimbus Labs demo store", tone: "bg-mint-brand text-ink" },
+          { value: "97–100", label: "Marktmorgen demo store", tone: "bg-mint-brand text-ink" },
           { value: "57", label: "Two Stan stores, measured the same day", tone: "bg-ink text-white" },
           { value: "58", label: "A third Stan store, same test", tone: "bg-ink text-white" },
         ],
@@ -337,7 +337,7 @@ export const PAGES: TopicPage[] = [
         kind: "cards",
         title: "The commitments",
         items: [
-          { emoji: "🏦", title: "We never hold your sales", body: "Your money is charged on your own Stripe account, so there is no Nimbus balance to freeze, delay or set a minimum on.", tint: "bg-mint-brand/15 text-mint-deep" },
+          { emoji: "🏦", title: "We never hold your sales", body: "Your money is charged on your own Stripe account, so there is no Marktmorgen balance to freeze, delay or set a minimum on.", tint: "bg-mint-brand/15 text-mint-deep" },
           { emoji: "🙋", title: "A person answers you", body: "Support is a human writing back. No chatbot standing between you and your money.", tint: "bg-violet-brand/10 text-violet-deep" },
           { emoji: "🚪", title: "You can always leave", body: "Download your sales history, with each buyer's email address, and your email list as files whenever you want, free, without asking us.", tint: "bg-sky-brand/15 text-sky-brand" },
           { emoji: "🌐", title: "Your domain stays yours", body: "If you bring a domain, you remain the owner of it and keep access to its settings. No exit fee.", tint: "bg-pink-brand/10 text-pink-brand" },
@@ -366,7 +366,7 @@ export const PAGES: TopicPage[] = [
     title: "Feature by feature,",
     highlight: "against Stan",
     intro:
-      "Everything Stan publicly offers, and exactly where Nimbus Labs stands on each line. Stan's side was read from its own help center, app store listings and blog on September 17, 2026; the rows on the store, what you can sell, checkout and marketing were re-checked on its help center on September 26, and the rows on stores, teams, reviews, calls, ways to pay, currency, funnels, email platforms, webinars, bundles and imports on September 27. On September 28, the rows were read against its help center again, and the rows on the line about you, sales pages, teams, physical products and quizzes were corrected. The row on inviting other creators was read from Stan's referral program article on September 30, the row on packages of sessions from its coaching call article the same day, and the row on members switching plans from its article on membership prices. Everything in the Nimbus Labs column works today; nothing there is a promise.",
+      "Everything Stan publicly offers, and exactly where Marktmorgen stands on each line. Stan's side was read from its own help center, app store listings and blog on September 17, 2026; the rows on the store, what you can sell, checkout and marketing were re-checked on its help center on September 26, and the rows on stores, teams, reviews, calls, ways to pay, currency, funnels, email platforms, webinars, bundles and imports on September 27. On September 28, the rows were read against its help center again, and the rows on the line about you, sales pages, teams, physical products and quizzes were corrected. The row on inviting other creators was read from Stan's referral program article on September 30, the row on packages of sessions from its coaching call article the same day, and the row on members switching plans from its article on membership prices. Everything in the Marktmorgen column works today; nothing there is a promise.",
     badge: PROOF,
     accent: "from-violet-brand to-mint-brand",
     blocks: [
@@ -378,7 +378,7 @@ export const PAGES: TopicPage[] = [
         kind: "table",
         title: "Apps and devices",
         note: "Stan's help center, article 406, read September 17, 2026: the Stan app is \u201ccurrently only available on iPhone and iPad through the iOS App Store.\u201d",
-        head: ["", "Stan", "Nimbus Labs"],
+        head: ["", "Stan", "Marktmorgen"],
         rows: [
           ["iPhone app", "Yes \u2014 a creator app, rated 4.9 stars on the App Store", "Not available \u2014 Stan is ahead here. The studio installs to the home screen instead, and sends notifications of sales and bookings on iOS 16.4 or later"],
           ["Android app", "No \u2014 none, by their own documentation", "Not available. The studio installs to the home screen instead, and sends notifications of sales and bookings"],
@@ -390,7 +390,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "table",
         title: "The store",
-        head: ["", "Stan", "Nimbus Labs"],
+        head: ["", "Stan", "Marktmorgen"],
         rows: [
           ["Store page on a phone", "Yes", "Yes, and faster (97\u2013100 against 57\u201358 on PageSpeed)"],
           ["Themes and colors", "Yes, limited", "Yes \u2014 four themes, ten colors or any color of your own, and your photo. Every color is checked for contrast before your page uses it"],
@@ -410,7 +410,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "table",
         title: "What you can sell",
-        head: ["", "Stan", "Nimbus Labs"],
+        head: ["", "Stan", "Marktmorgen"],
         rows: [
           ["Digital downloads", "Yes, up to 5 GB", "Yes, up to 5 GB"],
           ["Selling something bigger", "Their help center: host it on Google Drive or Dropbox and use Redirect to URL", "Sell it as a link. Same escape hatch, and we say so on the product itself"],
@@ -441,7 +441,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "table",
         title: "Checkout and money",
-        head: ["", "Stan", "Nimbus Labs"],
+        head: ["", "Stan", "Marktmorgen"],
         rows: [
           ["Cut of each sale", "0%", "0%"],
           ["Whose Stripe account", "One managed by the platform", "Yours"],
@@ -459,13 +459,13 @@ export const PAGES: TopicPage[] = [
           ["Payment plans", "Yes, on the $99 plan", "Yes, on the $29 plan: 2 to 12 weekly or monthly payments, ending by themselves after the last"],
           ["Sales tax collection", "Yes", "Yes \u2014 Stripe Tax on your own account, once your Stripe tax setup is done"],
           ["Logging in", "An account with a password, by their own signup page", "A link sent to your email that works once, for 15 minutes, or a passkey if you add one, and no password kept here. Log out of all devices in one click"],
-          ["What a full refund closes", "Not something we can check from outside", "On Nimbus: the download at once, the course within 10 minutes, the community within 5, and the license key revoked within about 5. On a payment plan, a full refund of its first payment does the same"],
+          ["What a full refund closes", "Not something we can check from outside", "On Marktmorgen: the download at once, the course within 10 minutes, the community within 5, and the license key revoked within about 5. On a payment plan, a full refund of its first payment does the same"],
         ],
       },
       {
         kind: "table",
         title: "Marketing",
-        head: ["", "Stan", "Nimbus Labs"],
+        head: ["", "Stan", "Marktmorgen"],
         rows: [
           ["Email broadcasts and flows", "Yes, on the $99 plan only", "Yes, on the $99 Pro plan: one-off emails, emails scheduled for later and sequences that send themselves, up to 50,000 a month, only to people who agreed"],
           ["Abandoned-checkout email", "Yes \u2014 a flow with an abandoned-cart trigger, on the $99 plan", "One reminder per checkout, on the $29 plan, only to buyers who agreed on Stripe's page. Off until you switch it on, and only for a Stripe account in the United States. Not for calls or live sessions"],
@@ -516,7 +516,7 @@ export const PAGES: TopicPage[] = [
         items: [
           { title: "Can I sign up and sell today?", body: "Yes. You take your store address, put what you sell on the page, connect your own Stripe account, and a buyer can pay for it — on your account, with nothing taken on top. Until Stripe clears your account, your page says plainly that it cannot take a payment, so nobody's time is wasted. Taking payments needs the $29 plan, and its first 14 days are free." },
           { title: "Who holds the money from my sales?", body: "You do, in your own Stripe account. We take 0% of your sales and charge only a subscription, paid monthly or yearly." },
-          { title: "What happens if Nimbus Labs closes?", body: "Your Stripe account, your customers and your files were never ours. Your list downloads from your studio at any time, and a shutdown comes with at least 30 days' notice in writing." },
+          { title: "What happens if Marktmorgen closes?", body: "Your Stripe account, your customers and your files were never ours. Your list downloads from your studio at any time, and a shutdown comes with at least 30 days' notice in writing." },
           { title: "Who is behind this?", body: "Vinicius Sucupira, an independent builder working in public. Support is in English, in writing." },
           { title: "Can my store look like mine?", body: "Yes. Put up your photo, pick one of four themes and a color \u2014 one of ten, or your own \u2014 and the studio shows the page before you save it. Every color is checked so the words on your page stay easy to read." },
           { title: "What do I do if something breaks?", body: "You write to support and a person answers. If a sale is affected, you have the Stripe dashboard as the source of truth, independently of us." },

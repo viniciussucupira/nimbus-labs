@@ -11,9 +11,9 @@ import { formatMoney } from "@/lib/money";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS } from "@/lib/creator-invite-rules";
 
 export const metadata: Metadata = {
-  title: "Start your store — Nimbus Labs",
+  title: "Start your store — Marktmorgen",
   description:
-    "Start a Nimbus Labs store, or open the one you have, with a link sent to your email. No password to invent.",
+    "Start a Marktmorgen store, or open the one you have, with a link sent to your email. No password to invent.",
   robots: { index: false, follow: false },
 };
 
@@ -104,7 +104,7 @@ export default async function SignInPage({
   return (
     <div className="min-h-screen bg-paper text-ink lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <aside className="surface-night nb-grid-lines on-dark hidden flex-col justify-between p-10 lg:flex xl:p-14">
-        <Link href="/" className="w-fit rounded-[10px]" aria-label="Nimbus Labs, home">
+        <Link href="/" className="w-fit rounded-[10px]" aria-label="Marktmorgen, home">
           <Logo tone="light" />
         </Link>
         <div className="max-w-md">
@@ -115,7 +115,7 @@ export default async function SignInPage({
             {[
               { icon: "mail" as const, text: "No password. A link sent to your email logs you in." },
               { icon: "bank" as const, text: "Your buyers pay into your own Stripe account." },
-              { icon: "percent" as const, text: "Nimbus takes 0% of your sales." },
+              { icon: "percent" as const, text: "Marktmorgen takes 0% of your sales." },
             ].map((item) => (
               <li key={item.text} className="flex gap-3">
                 <span className="icon-tile icon-tile-sm">
@@ -133,7 +133,7 @@ export default async function SignInPage({
       </aside>
 
       <main id="content" className="flex min-h-screen flex-col px-4 py-8 sm:px-8 lg:min-h-0 lg:justify-center lg:py-16">
-        <Link href="/" className="w-fit rounded-[10px] lg:hidden" aria-label="Nimbus Labs, home">
+        <Link href="/" className="w-fit rounded-[10px] lg:hidden" aria-label="Marktmorgen, home">
           <Logo />
         </Link>
 
@@ -164,7 +164,7 @@ export default async function SignInPage({
             <ol className="mt-4 space-y-4">
               {[
                 { title: "Open the link we email you", body: "It works once, for 15 minutes. No password to invent, now or later." },
-                { title: "Take your store address", body: "nimbuslabsai.com/@yourname, live the moment you take it." },
+                { title: "Take your store address", body: "marktmorgen.com/@yourname, live the moment you take it." },
                 {
                   title: "Put up your first product",
                   body: isConnectConfigured()
@@ -187,7 +187,7 @@ export default async function SignInPage({
               <Icon name="mail" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
               <span>
                 Trouble logging in?{" "}
-                <a href="mailto:support@nimbuslabsai.com" className="link">
+                <a href="mailto:support@marktmorgen.com" className="link">
                   Write to us
                 </a>{" "}
                 and a person answers.

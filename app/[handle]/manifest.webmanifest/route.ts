@@ -5,7 +5,7 @@ import { storeManifest } from "@/lib/store-app";
 /**
  * A store's own web app manifest (lib/store-app.ts), linked from every one
  * of its pages. The address has a file extension, so the proxy leaves it
- * alone and it answers the same on nimbuslabsai.com and on the creator's own
+ * alone and it answers the same on marktmorgen.com and on the creator's own
  * domain; which of the two it was asked on decides where the app opens.
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ handle: string }> }) {

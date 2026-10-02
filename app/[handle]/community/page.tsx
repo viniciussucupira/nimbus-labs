@@ -29,7 +29,7 @@ type Params = {
 };
 
 export const metadata: Metadata = {
-  title: "Community — Nimbus Labs",
+  title: "Community — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

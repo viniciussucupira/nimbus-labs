@@ -74,10 +74,10 @@ async function main(): Promise<void> {
   is("newest first", xml.indexOf("Shaping") < xml.indexOf("Starter"), true);
   is("titles escaped", xml.includes("Starter &lt;basics&gt; &amp; more"), true);
   is("each episode through its own address", xml.includes(`url="https://x/play/${podcast.episodes[0].id}.mp3" length="1000" type="audio/mpeg"`), true);
-  is("an app button for each", appLinks("https://nimbuslabsai.com/f.xml").map((a) => a.href), [
-    "podcast://nimbuslabsai.com/f.xml",
-    "overcast://x-callback-url/add?url=https%3A%2F%2Fnimbuslabsai.com%2Ff.xml",
-    "pktc://subscribe/nimbuslabsai.com/f.xml",
+  is("an app button for each", appLinks("https://marktmorgen.com/f.xml").map((a) => a.href), [
+    "podcast://marktmorgen.com/f.xml",
+    "overcast://x-callback-url/add?url=https%3A%2F%2Fmarktmorgen.com%2Ff.xml",
+    "pktc://subscribe/marktmorgen.com/f.xml",
   ]);
 
   part("Who may listen");

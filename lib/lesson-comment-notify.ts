@@ -70,7 +70,7 @@ export async function tellStudent(input: {
       "",
       "You get this email because you commented on this lesson, and only when the creator answers you, at most once an hour for each lesson.",
       "",
-      `Sent by Nimbus Labs on behalf of ${store.name}.`,
+      `Sent by Marktmorgen on behalf of ${store.name}.`,
     ].join("\n"),
   });
 }

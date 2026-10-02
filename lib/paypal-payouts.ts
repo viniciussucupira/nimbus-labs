@@ -1,6 +1,6 @@
 /**
  * Paying affiliates from the creator's own PayPal, in one press or by itself
- * on payday, without the money ever passing through Nimbus.
+ * on payday, without the money ever passing through Marktmorgen.
  *
  *   nl:pp:<statsId>          the creator's PayPal app: its Client ID, its Secret sealed, auto-pay on or off
  *   nl:pp:open:<statsId>     batches sent and not yet settled: what each affiliate was sent

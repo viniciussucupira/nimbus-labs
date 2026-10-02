@@ -15,7 +15,7 @@ import { readWinBack } from "@/lib/winback-send";
 import { winbackWords } from "@/lib/winback";
 
 export const metadata: Metadata = {
-  title: "Your membership has ended — Nimbus Labs",
+  title: "Your membership has ended — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

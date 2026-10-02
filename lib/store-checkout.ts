@@ -4,7 +4,7 @@
  * Every charge here is a direct charge on the connected account, with no
  * application fee. That is not a detail: it is what makes the money the
  * creator's from the first second, puts their name on the buyer's statement,
- * and leaves Nimbus with nothing to hold, skim or lose. The 0% on the home
+ * and leaves Marktmorgen with nothing to hold, skim or lose. The 0% on the home
  * page is this file.
  */
 import { currentMeta } from "@/lib/tier-rules";

@@ -85,7 +85,7 @@ export function SignInForm() {
         </span>
         <p className="mt-4 text-xl font-semibold text-ink">Check that inbox</p>
         <p className="mt-2 text-ink-soft">
-          If <span className="font-medium text-ink">{email}</span> can log in, the link is on its way from Nimbus Labs.
+          If <span className="font-medium text-ink">{email}</span> can log in, the link is on its way from Marktmorgen.
           It works once and stops working in 15 minutes.
         </p>
         <p className="mt-3 text-sm text-ink-soft">Not there within a minute? Look in spam or promotions.</p>

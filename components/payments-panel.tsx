@@ -226,9 +226,9 @@ export function PaymentsPanel({
             <Icon name="arrow-up-right" size={16} />
           </a>
           <p className="mt-2 text-xs text-ink-soft">
-            Opens your payment method settings in your own Stripe dashboard. Nimbus never switches one on or off for
+            Opens your payment method settings in your own Stripe dashboard. Marktmorgen never switches one on or off for
             you: each is your agreement with Stripe. If Stripe shows a choice of settings at the top of that page, pick
-            the one for Nimbus Labs — it is what your checkout uses.
+            the one for Marktmorgen — it is what your checkout uses.
           </p>
         </>
       ) : null}

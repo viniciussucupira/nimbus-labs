@@ -89,7 +89,7 @@ export async function eventMeeting(store: Store, event: CommunityEvent): Promise
     session: "",
     title: event.title,
     description: [
-      `A live event in your community on your Nimbus Labs store (nimbuslabsai.com/@${store.handle}).`,
+      `A live event in your community on your Marktmorgen store (marktmorgen.com/@${store.handle}).`,
       `Members join from its page: ${eventAddress(store, event.id)}`,
       "Who is coming is in your studio, under Community.",
     ].join("\n"),

@@ -4,7 +4,7 @@
  * Two policies, because the site is served two ways:
  *
  *   - The pages that are rendered for each visit — every store page, on
- *     nimbuslabsai.com and on a creator's own domain, the studio, signing in
+ *     marktmorgen.com and on a creator's own domain, the studio, signing in
  *     and unsubscribing — get a fresh random nonce per response (proxy.ts)
  *     and run only the scripts that carry it, plus what those scripts load
  *     themselves ('strict-dynamic'). That is the strict kind: text a creator

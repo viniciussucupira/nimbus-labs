@@ -33,7 +33,7 @@ type Params = {
 };
 
 export const metadata: Metadata = {
-  title: "Live event — Nimbus Labs",
+  title: "Live event — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

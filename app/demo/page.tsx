@@ -8,7 +8,7 @@ import {
 } from "@/lib/demo-store";
 
 export const metadata: Metadata = {
-  title: "Harbor Kitchen — demo creator store by Nimbus Labs",
+  title: "Harbor Kitchen — demo creator store by Marktmorgen",
   description:
     "A demo link-in-bio store. Buy a sample PDF in Stripe test mode and download it right after payment.",
 };
@@ -276,7 +276,7 @@ export default function DemoStorePage() {
           </h2>
           <p className="mt-3 text-ink-soft">
             Jenny is a fictional creator, invented for this demo. Harbor Kitchen
-            shows how a creator store on Nimbus Labs looks and works.
+            shows how a creator store on Marktmorgen looks and works.
           </p>
         </section>
 
@@ -287,7 +287,7 @@ export default function DemoStorePage() {
               href="/"
               className="link inline-block py-2"
             >
-              Nimbus Labs
+              Marktmorgen
             </Link>
           </p>
           <p className="mt-1">

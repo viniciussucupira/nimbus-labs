@@ -265,7 +265,7 @@ export async function inviteMember(
     replyTo: store.email,
     subject: headerText(`${store.name} invited you to help run their store`, 200),
     text: [
-      `${store.name} (nimbuslabsai.com/@${store.handle}) invited you to help run their store on Nimbus Labs, as ${ROLE_NAMES[role]}.`,
+      `${store.name} (marktmorgen.com/@${store.handle}) invited you to help run their store on Marktmorgen, as ${ROLE_NAMES[role]}.`,
       "",
       `${ROLE_NAMES[role]}: ${ROLE_SUMMARIES[role]}`,
       "",

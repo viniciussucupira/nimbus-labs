@@ -10,7 +10,7 @@ import { syncView } from "@/lib/email-sync";
 import { EmailSyncEditor } from "@/components/email-sync-editor";
 
 export const metadata: Metadata = {
-  title: "Email platforms — Nimbus Labs",
+  title: "Email platforms — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

@@ -13,7 +13,7 @@ import {
 import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 
 export const metadata: Metadata = {
-  title: "The Nimbus Journal — selling digital products without the guesswork",
+  title: "The Marktmorgen Journal — selling digital products without the guesswork",
   description:
     "Plain guides on selling files, courses and calls from a link in your bio: what to charge, what the page has to say, where the money lands, and what every platform costs you per sale.",
 };
@@ -29,7 +29,7 @@ export default function BlogIndexPage() {
       <main id="content" className="flex-1">
         <section className="surface-dawn border-b border-line">
           <div className="container-page py-14 sm:py-20">
-            <p className="eyebrow">The Nimbus Journal</p>
+            <p className="eyebrow">The Marktmorgen Journal</p>
             <h1 className="t-h1 balance mt-4 max-w-3xl">
               Everything we learn about <span className="serif font-normal text-violet-deep">selling your own work</span>
             </h1>

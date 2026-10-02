@@ -7,7 +7,7 @@ import { storeForHandle } from "@/lib/store";
 import { REVIEW_STOP, readReviewStop } from "@/lib/review-requests";
 
 export const metadata: Metadata = {
-  title: "Unsubscribe — Nimbus Labs",
+  title: "Unsubscribe — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
@@ -63,7 +63,7 @@ export default async function UnsubscribePage({
             </form>
           </>
         )}
-        <p className="mt-6 text-sm text-ink-mute">Emails sent with Nimbus Labs, on behalf of the creator who wrote them.</p>
+        <p className="mt-6 text-sm text-ink-mute">Emails sent with Marktmorgen, on behalf of the creator who wrote them.</p>
       </div>
     </main>
   );
@@ -103,7 +103,7 @@ async function StopAnnouncements({ token, done }: { token: string; done: boolean
             </form>
           </>
         )}
-        <p className="mt-6 text-sm text-ink-mute">Emails sent with Nimbus Labs, on behalf of the creator who wrote them.</p>
+        <p className="mt-6 text-sm text-ink-mute">Emails sent with Marktmorgen, on behalf of the creator who wrote them.</p>
       </div>
     </main>
   );
@@ -140,7 +140,7 @@ async function StopReminders({ token, done }: { token: string; done: boolean }) 
             </form>
           </>
         )}
-        <p className="mt-6 text-sm text-ink-mute">Emails sent with Nimbus Labs, on behalf of the store that sent them.</p>
+        <p className="mt-6 text-sm text-ink-mute">Emails sent with Marktmorgen, on behalf of the store that sent them.</p>
       </div>
     </main>
   );
@@ -177,7 +177,7 @@ async function StopReviewRequests({ token, done }: { token: string; done: boolea
             </form>
           </>
         )}
-        <p className="mt-6 text-sm text-ink-mute">Emails sent with Nimbus Labs, on behalf of the store that sent them.</p>
+        <p className="mt-6 text-sm text-ink-mute">Emails sent with Marktmorgen, on behalf of the store that sent them.</p>
       </div>
     </main>
   );

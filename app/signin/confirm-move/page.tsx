@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "Confirm the move — Nimbus Labs",
-  description: "One tap to move your Nimbus Labs account to this address.",
+  title: "Confirm the move — Marktmorgen",
+  description: "One tap to move your Marktmorgen account to this address.",
   robots: { index: false, follow: false },
 };
 
@@ -23,7 +23,7 @@ export default async function ConfirmMovePage({
     <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
 
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <Link href="/" className="inline-block w-fit rounded-[10px]" aria-label="Nimbus Labs, home">
+        <Link href="/" className="inline-block w-fit rounded-[10px]" aria-label="Marktmorgen, home">
           <Logo />
         </Link>
 

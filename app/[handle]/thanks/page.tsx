@@ -44,7 +44,7 @@ import { BundleDelivery } from "@/components/bundle-delivery";
 import type { BundleContents } from "@/lib/bundles";
 
 export const metadata: Metadata = {
-  title: "Your order — Nimbus Labs",
+  title: "Your order — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

@@ -152,7 +152,7 @@ async function call(
       method,
       headers: {
         Accept: "application/json",
-        "User-Agent": "NimbusLabs-EmailSync/1.0 (+https://nimbuslabsai.com)",
+        "User-Agent": "Marktmorgen-EmailSync/1.0 (+https://marktmorgen.com)",
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         ...authHeaders(provider, key),
       },
@@ -353,7 +353,7 @@ export async function addContact(
         email,
         reactivate_existing: false,
         send_welcome_email: false,
-        utm_source: "nimbus-labs",
+        utm_source: "marktmorgen",
         utm_medium: contact.source === "free" ? "free-product" : "purchase",
         referring_site: contact.storeUrl,
       },

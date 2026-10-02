@@ -29,7 +29,7 @@ import { ConfirmDeletes } from "@/components/community-composer";
 type Params = { params: Promise<{ handle: string; post: string }>; searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
 export const metadata: Metadata = {
-  title: "Post — Nimbus Labs",
+  title: "Post — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

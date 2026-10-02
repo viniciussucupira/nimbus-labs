@@ -28,7 +28,7 @@
  *
  * Both flows use the authorization code with PKCE (S256) and a state value
  * (lib/meet-connect.ts keeps both), and the redirect address is fixed:
- * https://nimbuslabsai.com/api/integrations/google/callback and
+ * https://marktmorgen.com/api/integrations/google/callback and
  * .../zoom/callback, the ones registered with each.
  *
  * Local checks may point every host at one stand-in on 127.0.0.1
@@ -480,7 +480,7 @@ function googleBody(spec: MeetingSpec): Record<string, unknown> {
     guestsCanInviteOthers: false,
     guestsCanSeeOtherGuests: !spec.group,
     guestsCanModify: false,
-    source: { title: "Nimbus Labs", url: SITE_URL },
+    source: { title: "Marktmorgen", url: SITE_URL },
   };
 }
 

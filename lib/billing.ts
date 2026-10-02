@@ -1,5 +1,5 @@
 /**
- * The one way Nimbus Labs makes money.
+ * The one way Marktmorgen makes money.
  *
  * A subscription on our own Stripe account, monthly or yearly, and nothing
  * else. This is
@@ -132,7 +132,7 @@ const PRODUCT_IDS: Record<Tier, string> = {
 };
 const PRODUCT_DESCRIPTIONS: Record<Tier, string> = {
   creator: "One store, 0% of your sales.",
-  pro: "Everything in Nimbus Labs, and what costs us money to run for you.",
+  pro: "Everything in Marktmorgen, and what costs us money to run for you.",
 };
 
 /** The name each price is found by, so there is never a second one. */

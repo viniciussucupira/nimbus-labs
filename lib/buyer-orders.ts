@@ -20,7 +20,7 @@
  * rather than finding it quietly gone (lib/membership-access.ts).
  *
  * Like cancelling a membership, this works whatever state the creator's own
- * Nimbus subscription is in: somebody paid for that file, and they get it.
+ * Marktmorgen subscription is in: somebody paid for that file, and they get it.
  */
 import { currentMeta } from "@/lib/tier-rules";
 import { packageState, readBought } from "@/lib/call-packages";
@@ -503,7 +503,7 @@ export async function requestOrdersLink(input: {
   const count = purchases.length + calls.length;
   const link = `${origin}/@${store.handle}/orders?token=${token}`;
   const sent = await sendEmail({
-    from: `"${displayName(name)} via Nimbus Labs" <${senderAddress()}>`,
+    from: `"${displayName(name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
     subject: `What you bought from ${name}`,
     text: [
@@ -515,7 +515,7 @@ export async function requestOrdersLink(input: {
       "",
       "If you did not ask for this, ignore this email; nothing happens unless the link is opened.",
       "",
-      `Sent by Nimbus Labs on behalf of ${name}. ${chargedLine(name, purchases)}`,
+      `Sent by Marktmorgen on behalf of ${name}. ${chargedLine(name, purchases)}`,
     ].join("\n"),
   });
   return sent ? "sent" : "error";

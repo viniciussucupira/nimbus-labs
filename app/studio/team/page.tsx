@@ -9,7 +9,7 @@ import { MAX_TEAM, readLog, readTeam } from "@/lib/team";
 import { ROLE_NAMES } from "@/lib/team-roles";
 
 export const metadata: Metadata = {
-  title: "Team — Nimbus Labs",
+  title: "Team — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

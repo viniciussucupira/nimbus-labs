@@ -69,12 +69,12 @@ async function main(): Promise<void> {
   await setStoreSale("owner@example.com", { ...sale, starts: real - 60, ends: real + 3_600 });
   let store = (await storeForEmail("owner@example.com"))!;
   const full = (await readProduct(store, made.product.id))!;
-  await createCheckout(store, full, "https://nimbuslabsai.com", "", {});
+  await createCheckout(store, full, "https://marktmorgen.com", "", {});
   is("the sale's coupon, with no code box", [checkouts[0].get("discounts[0][coupon]"), checkouts[0].get("metadata[sale]"), checkouts[0].get("allow_promotion_codes")], ["co_Sale0001", "30", null]);
   is("the price sent is the product's; Stripe takes the sale off", checkouts[0].get("line_items[0][price_data][unit_amount]"), "4900");
   await setStoreSale("owner@example.com", { ...sale, starts: real - 7_200, ends: real - 3_600 });
   store = (await storeForEmail("owner@example.com"))!;
-  await createCheckout(store, full, "https://nimbuslabsai.com", "", {});
+  await createCheckout(store, full, "https://marktmorgen.com", "", {});
   is("after it ends, nothing comes off", checkouts[1].get("discounts[0][coupon]"), null);
 
   done();

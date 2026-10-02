@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const decoded = decodeURIComponent(handle);
   const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)) : null;
   const product = store ? await readListing(store, id) : null;
-  if (!store || !product) return { title: "Not found — Nimbus Labs" };
+  if (!store || !product) return { title: "Not found — Marktmorgen" };
   return {
     title: `Reviews of ${product.title} — ${store.name}`,
     // The product's own page carries the rating for search engines; this

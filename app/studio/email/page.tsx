@@ -20,7 +20,7 @@ import { trialOffered } from "@/lib/billing";
 type Params = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
 export const metadata: Metadata = {
-  title: "Email — Nimbus Labs",
+  title: "Email — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

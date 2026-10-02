@@ -3,29 +3,30 @@ import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Nimbus Labs",
+  title: "Privacy Policy — Marktmorgen",
   description:
-    "How Nimbus Labs collects, uses, and protects personal information — including the data of buyers in a creator's store, and your GDPR rights.",
+    "How Marktmorgen collects, uses, and protects personal information — including the data of buyers in a creator's store, and your GDPR rights.",
 };
 
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" lastUpdated="September 30, 2026">
       <p>
-        Nimbus Labs (“Nimbus Labs,” “we,” “us,” or “our”) is an independent
-        software studio. This Privacy Policy explains how we collect, use,
+        Marktmorgen (“Marktmorgen,” “we,” “us,” or “our”) is operated by
+        Solrenning, an independent software studio. This Privacy Policy
+        explains how we collect, use,
         share, and protect personal information when you use our websites and
-        products — the Nimbus creator store at nimbuslabsai.com (the
+        products — the Marktmorgen creator store at marktmorgen.com (the
         “Services”).
       </p>
       <p>
         If you have questions about this policy or about your personal data,
         contact us at{" "}
         <a
-          href="mailto:support@nimbuslabsai.com"
+          href="mailto:support@marktmorgen.com"
           className="text-black underline underline-offset-2 hover:no-underline"
         >
-          support@nimbuslabsai.com
+          support@marktmorgen.com
         </a>
         .
       </p>
@@ -49,7 +50,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong className="text-black">What a creator puts in a store.</strong>{" "}
-          If you run a Nimbus store, we host what you put in it: your store
+          If you run a Marktmorgen store, we host what you put in it: your store
           name and description, your photo if you add one, the theme and color
           you choose, your product titles, prices and descriptions, the links
           you put on the page, and the files you upload for delivery to your
@@ -653,7 +654,7 @@ export default function PrivacyPage() {
           event is deleted or the buyer taken off the guest list.
         </p>
         <p>
-          Nimbus Labs&apos; use and transfer of information received from
+          Marktmorgen&apos;s use and transfer of information received from
           Google APIs will adhere to the{" "}
           <a
             href="https://developers.google.com/terms/api-services-user-data-policy"
@@ -724,7 +725,7 @@ export default function PrivacyPage() {
             href="/creators"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            nimbuslabsai.com/creators
+            marktmorgen.com/creators
           </Link>
           , we collect your name, email address, country, the platform where
           you sell, the store or profile link you choose to share, your
@@ -929,8 +930,8 @@ export default function PrivacyPage() {
         <p>
           The store belongs to the creator, not to us. For the personal data of
           that store&apos;s buyers, and of the people who ask it for something
-          free, the creator is the controller and Nimbus
-          Labs is their processor: we handle that data to run the store on
+          free, the creator is the controller and Marktmorgen
+          is their processor: we handle that data to run the store on
           their behalf and on their instructions, and we do not use it for our
           own purposes, do not sell it, and do not email a creator&apos;s
           buyers or list to market anything of ours.
@@ -1068,7 +1069,7 @@ export default function PrivacyPage() {
 
       <LegalSection title="7. International transfers">
         <p>
-          Nimbus Labs serves customers internationally. Your information may
+          Marktmorgen serves customers internationally. Your information may
           be processed in the countries where we and our service providers
           operate, which include the United States and may include the
           European Union. Where required, we use appropriate
@@ -1093,10 +1094,10 @@ export default function PrivacyPage() {
           jurisdiction with similar laws, you may exercise these rights by
           emailing{" "}
           <a
-            href="mailto:support@nimbuslabsai.com"
+            href="mailto:support@marktmorgen.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            support@nimbuslabsai.com
+            support@marktmorgen.com
           </a>
           . We will respond within the time required by applicable law,
           typically one month under the GDPR. You also have the right to lodge
@@ -1144,22 +1145,22 @@ export default function PrivacyPage() {
 
       <LegalSection title="12. Contact">
         <p>
-          Nimbus Labs
+          Marktmorgen
           <br />
           Email:{" "}
           <a
-            href="mailto:support@nimbuslabsai.com"
+            href="mailto:support@marktmorgen.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            support@nimbuslabsai.com
+            support@marktmorgen.com
           </a>
           <br />
           Website:{" "}
           <a
-            href="https://nimbuslabsai.com"
+            href="https://marktmorgen.com"
             className="text-black underline underline-offset-2 hover:no-underline"
           >
-            nimbuslabsai.com
+            marktmorgen.com
           </a>
         </p>
       </LegalSection>

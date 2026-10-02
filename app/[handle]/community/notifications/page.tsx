@@ -16,7 +16,7 @@ import { CommunityBar, Face, authorName } from "@/components/community-parts";
 type Params = { params: Promise<{ handle: string }> };
 
 export const metadata: Metadata = {
-  title: "What happened — Nimbus Labs",
+  title: "What happened — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

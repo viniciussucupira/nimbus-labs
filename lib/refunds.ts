@@ -2,7 +2,7 @@
  * What a refund takes back, decided in one place.
  *
  * A buyer who is refunded in full has been given their money back, and what
- * they bought closes for them the same way everywhere Nimbus hands it over:
+ * they bought closes for them the same way everywhere Marktmorgen hands it over:
  *
  *   - the download on the thanks page, and the emailed link to it, stop
  *     working on the next request (lib/store-checkout.ts, readOrder, which

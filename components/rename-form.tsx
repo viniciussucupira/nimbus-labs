@@ -85,7 +85,7 @@ export function RenameForm({ current }: { current: string }) {
         New address
       </label>
       <div className="card flex items-center pl-4 transition focus-within:border-violet-brand">
-        <span className="text-ink-soft">nimbuslabsai.com/@</span>
+        <span className="text-ink-soft">marktmorgen.com/@</span>
         <input
           id="new-handle"
           name="handle"
