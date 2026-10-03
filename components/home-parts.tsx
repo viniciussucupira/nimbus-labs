@@ -302,58 +302,6 @@ export function HeroFlow() {
             </div>
           </div>
 
-          {/*
-            The other four, orbiting.
-
-            One phone is a diagram of a store; five faces around it is the
-            market the name promises. They are the stores not currently on
-            the screen, each at its own angle and its own distance, and the
-            one about to come up is the one that lifts and brightens — so
-            the change on the phone is announced a beat before it happens
-            rather than arriving from nowhere.
-
-            Only from 1024px up: below that the phone has the width to
-            itself and faces floating over it would cover the thing they
-            are there to decorate.
-          */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block">
-            {STORES.map((o, i) => {
-              const slot = ((i - store + STORES.length) % STORES.length) - 1;
-              const spot = [
-                { top: "2%", left: "74%", size: 56 },
-                { top: "28%", left: "90%", size: 42 },
-                { top: "56%", left: "68%", size: 48 },
-                { top: "76%", left: "86%", size: 38 },
-              ][slot];
-              if (!spot) return null;
-              const next = slot === 0;
-              return (
-                <span
-                  key={o.handle}
-                  className="absolute block rounded-full transition-all duration-700 [transition-timing-function:var(--ease)]"
-                  style={{
-                    top: spot.top,
-                    left: spot.left,
-                    width: spot.size,
-                    height: spot.size,
-                    opacity: next ? 1 : 0.5,
-                    transform: next ? "scale(1.14) translateY(-4px)" : "scale(1)",
-                    boxShadow: `0 0 0 2px rgba(255,255,255,${next ? 0.9 : 0.35}), 0 10px 26px -8px ${o.tint}aa`,
-                  }}
-                >
-                  <img
-                    src={FACE(o.photo, 128)}
-                    alt=""
-                    width={spot.size}
-                    height={spot.size}
-                    loading="lazy"
-                    decoding="async"
-                    className="h-full w-full rounded-full object-cover"
-                  />
-                </span>
-              );
-            })}
-          </div>
         </div>
 
         {/*
@@ -448,6 +396,64 @@ export function HeroFlow() {
           creator's own Stripe account, and the figure beside it is what the
           platform took. The row fills as the sale completes.
         */}
+        </div>
+
+        {/*
+          The other four, waiting their turn.
+
+          One phone is a diagram of a store; five faces is the market the
+          name promises. They stand in the open ground under the phone —
+          measured, not guessed: the phone ends at 67% of the composition's
+          height and the money bar starts at 87%, and the right half of
+          that band is taken by the delivery card, so this is the one
+          rectangle with nothing in it.
+
+          They are the stores not currently on the screen, at four sizes
+          and four heights so the row reads as a crowd rather than a
+          toolbar, and the one coming up next lifts and brightens a beat
+          before it arrives — the change on the phone is announced rather
+          than sprung.
+
+          Only from 1024px up: below that the pieces are stacked in a
+          column and there is no open ground to stand in.
+        */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block">
+          {STORES.map((o, i) => {
+            const slot = ((i - store + STORES.length) % STORES.length) - 1;
+            const spot = [
+              { top: "69%", left: "1%", size: 56 },
+              { top: "73%", left: "13%", size: 44 },
+              { top: "70%", left: "24%", size: 50 },
+              { top: "74%", left: "36%", size: 40 },
+            ][slot];
+            if (!spot) return null;
+            const next = slot === 0;
+            return (
+              <span
+                key={o.handle}
+                className="absolute block rounded-full transition-all duration-700 [transition-timing-function:var(--ease)]"
+                style={{
+                  top: spot.top,
+                  left: spot.left,
+                  width: spot.size,
+                  height: spot.size,
+                  opacity: next ? 1 : 0.62,
+                  transform: next ? "scale(1.16) translateY(-6px)" : "scale(1)",
+                  boxShadow: `0 0 0 2px rgba(255,255,255,${next ? 0.92 : 0.4}), 0 12px 28px -8px ${o.tint}aa`,
+                }}
+              >
+                <img
+                  src={FACE(o.photo, 128)}
+                  alt=""
+                  width={spot.size}
+                  height={spot.size}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full rounded-full object-cover"
+                />
+              </span>
+            );
+          })}
         </div>
 
         <div className="w-full max-w-[20rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:max-w-none">
