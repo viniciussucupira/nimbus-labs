@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function RefundsPage() {
   return (
-    <LegalPage title="Refund Policy" lastUpdated="September 28, 2026">
+    <LegalPage title="Refund Policy" lastUpdated="October 2, 2026">
       <p>
         This Refund Policy applies to what you pay Marktmorgen, a product of
         Solrenning, an independent software studio, for the creator store at
