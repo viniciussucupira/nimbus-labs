@@ -14,7 +14,7 @@ import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { noticeCreator } from "@/lib/account-notice";
 import type { MeetProvider } from "@/lib/call-setup";
 import { ACCOUNT_NAMES, beginConsent, finishConsent, takeConsent } from "@/lib/meet-connect";
-import { isConfigured, offeredProviders } from "@/lib/meet-providers";
+import { ZOOM_REVIEW_QUERY, isConfigured, isZoomReview, offeredProviders } from "@/lib/meet-providers";
 import { clientAddress, withinLimit } from "@/lib/request-guard";
 import { originFrom } from "@/lib/request-origin";
 import { ensureStatsId } from "@/lib/store";
@@ -38,8 +38,12 @@ export async function startConnect(request: NextRequest, provider: MeetProvider)
   const creator = await creatorFrom(request, "settings");
   if (creator instanceof Response) return creator;
   const { store, ref, email, origin } = creator;
-  if (!offeredProviders(store).includes(provider)) return notFound();
-  const back = (query: string) => away(origin, studioPath(store, query, "meetings"));
+  // The review link's form says so (components/meeting-connections.tsx), and
+  // the page it goes back to keeps the word, so the Zoom card stays in sight.
+  const review = provider === "zoom" && isZoomReview(request.nextUrl.searchParams.get("zoom"));
+  if (!offeredProviders(store, review).includes(provider)) return notFound();
+  const kept = review && !offeredProviders(store).includes(provider) ? `&${ZOOM_REVIEW_QUERY}` : "";
+  const back = (query: string) => away(origin, studioPath(store, `${query}${kept}`, "meetings"));
   const named = store.statsId ? store : await ensureStatsId(ref);
   if (!named?.statsId || !store.sid) return back(`meet=error&p=${provider}`);
   if (!(await withinLimit("meet-start", named.statsId, STARTS_PER_TEN_MINUTES, 600))) return back(`meet=limited&p=${provider}`);
@@ -77,7 +81,12 @@ export async function finishConnect(request: NextRequest, provider: MeetProvider
   const allowed = await resolveAccess(email, { pinned: taken.sid }, "settings");
   if (!allowed.ok) return away(origin, allowed.store ? studioPath(allowed.store, "team=forbidden") : "/studio?team=gone");
   const { store, role } = allowed.access;
-  const back = (query: string) => away(origin, studioPath(store, query, "meetings"));
+  // A consent for a provider the store is not openly offered was started
+  // from the review link (startConnect lets nothing else through): the page
+  // it comes back to keeps the word, so the card is there to try again from,
+  // and stays after a disconnect.
+  const kept = offeredProviders(store).includes(provider) ? "" : `&${ZOOM_REVIEW_QUERY}`;
+  const back = (query: string) => away(origin, studioPath(store, `${query}${kept}`, "meetings"));
   if (store.statsId !== taken.statsId) return back(`meet=expired&p=${provider}`);
 
   const code = params.get("code") ?? "";

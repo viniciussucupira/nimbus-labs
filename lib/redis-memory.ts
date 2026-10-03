@@ -139,6 +139,14 @@ export class MemoryRedis {
         const held = this.data.get(key);
         return typeof held === "string" ? held : null;
       }
+      case "GETDEL": {
+        // Read once and gone: what a consent's state is taken with.
+        const held = this.data.get(key);
+        if (typeof held !== "string") return null;
+        this.data.delete(key);
+        this.until.delete(key);
+        return held;
+      }
       case "DEL": {
         // DEL takes several keys.
         let gone = 0;

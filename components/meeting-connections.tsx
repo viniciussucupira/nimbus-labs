@@ -58,9 +58,11 @@ function when(ms: number): string {
  * The store's Google Calendar and Zoom connections (lib/meet-connect.ts):
  * connect (a form that leaves for the provider's consent page), connect a
  * different account, or disconnect, with what each one does said plainly.
- * Only the providers this deployment has switched on are shown.
+ * Only the providers this deployment has switched on are shown. `review` is
+ * the review link's visit (lib/meet-providers.ts): Zoom's form then says so,
+ * for the route to let it through.
  */
-export function MeetingConnections({ view, pin }: { view: MeetView; pin: string }) {
+export function MeetingConnections({ view, pin, review = false }: { view: MeetView; pin: string; review?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState<MeetProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +96,8 @@ export function MeetingConnections({ view, pin }: { view: MeetView; pin: string 
         {view.providers.map((provider) => {
           const info = ACCOUNTS[provider];
           const connection = view.connected[provider] ?? null;
-          const start = `/api/integrations/${provider}/start${pin}`;
+          const word = review && provider === "zoom" ? `${pin ? "&" : "?"}zoom=review` : "";
+          const start = `/api/integrations/${provider}/start${pin}${word}`;
           return (
             <section key={provider} className="card p-6 sm:p-8" aria-labelledby={`meet-${provider}-title`}>
               <div className="flex flex-wrap items-start justify-between gap-3">
