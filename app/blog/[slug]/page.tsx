@@ -220,7 +220,7 @@ export default async function BlogPostPage({
         </div>
 
         {more.length > 0 ? (
-          <section className="surface-sand">
+          <section className="surface-lilac">
             <div className="container-page py-14 sm:py-20">
               <h2 className="t-h2">Read next</h2>
               <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

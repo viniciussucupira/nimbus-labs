@@ -287,7 +287,7 @@ export default function MissionPage() {
           </figure>
         </section>
 
-        <section className="surface-sand section">
+        <section className="surface-coral section">
           <div className="container-page">
             <div className="max-w-2xl">
               <p className="eyebrow">What we hold ourselves to</p>
@@ -387,7 +387,7 @@ export default function MissionPage() {
           </div>
         </section>
 
-        <section className="surface-sand section" aria-labelledby="trust-title">
+        <section className="surface-mint section" aria-labelledby="trust-title">
           <div className="container-page">
             <div className="max-w-2xl">
               <p className="eyebrow">Before you trust us with a store</p>

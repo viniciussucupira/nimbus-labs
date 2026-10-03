@@ -103,7 +103,7 @@ export default function CreatorsPage() {
           </div>
         </section>
 
-        <section className="surface-sand section-tight">
+        <section className="surface-rose section-tight">
           <div className="container-page">
             <h2 className="t-h2 text-center">What happens with your answers</h2>
             <div className="mx-auto mt-10 grid max-w-4xl gap-4 sm:grid-cols-2">

@@ -600,7 +600,7 @@ export function TopicPageView({ page }: { page: TopicPage }) {
 
         {page.related ? <Related slugs={page.related} /> : null}
 
-        <section className="surface-sand">
+        <section className="surface-gold">
           <div className="container-narrow py-16 text-center sm:py-20">
             <h2 className="t-h2 balance">{pro ? "Pro, when you are ready for it" : "Want this on your own store?"}</h2>
             <p className="mx-auto mt-4 max-w-xl text-ink-soft">

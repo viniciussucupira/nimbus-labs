@@ -100,7 +100,7 @@ export default function BlogIndexPage() {
           </div>
         </section>
 
-        <section className="surface-sand">
+        <section className="surface-gold">
           <div className="container-page grid gap-8 py-16 sm:py-20 lg:grid-cols-[1.4fr_1fr] lg:items-center">
             <div>
               <h2 className="t-h2 balance">Reading about it is useful. Having a store is better.</h2>
