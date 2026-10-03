@@ -202,7 +202,7 @@ export function HeroFlow() {
           (`display: contents`) and both cards go back to being positioned
           against the composition itself.
         */}
-        <div className="flex min-h-[15.5rem] w-full max-w-[18rem] items-start justify-center lg:contents">
+        <div className="flex min-h-[15.5rem] w-full max-w-[18rem] items-center justify-center lg:contents">
         {/* the Stripe checkout */}
         <div
           className={`w-[17rem] transition-all duration-700 [transition-timing-function:var(--ease)] lg:absolute lg:right-0 lg:top-[7%] lg:w-[54%] lg:max-w-[16.5rem] ${
