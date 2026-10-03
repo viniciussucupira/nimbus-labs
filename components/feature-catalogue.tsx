@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "@/components/icons";
 
 export type CatalogueItem = {
@@ -40,17 +40,71 @@ export function FeatureCatalogue({
   groups: CatalogueGroup[];
 }) {
   const [group, setGroup] = useState<string>("all");
+  const top = useRef<HTMLDivElement | null>(null);
   const shown = group === "all" ? items : items.filter((i) => i.group === group);
+
+  /*
+   * The address bar is part of this filter.
+   *
+   * Pages elsewhere on the site link straight at one part of the catalogue —
+   * /platform#group-sell, #group-paid, #group-grow — and a link like that
+   * used to land at the top of the page with everything showing, because the
+   * filter lived only in React state and no such element existed to jump to.
+   * Now the hash is read on arrival and whenever it changes, so a link, a
+   * reload, a pasted address and the browser's Back button all open the same
+   * part. Pressing a filter writes the hash back without adding a history
+   * entry, so Back still leaves the page rather than walking through every
+   * filter somebody tried.
+   */
+  const known = useCallback(
+    (hash: string) => {
+      const key = hash.replace(/^#/, "").replace(/^group-/, "");
+      if (!key) return null;
+      if (key === "all") return "all";
+      return groups.some((g) => g.key === key) ? key : null;
+    },
+    [groups],
+  );
+
+  useEffect(() => {
+    const apply = (scroll: boolean) => {
+      const key = known(window.location.hash);
+      if (!key) return;
+      setGroup(key);
+      if (!scroll) return;
+      // The header is fixed; `scroll-mt` on the anchor keeps the filter bar
+      // clear of it rather than under it.
+      top.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    };
+    apply(true);
+    const onHash = () => apply(true);
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, [known]);
+
+  const pick = (key: string) => {
+    setGroup(key);
+    if (typeof window === "undefined") return;
+    const hash = key === "all" ? "" : `#group-${key}`;
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${hash}`);
+  };
 
   return (
     <div>
-      <div className="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        ref={top}
+        id="features"
+        className="flex scroll-mt-28 flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-center sm:justify-between"
+      >
         <div className="seg max-w-full overflow-x-auto" role="group" aria-label="Filter the features">
           <button
             type="button"
             className="seg-item"
             aria-pressed={group === "all"}
-            onClick={() => setGroup("all")}
+            onClick={() => pick("all")}
           >
             All
             <span className="text-[0.8125rem] font-semibold opacity-70">{items.length}</span>
@@ -64,7 +118,7 @@ export function FeatureCatalogue({
                 type="button"
                 className="seg-item"
                 aria-pressed={group === g.key}
-                onClick={() => setGroup(g.key)}
+                onClick={() => pick(g.key)}
               >
                 {g.title}
                 <span className="text-[0.8125rem] font-semibold opacity-70">{n}</span>

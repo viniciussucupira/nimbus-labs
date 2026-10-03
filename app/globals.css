@@ -1338,15 +1338,23 @@ a.chip {
   animation: nb-spin 0.7s linear infinite;
 }
 
-/* Scroll reveal: a short rise, once. */
-.reveal {
+/* Scroll reveal: a short rise, once.
+
+   The hidden state is spelled with `:root[data-reveal="on"]` in front of it,
+   and that attribute is written by a one-line script in the document head
+   before anything is painted. A browser running that script hides the
+   sections and the observer brings them back as they come into view; a
+   browser that never ran it — JavaScript off, a script that failed to parse,
+   a crawler, a reader mode — leaves every section at its ordinary opacity
+   instead of a page of blank space nobody can read. */
+:root[data-reveal="on"] .reveal {
   opacity: 0;
   transform: translate3d(0, 16px, 0);
   transition:
     opacity 650ms var(--ease),
     transform 650ms var(--ease);
 }
-.reveal.is-in {
+:root[data-reveal="on"] .reveal.is-in {
   opacity: 1;
   transform: none;
 }
@@ -1377,6 +1385,7 @@ a.chip {
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
+  :root[data-reveal="on"] .reveal,
   .reveal {
     opacity: 1;
     transform: none;

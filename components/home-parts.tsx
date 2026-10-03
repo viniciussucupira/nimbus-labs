@@ -311,7 +311,26 @@ export function HeroFlow() {
         </div>
       </div>
 
-      <div className="mt-6 flex justify-center" role="group" aria-label="Steps of a sale">
+      {/*
+        What this picture is, said on the picture.
+
+        It is a drawing of a sale, not a screenshot of one that happened, and
+        the figure in the bar is what the buyer paid rather than what is left
+        after the card is processed. Both of those are one line to say and
+        would be a small lie to leave out on a page whose argument is that we
+        do not tell them. The store it draws is the demo, which anybody can
+        open and buy from with a test card.
+      */}
+      <p className="mt-6 text-center text-[0.8125rem] leading-relaxed text-white/70">
+        An example of a sale, drawn from the{" "}
+        <Link href="/demo" className="font-medium text-white underline underline-offset-4 decoration-white/40 hover:decoration-white">
+          demo store
+        </Link>
+        . The $39.00 is what the buyer pays; Stripe charges its own processing fee on your account, and Marktmorgen
+        charges nothing on top.
+      </p>
+
+      <div className="mt-5 flex justify-center" role="group" aria-label="Steps of a sale">
         <ol className="flex items-center gap-1 rounded-[12px] bg-[#120a45]/55 p-1 ring-1 ring-white/14">
           {FLOW.map((s, i) => (
             <li key={s.key}>
@@ -445,7 +464,20 @@ function PlanCard({
         ))}
       </ul>
       <div className="mt-auto pt-7">
-        <Link href="/signin" className={`btn ${featured ? "btn-primary" : "btn-secondary"} btn-lg btn-block`}>
+        {/*
+          The plan and the rhythm travel with the press.
+
+          Both buttons used to go to a bare /signin, so somebody who had just
+          read the Pro column and switched the whole page to yearly arrived at
+          a page that showed no sign of either. Nothing is charged from here —
+          the plan is chosen in the studio, after the store exists — but the
+          choice is carried in the address so the next page can say it back,
+          and so a creator never has to wonder whether it was heard.
+        */}
+        <Link
+          href={`/signin?plan=${tier}&billing=${yearly ? "year" : "month"}`}
+          className={`btn ${featured ? "btn-primary" : "btn-secondary"} btn-lg btn-block`}
+        >
           {cta}
         </Link>
         {/* What the button does, before it is pressed. */}
@@ -473,8 +505,12 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
           </button>
           <button type="button" className="seg-item" aria-pressed={yearly} onClick={() => setYearly(true)}>
             Yearly
+            {/* What each plan saves is written inside that plan's own card,
+                beside its own price. Here it is one number, the largest, so
+                the switch says what it is for without doing the arithmetic of
+                two plans at once in six words. */}
             <span className="rounded-full bg-mint-soft px-2 py-0.5 text-[0.75rem] font-semibold text-mint-deep">
-              {`save $${yearSaving("creator") / 100} or $${yearSaving("pro") / 100}`}
+              {`save up to $${yearSaving("pro") / 100}`}
             </span>
           </button>
         </div>
@@ -483,8 +519,8 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
         <PlanCard
           name={PLAN_NAMES.creator}
-          tag="Everything to sell"
-          bestFor="For a creator putting a store up and selling from it."
+          tag="Everything you need to sell"
+          bestFor="For a creator opening a store and selling from it."
           tier="creator"
           perks={INCLUDED}
           featured
@@ -494,7 +530,7 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
         <PlanCard
           name={PLAN_NAMES.pro}
           tag={domains ? "Email and your own domain" : "With email to your list"}
-          bestFor="For a creator with a list to write to, and sell to again."
+          bestFor="For a creator with an email list to write to, and sell to again."
           tier="pro"
           perks={proPerks}
           featured={false}
@@ -548,7 +584,11 @@ function CostAtVolume() {
   return (
     <div className="card-flat mt-6 p-6 sm:p-7">
       <p className="font-semibold text-ink">What you pay as your sales grow</p>
-      <p className="mt-1 text-sm text-ink-soft">{`Each month, at a $${AVERAGE_PRICE} average price. Card processing is not included: every option pays it on top.`}</p>
+      {/* This table is the monthly price on every row, whichever way the
+          switch above it is set: paying yearly changes what each platform
+          costs, and a comparison where one column quietly moved to a yearly
+          rate would be worth nothing. */}
+      <p className="mt-1 text-sm text-ink-soft">{`Each month, at a $${AVERAGE_PRICE} average price, comparing monthly billing on every platform. Card processing is not included: every option pays it on top.`}</p>
       {/*
         Four money columns do not fit a 320px screen, and a table that is cut
         off at the edge hides the column the whole comparison turns on. Above

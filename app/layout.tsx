@@ -26,7 +26,7 @@ const accent = Instrument_Serif({
 const SITE_TITLE =
   "Marktmorgen — the link-in-bio store that pays into your own Stripe";
 const SITE_DESCRIPTION =
-  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is delivered the second the payment clears, and Marktmorgen takes 0% of your sales.";
+  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is theirs as soon as Stripe confirms the payment, and Marktmorgen takes 0% of your sales.";
 
 export const viewport: Viewport = {
   themeColor: "#0d0b24",
@@ -83,6 +83,27 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       */}
       <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
       <body className="min-h-full flex flex-col">
+        {/*
+          The switch that lets sections start hidden and rise into view.
+
+          Everything with `.reveal` on it is at full opacity in the stylesheet
+          until this line runs, and it only runs where the thing that brings
+          those sections back exists: a browser with JavaScript and an
+          IntersectionObserver, and a reader who has not asked for less
+          motion. If the script never runs — JavaScript off, a crawler, a
+          proxy that drops it, a bundle that fails — the page is simply all
+          there. An animation is worth having; a page whose middle is blank
+          because an animation did not start is not.
+
+          It is a plain synchronous script as the first thing in the body, so
+          it sets the attribute before the first paint and nothing flashes.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'try{if(window.IntersectionObserver&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.setAttribute("data-reveal","on")}}catch(e){}',
+          }}
+        />
         {children}
         <Toaster />
         <SiteData />

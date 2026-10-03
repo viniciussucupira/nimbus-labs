@@ -21,13 +21,13 @@ const FOOD = "photo-1535473895227-bdecb20fb157";
 type Step = { key: string; icon: IconName; title: string; caption: string };
 
 const STEPS: Step[] = [
-  { key: "store", icon: "store", title: "The store", caption: "The link in the bio opens a face, a line about the creator, and what they sell." },
-  { key: "choose", icon: "tag", title: "A size, a price", caption: "One product, two prices. The buyer picks, and the button follows." },
+  { key: "store", icon: "store", title: "The store", caption: "The link in the bio opens the creator's face, a line about them, and everything they sell." },
+  { key: "choose", icon: "tag", title: "Two sizes, two prices", caption: "One product, two prices. The buyer picks, and the button follows." },
   // Not "in the buyer's currency". Since 22 September the checkout charges in
   // the currency the price was written in, so that line was describing
   // behaviour the site no longer has.
   { key: "pay", icon: "card", title: "Paid on Stripe", caption: "Stripe's own checkout, on the creator's own account, at the price on the page." },
-  { key: "file", icon: "download", title: "Delivered", caption: "The second Stripe confirms it, the file is on the screen. Lost later? Back by email." },
+  { key: "file", icon: "download", title: "Delivered", caption: "As soon as Stripe confirms the payment, the file is on the screen. Lost later? The buyer gets it back by email." },
   { key: "money", icon: "bank", title: "In your Stripe", caption: "The sale sits in the creator's own Stripe dashboard. Marktmorgen takes nothing from it." },
 ];
 

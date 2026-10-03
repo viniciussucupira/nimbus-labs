@@ -14,7 +14,7 @@ import { isDomainsConfigured } from "@/lib/domains";
 
 const HOME_TITLE = "Marktmorgen — the link-in-bio store that pays into your own Stripe";
 const HOME_DESCRIPTION =
-  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is delivered the second the payment clears, and Marktmorgen takes 0% of your sales.";
+  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is theirs as soon as Stripe confirms the payment, and Marktmorgen takes 0% of your sales.";
 
 export const metadata: Metadata = {
   title: HOME_TITLE,
@@ -75,8 +75,8 @@ const REASONS: {
   },
   {
     icon: "bolt",
-    title: "Delivered the second it is paid",
-    body: "The file is released when Stripe confirms the payment. If the buyer loses it, a month or a year later, they get it again by email.",
+    title: "Handed over as soon as Stripe confirms",
+    body: "A file downloads, a course opens, a booked call lands on both calendars — each one when Stripe confirms the payment, not when somebody reaches a thank-you page. If the buyer loses what they bought, a month or a year later, they get it again by email.",
     example:
       "A buyer on a new phone types the email address they paid with, and every purchase from that store comes back to them.",
     visual: "delivery",
@@ -136,12 +136,12 @@ const GROUPS: Group[] = [
     key: "deliver",
     icon: "bolt",
     title: "Deliver",
-    line: "The second Stripe confirms the payment.",
-    href: "/platform/instant-delivery",
-    link: "How delivery works",
+    line: "As soon as Stripe confirms the payment.",
+    href: "/platform#group-deliver",
+    link: "Every way we deliver",
     items: [
-      { title: "Instant download", body: "On screen the second it is paid. Lost later? The buyer gets it again by email, any time." },
-      { title: "Courses without passwords", body: "Students open them with a link to their email." },
+      { title: "Instant download", body: "On screen as soon as Stripe confirms the payment. Lost later? The buyer gets it again by email, any time." },
+      { title: "Courses without passwords", body: "Students open them with a link sent to their email." },
       { title: "Calendar invites", body: "A calendar file emailed to you both for each booked call, with reminders before it." },
       { title: "A confirmation for every buyer", body: "From your store's name, with the way back to what they bought." },
       { title: "Limited quantities", body: "Counted from real payments, and selling stops at zero." },
@@ -247,7 +247,7 @@ const COMPARE = [
   { row: "Cut of each sale", stan: "0%, plus Stripe's own fees", nimbus: "0%, plus Stripe's own fees", key: false, same: true },
   { row: "Several prices for one product", stan: "Not available", nimbus: "Up to three on any product", key: true },
   { row: "Discount codes", stan: "On the $99 Creator Pro plan", nimbus: `Included at $${PRICE} a month`, key: true },
-  { row: "Pay what you want", stan: "Not in their help center", nimbus: "A minimum and a suggested price", key: false },
+  { row: "Pay what you want", stan: "Not documented on their public help pages, read September 2026", nimbus: "A minimum and a suggested price", key: false },
   { row: "Changing your store address", stan: "Old links forwarded on a best-effort basis", nimbus: "Old addresses keep working, up to 10 held at once", key: false },
 ];
 
@@ -280,7 +280,7 @@ export default function Home() {
               </h1>
               <p className="t-lead measure mt-7 text-white/80">
                 Sell files, courses, calls and memberships from the link in your bio. Buyers pay straight into your own
-                Stripe account, what they bought arrives a second later, and Marktmorgen takes{" "}
+                Stripe account, what they bought is theirs as soon as Stripe confirms the payment, and Marktmorgen takes{" "}
                 <strong className="font-semibold text-white">0% of your sales</strong>.
               </p>
               {/*
@@ -442,7 +442,7 @@ export default function Home() {
             <div className="reveal mt-16">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="tag tag-live">Live now</span>
-                <p className="text-sm text-ink-mute">Every line here exists in the code today.</p>
+                <p className="text-sm text-ink-mute">Every line here works in your store today.</p>
               </div>
               <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {GROUPS.map((g) => {
@@ -580,7 +580,7 @@ export default function Home() {
                     <Icon name="bank" size={18} />
                   </span>
                   <p className="text-[0.9375rem] text-violet-ink">
-                    <strong className="font-semibold">Lands in your Stripe account.</strong> Same dashboard, same payout rhythm.
+                    <strong className="font-semibold">Lands in your Stripe account.</strong> The same dashboard and the same payout schedule you already have.
                   </p>
                 </div>
                 <p className="mt-5 text-[0.8125rem] leading-relaxed text-ink-mute">

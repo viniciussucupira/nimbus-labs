@@ -6,7 +6,7 @@ import { SignInForm } from "@/components/signin-form";
 import { PasskeySignIn } from "@/components/passkey-signin";
 import { ToastOnLoad } from "@/components/toast";
 import { isConnectConfigured } from "@/lib/stripe-connect";
-import { TRIAL_DAYS } from "@/lib/plan";
+import { PLAN_NAMES, TRIAL_DAYS, priceWords } from "@/lib/plan";
 import { formatMoney } from "@/lib/money";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS } from "@/lib/creator-invite-rules";
 
@@ -101,6 +101,26 @@ export default async function SignInPage({
   const notice = NOTICES[status];
   const confirmation = Object.hasOwn(TOASTS, status) ? TOASTS[status] : null;
 
+  /*
+   * The plan somebody pressed on, said back to them.
+   *
+   * Nothing is charged on this page and no plan is set here — the store is
+   * made first, and the plan is chosen in the studio, with the card, after
+   * the trial has started. But a person who read the Pro column, switched the
+   * page to yearly and pressed the button arrived at a page that mentioned
+   * neither, and had no way to tell whether the choice had been heard. So the
+   * choice travels in the address and is repeated here, with the plain truth
+   * of what happens to it next.
+   */
+  const tier = params.plan === "pro" ? "pro" : params.plan === "creator" ? "creator" : null;
+  const yearly = params.billing === "year";
+  const picked = tier
+    ? {
+        name: PLAN_NAMES[tier],
+        words: priceWords(tier, yearly ? "year" : "month"),
+      }
+    : null;
+
   return (
     <div className="min-h-screen bg-paper text-ink lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <aside className="surface-night nb-grid-lines on-dark hidden flex-col justify-between p-10 lg:flex xl:p-14">
@@ -143,6 +163,15 @@ export default async function SignInPage({
             Type your email and we&apos;ll send you a link. It opens your store if you already have one, and starts one if you do
             not. There is no password here, on purpose, and nothing to pay to begin.
           </p>
+
+          {picked ? (
+            <div className="notice mt-6" role="status">
+              <p className="font-semibold">{`You picked ${picked.name}, ${picked.words}`}</p>
+              <p className="mt-1">
+                {`Nothing is paid here. Your store is made first and the ${TRIAL_DAYS} free days start when you switch your checkout on in your studio, where ${picked.name} at ${picked.words} is one of the plans waiting for you. You can take the other one instead, or move between them later.`}
+              </p>
+            </div>
+          ) : null}
 
           {confirmation ? <ToastOnLoad message={confirmation} param="status" /> : null}
           {notice ? (
