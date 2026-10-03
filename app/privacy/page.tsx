@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="October 2, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="October 3, 2026">
       <p>
         Marktmorgen (“Marktmorgen,” “we,” “us,” or “our”) is operated by
         Solrenning, an independent software studio. This Privacy Policy
@@ -882,7 +882,13 @@ export default function PrivacyPage() {
             ask a buyer for a review, the reminders about a community&apos;s live
             events, the one email a creator may send to buyers they brought
             over from another platform, and the emails a creator sends to their
-            list or their community;
+            list or their community, and which receives the emails written to
+            our own addresses, such as support@marktmorgen.com, and passes them
+            on to the inbox where we read them;
+          </li>
+          <li>
+            <strong className="text-black">Google</strong>, in whose mail
+            service (Gmail) we read and answer the emails you write to us;
           </li>
           <li>
             <strong className="text-black">Upstash</strong>, our database
@@ -920,9 +926,9 @@ export default function PrivacyPage() {
         <p>
           Our own service providers (Vercel, Upstash, Resend and Anthropic) may use the
           information only to provide their services to us or as required by
-          law. Stripe, the services a creator connects and the ad platforms a
-          creator adds handle what they receive under their own terms and
-          privacy policies.
+          law. Stripe, Google for the emails you write to us, the services a
+          creator connects and the ad platforms a creator adds handle what they
+          receive under their own terms and privacy policies.
         </p>
       </LegalSection>
 
