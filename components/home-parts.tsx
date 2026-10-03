@@ -645,14 +645,40 @@ function PlanCard({
           : `Billed monthly. Or $${year / 100} a year in one payment \u2014 $${saving} less than twelve months.`}
       </p>
 
+      {/*
+        Six lines, then the rest behind a press.
+
+        Eighteen ticks in a column made the two cards 4,156px of page
+        between them, and a list that long is not read — it is scrolled
+        past. The six that decide the purchase are open; the rest are one
+        press away, in the same card, with nothing hidden from anyone who
+        wants it.
+      */}
       <ul className="mt-6 space-y-3">
-        {perks.map((perk) => (
+        {perks.slice(0, 6).map((perk) => (
           <li key={perk} className="flex gap-3 text-ink-soft">
             <Icon name="check" size={18} strokeWidth={2.2} className="mt-1 shrink-0 text-mint-brand" />
             <span>{perk}</span>
           </li>
         ))}
       </ul>
+      {perks.length > 6 ? (
+        <details className="group/perks mt-3">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-[8px] text-sm font-semibold text-violet-deep [&::-webkit-details-marker]:hidden">
+            <Icon name="plus" size={15} className="transition-transform duration-200 group-open/perks:rotate-45" />
+            <span className="group-open/perks:hidden">{`${perks.length - 6} more in this plan`}</span>
+            <span className="hidden group-open/perks:inline">Fewer</span>
+          </summary>
+          <ul className="mt-3 space-y-3">
+            {perks.slice(6).map((perk) => (
+              <li key={perk} className="flex gap-3 text-ink-soft">
+                <Icon name="check" size={18} strokeWidth={2.2} className="mt-1 shrink-0 text-mint-brand" />
+                <span>{perk}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
       <div className="mt-auto pt-7">
         {/*
           The plan and the rhythm travel with the press.
@@ -1008,14 +1034,46 @@ export function DemoWindow({
  * a customer, a number or a claim — it is a list of what the thing does,
  * which is why it can run without a caveat under it.
  */
-const SOLD = [
-  "Meal plans", "Lightroom presets", "Notion templates", "Yoga programs",
-  "Sample packs", "Knitting patterns", "1:1 coaching calls", "Study guides",
-  "Brush packs", "Membership communities", "Watercolor classes", "Resume reviews",
-  "Sourdough courses", "Lesson plans", "Portfolio critiques", "Running plans",
-  "Chord charts", "Photo editing calls", "Recipe packs", "Business templates",
-  "Breathwork sessions", "Font bundles", "Wedding checklists", "Garden guides",
+/*
+ * Every item carries its own photograph.
+ *
+ * Stan's strip is type on a tile. Theirs works; a photograph of the thing
+ * works harder, because "Sourdough courses" is a category and a loaf is a
+ * reason. Each id below was looked up and confirmed to resolve, and each
+ * is cropped square on faces so a person in the frame is never beheaded.
+ *
+ * The tint is the chip's own, drawn from the five lights of the page, so
+ * the strip carries the whole palette past in one pass instead of
+ * repeating one accent twenty-four times.
+ */
+const SOLD: { label: string; photo: string }[] = [
+  { label: "Meal plans", photo: "photo-1723291425355-87a06a81be37" },
+  { label: "Lightroom presets", photo: "photo-1621600411688-4be93cd68504" },
+  { label: "Sourdough courses", photo: "photo-1726761752831-bbb0f64bf539" },
+  { label: "Yoga programs", photo: "photo-1722945753327-5f543d9fedbe" },
+  { label: "Sample packs", photo: "photo-1677589330382-775a14653741" },
+  { label: "Knitting patterns", photo: "photo-1664303277281-3e488be9d82a" },
+  { label: "1:1 coaching calls", photo: "photo-1728413775558-5686da5a359d" },
+  { label: "Study guides", photo: "photo-1670963025124-36714c107eb7" },
+  { label: "Brush packs", photo: "photo-1661454036980-795da1a0424a" },
+  { label: "Membership communities", photo: "photo-1723780856806-385158fd0afc" },
+  { label: "Watercolor classes", photo: "photo-1770581063308-ee603bfb4e3b" },
+  { label: "Resume reviews", photo: "photo-1726804847153-b14e2d05f74e" },
+  { label: "Pottery classes", photo: "photo-1610206349499-c932c3b3aacb" },
+  { label: "Lesson plans", photo: "photo-1770580813113-cb81cad20d2a" },
+  { label: "Portfolio critiques", photo: "photo-1723914159511-8dd3d2b66805" },
+  { label: "Running plans", photo: "photo-1775400788040-3b26ab2b8ca5" },
+  { label: "Chord charts", photo: "photo-1770404590441-53e57fe06e16" },
+  { label: "Lettering classes", photo: "photo-1778277640257-dada00daa9ca" },
+  { label: "Recipe packs", photo: "photo-1723464003582-df09ab4ad03d" },
+  { label: "Business templates", photo: "photo-1677340725081-e81626d96e29" },
+  { label: "Breathwork sessions", photo: "photo-1661823654611-b93edf33ca74" },
+  { label: "Font bundles", photo: "photo-1668902223802-5594ad8ad520" },
+  { label: "Wedding checklists", photo: "photo-1681487867978-1b83ce2625c5" },
+  { label: "Garden guides", photo: "photo-1723914186321-58e70ddf31cf" },
 ];
+
+const TINTS = ["#ff7a59", "#15a37a", "#ffcf4d", "#5a36ee", "#e8456b"];
 
 export function SoldMarquee() {
   // Two copies of the list: the track travels exactly half its width, so
@@ -1026,14 +1084,20 @@ export function SoldMarquee() {
       <ul className="marquee-track">
         {row.map((item, i) => (
           <li
-            key={`${item}-${i}`}
-            className="flex shrink-0 items-center gap-2.5 rounded-full bg-white/80 px-4 py-2.5 text-[0.9375rem] font-medium text-ink shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09)]"
+            key={`${item.label}-${i}`}
+            className="flex shrink-0 items-center gap-3 rounded-full bg-white/85 py-1.5 pl-1.5 pr-5 text-[0.9375rem] font-medium text-ink shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09),0_8px_20px_-12px_rgba(42,23,144,0.3)]"
           >
-            <span
-              className="h-2 w-2 shrink-0 rounded-full"
-              style={{ background: ["#ff7a59", "#15a37a", "#ffcf4d", "#5a36ee", "#e8456b"][i % 5] }}
+            <img
+              src={FACE(item.photo, 96)}
+              alt=""
+              width={40}
+              height={40}
+              loading="lazy"
+              decoding="async"
+              className="h-10 w-10 shrink-0 rounded-full object-cover"
+              style={{ boxShadow: `0 0 0 2px ${TINTS[i % TINTS.length]}55` }}
             />
-            {item}
+            <span className="whitespace-nowrap">{item.label}</span>
           </li>
         ))}
       </ul>

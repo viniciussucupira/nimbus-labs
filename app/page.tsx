@@ -52,6 +52,8 @@ const REASONS: {
   visual: VisualKey;
   href: string;
   link: string;
+  photo: string;
+  alt: string;
 }[] = [
   {
     icon: "bank",
@@ -62,6 +64,8 @@ const REASONS: {
     visual: "stripe",
     href: "/platform/your-stripe",
     link: "How the money moves",
+    photo: "photo-1677340725081-e81626d96e29",
+    alt: "A desk with a printed statement, a marker and a laptop",
   },
   {
     icon: "tag",
@@ -72,6 +76,8 @@ const REASONS: {
     visual: "options",
     href: "/platform/price-options",
     link: "See price options",
+    photo: "photo-1723464003582-df09ab4ad03d",
+    alt: "Ingredients and recipe cards laid out on a counter",
   },
   {
     icon: "bolt",
@@ -82,6 +88,8 @@ const REASONS: {
     visual: "delivery",
     href: "/platform/instant-delivery",
     link: "How delivery works",
+    photo: "photo-1723780856806-385158fd0afc",
+    alt: "A woman at a laptop, close up, opening something she has just bought",
   },
 ];
 
@@ -472,14 +480,48 @@ export default function Home() {
                     </Link>
                   </div>
                   {/*
+                    The photograph and the drawing, overlapping.
+
+                    Stan's hero works because a portrait and a product card
+                    sit on top of each other at slightly different angles:
+                    the photograph gives the block a reason to exist and the
+                    card gives it the proof. Three sections of pure diagram
+                    was the longest stretch of this page with no human being
+                    in it — 5,736px of it.
+
+                    The photograph is the ground, tilted a degree and a half
+                    and tinted at the corner; the drawing of the real screen
+                    sits over its lower edge, straight, because the thing
+                    being proved must never look styled.
+
                     min-w-0 is not decoration. A grid item will not shrink
                     below the widest thing inside it unless you say so, and
                     these drawings are full of rows that would rather stay
                     wide, so without it the whole page grows a sideways
                     scrollbar on a phone.
                   */}
-                  <div className={`flex min-w-0 justify-center ${i % 2 === 1 ? "lg:order-1 lg:justify-start" : "lg:justify-end"}`}>
-                    <FeatureVisual visual={r.visual} tone="light" />
+                  <div className={`relative flex min-w-0 justify-center ${i % 2 === 1 ? "lg:order-1" : ""}`}>
+                    <div className="relative w-full max-w-[30rem]">
+                      <div
+                        className="overflow-hidden rounded-[var(--r-xl)] shadow-[0_18px_44px_-20px_rgba(42,23,144,0.45)]"
+                        style={{ transform: i % 2 === 1 ? "rotate(1.5deg)" : "rotate(-1.5deg)" }}
+                      >
+                        <img
+                          src={PHOTO(r.photo, 760, 560)}
+                          srcSet={`${PHOTO(r.photo, 560, 412)} 560w, ${PHOTO(r.photo, 760, 560)} 760w, ${PHOTO(r.photo, 1120, 824)} 1120w`}
+                          sizes="(min-width: 1024px) 44vw, 92vw"
+                          alt={r.alt}
+                          width={760}
+                          height={560}
+                          loading="lazy"
+                          decoding="async"
+                          className="aspect-[19/14] w-full object-cover"
+                        />
+                      </div>
+                      <div className="relative -mt-14 flex justify-center px-2 sm:-mt-16">
+                        <FeatureVisual visual={r.visual} tone="light" />
+                      </div>
+                    </div>
                   </div>
                 </article>
               ))}
@@ -509,8 +551,7 @@ export default function Home() {
                   const wide = gi === 0;
                   const shown = g.items.slice(0, wide ? 4 : 2);
                   const more = g.items.slice(wide ? 4 : 2);
-                  const item = (f: Feature) => (
-                    <li key={f.title} className="flex gap-3">
+                  const item = (f: Feature) => (                    <li key={f.title} className="flex gap-3">
                       <Icon name="check" size={16} strokeWidth={2.4} className="mt-1 shrink-0 text-mint-deep" />
                       <span className="min-w-0">
                         <span className="font-semibold text-ink">{f.title}</span>
