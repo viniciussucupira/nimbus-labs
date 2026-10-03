@@ -64,7 +64,7 @@ const REASONS: {
     visual: "stripe",
     href: "/platform/your-stripe",
     link: "How the money moves",
-    photo: "photo-1677340725081-e81626d96e29",
+    photo: "photo-1537861295351-76bb831ece99",
     alt: "A desk with a printed statement, a marker and a laptop",
   },
   {
@@ -76,7 +76,7 @@ const REASONS: {
     visual: "options",
     href: "/platform/price-options",
     link: "See price options",
-    photo: "photo-1723464003582-df09ab4ad03d",
+    photo: "photo-1528712306091-ed0763094c98",
     alt: "Ingredients and recipe cards laid out on a counter",
   },
   {
@@ -88,7 +88,7 @@ const REASONS: {
     visual: "delivery",
     href: "/platform/instant-delivery",
     link: "How delivery works",
-    photo: "photo-1723780856806-385158fd0afc",
+    photo: "photo-1562577309-d67db487e6cd",
     alt: "A woman at a laptop, close up, opening something she has just bought",
   },
 ];
@@ -316,28 +316,28 @@ export default function Home() {
                 figure: "97\u2013100",
                 title: "Google PageSpeed",
                 body: "Mobile performance on the demo store, measured September 17, 2026, before its photos were added.",
-                photo: "photo-1775400788040-3b26ab2b8ca5",
+                photo: "photo-1636647511729-6703539ba71f",
                 alt: "A runner on a trail at first light",
               },
               {
                 figure: "Stripe",
                 title: "Handles the card",
                 body: "The payment happens on Stripe's own checkout. We never see a card number.",
-                photo: "photo-1677340725081-e81626d96e29",
+                photo: "photo-1537861295351-76bb831ece99",
                 alt: "A statement and a marker on a working desk",
               },
               {
                 figure: "2 clicks",
                 title: "To cancel",
                 body: "From your own studio. No email to us, no chat, no second request.",
-                photo: "photo-1723780856806-385158fd0afc",
+                photo: "photo-1562577309-d67db487e6cd",
                 alt: "A woman at a laptop, close up",
               },
               {
                 figure: "200 GB",
                 title: "Of downloads a month",
                 body: "Stated here, not buried in the terms, and nothing is cut off if you pass it. Files up to 5 GB each.",
-                photo: "photo-1670963025124-36714c107eb7",
+                photo: "photo-1519408469771-2586093c3f14",
                 alt: "A light desk with a laptop and a notebook",
               },
             ].map((f) => (
@@ -732,9 +732,9 @@ export default function Home() {
             */}
             <ul className="reveal mx-auto grid max-w-5xl grid-cols-3 gap-3 sm:gap-4">
               {[
-                { id: "photo-1723291425355-87a06a81be37", alt: "A meal prepared and plated on a counter" },
-                { id: "photo-1677589330382-775a14653741", alt: "A sampler pad under studio light" },
-                { id: "photo-1770581063308-ee603bfb4e3b", alt: "Watercolor supplies laid out on a table" },
+                { id: "photo-1580642682609-8b6ab251fbb7", alt: "A meal prepared and plated on a counter" },
+                { id: "photo-1632494873717-d630cd5f2634", alt: "A sampler pad under studio light" },
+                { id: "photo-1626785774573-4b799315345d", alt: "Watercolor supplies laid out on a table" },
               ].map((p) => (
                 <li key={p.id} className="overflow-hidden rounded-[var(--r-lg)] shadow-[0_14px_32px_-18px_rgba(42,23,144,0.4)]">
                   <img
@@ -782,8 +782,8 @@ export default function Home() {
               */}
               <div className="mt-8 hidden overflow-hidden rounded-[var(--r-lg)] shadow-[0_18px_44px_-20px_rgba(42,23,144,0.4)] lg:block">
                 <img
-                  src={PHOTO("photo-1670963025124-36714c107eb7", 560, 620)}
-                  srcSet={`${PHOTO("photo-1670963025124-36714c107eb7", 560, 620)} 560w, ${PHOTO("photo-1670963025124-36714c107eb7", 900, 996)} 900w`}
+                  src={PHOTO("photo-1519408469771-2586093c3f14", 560, 620)}
+                  srcSet={`${PHOTO("photo-1519408469771-2586093c3f14", 560, 620)} 560w, ${PHOTO("photo-1519408469771-2586093c3f14", 900, 996)} 900w`}
                   sizes="30vw"
                   alt="A desk with a laptop and an open notebook"
                   width={560}
@@ -814,8 +814,8 @@ export default function Home() {
             to the same morning as everything above it.
           */}
           <img
-            src={PHOTO("photo-1723914159511-8dd3d2b66805", 1600, 900)}
-            srcSet={`${PHOTO("photo-1723914159511-8dd3d2b66805", 900, 506)} 900w, ${PHOTO("photo-1723914159511-8dd3d2b66805", 1600, 900)} 1600w`}
+            src={PHOTO("photo-1534670007418-fbb7f6cf32c3", 1600, 900)}
+            srcSet={`${PHOTO("photo-1534670007418-fbb7f6cf32c3", 900, 506)} 900w, ${PHOTO("photo-1534670007418-fbb7f6cf32c3", 1600, 900)} 1600w`}
             sizes="100vw"
             alt=""
             width={1600}
