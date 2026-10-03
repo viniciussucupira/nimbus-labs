@@ -117,8 +117,7 @@
   --gap-xl: 4rem;
   --gap-2xl: 6rem;
 
-  /* interaction — the same lift and the same ring everywhere */
-  --lift: -2px;
+  /* interaction — the same lift and the same ring everywhere */  --lift: -2px;
   --lift-strong: -3px;
   --press: 1px;
   --ring: 0 0 0 3px rgba(90, 54, 238, 0.28);
@@ -246,24 +245,38 @@ body {
 
 /* ---------------------------------------------------------- typography */
 
+/*
+ * Tracking and leading, measured against the category rather than chosen
+ * by eye.
+ *
+ * Kajabi sets its display line at 58px over 64px of leading — a ratio of
+ * 1.10 — with -0.020em of tracking, and its section headings at 39px/43px
+ * on the same -0.020em. This scale was at 0.98 leading and -0.045em: the
+ * lines of a two-line headline nearly touched, and the letters were
+ * squeezed to half the space the best in this category give them. Large
+ * type needs less tracking than small type, not none.
+ *
+ * These sit between the two: tighter than Kajabi, because this face is
+ * wider than theirs, but loose enough that a headline has air in it.
+ */
 .t-display {
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   font-weight: 600;
   font-size: clamp(3rem, 1.45rem + 5.2vw, 5.75rem);
-  line-height: 0.98;
-  letter-spacing: -0.045em;
+  line-height: 1.04;
+  letter-spacing: -0.03em;
 }
 .t-h1 {
   font-weight: 600;
   font-size: clamp(2.3rem, 1.5rem + 3.2vw, 4rem);
-  line-height: 1.03;
-  letter-spacing: -0.04em;
+  line-height: 1.08;
+  letter-spacing: -0.028em;
 }
 .t-h2 {
   font-weight: 600;
   font-size: clamp(1.9rem, 1.3rem + 2.3vw, 3.1rem);
-  line-height: 1.07;
-  letter-spacing: -0.035em;
+  line-height: 1.1;
+  letter-spacing: -0.024em;
 }
 .t-h3 {
   font-weight: 600;

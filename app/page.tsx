@@ -430,7 +430,7 @@ export default function Home() {
                     scrollbar on a phone.
                   */}
                   <div className={`relative flex min-w-0 justify-center ${i % 2 === 1 ? "lg:order-1" : ""}`}>
-                    <div className="relative w-full max-w-[30rem]">
+                    <div className="relative w-full">
                       <div
                         className="overflow-hidden rounded-[var(--r-xl)] shadow-[0_18px_44px_-20px_rgba(42,23,144,0.45)]"
                         style={{ transform: i % 2 === 1 ? "rotate(1.5deg)" : "rotate(-1.5deg)" }}
@@ -722,31 +722,34 @@ export default function Home() {
         <section id="pricing" className="surface-lilac section scroll-mt-20">
           <div className="container-page">
             {/*
-              Three photographs across the top of the price block.
+              Four photographs across the top of the price block, at the
+              same width as every other card on this page.
 
-              Pricing was 2,218px without a single image — the longest
-              stretch of the page where somebody is deciding whether to pay,
-              and nothing on it to look at. These are three of the trades
-              the plans are for, wide and shallow so they frame the prices
-              rather than compete with them.
+              Kajabi renders its images at three widths and no others —
+              87%, 28% and 16% of the viewport — and that discipline is
+              most of why their page feels composed. This one was rendering
+              at nine, which reads as drift rather than rhythm. Four across
+              the full container puts these on the card step, the same one
+              the facts under the hero and the creator grid use.
             */}
-            <ul className="reveal mx-auto grid max-w-5xl grid-cols-3 gap-3 sm:gap-4">
+            <ul className="reveal grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               {[
                 { id: "photo-1580642682609-8b6ab251fbb7", alt: "A meal prepared and plated on a counter" },
                 { id: "photo-1632494873717-d630cd5f2634", alt: "A sampler pad under studio light" },
                 { id: "photo-1626785774573-4b799315345d", alt: "Watercolor supplies laid out on a table" },
+                { id: "photo-1671580704901-98cedb46e06b", alt: "A movement teacher mid-session in a bright room" },
               ].map((p) => (
                 <li key={p.id} className="overflow-hidden rounded-[var(--r-lg)] shadow-[0_14px_32px_-18px_rgba(42,23,144,0.4)]">
                   <img
-                    src={PHOTO(p.id, 560, 320)}
-                    srcSet={`${PHOTO(p.id, 400, 229)} 400w, ${PHOTO(p.id, 560, 320)} 560w, ${PHOTO(p.id, 900, 514)} 900w`}
-                    sizes="(min-width: 1024px) 22vw, 31vw"
+                    src={PHOTO(p.id, 560, 420)}
+                    srcSet={`${PHOTO(p.id, 400, 300)} 400w, ${PHOTO(p.id, 560, 420)} 560w, ${PHOTO(p.id, 900, 675)} 900w`}
+                    sizes="(min-width: 1024px) 22vw, 46vw"
                     alt={p.alt}
                     width={560}
-                    height={320}
+                    height={420}
                     loading="lazy"
                     decoding="async"
-                    className="aspect-[7/4] w-full object-cover"
+                    className="aspect-[4/3] w-full object-cover"
                   />
                 </li>
               ))}
@@ -777,20 +780,20 @@ export default function Home() {
               </p>
               {/*
                 A photograph in the column that would otherwise be three
-                lines of text and a lot of air. It is somebody reading
-                something carefully, which is what this section is for.
+                lines of text and a lot of air, held to the card step so it
+                does not become an image width of its own.
               */}
-              <div className="mt-8 hidden overflow-hidden rounded-[var(--r-lg)] shadow-[0_18px_44px_-20px_rgba(42,23,144,0.4)] lg:block">
+              <div className="mt-8 hidden max-w-[19rem] overflow-hidden rounded-[var(--r-lg)] shadow-[0_18px_44px_-20px_rgba(42,23,144,0.4)] lg:block">
                 <img
-                  src={PHOTO("photo-1519408469771-2586093c3f14", 560, 620)}
-                  srcSet={`${PHOTO("photo-1519408469771-2586093c3f14", 560, 620)} 560w, ${PHOTO("photo-1519408469771-2586093c3f14", 900, 996)} 900w`}
-                  sizes="30vw"
+                  src={PHOTO("photo-1519408469771-2586093c3f14", 560, 700)}
+                  srcSet={`${PHOTO("photo-1519408469771-2586093c3f14", 400, 500)} 400w, ${PHOTO("photo-1519408469771-2586093c3f14", 560, 700)} 560w`}
+                  sizes="22vw"
                   alt="A desk with a laptop and an open notebook"
                   width={560}
-                  height={620}
+                  height={700}
                   loading="lazy"
                   decoding="async"
-                  className="aspect-[14/15] w-full object-cover"
+                  className="aspect-[4/5] w-full object-cover"
                 />
               </div>
             </div>

@@ -1071,6 +1071,10 @@ const SOLD: { label: string; photo: string }[] = [
   { label: "Font bundles", photo: "photo-1653233797467-1a528819fd4f" },
   { label: "Wedding checklists", photo: "photo-1518737003272-dac7c4760d5e" },
   { label: "Garden guides", photo: "photo-1556911073-a517e752729c" },
+  { label: "Meal plans", photo: "photo-1606787503066-794bb59c64bc" },
+  { label: "Posture clinics", photo: "photo-1763403921315-f2ef8697199f" },
+  { label: "Stretch routines", photo: "photo-1665781665930-43c9bfd33952" },
+  { label: "Knife skills", photo: "photo-1556910103-1c02745aae4d" },
 ];
 
 const TINTS = ["#ff7a59", "#15a37a", "#ffcf4d", "#5a36ee", "#e8456b"];
