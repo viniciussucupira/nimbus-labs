@@ -13,7 +13,7 @@ import { CommunityBar, Face, LevelBadge } from "@/components/community-parts";
 type Params = { params: Promise<{ handle: string }>; searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
 export const metadata: Metadata = {
-  title: "Leaderboard — Nimbus Labs",
+  title: "Leaderboard — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

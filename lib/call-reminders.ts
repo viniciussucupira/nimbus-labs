@@ -96,7 +96,7 @@ async function remindCreator(store: Store, product: Listing, paid: PaidCall[], c
   const seats = seatsAt(setup, call.start);
   const group = setup.kind === "live" || seats > 1;
   return sendEmail({
-    from: `"Nimbus Labs" <${senderAddress()}>`,
+    from: `"Marktmorgen" <${senderAddress()}>`,
     to: store.email,
     subject: `${when(mark)}: ${product.title}, ${readableTime(call.start, setup.tz)}`,
     text: [

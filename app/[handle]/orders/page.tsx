@@ -19,7 +19,7 @@ import { type PurchaseItems } from "@/lib/buyer-orders";
 import { BundleDelivery } from "@/components/bundle-delivery";
 
 export const metadata: Metadata = {
-  title: "Your purchases — Nimbus Labs",
+  title: "Your purchases — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
@@ -411,7 +411,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                 Check your inbox
               </h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
-                {`If that address bought something from ${store.name}, the link is on its way. It comes from ${store.name} via Nimbus Labs and usually arrives within a minute. If it is not there, look in spam.`}
+                {`If that address bought something from ${store.name}, the link is on its way. It comes from ${store.name} via Marktmorgen and usually arrives within a minute. If it is not there, look in spam.`}
               </p>
               <p className="st-muted mt-4 text-sm">
                 Nothing arrived? You may have paid with a different address: the one you typed at checkout. Try that one below.

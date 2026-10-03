@@ -659,7 +659,7 @@ async function warnIfLow(store: Store, product: Listing): Promise<void> {
   const [claimed] = await redisPipeline([["SET", warnedKey(store, product), "1", "NX", "EX", 90 * 86_400]]);
   if (claimed === null) return;
   await sendEmail({
-    from: `"Nimbus Labs" <${senderAddress()}>`,
+    from: `"Marktmorgen" <${senderAddress()}>`,
     to: store.email,
     subject: count === 0 ? `No license keys left for ${product.title}` : `${count} license ${count === 1 ? "key" : "keys"} left for ${product.title}`,
     text: [
@@ -677,7 +677,7 @@ async function warnIfLow(store: Store, product: Listing): Promise<void> {
 /** A buyer paid in the moment the last key went: the creator hears at once. */
 async function tellCreatorEmpty(store: Store, product: Listing, reference: string, email: string): Promise<void> {
   await sendEmail({
-    from: `"Nimbus Labs" <${senderAddress()}>`,
+    from: `"Marktmorgen" <${senderAddress()}>`,
     to: store.email,
     subject: `A buyer of ${product.title} is waiting for a license key`,
     text: [

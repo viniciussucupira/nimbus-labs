@@ -2,7 +2,7 @@
  * Connecting a creator's own Stripe account.
  *
  * The creator ends up owning a full Stripe account: their name on it, their
- * dashboard, their payouts, their money. Nimbus holds the account's identifier
+ * dashboard, their payouts, their money. Marktmorgen holds the account's identifier
  * and nothing else — no key to it, and never the money that lands in it. That
  * is what lets the site say the buyer pays into the creator's own account
  * without stretching the truth.

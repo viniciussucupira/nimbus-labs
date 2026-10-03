@@ -50,7 +50,7 @@ import { SafeFetchError, problemWords, safeFetch, type SafeFetchOptions } from "
 /** The label the VAPID private key is derived under. Changing it changes every phone's key. */
 export const VAPID_LABEL = "nimbus-labs/web-push/vapid-p256/v1";
 /** Who the push services may write to about our messages. */
-export const VAPID_SUBJECT = "mailto:support@nimbuslabsai.com";
+export const VAPID_SUBJECT = "mailto:support@marktmorgen.com";
 /** The order n of the P-256 group: a private key is a number from 1 to n - 1. */
 const P256_ORDER = BigInt("0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551");
 /** How long a signed token is good for. RFC 8292 allows up to a day. */

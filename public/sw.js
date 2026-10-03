@@ -64,7 +64,7 @@ self.addEventListener("fetch", (event) => {
         caches.match(request).then((hit) => {
           if (hit) return hit;
           // Offline inside an installed store: its own front page, if it was
-          // opened before, rather than the Nimbus home page.
+          // opened before, rather than the Marktmorgen home page.
           const store = url.pathname.match(/^\/@[^/]+/);
           return (store ? caches.match(store[0]) : Promise.resolve(undefined)).then((page) => page || caches.match("/"));
         }),

@@ -56,7 +56,7 @@ function sender(store: Store): string {
   const match = NIMBUS_FROM.match(/<([^>]+)>/);
   const address = (match ? match[1] : NIMBUS_FROM).trim();
   const name = store.name.replace(/["\\<>\r\n]/g, "").trim().slice(0, 60) || "A store";
-  return `"${name} via Nimbus Labs" <${address}>`;
+  return `"${name} via Marktmorgen" <${address}>`;
 }
 
 // ------------------------------------------------------------------ coming soon
@@ -141,7 +141,7 @@ export async function joinWaitlist(input: {
       "If you did not ask for this, ignore this email. Nothing happens unless the button is pressed.",
       `To take your address off this waitlist at any time: ${origin}/@${store.handle}/waitlist?leave=${leave}`,
       "",
-      `Sent by Nimbus Labs on behalf of ${store.name}.`,
+      `Sent by Marktmorgen on behalf of ${store.name}.`,
     ].join("\n"),
   });
   return sent ? "sent" : "error";

@@ -24,7 +24,7 @@
  * Every event has an id made from what it is about — the checkout, the
  * subscription, the refund — so however many times the same thing is noticed
  * (the thanks page and the job, a run that repeats), it is sent once. Every
- * message is signed: the header Nimbus-Signature is "t=<seconds>,v1=<hex>",
+ * message is signed: the header Marktmorgen-Signature is "t=<seconds>,v1=<hex>",
  * where the hex is HMAC-SHA256 of "<seconds>.<body>" under the endpoint's
  * secret, which is shown to the creator once, when the endpoint is added. A
  * receiver checks the signature and that the time is recent, and uses the
@@ -201,12 +201,12 @@ async function attempt(delivery: Delivery, endpoint: Endpoint | undefined, now =
       timeoutMs: ATTEMPT_TIMEOUT_MS,
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "NimbusLabs-Webhooks/1.0 (+https://nimbuslabsai.com)",
-        "Nimbus-Event-Id": delivery.eventId,
-        "Nimbus-Event-Type": delivery.type,
-        "Nimbus-Delivery-Id": delivery.id,
-        "Nimbus-Timestamp": String(timestamp),
-        "Nimbus-Signature": signature(endpoint.secret, timestamp, delivery.body),
+        "User-Agent": "Marktmorgen-Webhooks/1.0 (+https://marktmorgen.com)",
+        "Marktmorgen-Event-Id": delivery.eventId,
+        "Marktmorgen-Event-Type": delivery.type,
+        "Marktmorgen-Delivery-Id": delivery.id,
+        "Marktmorgen-Timestamp": String(timestamp),
+        "Marktmorgen-Signature": signature(endpoint.secret, timestamp, delivery.body),
       },
       ...(hooksForTests.fetch ?? {}),
     });
@@ -501,7 +501,7 @@ export async function sendTest(store: Store, id: string, now = Date.now()): Prom
     type: "test",
     created: Math.floor(now / 1000),
     store: { handle: store.handle, name: store.name, url: `${SITE_URL}/@${store.handle}` },
-    data: { message: "A test from your Nimbus Labs studio. Nothing happened in your store." },
+    data: { message: "A test from your Marktmorgen studio. Nothing happened in your store." },
   });
   const delivery: Delivery = {
     id: `dlv_${randomBytes(12).toString("hex")}`,

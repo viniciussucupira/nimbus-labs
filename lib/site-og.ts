@@ -4,8 +4,8 @@
  * layout names only the picture and the site, never the home page's words.
  */
 export const SITE_OG_IMAGE = {
-  url: "/og.png?v=2",
+  url: "/og.png?v=3",
   width: 1200,
   height: 630,
-  alt: "Nimbus Labs: your store, your Stripe, your money. A paid Stripe checkout and a delivered file, with 0% of the sale taken.",
+  alt: "Marktmorgen: your store, your Stripe, your money. A paid Stripe checkout and a delivered file, with 0% of the sale taken.",
 };

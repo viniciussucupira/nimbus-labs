@@ -159,7 +159,7 @@ async function main(): Promise<void> {
   is("it is for Dana, on this product", [grant?.email, grant?.product], ["dana@example.com", club.product.id]);
   is("with the offer as it was sent", [grant?.percent, grant?.months], [25, 2]);
   is("it opens nothing for another product", await readWinBack(store!, yearly.product.id, link[2]), null);
-  const opened = await openWinBack(store!, link[1], link[2], "https://nimbuslabsai.com");
+  const opened = await openWinBack(store!, link[1], link[2], "https://marktmorgen.com");
   is("the checkout opens", opened.ok, true);
   const body = checkouts[0];
   is("with the coupon applied", body.get("discounts[0][coupon]"), "co_Back0001");

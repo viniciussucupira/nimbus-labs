@@ -24,9 +24,9 @@ const accent = Instrument_Serif({
 });
 
 const SITE_TITLE =
-  "Nimbus Labs — the link-in-bio store that pays into your own Stripe";
+  "Marktmorgen — the link-in-bio store that pays into your own Stripe";
 const SITE_DESCRIPTION =
-  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is delivered the second the payment clears, and Nimbus takes 0% of your sales.";
+  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is delivered the second the payment clears, and Marktmorgen takes 0% of your sales.";
 
 export const viewport: Viewport = {
   themeColor: "#0d0b24",
@@ -38,10 +38,10 @@ export const metadata: Metadata = {
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
   manifest: "/manifest.webmanifest",
-  applicationName: "Nimbus Labs",
+  applicationName: "Marktmorgen",
   appleWebApp: {
     capable: true,
-    title: "Nimbus",
+    title: "Marktmorgen",
     statusBarStyle: "black-translucent",
   },
   icons: {
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   // never the home page's.
   openGraph: {
     type: "website",
-    siteName: "Nimbus Labs",
+    siteName: "Marktmorgen",
     locale: "en_US",
     images: [SITE_OG_IMAGE],
   },

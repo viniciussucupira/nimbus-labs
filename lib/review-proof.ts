@@ -3,7 +3,7 @@
  * creator's own Stripe account tells it, every time a review is written,
  * changed or deleted — and the refunds that take a review's stars back.
  *
- * Nothing about purchases is written down by Nimbus (lib/buyer-orders.ts),
+ * Nothing about purchases is written down by Marktmorgen (lib/buyer-orders.ts),
  * so a review is never checked against a list of ours. The buyer comes
  * through one of three doors, each holding something only a buyer has, and
  * the order that door names is then read from Stripe:

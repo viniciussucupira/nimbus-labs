@@ -36,7 +36,7 @@ export function StudioHeader({
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
       <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-3">
-        <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Nimbus Labs, home">
+        <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Marktmorgen, home">
           <span className="hidden sm:inline">
             <Logo />
           </span>

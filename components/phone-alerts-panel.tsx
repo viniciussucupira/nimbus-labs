@@ -198,7 +198,7 @@ export function PhoneAlertsPanel({ view: initial }: { view: PhoneView }) {
       if (answer !== "granted") {
         setError(
           answer === "denied"
-            ? "Notifications are blocked for this site. Allow them in your browser's settings for nimbuslabsai.com, then try again."
+            ? "Notifications are blocked for this site. Allow them in your browser's settings for marktmorgen.com, then try again."
             : "Nothing was turned on: the browser's question was closed without an answer.",
         );
         return;

@@ -6,9 +6,9 @@ import { API_RATE } from "@/lib/api-guard";
 import { MAX_KEYS } from "@/lib/api-key-rules";
 
 export const metadata: Metadata = {
-  title: "Developers — Nimbus Labs",
+  title: "Developers — Marktmorgen",
   description:
-    "The Nimbus Labs API: read your list, members, course students, affiliates and bookings from your own tools, with keys you make in your studio. On every plan.",
+    "The Marktmorgen API: read your list, members, course students, affiliates and bookings from your own tools, with keys you make in your studio. On every plan.",
 };
 
 /**
@@ -36,7 +36,7 @@ function Endpoint({ path, children }: { path: string; children: React.ReactNode 
   );
 }
 
-const BASE = "https://nimbuslabsai.com/api/v1";
+const BASE = "https://marktmorgen.com/api/v1";
 
 export default function DevelopersPage() {
   return (
@@ -101,7 +101,7 @@ export default function DevelopersPage() {
       "kind": "one_time",
       "interval": null,
       "hidden": false,
-      "url": "https://nimbuslabsai.com/@harbor/p/k3j9x2p1ab"
+      "url": "https://marktmorgen.com/@harbor/p/k3j9x2p1ab"
     }
   ],
   "next": null

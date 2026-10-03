@@ -12,7 +12,7 @@ import { readPodcast } from "@/lib/podcast";
 import { PodcastEditor } from "@/components/podcast-editor";
 
 export const metadata: Metadata = {
-  title: "Your podcast — Nimbus Labs",
+  title: "Your podcast — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

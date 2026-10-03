@@ -1,6 +1,6 @@
 {
-  "name": "Nimbus Labs — creator store",
-  "short_name": "Nimbus",
+  "name": "Marktmorgen — creator store",
+  "short_name": "Marktmorgen",
   "description": "A link-in-bio store for creators. The buyer pays into your own Stripe account and the file is delivered the second the payment clears.",
   "start_url": "/?source=pwa",
   "scope": "/",

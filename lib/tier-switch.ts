@@ -269,7 +269,7 @@ async function tell(store: Store, account: string, found: Found, updated: Record
         : total < 0
           ? `A credit of ${formatMoney(-total, currency)}, for what was left of your last payment, comes off your next payments.`
           : "Nothing was charged today.";
-  const from = `"${store.name.replace(/["\\<>\r\n]/g, "").slice(0, 60)} via Nimbus Labs" <${(NIMBUS_FROM.match(/<([^>]+)>/)?.[1] ?? NIMBUS_FROM).trim()}>`;
+  const from = `"${store.name.replace(/["\\<>\r\n]/g, "").slice(0, 60)} via Marktmorgen" <${(NIMBUS_FROM.match(/<([^>]+)>/)?.[1] ?? NIMBUS_FROM).trim()}>`;
   await sendEmail({
     from,
     to: email,

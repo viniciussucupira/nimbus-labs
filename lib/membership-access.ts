@@ -5,7 +5,7 @@
  * course — is open while it is being paid for and closed once it is not.
  * Until this existed the thanks-page link of a membership kept its file open
  * for its three days whatever happened to the membership meanwhile. Now every
- * delivery a membership makes through Nimbus asks Stripe first:
+ * delivery a membership makes through Marktmorgen asks Stripe first:
  *
  *   - a download from the thanks page or the emailed list of purchases reads
  *     the checkout from the creator's own account on every request, as it

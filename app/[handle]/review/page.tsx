@@ -14,7 +14,7 @@ import { REVIEW_NOTICES, ReviewForm } from "@/components/review-form";
 import { productPath } from "@/components/store-product";
 
 export const metadata: Metadata = {
-  title: "Your review — Nimbus Labs",
+  title: "Your review — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

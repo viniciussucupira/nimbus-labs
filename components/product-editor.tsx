@@ -2043,7 +2043,7 @@ export function ProductEditor({
             </strong>{" "}
             What you write here is on your page the moment you save it, and a
             buyer can pay for it straight away, on your own Stripe account.
-            Nimbus takes no cut of the sale.
+            Marktmorgen takes no cut of the sale.
           </>
         )}{" "}
         Your file is kept private to your store, and it is never named or

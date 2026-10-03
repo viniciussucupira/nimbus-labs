@@ -28,7 +28,7 @@ const STEPS: Step[] = [
   // behaviour the site no longer has.
   { key: "pay", icon: "card", title: "Paid on Stripe", caption: "Stripe's own checkout, on the creator's own account, at the price on the page." },
   { key: "file", icon: "download", title: "Delivered", caption: "The second Stripe confirms it, the file is on the screen. Lost later? Back by email." },
-  { key: "money", icon: "bank", title: "In your Stripe", caption: "The sale sits in the creator's own Stripe dashboard. Nimbus takes nothing from it." },
+  { key: "money", icon: "bank", title: "In your Stripe", caption: "The sale sits in the creator's own Stripe dashboard. Marktmorgen takes nothing from it." },
 ];
 
 function Screen({ step }: { step: string }) {
@@ -301,7 +301,7 @@ export function BuyerPath() {
                   <div className="flex items-center justify-between px-5 pb-1 pt-3 text-[11px] font-semibold text-ink-soft">
                     <span>9:41</span>
                     <span className="rounded-[6px] bg-white px-2 py-0.5 text-[10px] text-ink-soft ring-1 ring-line">
-                      {step.key === "pay" ? "checkout.stripe.com" : step.key === "money" ? "dashboard.stripe.com" : "nimbuslabsai.com/demo"}
+                      {step.key === "pay" ? "checkout.stripe.com" : step.key === "money" ? "dashboard.stripe.com" : "marktmorgen.com/demo"}
                     </span>
                   </div>
                   <div key={step.key} className="nb-screen-in">

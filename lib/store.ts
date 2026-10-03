@@ -142,6 +142,7 @@ const RESERVED = new Set([
   "invite",
   "legal",
   "login",
+  "marktmorgen",
   "mission",
   "new",
   "nimbus",
@@ -155,6 +156,7 @@ const RESERVED = new Set([
   "settings",
   "signin",
   "signup",
+  "solrenning",
   "store",
   "studio",
   "support",
@@ -1369,7 +1371,7 @@ export type StripeAccountResult =
 /**
  * Writes down which Stripe account a creator connected.
  *
- * Only the identifier is kept. Nimbus never holds a key to that account and
+ * Only the identifier is kept. Marktmorgen never holds a key to that account and
  * never holds the money that lands in it.
  */
 export async function setStripeAccount(

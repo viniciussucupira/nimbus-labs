@@ -5,7 +5,7 @@
  * header, so it acts on their account with their data. That is the same fact
  * the whole company rests on: the money is theirs from the first second, the
  * customers are theirs, and so are the coupons and the sales records. Nothing
- * in this file ever touches the Nimbus account.
+ * in this file ever touches the Marktmorgen account.
  *
  * It lives on its own rather than inside the checkout because more than one
  * thing needs it now, and two copies of the code that signs a request to

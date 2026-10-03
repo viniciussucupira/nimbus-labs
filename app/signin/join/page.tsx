@@ -6,8 +6,8 @@ import { peekInvite } from "@/lib/team";
 import { ROLE_NAMES, ROLE_SUMMARIES } from "@/lib/team-roles";
 
 export const metadata: Metadata = {
-  title: "Join a store's team — Nimbus Labs",
-  description: "One tap to join a store's team on Nimbus Labs.",
+  title: "Join a store's team — Marktmorgen",
+  description: "One tap to join a store's team on Marktmorgen.",
   robots: { index: false, follow: false },
 };
 
@@ -34,13 +34,13 @@ export default async function JoinPage({
   return (
     <div className="relative min-h-screen overflow-hidden bg-paper text-ink">
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
-        <Link href="/" className="inline-block w-fit rounded-[10px]" aria-label="Nimbus Labs, home">
+        <Link href="/" className="inline-block w-fit rounded-[10px]" aria-label="Marktmorgen, home">
           <Logo />
         </Link>
 
         <h1 className="t-h1 mt-6 break-words">{`Join ${invite.store.name}`}</h1>
         <p className="mt-4 text-lg text-ink-soft">
-          {`You were invited to help run nimbuslabsai.com/@${invite.store.handle} as ${role}.`}
+          {`You were invited to help run marktmorgen.com/@${invite.store.handle} as ${role}.`}
         </p>
 
         <div className="card mt-8 p-6 sm:p-8">

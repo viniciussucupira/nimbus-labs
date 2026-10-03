@@ -15,7 +15,7 @@ import { productCount } from "@/lib/catalog";
 import { MAX_PRODUCTS } from "@/lib/store";
 
 export const metadata: Metadata = {
-  title: "Moving from another platform — Nimbus Labs",
+  title: "Moving from another platform — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

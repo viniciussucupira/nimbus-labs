@@ -33,7 +33,7 @@ function Phone({
             <div className="flex items-center justify-between px-4 pb-1 pt-2.5 text-[10px] font-semibold text-ink-mute">
               <span>9:41</span>
               <span className="rounded-[5px] bg-white px-1.5 py-0.5 text-[9px] text-ink-soft ring-1 ring-line">
-                nimbuslabsai.com/demo
+                marktmorgen.com/demo
               </span>
             </div>
             {children}

@@ -13,7 +13,7 @@ import { ReviewAskEditor, ReviewRow, SeenAllButton, type StudioReview } from "@/
 import { Stars } from "@/components/review-stars";
 
 export const metadata: Metadata = {
-  title: "Reviews — Nimbus Labs",
+  title: "Reviews — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

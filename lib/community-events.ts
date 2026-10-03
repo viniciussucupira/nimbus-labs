@@ -730,11 +730,11 @@ export function eventIcs(store: Pick<Store, "handle" | "name">, event: Community
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Nimbus Labs//Community events//EN",
+    "PRODID:-//Marktmorgen//Community events//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
-    `UID:${createHash("sha256").update(`event|${event.id}`).digest("hex").slice(0, 32)}@nimbuslabsai.com`,
+    `UID:${createHash("sha256").update(`event|${event.id}`).digest("hex").slice(0, 32)}@marktmorgen.com`,
     `DTSTAMP:${icsTime(Date.now())}`,
     `SEQUENCE:${event.moves + (event.cancelled ? 1 : 0)}`,
     `DTSTART:${icsTime(event.start)}`,

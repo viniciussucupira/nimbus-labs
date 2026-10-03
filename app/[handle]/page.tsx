@@ -76,15 +76,15 @@ async function load(raw: string) {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { handle } = await params;
   const found = await load(handle);
-  if (!found) return { title: "Not found — Nimbus Labs" };
+  if (!found) return { title: "Not found — Marktmorgen" };
   const { store } = found;
 
   // A store on its own live domain names that as its address for search engines.
   const ownDomain = store.domain?.liveAt && canUseDomain(store) ? `https://${store.domain.name}/` : null;
 
   return {
-    title: `${store.name} — Nimbus Labs`,
-    description: store.bio || `The store of ${store.name} on Nimbus Labs.`,
+    title: `${store.name} — Marktmorgen`,
+    description: store.bio || `The store of ${store.name} on Marktmorgen.`,
     ...(ownDomain ? { alternates: { canonical: ownDomain } } : {}),
     // An empty store has nothing to offer a search engine yet. One with
     // something on it does, so it stops hiding the moment it has. A page of
@@ -98,7 +98,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       ? {
           openGraph: {
             title: store.name,
-            description: store.bio || `The store of ${store.name} on Nimbus Labs.`,
+            description: store.bio || `The store of ${store.name} on Marktmorgen.`,
             images: [{ url: photoUrl(store.photoId), width: 480, height: 480, alt: store.name }],
           },
           twitter: { card: "summary" },
@@ -314,12 +314,12 @@ export default async function StorePage({ params, searchParams }: Params) {
                   No real money moves through it and no real card is charged,
                   so do not put a card you own into it. Once it goes live,
                   payment is taken by Stripe on {store.name}&apos;s own account:
-                  Nimbus never holds the money and takes none of it.
+                  Marktmorgen never holds the money and takes none of it.
                 </p>
               ) : selling || byPayPal ? (
                 <p className="st-muted mt-6 text-center text-sm">
                   Payment is taken by {takenBy(selling, byPayPal)} on {store.name}&apos;s own account.
-                  Nimbus never holds the money and takes none of it.
+                  Marktmorgen never holds the money and takes none of it.
                 </p>
               ) : (
                 <p className="st-note mt-6 text-sm">
@@ -391,7 +391,7 @@ export default async function StorePage({ params, searchParams }: Params) {
               </p>
             ) : null}
             <Link href="/" className="st-footer-link text-sm font-semibold">
-              Made with Nimbus Labs
+              Made with Marktmorgen
             </Link>
             <StoreTracking store={store} countVisit />
           </div>

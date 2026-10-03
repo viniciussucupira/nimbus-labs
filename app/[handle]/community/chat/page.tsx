@@ -15,7 +15,7 @@ import { CommunityRoom } from "@/components/community-room";
 type Params = { params: Promise<{ handle: string }> };
 
 export const metadata: Metadata = {
-  title: "Room — Nimbus Labs",
+  title: "Room — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

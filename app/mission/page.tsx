@@ -10,9 +10,9 @@ import { isConnectConfigured } from "@/lib/stripe-connect";
 import { isDomainsConfigured } from "@/lib/domains";
 
 export const metadata: Metadata = {
-  title: "Our mission — Nimbus Labs",
+  title: "Our mission — Marktmorgen",
   description:
-    "Why Nimbus exists, what we believe, what we have built so far and what we have not built yet. Written plainly, including the parts that are not finished.",
+    "Why Marktmorgen exists, what we believe, what we have built so far and what we have not built yet. Written plainly, including the parts that are not finished.",
 };
 
 const VALUES = [
@@ -169,7 +169,7 @@ const RELEASES: { date: string; items: string }[] = [
   { date: "September 18, 2026", items: "Logging in with a link sent to your email, and no password anywhere." },
   { date: "September 19, 2026", items: "Creator stores: an @address of your own, products and prices, the file each one delivers, and your own Stripe account connected." },
   { date: "September 20, 2026", items: "Memberships, discount codes, and several prices on one product in every store." },
-  { date: "September 21, 2026", items: "Free products for an email address, members who cancel on their own, and canceling the Nimbus plan from the studio." },
+  { date: "September 21, 2026", items: "Free products for an email address, members who cancel on their own, and canceling the Marktmorgen plan from the studio." },
   { date: "September 22, 2026", items: "Paid calls, courses, numbers and ad pixels, offers before and after paying, payment plans, sales tax, yearly plans, email to your list and your own domain on Pro, and buyers getting any purchase again by email." },
   { date: "September 26, 2026", items: "Up to 200 products with pictures and pages of their own, questions at checkout, pay what you want, free trials and fixed-length memberships, group calls and live sessions with reminders and self-serve moves, a confirmation email for every purchase, every store installable as its own app, 43 Stripe countries, and one reminder after an unpaid checkout. Then a community for your buyers, funnels of offers after paying, an affiliate program, calendar sync, webhooks, course quizzes and certificates, license keys, stamped PDFs, longer windows and exports for your numbers, and memberships whose access ends when they do." },
   { date: "September 27, 2026", items: "Up to 2,000 products, a private video room for each booking, up to five stores in one account and a team with roles for each, passkeys, 15 currencies and more ways to pay, sales and landing pages, reviews only buyers can write, Mailchimp, Kit, beehiiv and MailerLite built in, and notifications on your phone. Then live events in the community, bundles, drafts, moving your list, products and past buyers from another platform, and Google Meet links made on your own Google Calendar." },
@@ -178,7 +178,7 @@ const RELEASES: { date: string; items: string }[] = [
 /* Facts a creator can check before trusting us with a store. */
 const TRUST: { icon: IconName; title: string; body: string; href: string; link: string }[] = [
   { icon: "user", title: "Who builds it", body: "Vinicius Sucupira, the founder, who writes the code and answers the email.", href: "/proof/questions", link: "The awkward questions" },
-  { icon: "mail", title: "How to reach us", body: "By email. A person reads every message and answers in writing, in English.", href: "mailto:support@nimbuslabsai.com", link: "Write to us" },
+  { icon: "mail", title: "How to reach us", body: "By email. A person reads every message and answers in writing, in English.", href: "mailto:support@marktmorgen.com", link: "Write to us" },
   { icon: "bank", title: "Where the money is", body: "Every sale is processed by Stripe on the creator's own account. We never hold a balance of yours.", href: "/platform/your-stripe", link: "How the money moves" },
   { icon: "shield", title: "What we keep about you", body: "What the service needs to run, listed in plain words, with who processes it for us. Nothing is sold.", href: "/privacy", link: "Privacy policy" },
   { icon: "receipt", title: "The rules, in writing", body: "The terms of the service, and a full refund of any charge from us you ask for within 14 days.", href: "/terms", link: "Terms and refunds" },
@@ -251,7 +251,7 @@ export default function MissionPage() {
         </section>
 
         <section className="container-narrow py-16 sm:py-24">
-          <h2 className="t-h2">Why Nimbus exists</h2>
+          <h2 className="t-h2">Why Marktmorgen exists</h2>
           <div className="prose-nb mt-6">
             <p>
               A creator with an audience and a file to sell has never had more tools and never had less control. The
@@ -263,7 +263,7 @@ export default function MissionPage() {
               own or an account somebody else can close.
             </p>
             <p>
-              Nimbus is built the other way around. The buyer&apos;s card is charged on your Stripe account. The receipt
+              Marktmorgen is built the other way around. The buyer&apos;s card is charged on your Stripe account. The receipt
               carries your name. The payout schedule is yours. We take 0% of your sales and make money one way only — a
               flat subscription, the same price whether you sell three files or three thousand.
             </p>
@@ -280,7 +280,7 @@ export default function MissionPage() {
               <span className="grid h-9 w-9 place-items-center rounded-full bg-lilac font-semibold text-violet-deep">VS</span>
               <span>
                 <span className="block font-semibold text-ink">Vinicius Sucupira</span>
-                <span className="text-ink-mute">Founder, Nimbus Labs</span>
+                <span className="text-ink-mute">Founder, Marktmorgen</span>
               </span>
             </figcaption>
           </figure>

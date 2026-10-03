@@ -35,7 +35,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "how",
         title: "Live in three steps",
         items: [
-          { title: "Take your address", body: "nimbuslabsai.com/@yourname is yours the moment you take it, and the page is up straight away." },
+          { title: "Take your address", body: "marktmorgen.com/@yourname is yours the moment you take it, and the page is up straight away." },
           { title: "Put up what you sell", body: "Its name, what is inside, the price and a picture. Files, courses, memberships, calls and live sessions, bundles of your products, free things for an email, and plain links. A community for your buyers sits beside them." },
           { title: "Make it look like you", body: "Your photo, one of four themes, and one of ten colors or your own. The studio shows the page before you save." },
         ],
@@ -88,7 +88,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Can I change my store address later?", a: "Yes, from your studio, whenever you want. The addresses your store holds keep working and send people to the current one, up to ten at once. An address you let go of stops working, and after 30 days anyone may take it." },
           { q: "Is the page up before I connect Stripe?", a: "Yes. The page, the editor and your address are free and stay free. Taking a card needs two things: Stripe has cleared your account, and your plan or its 14-day trial is running. Until then the page says plainly that it cannot take a payment." },
-          { q: "Can I use my own domain?", a: DOMAINS ? "Yes, on the $99 Pro plan. You add one record where you bought the domain, and the certificate is made for you. Your nimbuslabsai.com address keeps working as well." : "Not yet. It is planned for the Pro plan, and this page will say so on the day it works." },
+          { q: "Can I use my own domain?", a: DOMAINS ? "Yes, on the $99 Pro plan. You add one record where you bought the domain, and the certificate is made for you. Your marktmorgen.com address keeps working as well." : "Not yet. It is planned for the Pro plan, and this page will say so on the day it works." },
           { q: "How do I see what the page looks like before I save?", a: "The studio shows the page with your photo, theme and color as you change them, before anything is saved." },
           { q: "Can one account run more than one store?", a: "Yes, up to five, each with its own address, products, Stripe account and plan. You switch between them at the top of your studio." }
         ],
@@ -202,7 +202,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "cap", title: "Quizzes and certificates", body: "Up to 20 questions after any lesson, a pass mark, and a certificate with a page anyone can open to check it.", href: "/platform/quizzes-and-certificates" },
           { icon: "chat", title: "A community for students", body: "Your store's community can open to the buyers of a course, for questions and work shared where everyone can learn from it.", href: "/platform/community" },
           { icon: "video", title: "Live Q&As for a course", body: "A live event in your community can be kept for the buyers of the course, with a replay afterward.", href: "/platform/live-events" },
-          { icon: "door", title: "Students from another platform", body: "Import the people who bought the course elsewhere, up to 20,000 a file, and they open it here with the email they bought with.", href: "/platform/switching-to-nimbus" },
+          { icon: "door", title: "Students from another platform", body: "Import the people who bought the course elsewhere, up to 20,000 a file, and they open it here with the email they bought with.", href: "/platform/switching-to-marktmorgen" },
         ],
       },
       {
@@ -265,7 +265,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "features",
         title: "What makes it fair to both sides",
         items: [
-          { icon: "bank", title: "Your customer, not ours", body: "Members sit in your Stripe dashboard. If you ever leave Nimbus, the paying members stay with you." },
+          { icon: "bank", title: "Your customer, not ours", body: "Members sit in your Stripe dashboard. If you ever leave Marktmorgen, the paying members stay with you." },
           { icon: "door", title: "Canceling on their own", body: "On Stripe's page, at the end of the period already paid for. Nobody has to write to you and wait." },
           { icon: "gift", title: "An offer before they go", body: "If you choose, a member who presses Cancel is offered a discount you set — 10% to 50% off one to three payments — once per membership, on Stripe's own page, and declines it in one press. An offer of more than one payment is made only on monthly memberships." },
           { icon: "card", title: "When a card fails", body: "The member gets one email with a link that pays that renewal and makes the card that worked the one used next time. It says when the card on file is tried again, or that it will not be." },
@@ -302,8 +302,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about memberships",
         items: [
-          { q: "What does Nimbus take from a renewal?", a: "Nothing. 0% of every payment, the first and every one after it. Stripe charges its own card fee on your account." },
-          { q: "What happens if my own Nimbus plan lapses?", a: "Your page stops selling, but members can still cancel on their own. Nobody is ever trapped in a charge they want to stop." },
+          { q: "What does Marktmorgen take from a renewal?", a: "Nothing. 0% of every payment, the first and every one after it. Stripe charges its own card fee on your account." },
+          { q: "What happens if my own Marktmorgen plan lapses?", a: "Your page stops selling, but members can still cancel on their own. Nobody is ever trapped in a charge they want to stop." },
           { q: "Do discount codes work on memberships?", a: "Yes, on the first charge. A code comes off the payment it is typed into, not every renewal after it." },
         ],
       },
@@ -488,7 +488,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "table",
         title: "Where the money sits",
         note: "Stan's structure checked on its own help center and terms in September 2026.",
-        head: ["", "Platform-held model", "Nimbus Labs"],
+        head: ["", "Platform-held model", "Marktmorgen"],
         rows: [
           ["Whose Stripe account", "One the platform manages for you, with no Stripe login of your own", "Yours: a full Stripe account in your name, with your own login"],
           ["Who can pause the money", "The platform, by policy", "Your bank and Stripe's own rules"],
@@ -518,10 +518,10 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about your Stripe account",
         items: [
-          { q: "What do I pay Nimbus?", a: "Your plan — $29 a month, or $99 on Pro — and nothing from your sales. The first 14 days are free, and you cancel in two clicks from your studio." },
+          { q: "What do I pay Marktmorgen?", a: "Your plan — $29 a month, or $99 on Pro — and nothing from your sales. The first 14 days are free, and you cancel in two clicks from your studio." },
           { q: "Who handles refunds and disputes?", a: "You do, in your own Stripe dashboard, with the same tools any business has. A refund is a refund you issue, not a request you file with us." },
           { q: "Can I charge in euros or pounds?", a: "Yes. Each store charges in one currency, which you choose in your studio from 15. The ways to pay are the ones you switch on in Stripe." },
-          { q: "What happens to my money if Nimbus closes?", a: "Nothing. It was never here. Your Stripe account, your customers and your payouts carry on without us." },
+          { q: "What happens to my money if Marktmorgen closes?", a: "Nothing. It was never here. Your Stripe account, your customers and your payouts carry on without us." },
         ],
       },
     ],
@@ -626,7 +626,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "user", title: "Your name, your replies", body: "Emails go out under your name, and replies come to you." },
           { icon: "ban", title: "One-click unsubscribe", body: "In every email, and in the header mail apps use. Whoever leaves is never written to again, whatever a later import says." },
           { icon: "pin", title: "Your postal address", body: "In every email, as US law (CAN-SPAM) requires of commercial email, with a line on why the reader is getting it." },
-          { icon: "download", title: "Your list is yours", body: "Download it as a CSV any time, from any plan. Bring one in from a spreadsheet, up to 50,000 addresses a file, confirming each time that those people agreed.", href: "/platform/switching-to-nimbus" },
+          { icon: "download", title: "Your list is yours", body: "Download it as a CSV any time, from any plan. Bring one in from a spreadsheet, up to 50,000 addresses a file, confirming each time that those people agreed.", href: "/platform/switching-to-marktmorgen" },
           { icon: "sparkle", title: "A first draft with AI", body: "Pick what the email is for and which product it is about, say it in a few words, and the subject and body are filled in for you to read and change, with the product's link. Your unsubscribe link and postal address are added at the foot as always." },
           { icon: "chat", title: "Announcements to your community", body: "A post in your community can also go by email to the members who asked for it, counted in the same monthly emails.", href: "/platform/community" },
           { icon: "star", title: "One email that asks for a review", body: "Switch it on and each buyer is asked once per order, 3 to 30 days after buying, for an honest review. Counted in the same monthly emails.", href: "/platform/reviews" },
@@ -658,7 +658,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Why is email on Pro and not on the $29 plan?", a: "Because every email sent costs us money, and the $29 plan is priced to cover a store, not a mailing list. Stan puts email on its $99 plan as well — read on its pricing page on September 20, 2026." },
           { q: "Can I import the list I already have?", a: "Yes, on every plan, from a CSV file of up to 50,000 rows, as long as those people agreed to hear from you. You confirm that each time, a consent column in the file narrows it further, and anyone who unsubscribed here stays unsubscribed. Nobody is emailed because of the import." },
-          { q: "Can I email people on the $29 plan at all?", a: "Your list downloads as a CSV on every plan, and on the $29 plan your store can send the people who agree straight to your own Mailchimp, Kit, beehiiv or MailerLite. Writing to them from Nimbus is what Pro adds." },
+          { q: "Can I email people on the $29 plan at all?", a: "Your list downloads as a CSV on every plan, and on the $29 plan your store can send the people who agree straight to your own Mailchimp, Kit, beehiiv or MailerLite. Writing to them from Marktmorgen is what Pro adds." },
         ],
       },
     ],
@@ -670,7 +670,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Your store,",
     highlight: "on your own domain",
     intro: DOMAINS
-      ? "shop.yourname.com or yourname.com, with the certificate made and renewed for you. Your nimbuslabsai.com address keeps working as well."
+      ? "shop.yourname.com or yourname.com, with the certificate made and renewed for you. Your marktmorgen.com address keeps working as well."
       : "shop.yourname.com or yourname.com, on the Pro plan. It is not switched on here yet, and this page says so rather than pretending.",
     badge: DOMAINS ? { label: "Working today, on Pro", tone: "live" as const } : { label: "Coming to Pro", tone: "building" as const },
     accent: "from-sky-brand to-mint-brand",
@@ -694,9 +694,9 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What changes, and what does not",
         items: [
           { icon: "globe", title: "The whole store moves with it", body: "Its pages keep their short paths on your domain: the thank-you page, courses, bookings and getting a purchase again." },
-          { icon: "link", title: "Old links keep working", body: "nimbuslabsai.com/@yourname stays up, so nothing you shared before breaks." },
+          { icon: "link", title: "Old links keep working", body: "marktmorgen.com/@yourname stays up, so nothing you shared before breaks." },
           { icon: "lock", title: "The certificate is handled", body: "Made for you when the record shows up, and renewed for you." },
-          { icon: "door", title: "If Pro ends", body: "Visitors to the domain are sent to your nimbuslabsai.com address, so no buyer meets a dead page." },
+          { icon: "door", title: "If Pro ends", body: "Visitors to the domain are sent to your marktmorgen.com address, so no buyer meets a dead page." },
         ],
       },
       {
@@ -999,7 +999,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Can a buyer be charged without meaning to?", a: "No. An offer is charged only when the buyer presses to take it, in the browser that paid, within the hour, and once. If the bank asks them to confirm, they confirm it." },
           { q: "Where do I see what was taken?", a: "In your numbers and your sales export, marked as taken after paying, and in your own Stripe dashboard." },
-          { q: "Does Nimbus take anything from an offer?", a: "No. 0%, as on every other sale. Stripe charges its own card fee on your account." },
+          { q: "Does Marktmorgen take anything from an offer?", a: "No. 0%, as on every other sale. Stripe charges its own card fee on your account." },
         ],
       },
     ],
@@ -1129,7 +1129,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about affiliates",
         items: [
-          { q: "Does Nimbus take a cut of affiliate sales?", a: "No. 0% of every sale, as on any other. The full amount lands in your Stripe account, and the affiliate's share is yours to pay." },
+          { q: "Does Marktmorgen take a cut of affiliate sales?", a: "No. 0% of every sale, as on any other. The full amount lands in your Stripe account, and the affiliate's share is yours to pay." },
           { q: "How is a sale tied to an affiliate?", a: "Their link is your store's address with their code on the end. Following it leaves a cookie on your store's own address with the code and the time of the click, and a purchase inside your window is credited to them. Visitors in the European Economic Area, the United Kingdom, Switzerland and Brazil, whose rules require consent first, are asked in one line on the page, and the cookie is set when they allow it." },
           { q: "What does someone need to join?", a: "An email address they can open. They apply on your store's affiliate page, confirm with the link we email, and you approve them in your studio. If you let buyers join without applying, a buyer presses Get my link on the thanks page or follows the link in their purchase email, and joins with the address they paid with. Anyone you declined or removed stays out." },
         ],
@@ -1223,7 +1223,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "repeat", title: "membership.started and membership.canceled", body: "A membership bought, and a membership set to end or ended." },
           { icon: "gift", title: "lead.captured", body: "Someone confirmed their address for a free product." },
           { icon: "calendar", title: "call.booked and call.moved", body: "A call or a seat in a session booked and paid, and a booking the buyer moved." },
-          { icon: "lock", title: "Signed", body: "Every message carries a Nimbus-Signature header: an HMAC-SHA256 of its time and body under that address's secret." },
+          { icon: "lock", title: "Signed", body: "Every message carries a Marktmorgen-Signature header: an HMAC-SHA256 of its time and body under that address's secret." },
           { icon: "refresh", title: "Tried again", body: "When an address does not answer, the message is tried six more times over about forty hours, then marked failed." },
           { icon: "list", title: "A log you can read", body: "Your studio keeps the last 50 deliveries, each for up to seven days, with what the address answered." },
         ],
@@ -1232,7 +1232,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do",
         items: [
-          "There is no Nimbus app in Zapier's directory. In Zapier, use its Webhooks by Zapier trigger, Catch Hook.",
+          "There is no Marktmorgen app in Zapier's directory. In Zapier, use its Webhooks by Zapier trigger, Catch Hook.",
           "Webhooks only send. To read your store from your own tools, use an API key: the API reads your list, members, a course's students, your affiliates and your bookings, and changes nothing. The developers page lists every address.",
           "Up to five addresses per store, https only, and redirects are not followed.",
         ],
@@ -1241,7 +1241,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about webhooks",
         items: [
-          { q: "How do I know a message came from you?", a: "Check its Nimbus-Signature header against the secret you were shown when you added the address, and check that its time is recent." },
+          { q: "How do I know a message came from you?", a: "Check its Marktmorgen-Signature header against the secret you were shown when you added the address, and check that its time is recent." },
           { q: "What if the same event arrives twice?", a: "Every event has an ID made from what it is about, and it is sent once however often it is noticed. Keep the IDs you have seen and ignore a repeat, in case a retry crosses a slow answer." },
           { q: "Does Stan have webhooks?", a: "Not according to its help center, read on September 17, 2026." },
         ],
@@ -1404,7 +1404,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "Questions about PDF stamping",
         items: [
           { q: "Does it change my original file?", a: "No. Your upload stays as it is. Each buyer's copy is made from it, kept beside it, and deleted with it." },
-          { q: "Is the file sent to another company to be stamped?", a: "No. It is stamped by our own code on the servers that run Nimbus, and not sent anywhere else." },
+          { q: "Is the file sent to another company to be stamped?", a: "No. It is stamped by our own code on the servers that run Marktmorgen, and not sent anywhere else." },
           { q: "Should I tell buyers?", a: "Yes. Their email is printed on the file they receive, so say so on the product." },
         ],
       },
@@ -1593,7 +1593,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about currencies and ways to pay",
         items: [
-          { q: "Does Nimbus take a cut of Klarna or other methods?", a: "No. 0%, as on every sale. Stripe charges its own fee for each method on your account, published on its pricing page." },
+          { q: "Does Marktmorgen take a cut of Klarna or other methods?", a: "No. 0%, as on every sale. Stripe charges its own fee for each method on your account, published on its pricing page." },
           { q: "What does Stan offer?", a: "Stan offers Stripe and PayPal, and one currency per store chosen from ten, according to its help center, read on September 28, 2026. We offer 15, so we are ahead on currencies, and behind on PayPal." },
           { q: "Who can change the currency?", a: "You and an Admin. You are emailed whenever it changes." },
         ],
@@ -1654,7 +1654,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions about email platforms",
         items: [
-          { q: "Do I still need Pro?", a: "No. Connecting a platform is on every plan. Pro is for writing to your list from Nimbus itself." },
+          { q: "Do I still need Pro?", a: "No. Connecting a platform is on every plan. Pro is for writing to your list from Marktmorgen itself." },
           { q: "What starts on the platform?", a: "Whatever you set up there. On Kit, people are added to the form you pick, which starts what you attached to it." },
         ],
       },
@@ -1718,7 +1718,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           "Each extra store is a plan of its own, from its first day. The free trial is for an account's first store.",
           "A store can be deleted from the studio only while it has no products; your first store stays with your account.",
           "A booked call's confirmation cannot be sent again from the studio.",
-          "Passkeys sign you in on nimbuslabsai.com, where the studio is, not on a store's own domain.",
+          "Passkeys sign you in on marktmorgen.com, where the studio is, not on a store's own domain.",
         ],
       },
       {
@@ -1792,9 +1792,9 @@ export const FEATURE_PAGES: TopicPage[] = [
     ],
   },
   {
-    slug: "switching-to-nimbus",
+    slug: "switching-to-marktmorgen",
     section: "platform",
-    eyebrow: "Moving to Nimbus",
+    eyebrow: "Moving to Marktmorgen",
     title: "Bring your store",
     highlight: "with you",
     intro:
@@ -1886,11 +1886,11 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "features",
         title: "Your pages",
         items: [
-          { icon: "lock", title: "A strict policy on what runs", body: "Store pages, on nimbuslabsai.com and on your own domain, the studio and signing in carry a Content-Security-Policy with a new nonce on every response, so text somebody typed cannot run as a script." },
+          { icon: "lock", title: "A strict policy on what runs", body: "Store pages, on marktmorgen.com and on your own domain, the studio and signing in carry a Content-Security-Policy with a new nonce on every response, so text somebody typed cannot run as a script." },
           { icon: "target", title: "Pixels only where allowed", body: "Your Meta, Google, TikTok and Pinterest pixels load only after the visitor agrees, where the law says they must be asked." },
           { icon: "shield", title: "Forged requests refused", body: "Every request that changes something must come from this site, and our cookies are HttpOnly and SameSite." },
           { icon: "globe", title: "The usual browser protections", body: "HSTS, nosniff, a referrer policy, Cross-Origin-Opener-Policy, a Permissions-Policy that switches off camera, microphone and location, and no framing by other sites." },
-          { icon: "link", title: "Emailed links go to us or to you", body: "Every link we email points at nimbuslabsai.com or at your store's own domain, never at an address a request made up." },
+          { icon: "link", title: "Emailed links go to us or to you", body: "Every link we email points at marktmorgen.com or at your store's own domain, never at an address a request made up." },
         ],
       },
       {

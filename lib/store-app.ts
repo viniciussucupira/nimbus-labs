@@ -3,7 +3,7 @@
  * icon, its own colour, opening on its own page.
  *
  * A browser installs a site from its web app manifest, and the site-wide one
- * (public/manifest.webmanifest) is Nimbus Labs' own: installed from a store,
+ * (public/manifest.webmanifest) is Marktmorgen's own: installed from a store,
  * it would put our name and our logo on the buyer's phone and open our home
  * page. So every store gets a manifest of its own, made here from what the
  * store already has — the name, the photo or the first letter of the name on
@@ -11,7 +11,7 @@
  * (app/[handle]/manifest.webmanifest). Nothing new is asked of the creator.
  *
  * Where it opens and what it covers follow the address the buyer installed
- * it from. On nimbuslabsai.com that is the store's own path, /@handle, and
+ * it from. On marktmorgen.com that is the store's own path, /@handle, and
  * the pages under it (thanks, orders, course, manage). On the creator's own
  * domain, while it is live and on Pro, it is the whole domain, because the
  * whole domain is the store.

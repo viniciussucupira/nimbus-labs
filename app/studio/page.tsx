@@ -94,7 +94,7 @@ import { ResendPurchase } from "@/components/resend-purchase";
 import { LeaveTeam } from "@/components/team-manager";
 
 export const metadata: Metadata = {
-  title: "Your account — Nimbus Labs",
+  title: "Your account — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
@@ -159,7 +159,7 @@ const PAYPAL_NOTICES: Record<string, { title: string; body: string }> = {
   },
   forgotten: {
     title: "PayPal is off for your store",
-    body: "Buyers can no longer pay with PayPal here. What was bought stays bought. To remove Nimbus's permissions from the account itself, do that in your PayPal settings.",
+    body: "Buyers can no longer pay with PayPal here. What was bought stays bought. To remove Marktmorgen's permissions from the account itself, do that in your PayPal settings.",
   },
   email: {
     title: "PayPal wants your email address confirmed first",
@@ -171,7 +171,7 @@ const PAYPAL_NOTICES: Record<string, { title: string; body: string }> = {
   },
   permissions: {
     title: "The permissions were not granted",
-    body: "PayPal did not record that you allowed Nimbus to take payments into your account. Connect again and accept on PayPal's page.",
+    body: "PayPal did not record that you allowed Marktmorgen to take payments into your account. Connect again and accept on PayPal's page.",
   },
   id: {
     title: "PayPal did not finish connecting your account",
@@ -202,7 +202,7 @@ const STRIPE_NOTICES: Record<string, { title: string; body: string }> = {
   },
   forgotten: {
     title: "Disconnected on our side",
-    body: "Your store cannot take payments until a Stripe account is connected again. Your Stripe account itself is untouched and still yours. To remove Nimbus from it as well, do that in your own Stripe dashboard.",
+    body: "Your store cannot take payments until a Stripe account is connected again. Your Stripe account itself is untouched and still yours. To remove Marktmorgen from it as well, do that in your own Stripe dashboard.",
   },
   notstarted: {
     title: "There is no connection yet",
@@ -284,7 +284,7 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
     body: "Email to your list is switched on. Open Email, below your products, to set it up and write your first one.",
   },
   "switched-tier-creator": {
-    title: "You are back on the Nimbus Labs plan",
+    title: "You are back on the Marktmorgen plan",
     body: "Email to your list is off from now, and so is your own domain if you set one up. What is left of what you paid for Pro is kept as credit on your account and pays your next charges until it runs out.",
   },
   "switched-month": {
@@ -673,7 +673,7 @@ export default async function StudioPage({
   // The first steps of a store, each ticked from what the store really has.
   const startSteps: StartStep[] = store
     ? [
-        { key: "address", title: "Your address", hint: `nimbuslabsai.com/@${store.handle} is yours.`, done: true, href: "#details" },
+        { key: "address", title: "Your address", hint: `marktmorgen.com/@${store.handle} is yours.`, done: true, href: "#details" },
         { key: "details", title: "Say what your store is", hint: "One line under your name tells a visitor why they are here.", done: Boolean(store.bio), href: "#details" },
         { key: "look", title: "Add your photo and color", hint: "A face and a color make the page yours.", done: Boolean(store.photoId), href: "#look" },
         { key: "product", title: "Put up the first thing to sell", hint: "A file, a course, a call, a membership, or something free for an email.", done: productCount(store) > 0, href: "#products" },
@@ -714,7 +714,7 @@ export default async function StudioPage({
       ) : (
         <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-xl">
           <div className="container-page flex h-16 items-center justify-between gap-2 sm:gap-3">
-            <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Nimbus Labs, home">
+            <Link href="/" className="shrink-0 rounded-[10px]" aria-label="Marktmorgen, home">
               <Logo />
             </Link>
             <span className="hidden max-w-[16rem] truncate text-sm text-ink-mute md:inline">{email}</span>
@@ -840,7 +840,7 @@ export default async function StudioPage({
 
               <p className="mt-5 text-sm font-bold text-ink">{role === "owner" ? "Your address" : "Its address"}</p>
               <p className="mt-1 break-all rounded-[8px] bg-paper px-3 py-2 font-mono text-[0.9375rem] text-violet-deep ring-1 ring-line">
-                nimbuslabsai.com/@{store.handle}
+                marktmorgen.com/@{store.handle}
               </p>
               <div className="mt-5 flex flex-wrap items-center gap-4">
                 <Link
@@ -1196,7 +1196,7 @@ export default async function StudioPage({
                     </p>
                     {store.domain ? (
                       <p className="mt-3 rounded-2xl bg-sand px-4 py-3 text-sm text-ink-soft">
-                        {`${store.domain.name} is resting while your store is not on Pro: visitors are sent to nimbuslabsai.com/@${store.handle}. It opens your store again the moment Pro is back.`}
+                        {`${store.domain.name} is resting while your store is not on Pro: visitors are sent to marktmorgen.com/@${store.handle}. It opens your store again the moment Pro is back.`}
                       </p>
                     ) : null}
                     <a href="#billing" className="btn btn-secondary mt-5">See Pro</a>
@@ -1404,7 +1404,7 @@ export default async function StudioPage({
                   </button>
                   <p className="mt-3 text-sm text-ink-soft">
                     PayPal asks you to sign in to your Business account, or open
-                    one, and to confirm what Nimbus may do. Then it sends you back here.
+                    one, and to confirm what Marktmorgen may do. Then it sends you back here.
                   </p>
                 </form>
               )}
@@ -1869,7 +1869,7 @@ export default async function StudioPage({
                   <p className="mt-3 text-sm text-ink-soft">
                     {productCount(store) > 0 || paid || store.domain
                       ? "A store can be deleted only while it has no products, no plan running and no domain of its own, so nothing a buyer paid for is lost with it. Remove those first."
-                      : `Its address, nimbuslabsai.com/@${store.handle}, answers nothing for 30 days, and then anyone may take it. Your other stores are not touched. This cannot be undone.`}
+                      : `Its address, marktmorgen.com/@${store.handle}, answers nothing for 30 days, and then anyone may take it. Your other stores are not touched. This cannot be undone.`}
                   </p>
                   {productCount(store) === 0 && !paid && !store.domain ? (
                     <form action={`/api/store/stores${pin}`} method="post" className="mt-4 flex flex-wrap items-end gap-3">

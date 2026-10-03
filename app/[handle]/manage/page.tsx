@@ -9,7 +9,7 @@ import { formatMoney } from "@/lib/money";
 import { choicesFor, liveTiers } from "@/lib/tier-switch";
 
 export const metadata: Metadata = {
-  title: "Your membership — Nimbus Labs",
+  title: "Your membership — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
@@ -237,7 +237,7 @@ export default async function ManagePage({ params, searchParams }: Params) {
                 Check your inbox
               </h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
-                {`If that address has a membership with ${store.name}, the link is on its way. It comes from ${store.name} via Nimbus Labs and usually arrives within a minute. If it is not there, look in spam.`}
+                {`If that address has a membership with ${store.name}, the link is on its way. It comes from ${store.name} via Marktmorgen and usually arrives within a minute. If it is not there, look in spam.`}
               </p>
               <p className="st-muted mt-4 text-sm">
                 Nothing arrived? You may pay with a different address: the one you typed when you joined. Try that one below.

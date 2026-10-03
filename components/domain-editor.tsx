@@ -95,7 +95,7 @@ export function DomainEditor({
           />
         </label>
         <p className="text-sm text-ink-soft">
-          {`A domain you already own, bought wherever you like. Your store opens on it, and nimbuslabsai.com/@${handle} keeps working as well.`}
+          {`A domain you already own, bought wherever you like. Your store opens on it, and marktmorgen.com/@${handle} keeps working as well.`}
         </p>
         <button type="submit" disabled={busy || !name.trim()} className="btn btn-primary">
           Add the domain
@@ -203,7 +203,7 @@ export function DomainEditor({
       </div>
       {removing ? (
         <p className="mt-2 text-sm text-ink-soft">
-          {`${domain} stops opening your store. nimbuslabsai.com/@${handle} carries on as before.`}
+          {`${domain} stops opening your store. marktmorgen.com/@${handle} carries on as before.`}
         </p>
       ) : null}
       {checked && shown && !shown.live && !error ? (

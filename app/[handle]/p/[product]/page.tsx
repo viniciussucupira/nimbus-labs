@@ -79,7 +79,7 @@ async function pageOf(store: Store, product: Listing): Promise<SalesPage> {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { handle, product: id } = await params;
   const found = await load(handle, id);
-  if (!found) return { title: "Not found — Nimbus Labs" };
+  if (!found) return { title: "Not found — Marktmorgen" };
   const { store, product } = found;
   const [about, page] = await Promise.all([product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""), pageOf(store, product)]);
   const description =
@@ -300,7 +300,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
     </p>
   ) : selling || byPayPal ? (
     <p className="st-muted mt-6 text-center text-sm">
-      Payment is taken by {takenBy(selling, byPayPal)} on {store.name}&apos;s own account. Nimbus never holds the money and takes none of it.
+      Payment is taken by {takenBy(selling, byPayPal)} on {store.name}&apos;s own account. Marktmorgen never holds the money and takes none of it.
     </p>
   ) : (
     <p className="st-note mt-6 text-sm">

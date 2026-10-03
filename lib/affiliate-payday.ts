@@ -4,7 +4,7 @@
  * The promise a creator makes on their affiliate page — "paid on the 5th of
  * each month" — is only worth what it is kept at, and the way a promise like
  * that gets broken is never bad faith. It is a person with a store to run
- * forgetting which day it is. So Nimbus keeps the date instead: on the morning
+ * forgetting which day it is. So Marktmorgen keeps the date instead: on the morning
  * of that day, if anybody is owed something that has cleared, the creator gets
  * one message saying how much and to how many, with the link that opens the
  * batch.
@@ -98,7 +98,7 @@ export function paydayEmail(input: {
       "One thing first: we could not check every refund on your Stripe account just now, so these figures are not settled. Open the page and look before you pay — it will have checked again by then.",
     );
   }
-  lines.push("", "— Nimbus Labs");
+  lines.push("", "— Marktmorgen");
   return { subject: `${amount} to pay your affiliates today`, text: lines.join("\n") };
 }
 
@@ -118,7 +118,7 @@ export function autoPayEmail(paid: Awaited<ReturnType<typeof payWithPayPal>>, cu
         "Each payment shows as paid on your affiliate page, and on the affiliate's own page, as soon as PayPal confirms it. Anyone PayPal cannot pay stays owed, to be paid again. The money went from your PayPal to theirs; it never passed through us.",
         studio,
         "",
-        "— Nimbus Labs",
+        "— Marktmorgen",
       ].join("\n"),
     };
   }
@@ -142,7 +142,7 @@ export function autoPayEmail(paid: Awaited<ReturnType<typeof payWithPayPal>>, cu
       "Open your affiliate page to pay them with one press, or download the batch for PayPal or Wise:",
       studio,
       "",
-      "— Nimbus Labs",
+      "— Marktmorgen",
     ].join("\n"),
   };
 }

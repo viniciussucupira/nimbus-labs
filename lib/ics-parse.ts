@@ -20,7 +20,7 @@
  *     (EXDATE), and single times moved or cancelled (RECURRENCE-ID);
  *   - an event marked free (TRANSP:TRANSPARENT) or cancelled blocks nothing,
  *     and neither does one of our own bookings, which the creator's calendar
- *     may hold from the booking email (their ids end in @nimbuslabsai.com).
+ *     may hold from the booking email (their ids end in @marktmorgen.com).
  *
  * A repeat written with rules beyond those (the second Tuesday of a month,
  * every hour) is counted by its first time only, and the number of such
@@ -54,7 +54,7 @@ const MAX_STEPS = 5000;
  * (lib/meet-providers.ts, eventId): neither is time the creator is busy for
  * something else, and a group call's event must not hide its seats still free.
  */
-const OWN_UID = /(@nimbuslabsai\.com|^nimbus[0-9a-v]{26}@google\.com)$/i;
+const OWN_UID = /(@marktmorgen\.com|@nimbuslabsai\.com|^nimbus[0-9a-v]{26}@google\.com)$/i;
 
 /**
  * Windows time zone names, as Outlook writes them, and the IANA zone each

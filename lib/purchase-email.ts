@@ -293,7 +293,7 @@ export function confirmationFor(
     `${name}: ${base}`,
     "",
     `Questions about this order? Reply to this email and it reaches ${name}.`,
-    `The payment went to ${name}, on their own Stripe account. Nimbus Labs sent this email for them.`,
+    `The payment went to ${name}, on their own Stripe account. Marktmorgen sent this email for them.`,
   );
 
   return {
@@ -473,7 +473,7 @@ export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleK
     `${name}: ${base}`,
     "",
     `Questions about this order? Reply to this email and it reaches ${name}.`,
-    `The payment went to ${name}, on their own Stripe account. Nimbus Labs sent this email for them.`,
+    `The payment went to ${name}, on their own Stripe account. Marktmorgen sent this email for them.`,
   );
   return {
     to: offer.email,

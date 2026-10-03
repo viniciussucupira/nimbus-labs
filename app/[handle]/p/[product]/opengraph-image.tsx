@@ -75,8 +75,8 @@ export default async function OpengraphImage({ params }: Params) {
   // A draft has no picture to share either.
   const product = found && !found.hidden ? found : null;
   const colours = lookColours(store?.look ?? { theme: "light", accent: "#5a36ee" });
-  const title = product?.title ?? "Nimbus Labs";
-  const storeName = store?.name ?? "Nimbus Labs";
+  const title = product?.title ?? "Marktmorgen";
+  const storeName = store?.name ?? "Marktmorgen";
   const [picture, summary] = await Promise.all([
     product?.image ? readPicture(product.image.path) : Promise.resolve(null),
     store && product ? summaryOf(store.statsId, product.id).catch(() => null) : Promise.resolve(null),
@@ -85,7 +85,7 @@ export default async function OpengraphImage({ params }: Params) {
   // In the store's own currency (lib/money.ts), as the page writes it.
   const price = product && store ? (isFree(product) ? "Free" : pricePill(product, store.currency)) : "";
   const address =
-    store?.domain?.liveAt && canUseDomain(store) ? store.domain.name : `nimbuslabsai.com/@${store?.handle ?? ""}`;
+    store?.domain?.liveAt && canUseDomain(store) ? store.domain.name : `marktmorgen.com/@${store?.handle ?? ""}`;
 
   return new ImageResponse(
     (

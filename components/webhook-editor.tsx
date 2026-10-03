@@ -259,7 +259,7 @@ export function WebhookEditor({ view: initial }: { view: WebhooksView }) {
           </li>
           <li>The same event can arrive twice in rare cases; its id never changes, so a receiver can ignore a repeat.</li>
           <li>
-            Every message is signed. The header <span className="font-mono">Nimbus-Signature</span> reads{" "}
+            Every message is signed. The header <span className="font-mono">Marktmorgen-Signature</span> reads{" "}
             <span className="font-mono">t=&lt;time&gt;,v1=&lt;signature&gt;</span>: the signature is HMAC-SHA256, in hex, of
             the time, a dot and the raw body, with your endpoint&apos;s secret.
           </li>

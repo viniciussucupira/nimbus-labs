@@ -192,7 +192,7 @@ export async function requestCopy(input: {
   const name = store.name;
   const link = `${origin}/@${store.handle}/free?token=${token}`;
   const sent = await sendEmail({
-    from: `"${displayName(name)} via Nimbus Labs" <${senderAddress()}>`,
+    from: `"${displayName(name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
     subject: `Your copy of ${product.title}`,
     text: [
@@ -208,7 +208,7 @@ export async function requestCopy(input: {
       "",
       "If you did not ask for this, ignore this email. Nothing happens unless the link is used.",
       "",
-      `Sent by Nimbus Labs on behalf of ${name}. Nimbus uses your address for nothing else, and replies to this email do not reach ${name}.`,
+      `Sent by Marktmorgen on behalf of ${name}. Marktmorgen uses your address for nothing else, and replies to this email do not reach ${name}.`,
     ].join("\n"),
   });
   return sent ? "sent" : "error";

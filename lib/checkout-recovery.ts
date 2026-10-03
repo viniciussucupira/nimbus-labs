@@ -233,7 +233,7 @@ export async function remindAbandoned(
     "",
     `Stop these reminders from ${name}: ${stop.page}`,
     `${name} · ${store.recovery.address}`,
-    "Sent with Nimbus Labs.",
+    "Sent with Marktmorgen.",
   ].join("\n");
 
   let ok = false;

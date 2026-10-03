@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const title =
     store && product?.call
       ? `${product.call.kind === "live" ? "Pick a session" : "Pick a time"}: ${product.title} — ${store.name}`
-      : "Book a call — Nimbus Labs";
+      : "Book a call — Marktmorgen";
   return { title, robots: { index: false, follow: true } };
 }
 
@@ -202,7 +202,7 @@ export default async function BookPage({ params, searchParams }: Params) {
         </div>
 
         <p className="st-muted mt-6 text-center text-sm">
-          {`Payment is taken by Stripe on ${store.name}'s own account. Nimbus never holds the money and takes none of it.`}
+          {`Payment is taken by Stripe on ${store.name}'s own account. Marktmorgen never holds the money and takes none of it.`}
         </p>
     </Shell>
   );

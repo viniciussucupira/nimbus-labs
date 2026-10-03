@@ -114,7 +114,7 @@ export const MENUS: Menu[] = [
   },
   {
     id: "why",
-    label: "Why Nimbus",
+    label: "Why Marktmorgen",
     blurb: "See it working, and see the numbers, before you believe a word.",
     feature: {
       title: "Compared with Stan",
@@ -156,7 +156,7 @@ export const MENUS: Menu[] = [
       {
         label: "Moving from another platform",
         description: "Your list, products and past buyers.",
-        href: "/platform/switching-to-nimbus",
+        href: "/platform/switching-to-marktmorgen",
         icon: "door",
       },
       {
@@ -273,7 +273,7 @@ export function SiteNav() {
             href="/"
             onClick={closeAll}
             className="shrink-0 rounded-[10px] py-1 pr-1"
-            aria-label="Nimbus Labs, home"
+            aria-label="Marktmorgen, home"
           >
             <Logo />
           </Link>

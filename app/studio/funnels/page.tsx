@@ -14,7 +14,7 @@ import { FunnelEditor } from "@/components/funnel-editor";
 import { offerableAfterPaying } from "@/lib/bundles";
 
 export const metadata: Metadata = {
-  title: "Funnels — Nimbus Labs",
+  title: "Funnels — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

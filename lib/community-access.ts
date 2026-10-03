@@ -25,7 +25,7 @@
  *
  * Nobody makes an account. A member is somebody whose address is proved the
  * way a course student's is (lib/learn.ts): a link emailed to the address,
- * after which the browser holds the store's pass for 90 days, or a Nimbus
+ * after which the browser holds the store's pass for 90 days, or a Marktmorgen
  * sign-in with that address. A pass made in the browser that paid for one
  * course opens that course only, and is not enough here: the community is
  * where a member is seen by others, so the address has to be shown to be
@@ -415,7 +415,7 @@ export async function requestCommunityLink(input: {
   await redisPipeline([["SET", linkKey(token), JSON.stringify(grant), "EX", LINK_SECONDS]]);
   const link = `${origin}/api/store/community/open?token=${token}`;
   const sent = await sendEmail({
-    from: `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`,
+    from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
     to: normaliseEmail(raw),
     subject: `Your way into ${config.name}`.slice(0, 200),
     text: [
@@ -427,7 +427,7 @@ export async function requestCommunityLink(input: {
       "",
       "The link works for one hour. If you did not ask for it, ignore this email; nothing happens unless the link is used.",
       "",
-      `Sent by Nimbus Labs on behalf of ${store.name}.`,
+      `Sent by Marktmorgen on behalf of ${store.name}.`,
     ].join("\n"),
   });
   return sent ? "sent" : "error";

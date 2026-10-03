@@ -34,7 +34,7 @@ export async function apiStore(request: Request): Promise<Store | Response> {
   const presented = keyFromHeader(request.headers.get("authorization"));
   const unauthorized = () =>
     apiError(401, "unauthorized", "Send your API key as: Authorization: Bearer nl_live_…", {
-      "WWW-Authenticate": 'Bearer realm="Nimbus Labs API"',
+      "WWW-Authenticate": 'Bearer realm="Marktmorgen API"',
     });
   if (!presented) return unauthorized();
   const found = await resolveKey(presented);

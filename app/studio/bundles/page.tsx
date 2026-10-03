@@ -12,7 +12,7 @@ import { BundleEditor, type PickerProduct } from "@/components/bundle-editor";
 import type { Listing } from "@/lib/store";
 
 export const metadata: Metadata = {
-  title: "Bundles — Nimbus Labs",
+  title: "Bundles — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

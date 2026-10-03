@@ -9,7 +9,7 @@ import { phoneView } from "@/lib/phone-alerts";
 import { PhoneAlertsPanel } from "@/components/phone-alerts-panel";
 
 export const metadata: Metadata = {
-  title: "Phone notifications — Nimbus Labs",
+  title: "Phone notifications — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

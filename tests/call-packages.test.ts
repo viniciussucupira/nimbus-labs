@@ -85,14 +85,14 @@ async function main(): Promise<void> {
   is("kept with the product", product.callPackage, { sessions: 5, priceCents: 50000, days: 90 });
 
   part("Its checkout");
-  await packageCheckout(store, product, product.callPackage!, "https://nimbuslabsai.com");
+  await packageCheckout(store, product, product.callPackage!, "https://marktmorgen.com");
   const body = posts[0].body;
   is("one payment for all of it, marked as a package", [body.get("mode"), body.get("line_items[0][price_data][unit_amount]"), body.get("metadata[kind]"), body.get("metadata[sessions]"), body.get("metadata[days]")], ["payment", "50000", "package", "5", "90"]);
 
   part("Once paid");
   const created = Math.floor(Date.now() / 1000);
   const session = { id: PAID, status: "complete", payment_status: "paid", created, amount_total: 50000, currency: "usd", metadata: { store: "harbor", product: product.id, kind: "package", sessions: "5", days: "90" }, customer_details: { email: "Dana@Example.com" } };
-  const input = { store, session, product, base: "https://nimbuslabsai.com/@harbor", from: '"Harbor Kitchen" <hello@nimbuslabsai.com>' };
+  const input = { store, session, product, base: "https://marktmorgen.com/@harbor", from: '"Harbor Kitchen" <hello@marktmorgen.com>' };
   const bought = await recordPackage(input);
   if (!bought) throw new Error("not recorded");
   is("written down: who, how many, until when", [bought.e, bought.total, bought.until - bought.at], ["dana@example.com", 5, 90 * 86_400]);
@@ -102,7 +102,7 @@ async function main(): Promise<void> {
   is("five left", (await packageState(bought)).left, 5);
 
   part("Spending sessions");
-  const prepared = await prepareSession(store, bought.token, "https://nimbuslabsai.com");
+  const prepared = await prepareSession(store, bought.token, "https://marktmorgen.com");
   is("a session's checkout gets a single-use coupon for all of it", prepared.ok && [prepared.fromPackage.coupon.startsWith("co_Session"), prepared.fromPackage.email], [true, "dana@example.com"]);
   const coupon = posts.find((p) => p.path === "/coupons")!.body;
   is("the coupon", [coupon.get("percent_off"), coupon.get("max_redemptions"), coupon.get("duration")], ["100", "1", "once"]);
@@ -114,16 +114,16 @@ async function main(): Promise<void> {
   redis.run(["SET", `nl:call:confirmed:cs_test_expired${"x".repeat(20)}`, "1"]);
   is("unless it was booked after all", (await packageState((await readBought(PAID))!)).left, 0);
   is("a sixth is refused", await holdSession(PAID, `cs_test_late${"x".repeat(20)}`, soon), false);
-  const usedUp = await prepareSession(store, bought.token, "https://nimbuslabsai.com");
+  const usedUp = await prepareSession(store, bought.token, "https://marktmorgen.com");
   is("and so is its checkout", usedUp.ok ? "prepared" : usedUp.reason, "used");
 
   part("Past its date, or refunded");
   const other2 = await recordPackage({ ...input, session: { ...session, id: `cs_test_${"r".repeat(24)}`, created: created - 100 * 86_400 } });
-  const late = await prepareSession(store, other2!.token, "https://nimbuslabsai.com");
+  const late = await prepareSession(store, other2!.token, "https://marktmorgen.com");
   is("past its date", late.ok ? "prepared" : late.reason, "expired");
   const fresh = await recordPackage({ ...input, session: { ...session, id: `cs_test_${"s".repeat(24)}` } });
   refunded = true;
-  const back = await prepareSession(store, fresh!.token, "https://nimbuslabsai.com");
+  const back = await prepareSession(store, fresh!.token, "https://marktmorgen.com");
   is("refunded in full", back.ok ? "prepared" : back.reason, "refunded");
 
   done();

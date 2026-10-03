@@ -2,7 +2,7 @@
  * A creator's affiliates: people who send buyers to the store and earn a
  * share of what those buyers pay.
  *
- * The one rule this file is built around: Nimbus never holds, moves or pays
+ * The one rule this file is built around: Marktmorgen never holds, moves or pays
  * out any of this money. Every sale is paid to the creator's own Stripe
  * account, in full, like every other sale here. What is kept is the record —
  * who applied, who the creator let in, which sale came through whose link,
@@ -239,7 +239,7 @@ export async function setPayAddress(store: Store, affiliate: Affiliate, raw: str
   await writeAffiliate(store, { ...affiliate, paypal: value });
   if (isSenderConfigured()) {
     await sendEmail({
-      from: `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`,
+      from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
       to: affiliate.email,
       subject: `Where ${store.name} pays you changed`,
       text: [
@@ -391,7 +391,7 @@ export async function requestAffiliateLink(input: {
   const name = store.name;
   const link = `${origin}/@${store.handle}/affiliates?token=${token}`;
   const sent = await sendEmail({
-    from: `"${displayName(name)} via Nimbus Labs" <${senderAddress()}>`,
+    from: `"${displayName(name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
     subject: typeof known === "string" ? `Your affiliate page for ${name}` : `Confirm your affiliate application to ${name}`,
     text: [
@@ -405,7 +405,7 @@ export async function requestAffiliateLink(input: {
         ? "It shows your link, your clicks, your sales and what you have earned and been paid."
         : `${name} decides on each application. Once you are approved, your page gives you your own link, and a one-time purchase made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you a share.`,
       "",
-      `Commissions are paid to you by ${name} directly, not by Nimbus Labs, which never holds the money.`,
+      `Commissions are paid to you by ${name} directly, not by Marktmorgen, which never holds the money.`,
       "",
       "The link works for 24 hours. If you did not ask for this, ignore this email; nothing happens unless the link is used.",
     ].join("\n"),
@@ -494,7 +494,7 @@ export async function openAffiliateLink(store: Store, token: string): Promise<Op
 
   if (created && isSenderConfigured()) {
     await sendEmail({
-      from: `Nimbus Labs <${senderAddress()}>`,
+      from: `Marktmorgen <${senderAddress()}>`,
       to: store.email,
       subject: `New affiliate application: ${affiliate.email}`,
       text: [
@@ -503,7 +503,7 @@ export async function openAffiliateLink(store: Store, token: string): Promise<Op
         "",
         `Approve or decline them in your studio: ${SITE_URL}/studio/affiliates${store.sid ? `?store=${store.sid}` : ""}`,
         "",
-        "Nothing changes until you decide. Commissions are paid by you, directly, never by Nimbus Labs.",
+        "Nothing changes until you decide. Commissions are paid by you, directly, never by Marktmorgen.",
       ].join("\n"),
     }).catch((error) => console.error("telling a creator about an application failed", error));
   }
@@ -641,7 +641,7 @@ export async function decide(store: Store, id: string, decision: Decision): Prom
   await writeAffiliate(store, next);
   if (decision === "approve" && affiliate.status === "pending" && isSenderConfigured()) {
     await sendEmail({
-      from: `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`,
+      from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
       to: affiliate.email,
       subject: `You are an affiliate of ${store.name}`,
       text: [
@@ -653,7 +653,7 @@ export async function decide(store: Store, id: string, decision: Decision): Prom
         "",
         `Your clicks, sales and earnings: ${SITE_URL}/@${store.handle}/affiliates`,
         "",
-        `Commissions are paid to you by ${store.name} directly, not by Nimbus Labs, which never holds the money.`,
+        `Commissions are paid to you by ${store.name} directly, not by Marktmorgen, which never holds the money.`,
       ].join("\n"),
     }).catch((error) => console.error("telling an affiliate they were approved failed", error));
   }

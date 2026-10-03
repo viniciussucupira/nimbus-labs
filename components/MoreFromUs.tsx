@@ -26,7 +26,7 @@ export default function MoreFromUs() {
     <nav aria-label="More from us" style={{ borderTop: "1px solid currentColor", padding: "20px 0", marginTop: 20 }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
         <h2 style={{ fontSize: 13, fontWeight: 600 }}>More from us</h2>
-        <a href="https://nimbuslabsai.com/products" className="hover:underline focus-visible:outline-2 focus-visible:outline-offset-4" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontSize: 13, textDecoration: "underline", textUnderlineOffset: 4 }}>Explore all our products <span aria-hidden="true" style={{ marginLeft: 6 }}>→</span></a>
+        <a href="https://marktmorgen.com/products" className="hover:underline focus-visible:outline-2 focus-visible:outline-offset-4" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontSize: 13, textDecoration: "underline", textUnderlineOffset: 4 }}>Explore all our products <span aria-hidden="true" style={{ marginLeft: 6 }}>→</span></a>
       </div>
       <ul className="grid grid-cols-1 gap-x-7 gap-y-2 sm:grid-cols-2 lg:grid-cols-4" style={{ listStyle: "none", padding: 0, margin: 0 }}>
         {products.map(([name, href, description]) => (

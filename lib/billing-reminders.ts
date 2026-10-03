@@ -73,7 +73,7 @@ export function reminderEmail(reminder: Reminder): { subject: string; text: stri
         "",
         `Questions: reply to this email, or write to ${SUPPORT_EMAIL}.`,
         "",
-        "Nimbus Labs",
+        "Marktmorgen",
       ].join("\n"),
     };
   }
@@ -92,7 +92,7 @@ export function reminderEmail(reminder: Reminder): { subject: string; text: stri
       "",
       `Questions: reply to this email, or write to ${SUPPORT_EMAIL}.`,
       "",
-      "Nimbus Labs",
+      "Marktmorgen",
     ].join("\n"),
   };
 }

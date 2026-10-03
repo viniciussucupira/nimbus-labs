@@ -58,7 +58,7 @@ export function OldAddresses({ handles }: { handles: string[] }) {
           <li key={handle}>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-mono text-sm text-ink-soft">
-                nimbuslabsai.com/@{handle}
+                marktmorgen.com/@{handle}
               </span>
               {asking === handle ? null : (
                 <button

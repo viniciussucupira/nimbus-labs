@@ -13,7 +13,7 @@ import { imageUrl } from "@/lib/product-image";
 import { pricePill, productPath } from "@/components/store-product";
 
 export const metadata: Metadata = {
-  title: "Your free copy — Nimbus Labs",
+  title: "Your free copy — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
@@ -178,7 +178,7 @@ export default async function FreePage({ params, searchParams }: Params) {
                 {asked
                   ? `We emailed you a link to ${asked.title}.`
                   : "We emailed you a link."}{" "}
-                It comes from {store.name} via Nimbus Labs and usually arrives
+                It comes from {store.name} via Marktmorgen and usually arrives
                 within a minute. If it is not there, look in spam.
               </p>
               <p className="st-muted mt-4 text-sm">

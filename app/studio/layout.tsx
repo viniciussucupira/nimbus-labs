@@ -12,7 +12,7 @@ import { StudioApp } from "@/components/studio-app";
  */
 export const metadata: Metadata = {
   manifest: "/studio.webmanifest",
-  applicationName: "Nimbus Studio",
+  applicationName: "Marktmorgen Studio",
   appleWebApp: { capable: true, title: "Studio", statusBarStyle: "default" },
 };
 

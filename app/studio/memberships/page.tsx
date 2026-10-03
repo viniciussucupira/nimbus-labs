@@ -10,7 +10,7 @@ import { readListings } from "@/lib/catalog";
 import { formatMoney } from "@/lib/money";
 
 export const metadata: Metadata = {
-  title: "Membership numbers — Nimbus Labs",
+  title: "Membership numbers — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

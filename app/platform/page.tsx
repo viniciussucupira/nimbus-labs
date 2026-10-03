@@ -9,9 +9,9 @@ import { PAGES, type TopicPage } from "@/lib/site-pages";
 import { PLAN_PRICES, TRIAL_DAYS } from "@/lib/plan";
 
 export const metadata: Metadata = {
-  title: "Every feature — Nimbus Labs",
+  title: "Every feature — Marktmorgen",
   description:
-    "Everything a Nimbus store does today — selling, getting paid, delivering and growing — each with its own page, what it does not do yet, and the plan it is on.",
+    "Everything a Marktmorgen store does today — selling, getting paid, delivering and growing — each with its own page, what it does not do yet, and the plan it is on.",
 };
 
 const GROUPS: { key: NonNullable<TopicPage["group"]>; title: string; line: string }[] = [

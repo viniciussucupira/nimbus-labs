@@ -95,7 +95,7 @@ export async function sendFeedLink(input: { store: Store; product: Listing; emai
       "",
       "Open it on your phone and choose your podcast app; new episodes then arrive in it like any show's. The feed is yours alone: please do not share it. It keeps working for as long as you have the podcast.",
       "",
-      `Sent by Nimbus Labs on behalf of ${store.name}.`,
+      `Sent by Marktmorgen on behalf of ${store.name}.`,
     ].join("\n"),
   });
   return sent ? "sent" : "error";

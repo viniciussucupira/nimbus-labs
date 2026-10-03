@@ -13,7 +13,7 @@ import { levelOf, pointsOf, toNextLevel } from "@/lib/community-points";
 type Params = { params: Promise<{ handle: string }>; searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
 export const metadata: Metadata = {
-  title: "You — Nimbus Labs",
+  title: "You — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
@@ -124,7 +124,7 @@ export default async function CommunityYouPage({ params, searchParams }: Params)
           <p className="font-bold">This device</p>
           <p className="st-muted mt-2 text-sm">
             {viewer.owner
-              ? "You are signed in to Nimbus Labs here, which is how you come in."
+              ? "You are signed in to Marktmorgen here, which is how you come in."
               : `Let in here as ${viewer.email}. A link from your inbox keeps a device in for 90 days. Signing out here also closes ${store.name}'s courses on this device until you ask for a new link.`}
           </p>
           {!viewer.owner ? (

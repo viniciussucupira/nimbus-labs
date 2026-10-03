@@ -102,11 +102,11 @@ async function main(): Promise<void> {
   await setHidden(COURSE, first.comment.id, false);
 
   part("Who is emailed");
-  const base = { store, product, courseId: COURSE, lessonTitle: "Your starter", origin: "https://nimbuslabsai.com" };
+  const base = { store, product, courseId: COURSE, lessonTitle: "Your starter", origin: "https://marktmorgen.com" };
   const sent = await tellStudent({ ...base, parent: first.comment, reply: answer.comment });
   is("the student the creator answered", [sent, emails.length, emails[0]?.to], [true, 1, ["dana@example.com"]]);
   is("with the answer and the way back to it", emails[0]?.text.includes("75 to 80°F.") && emails[0]?.text.includes(`/@harbor/course/p1aaaaaa/${L1}#c-${answer.comment.id}`), true);
-  is("from the store, via Nimbus", emails[0] && (emails[0] as unknown as { from: string }).from.startsWith('"Harbor Kitchen via Nimbus Labs"'), true);
+  is("from the store, via Marktmorgen", emails[0] && (emails[0] as unknown as { from: string }).from.startsWith('"Harbor Kitchen via Marktmorgen"'), true);
   is("not twice in an hour for the same lesson", await tellStudent({ ...base, parent: first.comment, reply: answer.comment }), false);
   is("not when another student answers", await tellStudent({ ...base, parent: first.comment, reply: halsAnswer.comment }), false);
   is("and so still one email", emails.length, 1);

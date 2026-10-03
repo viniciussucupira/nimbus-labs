@@ -65,7 +65,7 @@ async function main(): Promise<void> {
   part("The door refuses before it reads anything");
   redis.clear();
   const status = async (auth: string | null) => {
-    const answer = await apiStore(new Request("https://nimbuslabsai.com/api/v1/store", { headers: auth ? { authorization: auth } : {} }));
+    const answer = await apiStore(new Request("https://marktmorgen.com/api/v1/store", { headers: auth ? { authorization: auth } : {} }));
     return answer instanceof Response ? answer.status : 200;
   };
   is("no key: 401", await status(null), 401);
@@ -75,7 +75,7 @@ async function main(): Promise<void> {
   if (!revoked.ok) throw new Error("no key made");
   await revokeKey(A, revoked.made.id);
   is("a revoked key: 401, the same as never made", await status(`Bearer ${revoked.key}`), 401);
-  const refusal = await apiStore(new Request("https://nimbuslabsai.com/api/v1/store"));
+  const refusal = await apiStore(new Request("https://marktmorgen.com/api/v1/store"));
   is("and it says how to send one", refusal instanceof Response && (await refusal.json()).error, "unauthorized");
   is("with no CORS header, so a web page cannot use a key", refusal instanceof Response && refusal.headers.get("access-control-allow-origin"), null);
 

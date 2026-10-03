@@ -5,7 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 
 export const metadata: Metadata = {
-  title: "Not here — Nimbus Labs",
+  title: "Not here — Marktmorgen",
   robots: { index: false, follow: true },
 };
 

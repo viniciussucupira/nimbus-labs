@@ -69,7 +69,7 @@ export function HandleForm({ another = false }: { another?: boolean }) {
           Your address
         </label>
         <div className="card mt-2 flex items-center pl-4 transition focus-within:border-violet-brand">
-          <span className="text-ink-soft">nimbuslabsai.com/@</span>
+          <span className="text-ink-soft">marktmorgen.com/@</span>
           <input
             id="store-handle"
             name="handle"
@@ -86,7 +86,7 @@ export function HandleForm({ another = false }: { another?: boolean }) {
         </div>
         <p className="mt-2 text-sm text-ink-soft">
           {preview
-            ? `Your store will live at nimbuslabsai.com/@${preview}`
+            ? `Your store will live at marktmorgen.com/@${preview}`
             : "This is the address you give people. You can change it later, and the old one keeps working."}
         </p>
       </div>

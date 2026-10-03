@@ -21,7 +21,7 @@ const ACCOUNTS: Record<
       "Google emails nobody. Buyers get the Meet link in our booking email, reminders and calendar file, like every other call.",
       "Moves the event when a buyer moves their booking. After a full refund, deletes a one-to-one call's event, or takes the buyer off a group's guest list.",
     ],
-    asks: "Google will ask to let Nimbus Labs see and edit events on your calendars, and to see your email address. We only ever touch the events we make, on your primary calendar.",
+    asks: "Google will ask to let Marktmorgen see and edit events on your calendars, and to see your email address. We only ever touch the events we make, on your primary calendar.",
     limits: "How many people can join, and for how long, is Google's to decide by your plan: on a free personal account, a meeting of three or more people ends after 60 minutes.",
   },
   zoom: {
@@ -32,7 +32,7 @@ const ACCOUNTS: Record<
       "Buyers get its join link in our booking email, reminders and calendar file. You start it from Zoom, or with Start in Zoom next to the booking in your studio.",
       "Moves the meeting when a buyer moves their booking, and deletes a one-to-one call's meeting after a full refund.",
     ],
-    asks: "Zoom will ask to let Nimbus Labs create, read, change and delete your meetings, and to see your profile. We only ever touch the meetings we make.",
+    asks: "Zoom will ask to let Marktmorgen create, read, change and delete your meetings, and to see your profile. We only ever touch the meetings we make.",
     limits: "How many people can join, and for how long, is Zoom's to decide by your plan: on a free Zoom account, every meeting ends after 40 minutes.",
   },
 };

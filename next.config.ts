@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
   /**
    * The addresses people type, pointed at the page they meant.
    *
-   * Someone who has heard of us types nimbuslabsai.com/pricing, because that
+   * Someone who has heard of us types marktmorgen.com/pricing, because that
    * is where pricing lives on every other site they have used. Until now all
    * of these answered with the not-found page, which is the worst possible
    * answer: the page exists, it is one scroll down the home page, and we sent
@@ -59,6 +59,8 @@ const nextConfig: NextConfig = {
       ...to("/proof/compare", "/vs-stan", "/stan", "/stan-store", "/alternatives"),
       ...to("/platform", "/features", "/feature", "/product"),
       ...to("/platform/license-keys", "/platform/licence-keys"),
+      ...to("/platform/switching-to-marktmorgen", "/platform/switching-to-nimbus"),
+      ...to("/blog/how-marktmorgen-compares-with-stan", "/blog/how-nimbus-compares-with-stan"),
       ...to("/mission", "/about", "/about-us", "/founder", "/company"),
       ...to("/help", "/support", "/contact", "/docs", "/help-center", "/faq"),
       ...to(

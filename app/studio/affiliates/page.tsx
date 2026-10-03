@@ -16,14 +16,14 @@ import { batchTotal } from "@/lib/affiliate-payouts";
 type Params = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
 export const metadata: Metadata = {
-  title: "Affiliates — Nimbus Labs",
+  title: "Affiliates — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
 /**
  * The creator's affiliate programme: its terms, who applied, who is owed
  * what, and a record of what the creator paid them. On every plan. The money
- * never passes through Nimbus: the creator pays their affiliates themselves.
+ * never passes through Marktmorgen: the creator pays their affiliates themselves.
  */
 export default async function StudioAffiliatesPage({ searchParams }: Params) {
   const query = await searchParams;

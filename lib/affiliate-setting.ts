@@ -17,7 +17,7 @@
  * platform in this business is really about. So the creator says it once, in
  * the studio, and it is on the page before anybody applies: the day of the
  * month they pay, and how long a sale waits first so their refund window can
- * pass. Nimbus then holds them to it — a sale inside the wait is not in the
+ * pass. Marktmorgen then holds them to it — a sale inside the wait is not in the
  * batch, and on the day itself the batch arrives in their inbox.
  */
 

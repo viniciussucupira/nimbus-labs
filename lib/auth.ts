@@ -156,9 +156,9 @@ export async function sendMoveLink(
   void sendEmail({
     from: NIMBUS_FROM,
     to: fromAddress,
-    subject: "Someone asked to move your Nimbus Labs account",
+    subject: "Someone asked to move your Marktmorgen account",
     text: [
-      `A request was made to move your Nimbus Labs account to ${toAddress}.`,
+      `A request was made to move your Marktmorgen account to ${toAddress}.`,
       "",
       "If that was you, finish it from the link sent to that address.",
       "",
@@ -169,9 +169,9 @@ export async function sendMoveLink(
   return sendEmail({
     from: NIMBUS_FROM,
     to: toAddress,
-    subject: "Finish moving your Nimbus Labs account",
+    subject: "Finish moving your Marktmorgen account",
     text: [
-      `Your Nimbus Labs account at ${fromAddress} is being moved here.`,
+      `Your Marktmorgen account at ${fromAddress} is being moved here.`,
       "",
       `${origin}/signin/confirm-move?token=${token}`,
       "",
@@ -259,9 +259,9 @@ export async function sendSignInLink(
   return sendEmail({
     from: NIMBUS_FROM,
     to: address,
-    subject: "Your Nimbus Labs login link",
+    subject: "Your Marktmorgen login link",
     text: [
-      "Here is your link to log in to Nimbus Labs.",
+      "Here is your link to log in to Marktmorgen.",
       "",
       link,
       "",
@@ -471,10 +471,10 @@ export async function noteSignIn(
       await sendEmail({
         from: NIMBUS_FROM,
         to: normaliseEmail(email),
-        replyTo: "support@nimbuslabsai.com",
-        subject: "New login to your Nimbus Labs account",
+        replyTo: "support@marktmorgen.com",
+        subject: "New login to your Marktmorgen account",
         text: [
-          `Someone just logged in to your Nimbus Labs account (${normaliseEmail(email)}) from a browser that had not been used with it before.`,
+          `Someone just logged in to your Marktmorgen account (${normaliseEmail(email)}) from a browser that had not been used with it before.`,
           "",
           `When: ${when} UTC`,
           `How: ${WAY_WORDS[way]}`,
@@ -483,7 +483,7 @@ export async function noteSignIn(
           "If this was you, there is nothing to do.",
           "",
           "If it was not you: log in at",
-          "https://nimbuslabsai.com/signin",
+          "https://marktmorgen.com/signin",
           "with this email address, choose “Log out of all devices” at the foot of your studio, remove any passkey you do not recognize, and reply to this email so we can help.",
         ].join("\n"),
       }).catch(() => false);

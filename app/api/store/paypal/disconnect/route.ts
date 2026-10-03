@@ -5,7 +5,7 @@ import { setPayPalSeller } from "@/lib/store";
 
 /**
  * Stops selling through the creator's PayPal, on this side. What was already
- * bought stays bought. Removing Nimbus's permissions from the PayPal account
+ * bought stays bought. Removing Marktmorgen's permissions from the PayPal account
  * itself is the creator's to do, in their PayPal settings.
  */
 export async function POST(request: NextRequest) {

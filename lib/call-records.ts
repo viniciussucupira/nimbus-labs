@@ -1,5 +1,5 @@
 /**
- * What Nimbus writes down about a booked call besides Stripe.
+ * What Marktmorgen writes down about a booked call besides Stripe.
  *
  * Stripe stays the ledger of who paid for which time: the checkout's metadata
  * says the start it was bought for, and nothing here rewrites it. Two things

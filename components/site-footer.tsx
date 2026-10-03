@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/logo";
 import MoreFromUs from "@/components/MoreFromUs";
 
-const SUPPORT_EMAIL = "support@nimbuslabsai.com";
+const SUPPORT_EMAIL = "support@marktmorgen.com";
 const SUPPORT = `mailto:${SUPPORT_EMAIL}`;
 
 type FooterLink = { label: string; href: string };
@@ -31,10 +31,10 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Compare",
     links: [
-      { label: "Nimbus and Stan", href: "/proof/compare" },
+      { label: "Marktmorgen and Stan", href: "/proof/compare" },
       { label: "Feature by feature", href: "/proof/everything" },
-      { label: "Nimbus and Gumroad", href: "/proof/gumroad" },
-      { label: "Nimbus and Beacons", href: "/proof/beacons" },
+      { label: "Marktmorgen and Gumroad", href: "/proof/gumroad" },
+      { label: "Marktmorgen and Beacons", href: "/proof/beacons" },
       { label: "Speed test", href: "/proof/speed" },
     ],
   },
@@ -56,7 +56,7 @@ const COLUMNS: { title: string; links: FooterLink[] }[] = [
     ],
   },
   {
-    // The same last column, with the same five links, on every Nimbus Labs product.
+    // The same last column, with the same five links, on every Marktmorgen product.
     title: "Account & billing",
     links: [
       { label: "Log in", href: "/signin" },
@@ -99,7 +99,7 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
     return (
       <footer className="border-t border-line bg-paper text-ink-mute">
         <div className="container-page flex flex-col gap-2 py-5 text-[0.8125rem] leading-relaxed sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-          <p>{`© ${year} Nimbus Labs.`}</p>
+          <p>{`© ${year} Marktmorgen.`}</p>
           <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {[...LEGAL_LINKS, { label: "Support", href: SUPPORT }].map((link) => (
               <li key={link.label}>
@@ -119,7 +119,7 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
     <footer className="surface-night on-dark overflow-hidden">
       <div className="container-page grid gap-12 py-16 lg:grid-cols-[15rem_1fr] lg:gap-16 lg:py-20">
         <div className="max-w-xs">
-          <Link href="/" className="inline-block rounded-[10px]" aria-label="Nimbus Labs, home">
+          <Link href="/" className="inline-block rounded-[10px]" aria-label="Marktmorgen, home">
             <Logo tone="light" />
           </Link>
           <p className="mt-4 text-[0.9375rem] leading-relaxed text-white/70">
@@ -163,7 +163,7 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
       <div className="container-page border-t border-white/12 py-7 text-[0.8125rem] leading-relaxed text-white/70">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
           <p>
-            {`© ${year} Nimbus Labs — an independent software studio run by Vinicius Sucupira.`}
+            {`© ${year} Marktmorgen, by Solrenning — an independent software studio run by Vinicius Sucupira.`}
           </p>
           <ul className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1">
             {LEGAL_LINKS.map((link) => (
@@ -184,7 +184,7 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
               0% of your sales
             </p>
             <p>
-              Photographs from Unsplash, used for illustration. The people in them are not Nimbus Labs
+              Photographs from Unsplash, used for illustration. The people in them are not Marktmorgen
               customers, and nothing on this site is a testimonial.
             </p>
           </div>

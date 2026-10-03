@@ -12,7 +12,7 @@ import { configuredProviders, offeredProviders } from "@/lib/meet-providers";
 import { MEET_NAMES, isMeetProvider } from "@/lib/call-setup";
 
 export const metadata: Metadata = {
-  title: "Video calls — Nimbus Labs",
+  title: "Video calls — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

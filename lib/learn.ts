@@ -137,7 +137,7 @@ export async function learnerFrom(store: Store, cookies: CookieJar): Promise<Lea
   }
   const pass = await readPass(store, cookies.get(passCookieName(store))?.value);
   if (pass) return { email: pass.e, scope: pass.c, owner: false };
-  // Signed in to Nimbus with this address: the address is already proved.
+  // Signed in to Marktmorgen with this address: the address is already proved.
   if (signedIn) return { email: signedIn, scope: "all", owner: false };
   return null;
 }
@@ -496,7 +496,7 @@ function displayName(name: string): string {
 
 /** The From line of every email sent for a store's courses. */
 export function courseSender(store: Store): string {
-  return `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`;
+  return `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`;
 }
 
 /** A student's own address, as they gave it, by the key of it; null if they never opened the course. */
@@ -557,7 +557,7 @@ export async function sendCourseLink(store: Store, product: Listing, email: stri
   await redisPipeline([["SET", linkKey(token), JSON.stringify(grant), "EX", LINK_SECONDS]]);
   const link = `${origin}/api/store/course/open?token=${token}`;
   return sendEmail({
-    from: `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`,
+    from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
     subject: `Your course: ${product.title}`.slice(0, 200),
     text: [
@@ -569,7 +569,7 @@ export async function sendCourseLink(store: Store, product: Listing, email: stri
       "",
       "The link works for one hour. If you did not ask for it, ignore this email; nothing happens unless the link is used.",
       "",
-      `Sent by Nimbus Labs on behalf of ${store.name}.`,
+      `Sent by Marktmorgen on behalf of ${store.name}.`,
     ].join("\n"),
   });
 }
@@ -650,7 +650,7 @@ export async function sendDripEmails(
 
 async function sendDripEmail(store: Store, product: Listing, unit: CourseModule, email: string, origin: string): Promise<boolean> {
   return sendEmail({
-    from: `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`,
+    from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
     subject: `Now open in ${product.title}: ${unit.title}`.slice(0, 200),
     text: [
@@ -660,7 +660,7 @@ async function sendDripEmail(store: Store, product: Listing, unit: CourseModule,
       "",
       "If that page asks who you are, type this email address and press \"Send me the link\": a link to let that device in comes here.",
       "",
-      `Sent by Nimbus Labs on behalf of ${store.name}, because you are taking this course.`,
+      `Sent by Marktmorgen on behalf of ${store.name}, because you are taking this course.`,
     ].join("\n"),
   });
 }

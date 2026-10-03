@@ -208,7 +208,7 @@ export function AffiliateStudio({
             </h2>
           </div>
           <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-            Nimbus Labs never holds, moves or pays out this money. Every sale is paid in full to your own Stripe account, as
+            Marktmorgen never holds, moves or pays out this money. Every sale is paid in full to your own Stripe account, as
             always; this page keeps the record of who is owed what. Pay them however you agree — PayPal, a bank transfer,
             Wise — then write it down here with Mark as paid, and it shows on their page too.
           </p>
@@ -227,7 +227,7 @@ export function AffiliateStudio({
             <div className="mt-5 rounded-2xl border border-line bg-paper p-4">
               <h3 className="font-semibold text-ink">Pay everyone at once</h3>
               <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-                {`${owedNow.length} ${owedNow.length === 1 ? "affiliate" : "affiliates"} can be paid ${money(batchTotal, currency)} today. Download the batch, upload it to your own PayPal or Wise, and the money goes straight from your account to theirs. It never passes through Nimbus, so there is no payout to wait for.`}
+                {`${owedNow.length} ${owedNow.length === 1 ? "affiliate" : "affiliates"} can be paid ${money(batchTotal, currency)} today. Download the batch, upload it to your own PayPal or Wise, and the money goes straight from your account to theirs. It never passes through Marktmorgen, so there is no payout to wait for.`}
               </p>
               {waitingTotal > 0 ? (
                 <p className="mt-2 text-sm leading-relaxed text-ink-soft">

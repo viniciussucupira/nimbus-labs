@@ -14,7 +14,7 @@ import { BLOG_POSTS, postBySlug } from "@/lib/blog";
  */
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
-export const alt = "An article from The Nimbus Journal";
+export const alt = "An article from The Marktmorgen Journal";
 
 export function generateStaticParams() {
   return BLOG_POSTS.map((post) => ({ slug: post.slug }));
@@ -30,8 +30,8 @@ export default async function OpengraphImage({
 
   // A missing post still has to return an image rather than throw, because
   // this runs where a 404 page would otherwise be rendered.
-  const title = post?.title ?? "The Nimbus Journal";
-  const kicker = post?.kicker ?? "Nimbus Labs";
+  const title = post?.title ?? "The Marktmorgen Journal";
+  const kicker = post?.kicker ?? "Marktmorgen";
   const from = post?.from ?? "#6c3bff";
   const to = post?.to ?? "#ff3d8a";
 
@@ -84,8 +84,8 @@ export default async function OpengraphImage({
             fontWeight: 600,
           }}
         >
-          <div style={{ display: "flex" }}>The Nimbus Journal</div>
-          <div style={{ display: "flex", opacity: 0.85 }}>nimbuslabsai.com</div>
+          <div style={{ display: "flex" }}>The Marktmorgen Journal</div>
+          <div style={{ display: "flex", opacity: 0.85 }}>marktmorgen.com</div>
         </div>
       </div>
     ),

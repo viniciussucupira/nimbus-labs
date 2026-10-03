@@ -1,6 +1,6 @@
 /**
  * A store on the creator's own domain: shop.theirname.com instead of
- * nimbuslabsai.com/@theirname. Part of Pro.
+ * marktmorgen.com/@theirname. Part of Pro.
  *
  * The domain is added to this site's project at Vercel, which checks the
  * creator's DNS and issues the certificate; this file asks Vercel what it sees
@@ -13,7 +13,7 @@
  *                      the domain is theirs, which serves nothing and lapses
  *                      after three days (lib/domain-proof.ts)
  *
- * The nimbuslabsai.com address keeps working either way, so a link already
+ * The marktmorgen.com address keeps working either way, so a link already
  * printed somewhere never breaks because a domain was added or removed.
  */
 import { createHash } from "node:crypto";
@@ -97,7 +97,7 @@ export const UNPROVED = "?";
  */
 export function proofRecord(store: Pick<Store, "sid">, name: string): { host: string; value: string } {
   const digest = createHash("sha256").update(`nimbus-domain-proof:${store.sid}:${name}`).digest("hex").slice(0, 32);
-  return { host: `_nimbus.${name}`, value: `nimbus-verify=${digest}` };
+  return { host: `_marktmorgen.${name}`, value: `marktmorgen-verify=${digest}` };
 }
 
 /** Which store a domain serves. For the proxy; cached for a minute per instance. */
@@ -271,7 +271,7 @@ export async function verifyDomain(name: string): Promise<void> {
   await vercel("POST", `/v9/projects/${PROJECT}/domains/${name}/verify`);
 }
 
-/** Takes a domain off a store. The nimbuslabsai.com address carries on as before. */
+/** Takes a domain off a store. The marktmorgen.com address carries on as before. */
 export async function disconnectDomain(name: string, handles: string[]): Promise<boolean> {
   // A claim that lapsed and was taken by another store is theirs now: only
   // this store's side of it is let go of.

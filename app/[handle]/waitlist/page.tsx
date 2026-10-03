@@ -9,7 +9,7 @@ import { WAIT_TOKEN, readWaitToken } from "@/lib/waitlist";
 import { productPath } from "@/components/store-product";
 
 export const metadata: Metadata = {
-  title: "Waitlist — Nimbus Labs",
+  title: "Waitlist — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
@@ -111,7 +111,7 @@ export default async function WaitlistPage({ params, searchParams }: Params) {
         <p className="st-price text-sm">Almost there</p>
         <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">Check your inbox</h1>
         <p className="st-muted mt-4 text-lg">
-          {`We emailed you a button to confirm your spot on the waitlist for ${title}. It comes from ${store.name} via Nimbus Labs and usually arrives within a minute; if it is not there, look in spam.`}
+          {`We emailed you a button to confirm your spot on the waitlist for ${title}. It comes from ${store.name} via Marktmorgen and usually arrives within a minute; if it is not there, look in spam.`}
         </p>
         <p className="st-muted mt-4 text-sm">Your spot counts once you press it, so a mistyped address is never told anything.</p>
       </>

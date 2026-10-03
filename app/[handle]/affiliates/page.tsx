@@ -22,7 +22,7 @@ import {
 import { AffiliateLinkBox } from "@/components/affiliate-link-box";
 
 export const metadata: Metadata = {
-  title: "Affiliates — Nimbus Labs",
+  title: "Affiliates — Marktmorgen",
   robots: { index: false, follow: false },
 };
 
@@ -269,7 +269,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                     ))}
                   </dl>
                   <p className="st-muted mt-3 text-sm">
-                    {`Paid to you so far: ${money(row.paid, book.currency)}. ${store.name} pays you directly, out of their own account. Nimbus Labs never holds this money, so there is no balance here to wait on and nothing to claim before a deadline.`}
+                    {`Paid to you so far: ${money(row.paid, book.currency)}. ${store.name} pays you directly, out of their own account. Marktmorgen never holds this money, so there is no balance here to wait on and nothing to claim before a deadline.`}
                   </p>
                   <div className="st-note mt-4 text-sm" role="status">
                     <p className="font-semibold" style={{ color: "var(--st-text)" }}>
@@ -382,14 +382,14 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                 </button>
               </form>
               <p className="st-muted mt-4 text-sm">
-                {`${payoutPromise(terms, store.name)} ${store.name} pays you directly; Nimbus Labs never holds this money. You join with the address you bought with.`}
+                {`${payoutPromise(terms, store.name)} ${store.name} pays you directly; Marktmorgen never holds this money. You join with the address you bought with.`}
               </p>
             </>
           ) : status === "sent" ? (
             <>
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">Check your inbox</h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
-                {`The link is on its way. It comes from ${store.name} via Nimbus Labs and usually arrives within a minute. If it is not there, look in spam.`}
+                {`The link is on its way. It comes from ${store.name} via Marktmorgen and usually arrives within a minute. If it is not there, look in spam.`}
               </p>
             </>
           ) : (
@@ -412,8 +412,8 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                       "A refunded sale earns nothing, a partly refunded one earns only on what was kept, and your own purchases never earn.",
                       payoutPromise(terms, store.name),
                       store.affiliates.buyers
-                        ? `Anybody who bought from ${store.name} can join at once, from their order; everyone else applies and ${store.name} decides. ${store.name} pays you directly out of their own account: Nimbus Labs never holds this money, so there is no minimum to reach and no deadline to claim it by.`
-                        : `${store.name} approves every affiliate, and pays you directly out of their own account: Nimbus Labs never holds this money, so there is no minimum to reach and no deadline to claim it by.`,
+                        ? `Anybody who bought from ${store.name} can join at once, from their order; everyone else applies and ${store.name} decides. ${store.name} pays you directly out of their own account: Marktmorgen never holds this money, so there is no minimum to reach and no deadline to claim it by.`
+                        : `${store.name} approves every affiliate, and pays you directly out of their own account: Marktmorgen never holds this money, so there is no minimum to reach and no deadline to claim it by.`,
                     ].map((line) => (
                       <li key={line} className="flex gap-3">
                         <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--st-accent)" }} />

@@ -10,7 +10,7 @@
 
 const OFFLINE_PAGE = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Offline — Nimbus Studio</title>
+<title>Offline — Marktmorgen Studio</title>
 <style>
   body{margin:0;min-height:100vh;display:grid;place-items:center;background:#fbfaf7;color:#16142b;font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px;box-sizing:border-box}
   main{max-width:26rem;text-align:center}
@@ -57,7 +57,7 @@ self.addEventListener("push", (event) => {
   } catch {
     data = {};
   }
-  const title = typeof data.title === "string" && data.title ? data.title : "Nimbus Studio";
+  const title = typeof data.title === "string" && data.title ? data.title : "Marktmorgen Studio";
   const url = typeof data.url === "string" && STUDIO_PATH.test(data.url) ? data.url : "/studio";
   const options = {
     body: typeof data.body === "string" ? data.body : "",

@@ -694,7 +694,7 @@ export async function movedEmail(store: Store, job: ImportJob, email: string): P
     `To open ${products.length === 1 ? "it" : "any of it"}, go to ${base}/orders and type ${email}. A link to everything you have there arrives within a minute. There is no password to make.`,
     "",
     `You are getting this one email because ${store.name} moved your purchases. Nothing more is sent because of it.`,
-    `Sent by Nimbus Labs on behalf of ${store.name}.`,
+    `Sent by Marktmorgen on behalf of ${store.name}.`,
   ].join("\n");
   return { subject: subject.slice(0, 200), text };
 }
@@ -708,7 +708,7 @@ async function mailStep(job: ImportJob, store: Store): Promise<"more" | "done" |
     const letter = await movedEmail(store, job, email);
     if (!letter) continue;
     messages.push({
-      from: `"${displayName(store.name)} via Nimbus Labs" <${senderAddress()}>`,
+      from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
       to: email,
       subject: letter.subject,
       text: letter.text,

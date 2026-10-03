@@ -38,7 +38,7 @@ export async function generateMetadata({
   // The section name is added only while the whole line still fits what a
   // search result shows. Past that, search engines cut the title mid-word,
   // and the reader loses the end of the headline to keep our own byline.
-  const withSection = `${post.title} — The Nimbus Journal`;
+  const withSection = `${post.title} — The Marktmorgen Journal`;
   return {
     title: withSection.length <= 60 ? withSection : post.title,
     description: post.excerpt,
@@ -46,7 +46,7 @@ export async function generateMetadata({
     openGraph: {
       type: "article",
       url: `/blog/${post.slug}`,
-      siteName: "Nimbus Labs",
+      siteName: "Marktmorgen",
       title: post.title,
       description: post.excerpt,
       publishedTime: post.date,
@@ -142,7 +142,7 @@ export default async function BlogPostPage({
         <header className="border-b border-line bg-white">
           <div className="container-narrow py-12 sm:py-16">
             <Link href="/blog" className="link-arrow text-[0.9375rem]">
-              <span aria-hidden="true">←</span> The Nimbus Journal
+              <span aria-hidden="true">←</span> The Marktmorgen Journal
             </Link>
             <p className="mt-8 flex flex-wrap items-center gap-3 text-sm text-ink-mute">
               <span className="tag tag-brand">{post.category}</span>
@@ -156,7 +156,7 @@ export default async function BlogPostPage({
               <span className="grid h-9 w-9 place-items-center rounded-full bg-lilac font-semibold text-violet-deep">VS</span>
               <span>
                 <span className="block font-semibold text-ink">Vinicius Sucupira</span>
-                <span className="text-ink-mute">Founder, Nimbus Labs</span>
+                <span className="text-ink-mute">Founder, Marktmorgen</span>
               </span>
             </p>
           </div>

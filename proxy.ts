@@ -10,15 +10,15 @@ import { isPlatformHost, requestHost } from "@/lib/request-origin";
 /**
  * A creator's own domain, served as their store.
  *
- * On nimbuslabsai.com (and the deployment's own addresses) nothing happens
+ * On marktmorgen.com (and the deployment's own addresses) nothing happens
  * here. On a creator's domain, the root is their store page, the store's own
  * pages keep their short paths (/thanks, /course/…, /p/<product>, /community,
  * /affiliates, /renew/<product>, /certificate/<id>, /review), and
  * anything that belongs to the site itself — signing in, the studio, the help
- * pages — is sent to nimbuslabsai.com, where the session lives.
+ * pages — is sent to marktmorgen.com, where the session lives.
  *
  * The store page is told which domain it was reached on, so it can send a
- * visitor back to nimbuslabsai.com if the store is no longer on Pro.
+ * visitor back to marktmorgen.com if the store is no longer on Pro.
  *
  * Two more jobs happen here because this runs before everything else: every
  * page rendered for a visit gets its Content-Security-Policy with a fresh

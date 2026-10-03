@@ -25,7 +25,7 @@ import {
 import { readListing } from "@/lib/catalog";
 
 export const metadata: Metadata = {
-  title: "Your course — Nimbus Labs",
+  title: "Your course — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

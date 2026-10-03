@@ -3,7 +3,7 @@
  *
  * The creator is the seller, so the tax is theirs to collect and to file, and
  * Stripe Tax is set up in their own Stripe dashboard: their head office, what
- * they sell, and where they are registered. Nimbus only switches it on for
+ * they sell, and where they are registered. Marktmorgen only switches it on for
  * their checkouts once Stripe says that setup is complete, because a checkout
  * that asks for tax on an account not ready for it fails or charges none.
  */

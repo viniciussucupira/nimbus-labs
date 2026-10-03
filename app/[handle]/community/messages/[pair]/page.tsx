@@ -16,7 +16,7 @@ type Params = {
 };
 
 export const metadata: Metadata = {
-  title: "Message — Nimbus Labs",
+  title: "Message — Marktmorgen",
   robots: { index: false, follow: false },
 };
 

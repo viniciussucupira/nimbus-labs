@@ -25,19 +25,19 @@ export const LIMITS = {
 
 export const PROBLEM_MIN_LENGTH = 10;
 
-export const SUPPORT_EMAIL = "support@nimbuslabsai.com";
+export const SUPPORT_EMAIL = "support@marktmorgen.com";
 
 // Stored with every answer as proof of what the person agreed to.
 export const CONSENT_VERSION = "2026-09-28-1";
 
 export const CONSENT_RESEARCH_TEXT =
-  "Nimbus Labs may store my answers and use them for this research. I can ask for them to be deleted at any time.";
+  "Marktmorgen may store my answers and use them for this research. I can ask for them to be deleted at any time.";
 
 export const CONSENT_FOLLOWUP_TEXT =
-  "Nimbus Labs may email me follow-up questions about my answers.";
+  "Marktmorgen may email me follow-up questions about my answers.";
 
 export const CONSENT_UPDATES_TEXT =
-  "Nimbus Labs may email me when it adds something for creators.";
+  "Marktmorgen may email me when it adds something for creators.";
 
 export type CreatorAnswer = {
   name: string;

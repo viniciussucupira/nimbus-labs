@@ -16,7 +16,7 @@ const MAX_BODY_BYTES = 2_000;
  * Asks for a sign-in link.
  *
  * The answer never says whether that address has an account, because that
- * would turn this form into a way of finding out who is a Nimbus creator.
+ * would turn this form into a way of finding out who is a Marktmorgen creator.
  */
 export async function POST(request: NextRequest) {
   // Refused before anything else is read: another site, by Origin or by

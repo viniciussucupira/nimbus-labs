@@ -170,7 +170,7 @@ export async function deliverGift(input: {
       "",
       `That link works for 24 hours. After that, go to ${base}/orders, type this address, and a new one comes straight away.`,
       "",
-      `Sent by Nimbus Labs on behalf of ${store.name}. Nothing was charged to you.`,
+      `Sent by Marktmorgen on behalf of ${store.name}. Nothing was charged to you.`,
     ].join("\n"),
     idempotencyKey: `nimbus-gift:${gift.id}`,
   }).catch((error) => console.error("a gift email failed", error));

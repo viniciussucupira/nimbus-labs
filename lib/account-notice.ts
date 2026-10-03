@@ -41,7 +41,7 @@ export type AccountChange =
   | { kind: "meeting-disconnected"; name: string; account: string; byProvider?: boolean }
   | { kind: "meeting-broken"; name: string };
 
-const SUPPORT = "support@nimbuslabsai.com";
+const SUPPORT = "support@marktmorgen.com";
 
 function describe(change: AccountChange): { subject: string; line: string } {
   switch (change.kind) {
@@ -73,7 +73,7 @@ function describe(change: AccountChange): { subject: string; line: string } {
     case "domain-removed":
       return {
         subject: `${change.name} was removed from your store`,
-        line: `The domain ${change.name} was removed from your store. Your store is still at its nimbuslabsai.com address.`,
+        line: `The domain ${change.name} was removed from your store. Your store is still at its marktmorgen.com address.`,
       };
     case "webhook-added":
       return {
@@ -158,7 +158,7 @@ export async function noticeCreator(store: Pick<Store, "email" | "handle">, chan
         `${SITE_URL}/signin`,
         "with this email address, choose “Log out of all devices” at the foot of your studio, put the setting back, and reply to this email so we can help.",
         "",
-        "Nimbus Labs sends this notice every time your Stripe account, your store's currency, your domain, your webhooks, your email platform, your Google Calendar or Zoom connection, or your team changes, and when a new device gets your notifications.",
+        "Marktmorgen sends this notice every time your Stripe account, your store's currency, your domain, your webhooks, your email platform, your Google Calendar or Zoom connection, or your team changes, and when a new device gets your notifications.",
       ].join("\n"),
     });
   } catch (error) {

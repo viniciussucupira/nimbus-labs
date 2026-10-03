@@ -55,7 +55,7 @@ export async function generateMetadata({ params, searchParams }: Params): Promis
   const { handle, id } = await params;
   const query = await searchParams;
   const found = await load(handle, id, typeof query.product === "string" ? query.product : undefined);
-  if (!found) return { title: "Certificate not found — Nimbus Labs", robots: { index: false, follow: false } };
+  if (!found) return { title: "Certificate not found — Marktmorgen", robots: { index: false, follow: false } };
   const { certificate } = found;
   return {
     title: `${certificate.name}: ${certificate.title} — certificate of completion`,
@@ -109,7 +109,7 @@ export default async function CertificatePage({ params, searchParams }: Params) 
                 {query.issued === "1" ? "Your certificate is ready." : "This certificate is genuine."}
               </p>
               <p className="mt-1">
-                {`It is on record with Nimbus Labs, issued on behalf of ${store.name} on ${issued}. This page is the proof: share its link and anyone can open it to check.`}
+                {`It is on record with Marktmorgen, issued on behalf of ${store.name} on ${issued}. This page is the proof: share its link and anyone can open it to check.`}
               </p>
             </div>
           )}
@@ -150,7 +150,7 @@ export default async function CertificatePage({ params, searchParams }: Params) 
               </div>
               <div className="cert-proof">
                 <p>{sample ? "Certificate ID: issued when a student finishes" : `Certificate ID ${certificate.id}`}</p>
-                <p>{sample ? "Checked at its own address on nimbuslabsai.com" : `Check it at ${shortUrl}`}</p>
+                <p>{sample ? "Checked at its own address on marktmorgen.com" : `Check it at ${shortUrl}`}</p>
               </div>
             </div>
             {sample ? <p className="cert-stamp" aria-hidden="true">Sample</p> : withdrawn ? <p className="cert-stamp" aria-hidden="true">Withdrawn</p> : null}

@@ -12,9 +12,9 @@ import { HOME_QUESTIONS } from "@/lib/home-faq";
 import { PLAN_PRICES, PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 import { isDomainsConfigured } from "@/lib/domains";
 
-const HOME_TITLE = "Nimbus Labs — the link-in-bio store that pays into your own Stripe";
+const HOME_TITLE = "Marktmorgen — the link-in-bio store that pays into your own Stripe";
 const HOME_DESCRIPTION =
-  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is delivered the second the payment clears, and Nimbus takes 0% of your sales.";
+  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is delivered the second the payment clears, and Marktmorgen takes 0% of your sales.";
 
 export const metadata: Metadata = {
   title: HOME_TITLE,
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: "/",
-    siteName: "Nimbus Labs",
+    siteName: "Marktmorgen",
     locale: "en_US",
     title: HOME_TITLE,
     description: HOME_DESCRIPTION,
@@ -37,7 +37,7 @@ const PHOTO = (id: string, w = 400, h = 400) =>
 const PRICE = PRICE_CENTS / 100;
 
 /*
- * The three things that make a sale on Nimbus different.
+ * The three things that make a sale on Marktmorgen different.
  *
  * Each one is shown, not described: beside the words is the drawing of the
  * screen it happens on, taken from the page that explains it in full. A claim
@@ -252,7 +252,7 @@ const COMPARE = [
 ];
 
 const SPEED = [
-  { label: "Nimbus demo store", score: 98, shown: "97–100", ours: true },
+  { label: "Marktmorgen demo store", score: 98, shown: "97–100", ours: true },
   { label: "Stan store A", score: 57, shown: "57", ours: false },
   { label: "Stan store B", score: 57, shown: "57", ours: false },
   { label: "Stan store C", score: 58, shown: "58", ours: false },
@@ -279,7 +279,7 @@ export default function Home() {
               </h1>
               <p className="t-lead measure mt-7 text-white/80">
                 Sell files, courses, calls and memberships from the link in your bio. Buyers pay straight into your own
-                Stripe account, what they bought arrives a second later, and Nimbus takes{" "}
+                Stripe account, what they bought arrives a second later, and Marktmorgen takes{" "}
                 <strong className="font-semibold text-white">0% of your sales</strong>.
               </p>
               {/*
@@ -398,11 +398,11 @@ export default function Home() {
         {/* ------------------------------------------------ the buyer's path */}
         <BuyerPath />
 
-        {/* ------------------------------------------------------ why Nimbus */}
+        {/* ------------------------------------------------------ why Marktmorgen */}
         <section className="surface-sand section">
           <div className="container-page">
             <div className="reveal max-w-2xl">
-              <p className="eyebrow">Why Nimbus</p>
+              <p className="eyebrow">Why Marktmorgen</p>
               <h2 className="t-h2 balance mt-4">Built around the one thing that is yours: the money</h2>
             </div>
 
@@ -547,7 +547,7 @@ export default function Home() {
                   </li>
                 ))}
               </ol>
-              <p className="mt-3 text-sm text-white/70">Nimbus is not a step on this path.</p>
+              <p className="mt-3 text-sm text-white/70">Marktmorgen is not a step on this path.</p>
               <Link href="/platform/your-stripe" className="btn btn-outline-light mt-8">
                 How the money moves
               </Link>
@@ -570,7 +570,7 @@ export default function Home() {
                     <dd className="text-ink-soft">set by Stripe, on your account</dd>
                   </div>
                   <div className="flex items-center justify-between py-3.5">
-                    <dt className="text-ink-soft">Nimbus Labs</dt>
+                    <dt className="text-ink-soft">Marktmorgen</dt>
                     <dd className="font-semibold text-mint-deep">$0.00</dd>
                   </div>
                 </dl>
@@ -685,18 +685,18 @@ export default function Home() {
                         ) : (
                           <>
                             <Icon name="check" size={12} strokeWidth={3} />
-                            Nimbus ahead
+                            Marktmorgen ahead
                           </>
                         )}
                       </span>
                     </div>
                     <dl className="mt-4 grid gap-2.5 text-[0.9375rem]">
-                      <div className="grid grid-cols-[4.25rem_1fr] gap-3">
+                      <div className="grid grid-cols-[6.5rem_1fr] gap-3">
                         <dt className="text-ink-mute">Stan</dt>
                         <dd className="text-ink-soft">{r.stan}</dd>
                       </div>
-                      <div className={`grid grid-cols-[4.25rem_1fr] gap-3 ${same ? "" : "-mx-3 rounded-[var(--r-sm)] bg-lilac/60 px-3 py-2"}`}>
-                        <dt className="font-semibold text-violet-deep">Nimbus</dt>
+                      <div className={`grid grid-cols-[6.5rem_1fr] gap-3 ${same ? "" : "-mx-3 rounded-[var(--r-sm)] bg-lilac/60 px-3 py-2"}`}>
+                        <dt className="font-semibold text-violet-deep">Marktmorgen</dt>
                         <dd className={same ? "text-ink" : "font-semibold text-ink"}>{r.nimbus}</dd>
                       </div>
                     </dl>

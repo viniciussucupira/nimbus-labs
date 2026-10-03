@@ -219,7 +219,7 @@ async function putOnPlan(id: string, history: Map<string, Map<string, string>>, 
     const body = new URLSearchParams({
       amount: String(-credit.cents),
       currency: credit.cur,
-      description: credit.kind === "share" ? "Nimbus Labs invite credit: a creator you invited paid" : "Nimbus Labs invite credit: welcome",
+      description: credit.kind === "share" ? "Marktmorgen invite credit: a creator you invited paid" : "Marktmorgen invite credit: welcome",
       "metadata[nimbus_invite_credit]": id,
     });
     const made = await onPlatformAt(INVITE_STRIPE_VERSION, "POST", `/customers/${customer}/balance_transactions`, body, `nimbus-invite-${id}`);
