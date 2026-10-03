@@ -353,7 +353,7 @@ export default function Home() {
           what the limit is — and every one of them is a measurement or a
           number stated elsewhere on this site, not a slogan.
         */}
-        <section aria-label="What you can check before you sign up" className="border-b border-line bg-white">
+        <section aria-label="What you can check before you sign up" className="surface-lilac border-b border-line">
           <ul className="container-page grid gap-x-10 gap-y-7 py-8 sm:grid-cols-2 sm:py-9 lg:grid-cols-4">
             {[
               {
@@ -401,7 +401,7 @@ export default function Home() {
         <BuyerPath />
 
         {/* ------------------------------------------------------ why Marktmorgen */}
-        <section className="surface-sand section">
+        <section className="surface-gold section">
           <div className="container-page">
             <div className="reveal max-w-2xl">
               <p className="eyebrow">Why Marktmorgen</p>
@@ -496,7 +496,7 @@ export default function Home() {
                   <ul className="mt-5 space-y-3">
                     {NOT_YET.map((n) => (
                       <li key={n} className="flex gap-3 text-ink">
-                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-sand text-ink-soft">
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white text-ink-soft ring-1 ring-line">
                           <Icon name="minus" size={14} />
                         </span>
                         <span className="text-[0.9375rem]">{n}</span>
@@ -601,7 +601,7 @@ export default function Home() {
         </section>
 
         {/* ------------------------------------------------------ who it's for */}
-        <section className="section">
+        <section className="surface-coral section">
           <div className="container-page">
             <div className="reveal flex flex-col justify-between gap-6 md:flex-row md:items-end">
               <div className="max-w-2xl">
@@ -665,7 +665,7 @@ export default function Home() {
         </section>
 
         {/* -------------------------------------------------------- compare */}
-        <section id="compare" className="surface-sand section scroll-mt-20">
+        <section id="compare" className="surface-mint section scroll-mt-20">
           <div className="container-page">
             <div className="reveal max-w-2xl">
               <p className="eyebrow">Side by side</p>
@@ -704,7 +704,7 @@ export default function Home() {
                         <dt className="text-ink-mute">Stan</dt>
                         <dd className="text-ink-soft">{r.stan}</dd>
                       </div>
-                      <div className={`grid grid-cols-[6.5rem_1fr] gap-3 ${same ? "" : "-mx-3 rounded-[var(--r-sm)] bg-lilac/60 px-3 py-2"}`}>
+                      <div className={`grid grid-cols-[6.5rem_1fr] gap-3 ${same ? "" : "-mx-3 rounded-[var(--r-sm)] bg-white/75 px-3 py-2"}`}>
                         <dt className="font-semibold text-violet-deep">Marktmorgen</dt>
                         <dd className={same ? "text-ink" : "font-semibold text-ink"}>{r.nimbus}</dd>
                       </div>
@@ -731,7 +731,7 @@ export default function Home() {
                   {SPEED.map((s) => (
                     <li key={s.label} className="grid grid-cols-[8.5rem_1fr_3.5rem] items-center gap-3 text-[0.9375rem]">
                       <span className={s.ours ? "font-semibold text-ink" : "text-ink-soft"}>{s.label}</span>
-                      <span className="h-2.5 overflow-hidden rounded-full bg-sand">
+                      <span className="h-2.5 overflow-hidden rounded-full bg-white ring-1 ring-line">
                         <span
                           className={`block h-full rounded-full ${s.ours ? "bg-violet-brand" : "bg-ink-mute/45"}`}
                           style={{ width: `${s.score}%` }}
@@ -784,7 +784,7 @@ export default function Home() {
         </section>
 
         {/* ------------------------------------------------------------ faq */}
-        <section id="faq" className="surface-sand section scroll-mt-20">
+        <section id="faq" className="surface-rose section scroll-mt-20">
           <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr]">
             <div className="reveal">
               <p className="eyebrow">Questions</p>

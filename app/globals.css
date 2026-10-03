@@ -475,6 +475,137 @@ body {
   background-color: #fff;
 }
 
+/* =====================================================================
+   The sunrise, carried down the page.
+
+   The hero paints a market morning: a violet sky, a rose haze, a coral
+   ring and a gold sun. Below it those same lights come back one at a
+   time, each as a wash over warm paper rather than a field of colour.
+   That is where the variety on this page comes from, and the reason it
+   stays one site rather than five: every tint is drawn from the one
+   picture at the top, and they arrive in the order the sun does —
+   lilac, gold, coral, mint, rose — never shuffled.
+
+   Each is a near-white base with two low lights over it, so the three
+   ink steps measured against --paper hold everywhere. The darkest base
+   below is #fbf3e8, where --ink-mute measures 5.4:1 and --ink-soft
+   8.5:1: both clear AA for body text, as they do on paper.
+   ===================================================================== */
+.surface-lilac,
+.surface-gold,
+.surface-coral,
+.surface-mint,
+.surface-rose {
+  position: relative;
+  isolation: isolate;
+}
+
+/* First light: the violet of the sky, almost gone. */
+.surface-lilac {
+  background-color: #f7f4ff;
+  background-image:
+    radial-gradient(48rem 26rem at 88% -8%, rgba(90, 54, 238, 0.12), transparent 64%),
+    radial-gradient(36rem 24rem at 2% 104%, rgba(47, 116, 245, 0.09), transparent 62%);
+}
+
+/* The sun itself, warm and low. */
+.surface-gold {
+  background-color: #fdf7ec;
+  background-image:
+    radial-gradient(52rem 28rem at 82% -10%, rgba(255, 186, 64, 0.2), transparent 64%),
+    radial-gradient(40rem 26rem at 0% 100%, rgba(255, 122, 89, 0.1), transparent 62%);
+}
+
+/* The ring around it. */
+.surface-coral {
+  background-color: #fdf4f0;
+  background-image:
+    radial-gradient(50rem 28rem at 6% -8%, rgba(255, 122, 89, 0.18), transparent 64%),
+    radial-gradient(42rem 26rem at 96% 102%, rgba(255, 207, 77, 0.14), transparent 62%);
+}
+
+/* The cool side of the morning, and the colour money already wears here. */
+.surface-mint {
+  background-color: #f1faf5;
+  background-image:
+    radial-gradient(48rem 26rem at 86% -8%, rgba(21, 163, 122, 0.14), transparent 64%),
+    radial-gradient(38rem 24rem at 0% 100%, rgba(47, 116, 245, 0.08), transparent 62%);
+}
+
+/* The haze, last. */
+.surface-rose {
+  background-color: #fdf3f5;
+  background-image:
+    radial-gradient(50rem 28rem at 10% -8%, rgba(232, 69, 107, 0.14), transparent 64%),
+    radial-gradient(40rem 26rem at 94% 104%, rgba(90, 54, 238, 0.1), transparent 62%);
+}
+
+/*
+ * What each light does to the small things standing in it.
+ *
+ * Only three things take the section's hue: the eyebrow above the
+ * heading, the tile an icon sits in, and the hairline of a card. Links
+ * and buttons stay violet everywhere, because on this site violet means
+ * "this does something" and a colour that means one thing must not be
+ * spent on decoration.
+ *
+ * Every pairing below was measured on its own section's base.
+ */
+.surface-gold .eyebrow {
+  color: #8a4f00; /* 6.9:1 on #fdf7ec */
+}
+.surface-gold .icon-tile {
+  background: #fcecc9;
+  color: #7d4700;
+}
+.surface-coral .eyebrow {
+  color: #a8341a; /* 6.3:1 on #fdf4f0 */
+}
+.surface-coral .icon-tile {
+  background: #ffe6dc;
+  color: #9c2f16;
+}
+.surface-mint .eyebrow {
+  color: var(--mint-deep); /* 7.6:1 on #f1faf5 */
+}
+.surface-mint .icon-tile {
+  background: #d9f2e6;
+  color: var(--mint-deep);
+}
+.surface-rose .eyebrow {
+  color: #a81d47; /* 6.6:1 on #fdf3f5 */
+}
+.surface-rose .icon-tile {
+  background: #fcdfe7;
+  color: #99183f;
+}
+.surface-lilac .eyebrow {
+  color: var(--violet-deep);
+}
+
+/*
+ * A card on a tinted section.
+ *
+ * White cards on a tint read as holes punched in it. These keep the
+ * paper warm and let the tint show at the edge instead, so the section
+ * stays one surface with things resting on it.
+ */
+.surface-gold .card,
+.surface-coral .card,
+.surface-mint .card,
+.surface-rose .card,
+.surface-lilac .card {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(1.1);
+}
+.surface-gold .card-flat,
+.surface-coral .card-flat,
+.surface-mint .card-flat,
+.surface-rose .card-flat,
+.surface-lilac .card-flat {
+  background: rgba(255, 255, 255, 0.52);
+}
+
 /* A hairline between two light sections: a join, not a border. */
 .rule-soft {
   border-top: 1px solid var(--line);

@@ -90,7 +90,7 @@ export function HeroFlow() {
         whichever card the current step is on, then where the money landed —
         so nothing is laid over the phone it is meant to be explaining.
       */}
-      <div className="flex flex-col items-center gap-4 sm:relative sm:block sm:h-[35rem]">
+      <div className="flex flex-col items-center gap-4 lg:relative lg:block lg:h-[35rem]">
         {/* soft light behind the devices */}
         <div
           aria-hidden="true"
@@ -107,7 +107,7 @@ export function HeroFlow() {
           aria-hidden="true"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
-          className="pointer-events-none absolute inset-0 hidden h-full w-full sm:block"
+          className="pointer-events-none absolute inset-0 hidden h-full w-full lg:block"
         >
           <path
             d="M34 26 C 52 22, 58 24, 70 30"
@@ -128,7 +128,7 @@ export function HeroFlow() {
         </svg>
 
         {/* the store, on a phone */}
-        <div className="w-[15.5rem] sm:absolute sm:left-0 sm:top-0 sm:w-[54%] sm:max-w-[16.5rem]">
+        <div className="w-[15.5rem] lg:absolute lg:left-0 lg:top-0 lg:w-[54%] lg:max-w-[16.5rem]">
           <div className="device">
             <div className="device-screen">
               <div className="flex items-center justify-between px-4 pb-1 pt-2.5 text-[10px] font-semibold text-ink-mute">
@@ -202,12 +202,12 @@ export function HeroFlow() {
           (`display: contents`) and both cards go back to being positioned
           against the composition itself.
         */}
-        <div className="flex min-h-[15.5rem] w-full max-w-[18rem] items-start justify-center sm:contents">
+        <div className="flex min-h-[15.5rem] w-full max-w-[18rem] items-start justify-center lg:contents">
         {/* the Stripe checkout */}
         <div
-          className={`w-[17rem] transition-all duration-700 [transition-timing-function:var(--ease)] sm:absolute sm:right-0 sm:top-[7%] sm:w-[54%] sm:max-w-[16.5rem] ${
-            step === 1 ? "opacity-100" : "hidden opacity-100 sm:block"
-          } ${step === 0 ? "sm:translate-y-3 sm:opacity-65" : "sm:translate-y-0 sm:opacity-100"}`}
+          className={`w-[17rem] transition-all duration-700 [transition-timing-function:var(--ease)] lg:absolute lg:right-0 lg:top-[7%] lg:w-[54%] lg:max-w-[16.5rem] ${
+            step === 1 ? "opacity-100" : "hidden opacity-100 lg:block"
+          } ${step === 0 ? "lg:translate-y-3 lg:opacity-65" : "lg:translate-y-0 lg:opacity-100"}`}
           aria-hidden={step === 0}
         >
           <div className="rounded-[16px] bg-white p-3.5 text-ink shadow-[var(--shadow-lg)] ring-1 ring-black/5">
@@ -247,10 +247,10 @@ export function HeroFlow() {
 
         {/* delivered */}
         <div
-          className={`w-[17rem] transition-all duration-700 [transition-timing-function:var(--ease)] sm:absolute sm:bottom-[5.25rem] sm:right-[3%] sm:w-[62%] sm:max-w-[18.5rem] ${
+          className={`w-[17rem] transition-all duration-700 [transition-timing-function:var(--ease)] lg:absolute lg:bottom-[5.25rem] lg:right-[3%] lg:w-[62%] lg:max-w-[18.5rem] ${
             paid
-              ? "opacity-100 sm:translate-y-0"
-              : "hidden sm:block sm:pointer-events-none sm:translate-y-4 sm:opacity-0"
+              ? "opacity-100 lg:translate-y-0"
+              : "hidden lg:block lg:pointer-events-none lg:translate-y-4 lg:opacity-0"
           }`}
           aria-hidden={!paid}
         >
@@ -289,8 +289,8 @@ export function HeroFlow() {
         */}
         </div>
 
-        <div className="w-full max-w-[20rem] sm:absolute sm:inset-x-0 sm:bottom-0 sm:max-w-none">
-          <div className="flex items-center justify-between gap-3 rounded-[14px] border border-white/14 bg-[#05081a]/85 px-3.5 py-3 backdrop-blur-sm sm:px-4">
+        <div className="w-full max-w-[20rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:max-w-none">
+          <div className="flex items-center justify-between gap-3 rounded-[14px] border border-white/14 bg-[#05081a]/85 px-3.5 py-3 backdrop-blur-sm lg:px-4">
             <span className="flex min-w-0 items-center gap-2.5">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-white/10 text-[#b9a8ff]">
                 <Icon name="bank" size={17} />
