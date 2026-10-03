@@ -94,9 +94,20 @@ export function FeatureCatalogue({
 
   return (
     <div>
+      {/*
+        One real element per group, right where the catalog starts.
+
+        The script above chooses the filter; these are what the browser itself
+        jumps to, which is the half that keeps working when the script does
+        not. They sit in the flow with nothing in them, and `scroll-mt-28`
+        leaves the filter bar clear of the fixed header instead of under it.
+      */}
+      <span id="features" aria-hidden="true" className="block scroll-mt-28" />
+      {groups.map((g) => (
+        <span key={`anchor-${g.key}`} id={`group-${g.key}`} aria-hidden="true" className="block scroll-mt-28" />
+      ))}
       <div
         ref={top}
-        id="features"
         className="flex scroll-mt-28 flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="seg max-w-full overflow-x-auto" role="group" aria-label="Filter the features">
