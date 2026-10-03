@@ -486,7 +486,7 @@ export function BuyBox({
               : options.length > 0
                 ? product.recurring
                   ? "Subscribe"
-                  : "Buy the one you picked"
+                  : "Continue with this option"
                 : product.recurring
                   ? `Subscribe — ${formatMoney(product.priceCents, store.currency)}${every}`
                   : `Buy for ${formatMoney(salePrice(product.priceCents, off), store.currency)}`}

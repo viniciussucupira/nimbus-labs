@@ -315,7 +315,6 @@ export function HeroFlow() {
                   paid ? "bg-mint-soft text-mint-deep" : "bg-white/10 text-white/70"
                 }`}
               >
-                <span className="sr-only">{paid ? "Gross payment received: " : "Gross payment so far: "}</span>
                 {paid ? "+$39.00" : "$0.00"}
               </span>
             </span>

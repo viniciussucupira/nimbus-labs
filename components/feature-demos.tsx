@@ -75,7 +75,7 @@ export function OptionsDemo() {
           <span className="font-semibold tabular-nums text-ink">{`$${price}`}</span>
         </p>
         <button type="submit" className="btn btn-primary btn-block mt-3" aria-describedby={`${name}-note`}>
-          Buy the one you picked
+          Continue with this option
         </button>
         <p id={`${name}-note`} className="mt-3 text-center text-[12px] text-ink-soft">
           A preview to try: nothing is charged here.
