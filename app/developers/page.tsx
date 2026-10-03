@@ -40,7 +40,7 @@ const BASE = "https://marktmorgen.com/api/v1";
 
 export default function DevelopersPage() {
   return (
-    <LegalPage title="Developers" eyebrow="For your own tools" effective={null} legalNav={false} lastUpdated="September 30, 2026">
+    <LegalPage title="Developers" eyebrow="For your own tools" effective={null} legalNav={false} lastUpdated="October 2, 2026">
       <p>
         Read your store from your own tools: your list, your community&apos;s members, a course&apos;s students, your
         affiliates and your bookings. Every plan has it. The API reads and changes nothing; to be told when something

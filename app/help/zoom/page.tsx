@@ -18,7 +18,7 @@ const link = "text-black underline underline-offset-2 hover:no-underline";
  */
 export default function ZoomGuidePage() {
   return (
-    <LegalPage title="Zoom for Marktmorgen" lastUpdated="September 28, 2026">
+    <LegalPage title="Zoom for Marktmorgen" lastUpdated="October 2, 2026">
       <p>
         Marktmorgen is a link-in-bio store where creators sell digital
         products, courses, memberships and paid video calls. The Zoom app lets
