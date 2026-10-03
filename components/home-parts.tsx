@@ -312,7 +312,7 @@ export function HeroFlow() {
       </div>
 
       <div className="mt-6 flex justify-center" role="group" aria-label="Steps of a sale">
-        <ol className="flex items-center gap-1 rounded-[12px] bg-white/[0.08] p-1 ring-1 ring-white/14">
+        <ol className="flex items-center gap-1 rounded-[12px] bg-[#120a45]/55 p-1 ring-1 ring-white/14">
           {FLOW.map((s, i) => (
             <li key={s.key}>
               <button

@@ -209,7 +209,8 @@ export default function MissionPage() {
       <SiteNav />
 
       <main id="content" className="flex-1">
-        <section className="surface-night nb-grid-lines on-dark overflow-hidden">
+        <section className="surface-daybreak on-dark overflow-hidden">
+          <div className="awning" aria-hidden="true" />
           <div className="container-page grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:gap-16">
             <div>
               <p className="eyebrow">Our mission</p>
