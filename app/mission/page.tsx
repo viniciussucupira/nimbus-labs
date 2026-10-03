@@ -177,7 +177,7 @@ const RELEASES: { date: string; items: string }[] = [
 
 /* Facts a creator can check before trusting us with a store. */
 const TRUST: { icon: IconName; title: string; body: string; href: string; link: string }[] = [
-  { icon: "user", title: "Who builds it", body: "Vinicius Sucupira, the founder, who writes the code and answers the email.", href: "/proof/questions", link: "The awkward questions" },
+  { icon: "user", title: "Who builds it", body: "A small independent studio. The person who writes the code is the person who answers the email.", href: "/proof/questions", link: "The awkward questions" },
   { icon: "mail", title: "How to reach us", body: "By email. A person reads every message and answers in writing, in English.", href: "mailto:support@marktmorgen.com", link: "Write to us" },
   { icon: "bank", title: "Where the money is", body: "Every sale is processed by Stripe on the creator's own account. We never hold a balance of yours.", href: "/platform/your-stripe", link: "How the money moves" },
   { icon: "shield", title: "What we keep about you", body: "What the service needs to run, listed in plain words, with who processes it for us. Nothing is sold.", href: "/privacy", link: "Privacy policy" },
@@ -277,12 +277,8 @@ export default function MissionPage() {
               a person, the photograph is licensed stock, and the page says so. When we compare ourselves with anyone, we name the
               page on their own site that each line comes from, and the date we read it, so you can check it. It is a slower way to sell, and it is the only one we are willing to use.
             </blockquote>
-            <figcaption className="mt-5 flex items-center gap-3 border-t border-line pt-5 text-sm">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-lilac font-semibold text-violet-deep">VS</span>
-              <span>
-                <span className="block font-semibold text-ink">Vinicius Sucupira</span>
-                <span className="text-ink-mute">Founder, Marktmorgen</span>
-              </span>
+            <figcaption className="mt-5 border-t border-line pt-5 text-sm text-ink-mute">
+              The Marktmorgen team
             </figcaption>
           </figure>
         </section>

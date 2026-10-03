@@ -152,13 +152,7 @@ export default async function BlogPostPage({
             </p>
             <h1 className="t-h1 balance mt-5">{post.title}</h1>
             <p className="t-lead mt-5 text-ink-soft">{post.excerpt}</p>
-            <p className="mt-8 flex items-center gap-3 text-sm">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-lilac font-semibold text-violet-deep">VS</span>
-              <span>
-                <span className="block font-semibold text-ink">Vinicius Sucupira</span>
-                <span className="text-ink-mute">Founder, Marktmorgen</span>
-              </span>
-            </p>
+            <p className="mt-8 text-sm text-ink-mute">Written by the Marktmorgen team.</p>
           </div>
         </header>
 

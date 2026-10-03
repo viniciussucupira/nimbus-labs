@@ -55,7 +55,7 @@ export default function CreatorsPage() {
               </h1>
               <div className="t-lead mt-6 max-w-2xl space-y-4 text-white/80">
                 <p>
-                  I&apos;m Vinicius, the founder of Marktmorgen. Before we build our next tool, I&apos;m talking to creators
+                  We build Marktmorgen. Before we build our next tool, we are talking to creators
                   who sell guides, courses, templates and paid calls from their link in bio.
                 </p>
                 <p>

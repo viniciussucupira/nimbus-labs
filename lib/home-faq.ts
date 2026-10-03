@@ -26,6 +26,6 @@ export const HOME_QUESTIONS = [
   },
   {
     q: "Who is behind this?",
-    a: "Vinicius Sucupira, an independent builder working in public. Support is in English, in writing, and a person answers it.",
+    a: "A small independent studio, working in public. Support is in English, in writing, and a person answers it.",
   },
 ];

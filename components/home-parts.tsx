@@ -73,7 +73,7 @@ const STORES = [
     handle: "harborkitchen",
     name: "Harbor Kitchen",
     line: "Simple family meals by Jenny",
-    photo: "photo-1543871595-e11129e271cc",
+    photo: "photo-1573496359142-b8d87734a5a2",
     item: "Weekly meal planner",
     options: [
       { label: "1 week", price: "$27" },
@@ -86,7 +86,7 @@ const STORES = [
     handle: "mornpractice",
     name: "Morning Practice",
     line: "Mobility and strength by Ada",
-    photo: "photo-1787647090008-4b88ffc977b7",
+    photo: "photo-1494790108377-be9c29b29330",
     item: "30-day mobility plan",
     options: [
       { label: "The plan", price: "$34" },
@@ -99,7 +99,7 @@ const STORES = [
     handle: "lightandgrain",
     name: "Light & Grain",
     line: "Film presets by Theo",
-    photo: "photo-1765429158141-b283bbe7d0e4",
+    photo: "photo-1573497019940-1c28c88b4f3e",
     item: "Golden hour pack",
     options: [
       { label: "12 presets", price: "$24" },
@@ -112,7 +112,7 @@ const STORES = [
     handle: "thequietdesk",
     name: "The Quiet Desk",
     line: "Study systems by Maren",
-    photo: "photo-1758599880979-f6a64947b541",
+    photo: "photo-1484863137850-59afcfe05386",
     item: "Focus course",
     options: [
       { label: "The course", price: "$49" },
@@ -125,7 +125,7 @@ const STORES = [
     handle: "saltandsteel",
     name: "Salt & Steel",
     line: "Knife skills by Dmitri",
-    photo: "photo-1780277993159-b4ca60e8922d",
+    photo: "photo-1580894732444-8ecded7900cd",
     item: "Sharpening masterclass",
     options: [
       { label: "Masterclass", price: "$39" },
@@ -1047,42 +1047,54 @@ export function DemoWindow({
  * repeating one accent twenty-four times.
  */
 const SOLD: { label: string; photo: string }[] = [
-  { label: "Meal plans", photo: "photo-1580642682609-8b6ab251fbb7" },
-  { label: "Lightroom presets", photo: "photo-1556910103-1c02745aae4d" },
-  { label: "Sourdough courses", photo: "photo-1620545628446-6319bce6b95c" },
-  { label: "Yoga programs", photo: "photo-1621111848501-8d3634f82336" },
-  { label: "Sample packs", photo: "photo-1632494873717-d630cd5f2634" },
-  { label: "Knitting patterns", photo: "photo-1574100004472-e536d3b6bacc" },
-  { label: "1:1 coaching calls", photo: "photo-1592837613828-4b65deb44f15" },
-  { label: "Study guides", photo: "photo-1519408469771-2586093c3f14" },
+  { label: "Meal plans", photo: "photo-1537861295351-76bb831ece99" },
+  { label: "Lightroom presets", photo: "photo-1562577309-d67db487e6cd" },
+  { label: "Sourdough courses", photo: "photo-1519408469771-2586093c3f14" },
+  { label: "Yoga programs", photo: "photo-1580642682609-8b6ab251fbb7" },
+  { label: "Sample packs", photo: "photo-1620545628446-6319bce6b95c" },
+  { label: "Knitting patterns", photo: "photo-1621111848501-8d3634f82336" },
+  { label: "1:1 coaching calls", photo: "photo-1632494873717-d630cd5f2634" },
+  { label: "Study guides", photo: "photo-1574100004472-e536d3b6bacc" },
   { label: "Brush packs", photo: "photo-1561070791-2526d30994b5" },
-  { label: "Membership communities", photo: "photo-1562577309-d67db487e6cd" },
-  { label: "Watercolor classes", photo: "photo-1626785774573-4b799315345d" },
-  { label: "Resume reviews", photo: "photo-1637270873552-80d3bb9569dd" },
-  { label: "Pottery classes", photo: "photo-1606787503066-794bb59c64bc" },
-  { label: "Lesson plans", photo: "photo-1603201667246-3c45012c6d17" },
-  { label: "Portfolio critiques", photo: "photo-1534670007418-fbb7f6cf32c3" },
-  { label: "Running plans", photo: "photo-1636647511729-6703539ba71f" },
-  { label: "Chord charts", photo: "photo-1761628332000-9da4f810183e" },
-  { label: "Lettering classes", photo: "photo-1613579917953-d35e6b72d32b" },
-  { label: "Recipe packs", photo: "photo-1528712306091-ed0763094c98" },
-  { label: "Business templates", photo: "photo-1537861295351-76bb831ece99" },
-  { label: "Breathwork sessions", photo: "photo-1556911220-e15b29be8c8f" },
-  { label: "Font bundles", photo: "photo-1653233797467-1a528819fd4f" },
-  { label: "Wedding checklists", photo: "photo-1518737003272-dac7c4760d5e" },
-  { label: "Garden guides", photo: "photo-1556911073-a517e752729c" },
-  { label: "Meal plans", photo: "photo-1606787503066-794bb59c64bc" },
-  { label: "Posture clinics", photo: "photo-1763403921315-f2ef8697199f" },
-  { label: "Stretch routines", photo: "photo-1665781665930-43c9bfd33952" },
-  { label: "Knife skills", photo: "photo-1556910103-1c02745aae4d" },
+  { label: "Membership communities", photo: "photo-1626785774573-4b799315345d" },
+  { label: "Watercolor classes", photo: "photo-1637270873552-80d3bb9569dd" },
+  { label: "Resume reviews", photo: "photo-1603201667246-3c45012c6d17" },
+  { label: "Pottery classes", photo: "photo-1534670007418-fbb7f6cf32c3" },
+  { label: "Lesson plans", photo: "photo-1761628332000-9da4f810183e" },
+  { label: "Portfolio critiques", photo: "photo-1613579917953-d35e6b72d32b" },
+  { label: "Running plans", photo: "photo-1528712306091-ed0763094c98" },
+  { label: "Chord charts", photo: "photo-1556911220-e15b29be8c8f" },
+  { label: "Lettering classes", photo: "photo-1653233797467-1a528819fd4f" },
+  { label: "Recipe packs", photo: "photo-1518737003272-dac7c4760d5e" },
+  { label: "Business templates", photo: "photo-1556911073-a517e752729c" },
+  { label: "Breathwork sessions", photo: "photo-1636647511729-6703539ba71f" },
+  { label: "Font bundles", photo: "photo-1606787503066-794bb59c64bc" },
+  { label: "Wedding checklists", photo: "photo-1556910103-1c02745aae4d" },
+  { label: "Garden guides", photo: "photo-1592837613828-4b65deb44f15" },
+  { label: "Posture clinics", photo: "photo-1556908153-1055164fe2df" },
+  { label: "Stretch routines", photo: "photo-1556909114-44e3e70034e2" },
+  { label: "Knife skills", photo: "photo-1556911220-dabc1f02913a" },
+  { label: "Macro photography", photo: "photo-1625631976982-c6df1654a6ea" },
+  { label: "Interview prep", photo: "photo-1605433246995-23f532d1e001" },
+  { label: "Sewing patterns", photo: "photo-1714683237282-4a4623333058" },
+  { label: "Meditation courses", photo: "photo-1676496962536-d8ef110ff6f0" },
+  { label: "Bread workshops", photo: "photo-1626444232874-e72c020eeb0e" },
+  { label: "Colour theory classes", photo: "photo-1761971975962-9cc397e2ba2a" },
+  { label: "Pitch deck reviews", photo: "photo-1763403921315-f2ef8697199f" },
+  { label: "Habit trackers", photo: "photo-1761971975651-4fdd4abc200f" },
+  { label: "Mobility programs", photo: "photo-1761971975973-cbb3e59263de" },
+  { label: "Still life classes", photo: "photo-1666478042293-17ea55f33b52" },
+  { label: "Resume templates", photo: "photo-1666478042301-8a0661bff75e" },
+  { label: "Cold email courses", photo: "photo-1666478042162-e3d894a0253e" },
+  { label: "Plant care guides", photo: "photo-1665781665930-43c9bfd33952" },
 ];
 
 const TINTS = ["#ff7a59", "#15a37a", "#ffcf4d", "#5a36ee", "#e8456b"];
 
 export function SoldMarquee() {
-  // Two copies of the list: the track travels exactly half its width, so
-  // the second copy is under the cursor the instant the first leaves.
-  const row = [...SOLD, ...SOLD];
+  // One of each. The track travels its whole overflow and comes back,
+  // rather than holding the list twice to hide a snap.
+  const row = SOLD;
   return (
     <div className="marquee py-1" aria-hidden="true">
       <ul className="marquee-track">

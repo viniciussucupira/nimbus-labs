@@ -123,8 +123,8 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
             <Logo tone="light" />
           </Link>
           <p className="mt-4 text-[0.9375rem] leading-relaxed text-white/70">
-            A store page for creators, built in public by Vinicius Sucupira. Your
-            buyers pay into your own Stripe account.
+            A store page for creators, built in public. Your buyers pay into your
+            own Stripe account.
           </p>
           <p className="mt-3 text-[0.9375rem] leading-relaxed text-white/70">
             Written support, in English, from{" "}
@@ -163,7 +163,7 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
       <div className="container-page border-t border-white/12 py-7 text-[0.8125rem] leading-relaxed text-white/70">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
           <p>
-            {`© ${year} Marktmorgen, by Solrenning — an independent software studio run by Vinicius Sucupira.`}
+            {`© ${year} Marktmorgen, by Solrenning — an independent software studio.`}
           </p>
           <ul className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1">
             {LEGAL_LINKS.map((link) => (

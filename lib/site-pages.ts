@@ -517,7 +517,7 @@ export const PAGES: TopicPage[] = [
           { title: "Can I sign up and sell today?", body: "Yes. You take your store address, put what you sell on the page, connect your own Stripe account, and a buyer can pay for it — on your account, with nothing taken on top. Until Stripe clears your account, your page says plainly that it cannot take a payment, so nobody's time is wasted. Taking payments needs the $29 plan, and its first 14 days are free." },
           { title: "Who holds the money from my sales?", body: "You do, in your own Stripe account. We take 0% of your sales and charge only a subscription, paid monthly or yearly." },
           { title: "What happens if Marktmorgen closes?", body: "Your Stripe account, your customers and your files were never ours. Your list downloads from your studio at any time, and a shutdown comes with at least 30 days' notice in writing." },
-          { title: "Who is behind this?", body: "Vinicius Sucupira, an independent builder working in public. Support is in English, in writing." },
+          { title: "Who is behind this?", body: "A small independent studio, working in public. Support is in English, in writing, and a person answers it." },
           { title: "Can my store look like mine?", body: "Yes. Put up your photo, pick one of four themes and a color \u2014 one of ten, or your own \u2014 and the studio shows the page before you save it. Every color is checked so the words on your page stay easy to read." },
           { title: "What do I do if something breaks?", body: "You write to support and a person answers. If a sale is affected, you have the Stripe dashboard as the source of truth, independently of us." },
         ],

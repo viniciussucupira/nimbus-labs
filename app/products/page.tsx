@@ -41,7 +41,7 @@ export default function ProductsPage() {
             <p className="eyebrow">The Solrenning family</p>
             <h1 className="t-h1 mt-4 max-w-3xl">Different tools.<br /><span className="serif font-normal text-violet-deep">One independent studio.</span></h1>
             <p className="t-lead mt-6 max-w-2xl text-ink-soft">Tools for clearer writing, selling your work, and sharing customer experiences. Find the one that fits what you need today.</p>
-            <p className="mt-5 max-w-2xl text-sm leading-6 text-ink-soft">Solrenning is the independent software studio run by Vinicius Sucupira. Marktmorgen, the creator store, is one of its five products.</p>
+            <p className="mt-5 max-w-2xl text-sm leading-6 text-ink-soft">Solrenning is an independent software studio. Marktmorgen, the creator store, is one of its five products.</p>
             <nav aria-label="Product categories" className="mt-7 flex flex-wrap gap-3">
               <a href="#writing" className="btn btn-secondary">Writing tools</a>
               <a href="#business" className="btn btn-secondary">Business tools</a>

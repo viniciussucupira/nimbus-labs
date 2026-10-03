@@ -15,8 +15,8 @@ import { InstallApp } from "@/components/install-app";
  */
 const PHOTO = (id: string, w: number, h: number, faces = true) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop${faces ? "&crop=faces" : ""}&w=${w}&h=${h}&q=68`;
-const JENNY = "photo-1543871595-e11129e271cc";
-const FOOD = "photo-1535473895227-bdecb20fb157";
+const JENNY = "photo-1613666517563-d19a4585d1fe";
+const FOOD = "photo-1627815416399-ddaae0e2fa54";
 
 type Step = { key: string; icon: IconName; title: string; caption: string };
 

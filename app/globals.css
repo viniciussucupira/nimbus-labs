@@ -911,15 +911,20 @@ body {
 /* =====================================================================
    The marquee.
 
-   A strip that never stops moving, the way a market never stops. It is
-   the one piece of the page that is always in motion, and it carries
-   something worth reading: the things people actually sell from a store
-   like this.
+   A strip that keeps moving, the way a market does. It is the one piece
+   of the page that is always in motion, and it carries something worth
+   reading: the things people actually sell from a store like this.
 
-   Pure CSS. The track holds the same list twice and travels exactly half
-   its own width, so the join is invisible and there is nothing to
-   schedule in JavaScript. It stops dead for anyone who has asked motion
-   to stop, and it stops on hover so a name can be read.
+   It used to hold the list twice and travel half its width, which made a
+   seamless loop out of forty photographs shown eighty times. Every
+   photograph on this site now appears exactly once, so the track holds
+   one of each and travels its whole overflow, then comes back the way it
+   came. Alternating is what buys that: a one-way loop would have to
+   snap back to the start, and the only way to hide that snap is the
+   duplication this no longer does.
+
+   Pure CSS. It stops dead for anyone who has asked motion to stop, and
+   on hover so a name can be read.
    ===================================================================== */
 .marquee {
   position: relative;
@@ -933,7 +938,7 @@ body {
   flex-shrink: 0;
   gap: var(--gap-sm);
   padding-right: var(--gap-sm);
-  animation: marquee-run 46s linear infinite;
+  animation: marquee-run 150s linear infinite alternate;
   will-change: transform;
 }
 .marquee:hover .marquee-track,
@@ -945,7 +950,13 @@ body {
     transform: translateX(0);
   }
   to {
-    transform: translateX(-50%);
+    /*
+     * The track is wider than the window it runs in, and this is the
+     * distance between the two: the track's own width less the window's,
+     * expressed against the track so it ends with its last chip at the
+     * right edge and nothing beyond.
+     */
+    transform: translateX(calc(-100% + 100vw));
   }
 }
 @media (prefers-reduced-motion: reduce) {

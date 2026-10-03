@@ -37,7 +37,6 @@ const ORGANIZATION = {
   logo: `${SITE_URL}/icons/icon-512.png`,
   description:
     "A link-in-bio store for creators who sell files, courses, memberships and calls. Buyers pay into the creator's own Stripe account and Marktmorgen takes 0% of the sale.",
-  founder: { "@type": "Person", name: "Vinicius Sucupira" },
 };
 
 /** The company and the site itself, on every page. */
@@ -122,7 +121,7 @@ export function ArticleData({ post }: { post: BlogPost }) {
         dateModified: post.date,
         articleSection: post.category,
         image: `${SITE_URL}/blog/${post.slug}/opengraph-image`,
-        author: { "@type": "Person", name: "Vinicius Sucupira" },
+        author: { "@type": "Organization", name: "Marktmorgen" },
         publisher: { "@id": `${SITE_URL}/#organization` },
         mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
         inLanguage: "en",

@@ -64,7 +64,7 @@ const REASONS: {
     visual: "stripe",
     href: "/platform/your-stripe",
     link: "How the money moves",
-    photo: "photo-1537861295351-76bb831ece99",
+    photo: "photo-1671581084367-1bf522951eae",
     alt: "A desk with a printed statement, a marker and a laptop",
   },
   {
@@ -76,7 +76,7 @@ const REASONS: {
     visual: "options",
     href: "/platform/price-options",
     link: "See price options",
-    photo: "photo-1528712306091-ed0763094c98",
+    photo: "photo-1613574714687-c33b9e90200d",
     alt: "Ingredients and recipe cards laid out on a counter",
   },
   {
@@ -88,7 +88,7 @@ const REASONS: {
     visual: "delivery",
     href: "/platform/instant-delivery",
     link: "How delivery works",
-    photo: "photo-1562577309-d67db487e6cd",
+    photo: "photo-1740710543611-80b658171bc3",
     alt: "A woman at a laptop, close up, opening something she has just bought",
   },
 ];
@@ -127,56 +127,56 @@ const CREATORS = [
     href: "/for/coaches",
     label: "Coaches and teachers",
     sells: "Worksheets, programs, paid calls",
-    photo: "photo-1758599880979-f6a64947b541",
+    photo: "photo-1581065178047-8ee15951ede6",
     alt: "A woman sitting on the floor of her living room, talking through a lesson to a camera",
   },
   {
     href: "/for/cooks",
     label: "Cooks and nutritionists",
     sells: "Meal plans, grocery lists, recipe packs",
-    photo: "photo-1780277993159-b4ca60e8922d",
+    photo: "photo-1607990283143-e81e7a2c9349",
     alt: "A cook in an apron plating a dish in a bright kitchen",
   },
   {
     href: "/for/fitness",
     label: "Fitness creators",
     sells: "Training programs and challenges",
-    photo: "photo-1787647090008-4b88ffc977b7",
+    photo: "photo-1630939687530-241d630735df",
     alt: "A movement teacher showing a stretch to someone in a light studio",
   },
   {
     href: "/for/designers",
     label: "Designers and photographers",
     sells: "Presets, templates, brush packs",
-    photo: "photo-1765429158141-b283bbe7d0e4",
+    photo: "photo-1589386417686-0d34b5903d23",
     alt: "A photographer holding a camera among tall trees",
   },
   {
     href: "/platform/courses",
     label: "Musicians and producers",
     sells: "Sample packs, lessons, chord charts",
-    photo: "photo-1770393391946-7d9b658deec3",
+    photo: "photo-1573496527892-904f897eb744",
     alt: "A musician at a desk with a keyboard and headphones",
   },
   {
     href: "/platform/memberships",
     label: "Writers and newsletters",
     sells: "Memberships, archives, workshops",
-    photo: "photo-1775196610640-5e70ef38f846",
+    photo: "photo-1758691737605-69a0e78bd193",
     alt: "A writer at a window desk with a notebook open",
   },
   {
     href: "/platform/calls",
     label: "Therapists and counselors",
     sells: "Booked sessions and workbooks",
-    photo: "photo-1780585328302-747a6eee7694",
+    photo: "photo-1600679472868-eae382e28b34",
     alt: "Two people talking across a low table in a calm room",
   },
   {
     href: "/platform/community",
     label: "Makers and crafters",
     sells: "Patterns, classes, a community",
-    photo: "photo-1543871595-e11129e271cc",
+    photo: "photo-1789757165446-daec9334f72e",
     alt: "A maker at a bench with tools and materials laid out",
   },
 ];
@@ -316,28 +316,28 @@ export default function Home() {
                 figure: "97\u2013100",
                 title: "Google PageSpeed",
                 body: "Mobile performance on the demo store, measured September 17, 2026, before its photos were added.",
-                photo: "photo-1636647511729-6703539ba71f",
+                photo: "photo-1671580704901-98cedb46e06b",
                 alt: "A runner on a trail at first light",
               },
               {
                 figure: "Stripe",
                 title: "Handles the card",
                 body: "The payment happens on Stripe's own checkout. We never see a card number.",
-                photo: "photo-1537861295351-76bb831ece99",
+                photo: "photo-1671581084718-c4c04fc00250",
                 alt: "A statement and a marker on a working desk",
               },
               {
                 figure: "2 clicks",
                 title: "To cancel",
                 body: "From your own studio. No email to us, no chat, no second request.",
-                photo: "photo-1562577309-d67db487e6cd",
+                photo: "photo-1671581081519-321ab53e0dac",
                 alt: "A woman at a laptop, close up",
               },
               {
                 figure: "200 GB",
                 title: "Of downloads a month",
                 body: "Stated here, not buried in the terms, and nothing is cut off if you pass it. Files up to 5 GB each.",
-                photo: "photo-1519408469771-2586093c3f14",
+                photo: "photo-1671581081106-283f2bcdef71",
                 alt: "A light desk with a laptop and a notebook",
               },
             ].map((f) => (
@@ -734,10 +734,10 @@ export default function Home() {
             */}
             <ul className="reveal grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               {[
-                { id: "photo-1580642682609-8b6ab251fbb7", alt: "A meal prepared and plated on a counter" },
-                { id: "photo-1632494873717-d630cd5f2634", alt: "A sampler pad under studio light" },
-                { id: "photo-1626785774573-4b799315345d", alt: "Watercolor supplies laid out on a table" },
-                { id: "photo-1671580704901-98cedb46e06b", alt: "A movement teacher mid-session in a bright room" },
+                { id: "photo-1649479435119-1d987ed1ae36", alt: "A meal prepared and plated on a counter" },
+                { id: "photo-1655175468016-a38acfa1277b", alt: "A sampler pad under studio light" },
+                { id: "photo-1613463251864-2a2bc3952817", alt: "Watercolor supplies laid out on a table" },
+                { id: "photo-1613463639651-4aca3f3dd83e", alt: "A movement teacher mid-session in a bright room" },
               ].map((p) => (
                 <li key={p.id} className="overflow-hidden rounded-[var(--r-lg)] shadow-[0_14px_32px_-18px_rgba(42,23,144,0.4)]">
                   <img
@@ -785,8 +785,8 @@ export default function Home() {
               */}
               <div className="mt-8 hidden max-w-[19rem] overflow-hidden rounded-[var(--r-lg)] shadow-[0_18px_44px_-20px_rgba(42,23,144,0.4)] lg:block">
                 <img
-                  src={PHOTO("photo-1519408469771-2586093c3f14", 560, 700)}
-                  srcSet={`${PHOTO("photo-1519408469771-2586093c3f14", 400, 500)} 400w, ${PHOTO("photo-1519408469771-2586093c3f14", 560, 700)} 560w`}
+                  src={PHOTO("photo-1611248293543-e71973f8b94b", 560, 700)}
+                  srcSet={`${PHOTO("photo-1611248293543-e71973f8b94b", 400, 500)} 400w, ${PHOTO("photo-1611248293543-e71973f8b94b", 560, 700)} 560w`}
                   sizes="22vw"
                   alt="A desk with a laptop and an open notebook"
                   width={560}
@@ -817,8 +817,8 @@ export default function Home() {
             to the same morning as everything above it.
           */}
           <img
-            src={PHOTO("photo-1534670007418-fbb7f6cf32c3", 1600, 900)}
-            srcSet={`${PHOTO("photo-1534670007418-fbb7f6cf32c3", 900, 506)} 900w, ${PHOTO("photo-1534670007418-fbb7f6cf32c3", 1600, 900)} 1600w`}
+            src={PHOTO("photo-1644375391877-0ae77eeed8fc", 1600, 900)}
+            srcSet={`${PHOTO("photo-1644375391877-0ae77eeed8fc", 900, 506)} 900w, ${PHOTO("photo-1644375391877-0ae77eeed8fc", 1600, 900)} 1600w`}
             sizes="100vw"
             alt=""
             width={1600}
@@ -838,11 +838,11 @@ export default function Home() {
             */}
             <ul className="mx-auto mb-8 flex items-center justify-center -space-x-3">
               {[
-                "photo-1543871595-e11129e271cc",
-                "photo-1787647090008-4b88ffc977b7",
-                "photo-1765429158141-b283bbe7d0e4",
-                "photo-1758599880979-f6a64947b541",
-                "photo-1780277993159-b4ca60e8922d",
+                "photo-1601397210737-a5534480bdc5",
+                "photo-1613746203812-717e6e5db3da",
+                "photo-1614244139209-53c071a4737d",
+                "photo-1676742663664-2da16ddcad7a",
+                "photo-1609174112693-52fdcebffd89",
               ].map((id) => (
                 <li key={id}>
                   <img
