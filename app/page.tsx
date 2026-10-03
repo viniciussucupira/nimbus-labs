@@ -93,108 +93,7 @@ const REASONS: {
   },
 ];
 
-/*
- * What is live, in the five things a creator does with a store. Each line is
- * something that can be opened and tried today; the grouping is what lets a
- * visitor find the one they came for without reading all of them.
- */
-type Feature = { title: string; body: string; pro?: boolean };
-type Group = { key: string; icon: IconName; title: string; line: string; href: string; link: string; items: Feature[] };
-
 const DOMAINS = isDomainsConfigured();
-
-const GROUPS: Group[] = [
-  {
-    key: "sell",
-    icon: "store",
-    title: "Sell",
-    line: "What you make, at the prices you choose.",
-    href: "/platform#group-sell",
-    link: "Everything you can sell",
-    items: [
-      { title: "Files and links", body: "PDFs, videos, presets and templates up to 5 GB, or a link to where it lives." },
-      { title: "Courses", body: "Modules and lessons that can open over time, with free previews." },
-      { title: "Paid calls", body: "One-on-one, groups of up to 50, or live sessions, with your meeting link or a private video room." },
-      { title: "Memberships", body: "Daily, weekly, monthly or yearly, with a free trial if you want one." },
-      { title: "Free products", body: "Given for an email address, each address confirmed by its owner." },
-      { title: "A community", body: "Posts, comments and live events, open only to the buyers you choose." },
-      { title: "Bundles", body: "2 to 20 of your products at one price, each delivered as itself." },
-      { title: "Sales and landing pages", body: "Up to 30 blocks for any product, with video and your buyers' reviews." },
-      { title: "Up to 2,000 products", body: "And 100 links. Products show 24 at a time; the links all show at once." },
-    ],
-  },
-  {
-    key: "paid",
-    icon: "bank",
-    title: "Get paid",
-    line: "On your own Stripe account, never ours.",
-    href: "/platform#group-paid",
-    link: "How you get paid",
-    items: [
-      { title: "0% of your sales", body: "Stripe's card fee on your account, and nothing on top." },
-      { title: "Up to three prices", body: "One week for $27, five weeks for $39, on one product." },
-      { title: "Pay what you want", body: "Your price as the minimum, a suggested price, and the buyer chooses." },
-      { title: "Payment plans", body: "Two to twelve payments that end by themselves after the last." },
-      { title: "Offers before and after paying", body: "A box at checkout, and up to five one-click offers after, on the same card." },
-      { title: "Discount codes and sales tax", body: "Codes and Stripe Tax, both on your own account." },
-      { title: "15 currencies, more ways to pay", body: "Apple Pay, Google Pay, Klarna, Affirm and the others you switch on in Stripe." },
-    ],
-  },
-  {
-    key: "deliver",
-    icon: "bolt",
-    title: "Deliver",
-    line: "As soon as Stripe confirms the payment.",
-    href: "/platform#group-deliver",
-    link: "Every way we deliver",
-    items: [
-      { title: "Instant download", body: "On screen the moment the buyer comes back from Stripe's checkout. Lost later? The buyer gets it again by email, any time." },
-      { title: "Courses without passwords", body: "Students open them with a link sent to their email." },
-      { title: "Calendar invites", body: "A calendar file emailed to you both for each booked call, with reminders before it." },
-      { title: "A confirmation for every buyer", body: "From your store's name, with the way back to what they bought." },
-      { title: "Limited quantities", body: "Counted from real payments, and selling stops at zero." },
-      { title: "License keys", body: "A unique key with each sale, never given twice." },
-      { title: "Stamped PDFs", body: "The buyer's email on every page of the PDF they bought." },
-      { title: "Quizzes and certificates", body: "Questions after a lesson, and a certificate anyone can check." },
-    ],
-  },
-  {
-    key: "grow",
-    icon: "target",
-    title: "Grow",
-    line: "Bring people back, and bring new ones in.",
-    href: "/platform#group-grow",
-    link: "Ways to grow",
-    items: [
-      { title: "Email to your list", body: "One-off emails and sequences, only to people who agreed.", pro: true },
-      ...(DOMAINS ? [{ title: "Your own domain", body: "shop.yourname.com opens your store, certificate included.", pro: true }] : []),
-      { title: "Verified reviews", body: "Only from buyers who paid. You can answer them, never edit them." },
-      { title: "Your email platform", body: "Mailchimp, Kit, beehiiv or MailerLite, fed only with people who agreed." },
-      { title: "Affiliates", body: "A link and a page for each one. Paid from your own PayPal in one press, or on payday by itself." },
-      { title: "Ad pixels", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount." },
-      { title: "Webhooks", body: "Sales, leads and bookings, sent to Zapier, Make or your own server." },
-      { title: "Your photo, your color", body: "Four themes, ten colors or your own, each checked for contrast." },
-      { title: "An address you can change", body: "Change it any time; up to nine old addresses keep working and lead to the new one." },
-      { title: "Installs like an app", body: "Your store on any phone's home screen, with its own name and icon." },
-      { title: "Moving from another platform", body: "Your list, products and past buyers, brought over from a spreadsheet." },
-    ],
-  },
-  {
-    key: "know",
-    icon: "chart",
-    title: "Understand",
-    line: "What happened, without cookies or guesswork.",
-    href: "/platform/insights",
-    link: "What your numbers show",
-    items: [
-      { title: "Your numbers", body: "Visitors, where they came from, checkouts and sales, from 7 days to all time, as CSV files too." },
-      { title: "Every sale, from Stripe", body: "With the buyer's email address, so you can answer them." },
-      { title: "No password, ever", body: "Log in with a link sent to your email, or a passkey. Nothing for us to lose." },
-      { title: "A team, and more stores", body: "You plus up to five people per store, each with their own role, and up to five stores." },
-      { title: "Sales on your phone", body: "A notification for every sale and booking, from the studio on your home screen." },
-    ],
-  },
-];
 
 /*
  * What a creator may come looking for and will not find, said beside what is
@@ -394,45 +293,75 @@ export default function Home() {
           what the limit is — and every one of them is a measurement or a
           number stated elsewhere on this site, not a slogan.
         */}
-        <section aria-label="What you can check before you sign up" className="surface-lilac border-b border-line">
-          <ul className="container-page grid gap-x-10 gap-y-7 py-8 sm:grid-cols-2 sm:py-9 lg:grid-cols-4">
+        <section aria-label="What you can check before you sign up" className="surface-lilac section-tight">
+          {/*
+            Four facts, each on its own photograph.
+
+            This was the dullest band on the page: four icons in tinted
+            squares with text beside them, 475px of it, not one image.
+            Kajabi's answer to exactly this problem is a card whose
+            background IS a photograph, darkened, with the words in white
+            on top — which is why their page can be a third of the length
+            of ours and still feel full.
+
+            Taken, and taken further: the figure is set at display size
+            rather than caption size, so what the card is actually claiming
+            is the thing you see from across the room. The gradient is
+            heavy enough at the bottom that white type clears contrast on
+            any crop these photographs can produce.
+          */}
+          <ul className="container-page grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               {
-                icon: "gauge" as IconName,
-                figure: "97–100",
+                figure: "97\u2013100",
                 title: "Google PageSpeed",
                 body: "Mobile performance on the demo store, measured September 17, 2026, before its photos were added.",
+                photo: "photo-1775400788040-3b26ab2b8ca5",
+                alt: "A runner on a trail at first light",
               },
               {
-                icon: "lock" as IconName,
                 figure: "Stripe",
                 title: "Handles the card",
                 body: "The payment happens on Stripe's own checkout. We never see a card number.",
+                photo: "photo-1677340725081-e81626d96e29",
+                alt: "A statement and a marker on a working desk",
               },
               {
-                icon: "door" as IconName,
                 figure: "2 clicks",
                 title: "To cancel",
                 body: "From your own studio. No email to us, no chat, no second request.",
+                photo: "photo-1723780856806-385158fd0afc",
+                alt: "A woman at a laptop, close up",
               },
               {
-                icon: "download" as IconName,
                 figure: "200 GB",
                 title: "Of downloads a month",
                 body: "Stated here, not buried in the terms, and nothing is cut off if you pass it. Files up to 5 GB each.",
+                photo: "photo-1670963025124-36714c107eb7",
+                alt: "A light desk with a laptop and a notebook",
               },
             ].map((f) => (
-              <li key={f.title} className="flex gap-3.5">
-                <span className="icon-tile icon-tile-sm">
-                  <Icon name={f.icon} size={18} />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-[1.375rem] font-semibold leading-none tracking-[-0.035em] text-ink">
-                    {f.figure}
-                  </span>
-                  <span className="mt-1.5 block text-[0.9375rem] font-semibold leading-snug text-ink-soft">{f.title}</span>
-                  <span className="mt-1 block text-[0.875rem] leading-snug text-ink-mute">{f.body}</span>
-                </span>
+              <li
+                key={f.title}
+                className="reveal relative aspect-[4/5] overflow-hidden rounded-[var(--r-lg)] bg-sand-deep shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09),0_14px_32px_-16px_rgba(42,23,144,0.22)] sm:aspect-[5/4] lg:aspect-[4/5]"
+              >
+                <img
+                  src={PHOTO(f.photo, 560, 700)}
+                  srcSet={`${PHOTO(f.photo, 400, 500)} 400w, ${PHOTO(f.photo, 560, 700)} 560w, ${PHOTO(f.photo, 900, 1125)} 900w`}
+                  sizes="(min-width: 1024px) 23vw, (min-width: 640px) 46vw, 92vw"
+                  alt={f.alt}
+                  width={560}
+                  height={700}
+                  loading="lazy"
+                  decoding="async"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/55 to-black/15" />
+                <div className="absolute inset-x-0 bottom-0 p-5">
+                  <p className="text-[2rem] font-semibold leading-none tracking-[-0.04em] text-white">{f.figure}</p>
+                  <p className="mt-2 text-[0.9375rem] font-semibold text-white">{f.title}</p>
+                  <p className="mt-1.5 text-[0.8125rem] leading-snug text-white/75">{f.body}</p>
+                </div>
               </li>
             ))}
           </ul>
@@ -527,185 +456,39 @@ export default function Home() {
               ))}
             </div>
 
-            <div className="reveal mt-16">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="tag tag-live">
-                  <span className="pulse-dot" aria-hidden="true" />
-                  Live now
-                </span>
-                <p className="text-sm text-ink-mute">Every line here works in your store today.</p>
-              </div>
-              {/*
-                Not six of the same tile.
+            {/*
+              What we do not have, kept and made small.
 
-                Five groups and the gap list used to sit in a tidy 2×3 grid,
-                which gave every one of them the same weight and made the
-                block read as wallpaper. "Sell" is the widest answer to what
-                a creator came here to ask, so it takes two columns and runs
-                its list in two; what we do not have yet is a different kind
-                of statement, so it runs the full width underneath rather
-                than hiding as the sixth tile in the set.
-              */}
-              <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {GROUPS.map((g, gi) => {
-                  const wide = gi === 0;
-                  const shown = g.items.slice(0, wide ? 4 : 2);
-                  const more = g.items.slice(wide ? 4 : 2);
-                  const item = (f: Feature) => (                    <li key={f.title} className="flex gap-3">
-                      <Icon name="check" size={16} strokeWidth={2.4} className="mt-1 shrink-0 text-mint-deep" />
-                      <span className="min-w-0">
-                        <span className="font-semibold text-ink">{f.title}</span>
-                        {f.pro ? <span className="tag tag-brand ml-2 h-5! px-1.5! align-middle text-[0.6875rem]!">Pro</span> : null}
-                        <span className="block text-[0.9375rem] leading-snug text-ink-soft">{f.body}</span>
-                      </span>
-                    </li>
-                  );
-                  return (
-                    <section
-                      key={g.key}
-                      aria-labelledby={`group-${g.key}`}
-                      className={`card flex flex-col p-6 sm:p-7 ${wide ? "lg:col-span-2" : ""}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="icon-tile icon-tile-sm">
-                          <Icon name={g.icon} size={18} />
-                        </span>
-                        <h3 id={`group-${g.key}`} className="text-lg font-semibold tracking-[-0.02em] text-ink">
-                          {g.title}
-                        </h3>
-                      </div>
-                      <p className="mt-2 text-[0.9375rem] text-ink-soft">{g.line}</p>
-                      <ul className={`mt-5 space-y-3.5 border-t border-line pt-5 ${wide ? "lg:grid lg:grid-cols-2 lg:gap-x-8 lg:gap-y-3.5 lg:space-y-0" : ""}`}>
-                        {shown.map(item)}
-                      </ul>
-                      {more.length > 0 ? (
-                        <details className="group/more mt-3.5">
-                          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-[8px] text-sm font-semibold text-violet-deep [&::-webkit-details-marker]:hidden">
-                            <Icon name="plus" size={15} className="transition-transform duration-200 group-open/more:rotate-45" />
-                            <span className="group-open/more:hidden">{`${more.length} more`}</span>
-                            <span className="hidden group-open/more:inline">Fewer</span>
-                          </summary>
-                          <ul className={`mt-3.5 space-y-3.5 ${wide ? "lg:grid lg:grid-cols-2 lg:gap-x-8 lg:gap-y-3.5 lg:space-y-0" : ""}`}>
-                            {more.map(item)}
-                          </ul>
-                        </details>
-                      ) : null}
-                      <Link href={g.href} className="link-arrow mt-auto pt-6 text-[0.9375rem]">
-                        {g.link}
-                        <Icon name="arrow-right" size={16} className="arrow" />
-                      </Link>
-                    </section>
-                  );
-                })}
-                <div className="card-flat flex flex-col p-6 sm:p-7 lg:col-span-3">
-                  <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
-                    <span className="tag tag-next">Not here yet</span>
-                    <p className="text-[0.9375rem] text-ink-soft">
-                      Not offered yet, so not sold. Stan has each of these today, and we do not.
-                    </p>
-                  </div>
-                  <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {NOT_YET.map((n) => (
-                      <li key={n} className="flex gap-3 text-ink">
-                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white text-ink-soft ring-1 ring-line">
-                          <Icon name="minus" size={14} />
-                        </span>
-                        <span className="text-[0.9375rem]">{n}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/proof/everything" className="link-arrow mt-6 text-[0.9375rem]">
-                    Feature by feature
-                    <Icon name="arrow-right" size={16} className="arrow" />
-                  </Link>
-                </div>
+              The feature inventory that used to sit here is on /platform,
+              where it belongs and where the nav already points; repeating
+              it added 5,500px to this page and said nothing the visitor
+              could not reach in one click. This block is the part that
+              could not move, because it is the argument: a page that lists
+              only what works is worth nothing unless it also names what
+              does not. One row, five names, no padding around them.
+            */}
+            <div className="reveal mt-14 flex flex-col gap-4 rounded-[var(--r-lg)] bg-white/70 p-6 shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09)] sm:p-7 lg:flex-row lg:items-center lg:gap-8">
+              <div className="lg:w-[17rem] lg:shrink-0">
+                <span className="tag tag-next">Not here yet</span>
+                <p className="mt-3 text-[0.9375rem] text-ink-soft">
+                  Not offered yet, so not sold. Stan has each of these today, and we do not.
+                </p>
               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ------------------------------------------------------- the money */}
-        <section id="money" className="surface-night on-dark section scroll-mt-20 overflow-hidden">
-          <div className="container-page grid items-center gap-14 lg:grid-cols-[1fr_1.05fr]">
-            <div className="reveal">
-              <h2 className="t-h2 balance text-white">
-                We never touch a cent of <span className="serif font-normal">your</span> sales
-              </h2>
-              <p className="t-lead measure mt-6 text-white/70">
-                Your buyer pays on your own Stripe account, through a direct charge. If you ever leave, nothing moves:
-                the account, the customers and the payouts were always yours.
-              </p>
-              <p className="measure mt-4 text-white/70">
-                We make money one way only: a subscription, paid monthly or yearly. That is the whole business model, written on one line.
-              </p>
-              <ol aria-label="Where the money goes" className="mt-8 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {[
-                  { icon: "user" as IconName, label: "Your buyer" },
-                  { icon: "lock" as IconName, label: "Stripe checkout" },
-                  { icon: "bank" as IconName, label: "Your Stripe account", ours: true },
-                  { icon: "receipt" as IconName, label: "Your bank" },
-                ].map((n, i) => (
+              <ul className="flex flex-wrap gap-2.5">
+                {NOT_YET.map((n) => (
                   <li
-                    key={n.label}
-                    className={`relative flex flex-col gap-2 rounded-[var(--r-md)] px-3.5 py-3 text-sm ${
-                      n.ours ? "bg-white text-ink" : "bg-white/[0.06] text-white/80 ring-1 ring-white/10"
-                    }`}
+                    key={n}
+                    className="flex items-center gap-2 rounded-full bg-white px-3.5 py-2 text-[0.875rem] text-ink shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09)]"
                   >
-                    <span className="flex items-center justify-between">
-                      <Icon name={n.icon} size={18} className={n.ours ? "text-violet-deep" : "text-[#b9a8ff]"} />
-                      <span className={`text-[0.75rem] font-semibold ${n.ours ? "text-ink-soft" : "text-white/70"}`}>{i + 1}</span>
-                    </span>
-                    <span className="font-semibold">{n.label}</span>
+                    <Icon name="minus" size={14} className="shrink-0 text-ink-mute" />
+                    {n}
                   </li>
                 ))}
-              </ol>
-              <p className="mt-3 text-sm text-white/70">Marktmorgen is not a step on this path.</p>
-              <Link href="/platform/your-stripe" className="btn btn-outline-light mt-8">
-                How the money moves
+              </ul>
+              <Link href="/proof/everything" className="link-arrow shrink-0 text-[0.9375rem]">
+                Feature by feature
+                <Icon name="arrow-right" size={16} className="arrow" />
               </Link>
-            </div>
-
-            <div className="reveal">
-              <div className="rounded-[var(--r-xl)] bg-white p-6 text-ink shadow-[var(--shadow-device)] sm:p-8">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-ink-mute">A sale of the 5-week planner</p>
-                  <span className="tag tag-live">Paid</span>
-                </div>
-                <p className="mt-3 text-[0.8125rem] font-medium uppercase tracking-[0.08em] text-ink-mute">
-                  Gross payment
-                </p>
-                <p className="mt-1 text-[2.75rem] font-semibold leading-none tracking-[-0.05em]">$39.00</p>
-                <dl className="mt-7 divide-y divide-line border-y border-line text-[0.9375rem]">
-                  <div className="flex items-center justify-between py-3.5">
-                    <dt className="text-ink-soft">Paid by your buyer</dt>
-                    <dd className="font-semibold">$39.00</dd>
-                  </div>
-                  <div className="flex items-center justify-between py-3.5">
-                    <dt className="text-ink-soft">Stripe&apos;s processing fee</dt>
-                    <dd className="text-ink-soft">set by Stripe, on your account</dd>
-                  </div>
-                  <div className="flex items-center justify-between py-3.5">
-                    <dt className="text-ink-soft">Marktmorgen&apos;s cut</dt>
-                    <dd className="font-semibold text-mint-deep">$0.00</dd>
-                  </div>
-                  <div className="flex items-center justify-between py-3.5">
-                    <dt className="font-semibold text-ink">Net to your bank</dt>
-                    <dd className="text-ink-soft">$39.00 less Stripe&apos;s fee</dd>
-                  </div>
-                </dl>
-                <div className="mt-6 flex items-center gap-3 rounded-[var(--r-md)] bg-lilac p-4">
-                  <span className="icon-tile icon-tile-sm bg-white">
-                    <Icon name="bank" size={18} />
-                  </span>
-                  <p className="text-[0.9375rem] text-violet-ink">
-                    <strong className="font-semibold">Lands in your Stripe account.</strong> The same dashboard and the same payout schedule you already have.
-                  </p>
-                </div>
-                <p className="mt-5 text-[0.8125rem] leading-relaxed text-ink-mute">
-                  Tested on September 17, 2026, with a real Stripe checkout in test mode: the sale landed on the creator&apos;s
-                  account with no cut for the platform.
-                </p>
-              </div>
             </div>
           </div>
         </section>
