@@ -14,6 +14,9 @@ const BASE = /^http:\/\/127\.0\.0\.1:\d+$/.test(process.env.RESEND_API_BASE ?? "
   : "https://api.resend.com";
 const API = `${BASE}/emails`;
 
+/** Where the sender's API is, for the one other file that reads from it (lib/inbound-mail.ts). */
+export const RESEND_BASE = BASE;
+
 export const NIMBUS_FROM =
   process.env.NIMBUS_FROM_EMAIL?.trim() || "Marktmorgen <onboarding@resend.dev>";
 
@@ -70,6 +73,8 @@ export async function sendEmail(message: {
   to: string;
   subject: string;
   text: string;
+  /** The same message as a page, when there is one; the text is always sent with it. */
+  html?: string;
   /** Where replies go, when that is not the sender. */
   replyTo?: string;
   /** Files to attach, their content in base64, as Resend's API takes them. */
@@ -94,6 +99,7 @@ export async function sendEmail(message: {
     to: [to],
     subject: headerText(message.subject),
     text: message.text,
+    ...(message.html ? { html: message.html } : {}),
     ...(message.attachments?.length ? { attachments: message.attachments } : {}),
     ...(replyTo ? { reply_to: replyTo } : {}),
     ...(headers ? { headers } : {}),
