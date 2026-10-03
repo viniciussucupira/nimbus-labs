@@ -266,8 +266,9 @@ export default function Home() {
 
       <main id="content">
         {/* ------------------------------------------------------------ hero */}
-        <section className="surface-night nb-grid-lines on-dark overflow-hidden">
-          <div className="container-page grid items-center gap-12 pb-16 pt-12 sm:gap-14 sm:pt-16 lg:grid-cols-[1.04fr_1fr] lg:gap-12 lg:pb-20 lg:pt-20">
+        <section className="surface-daybreak on-dark overflow-hidden">
+          <div className="awning" aria-hidden="true" />
+          <div className="container-page grid items-center gap-12 pb-28 pt-12 sm:gap-14 sm:pt-16 lg:grid-cols-[1.04fr_1fr] lg:gap-12 lg:pb-32 lg:pt-20">
             <div className="nb-fade-up">
               <p className="eyebrow">Link-in-bio store for creators</p>
               <h1 className="t-display mt-5 text-white">

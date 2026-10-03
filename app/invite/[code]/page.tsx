@@ -38,7 +38,8 @@ export default async function InvitePage({ params }: { params: Promise<{ code: s
     <div className="flex min-h-screen flex-col bg-paper text-ink">
       <SiteNav />
       <main id="content" className="flex-1">
-        <section className="surface-night nb-grid-lines on-dark overflow-hidden">
+        <section className="surface-daybreak on-dark overflow-hidden">
+          <div className="awning" aria-hidden="true" />
           <div className="container-narrow py-16 sm:py-20">
             <p className="eyebrow">An invite from @{inviter.handle}</p>
             <h1 className="t-h1 balance mt-5 text-white">
