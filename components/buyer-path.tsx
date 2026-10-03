@@ -202,8 +202,7 @@ export function BuyerPath() {
       <div className="container-page">
         <div className="reveal flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div className="max-w-2xl">
-            <p className="eyebrow">The buyer&apos;s path</p>
-            <h2 className="t-h2 balance mt-4">From the link in your bio to the money in your Stripe</h2>
+            <h2 className="t-h2 balance">From the link in your bio to the money in your Stripe</h2>
             <p className="mt-5 text-ink-soft">
               Five steps, drawn from the live demo store with its own words and prices. Open it and buy with a Stripe test
               card to see each one for real.
