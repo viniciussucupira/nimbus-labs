@@ -16,7 +16,14 @@ import { InstallApp } from "@/components/install-app";
 const PHOTO = (id: string, w: number, h: number, faces = true) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop${faces ? "&crop=faces" : ""}&w=${w}&h=${h}&q=68`;
 const JENNY = "photo-1613666517563-d19a4585d1fe";
-const FOOD = "photo-1627815416399-ddaae0e2fa54";
+/*
+ * Two photographs, not one twice. The banner across the top of the store
+ * and the picture on the product card are different pictures, because a
+ * thumbnail of the image directly above it is the clearest way to look
+ * like a page with nothing left to show.
+ */
+const COVER = "photo-1627815416399-ddaae0e2fa54";
+const PRODUCT = "photo-1588702547954-4800ead296ef";
 
 type Step = { key: string; icon: IconName; title: string; caption: string };
 
@@ -37,7 +44,7 @@ function Screen({ step }: { step: string }) {
       return (
         <div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={PHOTO(FOOD, 640, 220, false)} alt="" width={640} height={220} loading="lazy" className="h-28 w-full bg-sand-deep object-cover" />
+          <img src={PHOTO(COVER, 640, 220, false)} alt="" width={640} height={220} loading="lazy" className="h-28 w-full bg-sand-deep object-cover" />
           <div className="px-5 pb-6 text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -53,7 +60,7 @@ function Screen({ step }: { step: string }) {
             <div className="mt-5 space-y-2.5 text-left">
               <div className="overflow-hidden rounded-[14px] border border-line bg-white">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={PHOTO(FOOD, 560, 200, false)} alt="" width={560} height={200} loading="lazy" className="h-24 w-full bg-sand-deep object-cover" />
+                <img src={PHOTO(PRODUCT, 560, 200, false)} alt="" width={560} height={200} loading="lazy" className="h-24 w-full bg-sand-deep object-cover" />
                 <p className="flex items-center justify-between px-4 py-3 text-[13px]">
                   <span className="font-semibold text-ink">Weekly Meal Planner</span>
                   <span className="font-semibold text-violet-deep">from $27</span>

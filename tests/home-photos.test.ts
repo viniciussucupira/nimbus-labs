@@ -108,17 +108,37 @@ test("no photograph appears twice anywhere on the site", () => {
    * "rarely repeated" but "never" — a thumbnail of a picture used large
    * somewhere else counts as the same picture.
    *
-   * This counts `src`, because every <img> has exactly one; the several
-   * ids inside a `srcSet` are resolutions of that same picture, not
-   * further uses of it.
+   * It counts two things, because the first version of this test counted
+   * only one and shipped a repeat: ids written straight into a `src`, and
+   * ids held in a constant, where the repeat is the constant being read
+   * twice rather than the id being typed twice. A constant named once and
+   * used in two <img> tags is still one picture in two places.
+   *
+   * The several ids inside a `srcSet` are resolutions of one picture, not
+   * further uses of it, so they are not counted.
    */
   const where = new Map<string, string>();
+  const claim = (id: string, file: string) => {
+    const first = where.get(id);
+    assert.ok(!first, `${id} is used in ${first} and again in ${file}. Every photograph belongs in one place only.`);
+    where.set(id, file);
+  };
+
   for (const file of FILES) {
     const src = readFileSync(join(process.cwd(), file), "utf8");
+
     for (const [, id] of src.matchAll(/src=\{(?:PHOTO|FACE)\("(photo-[0-9a-f]+-[0-9a-f]+)"/g)) {
-      const first = where.get(id);
-      assert.ok(!first, `${id} is used in ${first} and again in ${file}. Every photograph belongs in one place only.`);
-      where.set(id, file);
+      claim(id, file);
+    }
+
+    // `const NAME = "photo-…"` used in more than one <img src={…(NAME…)}>
+    for (const [, name, id] of src.matchAll(/const ([A-Z][A-Z_0-9]*) = "(photo-[0-9a-f]+-[0-9a-f]+)"/g)) {
+      const uses = src.match(new RegExp(`src=\\{\\s*(?:PHOTO|FACE)\\(\\s*${name}\\b`, "g"))?.length ?? 0;
+      assert.ok(
+        uses <= 1,
+        `${file} draws ${name} (${id}) in ${uses} images. Give each one its own photograph.`,
+      );
+      if (uses === 1) claim(id, file);
     }
   }
 });
