@@ -824,14 +824,29 @@ body {
 
 .card {
   background: #fff;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
+  /*
+   * Elevation, not a drop shadow.
+   *
+   * Four layers doing four jobs: a hairline that belongs to the brand
+   * rather than to grey, a highlight along the top edge so the card
+   * catches the light the section is lit by, a tight contact shadow, and
+   * a wide violet-tinted one for the distance off the page. A single
+   * rgba(0,0,0,.1) blur under every card is what makes a page of cards
+   * look printed rather than lit.
+   */
+  box-shadow:
+    inset 0 0 0 1px rgba(42, 23, 144, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 2px rgba(23, 26, 46, 0.04),
+    0 14px 32px -16px rgba(42, 23, 144, 0.22);
 }
 .card-flat {
   background: #fff;
-  border: 1px solid var(--line);
+  border: 1px solid transparent;
   border-radius: var(--r-lg);
+  box-shadow: inset 0 0 0 1px rgba(42, 23, 144, 0.08);
 }
 .card-hover {
   transition:
@@ -848,6 +863,77 @@ body {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--r-lg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* =====================================================================
+   Grain.
+
+   A flat fill is the thing that dates a page fastest: screens render it
+   perfectly, and perfectly even colour is the one thing no real surface
+   has. A single layer of very fine noise over the dark sections puts
+   the grain back, at an opacity low enough that nobody will ever point
+   at it — they will only notice that the violet looks like a material
+   instead of a value.
+
+   It is drawn once, as a pseudo-element the pointer cannot reach, and
+   it sits under the content because every dark surface here already
+   isolates its own stacking context.
+   ===================================================================== */
+.surface-night::before,
+.surface-daybreak::before,
+.surface-navy::before,
+.surface-signature::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  mix-blend-mode: overlay;
+}
+
+/*
+ * Live, and saying so.
+ *
+ * The "Live now" tag claims something is running right now. A dot that
+ * actually beats is the difference between claiming it and showing it,
+ * and it is the only thing on the page that moves without being asked.
+ * It stops for anyone who has asked motion to stop.
+ */
+.pulse-dot {
+  position: relative;
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.pulse-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-ring 2.4s var(--ease) infinite;
+}
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70%,
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot::after {
+    animation: none;
+  }
 }
 
 /* An icon sitting in a soft square. */

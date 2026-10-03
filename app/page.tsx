@@ -270,8 +270,7 @@ export default function Home() {
           <div className="awning" aria-hidden="true" />
           <div className="container-page grid items-center gap-12 pb-28 pt-12 sm:gap-14 sm:pt-16 lg:grid-cols-[1.04fr_1fr] lg:gap-12 lg:pb-32 lg:pt-20">
             <div className="nb-fade-up">
-              <p className="eyebrow">Link-in-bio store for creators</p>
-              <h1 className="t-display mt-5 text-white">
+              <h1 className="t-display text-white">
                 Your store.
                 <br />
                 Your <span className="serif nb-gradient-text pr-1 text-[1.08em] leading-[0.9]">Stripe.</span>
@@ -404,8 +403,7 @@ export default function Home() {
         <section className="surface-gold section">
           <div className="container-page">
             <div className="reveal max-w-2xl">
-              <p className="eyebrow">Why Marktmorgen</p>
-              <h2 className="t-h2 balance mt-4">Built around the one thing that is yours: the money</h2>
+              <h2 className="t-h2 balance">Built around the one thing that is yours: the money</h2>
             </div>
 
             <div className="mt-14 space-y-16 sm:mt-16 sm:space-y-20">
@@ -442,13 +440,28 @@ export default function Home() {
 
             <div className="reveal mt-16">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="tag tag-live">Live now</span>
+                <span className="tag tag-live">
+                  <span className="pulse-dot" aria-hidden="true" />
+                  Live now
+                </span>
                 <p className="text-sm text-ink-mute">Every line here works in your store today.</p>
               </div>
+              {/*
+                Not six of the same tile.
+
+                Five groups and the gap list used to sit in a tidy 2×3 grid,
+                which gave every one of them the same weight and made the
+                block read as wallpaper. "Sell" is the widest answer to what
+                a creator came here to ask, so it takes two columns and runs
+                its list in two; what we do not have yet is a different kind
+                of statement, so it runs the full width underneath rather
+                than hiding as the sixth tile in the set.
+              */}
               <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {GROUPS.map((g) => {
-                  const shown = g.items.slice(0, 2);
-                  const more = g.items.slice(2);
+                {GROUPS.map((g, gi) => {
+                  const wide = gi === 0;
+                  const shown = g.items.slice(0, wide ? 4 : 2);
+                  const more = g.items.slice(wide ? 4 : 2);
                   const item = (f: Feature) => (
                     <li key={f.title} className="flex gap-3">
                       <Icon name="check" size={16} strokeWidth={2.4} className="mt-1 shrink-0 text-mint-deep" />
@@ -460,7 +473,11 @@ export default function Home() {
                     </li>
                   );
                   return (
-                    <section key={g.key} aria-labelledby={`group-${g.key}`} className="card flex flex-col p-6 sm:p-7">
+                    <section
+                      key={g.key}
+                      aria-labelledby={`group-${g.key}`}
+                      className={`card flex flex-col p-6 sm:p-7 ${wide ? "lg:col-span-2" : ""}`}
+                    >
                       <div className="flex items-center gap-3">
                         <span className="icon-tile icon-tile-sm">
                           <Icon name={g.icon} size={18} />
@@ -470,7 +487,9 @@ export default function Home() {
                         </h3>
                       </div>
                       <p className="mt-2 text-[0.9375rem] text-ink-soft">{g.line}</p>
-                      <ul className="mt-5 space-y-3.5 border-t border-line pt-5">{shown.map(item)}</ul>
+                      <ul className={`mt-5 space-y-3.5 border-t border-line pt-5 ${wide ? "lg:grid lg:grid-cols-2 lg:gap-x-8 lg:gap-y-3.5 lg:space-y-0" : ""}`}>
+                        {shown.map(item)}
+                      </ul>
                       {more.length > 0 ? (
                         <details className="group/more mt-3.5">
                           <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-[8px] text-sm font-semibold text-violet-deep [&::-webkit-details-marker]:hidden">
@@ -478,7 +497,9 @@ export default function Home() {
                             <span className="group-open/more:hidden">{`${more.length} more`}</span>
                             <span className="hidden group-open/more:inline">Fewer</span>
                           </summary>
-                          <ul className="mt-3.5 space-y-3.5">{more.map(item)}</ul>
+                          <ul className={`mt-3.5 space-y-3.5 ${wide ? "lg:grid lg:grid-cols-2 lg:gap-x-8 lg:gap-y-3.5 lg:space-y-0" : ""}`}>
+                            {more.map(item)}
+                          </ul>
                         </details>
                       ) : null}
                       <Link href={g.href} className="link-arrow mt-auto pt-6 text-[0.9375rem]">
@@ -488,12 +509,14 @@ export default function Home() {
                     </section>
                   );
                 })}
-                <div className="card-flat flex flex-col p-6 sm:p-7">
-                  <span className="tag tag-next self-start">Not here yet</span>
-                  <p className="mt-4 text-[0.9375rem] text-ink-soft">
-                    Not offered yet, so not sold. Stan has each of these today, and we do not.
-                  </p>
-                  <ul className="mt-5 space-y-3">
+                <div className="card-flat flex flex-col p-6 sm:p-7 lg:col-span-3">
+                  <div className="flex flex-wrap items-baseline gap-x-4 gap-y-2">
+                    <span className="tag tag-next">Not here yet</span>
+                    <p className="text-[0.9375rem] text-ink-soft">
+                      Not offered yet, so not sold. Stan has each of these today, and we do not.
+                    </p>
+                  </div>
+                  <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {NOT_YET.map((n) => (
                       <li key={n} className="flex gap-3 text-ink">
                         <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white text-ink-soft ring-1 ring-line">
@@ -503,7 +526,7 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
-                  <Link href="/proof/everything" className="link-arrow mt-auto pt-6 text-[0.9375rem]">
+                  <Link href="/proof/everything" className="link-arrow mt-6 text-[0.9375rem]">
                     Feature by feature
                     <Icon name="arrow-right" size={16} className="arrow" />
                   </Link>
@@ -517,8 +540,7 @@ export default function Home() {
         <section id="money" className="surface-night on-dark section scroll-mt-20 overflow-hidden">
           <div className="container-page grid items-center gap-14 lg:grid-cols-[1fr_1.05fr]">
             <div className="reveal">
-              <p className="eyebrow">The money</p>
-              <h2 className="t-h2 balance mt-4 text-white">
+              <h2 className="t-h2 balance text-white">
                 We never touch a cent of <span className="serif font-normal">your</span> sales
               </h2>
               <p className="t-lead measure mt-6 text-white/70">
@@ -605,8 +627,7 @@ export default function Home() {
           <div className="container-page">
             <div className="reveal flex flex-col justify-between gap-6 md:flex-row md:items-end">
               <div className="max-w-2xl">
-                <p className="eyebrow">Who it is for</p>
-                <h2 className="t-h2 balance mt-4">People who sell what they know</h2>
+                <h2 className="t-h2 balance">People who sell what they know</h2>
               </div>
               <Link href="/creators" className="link-arrow">
                 Tell us what you sell
@@ -668,51 +689,84 @@ export default function Home() {
         <section id="compare" className="surface-mint section scroll-mt-20">
           <div className="container-page">
             <div className="reveal max-w-2xl">
-              <p className="eyebrow">Side by side</p>
-              <h2 className="t-h2 balance mt-4">How we compare with Stan</h2>
+              <h2 className="t-h2 balance">How we compare with Stan</h2>
               <p className="mt-5 text-ink-soft">
                 Checked on Stan&apos;s own public pricing, terms and help pages in September 2026, and the discount row on
                 September 22. If any of it changes, this section changes.
               </p>
             </div>
 
-            <ul className="reveal mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {COMPARE.map((r) => {
-                const same = "same" in r && r.same === true;
-                return (
-                  <li key={r.row} className={`${same ? "card-flat" : "card"} flex flex-col p-6`}>
-                    <div className="flex items-start justify-between gap-3">
+            {/*
+              A comparison is a table. Cut into seven cards it became seven
+              of the same object with the answer buried in each one, and a
+              reader had to assemble the column themselves. As rows, the two
+              columns line up and the shape of the argument is visible from
+              across the room — which is the whole point of putting it here.
+
+              Below 640px a table of two long text columns is unreadable at
+              any font size, so there the same rows stack: the claim, then
+              each side under it.
+            */}
+            <div className="reveal mt-10 overflow-hidden rounded-[var(--r-lg)] bg-white/80 shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09),0_14px_32px_-16px_rgba(42,23,144,0.22)]">
+              <table className="hidden w-full text-left sm:table">
+                <caption className="sr-only">Marktmorgen and Stan, side by side</caption>
+                <thead>
+                  <tr className="border-b border-line">
+                    <th scope="col" className="w-[34%] px-6 py-4 text-[0.875rem] font-semibold text-ink-mute">
+                      What it is
+                    </th>
+                    <th scope="col" className="px-6 py-4 text-[0.875rem] font-semibold text-ink-mute">
+                      Stan
+                    </th>
+                    <th scope="col" className="bg-white px-6 py-4 text-[0.875rem] font-semibold text-violet-deep">
+                      Marktmorgen
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARE.map((r) => {
+                    const same = "same" in r && r.same === true;
+                    return (
+                      <tr key={r.row} className="border-b border-line last:border-0">
+                        <th scope="row" className="px-6 py-5 align-top font-semibold text-ink">
+                          {r.row}
+                        </th>
+                        <td className="px-6 py-5 align-top text-[0.9375rem] text-ink-soft">{r.stan}</td>
+                        <td className={`bg-white px-6 py-5 align-top text-[0.9375rem] ${same ? "text-ink-soft" : "font-semibold text-ink"}`}>
+                          <span className="flex gap-2.5">
+                            {same ? null : (
+                              <Icon name="check" size={17} strokeWidth={2.6} className="mt-0.5 shrink-0 text-mint-deep" />
+                            )}
+                            <span>{r.nimbus}</span>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              <ul className="divide-y divide-line sm:hidden">
+                {COMPARE.map((r) => {
+                  const same = "same" in r && r.same === true;
+                  return (
+                    <li key={r.row} className="p-5">
                       <p className="font-semibold text-ink">{r.row}</p>
-                      <span className={`tag shrink-0 ${same ? "" : "tag-brand"}`}>
-                        {same ? (
-                          <>
-                            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                              <path d="M2 4.5h8M2 7.5h8" />
-                            </svg>
-                            Same on both
-                          </>
-                        ) : (
-                          <>
-                            <Icon name="check" size={12} strokeWidth={3} />
-                            Marktmorgen ahead
-                          </>
-                        )}
-                      </span>
-                    </div>
-                    <dl className="mt-4 grid gap-2.5 text-[0.9375rem]">
-                      <div className="grid grid-cols-[6.5rem_1fr] gap-3">
-                        <dt className="text-ink-mute">Stan</dt>
-                        <dd className="text-ink-soft">{r.stan}</dd>
-                      </div>
-                      <div className={`grid grid-cols-[6.5rem_1fr] gap-3 ${same ? "" : "-mx-3 rounded-[var(--r-sm)] bg-white/75 px-3 py-2"}`}>
-                        <dt className="font-semibold text-violet-deep">Marktmorgen</dt>
-                        <dd className={same ? "text-ink" : "font-semibold text-ink"}>{r.nimbus}</dd>
-                      </div>
-                    </dl>
-                  </li>
-                );
-              })}
-            </ul>
+                      <dl className="mt-3 grid gap-2 text-[0.9375rem]">
+                        <div className="grid grid-cols-[6.5rem_1fr] gap-3">
+                          <dt className="text-ink-mute">Stan</dt>
+                          <dd className="text-ink-soft">{r.stan}</dd>
+                        </div>
+                        <div className="grid grid-cols-[6.5rem_1fr] gap-3">
+                          <dt className="font-semibold text-violet-deep">Marktmorgen</dt>
+                          <dd className={same ? "text-ink-soft" : "font-semibold text-ink"}>{r.nimbus}</dd>
+                        </div>
+                      </dl>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
 
             <div className="reveal mt-6 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
               <div className="card-flat p-6 sm:p-7">
@@ -771,8 +825,7 @@ export default function Home() {
         <section id="pricing" className="section scroll-mt-20">
           <div className="container-page">
             <div className="reveal mx-auto max-w-2xl text-center">
-              <p className="eyebrow">Pricing</p>
-              <h2 className="t-h2 balance mt-4">Two plans. Your sales stay yours.</h2>
+              <h2 className="t-h2 balance">Two plans. Your sales stay yours.</h2>
               <p className="mt-5 text-ink-soft">
                 {`The same $${PRICE} and $${PLAN_PRICES.pro.month / 100} a month as Stan's two plans, the same 14-day free trial, 0% of your sales, and the sale itself landing in your own Stripe account. The $${PRICE} plan holds what Stan keeps for its $${PLAN_PRICES.pro.month / 100} one: discount codes, pixels, funnels, order bumps, upsells, payment plans and limited quantities.`}
               </p>
@@ -787,8 +840,7 @@ export default function Home() {
         <section id="faq" className="surface-rose section scroll-mt-20">
           <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr]">
             <div className="reveal">
-              <p className="eyebrow">Questions</p>
-              <h2 className="t-h2 balance mt-4">Including the awkward ones</h2>
+              <h2 className="t-h2 balance">Including the awkward ones</h2>
               <p className="mt-5 text-ink-soft">
                 Something else?{" "}
                 <Link href="/help" className="link">
