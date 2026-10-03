@@ -719,9 +719,39 @@ export default function Home() {
         </section>
 
         {/* -------------------------------------------------------- pricing */}
-        <section id="pricing" className="section scroll-mt-20">
+        <section id="pricing" className="surface-lilac section scroll-mt-20">
           <div className="container-page">
-            <div className="reveal mx-auto max-w-2xl text-center">
+            {/*
+              Three photographs across the top of the price block.
+
+              Pricing was 2,218px without a single image — the longest
+              stretch of the page where somebody is deciding whether to pay,
+              and nothing on it to look at. These are three of the trades
+              the plans are for, wide and shallow so they frame the prices
+              rather than compete with them.
+            */}
+            <ul className="reveal mx-auto grid max-w-5xl grid-cols-3 gap-3 sm:gap-4">
+              {[
+                { id: "photo-1723291425355-87a06a81be37", alt: "A meal prepared and plated on a counter" },
+                { id: "photo-1677589330382-775a14653741", alt: "A sampler pad under studio light" },
+                { id: "photo-1770581063308-ee603bfb4e3b", alt: "Watercolor supplies laid out on a table" },
+              ].map((p) => (
+                <li key={p.id} className="overflow-hidden rounded-[var(--r-lg)] shadow-[0_14px_32px_-18px_rgba(42,23,144,0.4)]">
+                  <img
+                    src={PHOTO(p.id, 560, 320)}
+                    srcSet={`${PHOTO(p.id, 400, 229)} 400w, ${PHOTO(p.id, 560, 320)} 560w, ${PHOTO(p.id, 900, 514)} 900w`}
+                    sizes="(min-width: 1024px) 22vw, 31vw"
+                    alt={p.alt}
+                    width={560}
+                    height={320}
+                    loading="lazy"
+                    decoding="async"
+                    className="aspect-[7/4] w-full object-cover"
+                  />
+                </li>
+              ))}
+            </ul>
+            <div className="reveal mx-auto mt-10 max-w-2xl text-center">
               <h2 className="t-h2 balance">Two plans. Your sales stay yours.</h2>
               <p className="mt-5 text-ink-soft">
                 {`The same $${PRICE} and $${PLAN_PRICES.pro.month / 100} a month as Stan's two plans, the same 14-day free trial, 0% of your sales, and the sale itself landing in your own Stripe account. The $${PRICE} plan holds what Stan keeps for its $${PLAN_PRICES.pro.month / 100} one: discount codes, pixels, funnels, order bumps, upsells, payment plans and limited quantities.`}
@@ -745,6 +775,24 @@ export default function Home() {
                 </Link>{" "}
                 answers the rest, in writing.
               </p>
+              {/*
+                A photograph in the column that would otherwise be three
+                lines of text and a lot of air. It is somebody reading
+                something carefully, which is what this section is for.
+              */}
+              <div className="mt-8 hidden overflow-hidden rounded-[var(--r-lg)] shadow-[0_18px_44px_-20px_rgba(42,23,144,0.4)] lg:block">
+                <img
+                  src={PHOTO("photo-1670963025124-36714c107eb7", 560, 620)}
+                  srcSet={`${PHOTO("photo-1670963025124-36714c107eb7", 560, 620)} 560w, ${PHOTO("photo-1670963025124-36714c107eb7", 900, 996)} 900w`}
+                  sizes="30vw"
+                  alt="A desk with a laptop and an open notebook"
+                  width={560}
+                  height={620}
+                  loading="lazy"
+                  decoding="async"
+                  className="aspect-[14/15] w-full object-cover"
+                />
+              </div>
             </div>
             <div className="reveal">
               <Faq />
@@ -753,8 +801,59 @@ export default function Home() {
         </section>
 
         {/* ------------------------------------------------------ final CTA */}
-        <section className="surface-signature on-dark overflow-hidden">
-          <div className="container-narrow py-20 text-center sm:py-28">
+        <section className="surface-signature on-dark relative overflow-hidden">
+          {/*
+            The last screen, on a photograph.
+
+            It was 669px of violet with four icons on it — the weakest end
+            to a page this long, and the one place a visitor decides. The
+            photograph is somebody at the moment this product is for: work
+            finished, about to be sold. It is darkened far past the point
+            where the headline and both buttons clear contrast, and the
+            violet of the section still sits over it, so the band belongs
+            to the same morning as everything above it.
+          */}
+          <img
+            src={PHOTO("photo-1723914159511-8dd3d2b66805", 1600, 900)}
+            srcSet={`${PHOTO("photo-1723914159511-8dd3d2b66805", 900, 506)} 900w, ${PHOTO("photo-1723914159511-8dd3d2b66805", 1600, 900)} 1600w`}
+            sizes="100vw"
+            alt=""
+            width={1600}
+            height={900}
+            loading="lazy"
+            decoding="async"
+            className="absolute inset-0 -z-10 h-full w-full object-cover opacity-25"
+          />
+          <div className="container-narrow relative py-20 text-center sm:py-28">
+            {/*
+              The five example stores, one last time.
+
+              A row of faces above a call to action is the oldest move
+              there is, and it only works when it is true. These are the
+              five stores drawn at the top of this page, the same people,
+              said again in the caption to be examples we built.
+            */}
+            <ul className="mx-auto mb-8 flex items-center justify-center -space-x-3">
+              {[
+                "photo-1543871595-e11129e271cc",
+                "photo-1787647090008-4b88ffc977b7",
+                "photo-1765429158141-b283bbe7d0e4",
+                "photo-1758599880979-f6a64947b541",
+                "photo-1780277993159-b4ca60e8922d",
+              ].map((id) => (
+                <li key={id}>
+                  <img
+                    src={PHOTO(id, 96, 96)}
+                    alt=""
+                    width={48}
+                    height={48}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-12 w-12 rounded-full object-cover ring-2 ring-white/80"
+                  />
+                </li>
+              ))}
+            </ul>
             <h2 className="t-h1 balance text-white">Put your first product up today</h2>
             <p className="t-lead mx-auto mt-6 max-w-xl text-white/80">
               {`Take your address, connect your own Stripe account and list what you sell. Your checkout is free for ${TRIAL_DAYS} days; your card is taken at the start and first charged $${PRICE} when the trial ends, unless you cancel before it.`}
@@ -782,6 +881,9 @@ export default function Home() {
                 </li>
               ))}
             </ul>
+            <p className="mt-8 text-[0.8125rem] text-white/65">
+              Example stores we built. The photographs are licensed stock, not customers of ours.
+            </p>
           </div>
         </section>
       </main>
