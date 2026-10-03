@@ -9,7 +9,8 @@
  *   - a store is not offered Zoom before approval, a preview store and a
  *     store with a Zoom address are, on a subdomain too, and an address that
  *     only looks like one is not;
- *   - the review link (`?zoom=review`) offers it to any store, on that visit;
+ *   - the review link (`?zoom=review`), and the address Zoom's listing opens
+ *     (`?from=zoom`), offer it to any store, on that visit;
  *   - ZOOM_LIVE=1 opens it to every store;
  *   - nothing is offered that the deployment has not switched on;
  *   - the route that starts a connection lets the review link's form through
@@ -19,7 +20,7 @@
 import { NextRequest } from "next/server";
 import { SESSION_COOKIE, openSession } from "@/lib/auth";
 import { meetView } from "@/lib/meet-connect";
-import { isZoomReview, offeredProviders } from "@/lib/meet-providers";
+import { arrivedForZoom, isZoomReview, offeredProviders } from "@/lib/meet-providers";
 import { finishConnect, startConnect } from "@/lib/meet-routes";
 import { claimHandle } from "@/lib/store";
 import { store as redis } from "./redis-stub";
@@ -60,6 +61,12 @@ async function main(): Promise<void> {
   part("The review link");
   is("review: any store is offered both", offeredProviders({ sid: "sidharbor01", email: "owner@example.com" }, true), ["google", "zoom"]);
   is("the word is read exactly", [isZoomReview("review"), isZoomReview("Review"), isZoomReview("1"), isZoomReview(["review"]), isZoomReview(undefined), isZoomReview(null)], [true, false, false, false, false, false]);
+
+  is(
+    "the listing's address counts too, and nothing else does",
+    [arrivedForZoom({ from: "zoom" }), arrivedForZoom({ zoom: "review" }), arrivedForZoom({ from: "google" }), arrivedForZoom({ from: ["zoom"] }), arrivedForZoom({})],
+    [true, true, false, false, false],
+  );
 
   part("The routes");
   const claimed = await claimHandle("owner@example.com", "harbor", "Harbor Kitchen", "");
