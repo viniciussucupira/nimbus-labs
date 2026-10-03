@@ -154,13 +154,13 @@ function viewOf(c: Connection): ConnectionView {
 }
 
 /** Which accounts a store has connected, for the studio. Nothing is read when both are off. */
-export async function meetView(statsId: string | null, sid?: OfferedTo): Promise<MeetView> {
+export async function meetView(statsId: string | null, sid?: OfferedTo, review = false): Promise<MeetView> {
   // A studio page names its store, and sees what that store is offered, and
   // any account it has connected whether or not it is still offered: one the
   // bookings use (usableProviders reads every provider switched on) must stay
   // in sight, to be seen and disconnected.
   const configured = configuredProviders();
-  const offered = sid === undefined ? configured : offeredProviders(sid);
+  const offered = sid === undefined ? configured : offeredProviders(sid, review);
   if (!configured.length || !statsId || !isRedisConfigured()) return { providers: offered, connected: {}, problems: [] };
   const replies = await redisPipeline([...configured.map((p) => ["GET", connKey(statsId, p)]), ["LRANGE", logKey(statsId), 0, LOG_SIZE - 1]]);
   const connected: MeetView["connected"] = {};

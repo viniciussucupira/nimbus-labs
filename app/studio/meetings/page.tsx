@@ -8,7 +8,7 @@ import { StudioStorePin } from "@/components/studio-store-pin";
 import { MeetingConnections } from "@/components/meeting-connections";
 import { ToastOnLoad } from "@/components/toast";
 import { ACCOUNT_NAMES, meetView } from "@/lib/meet-connect";
-import { configuredProviders, offeredProviders } from "@/lib/meet-providers";
+import { configuredProviders, isZoomReview, offeredProviders } from "@/lib/meet-providers";
 import { MEET_NAMES, isMeetProvider } from "@/lib/call-setup";
 
 export const metadata: Metadata = {
@@ -73,12 +73,15 @@ export default async function StudioMeetingsPage({ searchParams }: Params) {
   const { view: access } = found;
   const loaded = access.store;
   const store = loaded.statsId ? loaded : ((await ensureStatsId(access.ref)) ?? loaded);
-  const view = await meetView(store.statsId, store).catch((error) => {
+  // The review link (`?zoom=review`, lib/meet-providers.ts) offers Zoom on
+  // this visit to a store it is not open to yet.
+  const review = isZoomReview(query.zoom);
+  const view = await meetView(store.statsId, store, review).catch((error) => {
     console.error("reading the meeting connections failed", error);
     return null;
   });
   // What the store is offered, and any account it has connected either way.
-  const offered = view ? view.providers : offeredProviders(store);
+  const offered = view ? view.providers : offeredProviders(store, review);
   if (offered.length === 0) notFound();
   const said = outcome(typeof query.meet === "string" ? query.meet : "", typeof query.p === "string" ? query.p : "");
   const names = offered.map((p) => MEET_NAMES[p]);
@@ -115,7 +118,7 @@ export default async function StudioMeetingsPage({ searchParams }: Params) {
               We could not read your connections just now. Nothing was changed. Try again in a moment.
             </p>
           ) : (
-            <MeetingConnections view={view} pin={store.sid ? `?store=${store.sid}` : ""} />
+            <MeetingConnections view={view} pin={store.sid ? `?store=${store.sid}` : ""} review={review} />
           )}
         </main>
       </StudioStorePin>

@@ -103,20 +103,37 @@ export function configuredProviders(): MeetProvider[] {
  * which is how Zoom's own reviewers test the app before approving it;
  * ZOOM_LIVE=1 opens it to every store. A store that already has Zoom
  * connected keeps it either way (usableProviders).
+ *
+ * A reviewer does not always sign up with a Zoom address, so there is also
+ * the review link: the Video calls page opened with `?zoom=review` offers
+ * Zoom on that visit, whatever the store (isZoomReview). It opens nothing
+ * Zoom itself keeps shut: an account Zoom does not let add the app is still
+ * turned away on Zoom's own page.
  */
 const ZOOM_PREVIEW_STORES = new Set(["dc83ed016f0d4a83b71461bca159d8f5"]);
 /** Zoom's App Marketplace reviewers sign up with their work address. */
-const ZOOM_REVIEWER = /@(zoom\.us|zoom\.com)$/i;
+const ZOOM_REVIEWER = /@([a-z0-9-]+\.)*(zoom\.us|zoom\.com)$/i;
+
+/** The word that opens Zoom on one visit to the Video calls page: `?zoom=review`. */
+export const ZOOM_REVIEW_QUERY = "zoom=review";
+
+/** Whether an address asks for the review link's view: `?zoom=review`, given as the value of `zoom`. */
+export function isZoomReview(value: string | string[] | null | undefined): boolean {
+  return value === "review";
+}
 
 /** A store, or just its id, as a studio page has it. */
 export type OfferedTo = { sid?: string | null; email?: string | null } | string | null | undefined;
 
-/** What a store's studio offers to connect: switched on, and Zoom only once it is open to that store. */
-export function offeredProviders(store: OfferedTo): MeetProvider[] {
+/**
+ * What a store's studio offers to connect: switched on, and Zoom only once
+ * it is open to that store, or on a visit by the review link (`review`).
+ */
+export function offeredProviders(store: OfferedTo, review = false): MeetProvider[] {
   const sid = typeof store === "string" ? store : (store?.sid ?? null);
   const email = typeof store === "object" && store ? (store.email ?? "").trim() : "";
   const zoomOpen =
-    env("ZOOM_LIVE") === "1" || Boolean(sid && ZOOM_PREVIEW_STORES.has(sid)) || ZOOM_REVIEWER.test(email);
+    review || env("ZOOM_LIVE") === "1" || Boolean(sid && ZOOM_PREVIEW_STORES.has(sid)) || ZOOM_REVIEWER.test(email);
   return configuredProviders().filter((p) => p !== "zoom" || zoomOpen);
 }
 
