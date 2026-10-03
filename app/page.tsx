@@ -6,7 +6,7 @@ import { BuyerPath } from "@/components/buyer-path";
 import { SiteNav } from "@/components/site-nav";
 import { Icon, type IconName } from "@/components/icons";
 import { FeatureVisual, type VisualKey } from "@/components/feature-visuals";
-import { DemoWindow, Faq, HeroFlow, Pricing, RevealOnScroll } from "@/components/home-parts";
+import { DemoWindow, Faq, HeroFlow, Pricing, RevealOnScroll, SoldMarquee } from "@/components/home-parts";
 import { HomeData } from "@/components/structured-data";
 import { HOME_QUESTIONS } from "@/lib/home-faq";
 import { PLAN_PRICES, PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
@@ -202,12 +202,18 @@ const NOT_YET = [
 ];
 
 /*
- * Four kinds of creator, each shown at work rather than posed.
+ * Eight kinds of creator, each shown at work rather than posed.
  *
- * The photographs are licensed stock, and the card says so on its face: the
- * people in them are not our customers, and we will not pretend they are. What
- * they are for is recognition — a visitor should see the thing they do all day
- * before they read a word of ours.
+ * Four was a tidy row and a thin answer: a visitor looking for themselves
+ * either saw their trade in the first four or decided this was not for them.
+ * Eight is a market, and the cards are now sized unevenly — the first two
+ * run tall, the rest sit in a denser grid — so the block reads as a wall of
+ * people rather than a set of equal tiles.
+ *
+ * The photographs are licensed stock, and the line under them says so: the
+ * people in them are not our customers, and we will not pretend they are.
+ * What they are for is recognition — a visitor should see the thing they do
+ * all day before they read a word of ours.
  */
 const CREATORS = [
   {
@@ -237,6 +243,34 @@ const CREATORS = [
     sells: "Presets, templates, brush packs",
     photo: "photo-1765429158141-b283bbe7d0e4",
     alt: "A photographer holding a camera among tall trees",
+  },
+  {
+    href: "/platform/courses",
+    label: "Musicians and producers",
+    sells: "Sample packs, lessons, chord charts",
+    photo: "photo-1770393391946-7d9b658deec3",
+    alt: "A musician at a desk with a keyboard and headphones",
+  },
+  {
+    href: "/platform/memberships",
+    label: "Writers and newsletters",
+    sells: "Memberships, archives, workshops",
+    photo: "photo-1775196610640-5e70ef38f846",
+    alt: "A writer at a window desk with a notebook open",
+  },
+  {
+    href: "/platform/calls",
+    label: "Therapists and counselors",
+    sells: "Booked sessions and workbooks",
+    photo: "photo-1780585328302-747a6eee7694",
+    alt: "Two people talking across a low table in a calm room",
+  },
+  {
+    href: "/platform/community",
+    label: "Makers and crafters",
+    sells: "Patterns, classes, a community",
+    photo: "photo-1543871595-e11129e271cc",
+    alt: "A maker at a bench with tools and materials laid out",
   },
 ];
 
@@ -394,6 +428,19 @@ export default function Home() {
               </li>
             ))}
           </ul>
+        </section>
+
+        {/*
+          What people sell, running past.
+
+          The one piece of this page that moves on its own, placed where a
+          visitor has just read the offer and is asking whether it is for
+          someone like them. Forty kinds of product answer that faster than
+          a paragraph about categories, and a strip that never stops is what
+          a market looks like.
+        */}
+        <section aria-label="Things people sell from a Marktmorgen store" className="surface-lilac overflow-hidden py-5">
+          <SoldMarquee />
         </section>
 
         {/* ------------------------------------------------ the buyer's path */}
@@ -635,30 +682,56 @@ export default function Home() {
               </Link>
             </div>
 
-            <ul className="mt-12 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-              {CREATORS.map((c) => (
-                <li key={c.href} className="reveal">
-                  <Link href={c.href} className="group block overflow-hidden rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-sm)] transition-shadow duration-300 hover:shadow-[var(--shadow-md)]">
-                    <div className="relative aspect-[4/5] overflow-hidden bg-sand-deep">
+            {/*
+              The photograph carries the card, not the caption.
+
+              The words used to sit in a white tray under the picture, which
+              split each card in two and made a grid of eight read as
+              sixteen things. The name and the line now sit on the
+              photograph itself, over a gradient dark enough to hold white
+              text at any crop, so each card is one object: a person, and
+              what they sell.
+
+              The first two run tall and wide; the other six fill a denser
+              grid beside them. Eight equal tiles would be the wallpaper
+              this section is trying to stop being.
+            */}
+            <ul className="mt-12 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+              {CREATORS.map((c, i) => (
+                <li key={c.href} className={`reveal ${i < 2 ? "lg:col-span-2 lg:row-span-2" : ""}`}>
+                  <Link
+                    href={c.href}
+                    className="group relative block h-full overflow-hidden rounded-[var(--r-lg)] bg-sand-deep shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09),0_14px_32px_-16px_rgba(42,23,144,0.22)]"
+                  >
+                    <div className={`relative overflow-hidden ${i < 2 ? "aspect-[4/5] lg:aspect-[1.12]" : "aspect-[4/5]"}`}>
                       <img
                         src={PHOTO(c.photo, 560, 700)}
-                        srcSet={`${PHOTO(c.photo, 400, 500)} 400w, ${PHOTO(c.photo, 560, 700)} 560w, ${PHOTO(c.photo, 840, 1050)} 840w`}
-                        sizes="(min-width: 1024px) 22vw, (min-width: 640px) 44vw, 46vw"
+                        srcSet={`${PHOTO(c.photo, 400, 500)} 400w, ${PHOTO(c.photo, 560, 700)} 560w, ${PHOTO(c.photo, 900, 1125)} 900w`}
+                        sizes={i < 2 ? "(min-width: 1024px) 45vw, 46vw" : "(min-width: 1024px) 22vw, 46vw"}
                         alt={c.alt}
                         width={560}
                         height={700}
                         loading="lazy"
                         decoding="async"
-                        className="h-full w-full object-cover transition-transform duration-700 [transition-timing-function:var(--ease)] group-hover:scale-[1.03]"
+                        className="h-full w-full object-cover transition-transform duration-700 [transition-timing-function:var(--ease)] group-hover:scale-[1.04]"
                       />
-                      <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/35 to-transparent" />
-                    </div>
-                    <div className="p-4 sm:p-5">
-                      <p className="flex items-center justify-between gap-2 text-[0.9375rem] font-semibold leading-snug text-ink sm:text-base">
-                        {c.label}
-                        <Icon name="arrow-right" size={16} className="text-ink-mute transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-violet-deep" />
-                      </p>
-                      <p className="mt-1 text-[0.8125rem] text-ink-soft sm:text-[0.9375rem]">{c.sells}</p>
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+                        <p className={`flex items-center justify-between gap-2 font-semibold leading-snug text-white ${i < 2 ? "text-base sm:text-xl" : "text-[0.9375rem] sm:text-base"}`}>
+                          {c.label}
+                          <Icon
+                            name="arrow-right"
+                            size={18}
+                            className="shrink-0 text-white/70 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-white"
+                          />
+                        </p>
+                        <p className={`mt-1 text-white/80 ${i < 2 ? "text-[0.875rem] sm:text-[0.9375rem]" : "text-[0.8125rem]"}`}>
+                          {c.sells}
+                        </p>
+                      </div>
                     </div>
                   </Link>
                 </li>

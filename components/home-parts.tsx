@@ -993,3 +993,50 @@ export function DemoWindow({
     </>
   );
 }
+
+/*
+ * What people sell, running past.
+ *
+ * Every other thing on this page is still until somebody scrolls to it.
+ * This one moves on its own, continuously, because a market does — and
+ * because the fastest way to answer "is this for someone like me?" is to
+ * show forty things people like them sell rather than describe a
+ * category.
+ *
+ * Each item is a real kind of product the platform delivers today: a
+ * file, a course, a membership, a booked call, a bundle. Nothing here is
+ * a customer, a number or a claim — it is a list of what the thing does,
+ * which is why it can run without a caveat under it.
+ */
+const SOLD = [
+  "Meal plans", "Lightroom presets", "Notion templates", "Yoga programs",
+  "Sample packs", "Knitting patterns", "1:1 coaching calls", "Study guides",
+  "Brush packs", "Membership communities", "Watercolor classes", "Resume reviews",
+  "Sourdough courses", "Lesson plans", "Portfolio critiques", "Running plans",
+  "Chord charts", "Photo editing calls", "Recipe packs", "Business templates",
+  "Breathwork sessions", "Font bundles", "Wedding checklists", "Garden guides",
+];
+
+export function SoldMarquee() {
+  // Two copies of the list: the track travels exactly half its width, so
+  // the second copy is under the cursor the instant the first leaves.
+  const row = [...SOLD, ...SOLD];
+  return (
+    <div className="marquee py-1" aria-hidden="true">
+      <ul className="marquee-track">
+        {row.map((item, i) => (
+          <li
+            key={`${item}-${i}`}
+            className="flex shrink-0 items-center gap-2.5 rounded-full bg-white/80 px-4 py-2.5 text-[0.9375rem] font-medium text-ink shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09)]"
+          >
+            <span
+              className="h-2 w-2 shrink-0 rounded-full"
+              style={{ background: ["#ff7a59", "#15a37a", "#ffcf4d", "#5a36ee", "#e8456b"][i % 5] }}
+            />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

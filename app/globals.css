@@ -895,6 +895,55 @@ body {
   mix-blend-mode: overlay;
 }
 
+/* =====================================================================
+   The marquee.
+
+   A strip that never stops moving, the way a market never stops. It is
+   the one piece of the page that is always in motion, and it carries
+   something worth reading: the things people actually sell from a store
+   like this.
+
+   Pure CSS. The track holds the same list twice and travels exactly half
+   its own width, so the join is invisible and there is nothing to
+   schedule in JavaScript. It stops dead for anyone who has asked motion
+   to stop, and it stops on hover so a name can be read.
+   ===================================================================== */
+.marquee {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  /* The ends fade into the section instead of being cut by a hard edge. */
+  mask-image: linear-gradient(90deg, transparent, #000 7rem, #000 calc(100% - 7rem), transparent);
+}
+.marquee-track {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--gap-sm);
+  padding-right: var(--gap-sm);
+  animation: marquee-run 46s linear infinite;
+  will-change: transform;
+}
+.marquee:hover .marquee-track,
+.marquee:focus-within .marquee-track {
+  animation-play-state: paused;
+}
+@keyframes marquee-run {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+  .marquee {
+    overflow-x: auto;
+  }
+}
+
 /*
  * One store giving way to the next in the hero.
  *
