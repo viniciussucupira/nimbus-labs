@@ -349,13 +349,24 @@ export function SiteNav() {
             className="absolute inset-x-0 top-full hidden lg:block"
           >
             <div className="container-page">
+              {/*
+                The Product menu is the tall one: five groups of links plus a
+                panel beside them. On a 1366×720 laptop it ran 123px past the
+                bottom of the window with no way to reach what was down there,
+                so two links simply could not be clicked.
+
+                It is now capped at the window height minus the header and a
+                margin, and scrolls inside itself when it does not fit. On a
+                tall screen nothing changes — the cap is above its natural
+                height — so this costs nothing where there was no problem.
+              */}
               <div
-                className={`nb-pop mx-auto mt-2 grid ${menu.groups ? "max-w-6xl grid-cols-[15rem_1fr]" : "max-w-4xl grid-cols-[17rem_1fr]"} overflow-hidden rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-lg)]`}
+                className={`nb-pop mx-auto mt-2 grid ${menu.groups ? "max-w-6xl grid-cols-[15rem_1fr]" : "max-w-4xl grid-cols-[17rem_1fr]"} max-h-[calc(100dvh-6rem)] overflow-y-auto overflow-x-hidden overscroll-contain rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-lg)]`}
               >
                 <div className="surface-night on-dark flex flex-col justify-between p-6">
                   <div>
-                    <p className="eyebrow">{menu.label}</p>
-                    <p className="mt-3 text-[0.9375rem] leading-relaxed text-white/80">{menu.blurb}</p>
+                    <p className="text-[0.9375rem] font-semibold text-white">{menu.label}</p>
+                    <p className="mt-2 text-[0.9375rem] leading-relaxed text-white/80">{menu.blurb}</p>
                   </div>
                   <Link href={menu.feature.href} onClick={closeAll} className="group mt-6 block rounded-[var(--r-md)] border border-white/12 bg-white/[0.06] p-4 transition-colors hover:bg-white/[0.1]">
                     <span className="block font-semibold text-white">{menu.feature.title}</span>

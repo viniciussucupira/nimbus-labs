@@ -896,6 +896,32 @@ body {
 }
 
 /*
+ * One store giving way to the next in the hero.
+ *
+ * A fade and a very short rise, once, when the subtree is replaced. No
+ * slide: a card that travels makes the eye chase it, and this one is
+ * meant to be read, not followed.
+ */
+.nb-swap {
+  animation: nb-swap-in 520ms var(--ease) both;
+}
+@keyframes nb-swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nb-swap {
+    animation: none;
+  }
+}
+
+/*
  * Live, and saying so.
  *
  * The "Live now" tag claims something is running right now. A dot that

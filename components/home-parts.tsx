@@ -56,9 +56,93 @@ const subscribeReduce = (cb: () => void) => {
   return () => mq.removeEventListener("change", cb);
 };
 
+/*
+ * Five creators, cycling.
+ *
+ * The hero used to draw one store, and one store is a diagram. Five, each
+ * with a face and a different thing for sale, is a market: the page is
+ * for people who sell what they know, so the first thing on it should be
+ * people. They change every five seconds, carrying their own colour, so
+ * the first screen is never the same twice and never still.
+ *
+ * All five are stores we built as examples, and the line under the
+ * picture says so. Nobody here is presented as a customer.
+ */
+const STORES = [
+  {
+    handle: "harborkitchen",
+    name: "Harbor Kitchen",
+    line: "Simple family meals by Jenny",
+    photo: "photo-1543871595-e11129e271cc",
+    item: "Weekly meal planner",
+    options: [
+      { label: "1 week", price: "$27" },
+      { label: "5 weeks", price: "$39" },
+    ],
+    links: ["Free recipe of the week", "About Jenny"],
+    tint: "#ff7a59",
+  },
+  {
+    handle: "mornpractice",
+    name: "Morning Practice",
+    line: "Mobility and strength by Ada",
+    photo: "photo-1787647090008-4b88ffc977b7",
+    item: "30-day mobility plan",
+    options: [
+      { label: "The plan", price: "$34" },
+      { label: "Plan + 2 calls", price: "$89" },
+    ],
+    links: ["Free hip routine", "Book a session"],
+    tint: "#15a37a",
+  },
+  {
+    handle: "lightandgrain",
+    name: "Light & Grain",
+    line: "Film presets by Theo",
+    photo: "photo-1765429158141-b283bbe7d0e4",
+    item: "Golden hour pack",
+    options: [
+      { label: "12 presets", price: "$24" },
+      { label: "Everything", price: "$59" },
+    ],
+    links: ["Before and after", "How I shoot"],
+    tint: "#ffcf4d",
+  },
+  {
+    handle: "thequietdesk",
+    name: "The Quiet Desk",
+    line: "Study systems by Maren",
+    photo: "photo-1758599880979-f6a64947b541",
+    item: "Focus course",
+    options: [
+      { label: "The course", price: "$49" },
+      { label: "Course + templates", price: "$69" },
+    ],
+    links: ["Free first lesson", "Student results"],
+    tint: "#5a36ee",
+  },
+  {
+    handle: "saltandsteel",
+    name: "Salt & Steel",
+    line: "Knife skills by Dmitri",
+    photo: "photo-1780277993159-b4ca60e8922d",
+    item: "Sharpening masterclass",
+    options: [
+      { label: "Masterclass", price: "$39" },
+      { label: "With the live Q&A", price: "$79" },
+    ],
+    links: ["Free knife guide", "Watch a clip"],
+    tint: "#e8456b",
+  },
+] as const;
+
+const FACE = (id: string, s = 96) =>
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=${s}&h=${s}&q=70`;
+
 export function HeroFlow() {
   const [played, setPlayed] = useState(0);
   const [chosen, setChosen] = useState<number | null>(null);
+  const [store, setStore] = useState(0);
   const reduce = useSyncExternalStore(
     subscribeReduce,
     () => window.matchMedia(REDUCE).matches,
@@ -74,6 +158,23 @@ export function HeroFlow() {
     const t = setTimeout(() => setPlayed((s) => Math.min(2, s + 1)), played === 0 ? 2200 : 1900);
     return () => clearTimeout(t);
   }, [chosen, reduce, played]);
+
+  /*
+   * The store on the phone changes every five seconds, for as long as
+   * anybody is looking. Five seconds is long enough to read the name, the
+   * thing for sale and both prices without hurrying, and the only motion
+   * is the fade — nothing slides, so nothing has to be chased.
+   *
+   * It stops entirely for anyone who has asked motion to stop; they see
+   * the first store, which is the one the rest of the page talks about.
+   */
+  useEffect(() => {
+    if (reduce) return;
+    const t = setInterval(() => setStore((s) => (s + 1) % STORES.length), 5000);
+    return () => clearInterval(t);
+  }, [reduce]);
+
+  const s = STORES[store];
 
   const choose = (i: number) => setChosen(i);
 
@@ -134,45 +235,52 @@ export function HeroFlow() {
               <div className="flex items-center justify-between px-4 pb-1 pt-2.5 text-[10px] font-semibold text-ink-mute">
                 <span>9:41</span>
                 <span className="rounded-[5px] bg-white px-1.5 py-0.5 text-[9px] text-ink-soft ring-1 ring-line">
-                  marktmorgen.com/demo
+                  {`marktmorgen.com/@${s.handle}`}
                 </span>
               </div>
-              <div className="px-3.5 pb-4 pt-2">
+              {/*
+                Everything below changes with the store. The key on this
+                wrapper is the store's own, so React replaces the subtree
+                rather than editing it, and the CSS animation on .nb-swap
+                runs again from the top each time.
+              */}
+              <div key={s.handle} className="nb-swap px-3.5 pb-4 pt-2">
                 <div className="flex items-center gap-2.5">
                   <img
-                    src="https://images.unsplash.com/photo-1543871595-e11129e271cc?auto=format&fit=crop&crop=faces&w=96&h=96&q=70"
+                    src={FACE(s.photo)}
                     alt=""
                     width={40}
                     height={40}
                     fetchPriority="high"
-                    className="h-10 w-10 rounded-full bg-sand-deep object-cover"
+                    className="h-10 w-10 rounded-full bg-sand-deep object-cover ring-2 ring-white"
+                    style={{ boxShadow: `0 0 0 3px ${s.tint}33` }}
                   />
                   <div className="min-w-0">
-                    <p className="text-[13px] font-semibold leading-tight text-ink">Harbor Kitchen</p>
-                    <p className="text-[10.5px] text-ink-mute">Simple family meals by Jenny</p>
+                    <p className="truncate text-[13px] font-semibold leading-tight text-ink">{s.name}</p>
+                    <p className="truncate text-[10.5px] text-ink-mute">{s.line}</p>
                   </div>
                 </div>
                 <div className="mt-3 rounded-[12px] border border-line bg-white p-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-violet-deep">
-                    Weekly meal planner
+                  <p className="text-[11px] font-semibold text-ink" style={{ color: s.tint }}>
+                    {s.item}
                   </p>
                   <div className="mt-2 grid gap-1.5">
                     <div className="flex items-center justify-between rounded-[9px] border border-line px-2.5 py-2 text-[11.5px]">
-                      <span className="text-ink-soft">1 week</span>
-                      <span className="font-semibold text-ink">$27</span>
+                      <span className="text-ink-soft">{s.options[0].label}</span>
+                      <span className="font-semibold text-ink">{s.options[0].price}</span>
                     </div>
                     <div
                       className={`flex items-center justify-between rounded-[9px] border px-2.5 py-2 text-[11.5px] transition-colors duration-500 ${
                         step === 0 ? "border-violet-brand bg-lilac" : "border-violet-brand/50 bg-lilac/60"
                       }`}
                     >
-                      <span className="flex items-center gap-1.5 font-medium text-ink">
-                        <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-violet-brand text-white">
+                      <span className="flex min-w-0 items-center gap-1.5 font-medium text-ink">
+                        <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-violet-brand text-white">
                           <Icon name="check" size={9} strokeWidth={3} />
                         </span>
-                        5 weeks
+                        <span className="truncate">{s.options[1].label}</span>
                       </span>
-                      <span className="font-semibold text-ink">$39</span>
+                      <span className="font-semibold text-ink">{s.options[1].price}</span>
                     </div>
                   </div>
                   <div
@@ -184,14 +292,67 @@ export function HeroFlow() {
                   </div>
                 </div>
                 <div className="mt-2 grid gap-1.5">
-                  {["Free recipe of the week", "About Jenny"].map((l) => (
-                    <p key={l} className="rounded-[9px] border border-line bg-white px-2.5 py-2 text-[11px] font-medium text-ink-soft">
+                  {s.links.map((l) => (
+                    <p key={l} className="truncate rounded-[9px] border border-line bg-white px-2.5 py-2 text-[11px] font-medium text-ink-soft">
                       {l}
                     </p>
                   ))}
                 </div>
               </div>
             </div>
+          </div>
+
+          {/*
+            The other four, orbiting.
+
+            One phone is a diagram of a store; five faces around it is the
+            market the name promises. They are the stores not currently on
+            the screen, each at its own angle and its own distance, and the
+            one about to come up is the one that lifts and brightens — so
+            the change on the phone is announced a beat before it happens
+            rather than arriving from nowhere.
+
+            Only from 1024px up: below that the phone has the width to
+            itself and faces floating over it would cover the thing they
+            are there to decorate.
+          */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block">
+            {STORES.map((o, i) => {
+              const slot = ((i - store + STORES.length) % STORES.length) - 1;
+              const spot = [
+                { top: "2%", left: "74%", size: 56 },
+                { top: "28%", left: "90%", size: 42 },
+                { top: "56%", left: "68%", size: 48 },
+                { top: "76%", left: "86%", size: 38 },
+              ][slot];
+              if (!spot) return null;
+              const next = slot === 0;
+              return (
+                <span
+                  key={o.handle}
+                  className="absolute block rounded-full transition-all duration-700 [transition-timing-function:var(--ease)]"
+                  style={{
+                    top: spot.top,
+                    left: spot.left,
+                    width: spot.size,
+                    height: spot.size,
+                    opacity: next ? 1 : 0.5,
+                    transform: next ? "scale(1.14) translateY(-4px)" : "scale(1)",
+                    boxShadow: `0 0 0 2px rgba(255,255,255,${next ? 0.9 : 0.35}), 0 10px 26px -8px ${o.tint}aa`,
+                  }}
+                >
+                  <img
+                    src={FACE(o.photo, 128)}
+                    alt=""
+                    width={spot.size}
+                    height={spot.size}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                </span>
+              );
+            })}
           </div>
         </div>
 
@@ -333,12 +494,13 @@ export function HeroFlow() {
         open and buy from with a test card.
       */}
       <p className="mt-6 text-center text-[0.8125rem] leading-relaxed text-white/70">
-        An example of a sale, drawn from the{" "}
+        Five example stores we built, and a sale drawn from the{" "}
         <Link href="/demo" className="font-medium text-white underline underline-offset-4 decoration-white/40 hover:decoration-white">
           demo store
         </Link>
-        . The $39.00 is the gross payment, what the buyer pays. Stripe takes its own processing fee from it on your
-        account, and Marktmorgen takes nothing on top.
+        , which you can buy from with a test card. The people in the photographs are licensed stock, not customers of
+        ours. The $39.00 is the gross payment; Stripe takes its own processing fee from it on your account, and
+        Marktmorgen takes nothing on top.
       </p>
 
       <div className="mt-5 flex justify-center" role="group" aria-label="Steps of a sale">
