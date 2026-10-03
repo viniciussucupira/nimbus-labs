@@ -23,7 +23,7 @@
  * Booked calls are left out: they have their own confirmation, with the time
  * and a calendar file, sent the moment the time is written down (lib/calls.ts).
  *
- * A product that hands out licence keys has its key in the email too, given
+ * A product that hands out license keys has its key in the email too, given
  * to the sale here if the thanks page has not given it already
  * (lib/licence-keys.ts): the same key either way, because a sale only ever
  * gets one.
@@ -31,7 +31,7 @@
  * An offer taken in one click after paying (lib/upsell.ts) is a payment of
  * its own, made after this email has usually gone, so it gets a short one of
  * its own (confirmOffer): what was added, what it cost, how to get it, and
- * its licence key when it hands one out — kept under the offer's payment,
+ * its license key when it hands one out — kept under the offer's payment,
  * the same reference the thanks page and the list of purchases use.
  */
 import { recordPackage } from "@/lib/call-packages";
@@ -138,7 +138,7 @@ function money(cents: number, currency: string): string {
 
 export type Confirmation = { to: string; subject: string; text: string };
 
-/** A licence key the email carries, with the product it is for. */
+/** A license key the email carries, with the product it is for. */
 export type KeyLine = { title: string; key: SaleKey };
 
 /**
@@ -216,13 +216,13 @@ export function confirmationFor(
     lines.push(
       `Add the podcast to your app: ${base}/podcast/${product.id}`,
       "",
-      `Type ${email} on that page and a link to your own private feed comes straight away. It works in Apple Podcasts, Overcast, Pocket Casts and most other podcast apps, for as long as you have it.`,
+      `Type ${email} on that page and a link to your own private feed comes right away. It works in Apple Podcasts, Overcast, Pocket Casts and most other podcast apps, for as long as you have it.`,
     );
   } else if (product.course) {
     lines.push(
       `Start the course: ${base}/course/${product.id}`,
       "",
-      `If you pressed "Start the course" after paying, it opens straight away on that device. Anywhere else, the course page asks for your email: type ${email}, and a link that lets that device in usually arrives within a minute. There is no password to make.`,
+      `If you pressed "Start the course" after paying, it opens right away on that device. Anywhere else, the course page asks for your email: type ${email}, and a link that lets that device in usually arrives within a minute. There is no password to make.`,
     );
   } else {
     lines.push(
@@ -237,7 +237,7 @@ export function confirmationFor(
     lines.push("", `Start ${course.title}: ${base}/course/${course.id}`);
   }
   if (courses.length) {
-    lines.push("", `A course you started after paying opens straight away on that device. Anywhere else, its page asks for your email: type ${email}, and a link that lets that device in usually arrives within a minute.`);
+    lines.push("", `A course you started after paying opens right away on that device. Anywhere else, its page asks for your email: type ${email}, and a link that lets that device in usually arrives within a minute.`);
   }
 
   for (const line of keys) {
@@ -443,7 +443,7 @@ export type TakenOffer = {
   items?: Listing[];
 };
 
-/** The email for an offer taken after paying, with its licence key when it has one. */
+/** The email for an offer taken after paying, with its license key when it has one. */
 export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleKey | null = null, keys: KeyLine[] = []): Confirmation | null {
   if (!INTENT_ID_PATTERN.test(offer.reference) || !SESSION_ID_PATTERN.test(offer.parent) || !offer.email) return null;
   const name = store.name;
@@ -485,7 +485,7 @@ export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleK
 /**
  * Sends the confirmation for one offer taken after paying, once, whichever of
  * the offer's own answer and the thanks page settling it gets there first.
- * Its licence key is given here if nothing gave it yet: the same key the
+ * Its license key is given here if nothing gave it yet: the same key the
  * thanks page and the list of purchases show, because a sale only gets one.
  */
 export async function confirmOffer(store: Store, offer: TakenOffer): Promise<ConfirmOutcome> {
@@ -500,7 +500,7 @@ export async function confirmOffer(store: Store, offer: TakenOffer): Promise<Con
     } catch (error) {
       // Left out rather than holding the email back: it is still on the
       // thanks page and on the buyer's list of purchases.
-      console.error("reading a licence key for an offer's email failed", error);
+      console.error("reading a license key for an offer's email failed", error);
     }
   }
   // Each product of a bundle added this way has its own key, under the offer's payment.
@@ -511,7 +511,7 @@ export async function confirmOffer(store: Store, offer: TakenOffer): Promise<Con
       const found = await keyForSale(store, item, offer.reference, offer.email);
       if (found) keys.push({ title: item.title, key: found });
     } catch (error) {
-      console.error("reading a licence key for an offer's email failed", error);
+      console.error("reading a license key for an offer's email failed", error);
     }
   }
   const letter = offerConfirmationFor(store, offer, key, keys);
@@ -535,7 +535,7 @@ export async function confirmOffer(store: Store, offer: TakenOffer): Promise<Con
 }
 
 /**
- * The licence keys a paid checkout earns: the product's, and the one ticked
+ * The license keys a paid checkout earns: the product's, and the one ticked
  * at checkout's. A key that cannot be read or given right now is left out
  * rather than holding the email back; it is still on the thanks page and on
  * the buyer's list of purchases.
@@ -555,7 +555,7 @@ async function keysFor(store: Store, session: SessionRecord, listings: Listing[]
       const key = await keyForSale(store, product, id, email);
       if (key) lines.push({ title: product.title, key });
     } catch (error) {
-      console.error("reading a licence key for an email failed", error);
+      console.error("reading a license key for an email failed", error);
     }
   }
   return lines;
@@ -569,7 +569,7 @@ export type ResendOutcome = "sent" | "unknown" | "call" | "refunded" | "failed";
  *
  * The same email as the first, read afresh from the checkout on the
  * creator's own Stripe account, whatever its age, with one line on top saying
- * it is a copy sent at the store's request. The licence key in it is the one
+ * it is a copy sent at the store's request. The license key in it is the one
  * the sale already has; a sale never gets a second. A checkout that is not
  * this store's, a booked call (which has its own confirmation) and a sale
  * refunded in full are refused rather than sent.

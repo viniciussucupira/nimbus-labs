@@ -26,7 +26,7 @@ import { communityOf, indexCourseOf, indexEvent, indexMember } from "@/lib/commu
  * walked once, and only once.
  *
  * Posts have been indexed since the search was built, so nothing here touches
- * them. What is caught up is everything the index reached past afterwards:
+ * them. What is caught up is everything the index reached past afterward:
  * lessons, events, and the people in the directory — none of which existed as
  * a searchable thing when they were written, and none of which any creator
  * should have to touch a button to make findable.

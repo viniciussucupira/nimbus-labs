@@ -281,7 +281,7 @@ export function HeroFlow() {
         </div>
 
         {/*
-          Where the money ended up, along the foot of the whole composition.
+          Where the money ended up, along the bottom of the whole composition.
           It is here from the first frame rather than arriving with the sale,
           because it is the claim the page is making: the line is the
           creator's own Stripe account, and the figure beside it is what the
@@ -297,15 +297,27 @@ export function HeroFlow() {
               </span>
               <span className="min-w-0">
                 <span className="block text-[12px] font-semibold text-white">Your Stripe account</span>
-                <span className="block text-[10.5px] text-white/70">Marktmorgen takes $0.00</span>
+                <span className="block text-[10.5px] text-white/70">Marktmorgen&rsquo;s cut: $0.00</span>
               </span>
             </span>
-            <span
-              className={`shrink-0 rounded-[9px] px-2.5 py-1.5 text-[13px] font-semibold tabular-nums transition-colors duration-700 ${
-                paid ? "bg-mint-soft text-mint-deep" : "bg-white/10 text-white/70"
-              }`}
-            >
-              {paid ? "+$39.00" : "$0.00"}
+            {/*
+              A figure on a screen has to say what it is. This one is the
+              gross payment — what the buyer paid, before Stripe takes its own
+              processing fee on the creator's account — and it is labeled as
+              that both on screen and for a screen reader, in both states.
+            */}
+            <span className="shrink-0 text-right">
+              <span className="block text-[9.5px] font-medium uppercase tracking-[0.08em] text-white/55">
+                Gross payment
+              </span>
+              <span
+                className={`mt-0.5 block rounded-[9px] px-2.5 py-1 text-[13px] font-semibold tabular-nums transition-colors duration-700 ${
+                  paid ? "bg-mint-soft text-mint-deep" : "bg-white/10 text-white/70"
+                }`}
+              >
+                <span className="sr-only">{paid ? "Gross payment received: " : "Gross payment so far: "}</span>
+                {paid ? "+$39.00" : "$0.00"}
+              </span>
             </span>
           </div>
         </div>
@@ -326,8 +338,8 @@ export function HeroFlow() {
         <Link href="/demo" className="font-medium text-white underline underline-offset-4 decoration-white/40 hover:decoration-white">
           demo store
         </Link>
-        . The $39.00 is what the buyer pays; Stripe charges its own processing fee on your account, and Marktmorgen
-        charges nothing on top.
+        . The $39.00 is the gross payment, what the buyer pays. Stripe takes its own processing fee from it on your
+        account, and Marktmorgen takes nothing on top.
       </p>
 
       <div className="mt-5 flex justify-center" role="group" aria-label="Steps of a sale">
@@ -375,12 +387,12 @@ const INCLUDED = [
   "Up to three prices on any product, bundles of 2 to 20 products, pay what you want, discount codes and payment plans",
   "15 currencies, and Apple Pay, Google Pay, Klarna and the other ways to pay you switch on in Stripe",
   "Offers before and after paying: a box at checkout, and up to five one-click offers after",
-  "An affiliate program with a page for each affiliate, paid from your own PayPal in one press",
-  "Ad pixels, and your own numbers counted without cookies, as CSV files too",
+  "An affiliate program with a page for each affiliate, paid from your own PayPal in one press or on payday by itself",
+  "Your own numbers counted without cookies, as CSV files too, and ad pixels for Meta, Google, TikTok and Pinterest — those are the platforms' own, and visitors are asked first where the law requires it",
   "License keys, stamped PDFs, course quizzes and certificates",
   "A private video room for each booking if you want one, and calendar sync for your calls",
   "Mailchimp, Kit, beehiiv or MailerLite built in, and webhooks for Zapier or Make",
-  "A team of up to five per store with roles, and notifications of sales on your phone",
+  "A team of you plus up to five people per store, each with a role, and notifications of sales on your phone",
   "Sign-in without passwords, and a full refund that closes access by itself",
   "Free products that build an email list you can download",
   "Your list, products and past buyers brought over from another platform, from a spreadsheet",
@@ -395,8 +407,19 @@ const PRO_INCLUDED = [
   "One-click unsubscribe in every email, honored for good",
   "Community announcements emailed to the members who asked for them, counted in the same monthly allowance",
   "One email that asks each buyer for a review, 3 to 30 days after buying",
-  `Emails drafted with AI too, and ${AI_MONTHLY.pro} drafts a month in all`,
+  `The same AI drafting, with the monthly allowance raised from ${AI_MONTHLY.creator} to ${AI_MONTHLY.pro} drafts, and emails among the things it drafts`,
 ];
+
+/*
+ * A yearly price said as a monthly one, for comparing with the monthly plan.
+ * It is never the number on the card — the card shows what is actually
+ * charged, once a year — only the line underneath that does the division so
+ * nobody has to.
+ */
+function monthlyEquivalent(yearCents: number): string {
+  const perMonth = yearCents / 12 / 100;
+  return Number.isInteger(perMonth) ? String(perMonth) : perMonth.toFixed(2);
+}
 
 function PlanCard({
   name,
@@ -447,12 +470,12 @@ function PlanCard({
         <span className="text-[3.5rem] font-semibold leading-none tracking-[-0.05em] text-ink tabular-nums">
           ${yearly ? year / 100 : month / 100}
         </span>
-        <span className="text-ink-mute">{yearly ? "a year" : "per month"}</span>
+        <span className="text-ink-mute">{yearly ? "a year" : "a month"}</span>
       </p>
       <p className="mt-2 min-h-[1.5rem] text-[0.9375rem] text-ink-soft">
         {yearly
-          ? `Paid once. $${saving} less than twelve months at $${month / 100}.`
-          : `Or $${year / 100} a year, paid once \u2014 $${saving} less than twelve months.`}
+          ? `Billed annually, in one payment. That works out at $${monthlyEquivalent(year)} a month \u2014 $${saving} less than twelve months at $${month / 100}.`
+          : `Billed monthly. Or $${year / 100} a year in one payment \u2014 $${saving} less than twelve months.`}
       </p>
 
       <ul className="mt-6 space-y-3">
@@ -482,9 +505,9 @@ function PlanCard({
         </Link>
         {/* What the button does, before it is pressed. */}
         <p className="mt-3 text-center text-[0.8125rem] leading-relaxed text-ink-mute">
-          {`Sends a login link to your email. ${TRIAL_DAYS} days free, then $${
+          {`Sends a login link to your email. Free for ${TRIAL_DAYS} days; your card is taken at the start and first charged $${
             yearly ? year / 100 : month / 100
-          } ${yearly ? "a year" : "a month"}. Cancel in two clicks.`}
+          } ${yearly ? "a year" : "a month"} when the trial ends. Cancel in two clicks before then and it is never charged.`}
         </p>
       </div>
     </div>
@@ -544,7 +567,7 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
           <Icon name="clock" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
           <span>
             <strong className="font-semibold text-ink">{`Free for the first ${TRIAL_DAYS} days.`}</strong>
-            {" We email you a week before the first charge, and canceling before it means your card is never charged. Cancel in two clicks from your studio. No email to us, no chat, no second request."}
+            {" Your card is taken when the trial starts and first charged when it ends. We email you a week before that, and canceling before it means your card is never charged. Cancel in two clicks from your studio. No email to us, no chat, no second request. The trial is for your first store; a second store is paid from day one."}
           </span>
         </p>
         <p className="flex gap-2 text-ink-soft">
@@ -558,7 +581,7 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
           <Icon name="download" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
           <span>
             <strong className="font-semibold text-ink">200 GB of downloads a month.</strong> Stated here, not hidden in the
-            terms. Move between the plans from your studio whenever you like.
+            terms, and nothing is cut off if you pass it. Move between the plans from your studio whenever you like.
           </span>
         </p>
       </div>

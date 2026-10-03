@@ -162,7 +162,7 @@ export async function sendMoveLink(
       "",
       "If that was you, finish it from the link sent to that address.",
       "",
-      `If it was not you, log in at ${origin}/signin with this email address and choose “Log out of all devices” at the foot of your studio. Nothing has moved yet, and nothing moves until someone opens the link sent to that other address.`,
+      `If it was not you, log in at ${origin}/signin with this email address and choose “Log out of all devices” at the bottom of your studio. Nothing has moved yet, and nothing moves until someone opens the link sent to that other address.`,
     ].join("\n"),
   }).catch(() => undefined);
 
@@ -484,7 +484,7 @@ export async function noteSignIn(
           "",
           "If it was not you: log in at",
           "https://marktmorgen.com/signin",
-          "with this email address, choose “Log out of all devices” at the foot of your studio, remove any passkey you do not recognize, and reply to this email so we can help.",
+          "with this email address, choose “Log out of all devices” at the bottom of your studio, remove any passkey you do not recognize, and reply to this email so we can help.",
         ].join("\n"),
       }).catch(() => false);
     }

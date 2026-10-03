@@ -14,7 +14,7 @@ import { isDomainsConfigured } from "@/lib/domains";
 
 const HOME_TITLE = "Marktmorgen — the link-in-bio store that pays into your own Stripe";
 const HOME_DESCRIPTION =
-  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is theirs as soon as Stripe confirms the payment, and Marktmorgen takes 0% of your sales.";
+  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, every handover is checked against Stripe's own record of the payment, and Marktmorgen takes 0% of your sales. Stripe's processing fee applies.";
 
 export const metadata: Metadata = {
   title: HOME_TITLE,
@@ -75,10 +75,10 @@ const REASONS: {
   },
   {
     icon: "bolt",
-    title: "Handed over as soon as Stripe confirms",
-    body: "A file downloads, a course opens, a booked call lands on both calendars — each one when Stripe confirms the payment, not when somebody reaches a thank-you page. If the buyer loses what they bought, a month or a year later, they get it again by email.",
+    title: "Checked against Stripe, not against a page",
+    body: "A file downloads, a course opens, a booked call lands on both calendars — but only after we ask Stripe's own record whether the payment settled, and we ask again on every download. A link somebody guesses or forwards opens nothing. If the buyer never comes back from checkout, the confirmation reaches them by email within minutes.",
     example:
-      "A buyer on a new phone types the email address they paid with, and every purchase from that store comes back to them.",
+      "A buyer on a new phone types the email address they paid with, and every purchase from that store comes back to them — a month or a year later, for as long as the store is open and the product is still there.",
     visual: "delivery",
     href: "/platform/instant-delivery",
     link: "How delivery works",
@@ -112,7 +112,7 @@ const GROUPS: Group[] = [
       { title: "A community", body: "Posts, comments and live events, open only to the buyers you choose." },
       { title: "Bundles", body: "2 to 20 of your products at one price, each delivered as itself." },
       { title: "Sales and landing pages", body: "Up to 30 blocks for any product, with video and your buyers' reviews." },
-      { title: "Up to 2,000 products", body: "And 100 links, on one page that shows them 24 at a time." },
+      { title: "Up to 2,000 products", body: "And 100 links. Products show 24 at a time; the links all show at once." },
     ],
   },
   {
@@ -140,7 +140,7 @@ const GROUPS: Group[] = [
     href: "/platform#group-deliver",
     link: "Every way we deliver",
     items: [
-      { title: "Instant download", body: "On screen as soon as Stripe confirms the payment. Lost later? The buyer gets it again by email, any time." },
+      { title: "Instant download", body: "On screen the moment the buyer comes back from Stripe's checkout. Lost later? The buyer gets it again by email, any time." },
       { title: "Courses without passwords", body: "Students open them with a link sent to their email." },
       { title: "Calendar invites", body: "A calendar file emailed to you both for each booked call, with reminders before it." },
       { title: "A confirmation for every buyer", body: "From your store's name, with the way back to what they bought." },
@@ -162,7 +162,7 @@ const GROUPS: Group[] = [
       ...(DOMAINS ? [{ title: "Your own domain", body: "shop.yourname.com opens your store, certificate included.", pro: true }] : []),
       { title: "Verified reviews", body: "Only from buyers who paid. You can answer them, never edit them." },
       { title: "Your email platform", body: "Mailchimp, Kit, beehiiv or MailerLite, fed only with people who agreed." },
-      { title: "Affiliates", body: "A link and a page for each one. Paid from your own PayPal in one press." },
+      { title: "Affiliates", body: "A link and a page for each one. Paid from your own PayPal in one press, or on payday by itself." },
       { title: "Ad pixels", body: "Meta, Google, TikTok and Pinterest see each purchase and its amount." },
       { title: "Webhooks", body: "Sales, leads and bookings, sent to Zapier, Make or your own server." },
       { title: "Your photo, your color", body: "Four themes, ten colors or your own, each checked for contrast." },
@@ -180,9 +180,9 @@ const GROUPS: Group[] = [
     link: "What your numbers show",
     items: [
       { title: "Your numbers", body: "Visitors, where they came from, checkouts and sales, from 7 days to all time, as CSV files too." },
-      { title: "Every sale, from Stripe", body: "With the buyer's address, so you can answer them." },
+      { title: "Every sale, from Stripe", body: "With the buyer's email address, so you can answer them." },
       { title: "No password, ever", body: "Log in with a link sent to your email, or a passkey. Nothing for us to lose." },
-      { title: "A team, and more stores", body: "Up to five people per store with their own roles, and up to five stores." },
+      { title: "A team, and more stores", body: "You plus up to five people per store, each with their own role, and up to five stores." },
       { title: "Sales on your phone", body: "A notification for every sale and booking, from the studio on your home screen." },
     ],
   },
@@ -198,7 +198,7 @@ const NOT_YET = [
   "PayPal at checkout",
   "An iPhone app from the App Store",
   "Zoom links made for each booking",
-  "Paying your affiliates for you",
+  "Paying affiliates without a PayPal account of your own",
 ];
 
 /*
@@ -280,8 +280,9 @@ export default function Home() {
               </h1>
               <p className="t-lead measure mt-7 text-white/80">
                 Sell files, courses, calls and memberships from the link in your bio. Buyers pay straight into your own
-                Stripe account, what they bought is theirs as soon as Stripe confirms the payment, and Marktmorgen takes{" "}
-                <strong className="font-semibold text-white">0% of your sales</strong>.
+                Stripe account. Marktmorgen takes{" "}
+                <strong className="font-semibold text-white">0% of your sales</strong> — only Stripe charges its own
+                processing fee, on your account.
               </p>
               {/*
                 On a phone the two calls to action run the width of the
@@ -332,7 +333,7 @@ export default function Home() {
                 ))}
               </ul>
               <p className="mt-4 text-sm text-white/80">
-                {`$${PRICE} a month after the trial. Cancel in two clicks, from your own studio.`}
+                {`Your card is taken when the trial starts and first charged ${TRIAL_DAYS} days later, at $${PRICE} a month. Cancel in two clicks, from your own studio, and it is never charged.`}
               </p>
             </div>
 
@@ -359,7 +360,7 @@ export default function Home() {
                 icon: "gauge" as IconName,
                 figure: "97–100",
                 title: "Google PageSpeed",
-                body: "Mobile performance on the demo store, measured September 17, 2026.",
+                body: "Mobile performance on the demo store, measured September 17, 2026, before its photos were added.",
               },
               {
                 icon: "lock" as IconName,
@@ -377,7 +378,7 @@ export default function Home() {
                 icon: "download" as IconName,
                 figure: "200 GB",
                 title: "Of downloads a month",
-                body: "Written here, not buried in the terms. Files up to 5 GB each.",
+                body: "Stated here, not buried in the terms, and nothing is cut off if you pass it. Files up to 5 GB each.",
               },
             ].map((f) => (
               <li key={f.title} className="flex gap-3.5">
@@ -560,7 +561,10 @@ export default function Home() {
                   <p className="text-sm font-medium text-ink-mute">A sale of the 5-week planner</p>
                   <span className="tag tag-live">Paid</span>
                 </div>
-                <p className="mt-3 text-[2.75rem] font-semibold leading-none tracking-[-0.05em]">$39.00</p>
+                <p className="mt-3 text-[0.8125rem] font-medium uppercase tracking-[0.08em] text-ink-mute">
+                  Gross payment
+                </p>
+                <p className="mt-1 text-[2.75rem] font-semibold leading-none tracking-[-0.05em]">$39.00</p>
                 <dl className="mt-7 divide-y divide-line border-y border-line text-[0.9375rem]">
                   <div className="flex items-center justify-between py-3.5">
                     <dt className="text-ink-soft">Paid by your buyer</dt>
@@ -571,8 +575,12 @@ export default function Home() {
                     <dd className="text-ink-soft">set by Stripe, on your account</dd>
                   </div>
                   <div className="flex items-center justify-between py-3.5">
-                    <dt className="text-ink-soft">Marktmorgen</dt>
+                    <dt className="text-ink-soft">Marktmorgen&apos;s cut</dt>
                     <dd className="font-semibold text-mint-deep">$0.00</dd>
+                  </div>
+                  <div className="flex items-center justify-between py-3.5">
+                    <dt className="font-semibold text-ink">Net to your bank</dt>
+                    <dd className="text-ink-soft">$39.00 less Stripe&apos;s fee</dd>
                   </div>
                 </dl>
                 <div className="mt-6 flex items-center gap-3 rounded-[var(--r-md)] bg-lilac p-4">
@@ -716,7 +724,8 @@ export default function Home() {
                 </div>
                 <p className="mt-3 text-[0.9375rem] text-ink-soft">
                   Google PageSpeed Insights, mobile performance score, measured on September 17, 2026. Three public Stan
-                  stores chosen at random, same tool, same day.
+                  stores chosen at random, same tool, same day. The demo store had no photographs on it when it was
+                  measured; it has them now, and photographs lower the score.
                 </p>
                 <ul className="mt-5 space-y-3">
                   {SPEED.map((s) => (
@@ -799,7 +808,7 @@ export default function Home() {
           <div className="container-narrow py-20 text-center sm:py-28">
             <h2 className="t-h1 balance text-white">Put your first product up today</h2>
             <p className="t-lead mx-auto mt-6 max-w-xl text-white/80">
-              {`Take your address, connect your own Stripe account and list what you sell. Your checkout is free for ${TRIAL_DAYS} days before you decide whether we are worth $${PRICE} a month.`}
+              {`Take your address, connect your own Stripe account and list what you sell. Your checkout is free for ${TRIAL_DAYS} days; your card is taken at the start and first charged $${PRICE} when the trial ends, unless you cancel before it.`}
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
               <Link href="/signin" className="btn btn-light btn-lg">

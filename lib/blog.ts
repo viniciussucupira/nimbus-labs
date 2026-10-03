@@ -396,7 +396,7 @@ export const BLOG_POSTS: BlogPost[] = [
     date: "2026-09-18",
     readMinutes: 4,
     excerpt:
-      "Most creators sell one file at one price. Giving the same work three sizes changes the question in the buyer's head from “should I?” to “which one?”, and that question is far easier to answer.",
+      "Most creators sell one file at one price. Giving the same work three sizes changes the question in the buyer's head from “should I?” to “which one?,” and that question is far easier to answer.",
     kicker: "Pricing",
     from: "#6c3bff",
     to: "#12d6a4",
@@ -461,7 +461,7 @@ export const BLOG_POSTS: BlogPost[] = [
       { type: "h2", text: "Line 1 — the name, said plainly" },
       {
         type: "p",
-        text: "“Weekly Meal Planner” beats “The Nourish Method”. A clever name asks the reader to learn something before they can want it. Save the clever name for when people already know you.",
+        text: "“Weekly Meal Planner” beats “The Nourish Method.” A clever name asks the reader to learn something before they can want it. Save the clever name for when people already know you.",
       },
       { type: "h2", text: "Line 2 — what it physically is" },
       {

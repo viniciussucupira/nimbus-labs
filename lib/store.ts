@@ -2823,7 +2823,7 @@ export type KeysResult =
   | { ok: false; reason: "none" | "unknown" | "kind" };
 
 /**
- * Switches licence keys on for a product, changes how they are made, or
+ * Switches license keys on for a product, changes how they are made, or
  * switches them off (null). Only a paid product sold once can have them. The
  * store is given the id its keys are kept under, if it has none yet.
  */

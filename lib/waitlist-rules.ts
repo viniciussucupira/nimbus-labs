@@ -18,7 +18,7 @@
  *   - The creator presses "Put it on sale and tell the waitlist". The product
  *     goes on sale that moment, and everyone who confirmed gets one email
  *     with its link, its price and, if the creator wrote one, a short note.
- *     That email is the only one the waitlist sends; afterwards the addresses
+ *     That email is the only one the waitlist sends; afterward the addresses
  *     are deleted, except where their owner also asked to hear from the
  *     creator, in which case they are on the creator's list.
  */
@@ -27,7 +27,7 @@
 export const MAX_WAITLIST = 10_000;
 /** The longest note the creator adds to the launch email. */
 export const MAX_LAUNCH_NOTE = 600;
-/** The longest postal address at the foot of the launch email. */
+/** The longest postal address at the bottom of the launch email. */
 export const MAX_LAUNCH_ADDRESS = 200;
 /** How long the link to confirm a spot works. */
 export const CONFIRM_SECONDS = 7 * 86_400;
@@ -91,7 +91,7 @@ export function parseJob(raw: unknown): LaunchJob | null {
   }
 }
 
-/** The launch email's own words, before the foot every email carries. */
+/** The launch email's own words, before the bottom of every email carries. */
 export function launchBody(input: { storeName: string; title: string; price: string; link: string; note: string }): { subject: string; body: string } {
   const lines = [
     `You asked ${input.storeName} to tell you when ${input.title} came out. It is out now${input.price ? `, at ${input.price}` : ""}:`,

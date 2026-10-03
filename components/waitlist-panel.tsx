@@ -8,7 +8,7 @@ import type { WaitlistView } from "@/lib/waitlist";
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
   free: "A free product already takes addresses. A waitlist is for something paid.",
-  address: "Add a postal address for the foot of the email: US law asks for one in any email about something for sale.",
+  address: "Add a postal address for the bottom of the email: US law asks for one in any email about something for sale.",
   busy: "The launch email is still going out. Wait for it to finish.",
   unknown: "That product is no longer in your store. Reload the page.",
 };
@@ -108,7 +108,7 @@ export function WaitlistPanel({
                 />
               </label>
               <label className="block">
-                <span className="field-label">Postal address at the foot of the email</span>
+                <span className="field-label">Postal address at the bottom of the email</span>
                 <input
                   className="field mt-1"
                   maxLength={MAX_LAUNCH_ADDRESS}

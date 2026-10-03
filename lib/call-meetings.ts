@@ -19,7 +19,7 @@
  *
  * Refunds. A booking refunded in full in the creator's Stripe account has
  * its meeting removed (a one-to-one call) or its buyer taken off the guest
- * list (a group). Refunds are read from Stripe, as the licence keys read
+ * list (a group). Refunds are read from Stripe, as the license keys read
  * them (lib/licence-keys.ts): only for stores with meetings still to come,
  * from where the last run stopped, a bounded number per run, each once. A
  * partial refund changes nothing, the rule every other door follows
@@ -221,7 +221,7 @@ async function refundsOf(store: Store, callsId: string, deadline: number): Promi
     }
     after = last.id;
   }
-  // Moved forward only past what was read to the end, as the licence keys do.
+  // Moved forward only past what was read to the end, as the license keys do.
   if ((complete && lookups > 0 && Date.now() < deadline) || !(Number(anchorRaw) > 0)) {
     await redisPipeline([["SET", anchorKey(callsId), String(complete ? Math.max(newest, anchor) : anchor), "EX", REFUND_KEEP_SECONDS * 2]]);
   }

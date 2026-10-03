@@ -307,7 +307,7 @@ function RoleTable() {
   );
 }
 
-/** "Leave this store", for someone on its team, at the foot of their studio. */
+/** "Leave this store", for someone on its team, at the bottom of their studio. */
 export function LeaveTeam({ store }: { store: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);

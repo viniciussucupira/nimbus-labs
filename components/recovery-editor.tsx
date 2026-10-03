@@ -131,7 +131,7 @@ export function RecoveryEditor({
               className="field mt-2"
             />
             <p id="recovery-address-hint" className="mt-2 text-xs text-ink-soft">
-              Printed at the foot of every reminder, as US law asks. A PO box or a mailbox service is fine.
+              Printed at the bottom of every reminder, as US law asks. A PO box or a mailbox service is fine.
             </p>
           </div>
 

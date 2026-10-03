@@ -148,7 +148,7 @@ async function tell(email: string, subject: string, line: string): Promise<void>
       "",
       "If it was not you: log in at",
       `${SITE_URL}/signin`,
-      "with this email address, remove any passkey you do not recognize, choose “Log out of all devices” at the foot of your studio, and reply to this email so we can help.",
+      "with this email address, remove any passkey you do not recognize, choose “Log out of all devices” at the bottom of your studio, and reply to this email so we can help.",
     ].join("\n"),
   }).catch(() => false);
 }

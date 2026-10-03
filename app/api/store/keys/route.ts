@@ -19,7 +19,7 @@ import {
 import { readListing } from "@/lib/catalog";
 
 /**
- * A product's licence keys, for the creator who sells it.
+ * A product's license keys, for the creator who sells it.
  *
  * GET `?id=<product>&q=<search>`: how many keys are left, given, revoked and
  * waiting, and the most recent keys given — or the ones matching the search.
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
       { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (error) {
-    console.error("reading licence keys failed", error);
+    console.error("reading license keys failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });
   }
 }
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     // The set-up is kept on the product, in the store record, which refuses
     // to grow past its ceiling; the keys themselves live in records of their own.
     if (error instanceof StoreFullError) return Response.json({ ok: false, error: "store_full" }, { status: 409 });
-    console.error("changing licence keys failed", error);
+    console.error("changing license keys failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });
   }
 }

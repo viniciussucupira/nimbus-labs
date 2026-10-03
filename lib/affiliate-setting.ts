@@ -139,7 +139,7 @@ export function paydayWords(date: Date): string {
 
 /**
  * The promise in one sentence, for the affiliate to read before they apply
- * and every time they look afterwards. When no day is promised it says that
+ * and every time they look afterward. When no day is promised it says that
  * plainly rather than dressing it up: an affiliate is owed the truth about
  * when they will be paid, including when the answer is "no fixed day".
  */

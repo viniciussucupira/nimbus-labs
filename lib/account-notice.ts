@@ -156,7 +156,7 @@ export async function noticeCreator(store: Pick<Store, "email" | "handle">, chan
         "",
         "If it was not you: log in at",
         `${SITE_URL}/signin`,
-        "with this email address, choose “Log out of all devices” at the foot of your studio, put the setting back, and reply to this email so we can help.",
+        "with this email address, choose “Log out of all devices” at the bottom of your studio, put the setting back, and reply to this email so we can help.",
         "",
         "Marktmorgen sends this notice every time your Stripe account, your store's currency, your domain, your webhooks, your email platform, your Google Calendar or Zoom connection, or your team changes, and when a new device gets your notifications.",
       ].join("\n"),

@@ -168,7 +168,7 @@ export async function deliverGift(input: {
       "It is yours, on this email address. Open it here:",
       link,
       "",
-      `That link works for 24 hours. After that, go to ${base}/orders, type this address, and a new one comes straight away.`,
+      `That link works for 24 hours. After that, go to ${base}/orders, type this address, and a new one comes right away.`,
       "",
       `Sent by Marktmorgen on behalf of ${store.name}. Nothing was charged to you.`,
     ].join("\n"),

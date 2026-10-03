@@ -99,7 +99,7 @@ const SECTIONS: Section[] = [
         q: "Can I move my store from Stan, Gumroad or another platform?",
         a: [
           "Yes, from a spreadsheet, in three imports from “Moving from another platform” in your studio, on every plan. Your list: up to 50,000 rows a file, and only people who agreed to hear from you \u2014 you confirm it each time, a consent column in the file narrows it further, nobody who unsubscribed here is added back, and nobody is emailed because of it. Your products: up to 500 a file, each made a draft that waits in your studio until you publish it, with its title, price, description and link. Your past buyers: up to 20,000 a file, each given what they bought on your store's list of purchases, marked as brought over from another platform, with no payment and no receipt.",
-          "Bring products first, because the buyers' file names them by their title or their ID here, then add each product's file or lessons. A buyer brought over for a product that opens your community is let in. If you check “Email each buyer once”, each buyer gets one email from your store's name saying what moved and how to open it \u2014 up to 20,000 buyers per store in 30 days \u2014 and nothing more is sent because of it. The studio reads the file in your browser, you say which column is which, and every row that is not brought in is listed with its row number and the reason, as a spreadsheet you download.",
+          "Bring products first, because the buyers' file names them by their title or their ID here, then add each product's file or lessons. A buyer brought over for a product that opens your community is let in. If you check “Email each buyer once,” each buyer gets one email from your store's name saying what moved and how to open it \u2014 up to 20,000 buyers per store in 30 days \u2014 and nothing more is sent because of it. The studio reads the file in your browser, you say which column is which, and every row that is not brought in is listed with its row number and the reason, as a spreadsheet you download.",
           "What it does not do: files, pictures and lessons are not imported; memberships, calls and products with several prices cannot be given to past buyers; buyers brought over get no license key here and are not counted as sales, sent to webhooks, credited to affiliates or able to review; and an import cannot be undone in one step. You and your Admins can import. Stan's help center, read on September 28, 2026, allows up to 5,000 imported contacts per store in all, has you send them an opt-in email, and grants a customer access to a product one at a time.",
         ],
       },
@@ -255,14 +255,14 @@ const SECTIONS: Section[] = [
       {
         q: "Can I sell a private podcast?",
         a: [
-          "Yes, on the $29 plan. Under a paid product in your studio, choose \u201cSell this as a private podcast\u201d, then put out episodes as MP3 or M4A files. It can be sold once or as a membership, and goes on sale with its first episode.",
+          "Yes, on the $29 plan. Under a paid product in your studio, choose \u201cSell this as a private podcast,\u201d then put out episodes as MP3 or M4A files. It can be sold once or as a membership, and goes on sale with its first episode.",
           "Each buyer gets a feed of their own, from the thanks page, their confirmation email or their list of purchases, and adds it to Apple Podcasts, Overcast, Pocket Casts or most other apps in one tap; new episodes arrive there like any show's. Spotify does not take private feeds. Every time the app reads the feed or fetches an episode, we check that the buyer still has it, so a refund or a membership that ends empties their feed within minutes. Podcast directories and search engines are told to keep out.",
         ],
       },
       {
         q: "Can I run a sale, like Black Friday?",
         a: [
-          "Yes, on the $29 plan. In your studio, under \u201cA sale across the store\u201d, pick a percentage, when it starts and ends (at most 31 days), and whether it covers every product it can or only some. While it runs, your store and each product's page show the old price crossed out, the new one and when it ends, and Stripe takes it off at checkout with no code to type.",
+          "Yes, on the $29 plan. In your studio, under \u201cA sale across the store,\u201d pick a percentage, when it starts and ends (at most 31 days), and whether it covers every product it can or only some. While it runs, your store and each product's page show the old price crossed out, the new one and when it ends, and Stripe takes it off at checkout with no code to type.",
           "It ends by itself at the time you set: the prices go back, and the discount stops working at Stripe too. It covers products bought once at one price. Memberships, calls, products with price options or a price the buyer chooses keep their price, and on a product with a payment plan the sale price is for paying in full, as its page says.",
         ],
       },
@@ -271,14 +271,14 @@ const SECTIONS: Section[] = [
         a: [
           "Yes, on any paid product bought once that hands over a file, a link, a course or a bundle. Under the buy button on its page there is \u201cBuy it as a gift\u201d: the buyer types the recipient's email, their own name and a message, and pays on Stripe's page as for anything else, on your own Stripe account.",
           "The recipient gets one email with the buyer's name, the message and a link to open it. It is theirs on their own address, as if they had bought it: the download, the course with its modules opening from the day it was paid, the community it opens. The buyer gets the receipt and does not get a copy. A full refund takes the gift back within minutes.",
-          "Memberships, calls, products with price options, a price the buyer chooses or licence keys cannot be given.",
+          "Memberships, calls, products with price options, a price the buyer chooses or license keys cannot be given.",
         ],
       },
       {
         q: "Can I take a waitlist before something goes on sale?",
         a: [
           "Yes, on any paid product. In your studio, check \u201cComing soon, with a waitlist\u201d under the product: its card and its page then take an email address instead of a payment, and no checkout opens. Each address is confirmed from its own inbox before it counts, and the box to hear more from you starts empty.",
-          "When it is ready, press \u201cPut it on sale and tell the waitlist\u201d. It goes on sale that moment, and everyone who confirmed gets one email with its link, its price and a note from you if you write one, with the postal address US law asks for at the foot. That is the only email a waitlist sends; afterwards its addresses are deleted, and whoever checked the box is on your list.",
+          "When it is ready, press \u201cPut it on sale and tell the waitlist.\u201d It goes on sale that moment, and everyone who confirmed gets one email with its link, its price and a note from you if you write one, with the postal address US law asks for at the bottom. That is the only email a waitlist sends; afterward its addresses are deleted, and whoever checked the box is on your list.",
           "You see how many are waiting and how many confirmed. The emails go out in batches every five minutes and do not count toward your monthly email allowance.",
         ],
       },
@@ -468,7 +468,7 @@ const SECTIONS: Section[] = [
       {
         q: "Can I put the buyer's email on a PDF?",
         a: [
-          "Yes. Switch on stamping for a product, and every page of the PDF a buyer downloads carries one line along its foot with their email, the date and their order. It discourages sharing; it does not stop it, and it is not copy protection. PDFs up to 50 MB are stamped; a bigger one, or one locked with a password, is handed over as uploaded and your studio tells you. Say on the product that the buyer's email is printed on it.",
+          "Yes. Switch on stamping for a product, and every page of the PDF a buyer downloads carries one line along the bottom with their email, the date and their order. It discourages sharing; it does not stop it, and it is not copy protection. PDFs up to 50 MB are stamped; a bigger one, or one locked with a password, is handed over as uploaded and your studio tells you. Say on the product that the buyer's email is printed on it.",
         ],
       },
       {
@@ -516,14 +516,14 @@ const SECTIONS: Section[] = [
         q: "Does the download link expire?",
         a: [
           "Yes. The link on the thank-you page works for three days and is tied to that order, so a link that leaks does not turn into a free copy for everyone. A large file is fetched through a signed link that expires in minutes, and where a file is stored is never shown.",
-          "A buyer who loses it does not lose what they paid for, a week or a year later. At the foot of every store page there is \u201cBought something here? Get it again\u201d: they type the address they paid with, and we email that address a link to a page with everything it bought from that store, up to the 40 most recent purchases \u2014 downloads, links and courses \u2014 ready to open again. No account, no password.",
+          "A buyer who loses it does not lose what they paid for, a week or a year later. At the bottom of every store page there is \u201cBought something here? Get it again\u201d: they type the address they paid with, and we email that address a link to a page with everything it bought from that store, up to the 40 most recent purchases \u2014 downloads, links and courses \u2014 ready to open again. No account, no password.",
           "The list is read from your own Stripe account each time it opens, so a sale you refunded in full, or a membership that has ended, is not on it, and its download stops working. The page answers the same whether or not the address bought anything, so nobody can use it to find out who your customers are.",
         ],
       },
       {
         q: "A buyer says the file never arrived. What now?",
         a: [
-          "Send them to \u201cGet it again\u201d at the foot of your store page, at your store address followed by /orders \u2014 they type the address they paid with and a link to everything they bought arrives in their inbox. That answers most of these without you doing anything.",
+          "Send them to \u201cGet it again\u201d at the bottom of your store page, at your store address followed by /orders \u2014 they type the address they paid with and a link to everything they bought arrives in their inbox. That answers most of these without you doing anything.",
           "If it still does not appear, check the payment in your own Stripe dashboard: a payment that did not complete is the most common cause. If Stripe shows the payment succeeded and the file still did not arrive, email us with the order details and we will look at it with you.",
         ],
       },
@@ -545,7 +545,7 @@ const SECTIONS: Section[] = [
       {
         q: "How are my store and my buyers protected?",
         a: [
-          "Sales are charged on Stripe's own checkout, on your own Stripe account, and what a buyer is charged is worked out on our server from what you saved. You sign in with a link sent to your email that works once and stops working after 15 minutes, or with a passkey if you add one. Each sign-in starts a fresh session, and \u201cLog out of all devices\u201d at the foot of your studio closes every session at once. When your Stripe account, your domain or your webhooks change, we email you saying what changed. What each role on your team may do is checked on our server for every request, the API key of an email platform you connect is stored encrypted, and reviews can be written only for orders your Stripe account says were paid.",
+          "Sales are charged on Stripe's own checkout, on your own Stripe account, and what a buyer is charged is worked out on our server from what you saved. You sign in with a link sent to your email that works once and stops working after 15 minutes, or with a passkey if you add one. Each sign-in starts a fresh session, and \u201cLog out of all devices\u201d at the bottom of your studio closes every session at once. When your Stripe account, your domain or your webhooks change, we email you saying what changed. What each role on your team may do is checked on our server for every request, the API key of an email platform you connect is stored encrypted, and reviews can be written only for orders your Stripe account says were paid.",
           "Store pages, on our address and on your own domain, the studio and signing in carry a strict Content-Security-Policy with a new nonce on every response, so text somebody typed cannot run as a script. Your ad pixels load only after consent where the law asks for it. Every request that changes something must come from this site, our cookies are HttpOnly and SameSite, and pages carry HSTS, nosniff, a referrer policy, Cross-Origin-Opener-Policy and a Permissions-Policy, and cannot be framed by other sites. Links we email point only at marktmorgen.com or your store's own domain.",
           "Files are handed over as downloads that cannot run anything in the browser. A full refund on your Stripe account closes what it paid for by itself: the download at once, the course within 10 minutes, the community within 5, and the license key within about 5; a partial refund keeps access. Checkouts are limited to 20 per 10 minutes per connection per store, and bookings and forms that send an email have limits too, so a script cannot sit on your limited stock or call times. Webhooks are signed, and calendar and webhook addresses cannot reach private networks.",
           "What it does not do: there is no two-factor sign-in, because there are no passwords, so keep your email inbox safe. On a payment plan only a refund in full of the first payment is detected, and a refunded membership closes when its subscription is canceled. If our database cannot be reached, the limits let requests through rather than stop a buyer from paying.",

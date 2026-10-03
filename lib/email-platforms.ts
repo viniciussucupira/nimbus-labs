@@ -94,7 +94,7 @@ export function keyProblem(provider: EmailProvider, raw: string): string | null 
   if (!key) return "Paste your API key.";
   if (key.length > MAX_KEY_LENGTH || /\s/.test(key)) return "That does not look like an API key.";
   if (provider === "mailchimp" && !/^[0-9a-f]{32}-[a-z]{2,4}\d{1,3}$/.test(key)) {
-    return "A Mailchimp API key ends in the data center it lives in, like “-us21”. Copy the whole key.";
+    return "A Mailchimp API key ends in the data center it lives in, like “-us21.” Copy the whole key.";
   }
   if (provider !== "mailchimp" && !/^[A-Za-z0-9._-]{16,}$/.test(key)) return "That does not look like an API key.";
   return null;

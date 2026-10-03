@@ -11,7 +11,7 @@ import type { Pixels } from "@/lib/pixels";
  * for consent first is asked, in plain words, and nothing runs unless they
  * say yes. Everywhere else the pixels run unless the browser sends Global
  * Privacy Control, which is a no given in advance. Either way the choice can
- * be changed from the link at the foot of the page, and it is kept for this
+ * be changed from the link at the bottom of the page, and it is kept for this
  * store only, on this device.
  *
  * The scripts are each platform's own standard snippet, loaded from the

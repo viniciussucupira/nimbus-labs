@@ -13,7 +13,7 @@
  * link, a course or a bundle. Not a membership or a payment plan (the
  * payments would be the buyer's for months), not a call (the time is the
  * buyer's to pick), not a product with price options, a price the buyer
- * chooses or licence keys.
+ * chooses or license keys.
  */
 import type { Listing } from "@/lib/catalog";
 

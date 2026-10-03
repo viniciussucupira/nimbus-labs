@@ -19,7 +19,7 @@
  *     is told now (lib/sale-events.ts), once, on a store that connected
  *     either.
  *
- * A store that hands out licence keys also has its refunds read, and the
+ * A store that hands out license keys also has its refunds read, and the
  * key of every sale refunded in full is revoked (lib/licence-keys.ts), so
  * the creator's software hears about a refund within minutes, without the
  * creator having to go and revoke it by hand. A store whose buyers have

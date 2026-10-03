@@ -17,7 +17,7 @@ const PROVIDERS: { key: EmailProvider; name: string; target: string; tags: strin
     name: "Mailchimp",
     target: "audience",
     tags: "Tags",
-    where: "In Mailchimp: your profile, then Extras, then API keys, then “Create A Key”. The key ends in something like “-us21”.",
+    where: "In Mailchimp: your profile, then Extras, then API keys, then “Create A Key.” The key ends in something like “-us21.”",
     placeholder: "Your Mailchimp API key (ends in -us21 or similar)",
   },
   {
@@ -33,7 +33,7 @@ const PROVIDERS: { key: EmailProvider; name: string; target: string; tags: strin
     name: "beehiiv",
     target: "publication",
     tags: "Tags",
-    where: "In beehiiv: Settings, then API under Workspace Settings, then “Create New API Key”.",
+    where: "In beehiiv: Settings, then API under Workspace Settings, then “Create New API Key.”",
     placeholder: "Your beehiiv API key",
   },
   {
@@ -41,7 +41,7 @@ const PROVIDERS: { key: EmailProvider; name: string; target: string; tags: strin
     name: "MailerLite",
     target: "group",
     tags: "Groups",
-    where: "In MailerLite: Integrations, then “MailerLite API”, then “Generate new token”.",
+    where: "In MailerLite: Integrations, then “MailerLite API,” then “Generate new token.”",
     placeholder: "eyJ0eXAiOiJKV1Qi…",
   },
 ];

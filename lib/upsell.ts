@@ -564,7 +564,7 @@ export async function upsellDelivery(
   if (!record || record.state !== "paid") return null;
   const product = await readListing(store, record.product);
   // Its own payment's id, when Stripe gave one: the same reference the
-  // buyer's list of purchases shows it under, so a licence key or a stamped
+  // buyer's list of purchases shows it under, so a license key or a stamped
   // copy made for it is found again from either page.
   const reference = upsellReference(session, slot, record);
   // When it was paid, in seconds: the date a stamped copy carries.

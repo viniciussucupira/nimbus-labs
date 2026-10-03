@@ -79,7 +79,7 @@ export function OldAddresses({ handles }: { handles: string[] }) {
                 <p className="text-sm text-ink-soft">
                   Any link already published under{" "}
                   <strong className="text-ink">@{handle}</strong> stops working
-                  straight away, and in 30 days the name can be taken by someone
+                  right away, and in 30 days the name can be taken by someone
                   else. Only let go of an address you never gave to anyone.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">

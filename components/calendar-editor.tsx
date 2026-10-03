@@ -211,11 +211,11 @@ export function CalendarEditor({ view: initial, weekly }: { view: CalendarView; 
         <ul className="mt-3 space-y-2 text-ink-soft">
           <li>
             <strong className="text-ink">Google Calendar:</strong> on a computer, Settings, then your calendar under
-            &ldquo;Settings for my calendars&rdquo;, then &ldquo;Secret address in iCal format&rdquo;.
+            &ldquo;Settings for my calendars,&rdquo; then &ldquo;Secret address in iCal format.&rdquo;
           </li>
           <li>
             <strong className="text-ink">Outlook:</strong> Settings, Calendar, Shared calendars, &ldquo;Publish a
-            calendar&rdquo;, choose &ldquo;Can view when I&apos;m busy&rdquo;, then copy the ICS link.
+            calendar,&rdquo; choose &ldquo;Can view when I&apos;m busy,&rdquo; then copy the ICS link.
           </li>
           <li>
             <strong className="text-ink">Apple Calendar (iCloud):</strong> on iCloud.com or a Mac, share the calendar as a

@@ -250,7 +250,7 @@ const RUNNING_PAGES = 10;
 /**
  * How many memberships and payment plans of this store are still running on
  * Stripe: each one charges again, in the currency it began in, whatever the
- * store says afterwards. Null when Stripe could not be asked, or had more than
+ * store says afterward. Null when Stripe could not be asked, or had more than
  * could be read — which is treated as "some", never as "none".
  */
 export async function runningSubscriptions(store: Store): Promise<number | null> {

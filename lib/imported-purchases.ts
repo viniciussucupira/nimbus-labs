@@ -13,7 +13,7 @@
  * What one gives is what a purchase of that product gives on the list of
  * purchases (/orders): its file or its link, its course, and for a bundle each
  * of its products — and, when the product (or one in the bundle) opens the
- * store's community, the community (lib/community-access.ts). Licence keys
+ * store's community, the community (lib/community-access.ts). License keys
  * are not handed out for them: a buyer who had a key on the old platform
  * still has it there.
  *

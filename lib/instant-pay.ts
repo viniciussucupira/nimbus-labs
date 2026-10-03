@@ -50,7 +50,7 @@ export const REUSABLE_METHODS = new Set(["card", "link"]);
  * the method for later made of the whole checkout would hide every way to
  * pay that cannot be saved — Klarna, Afterpay, Affirm, iDEAL and the others —
  * from every buyer of a product with a funnel. This way a buyer may still
- * pay with any of them, and simply meets no one-click offer afterwards
+ * pay with any of them, and simply meets no one-click offer afterward
  * (reusableMethod). Saved "on_session": for payments made while the buyer
  * is there, never to be charged behind their back. Apple Pay and Google Pay
  * are cards here, so they are kept the same way. Link is not asked: Stripe

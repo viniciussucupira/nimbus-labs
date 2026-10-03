@@ -166,7 +166,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
     }
   }
 
-  // The licence key of each purchase that has one, read — or given, if the
+  // The license key of each purchase that has one, read — or given, if the
   // thanks page and the confirmation email never got the chance — per sale.
   const keys = new Map<string, SaleKey | "error">();
   if (email && purchases) {
@@ -189,7 +189,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
           const key = await keyForSale(store, product, reference, email);
           if (key) keys.set(slot, key);
         } catch (error) {
-          console.error("reading a licence key failed", error);
+          console.error("reading a license key failed", error);
           keys.set(slot, "error");
         }
       }),
@@ -343,7 +343,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                           {purchase.ended ? (
                             <>
                               <p className="st-muted text-sm">
-                                This membership is no longer running, so what it gave you access to is closed now. Renew it and everything opens again straight away.
+                                This membership is no longer running, so what it gave you access to is closed now. Renew it and everything opens again right away.
                               </p>
                               <Link href={renewPath(store, { id: purchase.productId })} className="btn st-btn btn-block">
                                 Renew your membership

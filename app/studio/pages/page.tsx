@@ -72,7 +72,7 @@ export default async function StudioPagesPage({ searchParams }: Params) {
   const leadsTo = !selected || !action
     ? ""
     : action.action.kind === "checkout"
-      ? "It opens Stripe's checkout for this product straight away, at the price your store shows."
+      ? "It opens Stripe's checkout for this product right away, at the price your store shows."
       : action.action.kind === "link" && action.action.href === "#buy"
         ? "It takes the buyer to the buy box at the end of the page, where they pick an option or a plan and pay."
         : action.action.kind === "link" && action.action.href === "#get"

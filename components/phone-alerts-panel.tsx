@@ -287,7 +287,7 @@ export function PhoneAlertsPanel({ view: initial }: { view: PhoneView }) {
             <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-ink-soft">
               <li>Open this page in Safari.</li>
               <li>
-                Tap Share (the square with an arrow pointing up), then &ldquo;Add to Home Screen&rdquo;, then Add.
+                Tap Share (the square with an arrow pointing up), then &ldquo;Add to Home Screen,&rdquo; then Add.
               </li>
               <li>Open Studio from your home screen, go to Phone notifications, and turn them on there.</li>
             </ol>
@@ -306,7 +306,7 @@ export function PhoneAlertsPanel({ view: initial }: { view: PhoneView }) {
             </p>
             {mine?.stale ? (
               <p className="notice notice-warn mt-4">
-                This device has to be turned on again: press &ldquo;Turn off&rdquo;, then &ldquo;Turn on notifications&rdquo;.
+                This device has to be turned on again: press &ldquo;Turn off,&rdquo; then &ldquo;Turn on notifications.&rdquo;
               </p>
             ) : null}
             {permission === "denied" && !mine ? (
@@ -473,8 +473,8 @@ export function PhoneAlertsPanel({ view: initial }: { view: PhoneView }) {
               ) : (
                 <p className="mt-3 text-sm text-ink-soft">
                   {isIos
-                    ? "On iPhone and iPad: in Safari, tap Share, then “Add to Home Screen”."
-                    : "On Android: open the browser menu and tap “Install app” or “Add to Home screen”. On a computer, Chrome and Edge show an install button in the address bar."}
+                    ? "On iPhone and iPad: in Safari, tap Share, then “Add to Home Screen.”"
+                    : "On Android: open the browser menu and tap “Install app” or “Add to Home screen.” On a computer, Chrome and Edge show an install button in the address bar."}
                 </p>
               )}
             </>

@@ -158,7 +158,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
             <div className="st-note mt-6" role="status">
               <p className="font-bold" style={{ color: "var(--st-text)" }}>Your membership has ended</p>
               <p className="mt-1 text-sm">
-                {`This course came with your membership, which is no longer running, so its lessons are closed now. Renew and it opens straight away, with your progress where you left it.`}
+                {`This course came with your membership, which is no longer running, so its lessons are closed now. Renew and it opens right away, with your progress where you left it.`}
               </p>
               {canManage(store) ? (
                 <p className="mt-2 text-sm">

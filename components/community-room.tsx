@@ -100,7 +100,7 @@ export function CommunityRoom({
       timer = window.setTimeout(tick, document.hidden ? 30_000 : 4_000);
     };
     timer = window.setTimeout(tick, 4_000);
-    // Coming back to the tab asks straight away rather than waiting.
+    // Coming back to the tab asks right away rather than waiting.
     const onShow = () => {
       if (!document.hidden) void look();
     };

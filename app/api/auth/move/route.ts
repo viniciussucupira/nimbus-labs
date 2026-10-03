@@ -20,7 +20,7 @@ import { fromAnotherSite, limited } from "@/lib/request-guard";
  * mail filters open links, and a link that a filter could spend would move an
  * account on its own.
  *
- * Every session the old address had is closed afterwards. A move is exactly
+ * Every session the old address had is closed afterward. A move is exactly
  * the moment where a session left open somewhere else stops being harmless.
  */
 export async function POST(request: NextRequest) {

@@ -2,7 +2,7 @@
  * Stamping a buyer's email onto every page of the PDF they bought.
  *
  * A creator selling an ebook or a workbook can switch this on per product.
- * When a buyer downloads it, each page carries one quiet line along its foot
+ * When a buyer downloads it, each page carries one quiet line along the bottom
  * — "Sold to maya@example.com on Sep 26, 2026 · order …E54F2A" — so a copy that
  * turns up on a file-sharing site says whose it was. It does not stop anyone
  * from sharing, and the studio says that in as many words; what it does is
@@ -60,7 +60,7 @@ function writable(text: string): string {
 }
 
 /**
- * Puts the line along the foot of every page, however the page is turned: a
+ * Puts the line along the bottom of every page, however the page is turned: a
  * page stored sideways and shown upright gets the line along what the reader
  * sees as its foot, reading left to right. Pure: bytes in, bytes out.
  */

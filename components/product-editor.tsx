@@ -626,7 +626,7 @@ function OptionsBlock({
           data.error === "too_many"
             ? `A product carries up to ${data.limit ?? MAX_OPTIONS} prices.`
             : data.error === "label"
-              ? "Give this price a name the buyer will read, like “5 weeks”."
+              ? "Give this price a name the buyer will read, like “5 weeks.”"
               : data.error === "price"
                 ? optionPrice(currency)
                 : (OPTION_MESSAGES[data.error ?? ""] ?? MESSAGES.server_error),
@@ -1596,7 +1596,7 @@ export function ProductEditor({
       {total === 0 ? (
         <p className="mt-2 text-ink-soft">
           Your page is live and it is empty. Add the first thing and it shows up
-          on it straight away.
+          on it right away.
         </p>
       ) : null}
 
@@ -2042,7 +2042,7 @@ export function ProductEditor({
               Your page can take a card for this.
             </strong>{" "}
             What you write here is on your page the moment you save it, and a
-            buyer can pay for it straight away, on your own Stripe account.
+            buyer can pay for it right away, on your own Stripe account.
             Marktmorgen takes no cut of the sale.
           </>
         )}{" "}

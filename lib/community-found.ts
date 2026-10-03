@@ -3,7 +3,7 @@
  *
  * The search index knows nothing about who is asking, and that is deliberate:
  * one index serves the creator and every member, and the door is asked about
- * afterwards. This is that afterwards, and it is the part where getting it
+ * afterward. This is that afterward, and it is the part where getting it
  * wrong would matter most — a lesson title is content. "Week 4: the $40k month
  * spreadsheet" tells somebody who never bought the course something they did
  * not pay for, and a search that leaked it would be worse than no search.

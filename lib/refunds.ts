@@ -12,7 +12,7 @@
  *     student is kept (lib/learn.ts);
  *   - the community closes within five, for the same reason
  *     (lib/community-access.ts);
- *   - a licence key given for it is marked revoked by the five-minute job,
+ *   - a license key given for it is marked revoked by the five-minute job,
  *     which reads the refunds made on the creator's account
  *     (lib/licence-keys.ts, revokeRefunded), so the creator's own software
  *     hears "revoked" from the public check.

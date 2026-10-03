@@ -163,7 +163,7 @@ export default function PrivacyPage() {
           unless they agree; everywhere else the
           pixels load unless the browser sends Global Privacy Control. The
           choice is kept on the visitor&apos;s device for that store, and a link
-          at the foot of its pages changes it.
+          at the bottom of its pages changes it.
         </p>
         <p>
           <strong className="text-black">Booking a call.</strong> When someone
@@ -570,7 +570,7 @@ export default function PrivacyPage() {
           <strong className="text-black">Phone notifications.</strong> When a
           creator or someone on their team turns notifications on for a
           device, we keep what the browser gives us to reach it (its push
-          address and keys), a label such as &ldquo;iPhone · Safari&rdquo;, which
+          address and keys), a label such as &ldquo;iPhone · Safari,&rdquo; which
           events it wants, when it was added and whose it is, until it is
           removed or the browser turns notifications off, with how the last
           send went. A notification says an amount, a product title or a time,

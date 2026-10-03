@@ -205,7 +205,7 @@ function Settings({ name, mail }: { name: string; mail: MailSettings | null }) {
         <input className="field mt-2" maxLength={60} value={fromName} onChange={(e) => setFromName(e.target.value)} />
       </label>
       <label className="block">
-        <span className="field-label">Postal address at the foot of each email</span>
+        <span className="field-label">Postal address at the bottom of each email</span>
         <input className="field mt-2" maxLength={200} placeholder="Street, city, ZIP or postal code, country — or a PO box" value={address} onChange={(e) => setAddress(e.target.value)} />
       </label>
       <p className="text-sm text-ink-soft">
@@ -419,7 +419,7 @@ function Compose(props: {
           <textarea className="field mt-2 min-h-56" rows={12} maxLength={20000} value={body} onChange={(e) => setBody(e.target.value)} />
         </label>
         <p className="text-sm text-ink-soft">
-          Blank lines make paragraphs, lines starting with &quot;- &quot; make a list, and web addresses become links. Why they are getting it, the unsubscribe link and your postal address are added at the foot.
+          Blank lines make paragraphs, lines starting with &quot;- &quot; make a list, and web addresses become links. Why they are getting it, the unsubscribe link and your postal address are added at the bottom.
         </p>
         <label className="block">
           <span className="field-label">Send to</span>

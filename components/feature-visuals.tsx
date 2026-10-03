@@ -88,7 +88,7 @@ function DeliveryVisual() {
   const steps: { icon: IconName; title: string; sub: string; done?: boolean }[] = [
     { icon: "card", title: "Paid", sub: "On the creator's own Stripe account", done: true },
     { icon: "check-circle", title: "Stripe confirms it", sub: "Nothing is released before this", done: true },
-    { icon: "download", title: "Download it", sub: "On the same screen, straight away" },
+    { icon: "download", title: "Download it", sub: "On the same screen, right away" },
   ];
   return (
     <Window bar="Your order">

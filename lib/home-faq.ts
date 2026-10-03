@@ -10,7 +10,7 @@ import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
 export const HOME_QUESTIONS = [
   {
     q: "Can I sign up and start selling today?",
-    a: `Yes. You take your store address, connect your own Stripe account and put up what you sell; a buyer can pay for it on your account, with nothing taken on top. The address, the page, the editor and connecting Stripe cost nothing. The $${PRICE_CENTS / 100} subscription switches on your checkout — selling, and giving things away for an email address — and its first ${TRIAL_DAYS} days are free, so you can make a sale before you decide.`,
+    a: `Yes. You take your store address, connect your own Stripe account and put up what you sell; a buyer can pay for it on your account, with nothing taken on top. The address, the page, the editor and connecting Stripe cost nothing. The $${PRICE_CENTS / 100} subscription switches on your checkout — selling, and giving things away for an email address — and its first ${TRIAL_DAYS} days are free. Your card is taken when the trial starts and first charged when it ends, so you can make a sale before you decide, and canceling inside the trial means it is never charged. The trial is for your first store; a second store is paid from day one.`,
   },
   {
     q: "Who holds the money from my sales?",
@@ -22,7 +22,7 @@ export const HOME_QUESTIONS = [
   },
   {
     q: "What does Stan have that Marktmorgen does not, yet?",
-    a: "Among other things: automatic Instagram replies, PayPal, an iPhone app from the App Store, Zoom links made for each booking and webinar, paying affiliates for you automatically, and stores with no limit on products, where ours hold 2,000. What we have in their place: a studio that installs from the browser with notifications, Google Meet links made on your own Google Calendar, a private Jitsi Meet room for each booking and each live event, and an affiliate program you pay out yourself. Each gap is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
+    a: "Among other things: automatic Instagram replies, PayPal at checkout, an iPhone app from the App Store, Zoom links made for each booking and webinar, affiliate payouts that need no PayPal account of your own, and stores with no limit on products, where ours hold 2,000. What we have in their place: a studio that installs from the browser with notifications, Google Meet links made on your own Google Calendar, a private Jitsi Meet room for each booking and each live event, and an affiliate program whose payouts leave your own PayPal, in one press or on payday by itself. Each gap is listed by name on the feature-by-feature page, with where we stand on it, and nothing is advertised here before it exists.",
   },
   {
     q: "Who is behind this?",

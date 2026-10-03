@@ -194,7 +194,7 @@ export function normaliseCountry(value: string): string {
  * Opens a Stripe account that belongs to the creator.
  *
  * The country has to be settled here, before Stripe's onboarding starts, and
- * it cannot be changed afterwards — which is why the studio asks for it in
+ * it cannot be changed afterward — which is why the studio asks for it in
  * plain words rather than guessing from an IP address.
  *
  * The store's own address is left for onboarding to collect. Stripe asks the

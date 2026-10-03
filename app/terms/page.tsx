@@ -205,7 +205,7 @@ export default function TermsPage() {
           only to people who agreed to hear from you; never to import an
           address that was bought, rented, borrowed or collected without that
           agreement; to give a true postal address where you can be reached,
-          which we print at the foot of each email; to write subject lines that
+          which we print at the bottom of each email; to write subject lines that
           are not misleading; and to follow the laws on commercial email that
           apply to you and to your readers, including the CAN-SPAM Act in the
           United States. Every email carries an unsubscribe link that we honor

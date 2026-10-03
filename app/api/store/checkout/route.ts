@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
   }
   // A call is booked for a time on its own page, never bought without one.
   if (product.call) return away(`/@${store.handle}/book/${product.id}`);
-  // Every licence key in the pool is given: nobody is charged for one that
+  // Every license key in the pool is given: nobody is charged for one that
   // does not exist. The creator was emailed when the pool ran low.
   if (await outOfKeys(store, product).catch(() => false)) return away(`/@${store.handle}?status=soldout`);
 
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       via: request.cookies.get(viaCookieName(store.handle))?.value,
       session: request.cookies.get(affiliateCookieName(store.handle))?.value,
     }).catch(() => null);
-    // A course opens straight away in the browser that paid for it.
+    // A course opens right away in the browser that paid for it.
     // So does a course in a bundle.
     const buyer = !gift && (product.course || product.bundle) ? newBuyerKey() : null;
     const held = await withStockHold(store, product, (holding) =>

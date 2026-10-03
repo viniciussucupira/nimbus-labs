@@ -89,7 +89,7 @@ export function PdfStampToggle({ product }: { product: Product }) {
         Stamp each buyer&apos;s email on every page of the PDF
       </label>
       <p id={`${id}-hint`} className="mt-2 text-sm text-ink-soft">
-        When a buyer downloads it, each page carries one small line along its foot, like{" "}
+        When a buyer downloads it, each page carries one small line along the bottom, like{" "}
         <span className="break-words font-mono text-xs text-ink">Sold to maya@example.com on Sep 26, 2026 · order …E54F2A · for personal use</span>
         . It makes a shared copy traceable to its buyer; it cannot stop anyone from sharing. PDFs up to{" "}
         {readableSize(MAX_STAMP_BYTES)}; a bigger one, or one locked with a password, is handed over as you uploaded it.

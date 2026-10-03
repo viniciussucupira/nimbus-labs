@@ -63,7 +63,7 @@ const NOTICES: Record<string, { title: string; body: string }> = {
   },
   processing: {
     title: "Your payment is on its way",
-    body: "Your bank is still confirming it, which can take a few days. Nothing more is needed from you: when it clears, open this page again, or choose \u201cGet it again\u201d at the foot of the store with the address you paid with.",
+    body: "Your bank is still confirming it, which can take a few days. Nothing more is needed from you: when it clears, open this page again, or choose \u201cGet it again\u201d at the bottom of the store with the address you paid with.",
   },
   expired: {
     title: "This link has expired",
@@ -438,7 +438,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   // A membership that has ended hands nothing over, here or anywhere else.
   const ended = order.state === "paid" && order.membership === "ended";
 
-  // Each licence key this order earns: given here if the five-minute job
+  // Each license key this order earns: given here if the five-minute job
   // that sends the confirmation has not given it already. A sale only ever
   // gets one key, however many times this page is opened.
   const keyOf = async (product: Listing, reference: string): Promise<SaleKey | null | "error"> => {
@@ -446,7 +446,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     try {
       return await keyForSale(store, product, reference, order.email ?? "");
     } catch (error) {
-      console.error("giving a licence key failed", error);
+      console.error("giving a license key failed", error);
       return "error";
     }
   };
@@ -626,7 +626,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 <div className="st-note mt-7" role="status">
                   <p className="font-bold" style={{ color: "var(--st-text)" }}>Your membership has ended</p>
                   <p className="mt-1 text-sm">
-                    {`Stripe says this membership is no longer running, so what it gave you access to is closed now. Renew it and everything opens again straight away.`}
+                    {`Stripe says this membership is no longer running, so what it gave you access to is closed now. Renew it and everything opens again right away.`}
                   </p>
                   <Link href={renewPath(store, order.product)} className="btn st-btn mt-4">
                     Renew your membership
@@ -688,7 +688,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 <>
                   {contents(order.items, "main", downloadAt({ item: "bundle" }))}
                   <p className="st-muted mt-5 text-sm">
-                    {`Downloads here work for about ${hours} more ${hours === 1 ? "hour" : "hours"}; courses and links keep working. After that nothing is lost: choose \u201cGet it again\u201d at the foot of ${store.name}'s page, type the address you paid with, and a link to all of it is emailed to you.`}
+                    {`Downloads here work for about ${hours} more ${hours === 1 ? "hour" : "hours"}; courses and links keep working. After that nothing is lost: choose \u201cGet it again\u201d at the bottom of ${store.name}'s page, type the address you paid with, and a link to all of it is emailed to you.`}
                   </p>
                 </>
               ) : order.product.podcast ? (
@@ -710,7 +710,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     <button type="submit" className="btn st-btn btn-lg mt-7">Start the course</button>
                   </form>
                   <p className="st-muted mt-5 text-sm">
-                    {`On this device it opens straight away. On any other, open ${store.name}'s store, find the course and ask for a link: it goes to ${order.email ?? "the address you paid with"}. No password to make.`}
+                    {`On this device it opens right away. On any other, open ${store.name}'s store, find the course and ask for a link: it goes to ${order.email ?? "the address you paid with"}. No password to make.`}
                   </p>
                 </>
               ) : order.link ? (
@@ -747,7 +747,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   <p className="st-muted mt-5 text-sm">
                     This link works for about {hours} more{" "}
                     {hours === 1 ? "hour" : "hours"}. After that it is not lost:
-                    choose &ldquo;Get it again&rdquo; at the foot of {store.name}&rsquo;s
+                    choose &ldquo;Get it again&rdquo; at the bottom of {store.name}&rsquo;s
                     page, type the address you paid with, and a new link is emailed to you.
                   </p>
                 </>

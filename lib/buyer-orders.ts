@@ -511,7 +511,7 @@ export async function requestOrdersLink(input: {
       "",
       link,
       "",
-      "The link works for 24 hours, on any device. After that, ask again from the store and a new one comes straight away.",
+      "The link works for 24 hours, on any device. After that, ask again from the store and a new one comes right away.",
       "",
       "If you did not ask for this, ignore this email; nothing happens unless the link is opened.",
       "",

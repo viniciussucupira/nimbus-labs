@@ -75,7 +75,7 @@ export function canSell(store: Store): boolean {
  * The options a buyer may actually be offered.
  *
  * An option with nothing behind it is left off the page rather than sold and
- * apologised for afterwards. The creator is told about it in the studio, which
+ * apologised for afterward. The creator is told about it in the studio, which
  * is where it can be fixed; the buyer never meets it.
  */
 export function sellableOptions(product: Listing): ProductOption[] {
@@ -145,7 +145,7 @@ export async function createCheckout(
     plan?: boolean;
     /**
      * For a course: the fingerprint of the secret the buyer's browser keeps,
-     * so the course opens straight away in the browser that paid.
+     * so the course opens right away in the browser that paid.
      */
     buyerKey?: string;
     /** The buyer ticked the box to hear from the creator. */
@@ -225,7 +225,7 @@ export async function createCheckout(
   });
 
   // Which option was bought decides which file is handed over later, so it
-  // travels with the charge rather than being worked out again afterwards.
+  // travels with the charge rather than being worked out again afterward.
   if (chosen) body.set("metadata[option]", chosen.id);
   if (bundled) {
     for (const [key, value] of Object.entries(bundleMeta("bundle", bundled.map((p) => p.id)))) body.set(`metadata[${key}]`, value);
@@ -497,7 +497,7 @@ export type Order =
        * Null for anything that is not a membership.
        */
       membership: "live" | "ended" | null;
-      /** The checkout's own id, which a licence key and a stamped copy are kept under. */
+      /** The checkout's own id, which a license key and a stamped copy are kept under. */
       reference: string;
       /**
        * Bought for somebody else (lib/gifts.ts): what it hands over is theirs,

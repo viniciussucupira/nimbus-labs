@@ -1,5 +1,5 @@
 /**
- * Licence keys: one unique key handed to each buyer of a product.
+ * License keys: one unique key handed to each buyer of a product.
  *
  * For a creator who sells software, a plugin, a preset pack that unlocks
  * with a code, or seats in something they run elsewhere. They choose where
@@ -671,7 +671,7 @@ async function warnIfLow(store: Store, product: Listing): Promise<void> {
       "",
       "This email comes once each time the pool runs low; adding keys resets it.",
     ].join("\n"),
-  }).catch((error) => console.error("warning about licence keys failed", error));
+  }).catch((error) => console.error("warning about license keys failed", error));
 }
 
 /** A buyer paid in the moment the last key went: the creator hears at once. */

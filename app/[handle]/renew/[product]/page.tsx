@@ -92,7 +92,7 @@ export default async function RenewPage({ params, searchParams }: Params) {
           </h1>
           <p className="st-muted mt-4 text-lg leading-relaxed">
             {product
-              ? `Your membership for ${product.title} is no longer running, so what it gave you access to is closed now. Renew it and everything opens again straight away.`
+              ? `Your membership for ${product.title} is no longer running, so what it gave you access to is closed now. Renew it and everything opens again right away.`
               : `This membership is no longer running, and ${store.name} no longer lists it.`}
           </p>
 

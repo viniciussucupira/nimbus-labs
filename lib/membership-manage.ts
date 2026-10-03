@@ -459,7 +459,7 @@ export async function membershipsFor(store: Store, token: string): Promise<Membe
  * this store's account, and be one this store sold. A link cannot be used to
  * cancel somebody else's membership by changing the id in the form.
  *
- * What happens afterwards is Stripe's to say. Its confirmation page shows
+ * What happens afterward is Stripe's to say. Its confirmation page shows
  * whichever thing the member did — took the offer, or cancelled — in Stripe's
  * own words, so nothing written here can describe it wrongly.
  */

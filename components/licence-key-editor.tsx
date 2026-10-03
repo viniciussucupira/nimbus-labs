@@ -72,7 +72,7 @@ const count = (n: number) => n.toLocaleString("en-US");
 const DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 const quiet = "text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:opacity-40";
 
-/** A product's licence keys in the studio: where they come from, how many are left, and who has which. */
+/** A product's license keys in the studio: where they come from, how many are left, and who has which. */
 export function LicenceKeyEditor({ product, handle }: { product: Product; handle: string }) {
   const router = useRouter();
   const on = product.keys !== null && canHaveKeys(product);
@@ -226,7 +226,7 @@ export function LicenceKeyEditor({ product, handle }: { product: Product; handle
       {pool && counts.left === 0 ? (
         <p className="notice notice-error mt-3" role="status">
           {counts.waiting
-            ? `No keys left, and ${count(counts.waiting)} ${counts.waiting === 1 ? "buyer is" : "buyers are"} waiting for one. Upload more: each waiting buyer gets the next key and an email with it, straight away.`
+            ? `No keys left, and ${count(counts.waiting)} ${counts.waiting === 1 ? "buyer is" : "buyers are"} waiting for one. Upload more: each waiting buyer gets the next key and an email with it, right away.`
             : "No keys left, so this product shows as sold out and no checkout opens for it. Upload more to sell it again."}
         </p>
       ) : low ? (
@@ -370,7 +370,7 @@ export function LicenceKeyEditor({ product, handle }: { product: Product; handle
                 ? `The ${loaded.keys.length} most recent of ${count(loaded.matching)}. Search to find any other.`
                 : `${count(loaded.matching)} shown.`}{" "}
               Revoking does not refund anything or reach into your software: it marks the key, and the check below then answers
-              &ldquo;revoked&rdquo;. Refunds are made in your Stripe dashboard, and a sale refunded in full there has its key
+              &ldquo;revoked.&rdquo; Refunds are made in your Stripe dashboard, and a sale refunded in full there has its key
               revoked here by itself within about five minutes.
             </p>
           </>

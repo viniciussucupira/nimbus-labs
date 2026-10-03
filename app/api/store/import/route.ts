@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     if (action === "finish") {
       const done = await finishUpload(store, id);
       if (!done.ok) return refuse(done.reason, 409);
-      // The first few seconds of work straight away, so a small file is done
+      // The first few seconds of work right away, so a small file is done
       // by the time the page shows it.
       const after = await runImport(id, Date.now() + STEP_MS);
       return Response.json({ ok: true, import: view(after ?? done.job) });

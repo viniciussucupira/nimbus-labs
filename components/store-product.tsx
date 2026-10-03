@@ -390,7 +390,7 @@ export function BuyBox({
     if (withPayPal) return <PayPalButton store={store} product={product} alone />;
     /*
       Sellable store, but this one has nothing attached to hand over. Better to
-      say so than to take the money and work out the delivery afterwards.
+      say so than to take the money and work out the delivery afterward.
     */
     return selling ? <p className="st-muted mt-4 text-sm">Not on sale yet.</p> : null;
   }
@@ -636,7 +636,7 @@ export function ProductCard({
   manageable: boolean;
   /** Coming soon: a waitlist instead of a way to pay (lib/waitlist.ts). */
   soon?: boolean;
-  /** Near the top of the page: the picture is fetched straight away. */
+  /** Near the top of the page: the picture is fetched right away. */
   eager?: boolean;
   /** Its buyers' reviews, shown only when lib/reviews.ts says a page may. */
   rating?: Summary | null;

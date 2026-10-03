@@ -358,7 +358,7 @@ export type SubmitResult =
  * The try is counted first, with one atomic increment, and only then marked:
  * two answers sent at the same moment from two tabs both count, so a limit
  * of three tries is three and never four. A student who has passed is not
- * marked again, so a pass can never be undone by a worse try afterwards.
+ * marked again, so a pass can never be undone by a worse try afterward.
  */
 export async function submitQuiz(
   courseId: string,

@@ -8,7 +8,7 @@
  * forgets. It is kept on the payment itself, on the creator's own account, so
  * it is in their Stripe dashboard next to the charge and in the studio's list
  * of sales. And a required question has to be answered before the buyer can
- * pay, which a form sent afterwards can never promise.
+ * pay, which a form sent afterward can never promise.
  *
  * Stripe's limits are the limits here, checked before anything is saved so a
  * checkout is never refused over a question: three questions, labels of up to

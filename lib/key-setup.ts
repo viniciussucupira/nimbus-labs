@@ -1,5 +1,5 @@
 /**
- * How a product hands out licence keys: the setting itself, read and checked
+ * How a product hands out license keys: the setting itself, read and checked
  * without touching anything else. Kept apart from lib/licence-keys.ts, which
  * issues and revokes the keys, so the store's product records
  * (lib/catalog.ts) can read the setting without pulling in the machinery.

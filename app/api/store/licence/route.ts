@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     const status = await checkKey(store, product, key);
     return answer(200, { valid: status === "valid", status });
   } catch (error) {
-    console.error("checking a licence key failed", error);
+    console.error("checking a license key failed", error);
     return answer(502, { error: "Could not check right now." });
   }
 }

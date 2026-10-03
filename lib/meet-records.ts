@@ -26,7 +26,7 @@
  * behind anybody's back: when a meeting that failed is made later by the
  * five-minute job, the people booked are emailed the new link
  * (lib/call-meetings.ts), and `updates` counts how often that happened, so
- * a calendar file sent afterwards replaces the one sent before.
+ * a calendar file sent afterward replaces the one sent before.
  *
  * Nothing here reaches the network, so the pages that only read a link
  * never wait on Google or Zoom.

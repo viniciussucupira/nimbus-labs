@@ -253,7 +253,7 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                 <p className="font-bold" style={{ color: "var(--st-text)" }}>No match</p>
                 <p className="mt-1 text-sm">
                   Every word has to be there. Fewer words find more, and words are matched whole — “pay” does not find
-                  “payment”.
+                  “payment.”
                 </p>
               </div>
             ) : null}
