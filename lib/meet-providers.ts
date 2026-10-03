@@ -105,8 +105,9 @@ export function configuredProviders(): MeetProvider[] {
  * connected keeps it either way (usableProviders).
  *
  * A reviewer does not always sign up with a Zoom address, so there is also
- * the review link: the Video calls page opened with `?zoom=review` offers
- * Zoom on that visit, whatever the store (isZoomReview). It opens nothing
+ * the review link: the Video calls page opened with `?zoom=review`, or with
+ * `?from=zoom` as the listing in Zoom's Marketplace opens it, offers Zoom on
+ * that visit, whatever the store (arrivedForZoom). It opens nothing
  * Zoom itself keeps shut: an account Zoom does not let add the app is still
  * turned away on Zoom's own page.
  */
@@ -120,6 +121,16 @@ export const ZOOM_REVIEW_QUERY = "zoom=review";
 /** Whether an address asks for the review link's view: `?zoom=review`, given as the value of `zoom`. */
 export function isZoomReview(value: string | string[] | null | undefined): boolean {
   return value === "review";
+}
+
+/**
+ * Whether a visit to the Video calls page is for Zoom: by the review link, or
+ * by `?from=zoom`, the address the app's listing in Zoom's Marketplace sends
+ * people to. Someone who arrives from that listing came to connect Zoom, so
+ * the page offers it; which accounts may add the app is still Zoom's to say.
+ */
+export function arrivedForZoom(query: { zoom?: string | string[]; from?: string | string[] }): boolean {
+  return isZoomReview(query.zoom) || query.from === "zoom";
 }
 
 /** A store, or just its id, as a studio page has it. */
