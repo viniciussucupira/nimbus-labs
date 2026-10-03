@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Marktmorgen
 
-## Getting Started
+The code behind [marktmorgen.com](https://marktmorgen.com): a link-in-bio store where creators sell digital products, courses, memberships, communities and paid video calls, with payments going straight into their own Stripe account.
 
-First, run the development server:
+Built with Next.js (App Router), TypeScript and Tailwind CSS, and run on Vercel with Upstash Redis, Vercel Blob, Stripe Connect and Resend.
+
+## Working on it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev     # http://localhost:3000
+npm test        # every tests/*.test.ts, against an in-memory store
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The tests need nothing but `npm install`: Redis is swapped for an in-memory stand-in (`lib/redis-memory.ts`) and every outside service is played by a stand-in inside the test.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This version of Next.js differs from older ones; see `AGENTS.md` before changing how routes, the proxy or caching work.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Settings
 
-## Learn More
+All of them are environment variables set on the host. None has a value in this repository. A feature whose settings are missing is switched off, not broken: its pages and routes answer as if it were not there.
 
-To learn more about Next.js, take a look at the following resources:
+| For | Settings |
+| --- | --- |
+| Records | `KV_REST_API_URL`, `KV_REST_API_TOKEN` (or `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`), `NIMBUS_DATA_KEY` |
+| Payments | `STRIPE_SECRET_KEY`, `STRIPE_DEMO_SECRET_KEY`; PayPal: `PAYPAL_ENV`, `PAYPAL_PARTNER_CLIENT_ID`, `PAYPAL_PARTNER_SECRET`, `PAYPAL_PARTNER_MERCHANT_ID`, `PAYPAL_BN_CODE` |
+| Email we send | `RESEND_API_KEY` (sending only), `NIMBUS_FROM_EMAIL`, `RECOVERY_FROM_EMAIL`, `MARKETING_FROM_EMAIL`, `MARKETING_DAILY_CAP` |
+| Email written to us | `RESEND_WEBHOOK_SECRET`, `RESEND_INBOUND_API_KEY`, `SUPPORT_FORWARD_TO` (see `lib/inbound-mail.ts`) |
+| Video calls | Google: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`; Zoom: `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET`, `ZOOM_WEBHOOK_SECRET_TOKEN`, `ZOOM_LIVE` |
+| Creators' own domains | `VERCEL_API_TOKEN`, `VERCEL_DOMAINS_PROJECT`, `VERCEL_DOMAINS_TEAM` |
+| Drafts written for a creator | `ANTHROPIC_API_KEY`, `AI_MODEL` |
+| Scheduled jobs | `CRON_SECRET` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The settings ending in `_API_BASE` are for local checks only: each accepts nothing but an address on `127.0.0.1`, so a check can never reach a real service. `PASSKEY_LOCAL_ORIGIN` is for local development and is ignored in production.
