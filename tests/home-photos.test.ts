@@ -154,3 +154,17 @@ test("the photographs in a list are all different from each other", () => {
     }
   }
 });
+
+test("no British spelling in the things people sell", () => {
+  /*
+   * The site is American English. "Colour theory classes" shipped on the
+   * market strip because the list was written in a hurry; this is the
+   * cheapest possible guard against the next one.
+   */
+  const src = readFileSync(join(process.cwd(), "components/home-parts.tsx"), "utf8");
+  const labels = [...src.matchAll(/label:\s*"([^"]+)"/g)].map((m) => m[1]);
+  const british = /\b\w*(colour|favourite|organis|centre|licence|catalogue|programme)\w*\b/i;
+  for (const label of labels) {
+    assert.ok(!british.test(label), `"${label}" is British English. This site is American English.`);
+  }
+});
