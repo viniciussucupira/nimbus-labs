@@ -1,6 +1,7 @@
 // Content for every page behind a menu item. One entry per page, so that
 // each menu item opens something different and real.
 import { isDomainsConfigured } from "@/lib/domains";
+import { paypalSalesConfigured } from "@/lib/paypal-sales";
 import type { IconName } from "@/components/icons";
 import type { VisualKey } from "@/components/feature-visuals";
 import { CREATOR_PAGES, FEATURE_PAGES } from "@/lib/feature-pages";
@@ -10,6 +11,17 @@ const INVITE_BONUS = `$${INVITE_BONUS_CENTS / 100}`;
 
 /** Whether stores can be put on their own domain on this deployment. */
 const DOMAINS = isDomainsConfigured();
+/*
+  Whether a buyer can pay with PayPal here.
+
+  Read rather than written down, for the same reason DOMAINS is: PayPal hands
+  a platform its partner credentials only after approving it, so this is
+  false until that day and true from it, and the comparison rows below have
+  to say whichever is true on the day they are read. They said "no PayPal"
+  flatly for months after lib/paypal-sales.ts was finished, which is the same
+  fault as claiming a feature that does not exist, pointing the other way.
+*/
+const PAYPAL = paypalSalesConfigured();
 
 export type Block =
   | { kind: "lead"; text: string }
@@ -86,7 +98,7 @@ export const PAGES: TopicPage[] = [
           { icon: "bank", title: "Where we are ahead: the money", body: "Sales land in a full Stripe account in your own name, with its own login and payout schedule. Stan's creators get an account Stan manages, and cash out inside Stan." },
           { icon: "tag", title: "Where we are ahead: the $29 plan", body: "Several prices on one product, discount codes in percent or dollars, sales and landing pages, offers before and after paying, payment plans, ad pixels and an affiliate program, most of which Stan keeps for its $99 plan. And pay what you want, free trials on memberships, reviews only buyers can write, 15 currencies, a team with roles, bundles that hand over each product as itself, and past buyers brought over from a file, none of which Stan's help center describes. Since September 30: one search box across the whole community, a public API, an offer made once to a member who presses Cancel, and points, levels and a leaderboard in the community, with a course handed over at a level, none of which Stan's help center describes either." },
           { icon: "scale", title: "Where we are the same", body: "0% of each sale, the same $29 and $99 a month, or $300 and $948 a year, and a 14-day free trial on both." },
-          { icon: "info", title: "Where Stan is ahead", body: "PayPal at checkout, affiliates paid with no PayPal account of your own, automatic Instagram replies, Zoom links made for each booking and webinar, an iPhone app, and as many products as you like where we stop at 2,000. If you need those today, Stan is the better tool today." },
+          { icon: "info", title: "Where Stan is ahead", body: `${PAYPAL ? "" : "PayPal at checkout, "}affiliates paid with no PayPal account of your own, automatic Instagram replies, Zoom links made for each booking and webinar, an iPhone app, and as many products as you like where we stop at 2,000. If you need those today, Stan is the better tool today.` },
         ],
       },
       {
@@ -99,7 +111,7 @@ export const PAGES: TopicPage[] = [
           ["Paid yearly", "$300 and $948 a year", "$300 and $948 a year"],
           ["Cut of each sale", "0% platform fee", "0% platform fee"],
           ["Logging in", "An account with a password. Their own signup asks for name, email and password", "A link sent to your email, or a passkey if you add one. No password to invent, and none kept here to be stolen"],
-          ["Ways to be paid", "Stripe or PayPal, for every creator", "Stripe, with the ways to pay you switch on in it: cards, Apple Pay, Google Pay, Link, Klarna, Afterpay, Affirm, iDEAL and more. No PayPal: Stripe does not support it for the direct charges every sale here is made with, so they are ahead here"],
+          ["Ways to be paid", "Stripe or PayPal, for every creator", PAYPAL ? "Stripe or PayPal, both paying straight into your own account, with the ways to pay you switch on in Stripe: cards, Apple Pay, Google Pay, Link, Klarna, Afterpay, Affirm, iDEAL and more" : "Stripe, with the ways to pay you switch on in it: cards, Apple Pay, Google Pay, Link, Klarna, Afterpay, Affirm, iDEAL and more. No PayPal yet: it is built and waits on PayPal approving us as a platform"],
           ["Currency", "One per store, chosen from ten", "Any one of 15 per store, from US dollars and euros to yen and Mexican pesos"],
           ["Whose Stripe account", "One they manage. Their own help center: you cannot connect an existing Stripe account", "A full Stripe account in your own name, opened from your studio, with its own Stripe login. It stays yours"],
           ["Getting paid", "Cash out inside Stan, $10 minimum, whole balance only", "Your own Stripe payout schedule"],
@@ -135,7 +147,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Stan is ahead, and we say so",
-        body: "Stan has things we do not: PayPal at checkout, affiliates paid with no PayPal account of your own, automatic Instagram replies, Zoom links made for each booking and webinar, an app for iPhone and iPad, stores with no limit on products, and a support team with years of experience behind it. We now have a community with live events, an affiliate program paid from your own PayPal in one press, sales and landing pages, offers after paying, Google Meet links made on your own Google Calendar and a private video room for each booking and event, but none of those. If you depend on them today, Stan is the better tool today.",
+        body: `Stan has things we do not: ${PAYPAL ? "" : "PayPal at checkout, "}affiliates paid with no PayPal account of your own, automatic Instagram replies, Zoom links made for each booking and webinar, an app for iPhone and iPad, stores with no limit on products, and a support team with years of experience behind it. We now have a community with live events, an affiliate program paid from your own PayPal in one press, sales and landing pages, offers after paying, Google Meet links made on your own Google Calendar and a private video room for each booking and event, but none of those. If you depend on them today, Stan is the better tool today.`,
       },
     ],
   },
@@ -245,7 +257,7 @@ export const PAGES: TopicPage[] = [
           ["Cut of each sale", "9% on the free and $10 plans. 0% from the $30 plan up", "0%, on every plan"],
           ["Monthly price", "$0, $10, $30 and $100", "$29 and $99, free for the first 14 days"],
           ["Whose payment account", "Your own Stripe or PayPal", "Your own Stripe"],
-          ["Ways to be paid", "Stripe or PayPal", "Stripe, with the ways to pay you switch on in it. No PayPal: Stripe does not support it for the direct charges every sale here is made with, so we are behind them here"],
+          ["Ways to be paid", "Stripe or PayPal", PAYPAL ? "Stripe or PayPal, both paying straight into your own account" : "Stripe, with the ways to pay you switch on in it. No PayPal yet: it is built and waits on PayPal approving us as a platform"],
           ["When the money reaches you", "At the moment of sale, into your own account", "At the moment of sale, into your own account"],
           ["Card fee", "Stripe's 2.9% + $0.30, on top of their 9%", "Stripe's 2.9% + $0.30, and nothing else"],
           ["What you are buying", "A whole suite: link in bio, websites, media kit, email, an affiliate network, AI tools", "One store, built to sell: files, courses, memberships, calls, and a community for your buyers"],
@@ -446,7 +458,7 @@ export const PAGES: TopicPage[] = [
           ["Cut of each sale", "0%", "0%"],
           ["Whose Stripe account", "One managed by the platform", "Yours"],
           ["Getting paid", "Manual cash-out, $10 minimum", "Your Stripe payout schedule"],
-          ["PayPal", "Yes, for every creator", "No. Stripe does not support PayPal for the direct charges every sale here is made with \u2014 Stan is ahead here"],
+          ["PayPal", "Yes, for every creator", PAYPAL ? "Yes, on every plan. The buyer pays into your own PayPal account and we take nothing" : "Built, and off until PayPal approves us as a platform. Until then, Stan is ahead here"],
           ["Klarna and Afterpay", "Yes, on the $99 plan", "Yes, on the $29 plan, with Affirm, Apple Pay, Google Pay, Link, iDEAL, Bancontact and more: the ways to pay you switch on in your own Stripe account, where Stripe offers them"],
           ["Currency", "One per store, chosen from ten", "Any one of 15 per store: US, Canadian, Australian, New Zealand, Singapore and Hong Kong dollars, euros, pounds, Swiss francs, Swedish kronor, Norwegian and Danish kroner, Polish zloty, yen and Mexican pesos"],
           ["Private podcast", "Not in their help center: a URL product can link to a podcast elsewhere (searched September 30, 2026)", "Yes, on the $29 plan: sold once or as a membership, with a private feed for each buyer in their own podcast app, emptied when a refund or the membership ends it"],
