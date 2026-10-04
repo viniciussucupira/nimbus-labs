@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Course } from "@/lib/course";
-import { isOpen, opensAt } from "@/lib/course";
+import { isCohort, isOpen, opensAt } from "@/lib/course";
 import { LocalDay } from "@/components/local-day";
 
 /**
@@ -28,16 +28,32 @@ export function CourseOutline({
   return (
     <ol className="space-y-5">
       {course.modules.map((unit, mi) => {
-        const open = start !== null && isOpen(unit, start);
+        const open = start !== null && isOpen(course, unit, start);
         return (
           <li key={unit.id}>
             <p className="st-label">{`Module ${mi + 1}`}</p>
             <p className="font-semibold" style={{ color: "var(--st-text)" }}>{unit.title}</p>
-            {unit.dripDays > 0 && !open ? (
+            {/*
+              When this module opens, and said to somebody who has not bought
+              it yet as well.
+
+              On a cohort the whole schedule is known before anyone joins,
+              because it hangs off one date rather than off each student's
+              own. So a visitor reading the outline sees real dates, which is
+              the thing worth knowing before paying for a course that runs to
+              a timetable — and a module with no wait is still a date there,
+              not "at once", because day one of a cohort is a day.
+            */}
+            {!open && (unit.dripDays > 0 || isCohort(course)) ? (
               <p className="st-muted mt-0.5 text-sm">
-                {start !== null ? (
+                {isCohort(course) ? (
                   <>
-                    Opens on <LocalDay seconds={opensAt(unit, start)} />
+                    {unit.dripDays === 0 ? "Starts on " : "Opens on "}
+                    <LocalDay seconds={opensAt(course, unit, 0)} />
+                  </>
+                ) : start !== null ? (
+                  <>
+                    Opens on <LocalDay seconds={opensAt(course, unit, start)} />
                   </>
                 ) : (
                   `Opens ${unit.dripDays} ${unit.dripDays === 1 ? "day" : "days"} after you enroll`

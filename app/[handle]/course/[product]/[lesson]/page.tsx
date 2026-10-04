@@ -42,7 +42,7 @@ export default async function LessonPage({ params, searchParams }: Params) {
   if (!course || !found) redirect(base);
 
   const access = await courseAccess(store, product, await cookies());
-  const open = access.state === "open" && isOpen(found.unit, access.start);
+  const open = access.state === "open" && isOpen(course, found.unit, access.start);
   // A free preview is open to anyone; everything else to a student whose
   // module has opened.
   if (!open && !found.lesson.preview) redirect(base);
@@ -83,7 +83,7 @@ export default async function LessonPage({ params, searchParams }: Params) {
   const order = lessonsInOrder(course);
   const at = order.findIndex((entry) => entry.lesson.id === lesson.id);
   const reachable = (entry: (typeof order)[number]) =>
-    entry.lesson.preview || (start !== null && isOpen(entry.unit, start) && !held.has(entry.lesson.id));
+    entry.lesson.preview || (start !== null && isOpen(course, entry.unit, start) && !held.has(entry.lesson.id));
   const previous = order.slice(0, at).reverse().find(reachable) ?? null;
   const next = order.slice(at + 1).find(reachable) ?? null;
   const isDone = done.has(lesson.id);

@@ -87,7 +87,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
   const all = lessonsInOrder(course);
   const total = lessonCount(course);
   const doneCount = all.filter(({ lesson }) => done.has(lesson.id)).length;
-  const reachable = (entry: (typeof all)[number]) => isOpen(entry.unit, start!) && !held.has(entry.lesson.id);
+  const reachable = (entry: (typeof all)[number]) => isOpen(course, entry.unit, start!) && !held.has(entry.lesson.id);
   const next = open
     ? all.find((entry) => !done.has(entry.lesson.id) && reachable(entry)) ?? all.find(reachable)
     : null;

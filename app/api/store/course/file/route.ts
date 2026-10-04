@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
   if (!found.lesson.preview) {
     const access = await courseAccess(store, product, await cookies());
-    if (access.state !== "open" || !isOpen(found.unit, access.start)) {
+    if (!course || access.state !== "open" || !isOpen(course, found.unit, access.start)) {
       return plain(403, "This lesson is not open for you. Open the course page to get in.");
     }
     if (!access.learner.owner && course) {

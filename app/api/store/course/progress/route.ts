@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   const access = await courseAccess(store, product, await cookies());
   const course = await readCourse(product.course.id);
   const found = course ? findLesson(course, lessonId) : null;
-  if (access.state !== "open" || !found || !isOpen(found.unit, access.start)) {
+  if (!course || access.state !== "open" || !found || !isOpen(course, found.unit, access.start)) {
     return new Response(null, { status: 303, headers: { Location: base } });
   }
   if (!access.learner.owner) {

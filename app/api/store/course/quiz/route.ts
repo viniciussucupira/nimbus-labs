@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   const access = await courseAccess(store, product, await cookies());
   const course = await readCourse(product.course.id);
   const found = course ? findLesson(course, lessonId) : null;
-  if (access.state !== "open" || !course || !found || !isOpen(found.unit, access.start)) return away(base);
+  if (access.state !== "open" || !course || !found || !isOpen(course, found.unit, access.start)) return away(base);
   if (access.learner.owner) return away(`${base}/${lessonId}#quiz`);
 
   const who = emailKey(access.learner.email);

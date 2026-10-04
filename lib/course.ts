@@ -24,6 +24,20 @@ export const MAX_ITEM_TITLE = 120;
 export const MAX_BODY_LENGTH = 10_000;
 export const MAX_DRIP_DAYS = 365;
 
+/**
+ * The window a course start date may fall in: 2020, to five years out.
+ *
+ * A date is the only thing on a course that students are held behind, so a
+ * typo in it is a course nobody can open. The floor catches a date typed in
+ * milliseconds by mistake, which would land in 1970 and open everything at
+ * once; the ceiling catches one typed in seconds where milliseconds were
+ * meant, which would hold the course shut for fifty thousand years.
+ */
+export const EARLIEST_START = 1_577_836_800; // 2020-01-01
+export function latestStart(nowSeconds = Date.now() / 1000): number {
+  return Math.floor(nowSeconds) + 5 * 365 * 86_400;
+}
+
 /** Videos a lesson can play in every current browser. */
 export const VIDEO_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
 
@@ -54,8 +68,9 @@ export type CourseModule = {
   id: string;
   title: string;
   /**
-   * Days after joining before this module opens. 0 opens it at once. The
-   * same number for everyone, counted from the day each student paid.
+   * Days after the course's clock starts before this module opens. 0 opens
+   * it the moment the clock starts. Where that clock starts is the course's
+   * business, not the module's: see `startsAt` below.
    */
   dripDays: number;
   lessons: Lesson[];
@@ -69,6 +84,28 @@ export type Course = {
    * (lib/certificate.ts). Off until the creator switches it on.
    */
   certificate: boolean;
+  /**
+   * The day the course begins, in seconds, or null for a course with no
+   * fixed start. This is the one thing that decides whether a course is a
+   * cohort or not, and it changes nothing else about it.
+   *
+   * null — the clock starts when each student pays. Everyone gets the same
+   * weeks in the same order, each counted from their own joining day, so a
+   * student who buys in March and one who buys in July are both in week one
+   * on their first day. This is what every course here was until now, and
+   * what a course stays unless a date is set.
+   *
+   * A date — the clock starts then, once, for everybody. Module one opens
+   * on that morning and not before, however early somebody bought; week
+   * three opens three weeks later for the whole room at the same time. A
+   * student who joins after the start finds everything up to that moment
+   * already open and waits with the rest for what comes next. That is the
+   * whole of what makes a cohort: one clock instead of one per student.
+   *
+   * A date in the past is allowed and is not a mistake — it is a course
+   * already running, taking late joiners.
+   */
+  startsAt: number | null;
 };
 
 export function newCourseId(): string {
@@ -131,7 +168,9 @@ export function parseCourse(raw: unknown): Course | null {
     const modules = Array.isArray(value.modules)
       ? value.modules.map(parseModule).filter((m): m is CourseModule => m !== null).slice(0, MAX_MODULES)
       : [];
-    return { id: value.id, modules, certificate: value.certificate === true };
+    const startsAt =
+      typeof value.startsAt === "number" && Number.isFinite(value.startsAt) ? Math.floor(value.startsAt) : null;
+    return { id: value.id, modules, certificate: value.certificate === true, startsAt };
   } catch {
     return null;
   }
@@ -154,13 +193,52 @@ export function findLesson(course: Course, lessonId: string): { lesson: Lesson; 
   return null;
 }
 
-/** When a module opens for someone who joined at `startSeconds`. */
-export function opensAt(unit: CourseModule, startSeconds: number): number {
-  return startSeconds + unit.dripDays * 86_400;
+/**
+ * Where a student's clock starts: the cohort's date, or their own joining.
+ *
+ * Everything about cohorts is this one line. The rest of the course does not
+ * know or care which kind it is.
+ */
+export function dripStart(course: Pick<Course, "startsAt">, joinedSeconds: number): number {
+  return course.startsAt ?? joinedSeconds;
 }
 
-export function isOpen(unit: CourseModule, startSeconds: number, nowSeconds = Date.now() / 1000): boolean {
-  return unit.dripDays === 0 || opensAt(unit, startSeconds) <= nowSeconds;
+/** Whether a course runs to one date for everyone rather than to each student's own. */
+export function isCohort(course: Pick<Course, "startsAt">): boolean {
+  return course.startsAt !== null;
+}
+
+/**
+ * When a module opens for a student who joined at `joinedSeconds`.
+ *
+ * The course is the first argument, and it is required, so that no caller
+ * can work out a drip date without it. That is deliberate: the older pair of
+ * these took the module and a start and nothing else, and adding cohorts to
+ * that shape would have meant finding nine call sites by hand and being
+ * right about all nine. A module opening a week early for a late joiner is
+ * not something anybody would notice from a screenshot. Written this way the
+ * compiler finds them instead.
+ */
+export function opensAt(course: Pick<Course, "startsAt">, unit: CourseModule, joinedSeconds: number): number {
+  return dripStart(course, joinedSeconds) + unit.dripDays * 86_400;
+}
+
+export function isOpen(
+  course: Pick<Course, "startsAt">,
+  unit: CourseModule,
+  joinedSeconds: number,
+  nowSeconds = Date.now() / 1000,
+): boolean {
+  // On a rolling course, "no wait" means open the moment they are in. On a
+  // cohort, day zero is a real day: a student who bought three weeks early
+  // waits for it with everyone else.
+  if (!isCohort(course) && unit.dripDays === 0) return true;
+  return opensAt(course, unit, joinedSeconds) <= nowSeconds;
+}
+
+/** Whether a cohort has not begun yet, so a student is waiting for day one. */
+export function beforeStart(course: Pick<Course, "startsAt">, nowSeconds = Date.now() / 1000): boolean {
+  return course.startsAt !== null && course.startsAt > nowSeconds;
 }
 
 /** Every stored file a course holds, so nothing is left behind when it goes. */
@@ -184,12 +262,13 @@ export type CourseEdit =
   | { op: "media-remove"; lessonId: string; pathname: string }
   | { op: "quiz"; lessonId: string; quiz: QuizSetup | null }
   | { op: "certificate"; on: boolean }
+  | { op: "start"; at: unknown }
   /** Several modules at once, each with its lessons by title: an outline taken from the writing help (lib/ai.ts). */
   | { op: "outline"; modules: { title: unknown; lessons: unknown[] }[] };
 
 export type EditResult =
   | { ok: true; course: Course; removed: ProductFile[]; addedId?: string }
-  | { ok: false; reason: "unknown" | "too_many" | "not_empty" | "drip" | "files" | "video_type" };
+  | { ok: false; reason: "unknown" | "too_many" | "not_empty" | "drip" | "files" | "video_type" | "start" };
 
 function mapLesson(course: Course, lessonId: string, change: (lesson: Lesson) => Lesson): Course | null {
   let found = false;
@@ -371,6 +450,14 @@ export function editCourse(course: Course, edit: CourseEdit): EditResult {
     }
     case "certificate":
       return { ok: true, course: { ...course, certificate: edit.on }, removed: [] };
+    case "start": {
+      if (edit.at === null) return { ok: true, course: { ...course, startsAt: null }, removed: [] };
+      const at = typeof edit.at === "number" ? Math.floor(edit.at) : Number.NaN;
+      if (!Number.isFinite(at) || at < EARLIEST_START || at > latestStart()) {
+        return { ok: false, reason: "start" };
+      }
+      return { ok: true, course: { ...course, startsAt: at }, removed: [] };
+    }
   }
 }
 
@@ -380,7 +467,7 @@ const courseKey = (id: string) => `nl:course:${id}`;
 const bodyKey = (id: string, lessonId: string) => `nl:course:${id}:body:${lessonId}`;
 
 export function emptyCourse(id: string = newCourseId()): Course {
-  return { id, modules: [{ id: newItemId(), title: "Module 1", dripDays: 0, lessons: [] }], certificate: false };
+  return { id, modules: [{ id: newItemId(), title: "Module 1", dripDays: 0, lessons: [] }], certificate: false, startsAt: null };
 }
 
 export async function readCourse(id: string): Promise<Course | null> {

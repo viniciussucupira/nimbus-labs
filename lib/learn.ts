@@ -635,7 +635,7 @@ export async function sendDripEmails(
     for (const student of students) {
       if (student.blocked) continue;
       for (const unit of dripping) {
-        const at = opensAt(unit, student.since);
+        const at = opensAt(course, unit, student.since);
         if (at > nowSeconds || at < nowSeconds - 3 * 86_400) continue;
         const [claimed] = await redisPipeline([["SET", dripMailKey(course.id, student.email, unit.id), "1", "NX", "EX", 400 * 86_400]]);
         if (claimed === null) continue;
