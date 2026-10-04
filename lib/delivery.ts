@@ -58,6 +58,27 @@ export const DELIVERY_ALLOWANCE_BYTES = 200 * 1024 * 1024 * 1024;
  */
 export const FREE_PAUSE_ABOVE_BYTES = 50 * 1024 * 1024 * 1024;
 
+/**
+ * What a gigabyte past the allowance costs, in cents.
+ *
+ * A paid download is never refused, at any number — the buyer paid for that
+ * file. Which leaves one cost in the whole system with no ceiling, and only
+ * two ways to put one on it: cut off a buyer, or stop a creator selling.
+ * Both destroy the thing being protected.
+ *
+ * So it is priced instead of limited. Delivery costs us $0.05 a gigabyte,
+ * and $0.11 for a file too large to cache; fifteen cents covers the worse of
+ * those with room, and a store reaching it is a store selling enough that
+ * the figure is small against what it is making.
+ *
+ * Published here, in the Terms and in the studio before it ever applies,
+ * because a charge the contract does not mention is the surprise this whole
+ * system exists to prevent. The creator is emailed automatically the morning
+ * after they pass the allowance, so nothing is ever charged to somebody who
+ * was not told first.
+ */
+export const OVER_ALLOWANCE_CENTS_PER_GB = 15;
+
 /** Counters are dropped a while after the month they describe. */
 const KEEP_SECONDS = 70 * 24 * 60 * 60;
 

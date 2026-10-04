@@ -138,3 +138,34 @@ test("the promise in the Terms is one the machine can keep alone", () => {
   const vercel = readFileSync(join(process.cwd(), "vercel.json"), "utf8");
   assert.match(vercel, /\/api\/cron\/usage/, "and be scheduled, or it never runs");
 });
+
+test("the right to charge for delivery exists before anything is charged", async () => {
+  const { OVER_ALLOWANCE_CENTS_PER_GB, DELIVERY_ALLOWANCE_BYTES } = await import("@/lib/delivery");
+  const GB = 1024 * 1024 * 1024;
+
+  // It has to cover the worst real rate — $0.11 a gigabyte for a file too
+  // large to cache — or charging for the overage still loses money.
+  assert.ok(
+    OVER_ALLOWANCE_CENTS_PER_GB / 100 > 0.11,
+    "a price under what delivery costs is not a price, it is a slower loss",
+  );
+
+  const terms = readFileSync(join(process.cwd(), "app/terms/page.tsx"), "utf8");
+  assert.match(
+    terms,
+    /OVER_ALLOWANCE_CENTS_PER_GB/,
+    "the rate must be in the Terms: a charge the contract does not mention is the surprise this all exists to prevent",
+  );
+  assert.match(
+    terms,
+    /A paid download is never refused, at any number/,
+    "and the promise it is priced instead of limited has to stay next to it",
+  );
+
+  const studio = readFileSync(join(process.cwd(), "app/studio/page.tsx"), "utf8");
+  assert.match(studio, /OVER_ALLOWANCE_CENTS_PER_GB/, "and the creator sees the rate before they ever meet it");
+
+  // A month inside the allowance must cost nothing extra, which is every
+  // month for an ordinary store.
+  assert.ok(DELIVERY_ALLOWANCE_BYTES >= 200 * GB, "the free allowance stays generous enough that this never fires");
+});

@@ -71,7 +71,7 @@ import {
   isConnectInTestMode,
 } from "@/lib/stripe-connect";
 import { ORDERS_PAGE_SIZE, canSell, listSales } from "@/lib/store-checkout";
-import { FREE_PAUSE_ABOVE_BYTES, bytesWords, deliveredThisMonth } from "@/lib/delivery";
+import { DELIVERY_ALLOWANCE_BYTES, FREE_PAUSE_ABOVE_BYTES, OVER_ALLOWANCE_CENTS_PER_GB, bytesWords, deliveredThisMonth } from "@/lib/delivery";
 import { MAX_LEADS, listSize } from "@/lib/free";
 import { readableSize } from "@/lib/product-file";
 import {
@@ -1489,6 +1489,14 @@ export default async function StudioPage({
                       {`${bytesWords(Math.min(delivery.bytes, FREE_PAUSE_ABOVE_BYTES))} of ${bytesWords(FREE_PAUSE_ABOVE_BYTES)}. `}
                       Past that, copies you give away pause until the month turns. Anything anyone has bought is never
                       affected.
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-ink">Past the allowance</dt>
+                    <dd className="text-ink-soft">
+                      {`$${(OVER_ALLOWANCE_CENTS_PER_GB / 100).toFixed(2)} a gigabyte above ${bytesWords(DELIVERY_ALLOWANCE_BYTES)}, on your next invoice. `}
+                      Nothing is ever cut off: a buyer who paid always gets what they paid for, however much you send.
+                      We email you the morning after you pass it.
                     </dd>
                   </div>
                   <div>

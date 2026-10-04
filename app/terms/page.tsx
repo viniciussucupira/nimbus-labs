@@ -4,7 +4,7 @@ import { LegalPage, LegalSection } from "@/components/legal-page";
 import { isDomainsConfigured } from "@/lib/domains";
 import { formatMoney } from "@/lib/money";
 import { REFUND_DAYS } from "@/lib/plan";
-import { DELIVERY_ALLOWANCE_BYTES, bytesWords } from "@/lib/delivery";
+import { DELIVERY_ALLOWANCE_BYTES, OVER_ALLOWANCE_CENTS_PER_GB, bytesWords } from "@/lib/delivery";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
 export const metadata: Metadata = {
@@ -234,8 +234,23 @@ export default function TermsPage() {
           We do not stop a download because a store has passed that figure.
           Somebody paid you for that file, and cutting your buyer off to
           protect our costs would be taking money for a sale and then not
-          completing it. Going past the allowance is a conversation with you,
-          not a door closed on your customer.
+          completing it. A paid download is never refused, at any number.
+        </p>
+        <p>
+          Past the allowance, delivery is charged rather than limited: $
+          {(OVER_ALLOWANCE_CENTS_PER_GB / 100).toFixed(2)} for each gigabyte
+          above {bytesWords(DELIVERY_ALLOWANCE_BYTES)} in a calendar month,
+          added to your next subscription invoice on the card you already pay
+          with. It is the only thing here that is billed by use, and it exists
+          so that a store selling a great deal is never stopped from selling.
+        </p>
+        <p>
+          You are emailed automatically the morning after a month&apos;s
+          deliveries pass the allowance, with your own figure in it, and the
+          same figure is in your studio at any time. Nothing is ever charged
+          to somebody who was not told first, and a month in which you stay
+          inside the allowance costs nothing beyond your plan — which is every
+          month, for every store we have ever had.
         </p>
         <p>
           What we ask in return is that the Services are used to sell your own
