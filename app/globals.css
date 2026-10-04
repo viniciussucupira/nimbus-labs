@@ -602,6 +602,269 @@ html {
   background-color: #fff;
 }
 
+.rule-soft {
+  border-top: 1px solid var(--line);
+}
+
+/* A hairline grid that fades out: texture without noise. */
+.nb-grid-lines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 80% 70% at 60% 40%, #000 20%, transparent 75%);
+}
+
+/* ------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0 1.35rem;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--d-base) var(--ease),
+    border-color var(--d-base) var(--ease),
+    color var(--d-base) var(--ease),
+    box-shadow var(--d-base) var(--ease),
+    transform var(--d-fast) var(--ease);
+}
+.btn:active {
+  transform: translateY(var(--press)) scale(0.99);
+}
+/*
+ * Working, not just unavailable.
+ *
+ * A button mid-request keeps its own label — every one of them says what it
+ * is doing, "Saving…" rather than nothing — and the cursor and the dimming
+ * carry the rest. aria-busy is what a screen reader reads; this is what
+ * everybody else sees.
+ */
+.btn[aria-busy="true"] {
+  cursor: progress;
+  opacity: 0.75;
+  transform: none;
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-sm {
+  min-height: 40px;
+  padding: 0 1rem;
+  font-size: 0.9375rem;
+}
+.btn-lg {
+  min-height: 56px;
+  padding: 0 1.75rem;
+  font-size: 1.0625rem;
+}
+.btn-block {
+  width: 100%;
+}
+/* On a phone no button may push past the edge of the screen: a label longer
+   than the room it has breaks onto a second line instead. Buttons that fit
+   are unchanged, because text only wraps when it has to. */
+@media (max-width: 479px) {
+  .btn {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.25;
+    padding-block: 0.55rem;
+  }
+}
+/* A button whose label may be longer than a small phone is wide: it may
+   break onto a second line instead of pushing past the edge of its card. */
+.btn-wrap {
+  max-width: 100%;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.25;
+  padding-block: 0.6rem;
+}
+.btn-primary {
+  background-color: var(--violet);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 10px 24px -10px rgba(63, 34, 196, 0.65);
+}
+.btn-primary:hover {
+  background-color: var(--violet-deep);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 14px 30px -12px rgba(63, 34, 196, 0.75);
+}
+.btn-light {
+  background-color: #fff;
+  color: var(--ink);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.5);
+}
+.btn-light:hover {
+  background-color: var(--lilac);
+  color: var(--violet-ink);
+}
+.btn-secondary {
+  background-color: #fff;
+  color: var(--ink);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-xs);
+}
+.btn-secondary:hover {
+  border-color: var(--ink-mute);
+  background-color: var(--paper);
+}
+.btn-ghost {
+  background-color: transparent;
+  color: var(--ink);
+}
+.btn-ghost:hover {
+  background-color: var(--sand);
+}
+.btn-outline-light {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.btn-outline-light:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+.btn-danger {
+  background-color: #fff;
+  color: var(--danger);
+  border-color: #f0c4c0;
+}
+.btn-danger:hover {
+  background-color: var(--danger-soft);
+  border-color: var(--danger);
+}
+.on-dark .btn:focus-visible,
+.btn-light:focus-visible,
+.btn-outline-light:focus-visible {
+  outline-color: #fff;
+}
+
+/* A text link with an arrow that moves a few pixels on hover. */
+.link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  color: var(--violet-deep);
+  text-decoration: none;
+  transition: color var(--d-base) var(--ease);
+}
+.link-arrow .arrow {
+  transition: transform var(--d-base) var(--ease);
+}
+.link-arrow:hover .arrow {
+  transform: translateX(3px);
+}
+.link-arrow:hover {
+  color: var(--violet-ink);
+}
+.on-dark .link-arrow,
+.link-arrow.on-dark {
+  color: #fff;
+}
+.on-dark .link-arrow:hover,
+.link-arrow.on-dark:hover {
+  color: #d9d0ff;
+}
+
+.link {
+  color: var(--violet-deep);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(63, 34, 196, 0.35);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--d-base) var(--ease);
+}
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
+/* --------------------------------------------------------------- cards */
+
+.card {
+  background: #fff;
+  border: 1px solid transparent;
+  border-radius: var(--r-lg);
+  /*
+   * Elevation, not a drop shadow.
+   *
+   * Four layers doing four jobs: a hairline that belongs to the brand
+   * rather than to grey, a highlight along the top edge so the card
+   * catches the light the section is lit by, a tight contact shadow, and
+   * a wide violet-tinted one for the distance off the page. A single
+   * rgba(0,0,0,.1) blur under every card is what makes a page of cards
+   * look printed rather than lit.
+   */
+  box-shadow:
+    inset 0 0 0 1px rgba(42, 23, 144, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 1px 2px rgba(23, 26, 46, 0.04),
+    0 14px 32px -16px rgba(42, 23, 144, 0.22);
+}
+.card-flat {
+  background: #fff;
+  border: 1px solid transparent;
+  border-radius: var(--r-lg);
+  box-shadow: inset 0 0 0 1px rgba(42, 23, 144, 0.08);
+}
+.card-hover {
+  transition:
+    box-shadow var(--d-base) var(--ease),
+    border-color var(--d-base) var(--ease),
+    transform var(--d-base) var(--ease);
+}
+.card-hover:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--line-strong);
+  transform: translateY(var(--lift));
+}
+.panel-dark {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-lg);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* =====================================================================
+   Grain.
+
+   A flat fill is the thing that dates a page fastest: screens render it
+   perfectly, and perfectly even colour is the one thing no real surface
+   has. A single layer of very fine noise over the dark sections puts
+   the grain back, at an opacity low enough that nobody will ever point
+   at it — they will only notice that the violet looks like a material
+   instead of a value.
+
+   It is drawn once, as a pseudo-element the pointer cannot reach, and
+   it sits under the content because every dark surface here already
+   isolates its own stacking context.
+   ===================================================================== */
+
 /* =====================================================================
    The marquee.
 
