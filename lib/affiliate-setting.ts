@@ -94,6 +94,13 @@ export type AffiliateSetting = {
    * the page is not built, and this is in no plan card or comparison anywhere.
    */
   directory: boolean;
+  /**
+   * Whether a buyer, once credited to an affiliate, stays with that affiliate
+   * for every later purchase — with no cookie and no expiry
+   * (lib/affiliate-bond.ts). Off until the creator switches it on, because it
+   * changes who gets paid and that is theirs to decide.
+   */
+  lifetime: boolean;
 };
 
 /** The published limits. */
@@ -101,15 +108,33 @@ export const MIN_COMMISSION = 1;
 export const MAX_COMMISSION = 90;
 export const MIN_COOKIE_DAYS = 1;
 /**
- * The longest window a creator can set, in days.
+ * The longest window a creator can ask for, in days.
  *
- * Hotmart's own help pages offer 60, 90, 180 days "or for ever". There is no
- * such thing as a cookie that lasts for ever — Chrome caps any cookie's life
- * at 400 days whatever the site asks for — so the honest ceiling is a number
- * under that cap, and 365 is the one that reads as a year and never relies on
- * a browser keeping a promise it has already said it will not keep.
+ * 400 because that is the most any browser keeps today — Chrome caps every
+ * cookie at 400 days from when it is set and shortens a longer one without
+ * telling the site (Chrome 104, August 2022). Asking for more would be writing
+ * down a number the browser quietly throws away.
+ *
+ * But this figure is NOT a promise, and nothing user-facing may turn it into
+ * one. That is the whole point of the paragraph you are reading. A cookie's
+ * life is decided by browser policy, and browser policy changes without
+ * telling us either: the cap could rise, in which case this number is merely
+ * conservative and costs a creator a few days, or it could fall, in which case
+ * a promise built on it becomes a lie printed on the site — and nobody here is
+ * going to be reading browser release notes to notice which.
+ *
+ * So the wording everywhere is conditional and self-correcting: up to N days,
+ * for as long as the buyer's browser keeps it, browsers set their own limit.
+ * That sentence stays true at 400, at 500 and at 90, and so never needs
+ * revisiting. tests/affiliate-bond.test.ts fails if it is ever replaced by a
+ * flat guarantee.
+ *
+ * The promise with no time limit is a different mechanism on purpose: the bond
+ * between a buyer and their affiliate (lib/affiliate-bond.ts), which lives in
+ * our own records, where no browser reaches. Hotmart's "for ever" is written
+ * on a cookie, and a cookie is the one place that promise cannot be kept.
  */
-export const MAX_COOKIE_DAYS = 365;
+export const MAX_COOKIE_DAYS = 400;
 /** The last day of the month that exists in every month. */
 export const MAX_PAYDAY = 28;
 /** No day promised. */
@@ -128,6 +153,7 @@ export const NO_AFFILIATES: AffiliateSetting = {
   hold: 0,
   buyers: false,
   directory: false,
+  lifetime: false,
 };
 
 const whole = (value: unknown, min: number, max: number): number | null => {
@@ -163,6 +189,8 @@ export function parseAffiliateSetting(raw: unknown): AffiliateSetting {
     buyers: value.buyers === true,
     // Consent is given, never assumed: anything but an explicit yes is a no.
     directory: value.directory === true,
+    // Likewise: a programme already running is not quietly re-pointed.
+    lifetime: value.lifetime === true,
   };
 }
 
@@ -289,10 +317,24 @@ export function viaCookieValue(existing: string | undefined, code: string, nowSe
   return `${code}.${at}~${first.code}.${first.at}`;
 }
 
-/** The sentence the affiliate and the creator both read about the rule. */
+/**
+ * The sentence the affiliate and the creator both read about the rule.
+ *
+ * The window is stated conditionally — up to so many days, for as long as the
+ * browser keeps the cookie — and never as a flat guarantee, because how long a
+ * browser keeps a cookie is browser policy and changes without notice. The
+ * unconditional half of this sentence is the bond, which is ours and does not
+ * expire. Keeping those two apart is what means nobody has to watch a browser
+ * release note to know whether this page is still true.
+ */
 export function attributionWords(setting: AffiliateSetting): string {
-  const window = `${setting.days} ${setting.days === 1 ? "day" : "days"}`;
-  return setting.rule === "first"
-    ? `The first affiliate link a buyer follows earns the sale, for ${window} after that first click, even if they follow somebody else's link later.`
-    : `The last affiliate link a buyer follows earns the sale, for ${window} after that click.`;
+  const window = `up to ${setting.days} ${setting.days === 1 ? "day" : "days"}`;
+  const kept = "for as long as the buyer's browser keeps the cookie — browsers set their own limit on that and shorten a long one without telling the site";
+  const rule =
+    setting.rule === "first"
+      ? `The first affiliate link a buyer follows earns the sale, ${window} after that first click and ${kept}, even if they follow somebody else's link later.`
+      : `The last affiliate link a buyer follows earns the sale, ${window} after that click and ${kept}.`;
+  return setting.lifetime
+    ? `${rule} None of that applies once a sale has been credited: from then on the buyer stays with that affiliate, and everything the person buys afterwards earns them, with no time limit, on any device, with no cookie involved at all.`
+    : rule;
 }

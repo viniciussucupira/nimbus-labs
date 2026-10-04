@@ -199,6 +199,8 @@ export class MemoryRedis {
       }
       case "HGET":
         return this.hash(key).get(args[0]) ?? null;
+      case "HEXISTS":
+        return this.hash(key).has(args[0]) ? 1 : 0;
       case "HMGET":
         return args.map((field) => this.hash(key).get(field) ?? null);
       case "HDEL": {

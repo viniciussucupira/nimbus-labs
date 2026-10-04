@@ -14,7 +14,8 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  * `{ action: "settings", enabled, percent, days, rule, payday, hold, rates: { <product>: 0-90 } }`,
  *   where `payday` is the day of the month they pay (1-28, or 0 for no promised
  *   day), `hold` is how many days a sale waits before it can be paid, and
- *   `rule` is "last" or "first": which of two links a buyer followed earns it;
+ *   `rule` is "last" or "first": which of two links a buyer followed earns it,
+ *   and `lifetime` keeps a buyer with the affiliate who brought them, for good;
  * `{ action: "code", promo, id }`, giving one of the creator's own discount
  *   codes to one affiliate so a sale that used it earns them their share with
  *   no click at all; an empty `id` takes the code back;

@@ -27,6 +27,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   MAX_COOKIE_DAYS,
+  VIA_COOKIE_SECONDS,
   attributionWords,
   parseAffiliateSetting,
   readViaCookie,
@@ -131,13 +132,23 @@ test("there is no rule that splits one commission between two affiliates", () =>
   );
 });
 
-test("the window beats what Hotmart publishes, without promising a cookie that lives for ever", () => {
-  // Hotmart offers 60, 90, 180 days "or for ever". Chrome caps any cookie at
-  // 400 days whatever a site asks for, so "for ever" is not a thing anybody
-  // can deliver. A year, which is under the cap, is a promise that holds.
-  assert.ok(MAX_COOKIE_DAYS > 180, "180 days is what the longest honest competitor offers");
-  assert.ok(MAX_COOKIE_DAYS < 400, "a window past the browser's own cap would be a promise the browser breaks");
-  assert.equal(MAX_COOKIE_DAYS, 365);
+test("the window asks for every day a browser gives today, and claims none of them", () => {
+  // Hotmart offers 60, 90, 180 days "or for ever". Chrome caps every cookie at
+  // 400 days from when it is set and shortens a longer one without saying so,
+  // so asking past that is asking for something thrown away.
+  //
+  // But this number is a ceiling we offer, never a guarantee we make: browser
+  // policy changes without telling us, and nobody here is going to be reading
+  // release notes to find out. If the cap rises this is merely conservative;
+  // if it falls, the wording is still true, because the wording never promised
+  // a duration. tests/affiliate-bond.test.ts is what holds that line.
+  assert.ok(MAX_COOKIE_DAYS > 180, "180 days is the longest honest figure a competitor publishes");
+  assert.equal(MAX_COOKIE_DAYS, 400, "every day a browser will keep today, asked for and not promised");
+  // Sent as Max-Age, counted in seconds from receipt, so there is no clock to
+  // disagree about and nothing rounded down on the way.
+  assert.equal(VIA_COOKIE_SECONDS, MAX_COOKIE_DAYS * 24 * 60 * 60);
+  const proxy = readFileSync(join(process.cwd(), "proxy.ts"), "utf8");
+  assert.match(proxy, /maxAge: VIA_COOKIE_SECONDS/, "and the cookie has to actually be written with it");
 });
 
 test("the sentence an affiliate reads says which rule, and counts the window from the right click", () => {

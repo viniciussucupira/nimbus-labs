@@ -391,17 +391,32 @@ export default function PrivacyPage() {
           </strong>{" "}
           When someone follows an affiliate&apos;s link to a store, a cookie
           named <code>nl_via_</code> followed by the store&apos;s address holds
-          the affiliate&apos;s code and the time of the click, for up to 90
-          days; a purchase counts for the affiliate only within the window the
-          creator set. Visitors in the European Economic Area, the United
+          the affiliate&apos;s code and the time of the click, and the earliest click
+          that visitor still carries, for up to 400 days &mdash; the longest any
+          browser keeps a cookie; a purchase counts for the affiliate only
+          within the window the creator set, measured from whichever of those
+          two clicks that creator credits. Visitors in the European Economic Area, the United
           Kingdom, Switzerland or Brazil, or whose country we cannot tell, are
           asked first, because the rules there require consent: the cookie is
           set only if they allow it, and their answer is kept in their browser
           for that store. To count a click once per visitor per day we keep a
           one-way hash of the visitor&apos;s network address and browser for
           two days. When a purchase counts, we note which product, when, what
-          was paid before tax and in all, and the share it earns, and never
-          the buyer&apos;s name or email address. Where a creator lets buyers
+          was paid before tax and in all, the share it earns, and whether it was
+          credited by a click, by a discount code or by the buyer already
+          belonging to that affiliate &mdash; and never the buyer&apos;s name or
+          email address. A creator may give one of their own discount codes to
+          one affiliate, and then a purchase that used that code counts for them
+          with no cookie involved; what we keep for that is which code belongs
+          to which affiliate, and nothing about whoever typed it. A creator may
+          also ask that a buyer credited to an affiliate stays credited to them
+          for every later purchase. Where they have, we keep a one-way hash of
+          the buyer&apos;s email address together with the store&apos;s own id,
+          and the affiliate it belongs to &mdash; no address, no name and nothing
+          about what was bought. The hash cannot be turned back into an address
+          or lined up against another store&apos;s, it is never shown to the
+          affiliate, and a buyer who asks the creator to be forgotten is removed
+          from it. Where a creator lets buyers
           join without applying, a buyer who presses &ldquo;Get my link&rdquo;
           joins with the email address their order was paid with, which we read
           from the creator&apos;s Stripe account for that order. When someone applies to be an

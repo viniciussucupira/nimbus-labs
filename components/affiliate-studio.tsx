@@ -512,6 +512,7 @@ function Terms({
   const [hold, setHold] = useState(String(setting.hold));
   const [buyers, setBuyers] = useState(setting.buyers);
   const [directory, setDirectory] = useState(setting.directory);
+  const [lifetime, setLifetime] = useState(setting.lifetime);
   const [rates, setRates] = useState<Record<string, string>>(
     Object.fromEntries(Object.entries(setting.rates).map(([id, n]) => [id, String(n)])),
   );
@@ -539,6 +540,7 @@ function Terms({
               payday: Number(payday.trim()),
               hold: Number(hold.trim()),
               buyers,
+              lifetime,
               directory,
               rates: chosen,
             },
@@ -643,6 +645,12 @@ function Terms({
         <p className="mt-2 text-xs text-ink-soft">
           {`From ${MIN_COMMISSION} to ${MAX_COMMISSION}%, of what the buyer paid before tax, and a window of ${MIN_COOKIE_DAYS} to ${MAX_COOKIE_DAYS} days. A change applies to sales from then on; a sale keeps the share it was made at. Visitors from the European Economic Area, the UK, Switzerland and Brazil are asked first, because the rules there require it, and their click is remembered once they allow it.`}
         </p>
+        <p className="mt-1 text-xs text-ink-soft">
+          A click is remembered in the buyer&rsquo;s own browser, so the window runs for as long as that browser keeps it.
+          Browsers set their own limit and shorten a long one without telling the site, and a buyer who clears their
+          browser, changes phone or opens a private window arrives as somebody new. For credit that nothing can shorten,
+          switch on the setting below.
+        </p>
 
         <fieldset className="mt-5">
           <legend className="field-label">When a buyer follows two affiliates&rsquo; links</legend>
@@ -676,6 +684,30 @@ function Terms({
             {`One sale earns one affiliate either way: a commission is never split between two people who both sent the same buyer, because the one who did the work to convert them ends up paying for the one who did not. Your affiliate page tells applicants which of the two you chose, before they apply. The window of ${days.trim() || setting.days} days is counted from ${rule === "first" ? "that first click" : "their most recent click"}.`}
           </p>
         </fieldset>
+
+        {/*
+          The bond that outlives the window (lib/affiliate-bond.ts). Off until
+          the creator says so: it changes who gets paid for a sale no link
+          brought in, and that is their decision, not a default.
+        */}
+        <label className="mt-5 flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl border border-line bg-paper px-4 py-3">
+          <input
+            type="checkbox"
+            checked={lifetime}
+            onChange={(e) => setLifetime(e.target.checked)}
+            className="h-5 w-5 shrink-0 accent-[var(--violet)]"
+          />
+          <span className="text-sm">
+            <span className="block font-semibold text-ink">A buyer stays with the affiliate who brought them</span>
+            <span className="block text-ink-soft">
+              Once a sale is credited to an affiliate, everything that person buys afterwards earns the same affiliate — no
+              time limit, no second click, and whatever device they come back on. This is the one kind of credit no browser
+              can shorten or throw away, because it is not kept in one. The window above is a cookie and lasts as long as
+              the buyer&rsquo;s browser decides to keep it; this does not expire at all. Buyers are remembered as a one-way
+              hash of their email address, never a readable list, and your affiliates see only their own totals.
+            </span>
+          </span>
+        </label>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <label className="block" htmlFor="aff-payday">

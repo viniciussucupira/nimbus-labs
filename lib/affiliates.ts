@@ -71,6 +71,7 @@ import {
   readViaCookie,
 } from "@/lib/affiliate-setting";
 import { affiliateForCodes, codeOwners } from "@/lib/affiliate-codes";
+import { bondFor, rememberBuyer } from "@/lib/affiliate-bond";
 import type { Store } from "@/lib/store";
 import { plainAmount } from "@/lib/money";
 import { alertCreator } from "@/lib/phone-alerts";
@@ -134,6 +135,17 @@ export type Affiliate = {
   paypal: string;
 };
 
+/**
+ * What tied a sale to an affiliate:
+ *
+ *   "click"  they followed the affiliate's link (lib/affiliate-setting.ts);
+ *   "code"   they typed a discount code given to that affiliate, with no
+ *            click anywhere (lib/affiliate-codes.ts);
+ *   "buyer"  they had been credited to that affiliate before, and the creator
+ *            asked for their buyers to stay theirs (lib/affiliate-bond.ts).
+ */
+export type Credit = "click" | "code" | "buyer";
+
 /** A sale that came through an affiliate's link. */
 export type Referral = {
   /** The Checkout Session, or the one-click payment, that paid for it. */
@@ -158,12 +170,8 @@ export type Referral = {
   rate: number;
   /** Paid with the affiliate's own address: written down, earns nothing. */
   self: boolean;
-  /**
-   * Credited by the discount code the buyer typed rather than by a click
-   * (lib/affiliate-codes.ts). Sales written down before codes could credit
-   * anybody have none, and every one of those came from a click.
-   */
-  byCode: boolean;
+  /** What credited it: a click, a code, or the buyer being theirs already. */
+  how: Credit;
 };
 
 export type Payout = {
@@ -264,7 +272,9 @@ export async function setPayAddress(store: Store, affiliate: Affiliate, raw: str
 function parseReferral(raw: unknown): Referral | null {
   if (typeof raw !== "string") return null;
   try {
-    const value = JSON.parse(raw) as Partial<Referral>;
+    // `byCode` is not on Referral any more: it is the older spelling of
+    // `how`, still read so a sale written down then keeps its credit.
+    const value = JSON.parse(raw) as Partial<Referral> & { byCode?: unknown };
     if (typeof value.ref !== "string" || typeof value.aff !== "string") return null;
     const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : 0);
     return {
@@ -279,7 +289,10 @@ function parseReferral(raw: unknown): Referral | null {
       currency: readCurrencyCode(value.currency),
       rate: n(value.rate),
       self: value.self === true,
-      byCode: value.byCode === true,
+      // Sales written down before a code or a bond could credit anybody have
+      // neither field, and every one of those came from a click. `byCode` is
+      // read for the ones written in between.
+      how: value.how === "code" || value.how === "buyer" ? value.how : value.byCode === true ? "code" : "click",
     };
   } catch {
     return null;
@@ -833,20 +846,32 @@ export async function noteSession(store: Store, session: SessionLike, owners?: M
   // The click first: a buyer who followed a link and then typed a code they
   // saw elsewhere still belongs to the affiliate whose link they followed.
   let aff = meta.via ?? "";
-  // A code only ever credits somebody the creator has approved today. An
-  // affiliate they declined or removed keeps their code in the record — it is
-  // history — and earns nothing more through it.
+  const buyer = typeof session.customer_details?.email === "string" ? session.customer_details.email : "";
   let own: number | null = null;
-  let byCode = false;
+  // How the sale found its affiliate, which the creator's book and the
+  // affiliate's own page both say out loud.
+  let how: Credit = "click";
   if (!AFFILIATE_ID_PATTERN.test(aff)) {
+    // Then the code the buyer typed, which is the only trace a sale made on a
+    // podcast or from a stage leaves at all (lib/affiliate-codes.ts).
     const given = owners ?? (await codeOwners(store));
-    const found = affiliateForCodes(session, given);
+    let found = affiliateForCodes(session, given);
+    how = "code";
+    // And last, the buyer themselves: somebody who was credited to an
+    // affiliate once and whose creator asked for them to stay credited
+    // (lib/affiliate-bond.ts). No cookie, no window, any device.
+    if (!found && buyer) {
+      found = await bondFor(store, buyer);
+      how = "buyer";
+    }
     if (!found) return;
+    // A code or a bond only ever credits somebody the creator approves today.
+    // An affiliate they declined or removed keeps their record — it is
+    // history — and earns nothing more through either.
     const who = await readAffiliate(store, found);
     if (who?.status !== "approved") return;
     aff = found;
     own = who.rate;
-    byCode = true;
   }
   const total = typeof session.amount_total === "number" ? session.amount_total : 0;
   const tax = typeof session.total_details?.amount_tax === "number" ? session.total_details.amount_tax : 0;
@@ -856,7 +881,6 @@ export async function noteSession(store: Store, session: SessionLike, owners?: M
       : session.payment_intent && typeof session.payment_intent === "object" && typeof (session.payment_intent as { id?: unknown }).id === "string"
         ? ((session.payment_intent as { id: string }).id)
         : "";
-  const buyer = typeof session.customer_details?.email === "string" ? session.customer_details.email : "";
   const base = Math.max(0, total - tax);
   // Through a link, the shares were worked out and written onto the order when
   // the buyer started paying, and those are the ones that stand — the creator
@@ -864,12 +888,12 @@ export async function noteSession(store: Store, session: SessionLike, owners?: M
   // Through a code there was no such moment, because nothing knew an affiliate
   // was involved until the code was typed, so the shares are the ones the
   // programme holds now. The affiliate's page says which of the two it was.
-  let rate = byCode ? commissionRate(store.affiliates, meta.product ?? "", own) : Number(meta.via_rate) || 0;
+  let rate = how === "click" ? Number(meta.via_rate) || 0 : commissionRate(store.affiliates, meta.product ?? "", own);
   // A bump in the same order earns its own product's share, none when the
   // creator left that product out: the one rate kept for the sale is the
   // two shares together, over the whole of it.
   const bumpCents = Number(meta.bump_cents);
-  const bumpRate = byCode ? commissionRate(store.affiliates, meta.bump ?? "", own) : Number(meta.bump_rate);
+  const bumpRate = how === "click" ? Number(meta.bump_rate) : commissionRate(store.affiliates, meta.bump ?? "", own);
   const subtotal = typeof session.amount_subtotal === "number" ? session.amount_subtotal : 0;
   if (meta.bump && Number.isFinite(bumpCents) && bumpCents > 0 && Number.isFinite(bumpRate) && subtotal > 0 && base > 0) {
     const bumpShare = Math.min(1, bumpCents / subtotal);
@@ -887,8 +911,17 @@ export async function noteSession(store: Store, session: SessionLike, owners?: M
     currency: readCurrencyCode(session.currency),
     rate,
     self: await isSelf(store, aff, buyer),
-    byCode,
+    how,
   });
+
+  // And the buyer stays with them, where the creator asked for that. Written
+  // after the sale, so a bond that fails costs a future commission rather than
+  // one already earned (lib/affiliate-bond.ts).
+  if (buyer) {
+    await rememberBuyer(store, buyer, aff, store.affiliates.rule).catch((error) =>
+      console.error("remembering an affiliate's buyer failed", error),
+    );
+  }
 }
 
 /** Writes down a paid offer after paying that follows an affiliate's sale. */
@@ -913,7 +946,7 @@ export async function noteCharge(store: Store, pi: Record<string, unknown>): Pro
     self: await isSelf(store, aff, buyer),
     // An offer taken after paying follows the order it rides on, and that
     // order is only ever reached through a link.
-    byCode: false,
+    how: "click",
   });
 }
 
