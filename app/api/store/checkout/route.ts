@@ -19,6 +19,7 @@ import { outOfKeys } from "@/lib/licence-keys";
 import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 import { readListings, readProduct } from "@/lib/catalog";
 import { MIN_BUNDLE_ITEMS, deliverableItems } from "@/lib/bundle-rules";
+import { cameFrom } from "@/lib/came-from";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -154,6 +155,10 @@ export async function POST(request: NextRequest) {
         news: news && (canWrite(store) || syncTakesBuyer(store, product.id)),
         via,
         gift,
+        // Which of the creator's links this sale came from, read off the page
+        // the button was pressed on (lib/came-from.ts). Nothing is stored and
+        // nobody is identified: the tag rides to Stripe with the payment.
+        cameFrom: cameFrom(request.headers.get("referer"), new URL(origin).hostname),
       }),
     );
     if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);

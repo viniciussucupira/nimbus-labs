@@ -419,7 +419,18 @@ type Row = {
  * One paid sale as read from Stripe: a checkout, or a one-click extra after
  * one, with the amount in the smallest unit of the currency it was paid in.
  */
-export type Sale = { created: number; product: string; cents: number; currency: string; row: Record<string, unknown>; upsell: boolean };
+export type Sale = {
+  created: number;
+  product: string;
+  cents: number;
+  currency: string;
+  row: Record<string, unknown>;
+  upsell: boolean;
+  /** The utm_source on the link this sale came from, "" when untagged (lib/came-from.ts). */
+  source: string;
+  medium: string;
+  campaign: string;
+};
 
 /** The currency Stripe reports on a checkout or a payment; US dollars when it says none. */
 const currencyOf = (row: { currency?: unknown }) => (typeof row.currency === "string" && row.currency ? row.currency.toLowerCase() : "usd");
@@ -466,6 +477,9 @@ export async function readPaidSales(store: Store, since: number, pages: number):
       currency: currencyOf(row),
       row: raw,
       upsell: false,
+      source: meta.utm_source ?? "",
+      medium: meta.utm_medium ?? "",
+      campaign: meta.utm_campaign ?? "",
     });
   });
   // Products taken in one click after paying are charges of their own.
@@ -479,6 +493,12 @@ export async function readPaidSales(store: Store, since: number, pages: number):
       currency: currencyOf(pi),
       row: pi,
       upsell: true,
+          // An upsell is taken in one click after a checkout that already has
+      // its channel. It belongs to the same visit, and the sale it followed
+      // carries the tag, so this is left blank rather than guessed at.
+      source: "",
+      medium: "",
+      campaign: "",
     });
   });
   sales.sort((a, b) => b.created - a.created);

@@ -23,6 +23,7 @@ import {
 import { isPaidUp } from "@/lib/billing";
 import { StripeError, checkoutClosesAt, onAccount, platformKey } from "@/lib/stripe-account";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
+import { type CameFrom, hasSource } from "@/lib/came-from";
 import { applyTax } from "@/lib/tax";
 import { inTheCurrencyShown, isSettled, onlyInstantMethods, reusableMethod, saveCardForOffers } from "@/lib/instant-pay";
 import { activePwyw, pwywPriceId } from "@/lib/pay-what-you-want";
@@ -144,6 +145,13 @@ export async function createCheckout(
     /** The buyer chose to pay in the creator's payment plan. */
     plan?: boolean;
     /**
+     * The utm tags on the page this checkout was opened from
+     * (lib/came-from.ts). Written onto the Stripe session so the creator can
+     * see which of their links the money came from, in the one record that
+     * outlives ours.
+     */
+    cameFrom?: CameFrom;
+    /**
      * For a course: the fingerprint of the secret the buyer's browser keeps,
      * so the course opens right away in the browser that paid.
      */
@@ -227,6 +235,13 @@ export async function createCheckout(
   // Which option was bought decides which file is handed over later, so it
   // travels with the charge rather than being worked out again afterward.
   if (chosen) body.set("metadata[option]", chosen.id);
+  // Which of the creator's own links this sale came from. Only written when
+  // there is something to write, so an untagged sale carries no empty field.
+  if (extras.cameFrom && hasSource(extras.cameFrom)) {
+    if (extras.cameFrom.source) body.set("metadata[utm_source]", extras.cameFrom.source);
+    if (extras.cameFrom.medium) body.set("metadata[utm_medium]", extras.cameFrom.medium);
+    if (extras.cameFrom.campaign) body.set("metadata[utm_campaign]", extras.cameFrom.campaign);
+  }
   if (bundled) {
     for (const [key, value] of Object.entries(bundleMeta("bundle", bundled.map((p) => p.id)))) body.set(`metadata[${key}]`, value);
   }
