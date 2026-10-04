@@ -14,6 +14,7 @@ import {
 } from "@/lib/product-file";
 import { ITEM_ID_PATTERN, findLesson, readCourses } from "@/lib/course";
 import { storageUsed } from "@/lib/storage-quota";
+import { rememberFolderOwner } from "@/lib/delivery";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 /** How long the creator has to start the upload after asking for the door. */
@@ -91,6 +92,11 @@ export async function POST(request: NextRequest) {
         */
         const held = await storageUsed(folder);
         if (held.full) throw new Error("storage_full");
+
+        // The one moment this store's folder and its owner are both in hand.
+        // Kept so the allowance notice can reach them without anybody
+        // looking anything up (lib/delivery.ts).
+        await rememberFolderOwner(folder, ref);
 
         return {
           // Scoped to this one path, so the token cannot sign anything else.

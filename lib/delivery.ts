@@ -67,6 +67,33 @@ const KEEP_SECONDS = 70 * 24 * 60 * 60;
  */
 const overKey = (month: string) => `nl:store:delivery:over:${month}`;
 
+/**
+ * Which creator a delivery folder belongs to.
+ *
+ * A folder name is a one-way hash of the creator's address, so that a public
+ * file path says nothing about whose store it is. That is right, and it
+ * leaves this file holding a number it cannot attach to a person — which is
+ * why the notice about going over the allowance could only ever have been
+ * written by hand.
+ *
+ * So the pairing is kept here, in our own store, where it was always
+ * readable to us and never to anybody else. Nothing about the public path
+ * changes; the hash still reveals nothing. It is written when a creator
+ * uploads, which is the one moment both halves are in the same hand, and
+ * read only by the daily run that writes to them.
+ */
+const ownerKey = (folder: string) => `nl:store:folder-owner:${folder}`;
+
+/** Remembers whose folder this is, so the allowance notice can reach them. */
+export async function rememberFolderOwner(folder: string, email: string): Promise<void> {
+  if (!isRedisConfigured() || !folder || !email) return;
+  try {
+    await redisPipeline([["SET", ownerKey(folder), email.toLowerCase()]]);
+  } catch (error) {
+    console.error("could not remember a folder's owner", error);
+  }
+}
+
 /** The month a delivery belongs to, in UTC so it never depends on a server. */
 export function monthKey(now: Date = new Date()): string {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -211,5 +238,17 @@ export async function freeDeliveryPaused(folder: string): Promise<boolean> {
   } catch (error) {
     console.error("could not read this month's deliveries", error);
     return false;
+  }
+}
+
+/** The creators behind a set of folders, for the notice that goes to them. */
+export async function ownersOf(folders: string[]): Promise<(string | null)[]> {
+  if (!isRedisConfigured() || folders.length === 0) return folders.map(() => null);
+  try {
+    const raw = await redisPipeline(folders.map((f) => ["GET", ownerKey(f)]));
+    return raw.map((v) => (typeof v === "string" && v.includes("@") ? v : null));
+  } catch (error) {
+    console.error("could not read who a folder belongs to", error);
+    return folders.map(() => null);
   }
 }

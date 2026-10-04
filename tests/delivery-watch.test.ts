@@ -16,6 +16,8 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   DELIVERY_ALLOWANCE_BYTES,
   bytesWords,
@@ -109,4 +111,30 @@ test("the figures read as figures in an email", () => {
 test("the watch reads nothing when there is nothing written", async () => {
   redis.run(["DEL", "nl:store:delivery:over:" + new Date().toISOString().slice(0, 7)]);
   assert.deepEqual(await storesOverAllowance(), []);
+});
+
+test("the promise in the Terms is one the machine can keep alone", () => {
+  const terms = readFileSync(join(process.cwd(), "app/terms/page.tsx"), "utf8");
+  const section = terms.slice(terms.indexOf('id="fair-use"'), terms.indexOf('id="fair-use"') + 4000);
+
+  // The clause may not promise a letter that only a person could send.
+  assert.doesNotMatch(
+    section,
+    /we will write to you first/,
+    "a promise that waits for somebody to notice is not a promise. Section 5 should " +
+      "describe the automatic notice, not a letter written by hand.",
+  );
+  assert.match(section, /automatic/, "it should say plainly that the notice is automatic");
+  assert.match(
+    section,
+    /never\s+in the middle of delivering something a buyer has already paid for/,
+    "and must keep the one thing that is never automated: cutting off a paid delivery",
+  );
+
+  // And the thing that sends it has to exist.
+  const cron = readFileSync(join(process.cwd(), "app/api/cron/usage/route.ts"), "utf8");
+  assert.match(cron, /ownersOf/, "the daily run must look up who to write to");
+  assert.match(cron, /sendEmail/, "and actually send it");
+  const vercel = readFileSync(join(process.cwd(), "vercel.json"), "utf8");
+  assert.match(vercel, /\/api\/cron\/usage/, "and be scheduled, or it never runs");
 });

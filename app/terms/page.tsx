@@ -241,14 +241,31 @@ export default function TermsPage() {
           What we ask in return is that the Services are used to sell your own
           work to your own audience, and not as general file hosting, a
           content delivery network, a backup service, or a way to distribute
-          very large files at a scale the subscription does not cover. If a
-          single store’s storage or downloads stay far above the published
-          allowance, we will write to you first, with the figures, and discuss
-          a plan that fits what you are doing. We may limit or suspend a store
-          only if that use continues after we have written to you and given
-          you a reasonable time to answer, or where the use is plainly abusive
-          or unlawful. We will not do it silently, and never in the middle of
-          delivering something a buyer has already paid for.
+          very large files at a scale the subscription does not cover.
+        </p>
+        <p>
+          If your store passes the download allowance in a month, our system
+          emails you the next morning with your own figure in it. That notice
+          is automatic: it does not wait for anybody here to notice, and it
+          reaches you whether or not we are looking. Your studio shows the
+          same number at any time.
+        </p>
+        <p>
+          Two things happen on their own, and neither touches a buyer. Free
+          copies — files given away rather than bought — pause for the rest
+          of the month once a store has given away several times the
+          allowance, and resume when the month turns; anything anyone has
+          bought is unaffected. And new uploads stop once a store is holding
+          far more than any storefront needs, which asks you to remove
+          something before adding more and changes nothing about what is
+          already there or already sold.
+        </p>
+        <p>
+          Beyond those, we may limit or suspend a store only if use far above
+          the published allowances continues after that notice has been sent
+          and you have had a reasonable time to answer, or where the use is
+          plainly abusive or unlawful. We will not do it silently, and never
+          in the middle of delivering something a buyer has already paid for.
         </p>
       </LegalSection>
 
