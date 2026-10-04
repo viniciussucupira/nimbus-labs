@@ -29,6 +29,12 @@ export type Broadcast = {
   body: string;
   /** Everyone who may be written to, or only those who got one product. */
   productId: string | null;
+  /**
+   * Nobody who already has this product. Set with or without productId: on
+   * its own it is "everyone except the people who bought this", and with one
+   * it is "the people who took that, and have not bought this".
+   */
+  notProductId: string | null;
   status: BroadcastStatus;
   createdAt: number;
   sendAt: number;
@@ -54,7 +60,10 @@ function parse(raw: unknown): Broadcast | null {
   if (typeof raw !== "string") return null;
   try {
     const value = JSON.parse(raw) as Broadcast;
-    return BROADCAST_ID.test(value.id) ? value : null;
+    if (!BROADCAST_ID.test(value.id)) return null;
+    // Written before the exclusion existed: it goes to everyone it was
+    // addressed to, exactly as it was when it was scheduled.
+    return { ...value, notProductId: typeof value.notProductId === "string" ? value.notProductId : null };
   } catch {
     return null;
   }
@@ -87,7 +96,7 @@ export type CreateResult =
 /** Writes a broadcast down to go now or later. What it may contain is checked here. */
 export async function createBroadcast(
   store: Store,
-  input: { subject: unknown; body: unknown; productId: unknown; sendAt: unknown },
+  input: { subject: unknown; body: unknown; productId: unknown; notProductId: unknown; sendAt: unknown },
 ): Promise<CreateResult> {
   if (monthlyAllowance(store) === 0) return { ok: false, reason: "plan" };
   if (!store.mail || !store.listId) return { ok: false, reason: "setup" };
@@ -97,6 +106,10 @@ export async function createBroadcast(
   if (!body) return { ok: false, reason: "body" };
   const productId = typeof input.productId === "string" && input.productId ? input.productId : null;
   if (productId && !hasProduct(store, productId)) return { ok: false, reason: "product" };
+  const notProductId = typeof input.notProductId === "string" && input.notProductId ? input.notProductId : null;
+  if (notProductId && !hasProduct(store, notProductId)) return { ok: false, reason: "product" };
+  // "Only the people who got X, who have not got X" is nobody, every time.
+  if (notProductId && notProductId === productId) return { ok: false, reason: "empty" };
   const now = Math.floor(Date.now() / 1000);
   let sendAt = now;
   if (input.sendAt !== undefined && input.sendAt !== null && input.sendAt !== "") {
@@ -105,7 +118,7 @@ export async function createBroadcast(
     sendAt = Math.max(at, now);
   }
   // Checked now for a send that starts now; a scheduled one is checked again when it starts.
-  const reach = (await audience(store.listId, productId ?? undefined)).length;
+  const reach = (await audience(store.listId, productId ?? undefined, notProductId ?? undefined)).length;
   if (reach === 0) return { ok: false, reason: "empty" };
   if (sendAt <= now + 60) {
     const left = monthlyAllowance(store) - (await usedThisMonth(store.listId));
@@ -118,6 +131,7 @@ export async function createBroadcast(
     subject,
     body,
     productId,
+    notProductId,
     status: "scheduled",
     createdAt: now,
     sendAt,
@@ -182,7 +196,7 @@ export async function advanceBroadcast(
     }
 
     if (!b.listed) {
-      const to = await audience(b.listId, b.productId ?? undefined);
+      const to = await audience(b.listId, b.productId ?? undefined, b.notProductId ?? undefined);
       const commands: (string | number)[][] = [["DEL", toKey(id)]];
       for (let i = 0; i < to.length; i += 500) commands.push(["RPUSH", toKey(id), ...to.slice(i, i + 500)]);
       commands.push(["EXPIRE", toKey(id), 60 * 86_400]);

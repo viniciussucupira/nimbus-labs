@@ -310,6 +310,7 @@ function Compose(props: {
   const [subject, setSubject] = useState(props.draft?.subject ?? "");
   const [body, setBody] = useState(props.draft?.body ?? "");
   const [productId, setProductId] = useState(props.draft?.productId ?? "");
+  const [notProductId, setNotProductId] = useState("");
   const [draftId, setDraftId] = useState(props.draft?.id ?? "");
   const [later, setLater] = useState(false);
   const [at, setAt] = useState("");
@@ -323,13 +324,13 @@ function Compose(props: {
 
   useEffect(() => {
     let live = true;
-    call({ action: "count", productId }).then((a) => {
+    call({ action: "count", productId, notProductId }).then((a) => {
       if (live && a.ok) setReach(Number(a.count) || 0);
     });
     return () => {
       live = false;
     };
-  }, [productId]);
+  }, [productId, notProductId]);
 
   async function send(payload: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -430,6 +431,32 @@ function Compose(props: {
             ))}
           </select>
         </label>
+        {/*
+          And who to leave out.
+
+          The letter that sells is the one to the people who took the free
+          thing and have not bought the paid one, and until this box existed
+          there was no way to address it: you could write to everybody, or to
+          the buyers of one product, and not to the difference between them.
+          It reads what every contact has carried from the start — what they
+          asked for or bought — so nothing new is recorded about anyone.
+        */}
+        <label className="block">
+          <span className="field-label">Leave out</span>
+          <select className="field mt-2" value={notProductId} onChange={(e) => setNotProductId(e.target.value)}>
+            <option value="">Nobody</option>
+            {props.products
+              .filter((p) => p.id !== productId)
+              .map((p) => (
+                <option key={p.id} value={p.id}>{`Anyone who already got ${p.title}`}</option>
+              ))}
+          </select>
+          <span className="field-hint mt-1 block">
+            {notProductId
+              ? "They will not get this one. Use it to write to the people who have not bought yet."
+              : "Everyone chosen above gets it."}
+          </span>
+        </label>
         <p className="text-sm font-semibold text-ink" role="status">{`${n(reach)} ${reach === 1 ? "person" : "people"}`}</p>
         {props.canSend ? (
         <fieldset>
@@ -477,7 +504,7 @@ function Compose(props: {
                 onClick={async () => {
                   const sendAt = later && at ? new Date(at).getTime() : undefined;
                   const ok = await send(
-                    { action: "broadcast", subject, body, productId, sendAt, draftId: draftId || undefined },
+                    { action: "broadcast", subject, body, productId, notProductId, sendAt, draftId: draftId || undefined },
                     later ? "Your email is scheduled." : "Your email is on its way.",
                   );
                   if (ok) {

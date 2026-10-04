@@ -416,7 +416,7 @@ const INCLUDED = [
 
 const PRO_INCLUDED = [
   `Everything in ${PLAN_TITLES.creator}`,
-  "One-off emails to your list, now or at a time you choose",
+  "One-off emails to your list, now or at a time you choose, to everyone or to the people who have not bought a particular thing yet",
   "Sequences that go out by themselves after someone joins or buys",
   `Up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month (${TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")} during the free trial), from your name, with replies coming to you`,
   "One-click unsubscribe in every email, honored for good",

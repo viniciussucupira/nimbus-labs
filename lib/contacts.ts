@@ -529,12 +529,31 @@ export async function forEachContact(
   }
 }
 
-/** Everyone the creator may write to, narrowed to one product when asked. */
-export async function audience(listId: string, productId?: string): Promise<string[]> {
+/**
+ * Everyone the creator may write to, narrowed when asked.
+ *
+ * `productId` keeps only the people who got that one thing. `notProductId`
+ * drops everyone who already has another one — and that second filter is
+ * the one that makes a list worth having. Until it existed a creator could
+ * write to everybody, or to the buyers of one product, and not to the
+ * obvious third group: the people who took the free guide and have not
+ * bought the course. That is the letter that sells, and it could not be
+ * addressed.
+ *
+ * Both read `ids`, which has been on every contact since the beginning —
+ * what each person asked for or bought, by product id. No new tracking, no
+ * new record, nothing stored about anybody that was not stored before.
+ */
+export async function audience(
+  listId: string,
+  productId?: string,
+  notProductId?: string,
+): Promise<string[]> {
   const out: string[] = [];
   await forEachContact(listId, (email, contact) => {
     if (!mailable(contact)) return;
     if (productId && !contact.ids.includes(productId)) return;
+    if (notProductId && contact.ids.includes(notProductId)) return;
     out.push(email);
   });
   return out;

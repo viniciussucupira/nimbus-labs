@@ -40,10 +40,10 @@ const MAIL_PERMISSIONS: Record<string, Permission> = {
  *
  *   { action: "settings", fromName, address }
  *   { action: "import", text, confirm: true }
- *   { action: "count", productId }
+ *   { action: "count", productId, notProductId }
  *   { action: "test", subject, body }
  *   { action: "draft-save", id?, subject, body, productId }  /  { action: "draft-remove", id }
- *   { action: "broadcast", subject, body, productId, sendAt, draftId? }
+ *   { action: "broadcast", subject, body, productId, notProductId, sendAt, draftId? }
  *   { action: "cancel", id }
  *   { action: "flow", flow: {...} }  /  { action: "flow-remove", id }
  *
@@ -94,7 +94,8 @@ export async function POST(request: NextRequest) {
     if (action === "count") {
       if (!store.listId) return Response.json({ ok: true, count: 0 });
       const productId = text(body.productId, 40) || undefined;
-      return Response.json({ ok: true, count: (await audience(store.listId, productId)).length });
+      const notProductId = text(body.notProductId, 40) || undefined;
+      return Response.json({ ok: true, count: (await audience(store.listId, productId, notProductId)).length });
     }
 
     if (action === "test") {
@@ -140,6 +141,7 @@ export async function POST(request: NextRequest) {
         subject: text(body.subject, 400),
         body: text(body.body, MAX_MAIL_BODY * 2),
         productId: text(body.productId, 40),
+        notProductId: text(body.notProductId, 40),
         sendAt: typeof body.sendAt === "number" ? body.sendAt : undefined,
       });
       if (!created.ok) return fail(created.reason);
