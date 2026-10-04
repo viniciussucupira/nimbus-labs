@@ -25,7 +25,7 @@ export function CopyLink({ id }: { id: string }) {
           window.location.hash = id;
         }
       }}
-      className="inline-flex min-h-[36px] items-center gap-1.5 rounded-[8px] text-sm font-semibold text-violet-deep underline-offset-4 hover:underline"
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-[8px] text-sm font-semibold text-violet-deep underline-offset-4 hover:underline"
     >
       <Icon name={copied ? "check" : "link"} size={15} />
       <span aria-live="polite">{copied ? "Link copied" : "Copy a link to this answer"}</span>

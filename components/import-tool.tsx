@@ -167,7 +167,7 @@ export function ImportProgress({
       ) : null}
       <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
         {job.counts.errors + job.counts.skipped > 0 && !running(job.state) ? (
-          <a href={report} className="inline-flex min-h-[36px] items-center gap-1.5 font-bold text-violet-deep underline underline-offset-4">
+          <a href={report} className="inline-flex min-h-11 items-center gap-1.5 font-bold text-violet-deep underline underline-offset-4">
             <Icon name="download" size={15} />
             Download the rows that were not brought in
           </a>

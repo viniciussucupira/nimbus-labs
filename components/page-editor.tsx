@@ -546,7 +546,7 @@ export function PageEditor({
                 type="button"
                 aria-pressed={wide === w}
                 onClick={() => setWide(w)}
-                className={`min-h-[36px] rounded-full px-3 font-semibold ring-1 ${wide === w ? "bg-lilac text-violet-ink ring-violet-brand/40" : "text-ink-soft ring-line"}`}
+                className={`min-h-11 rounded-full px-3 font-semibold ring-1 ${wide === w ? "bg-lilac text-violet-ink ring-violet-brand/40" : "text-ink-soft ring-line"}`}
               >
                 {w ? "Wide" : "Phone"}
               </button>

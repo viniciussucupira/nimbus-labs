@@ -162,7 +162,7 @@ export function SaleEditor({
                 <ul className="mt-2 max-h-64 space-y-1 overflow-y-auto rounded-2xl border border-line p-3">
                   {products.map((p) => (
                     <li key={p.id}>
-                      <label className="flex min-h-[36px] items-center gap-3 text-sm text-ink">
+                      <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
                         <input
                           type="checkbox"
                           className="h-4 w-4"

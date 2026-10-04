@@ -318,7 +318,7 @@ export function AffiliateStudio({
               ) : (
                 <button
                   type="button"
-                  className="mt-3 min-h-[36px] text-sm font-bold text-violet-deep underline underline-offset-4"
+                  className="mt-3 min-h-11 text-sm font-bold text-violet-deep underline underline-offset-4"
                   onClick={() => {
                     setBatchDate(today);
                     setBatchReference("");
@@ -449,7 +449,7 @@ export function AffiliateStudio({
                     <span className="font-semibold tabular-nums text-ink">{money(payout.cents, payout.currency)}</span>
                     <button
                       type="button"
-                      className="min-h-[36px] text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
+                      className="min-h-11 text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
                       disabled={busy !== null}
                       onClick={() => act(`p-${payout.id}`, { action: "unpay", payout: payout.id }, "Payout taken off the record.")}
                     >
@@ -832,7 +832,7 @@ function Member({
         </form>
       ) : (
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">
-          <button type="button" className="min-h-[36px] text-sm font-bold text-violet-deep underline underline-offset-4" onClick={() => {
+          <button type="button" className="min-h-11 text-sm font-bold text-violet-deep underline underline-offset-4" onClick={() => {
               // The form opens on what is owed now, not on what was owed
               // when this row first appeared.
               setAmount(row.owed > 0 ? moneyField(row.owed, currency) : "");
@@ -845,7 +845,7 @@ function Member({
           {affiliate.status === "approved" ? (
             <button
               type="button"
-              className="min-h-[36px] text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
+              className="min-h-11 text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
               disabled={busy !== null}
               onClick={() => act(where, { action: "remove", id: affiliate.id }, "Affiliate removed. Their link no longer earns.")}
             >
@@ -854,14 +854,14 @@ function Member({
           ) : (
             <button
               type="button"
-              className="min-h-[36px] text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep"
+              className="min-h-11 text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep"
               disabled={busy !== null}
               onClick={() => act(where, { action: "restore", id: affiliate.id }, "Affiliate approved.")}
             >
               Approve
             </button>
           )}
-          <a href={row.link} target="_blank" rel="noopener noreferrer" className="min-h-[36px] text-sm text-ink-soft underline-offset-4 hover:underline [overflow-wrap:anywhere]">
+          <a href={row.link} target="_blank" rel="noopener noreferrer" className="min-h-11 text-sm text-ink-soft underline-offset-4 hover:underline [overflow-wrap:anywhere]">
             {row.link.replace(/^https:\/\//, "")}
           </a>
         </div>
