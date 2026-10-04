@@ -633,6 +633,7 @@ html {
     linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
   background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 60% 40%, #000 20%, transparent 75%);
   mask-image: radial-gradient(ellipse 80% 70% at 60% 40%, #000 20%, transparent 75%);
 }
 
@@ -904,6 +905,7 @@ html {
   display: flex;
   overflow: hidden;
   /* The ends fade into the section instead of being cut by a hard edge. */
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7rem, #000 calc(100% - 7rem), transparent);
   mask-image: linear-gradient(90deg, transparent, #000 7rem, #000 calc(100% - 7rem), transparent);
 }
 .marquee-track {
@@ -1547,10 +1549,15 @@ a.chip {
   background-image: linear-gradient(95deg, #c9bdff 0%, #ffffff 45%, #9ec3ff 100%);
 }
 .surface-daybreak .nb-gradient-text {
-  background-image: linear-gradient(95deg, #ffe38a 0%, #ffc26b 48%, #ff9a7a 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  /*
+   * One warm gold, not a gradient across three.
+   *
+   * Gradient-filled text is an effect, and an effect in a headline is
+   * the thing a reader notices instead of the word. This is the colour
+   * the sun in the mark is, set solid: it measures 13.1:1 on the darkest
+   * part of the sky and 10.5:1 on the lightest.
+   */
+  color: #ffc96b;
 }
 .nb-blob {
   border-radius: 42% 58% 63% 37% / 46% 38% 62% 54%;

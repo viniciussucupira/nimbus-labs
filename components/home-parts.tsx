@@ -133,6 +133,7 @@ const FACE = (id: string, s = 96) =>
 
 export function HeroFlow() {
   const [store, setStore] = useState(0);
+  const [picked, setPicked] = useState(false);
   const reduce = useSyncExternalStore(
     subscribeReduce,
     () => window.matchMedia(REDUCE).matches,
@@ -158,10 +159,20 @@ export function HeroFlow() {
    * of the page talks about.
    */
   useEffect(() => {
-    if (reduce) return;
+    if (reduce || picked) return;
     const t = setInterval(() => setStore((s) => (s + 1) % STORES.length), 5000);
     return () => clearInterval(t);
-  }, [reduce]);
+  }, [reduce, picked]);
+
+  /*
+   * Choosing a store stops the rotation for good. Somebody who has just
+   * pressed a face wants to read that store, not watch it be replaced
+   * four seconds later.
+   */
+  const pick = (i: number) => {
+    setStore(i);
+    setPicked(true);
+  };
 
   const s = STORES[store];
 
@@ -246,15 +257,22 @@ export function HeroFlow() {
         </div>
 
         {/*
-          The four stores waiting their turn, down the left of the phone
-          and overlapping its edge. The one coming up next lifts and
-          brightens a beat before it arrives, so the change is announced
-          rather than sprung.
+          The other four stores, and a way to reach them.
+
+          They used to be decoration: four portraits that drifted while
+          the phone changed on its own every five seconds, which meant
+          four of the five stores were invisible at any moment and nobody
+          could go and look at one. A thing that plays at you is worse
+          than a thing you can use.
+
+          They are buttons now. Pressing one shows that store and stops
+          the rotation, because somebody who has chosen should not have
+          their choice taken away four seconds later.
 
           Only from 1024px up: below that the phone has the column to
-          itself and faces beside it would crowd what they decorate.
+          itself, and the row under it does this job instead.
         */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-24 hidden w-24 lg:block">
+        <div className="pointer-events-none absolute inset-y-0 -left-24 hidden w-24 lg:block">
           {STORES.map((o, i) => {
             const slot = ((i - store + STORES.length) % STORES.length) - 1;
             const spot = [
@@ -266,19 +284,23 @@ export function HeroFlow() {
             if (!spot) return null;
             const next = slot === 0;
             return (
-              <span
+              <button
                 key={o.handle}
-                className="absolute block rounded-full transition-all duration-700 [transition-timing-function:var(--ease)]"
+                type="button"
+                onClick={() => pick(i)}
+                title={`${o.name} — ${o.line}`}
+                className="pointer-events-auto absolute block rounded-full transition-all duration-700 [transition-timing-function:var(--ease)] hover:scale-110 focus-visible:scale-110"
                 style={{
                   top: spot.top,
                   left: spot.left,
                   width: spot.size,
                   height: spot.size,
                   opacity: next ? 1 : 0.55,
-                  transform: next ? "scale(1.16) translateY(-6px)" : "scale(1)",
+                  transform: next ? "scale(1.16) translateY(-6px)" : undefined,
                   boxShadow: `0 0 0 2px rgba(255,255,255,${next ? 0.9 : 0.35}), 0 12px 28px -8px ${o.tint}aa`,
                 }}
               >
+                <span className="sr-only">{`Show ${o.name}`}</span>
                 <img
                   src={FACE(o.photo, 128)}
                   alt=""
@@ -288,11 +310,41 @@ export function HeroFlow() {
                   decoding="async"
                   className="h-full w-full rounded-full object-cover"
                 />
-              </span>
+              </button>
             );
           })}
         </div>
       </div>
+
+      {/*
+        The same five, as a row, for every width where the portraits
+        beside the phone do not fit. Five dots is not a decoration here:
+        it is the only way a visitor on a phone can see that there is
+        more than one store and go to the one that looks like theirs.
+      */}
+      <ul className="mt-6 flex items-center justify-center gap-2.5 lg:hidden">
+        {STORES.map((o, i) => (
+          <li key={o.handle}>
+            <button
+              type="button"
+              onClick={() => pick(i)}
+              aria-current={i === store}
+              className="grid h-11 w-11 place-items-center rounded-full"
+            >
+              <span className="sr-only">{`Show ${o.name}`}</span>
+              <span
+                aria-hidden="true"
+                className="block rounded-full transition-all duration-500"
+                style={{
+                  width: i === store ? 11 : 7,
+                  height: i === store ? 11 : 7,
+                  background: i === store ? o.tint : "rgba(255,255,255,0.4)",
+                }}
+              />
+            </button>
+          </li>
+        ))}
+      </ul>
 
       {/*
         One line, said once. What the picture is, and that the people in

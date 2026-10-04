@@ -64,6 +64,8 @@ export function PostCover({
           backgroundImage:
             "linear-gradient(rgba(255,255,255,0.9) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.9) 1px, transparent 1px)",
           backgroundSize: "34px 34px",
+          // Safari before 15.4 needs the prefix or the mask is ignored entirely.
+          WebkitMaskImage: "radial-gradient(ellipse 85% 80% at 70% 20%, #000 10%, transparent 72%)",
           maskImage: "radial-gradient(ellipse 85% 80% at 70% 20%, #000 10%, transparent 72%)",
         }}
       />
