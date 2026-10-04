@@ -2981,12 +2981,33 @@ fieldset:disabled .cm-poll-row {
 .cm-quiet-link:hover {
   color: var(--st-accent-text);
 }
+/*
+ * The small actions under a comment: Like, Edit, Report, Hide, Delete, Cancel,
+ * six of them in a row eight pixels apart.
+ *
+ * This is the one place on the site where the 44px floor is wrong to apply to
+ * the box. Measured on a desktop, a 44px control around 12px type is 3.67× its
+ * own text, where every other control here sits at 2.9 to 3.1× — it stops
+ * reading as a button and starts reading as a gap, and six of them would pull
+ * a comment thread apart.
+ *
+ * So the words keep their 24px and the press gets its 44px, through an overlay
+ * that takes part in nothing: ten pixels above and below, four to each side,
+ * which is exactly half the gap between two of them, so neighbours meet and
+ * never overlap. Nothing moves, and a thumb still finds it.
+ */
 .cm-mini {
+  position: relative;
   display: inline-flex;
-  min-height: 44px;
+  min-height: 24px;
   align-items: center;
   font-size: 0.75rem;
   font-weight: 650;
+}
+.cm-mini::after {
+  content: "";
+  position: absolute;
+  inset: -10px -4px;
 }
 /* A comment this member liked. */
 .cm-liked {

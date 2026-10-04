@@ -51,14 +51,40 @@ test("no rule in the stylesheet sets a control shorter than a thumb", () => {
     const open = line.match(/^([.#:a-zA-Z][^{]*)\{\s*$/);
     if (open) selector = open[1].trim();
     const m = line.match(/min-height:\s*(\d+)px/);
-    if (m && Number(m[1]) > 0 && Number(m[1]) < FLOOR) short.push(`${selector || "?"} → ${m[1]}px`);
+    if (!m || Number(m[1]) <= 0 || Number(m[1]) >= FLOOR) continue;
+    // One escape hatch, and it has to be built rather than claimed: a class
+    // may keep a smaller box if it carries an overlay that gives the press
+    // its 44px without taking part in layout. See .cm-mini, where a 44px box
+    // around 12px type measured 3.67× its own text and read as a gap.
+    const cls = selector.replace(/^\./, "");
+    const overlay = new RegExp(`\\.${cls}::after\\s*\\{[^}]*position:\\s*absolute;[^}]*inset:\\s*-\\d+px`, "s");
+    if (overlay.test(css)) continue;
+    short.push(`${selector || "?"} → ${m[1]}px`);
   }
   assert.deepEqual(
     short,
     [],
     "a class used by a control is where a short tap target reaches every page at once. " +
-      "If one of these is type rather than a control, give it a height in the markup with a comment, not here.",
+      "If one of these is type rather than a control, give it a height in the markup with a comment, not here. " +
+      "If the box has to stay small, give it an ::after overlay that carries the 44px, as .cm-mini does.",
   );
+});
+
+test("the one class that keeps a small box really does carry the press elsewhere", () => {
+  // Measured in the page, not assumed: the overlay is ten pixels above and
+  // below a 24px box, which is 44, and four to each side, which is half the
+  // eight-pixel gap between two of them — so neighbours meet and no two
+  // targets overlap.
+  const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+  const at = css.indexOf(".cm-mini::after {");
+  assert.ok(at > 0, ".cm-mini must keep its overlay, or six actions under a comment are 24px each");
+  const block = css.slice(at, css.indexOf("}", at));
+  assert.match(block, /position:\s*absolute/);
+  const inset = block.match(/inset:\s*-(\d+)px\s+-(\d+)px/);
+  assert.ok(inset, "the overlay needs an inset on both axes");
+  const box = Number(css.slice(css.indexOf(".cm-mini {"), at).match(/min-height:\s*(\d+)px/)?.[1]);
+  assert.equal(box + 2 * Number(inset[1]), FLOOR, `${box}px of box plus ${inset[1]}px each side is not 44`);
+  assert.ok(Number(inset[2]) <= 4, "wider than half the gap and two neighbouring actions would overlap");
 });
 
 test("nothing in the markup pins an interactive element shorter than a thumb", () => {
@@ -112,7 +138,9 @@ test("the classes the community is built from clear the floor", () => {
   // number: these eight are most of the pressable surface of every community
   // page, and the measurement found every one of them short.
   const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
-  for (const cls of ["cm-pill", "cm-chip", "cm-tab", "cm-side", "cm-mini", "cm-menu-item", "cm-poll-row", "cm-search", "cm-quiet-link", "chip"]) {
+  // .cm-mini is deliberately not here: it keeps a 24px box and carries its
+  // 44px in an overlay, which the test above checks on its own terms.
+  for (const cls of ["cm-pill", "cm-chip", "cm-tab", "cm-side", "cm-menu-item", "cm-poll-row", "cm-search", "cm-quiet-link", "chip"]) {
     const at = css.indexOf(`.${cls} {`);
     assert.ok(at > 0, `.${cls} should still exist`);
     const block = css.slice(at, css.indexOf("}", at));
