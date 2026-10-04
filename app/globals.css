@@ -72,6 +72,9 @@
   --mint-lift: #6fe3ba;
   --amber: #8a4f00;
   --amber-soft: #fdf3e1;
+  /* The same two signals at the weight they need to read on navy. */
+  --amber-lift: #ffc77a;
+  --violet-glow: #cfc7f2;
   --danger: #c2261f;
   --danger-soft: #fdecea;
 
@@ -94,14 +97,14 @@
   --foreground: var(--ink);
 
   /* the signature: deep, clean, used in few places */
-  --signature: linear-gradient(120deg, #2b1b8f 0%, #4b2bd9 45%, #2f6cf5 100%);
+  --signature: linear-gradient(120deg, #26245f 0%, #2a2866 54%, #2d2b6e 100%);
 
   /* elevation */
-  --shadow-xs: 0 1px 2px rgba(21, 17, 46, 0.06);
-  --shadow-sm: 0 1px 2px rgba(21, 17, 46, 0.05), 0 4px 14px -4px rgba(21, 17, 46, 0.08);
-  --shadow-md: 0 2px 4px rgba(21, 17, 46, 0.04), 0 14px 34px -10px rgba(21, 17, 46, 0.16);
-  --shadow-lg: 0 4px 10px rgba(21, 17, 46, 0.05), 0 32px 70px -22px rgba(21, 17, 46, 0.32);
-  --shadow-device: 0 2px 6px rgba(13, 11, 36, 0.18), 0 40px 90px -30px rgba(13, 11, 36, 0.6);
+  --shadow-xs: 0 1px 2px rgba(17, 24, 39, 0.06);
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.05), 0 4px 14px -4px rgba(17, 24, 39, 0.08);
+  --shadow-md: 0 2px 4px rgba(17, 24, 39, 0.04), 0 14px 34px -10px rgba(17, 24, 39, 0.16);
+  --shadow-lg: 0 4px 10px rgba(17, 24, 39, 0.05), 0 32px 70px -22px rgba(17, 24, 39, 0.32);
+  --shadow-device: 0 2px 6px rgba(11, 17, 25, 0.18), 0 40px 90px -30px rgba(11, 17, 25, 0.6);
 
   /* shape — radius follows the job of the element */
   --r-xs: 6px;   /* tags, small chips */
@@ -131,10 +134,10 @@
   /* interaction — the same lift and the same ring everywhere */  --lift: -2px;
   --lift-strong: -3px;
   --press: 1px;
-  --ring: 0 0 0 3px rgba(90, 54, 238, 0.28);
+  --ring: 0 0 0 3px rgba(73, 70, 166, 0.28);
   --ring-light: 0 0 0 3px rgba(255, 255, 255, 0.34);
 
-  --focus: #5a36ee;
+  --focus: #4946a6;
 }
 
 @theme inline {
@@ -235,7 +238,7 @@ body {
 .surface-navy :focus-visible,
 .surface-signature :focus-visible {
   outline-color: #fff;
-  box-shadow: 0 0 0 6px rgba(8, 12, 31, 0.75);
+  box-shadow: 0 0 0 6px rgba(11, 17, 25, 0.75);
 }
 
 /* Headings share one face and one rhythm. */
@@ -391,7 +394,7 @@ a {
  * through it.
  */
 ::selection {
-  background: rgba(90, 54, 238, 0.18);
+  background: rgba(73, 70, 166, 0.18);
 }
 .on-dark ::selection {
   background: rgba(255, 255, 255, 0.26);
@@ -459,9 +462,9 @@ html {
   isolation: isolate;
   background-color: var(--night);
   background-image:
-    radial-gradient(64rem 42rem at 76% 8%, rgba(99, 62, 245, 0.34), transparent 64%),
-    radial-gradient(46rem 32rem at 6% 96%, rgba(47, 116, 245, 0.18), transparent 62%),
-    linear-gradient(180deg, rgba(14, 23, 56, 0.9) 0%, rgba(8, 12, 31, 1) 78%);
+    radial-gradient(64rem 42rem at 76% 8%, rgba(73, 70, 166, 0.34), transparent 64%),
+    radial-gradient(46rem 32rem at 6% 96%, rgba(154, 151, 224, 0.18), transparent 62%),
+    linear-gradient(180deg, rgba(17, 24, 39, 0.9) 0%, rgba(11, 17, 25, 1) 78%);
   color: var(--on-dark);
 }
 
@@ -520,7 +523,7 @@ html {
   background-repeat: repeat-x;
   background-position: center top;
   background-size: 60px 18px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='18' viewBox='0 0 60 18'%3E%3Cpath d='M0 0h30v3a15 15 0 0 1-30 0Z' fill='%23fcfbf8'/%3E%3Cpath d='M30 0h30v3a15 15 0 0 1-30 0Z' fill='%23ff7a59'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='18' viewBox='0 0 60 18'%3E%3Cpath d='M0 0h30v3a15 15 0 0 1-30 0Z' fill='%23f7f5f0'/%3E%3Cpath d='M30 0h30v3a15 15 0 0 1-30 0Z' fill='%234946a6'/%3E%3C/svg%3E");
 }
 
 /*
@@ -534,41 +537,62 @@ html {
   isolation: isolate;
   background-color: var(--navy);
   background-image:
-    radial-gradient(56rem 34rem at 88% 0%, rgba(90, 54, 238, 0.24), transparent 66%),
-    linear-gradient(180deg, rgba(22, 32, 74, 0.55) 0%, rgba(14, 23, 56, 1) 70%);
+    radial-gradient(56rem 34rem at 88% 0%, rgba(73, 70, 166, 0.24), transparent 66%),
+    linear-gradient(180deg, rgba(38, 48, 63, 0.55) 0%, rgba(17, 24, 39, 1) 70%);
   color: var(--on-dark);
 }
 
 /*
  * Light, with weather in it. The alternative to a dark hero on every page:
- * warm paper with a violet and a blue wash drifting across the top, so a
- * feature page opens bright and its screenshot is read in daylight.
+ * warm paper with two washes of the one indigo drifting across the top, so
+ * a feature page opens bright and its screenshot is read in daylight. It was
+ * a violet and an electric blue until the palette was cut to five; two
+ * different hues in one sky is what made the inner pages look unrelated to
+ * the home page they were reached from.
+ *
+ * Lightened as well as unified. At the old weights the darkest part of the
+ * sky took --ink-mute down to 4.1:1, under AA, and a page header is exactly
+ * where a subtitle is set in that grey. Measured at the darkest point:
+ *   ink 14.0:1   ink-soft 7.7:1   ink-mute 4.7:1   indigo 6.1:1
  */
 .surface-dawn {
   position: relative;
   isolation: isolate;
   background-color: var(--paper);
   background-image:
-    radial-gradient(46rem 30rem at 84% -10%, rgba(90, 54, 238, 0.13), transparent 62%),
-    radial-gradient(38rem 26rem at 4% 8%, rgba(47, 116, 245, 0.1), transparent 60%),
-    linear-gradient(180deg, rgba(240, 236, 255, 0.55) 0%, rgba(252, 251, 248, 0) 62%);
+    radial-gradient(46rem 30rem at 84% -10%, rgba(73, 70, 166, 0.06), transparent 62%),
+    radial-gradient(38rem 26rem at 4% 8%, rgba(154, 151, 224, 0.05), transparent 60%),
+    linear-gradient(180deg, rgba(236, 235, 247, 0.38) 0%, rgba(247, 245, 240, 0) 62%);
 }
 
+/*
+ * The closing band, and the bookend to the hero.
+ *
+ * The hero is navy with one indigo light low on the right. This is the
+ * same two colours the other way round — indigo, deepening to the navy
+ * at the bottom — so the page opens and closes on one chord instead of
+ * two unrelated ones. It used to be #33209f under an electric blue, a
+ * purple and a blue that appeared nowhere else, which is why the last
+ * screen of the page looked like a different site to the first.
+ *
+ * It is also pitched deliberately dark for an indigo. The band used to be
+ * #33209f, bright enough that white at 65% — the weight the small print
+ * under the button is set in — came out at 3.1:1 and read as disabled. An
+ * indigo can only carry that weight of white from about --violet-ink down,
+ * so that is where this sits. Measured at the lightest point of the
+ * surface, which is where the glow and the lift overlap:
+ *   white 9.3:1   85% 7.3:1   80% 6.7:1   70% 5.5:1   65% 5.0:1
+ * The weakest text on it clears AA with room to spare.
+ */
 .surface-signature {
   position: relative;
   isolation: isolate;
-  background-color: #33209f;
+  background-color: #2a2866;
   background-image:
-    radial-gradient(46rem 28rem at 85% -5%, rgba(255, 255, 255, 0.14), transparent 62%),
-    radial-gradient(34rem 24rem at -5% 105%, rgba(47, 116, 245, 0.3), transparent 66%),
+    radial-gradient(46rem 28rem at 85% -5%, rgba(255, 255, 255, 0.04), transparent 62%),
+    radial-gradient(34rem 24rem at -5% 105%, rgba(154, 151, 224, 0.12), transparent 66%),
     var(--signature);
   color: var(--on-dark);
-}
-.surface-sand {
-  background-color: var(--sand);
-}
-.surface-white {
-  background-color: #fff;
 }
 
 /* =====================================================================
@@ -708,13 +732,13 @@ html {
   color: #fff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 10px 24px -10px rgba(63, 34, 196, 0.65);
+    0 10px 24px -10px rgba(59, 56, 144, 0.65);
 }
 .btn-primary:hover {
   background-color: var(--violet-deep);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 14px 30px -12px rgba(63, 34, 196, 0.75);
+    0 14px 30px -12px rgba(59, 56, 144, 0.75);
 }
 .btn-light {
   background-color: #fff;
@@ -809,7 +833,7 @@ html {
   color: var(--violet-deep);
   font-weight: 600;
   text-decoration: underline;
-  text-decoration-color: rgba(63, 34, 196, 0.35);
+  text-decoration-color: rgba(59, 56, 144, 0.35);
   text-underline-offset: 3px;
   transition: text-decoration-color var(--d-base) var(--ease);
 }
@@ -834,16 +858,16 @@ html {
    * look printed rather than lit.
    */
   box-shadow:
-    inset 0 0 0 1px rgba(42, 23, 144, 0.09),
+    inset 0 0 0 1px rgba(45, 43, 110, 0.09),
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 1px 2px rgba(23, 26, 46, 0.04),
-    0 14px 32px -16px rgba(42, 23, 144, 0.22);
+    0 1px 2px rgba(17, 24, 39, 0.04),
+    0 14px 32px -16px rgba(45, 43, 110, 0.22);
 }
 .card-flat {
   background: #fff;
   border: 1px solid transparent;
   border-radius: var(--r-lg);
-  box-shadow: inset 0 0 0 1px rgba(42, 23, 144, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(45, 43, 110, 0.08);
 }
 .card-hover {
   transition:
@@ -1082,11 +1106,11 @@ html {
 }
 .on-dark .tag-next {
   background: rgba(255, 199, 122, 0.16);
-  color: #ffc77a;
+  color: var(--amber-lift);
 }
 .on-dark .tag-brand {
-  background: rgba(139, 107, 255, 0.22);
-  color: #cfc4ff;
+  background: rgba(154, 151, 224, 0.22);
+  color: var(--violet-glow);
 }
 
 /* --------------------------------------------------------- text on dark
@@ -1291,7 +1315,7 @@ a.chip {
 .field:focus {
   outline: none;
   border-color: var(--violet);
-  box-shadow: 0 0 0 4px rgba(90, 54, 238, 0.16);
+  box-shadow: 0 0 0 4px rgba(73, 70, 166, 0.16);
 }
 .field[aria-invalid="true"] {
   border-color: var(--danger);
@@ -1378,11 +1402,11 @@ a.chip {
   background: var(--violet);
   color: #fff;
   box-shadow:
-    0 16px 36px -12px rgba(90, 54, 238, 0.55),
-    0 2px 6px rgba(15, 23, 42, 0.12);
+    0 16px 36px -12px rgba(73, 70, 166, 0.55),
+    0 2px 6px rgba(17, 24, 39, 0.12);
   box-shadow:
     0 16px 36px -12px color-mix(in srgb, var(--violet) 55%, transparent),
-    0 2px 6px rgba(15, 23, 42, 0.12);
+    0 2px 6px rgba(17, 24, 39, 0.12);
 }
 /* The icon and the close button are centred on the first line of text. */
 .nb-toast-icon {
@@ -1497,7 +1521,7 @@ a.chip {
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: rgba(63, 34, 196, 0.35);
+  text-decoration-color: rgba(59, 56, 144, 0.35);
 }
 .prose-nb strong {
   color: var(--ink);
@@ -1530,15 +1554,14 @@ a.chip {
 .nb-mesh {
   background-color: var(--night);
   background-image:
-    radial-gradient(50rem 30rem at 80% 10%, rgba(90, 54, 238, 0.45), transparent 60%),
-    radial-gradient(40rem 26rem at 10% 95%, rgba(47, 116, 245, 0.28), transparent 60%),
-    radial-gradient(18rem 14rem at 95% 90%, rgba(255, 122, 89, 0.12), transparent 70%);
+    radial-gradient(50rem 30rem at 80% 10%, rgba(73, 70, 166, 0.45), transparent 60%),
+    radial-gradient(40rem 26rem at 10% 95%, rgba(154, 151, 224, 0.28), transparent 60%);
 }
 .nb-joy {
   background-color: var(--paper);
   background-image:
-    radial-gradient(40rem 24rem at 10% 0%, rgba(90, 54, 238, 0.07), transparent 60%),
-    radial-gradient(36rem 22rem at 95% 100%, rgba(47, 116, 245, 0.07), transparent 60%);
+    radial-gradient(40rem 24rem at 10% 0%, rgba(73, 70, 166, 0.07), transparent 60%),
+    radial-gradient(36rem 22rem at 95% 100%, rgba(154, 151, 224, 0.07), transparent 60%);
 }
 .nb-grain::after {
   content: none;
@@ -1726,7 +1749,7 @@ a.chip {
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: rgba(63, 34, 196, 0.35);
+  text-decoration-color: rgba(59, 56, 144, 0.35);
 }
 .legal-body a:hover {
   text-decoration-color: currentColor;
@@ -1782,7 +1805,7 @@ a.chip {
   background: var(--st-item);
   box-shadow:
     0 0 0 4px var(--st-card),
-    0 12px 30px -12px rgba(13, 11, 36, 0.45);
+    0 12px 30px -12px rgba(11, 17, 25, 0.45);
 }
 .st-avatar-initial {
   display: flex;
@@ -1801,7 +1824,7 @@ a.chip {
   background: var(--st-card);
   border: 1px solid var(--st-line);
   border-radius: 1.5rem;
-  box-shadow: 0 1px 2px rgba(13, 11, 36, 0.04), 0 10px 30px -22px rgba(13, 11, 36, 0.35);
+  box-shadow: 0 1px 2px rgba(11, 17, 25, 0.04), 0 10px 30px -22px rgba(11, 17, 25, 0.35);
 }
 .st-link-card {
   display: block;
@@ -1968,7 +1991,7 @@ a.chip {
 .st-theme-bold .st-avatar {
   box-shadow:
     0 0 0 4px rgba(255, 255, 255, 0.9),
-    0 16px 36px -14px rgba(13, 11, 36, 0.55);
+    0 16px 36px -14px rgba(11, 17, 25, 0.55);
 }
 
 /* An order bump: the buy button says the total once the box is ticked. */
@@ -2027,7 +2050,7 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked
   background: var(--st-item);
   box-shadow:
     0 0 0 1px var(--st-line),
-    0 10px 24px -16px rgba(13, 11, 36, 0.5);
+    0 10px 24px -16px rgba(11, 17, 25, 0.5);
 }
 @media (min-width: 640px) {
   .st-callout-img {
@@ -2063,7 +2086,7 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked
   background: var(--st-item);
   box-shadow:
     0 0 0 1px var(--st-line),
-    0 18px 40px -26px rgba(13, 11, 36, 0.55);
+    0 18px 40px -26px rgba(11, 17, 25, 0.55);
 }
 .st-about p + p,
 .st-about p + ul,
@@ -2247,7 +2270,7 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked
   background: var(--st-item);
   box-shadow:
     0 0 0 1px var(--st-line),
-    0 18px 40px -26px rgba(13, 11, 36, 0.55);
+    0 18px 40px -26px rgba(11, 17, 25, 0.55);
 }
 .sp-video iframe,
 .sp-video-poster {
@@ -2273,7 +2296,7 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked
   justify-content: center;
   gap: 0.75rem;
   width: 100%;
-  background: linear-gradient(180deg, transparent 40%, rgba(13, 11, 36, 0.45));
+  background: linear-gradient(180deg, transparent 40%, rgba(11, 17, 25, 0.45));
   color: #fff;
   cursor: pointer;
 }
@@ -2290,7 +2313,7 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked
   border-radius: 999px;
   background: var(--st-accent);
   color: var(--st-on-accent);
-  box-shadow: 0 12px 30px -10px rgba(13, 11, 36, 0.6);
+  box-shadow: 0 12px 30px -10px rgba(11, 17, 25, 0.6);
   transition: transform var(--d-base) var(--ease);
 }
 .sp-video-play:hover .sp-video-disc {
@@ -2299,7 +2322,7 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked
 .sp-video-note {
   padding: 0.2rem 0.7rem;
   border-radius: 999px;
-  background: rgba(13, 11, 36, 0.55);
+  background: rgba(11, 17, 25, 0.55);
   font-size: 0.8125rem;
   font-weight: 600;
 }
@@ -2896,7 +2919,7 @@ fieldset:disabled .cm-poll-row {
   border: 1px solid var(--st-line-strong);
   background: var(--st-card);
   padding: 0.35rem;
-  box-shadow: 0 18px 40px -18px rgba(13, 11, 36, 0.45);
+  box-shadow: 0 18px 40px -18px rgba(11, 17, 25, 0.45);
 }
 .cm-menu-item {
   display: flex;
@@ -3127,7 +3150,7 @@ fieldset:disabled .cm-poll-row {
     var(--st-card);
   border: 1px solid var(--st-line);
   border-radius: 1.5rem;
-  box-shadow: 0 1px 2px rgba(13, 11, 36, 0.05), 0 24px 60px -34px rgba(13, 11, 36, 0.45);
+  box-shadow: 0 1px 2px rgba(11, 17, 25, 0.05), 0 24px 60px -34px rgba(11, 17, 25, 0.45);
   color: var(--st-text);
 }
 .cert-frame {

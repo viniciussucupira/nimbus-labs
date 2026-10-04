@@ -6,7 +6,16 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/icons";
 import { HOME_QUESTIONS } from "@/lib/home-faq";
-import { PLAN_NAMES, PLAN_PRICES, PRO_MONTHLY_EMAILS, TRIAL_DAYS, TRIAL_MONTHLY_EMAILS, yearSaving } from "@/lib/plan";
+import {
+  PLAN_NAMES,
+  PLAN_PRICES,
+  PLAN_TITLES,
+  PRO_MONTHLY_EMAILS,
+  TRIAL_DAYS,
+  TRIAL_MONTHLY_EMAILS,
+  type Tier,
+  yearSaving,
+} from "@/lib/plan";
 
 /* Reveals every element with .reveal as it scrolls into view, once. */
 export function RevealOnScroll() {
@@ -389,7 +398,7 @@ const INCLUDED = [
 ];
 
 const PRO_INCLUDED = [
-  `Everything in ${PLAN_NAMES.creator}`,
+  `Everything in ${PLAN_TITLES.creator}`,
   "One-off emails to your list, now or at a time you choose",
   "Sequences that go out by themselves after someone joins or buys",
   `Up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month (${TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")} during the free trial), from your name, with replies coming to you`,
@@ -398,6 +407,63 @@ const PRO_INCLUDED = [
   "One email that asks each buyer for a review, 3 to 30 days after buying",
   `The same AI drafting, with the monthly allowance raised from ${AI_MONTHLY.creator} to ${AI_MONTHLY.pro} drafts, and emails among the things it drafts`,
 ];
+
+/*
+ * What each plan is, in the few things a creator is actually deciding
+ * between.
+ *
+ * The itemised lists above are still here, whole, one press away: somebody
+ * checking whether their own case is covered needs that detail and nothing
+ * is kept from them. But eighteen technical lines are not how anybody
+ * chooses a plan, and leading with them turned a decision into homework.
+ * The open layer answers one question — which of these two is my business —
+ * and the answer has three parts.
+ */
+type PlanGroup = { icon: Parameters<typeof Icon>[0]["name"]; title: string; body: string };
+
+const CREATOR_GROUPS: PlanGroup[] = [
+  {
+    icon: "store",
+    title: "Sell whatever it is you make",
+    body: "Files, courses, memberships, paid calls and live sessions, on pages you build from blocks — up to 2,000 of them in one store.",
+  },
+  {
+    icon: "bank",
+    title: "Keep all of what you sell",
+    body: "Buyers pay into your own Stripe account, in 15 currencies, by card, Apple Pay, Google Pay or Klarna. We take none of it.",
+  },
+  {
+    icon: "users",
+    title: "Sell to the same people again",
+    body: "Bundles, discount codes, payment plans, an offer at checkout and up to five after it, an affiliate program, and a community your buyers join.",
+  },
+];
+
+function proGroups(domains: boolean): PlanGroup[] {
+  return [
+    {
+      icon: "check",
+      title: `Everything in ${PLAN_TITLES.creator}`,
+      body: "Every line of the plan beside this one, unchanged. Pro adds to it; it replaces nothing.",
+    },
+    {
+      icon: "mail",
+      title: "Write to your own list from here",
+      body: `One-off emails and sequences that send themselves after someone joins or buys — up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month, sent from your name, with replies coming to you.`,
+    },
+    domains
+      ? {
+          icon: "globe",
+          title: "Your store on your own domain",
+          body: "Add one record where you bought the domain and the certificate is made for you. Your marktmorgen.com address keeps working too.",
+        }
+      : {
+          icon: "star",
+          title: "Ask every buyer for a review",
+          body: "One email, 3 to 30 days after they buy, and community announcements emailed to the members who asked for them.",
+        },
+  ];
+}
 
 /*
  * A yearly price said as a monthly one, for comparing with the monthly plan.
@@ -410,20 +476,51 @@ function monthlyEquivalent(yearCents: number): string {
   return Number.isInteger(perMonth) ? String(perMonth) : perMonth.toFixed(2);
 }
 
+/*
+ * The six things somebody is agreeing to, where they can be read.
+ *
+ * They were all on the page before, and all of them were in the wrong place
+ * to be read: three sentences of grey small print under the button, and a
+ * band of three columns below both cards. Terms worth trusting are worth
+ * laying out — one label, one answer, per line, inside the card they belong
+ * to, so nobody has to reconstruct the deal from prose.
+ */
+function PlanTerms({ tier, yearly }: { tier: Tier; yearly: boolean }) {
+  const { month, year } = PLAN_PRICES[tier];
+  const charged = yearly ? year / 100 : month / 100;
+  const rows: [string, string][] = [
+    ["Free trial", `${TRIAL_DAYS} days. Your card is taken when it starts, so you can sell before you decide.`],
+    [
+      "First charge",
+      `$${charged} ${yearly ? "for the year" : "for the month"}, on the day the trial ends. We email you a week before.`,
+    ],
+    ["Cancelling", "Two clicks in your studio, any time. Inside the trial, the card is never charged."],
+    ["Fees", "0% of your sales. Stripe charges its own processing fee, on your own account."],
+  ];
+  return (
+    <dl className="mt-6 divide-y divide-line border-t border-line text-[0.8125rem] leading-relaxed">
+      {rows.map(([label, value]) => (
+        <div key={label} className="grid gap-x-4 py-2.5 sm:grid-cols-[6.5rem_1fr]">
+          <dt className="font-semibold text-ink">{label}</dt>
+          <dd className="text-ink-mute">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 function PlanCard({
-  name,
-  tag,
-  bestFor,
   tier,
+  bestFor,
+  groups,
   perks,
   featured,
   cta,
   yearly,
 }: {
-  name: string;
-  tag: string;
+  tier: Tier;
   bestFor: string;
-  tier: "creator" | "pro";
+  groups: PlanGroup[];
   perks: string[];
   featured: boolean;
   cta: string;
@@ -449,13 +546,16 @@ function PlanCard({
           Where to start
         </span>
       ) : null}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-lg font-semibold text-ink">{name}</p>
-        <span className={`tag ${featured ? "tag-brand" : ""}`}>{tag}</span>
-      </div>
-      <p className="mt-2 text-[0.9375rem] text-ink-soft">{bestFor}</p>
 
-      <p className="mt-6 flex items-baseline gap-2">
+      {/*
+        The title says what the plan is; the line under it says whose
+        business it suits, which is the only thing somebody holding two
+        cards up against each other is trying to find out.
+      */}
+      <p className="t-h3">{PLAN_TITLES[tier]}</p>
+      <p className="measure mt-2 text-[0.9375rem] text-ink-soft">{bestFor}</p>
+
+      <p className="mt-7 flex items-baseline gap-2">
         <span className="text-[3.5rem] font-semibold leading-none tracking-[-0.05em] text-ink tabular-nums">
           ${yearly ? year / 100 : month / 100}
         </span>
@@ -463,45 +563,49 @@ function PlanCard({
       </p>
       <p className="mt-2 min-h-[1.5rem] text-[0.9375rem] text-ink-soft">
         {yearly
-          ? `Billed annually, in one payment. That works out at $${monthlyEquivalent(year)} a month \u2014 $${saving} less than twelve months at $${month / 100}.`
-          : `Billed monthly. Or $${year / 100} a year in one payment \u2014 $${saving} less than twelve months.`}
+          ? `One payment of $${year / 100}, once a year — $${monthlyEquivalent(year)} a month, $${saving} less than paying monthly.`
+          : `Billed every month. Or $${year / 100} once a year, which is $${saving} less.`}
       </p>
 
       {/*
-        Six lines, then the rest behind a press.
+        Three groups open, the whole list one press away.
 
         Eighteen ticks in a column made the two cards 4,156px of page
         between them, and a list that long is not read — it is scrolled
-        past. The six that decide the purchase are open; the rest are one
-        press away, in the same card, with nothing hidden from anyone who
-        wants it.
+        past. Worse, a list sorted by nothing hands the sorting to the
+        reader. These three say what the plan is for; the itemized version
+        is still here, whole, for anybody checking one particular case.
       */}
-      <ul className="mt-6 space-y-3">
-        {perks.slice(0, 6).map((perk) => (
-          <li key={perk} className="flex gap-3 text-ink-soft">
-            <Icon name="check" size={18} strokeWidth={2.2} className="mt-1 shrink-0 text-mint-brand" />
-            <span>{perk}</span>
+      <ul className="mt-7 space-y-5">
+        {groups.map((group) => (
+          <li key={group.title} className="flex gap-3.5">
+            <span className="icon-tile-sm shrink-0" aria-hidden="true">
+              <Icon name={group.icon} size={17} strokeWidth={1.9} />
+            </span>
+            <span>
+              <strong className="block font-semibold text-ink">{group.title}</strong>
+              <span className="mt-1 block text-[0.9375rem] text-ink-soft">{group.body}</span>
+            </span>
           </li>
         ))}
       </ul>
-      {perks.length > 6 ? (
-        <details className="group/perks mt-3">
-          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-[8px] text-sm font-semibold text-violet-deep [&::-webkit-details-marker]:hidden">
-            <Icon name="plus" size={15} className="transition-transform duration-200 group-open/perks:rotate-45" />
-            <span className="group-open/perks:hidden">{`${perks.length - 6} more in this plan`}</span>
-            <span className="hidden group-open/perks:inline">Fewer</span>
-          </summary>
-          <ul className="mt-3 space-y-3">
-            {perks.slice(6).map((perk) => (
-              <li key={perk} className="flex gap-3 text-ink-soft">
-                <Icon name="check" size={18} strokeWidth={2.2} className="mt-1 shrink-0 text-mint-brand" />
-                <span>{perk}</span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-      <div className="mt-auto pt-7">
+      <details className="group/perks mt-6">
+        <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 rounded-[8px] text-sm font-semibold text-violet-deep [&::-webkit-details-marker]:hidden">
+          <Icon name="plus" size={15} className="transition-transform duration-200 group-open/perks:rotate-45" />
+          <span className="group-open/perks:hidden">{`All ${perks.length} of them, itemized`}</span>
+          <span className="hidden group-open/perks:inline">Close the list</span>
+        </summary>
+        <ul className="mt-4 space-y-3">
+          {perks.map((perk) => (
+            <li key={perk} className="flex gap-3 text-[0.9375rem] text-ink-soft">
+              <Icon name="check" size={17} strokeWidth={2.2} className="mt-1 shrink-0 text-mint-brand" />
+              <span>{perk}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
+
+      <div className="mt-auto pt-8">
         {/*
           The plan and the rhythm travel with the press.
 
@@ -518,11 +622,10 @@ function PlanCard({
         >
           {cta}
         </Link>
-        {/* What the button does, before it is pressed. */}
-        <p className="mt-3 text-center text-[0.8125rem] leading-relaxed text-ink-mute">
-          {`Sends a login link to your email. Free for ${TRIAL_DAYS} days; your card is taken at the start and first charged $${
-            yearly ? year / 100 : month / 100
-          } ${yearly ? "a year" : "a month"} when the trial ends. Cancel in two clicks before then and it is never charged.`}
+        <PlanTerms tier={tier} yearly={yearly} />
+        {/* Named here the way the receipt will name it. */}
+        <p className="mt-4 text-[0.8125rem] leading-relaxed text-ink-mute">
+          {`Pressing this sends a login link to your email; nothing is charged from it. On your receipts the plan is called ${PLAN_NAMES[tier]}.`}
         </p>
       </div>
     </div>
@@ -536,7 +639,7 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
     : PRO_INCLUDED;
   return (
     <div>
-      <div className="mb-8 flex flex-col items-center gap-3">
+      <div className="mb-10 flex flex-col items-center gap-3">
         <div className="seg" role="group" aria-label="How often you pay">
           <button type="button" className="seg-item" aria-pressed={!yearly} onClick={() => setYearly(false)}>
             Monthly
@@ -552,50 +655,61 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
             </span>
           </button>
         </div>
-        <p className="text-sm text-ink-mute">Both plans, both ways. Switch from your studio whenever you like.</p>
+        <p className="text-sm text-ink-mute">Both plans either way, and you can switch from your studio whenever you like.</p>
       </div>
+      {/*
+        Two cards of the same build.
+
+        A cheaper plan drawn smaller, or with its terms left out, is a way of
+        telling somebody they picked wrong. Both of these carry the same
+        title, the same three groups, the same itemized list and the same
+        four lines of terms, so the only difference a reader finds between
+        them is the actual difference between them.
+      */}
       <div className="grid gap-6 lg:grid-cols-2 lg:items-stretch">
         <PlanCard
-          name={PLAN_NAMES.creator}
-          tag="Everything you need to sell"
-          bestFor="For a creator opening a store and selling from it."
           tier="creator"
+          bestFor={"For selling what you make to the audience you already reach — wherever you reach them now."}
+          groups={CREATOR_GROUPS}
           perks={INCLUDED}
           featured
           cta="Start your store"
           yearly={yearly}
         />
         <PlanCard
-          name={PLAN_NAMES.pro}
-          tag={domains ? "Email and your own domain" : "With email to your list"}
-          bestFor="For a creator with an email list to write to, and sell to again."
           tier="pro"
+          bestFor={"For selling and writing to your own list from the same place, so a buyer hears from you again."}
+          groups={proGroups(domains)}
           perks={proPerks}
           featured={false}
-          cta="Start on Pro"
+          cta={"Start on Storefront & Email"}
           yearly={yearly}
         />
       </div>
+      {/*
+        What is true of both plans, and belongs to neither card: the two
+        edges of the trial, and the limit we publish rather than bury.
+      */}
       <div className="card-flat mt-6 grid gap-4 p-6 text-sm sm:grid-cols-3 sm:p-7">
         <p className="flex gap-2 text-ink-soft">
           <Icon name="clock" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
           <span>
-            <strong className="font-semibold text-ink">{`Free for the first ${TRIAL_DAYS} days.`}</strong>
-            {" Your card is taken when the trial starts and first charged when it ends. We email you a week before that, and canceling before it means your card is never charged. Cancel in two clicks from your studio. No email to us, no chat, no second request. The trial is for your first store; a second store is paid from day one."}
+            <strong className="font-semibold text-ink">One trial per account.</strong>
+            {` The free ${TRIAL_DAYS} days are for your first store; a second store is paid from its first day.`}
           </span>
         </p>
         <p className="flex gap-2 text-ink-soft">
-          <Icon name="percent" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
+          <Icon name="refresh" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
           <span>
-            <strong className="font-semibold text-ink">0% of your sales.</strong> Stripe charges its own processing fee on
-            your account.
+            <strong className="font-semibold text-ink">Move between the plans.</strong> From your studio, whenever you like,
+            either direction. Nothing you have made is lost in the move.
           </span>
         </p>
         <p className="flex gap-2 text-ink-soft">
           <Icon name="download" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
           <span>
-            <strong className="font-semibold text-ink">200 GB of downloads a month.</strong> Stated here, not hidden in the
-            terms, and nothing is cut off if you pass it. Move between the plans from your studio whenever you like.
+            <strong className="font-semibold text-ink">200 GB of downloads a month.</strong> Written here rather than in the
+            terms, and nothing is cut off if you pass it.
           </span>
         </p>
       </div>

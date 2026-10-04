@@ -204,8 +204,19 @@ export function BuyerPath() {
     if (focus) tabs.current[next]?.focus();
   };
 
+  /*
+   * Warm paper, not white.
+   *
+   * The page runs on two light surfaces and nothing else — paper, then a
+   * slightly warmer sand — so a reader can see where one part of it ends
+   * without being told. A pure white band in the middle of that is a third
+   * surface, and a third surface with no reason behind it is exactly the
+   * randomness the two-surface system was put in to end. The white in this
+   * section belongs to the device frames inside it, which is what white is
+   * for here: the screen, not the page.
+   */
   return (
-    <section id="screens" className="section scroll-mt-20 overflow-hidden bg-white">
+    <section id="screens" className="surface-paper section scroll-mt-20 overflow-hidden">
       <div className="container-page">
         <div className="reveal flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
           <div className="max-w-2xl">

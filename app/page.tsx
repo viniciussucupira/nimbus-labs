@@ -173,16 +173,6 @@ const CREATORS = [
   },
 ];
 
-/* Checked on Stan's own public pricing, terms and help pages. */
-const COMPARE = [
-  { row: "Where the money from a sale goes", stan: "A Stripe account managed by the platform", nimbus: "Your own Stripe account", key: true },
-  { row: "Getting paid out", stan: "Manual cash-out, $10 minimum, whole balance only", nimbus: "Your Stripe payout schedule, no minimum from us", key: true },
-  { row: "Cut of each sale", stan: "0%, plus Stripe's own fees", nimbus: "0%, plus Stripe's own fees", key: false, same: true },
-  { row: "Several prices for one product", stan: "Not available", nimbus: "Up to three on any product", key: true },
-  { row: "Discount codes", stan: "On the $99 Creator Pro plan", nimbus: `Included at $${PRICE} a month`, key: true },
-  { row: "Pay what you want", stan: "Not documented on their public help pages, read September 2026", nimbus: "A minimum and a suggested price", key: false },
-  { row: "Changing your store address", stan: "Old links forwarded on a best-effort basis", nimbus: "Old addresses keep working, up to 10 held at once", key: false },
-];
 
 
 export default function Home() {
@@ -336,94 +326,6 @@ export default function Home() {
           <SoldMarquee />
         </section>
 
-        {/* ------------------------------------------------ the buyer's path */}
-        <BuyerPath />
-
-        {/* ------------------------------------------------------ why Marktmorgen */}
-        <section className="section">
-          <div className="container-page">
-            <div className="reveal max-w-2xl">
-              <h2 className="t-h2 balance">Built for the people who use it</h2>
-            </div>
-
-            <div className="mt-14 space-y-16 sm:mt-16 sm:space-y-20">
-              {REASONS.map((r, i) => (
-                <article key={r.title} className="reveal grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-                  <div className={i % 2 === 1 ? "lg:order-2" : ""}>
-                    <span className="icon-tile">
-                      <Icon name={r.icon} size={22} />
-                    </span>
-                    <h3 className="t-h3 mt-6">{r.title}</h3>
-                    <p className="measure mt-3 text-ink-soft">{r.body}</p>
-                    <p className="measure mt-5 flex gap-2.5 rounded-[var(--r-md)] bg-white p-4 text-[0.9375rem] text-ink-soft ring-1 ring-line">
-                      <Icon name="check" size={16} strokeWidth={2.4} className="mt-0.5 shrink-0 text-mint-deep" />
-                      <span>{r.example}</span>
-                    </p>
-                    <Link href={r.href} className="link-arrow mt-6 text-[0.9375rem]">
-                      {r.link}
-                      <Icon name="arrow-right" size={16} className="arrow" />
-                    </Link>
-                  </div>
-                  {/*
-                    The drawing, on its own.
-
-                    A photograph used to sit above this, tilted, with the
-                    drawing overlapping its lower edge. The drawing is the
-                    evidence — it is the screen this actually happens on —
-                    and a stock photograph of a desk laid over evidence
-                    does not strengthen it, it decorates it. Proof is shown,
-                    not illustrated.
-
-                    min-w-0 is not decoration. A grid item will not shrink
-                    below the widest thing inside it unless you say so, and
-                    these drawings are full of rows that would rather stay
-                    wide, so without it the whole page grows a sideways
-                    scrollbar on a phone.
-                  */}
-                  <div className={`flex min-w-0 justify-center ${i % 2 === 1 ? "lg:order-1 lg:justify-start" : "lg:justify-end"}`}>
-                    <FeatureVisual visual={r.visual} tone="light" />
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            {/*
-              What we do not have, kept and made small.
-
-              The feature inventory that used to sit here is on /platform,
-              where it belongs and where the nav already points; repeating
-              it added 5,500px to this page and said nothing the visitor
-              could not reach in one click. This block is the part that
-              could not move, because it is the argument: a page that lists
-              only what works is worth nothing unless it also names what
-              does not. One row, five names, no padding around them.
-            */}
-            <div className="reveal mt-14 flex flex-col gap-4 rounded-[var(--r-lg)] bg-white/70 p-6 shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09)] sm:p-7 lg:flex-row lg:items-center lg:gap-8">
-              <div className="lg:w-[17rem] lg:shrink-0">
-                <span className="tag tag-next">Not here yet</span>
-                <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                  Currently unavailable. Each one is explained on the feature page.
-                </p>
-              </div>
-              <ul className="flex flex-wrap gap-2.5">
-                {NOT_YET.map((n) => (
-                  <li
-                    key={n}
-                    className="flex items-center gap-2 rounded-full bg-white px-3.5 py-2 text-[0.875rem] text-ink shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09)]"
-                  >
-                    <Icon name="minus" size={14} className="shrink-0 text-ink-mute" />
-                    {n}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/proof/everything" className="link-arrow shrink-0 text-[0.9375rem]">
-                Feature by feature
-                <Icon name="arrow-right" size={16} className="arrow" />
-              </Link>
-            </div>
-          </div>
-        </section>
-
         {/* ------------------------------------------------------ who it's for */}
         <section className="surface-sand section">
           <div className="container-page">
@@ -513,103 +415,88 @@ export default function Home() {
           </div>
         </section>
 
-        {/* -------------------------------------------------------- compare */}
-        <section id="compare" className="section scroll-mt-20">
+        {/* ------------------------------------------------ the buyer's path */}
+        <BuyerPath />
+
+        {/* ------------------------------------------------------ why Marktmorgen */}
+        <section className="section">
           <div className="container-page">
             <div className="reveal max-w-2xl">
-              <h2 className="t-h2 balance">How we compare with Stan</h2>
-              <p className="mt-5 text-ink-soft">
-                Checked on Stan&apos;s own public pricing, terms and help pages in September 2026, and the discount row on
-                September 22. If any of it changes, this section changes.
-              </p>
+              <h2 className="t-h2 balance">Built for the people who use it</h2>
+            </div>
+
+            <div className="mt-14 space-y-16 sm:mt-16 sm:space-y-20">
+              {REASONS.map((r, i) => (
+                <article key={r.title} className="reveal grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+                  <div className={i % 2 === 1 ? "lg:order-2" : ""}>
+                    <span className="icon-tile">
+                      <Icon name={r.icon} size={22} />
+                    </span>
+                    <h3 className="t-h3 mt-6">{r.title}</h3>
+                    <p className="measure mt-3 text-ink-soft">{r.body}</p>
+                    <p className="measure mt-5 flex gap-2.5 rounded-[var(--r-md)] bg-white p-4 text-[0.9375rem] text-ink-soft ring-1 ring-line">
+                      <Icon name="check" size={16} strokeWidth={2.4} className="mt-0.5 shrink-0 text-mint-deep" />
+                      <span>{r.example}</span>
+                    </p>
+                    <Link href={r.href} className="link-arrow mt-6 text-[0.9375rem]">
+                      {r.link}
+                      <Icon name="arrow-right" size={16} className="arrow" />
+                    </Link>
+                  </div>
+                  {/*
+                    The drawing, on its own.
+
+                    A photograph used to sit above this, tilted, with the
+                    drawing overlapping its lower edge. The drawing is the
+                    evidence — it is the screen this actually happens on —
+                    and a stock photograph of a desk laid over evidence
+                    does not strengthen it, it decorates it. Proof is shown,
+                    not illustrated.
+
+                    min-w-0 is not decoration. A grid item will not shrink
+                    below the widest thing inside it unless you say so, and
+                    these drawings are full of rows that would rather stay
+                    wide, so without it the whole page grows a sideways
+                    scrollbar on a phone.
+                  */}
+                  <div className={`flex min-w-0 justify-center ${i % 2 === 1 ? "lg:order-1 lg:justify-start" : "lg:justify-end"}`}>
+                    <FeatureVisual visual={r.visual} tone="light" />
+                  </div>
+                </article>
+              ))}
             </div>
 
             {/*
-              A comparison is a table. Cut into seven cards it became seven
-              of the same object with the answer buried in each one, and a
-              reader had to assemble the column themselves. As rows, the two
-              columns line up and the shape of the argument is visible from
-              across the room — which is the whole point of putting it here.
+              What we do not have, kept and made small.
 
-              Below 640px a table of two long text columns is unreadable at
-              any font size, so there the same rows stack: the claim, then
-              each side under it.
+              The feature inventory that used to sit here is on /platform,
+              where it belongs and where the nav already points; repeating
+              it added 5,500px to this page and said nothing the visitor
+              could not reach in one click. This block is the part that
+              could not move, because it is the argument: a page that lists
+              only what works is worth nothing unless it also names what
+              does not. One row, five names, no padding around them.
             */}
-            <div className="reveal mt-10 overflow-hidden rounded-[var(--r-lg)] bg-white/80 shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09),0_14px_32px_-16px_rgba(42,23,144,0.22)]">
-              <table className="hidden w-full text-left sm:table">
-                <caption className="sr-only">Marktmorgen and Stan, side by side</caption>
-                <thead>
-                  <tr className="border-b border-line">
-                    <th scope="col" className="w-[34%] px-6 py-4 text-[0.875rem] font-semibold text-ink-mute">
-                      What it is
-                    </th>
-                    <th scope="col" className="px-6 py-4 text-[0.875rem] font-semibold text-ink-mute">
-                      Stan
-                    </th>
-                    <th scope="col" className="bg-white px-6 py-4 text-[0.875rem] font-semibold text-violet-deep">
-                      Marktmorgen
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARE.map((r) => {
-                    const same = "same" in r && r.same === true;
-                    return (
-                      <tr key={r.row} className="border-b border-line last:border-0">
-                        <th scope="row" className="px-6 py-5 align-top font-semibold text-ink">
-                          {r.row}
-                        </th>
-                        <td className="px-6 py-5 align-top text-[0.9375rem] text-ink-soft">{r.stan}</td>
-                        <td className={`bg-white px-6 py-5 align-top text-[0.9375rem] ${same ? "text-ink-soft" : "font-semibold text-ink"}`}>
-                          <span className="flex gap-2.5">
-                            {same ? null : (
-                              <Icon name="check" size={17} strokeWidth={2.6} className="mt-0.5 shrink-0 text-mint-deep" />
-                            )}
-                            <span>{r.nimbus}</span>
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              <ul className="divide-y divide-line sm:hidden">
-                {COMPARE.map((r) => {
-                  const same = "same" in r && r.same === true;
-                  return (
-                    <li key={r.row} className="p-5">
-                      <p className="font-semibold text-ink">{r.row}</p>
-                      <dl className="mt-3 grid gap-2 text-[0.9375rem]">
-                        <div className="grid grid-cols-[6.5rem_1fr] gap-3">
-                          <dt className="text-ink-mute">Stan</dt>
-                          <dd className="text-ink-soft">{r.stan}</dd>
-                        </div>
-                        <div className="grid grid-cols-[6.5rem_1fr] gap-3">
-                          <dt className="font-semibold text-violet-deep">Marktmorgen</dt>
-                          <dd className={same ? "text-ink-soft" : "font-semibold text-ink"}>{r.nimbus}</dd>
-                        </div>
-                      </dl>
-                    </li>
-                  );
-                })}
+            <div className="reveal mt-14 flex flex-col gap-4 rounded-[var(--r-lg)] bg-white/70 p-6 shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09)] sm:p-7 lg:flex-row lg:items-center lg:gap-8">
+              <div className="lg:w-[17rem] lg:shrink-0">
+                <span className="tag tag-next">Not here yet</span>
+                <p className="mt-3 text-[0.9375rem] text-ink-soft">
+                  Currently unavailable. Each one is explained on the feature page.
+                </p>
+              </div>
+              <ul className="flex flex-wrap gap-2.5">
+                {NOT_YET.map((n) => (
+                  <li
+                    key={n}
+                    className="flex items-center gap-2 rounded-full bg-white px-3.5 py-2 text-[0.875rem] text-ink shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09)]"
+                  >
+                    <Icon name="minus" size={14} className="shrink-0 text-ink-mute" />
+                    {n}
+                  </li>
+                ))}
               </ul>
-            </div>
-
-            {/*
-              The speed chart that used to sit here measured the demo store
-              before it had any photographs on it, and said so in its own
-              caption — a number that discredits itself in the sentence
-              under it is worth less than no number. It comes back when
-              there is a measurement of the page as it stands.
-            */}
-            <div className="reveal mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
-              <Link href="/proof/everything" className="link-arrow text-[0.9375rem]">
+              <Link href="/proof/everything" className="link-arrow shrink-0 text-[0.9375rem]">
                 Feature by feature
-                <Icon name="arrow-right" size={16} className="arrow" />
-              </Link>
-              <Link href="/proof/compare" className="link-arrow text-[0.9375rem]">
-                The full comparison
                 <Icon name="arrow-right" size={16} className="arrow" />
               </Link>
             </div>
@@ -620,9 +507,9 @@ export default function Home() {
         <section id="pricing" className="surface-sand section scroll-mt-20">
           <div className="container-page">
             <div className="reveal mx-auto mt-10 max-w-2xl text-center">
-              <h2 className="t-h2 balance">Two plans. Your sales stay yours.</h2>
+              <h2 className="t-h2 balance">Two plans, and one question between them.</h2>
               <p className="mt-5 text-ink-soft">
-                {`$${PRICE} a month for everything that sells: discount codes, pixels, funnels, order bumps, upsells, payment plans and limited quantities. $${PLAN_PRICES.pro.month / 100} adds email to your list. Neither takes a cent of what you sell.`}
+                {`Do you sell from here, or sell and write to your own list from here? That is the whole difference: $${PRICE} a month for the store and everything that sells from it, $${PLAN_PRICES.pro.month / 100} if your list lives here too. Neither takes a cent of what you sell.`}
               </p>
             </div>
             <div className="reveal mx-auto mt-12 max-w-5xl">

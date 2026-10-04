@@ -40,9 +40,35 @@ export function priceWords(tier: Tier, cycle: Cycle): string {
   return `$${dollars} a ${cycle}`;
 }
 
+/**
+ * What each plan is called on an invoice, at Stripe, and in the studio.
+ *
+ * These are billing identities. They are the names already on the Stripe
+ * products a paying creator's subscription points at, so they do not change
+ * for the sake of a page.
+ */
 export const PLAN_NAMES: Record<Tier, string> = {
   creator: "Marktmorgen",
   pro: "Marktmorgen Pro",
+};
+
+/**
+ * What each plan is called where somebody is choosing between them.
+ *
+ * "Marktmorgen" and "Marktmorgen Pro" name the seller, not the plan: told
+ * only that, a creator still has to read two columns of features to work out
+ * which one is their own business. A title has one job in front of somebody
+ * deciding — to say what this plan is for — and "Pro" does the opposite of
+ * that, because it describes the person rather than the plan and implies the
+ * cheaper one is for amateurs.
+ *
+ * So the chooser reads these, and the small print under the button names the
+ * plan the way the invoice will name it, from PLAN_NAMES above. One file, so
+ * the two can never drift apart.
+ */
+export const PLAN_TITLES: Record<Tier, string> = {
+  creator: "Storefront",
+  pro: "Storefront & Email",
 };
 
 /**
