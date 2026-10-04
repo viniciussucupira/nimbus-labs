@@ -17,7 +17,7 @@
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import type { Store } from "@/lib/store";
-import { readAllListings } from "@/lib/catalog";
+import { productIds, readListing, readListings } from "@/lib/catalog";
 import { leadsKey, parseContact } from "@/lib/contacts";
 import { memberPage } from "@/lib/community";
 import { readCourse } from "@/lib/course";
@@ -46,9 +46,11 @@ export function storeInfo(store: Store) {
 
 /** Every product, in the creator's order, a page at a time. */
 export async function products(store: Store, cursor: string | null): Promise<Page<Record<string, unknown>>> {
-  const all = await readAllListings(store);
+  // The order is in the store's own index, so only the page asked for is
+  // read. It used to read the whole catalogue to answer for twenty of it.
+  const ids = productIds(store);
   const from = cursor && /^\d{1,6}$/.test(cursor) ? Number(cursor) : 0;
-  const slice = all.slice(from, from + API_PAGE);
+  const slice = await readListings(store, ids.slice(from, from + API_PAGE));
   return {
     data: slice.map((p) => ({
       id: p.id,
@@ -60,7 +62,7 @@ export async function products(store: Store, cursor: string | null): Promise<Pag
       hidden: p.hidden === true,
       url: productLink(store, p.id),
     })),
-    next: from + API_PAGE < all.length ? String(from + API_PAGE) : null,
+    next: from + API_PAGE < ids.length ? String(from + API_PAGE) : null,
   };
 }
 
@@ -125,7 +127,8 @@ export async function members(store: Store, cursor: string | null): Promise<Page
 
 /** Everybody who has opened one course, with how far they got. */
 export async function students(store: Store, productId: string): Promise<{ data: Record<string, unknown>[]; total: number } | null> {
-  const product = (await readAllListings(store)).find((p) => p.id === productId);
+  // One product by id, which is one read — not every product in the store.
+  const product = await readListing(store, productId);
   if (!product?.course) return null;
   const course = await readCourse(product.course.id);
   if (!course) return null;

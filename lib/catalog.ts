@@ -74,6 +74,15 @@ export const STORE_PAGE_SIZE = 24;
 export const STUDIO_PAGE_SIZE = 50;
 
 /**
+ * The most products offered at once as something to put in a box at checkout.
+ *
+ * A list to pick from stops being one well before this; the number is here so
+ * that building it costs a bounded number of reads on a store of any size,
+ * rather than one read per product in the catalogue.
+ */
+export const BUMP_CHOICES = 500;
+
+/**
  * The most the head may weigh. A page of ordinary cards is a fraction of
  * this; a page of calls each with fifty dated sessions is not, and then the
  * cards that do not fit are read from their own records instead.
@@ -800,21 +809,47 @@ export async function studioShelf(
   }
   const query = typeof params.q === "string" ? params.q.replace(/\s+/g, " ").trim().slice(0, 80) : "";
   const asked = typeof params.pp === "string" && /^\d{1,4}$/.test(params.pp) ? Number(params.pp) : 1;
-  const listings = await readAllListings(store);
+  // Searching and paging are both questions about names, and names are one
+  // command (readTitles). Only the fifty products actually shown are read.
+  // This used to read every product in the store to find fifty.
+  const titles = await readTitles(store);
   const needle = query.toLowerCase();
-  const matches = needle ? listings.filter((l) => l.title.toLowerCase().includes(needle)) : listings;
+  const ordered = productIds(store).filter((id) => titles.has(id));
+  const matches = needle ? ordered.filter((id) => (titles.get(id) ?? "").toLowerCase().includes(needle)) : ordered;
   const pages = Math.max(1, Math.ceil(matches.length / STUDIO_PAGE_SIZE));
   const page = Math.min(Math.max(1, asked), pages);
   const from = (page - 1) * STUDIO_PAGE_SIZE;
-  const products = await readProducts(store, matches.slice(from, from + STUDIO_PAGE_SIZE).map((l) => l.id));
+  const products = await readProducts(store, matches.slice(from, from + STUDIO_PAGE_SIZE));
+
+  /*
+   * The list of products that could be offered in a box at checkout.
+   *
+   * It cannot be answered from the index alone — whether a product has a file
+   * and whether the buyer names the price are not in there — but the index can
+   * rule most of a catalogue OUT without a single read: a membership, a call,
+   * a free product, one with limited stock and one with price options can
+   * never be a bump. Only what survives that is read, and at most
+   * BUMP_CHOICES of it, which is already far more than a list to pick from can
+   * usefully hold. Before this, every product in the store was read to build it.
+   */
+  const ruledOut = new Set([
+    ...idsOfKind(store, "recurring"),
+    ...idsOfKind(store, "call"),
+    ...idsOfKind(store, "free"),
+    ...idsOfKind(store, "limited"),
+  ]);
+  const withOptions = new Set(store.catalog.items.filter((item) => item.options.length > 0).map((item) => item.id));
+  const candidates = ordered.filter((id) => !ruledOut.has(id) && !withOptions.has(id)).slice(0, BUMP_CHOICES);
+  const bumpable = await readListings(store, candidates);
   return {
     products,
     positions,
     paging: { page, pages, query, matches: matches.length, from, size: STUDIO_PAGE_SIZE },
-    choices: choose(listings),
-    named: namesOf(products, new Map(listings.map((l) => [l.id, l.title]))),
-    // Only the products on this page are asked about, against the whole store.
-    notes: allExtraNotes(products, listings, store.currency),
+    choices: choose(bumpable),
+    named: namesOf(products, titles),
+    // Only the products on this page are asked about, and only against the
+    // ones they could possibly refer to rather than against the whole store.
+    notes: allExtraNotes(products, bumpable, store.currency),
   };
 }
 
