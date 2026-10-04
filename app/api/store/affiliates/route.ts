@@ -4,7 +4,7 @@ import { readMoney } from "@/lib/money";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { MAX_COMMISSION, MIN_COMMISSION, commissionRate, parseAffiliateSetting } from "@/lib/affiliate-setting";
 import { parsePartnerShare, shareProblem } from "@/lib/partner-share";
-import { readAllListings } from "@/lib/catalog";
+import { readListings } from "@/lib/catalog";
 import { answerInvite, waitingOne } from "@/lib/partner-invites";
 import {
   MAX_REFERENCE_LENGTH,
@@ -142,7 +142,10 @@ export async function POST(request: NextRequest) {
       const problem = shareProblem({ percent: share.percent, products: share.products, others, affiliatePercent });
       if (problem) return fail(`share_${problem}`);
 
-      const titles = new Map((await readAllListings(store)).map((p) => [p.id, p.title]));
+      // Only the products being shared in, never the whole catalogue: a store
+      // at the 2,000 ceiling would otherwise cost 2,000 reads to send one
+      // invitation, and Upstash bills by the command.
+      const titles = new Map((await readListings(store, share.products)).map((p) => [p.id, p.title]));
       const origin = new URL(request.url).origin;
       const to = text(body.email, 254);
       // Somebody who already has a store here is asked in their own studio
