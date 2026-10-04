@@ -507,11 +507,13 @@ html {
 /* On a phone the picture sits under the words, so the sun rises under it. */
 @media (max-width: 1023px) {
   .surface-daybreak {
+    /* The same sky, with the sun centred under the stacked column. */
     background-image:
-      radial-gradient(22rem 10rem at 50% 100%, rgba(255, 214, 110, 0.66), transparent 70%),
-      radial-gradient(40rem 16rem at 50% 103%, rgba(255, 122, 89, 0.54), transparent 72%),
-      radial-gradient(64rem 24rem at 50% 106%, rgba(232, 69, 107, 0.32), transparent 74%),
-      linear-gradient(178deg, #1f1076 0%, #3a1fbd 52%, #5a36ee 88%, #7a4cf0 100%);
+      radial-gradient(20rem 9rem at 50% 102%, rgba(255, 188, 88, 0.3), transparent 70%),
+      radial-gradient(34rem 14rem at 50% 106%, rgba(226, 110, 84, 0.22), transparent 72%),
+      radial-gradient(40rem 34rem at 12% -10%, rgba(86, 58, 196, 0.24), transparent 66%),
+      radial-gradient(56rem 22rem at 50% 114%, rgba(168, 58, 112, 0.14), transparent 76%),
+      linear-gradient(178deg, #080818 0%, #101033 48%, #19143f 78%, #241a4a 100%);
   }
   .surface-daybreak::after {
     left: calc(50% - 7rem);
