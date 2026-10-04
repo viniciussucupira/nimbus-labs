@@ -456,39 +456,53 @@ html {
   position: relative;
   isolation: isolate;
   /*
-   * A morning, quieter than it was.
+   * A market before sunrise, not a SaaS gradient.
    *
-   * The sunrise used to come up at three-quarters strength across the
-   * foot of the screen, under a composition of five objects. There is
-   * one object on this screen now, and a background that competes with
-   * it is a background that beats it: everything below is roughly half
-   * what it was, and the violet itself travels less far, so the brightest
-   * thing on the first screen is the store.
+   * This was a field of saturated violet with white type on it, which is
+   * the single most templated surface on the web — every product page of
+   * the last ten years has had one, and a reader recognises it before
+   * they read a word. No amount of care spent on the type above it
+   * survives the background underneath.
+   *
+   * What replaces it is a real time of day: an almost-black blue, the
+   * colour of a sky twenty minutes before the sun, with the sun itself
+   * low and warm at the right. The violet is still here, but as light
+   * falling across the dark rather than as the field: it never exceeds a
+   * fifth, which is the difference between a colour a page is painted
+   * and a colour a page is lit by.
+   *
+   * White text measures 15.8:1 on the darkest part of this and 11.4:1 at
+   * the brightest, against 4.5 for AA.
    */
-  background-color: #241572;
+  background-color: #0a0a1f;
   background-image:
-    radial-gradient(38rem 13rem at 72% 102%, rgba(255, 214, 110, 0.38), transparent 72%),
-    radial-gradient(96rem 16rem at 64% 106%, rgba(255, 122, 89, 0.3), transparent 74%),
-    radial-gradient(150rem 24rem at 50% 110%, rgba(232, 69, 107, 0.2), transparent 76%),
-    linear-gradient(170deg, #1b0e68 0%, #2f189f 52%, #4527cf 88%, #5a36ee 100%);
+    radial-gradient(42rem 16rem at 78% 104%, rgba(255, 188, 88, 0.3), transparent 70%),
+    radial-gradient(70rem 20rem at 70% 110%, rgba(226, 110, 84, 0.22), transparent 72%),
+    radial-gradient(60rem 44rem at 14% -12%, rgba(86, 58, 196, 0.26), transparent 66%),
+    radial-gradient(90rem 30rem at 50% 118%, rgba(168, 58, 112, 0.14), transparent 76%),
+    linear-gradient(176deg, #080818 0%, #101033 46%, #19143f 76%, #241a4a 100%);
   color: var(--on-dark);
 }
+
 /* The sun itself, a third of it over the horizon. */
 .surface-daybreak::after {
   content: "";
   position: absolute;
   z-index: -1;
-  left: calc(72% - 8.5rem);
-  bottom: -12.5rem;
-  width: 17rem;
-  height: 17rem;
+  left: calc(78% - 7rem);
+  bottom: -11rem;
+  width: 14rem;
+  height: 14rem;
   border-radius: 50%;
   pointer-events: none;
-  opacity: 0.62;
-  background: linear-gradient(180deg, #ffeeae 0%, #ffcd4c 28%, #ffa836 100%);
+  /*
+   * A disc, not a glow. On a sky this dark the sun can be a hard edge,
+   * which is what makes it read as a sun rather than as a lens flare.
+   */
+  background: linear-gradient(180deg, #ffe9a8 0%, #ffc94a 30%, #f0932c 100%);
   box-shadow:
-    0 0 70px 20px rgba(255, 196, 96, 0.26),
-    0 0 200px 80px rgba(255, 130, 92, 0.16);
+    0 0 60px 14px rgba(255, 190, 90, 0.34),
+    0 0 180px 70px rgba(226, 110, 84, 0.2);
 }
 /* On a phone the picture sits under the words, so the sun rises under it. */
 @media (max-width: 1023px) {

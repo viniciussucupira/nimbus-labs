@@ -90,7 +90,7 @@ const STORES = [
   {
     handle: "lightandgrain",
     name: "Light & Grain",
-    line: "Film presets by Theo",
+    line: "Film presets by Thea",
     photo: "photo-1573497019940-1c28c88b4f3e",
     item: "Golden hour pack",
     options: [
@@ -116,7 +116,7 @@ const STORES = [
   {
     handle: "saltandsteel",
     name: "Salt & Steel",
-    line: "Knife skills by Dmitri",
+    line: "Knife skills by Dina",
     photo: "photo-1580894732444-8ecded7900cd",
     item: "Sharpening masterclass",
     options: [
