@@ -55,16 +55,21 @@ export const MAX_OPTION_LABEL_LENGTH = 40;
  * freshId. Refusing the id here makes the two ends agree, and makes that size
  * a thing the code enforces rather than a thing it assumes.
  *
- * Forty, which is four times what freshId produces and the same bound the
- * option route already truncates an incoming id to — so an option whose id is
- * longer than this is one the studio cannot edit, move or remove today, and
- * refusing it orphans nothing that works. At forty, a store at the published
- * ceiling spends about 300 KB of the record on its index and keeps a third of
- * the record spare; at sixty-four it keeps less than a fifth, which is to say
- * the published ceiling would depend on nothing else about a store ever
- * growing. tests/catalog-ceiling.test.ts does that arithmetic on every run.
+ * Twenty-four: more than twice the ten characters freshId makes, twice its
+ * twelve-character fallback, and well inside the forty the option route
+ * already truncates an incoming id to — so nothing that works today is
+ * refused, and an id longer than this is one the studio could not edit, move
+ * or remove anyway.
+ *
+ * The number is chosen on what it leaves spare, not on what looks generous.
+ * At twenty-four, a store at the published ceiling spends about 230 KB of the
+ * record on its index and keeps some 400 KB — two fifths of the record — for
+ * everything else about the store. At forty it keeps 272 KB, which clears the
+ * floor by two percent and would make the published ceiling depend on nothing
+ * else about a store ever growing. tests/catalog-ceiling.test.ts does that
+ * arithmetic on every run, from these bounds rather than from a comment.
  */
-export const OPTION_ID = /^[A-Za-z0-9_-]{1,40}$/;
+export const OPTION_ID = /^[A-Za-z0-9_-]{1,24}$/;
 
 export type ProductOption = {
   /**

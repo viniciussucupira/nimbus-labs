@@ -14,10 +14,17 @@
  * 44px tap target that renders at 18, or a heading class whose size never
  * applied. It was worth measuring rather than assuming.
  *
- * It measures fine, with room: the worst entry a product can produce is about
- * sixty bytes, so the whole index at the ceiling is around a tenth of the
- * record. The point of this file is that nobody has to take that on trust, and
- * that raising either number without redoing the arithmetic fails the build.
+ * It measures fine, with room: the worst entry a product can produce is 115
+ * bytes, so a store at the published ceiling spends about 230 KB of the record
+ * on its index and keeps some 400 KB for everything else. The layout holds
+ * around 5,400 products at worst and 37,000 at the size a real product's entry
+ * actually is.
+ *
+ * The point of this file is that nobody has to take any of that on trust. Each
+ * bound is read from the code that enforces it, so raising either number — or
+ * widening an id, or allowing a fourth price option — without redoing the
+ * arithmetic fails the build rather than quietly shrinking what a creator can
+ * really have.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
