@@ -8,6 +8,7 @@ import { StoreCurrency, useStoreCurrency } from "@/components/store-currency";
 import { type Currency, fieldPrefix, formatMoney, moneyField } from "@/lib/money";
 import {
   type AffiliateSetting,
+  type AttributionRule,
   MAX_COMMISSION,
   MAX_COOKIE_DAYS,
   MAX_HOLD_DAYS,
@@ -25,6 +26,8 @@ const MESSAGES: Record<string, string> = {
   percent: `Type a whole share from ${MIN_COMMISSION} to ${MAX_COMMISSION} percent.`,
   days: `Type a whole number of days from ${MIN_COOKIE_DAYS} to ${MAX_COOKIE_DAYS}.`,
   rate: `A product's own share is a whole number from 0 to ${MAX_COMMISSION}; 0 leaves it out.`,
+  rule: "Pick whether the first or the last link a buyer followed earns the sale.",
+  promo: "That discount code is no longer on your Stripe account. Reload the page.",
   payday: `Pick a day from the 1st to the ${MAX_PAYDAY}th, or no fixed day.`,
   hold: `Type a whole number of days from 0 to ${MAX_HOLD_DAYS}.`,
   amount: "Type the amount you paid, like 25 or 25.50.",
@@ -38,6 +41,16 @@ const MESSAGES: Record<string, string> = {
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   store_full: "Your store is full. Remove something before adding more.",
   server_error: "Something went wrong on our side. Try again in a moment.",
+};
+
+/** One of the creator's live discount codes, as this screen needs it. */
+export type StoreCode = {
+  /** Stripe's promotion code id, which is what a code is given away by. */
+  id: string;
+  /** The word a buyer types. */
+  code: string;
+  /** What it takes off, in words: "20% off", "$10 off". */
+  label: string;
 };
 
 type Row = {
@@ -129,6 +142,8 @@ export function AffiliateStudio({
   currency = "usd",
   elsewhere = 0,
   away = [],
+  codes = [],
+  codeOwners = {},
   payPanel = null,
 }: {
   handle: string;
@@ -145,6 +160,10 @@ export function AffiliateStudio({
   elsewhere?: number;
   /** Affiliates with a PayPal payment on its way (lib/paypal-payouts.ts): not in any new batch. */
   away?: string[];
+  /** The creator's own live discount codes, any of which can be given to an affiliate. */
+  codes?: StoreCode[];
+  /** Which affiliate holds each of those codes, by Stripe's promotion code id. */
+  codeOwners?: Record<string, string>;
   /** Paying from the creator's own PayPal (components/paypal-payouts.tsx), shown above the files. */
   payPanel?: React.ReactNode;
 }) {
@@ -396,6 +415,8 @@ export function AffiliateStudio({
                   busy={busy}
                   act={act}
                   error={errorAt(`m-${row.affiliate.id}`)}
+                  codes={codes}
+                  codeOf={codeOwners}
                 />
               ))}
             </ul>
@@ -486,9 +507,11 @@ function Terms({
   const [enabled, setEnabled] = useState(setting.enabled);
   const [percent, setPercent] = useState(String(setting.percent));
   const [days, setDays] = useState(String(setting.days));
+  const [rule, setRule] = useState<AttributionRule>(setting.rule);
   const [payday, setPayday] = useState(String(setting.payday));
   const [hold, setHold] = useState(String(setting.hold));
   const [buyers, setBuyers] = useState(setting.buyers);
+  const [directory, setDirectory] = useState(setting.directory);
   const [rates, setRates] = useState<Record<string, string>>(
     Object.fromEntries(Object.entries(setting.rates).map(([id, n]) => [id, String(n)])),
   );
@@ -512,9 +535,11 @@ function Terms({
               enabled,
               percent: Number(percent.trim()),
               days: Number(days.trim()),
+              rule,
               payday: Number(payday.trim()),
               hold: Number(hold.trim()),
               buyers,
+              directory,
               rates: chosen,
             },
             enabled ? "Affiliate program saved." : "Affiliate program switched off.",
@@ -551,6 +576,28 @@ function Terms({
             <span className="block text-ink-soft">
               The thanks page and the purchase email offer everyone who buys their own link, approved at once. Anyone you
               declined or removed stays out, and everyone else still applies.
+            </span>
+          </span>
+        </label>
+
+        {/*
+          Consent for a directory that does not exist, asked in the future
+          tense (lib/affiliate-setting.ts, AffiliateSetting.directory). Nothing
+          reads it yet, and the wording must never imply a page is live.
+        */}
+        <label className="mt-3 flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl border border-line bg-paper px-4 py-3">
+          <input
+            type="checkbox"
+            checked={directory}
+            onChange={(e) => setDirectory(e.target.checked)}
+            className="h-5 w-5 shrink-0 accent-[var(--violet)]"
+          />
+          <span className="text-sm">
+            <span className="block font-semibold text-ink">List my program in the affiliate directory, if one opens</span>
+            <span className="block text-ink-soft">
+              There is no directory today. If Marktmorgen ever opens one — a page where people looking for something to promote
+              can find programs like yours — this says yours may be in it, showing your share, your window and your payment
+              day. Nothing is published while this is the only thing it does, and you can switch it off at any time.
             </span>
           </span>
         </label>
@@ -594,8 +641,41 @@ function Terms({
           </label>
         </div>
         <p className="mt-2 text-xs text-ink-soft">
-          {`From ${MIN_COMMISSION} to ${MAX_COMMISSION}%, of what the buyer paid before tax, and a window of ${MIN_COOKIE_DAYS} to ${MAX_COOKIE_DAYS} days after their last click. A change applies to sales from then on; a sale keeps the share it was made at. Visitors from the European Economic Area, the UK, Switzerland and Brazil are asked first, because the rules there require it, and their click is remembered once they allow it.`}
+          {`From ${MIN_COMMISSION} to ${MAX_COMMISSION}%, of what the buyer paid before tax, and a window of ${MIN_COOKIE_DAYS} to ${MAX_COOKIE_DAYS} days. A change applies to sales from then on; a sale keeps the share it was made at. Visitors from the European Economic Area, the UK, Switzerland and Brazil are asked first, because the rules there require it, and their click is remembered once they allow it.`}
         </p>
+
+        <fieldset className="mt-5">
+          <legend className="field-label">When a buyer follows two affiliates&rsquo; links</legend>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {([
+              ["last", "The last link wins", "An affiliate can win a buyer by offering something better, and the buyer picks whose link to use. What every platform does by default."],
+              ["first", "The first link wins", "The affiliate who found the buyer keeps the sale, however many links they follow afterwards. Rewards the one who made the introduction."],
+            ] as const).map(([value, title, why]) => (
+              <label
+                key={value}
+                className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 ${
+                  rule === value ? "border-[var(--violet)] bg-paper" : "border-line bg-paper"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="aff-rule"
+                  value={value}
+                  checked={rule === value}
+                  onChange={() => setRule(value)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--violet)]"
+                />
+                <span className="text-sm">
+                  <span className="block font-semibold text-ink">{title}</span>
+                  <span className="block text-ink-soft">{why}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-ink-soft">
+            {`One sale earns one affiliate either way: a commission is never split between two people who both sent the same buyer, because the one who did the work to convert them ends up paying for the one who did not. Your affiliate page tells applicants which of the two you chose, before they apply. The window of ${days.trim() || setting.days} days is counted from ${rule === "first" ? "that first click" : "their most recent click"}.`}
+          </p>
+        </fieldset>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <label className="block" htmlFor="aff-payday">
@@ -713,16 +793,23 @@ function Member({
   busy,
   act,
   error,
+  codes,
+  codeOf,
 }: {
   row: Row;
   today: string;
   busy: string | null;
   act: (where: string, payload: Record<string, unknown>, confirmation: string) => Promise<boolean>;
   error: React.ReactNode;
+  codes: StoreCode[];
+  /** Which of those codes this affiliate has, by Stripe's promotion code id. */
+  codeOf: Record<string, string>;
 }) {
   const { affiliate } = row;
   const currency = useStoreCurrency();
   const where = `m-${affiliate.id}`;
+  const theirs = codes.filter((c) => codeOf[c.id] === affiliate.id);
+  const free = codes.filter((c) => !codeOf[c.id]);
   const [paying, setPaying] = useState(false);
   const [amount, setAmount] = useState(row.owed > 0 ? moneyField(row.owed, currency) : "");
   const [date, setDate] = useState(today);
@@ -788,6 +875,73 @@ function Member({
         )}
         {affiliate.paypal ? <p className="mt-1 [overflow-wrap:anywhere]">{`Paid through PayPal at ${affiliate.paypal}, the address they chose.`}</p> : null}
       </div>
+
+      {/*
+        A discount code of the creator's own, given to this affiliate
+        (lib/affiliate-codes.ts). Any sale that used it earns them their share
+        with no click and no cookie, which is the only way a sale made on a
+        podcast, from a stage or in a caption without links is credited at all.
+      */}
+      {affiliate.status === "approved" && codes.length ? (
+        <div className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">
+          <p className="field-label">Their discount code</p>
+          {theirs.length ? (
+            <ul className="mt-1.5 flex flex-wrap gap-2">
+              {theirs.map((code) => (
+                <li key={code.id} className="flex min-h-11 items-center gap-2 rounded-xl bg-lilac px-3 py-1.5">
+                  <span className="font-mono text-sm font-bold text-violet-ink">{code.code}</span>
+                  <span className="text-xs text-ink-soft">{code.label}</span>
+                  <button
+                    type="button"
+                    className="text-xs font-bold text-violet-deep underline underline-offset-4"
+                    disabled={busy !== null}
+                    onClick={() =>
+                      act(
+                        where,
+                        { action: "code", promo: code.id, id: "" },
+                        `${code.code} is nobody's now. Sales already credited through it keep their commission.`,
+                      )
+                    }
+                  >
+                    Take back
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-1">They have no code. A code earns them a sale even when no link was clicked.</p>
+          )}
+          {free.length ? (
+            <label className="mt-2 block" htmlFor={`${where}-code`}>
+              <span className="sr-only">Give them one of your codes</span>
+              <select
+                id={`${where}-code`}
+                className="field"
+                defaultValue=""
+                disabled={busy !== null}
+                onChange={(e) => {
+                  const promo = e.target.value;
+                  if (!promo) return;
+                  const chosen = free.find((c) => c.id === promo);
+                  e.target.value = "";
+                  if (chosen) {
+                    void act(
+                      where,
+                      { action: "code", promo, id: affiliate.id },
+                      `${chosen.code} is theirs. Any sale that uses it earns them their share.`,
+                    );
+                  }
+                }}
+              >
+                <option value="">Give them one of your codes…</option>
+                {free.map((code) => (
+                  <option key={code.id} value={code.id}>{`${code.code} — ${code.label}`}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
+      ) : null}
 
       {paying ? (
         <form

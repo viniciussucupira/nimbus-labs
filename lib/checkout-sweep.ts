@@ -46,6 +46,7 @@ import { recoveryOn } from "@/lib/recovery-setting";
 import { type Store, storesAfter } from "@/lib/store";
 import { sellsThings } from "@/lib/catalog";
 import { affiliatesOn, noteSession } from "@/lib/affiliates";
+import { affiliateForCodes, codeOwners } from "@/lib/affiliate-codes";
 import { revokeRefunded, storeHasKeys } from "@/lib/licence-keys";
 import { markRefundedReviews, storeHasReviews } from "@/lib/review-proof";
 import { listensToSales, noteSales } from "@/lib/sale-events";
@@ -126,10 +127,15 @@ async function sweepStore(store: Store, counts: SweepCounts, deadline: number, r
 
     // Asked in one round trip: which of the paid ones were already confirmed.
     const paid = rows.filter((row) => isSettled(row) && typeof row.id === "string");
-    // An affiliate's sale is written down whether or not its buyer came back.
+    // An affiliate's sale is written down whether or not its buyer came back —
+    // through a link, and through a discount code given to an affiliate, which
+    // is the only trace left by a sale made on a podcast or from a stage. The
+    // store's given-away codes are read once, not once an order.
     if (affiliatesOn(store)) {
+      const owners = paid.length ? await codeOwners(store) : new Map<string, string>();
       for (const row of paid) {
-        if (row.metadata?.via) await noteSession(store, row as Parameters<typeof noteSession>[1]);
+        const code = owners.size ? affiliateForCodes(row as { discounts?: unknown }, owners) : "";
+        if (row.metadata?.via || code) await noteSession(store, row as Parameters<typeof noteSession>[1], owners);
       }
     }
     // The creator's phone and email platform, told of each sale once.

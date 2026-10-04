@@ -12,6 +12,8 @@ import { AffiliateStudio } from "@/components/affiliate-studio";
 import { PayPalPayouts } from "@/components/paypal-payouts";
 import { onTheirWay, payableLines, readPayPal, settlePayPal } from "@/lib/paypal-payouts";
 import { batchTotal } from "@/lib/affiliate-payouts";
+import { codeOwners } from "@/lib/affiliate-codes";
+import { listCodes, offLabel } from "@/lib/discount";
 
 type Params = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
@@ -38,7 +40,22 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
 
   // What PayPal paid since the last look is written into the book first (lib/paypal-payouts.ts).
   await settlePayPal(store).catch((error) => console.error("settling PayPal payouts failed", error));
-  const [paypal, away] = await Promise.all([readPayPal(store).catch(() => null), onTheirWay(store).catch(() => new Set<string>())]);
+  const [paypal, away, owners, codeList] = await Promise.all([
+    readPayPal(store).catch(() => null),
+    onTheirWay(store).catch(() => new Set<string>()),
+    codeOwners(store).catch(() => new Map<string, string>()),
+    // The creator's own codes, so one of them can be given to an affiliate
+    // (lib/affiliate-codes.ts). Only worth asking Stripe when they have made any.
+    store.hasDiscounts && store.stripeAccountId
+      ? listCodes(store.stripeAccountId).catch(() => ({ state: "error" as const }))
+      : Promise.resolve({ state: "unavailable" as const }),
+  ]);
+  const codes =
+    codeList.state === "ok"
+      ? codeList.codes
+          .filter((code) => code.active && code.off !== null)
+          .map((code) => ({ id: code.id, code: code.code, label: offLabel(code.off as NonNullable<typeof code.off>) }))
+      : [];
   const book = await readBook(store).catch((error) => {
     console.error("reading the affiliate book failed", error);
     return null;
@@ -117,6 +134,8 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
           currency={store.currency}
           elsewhere={book?.elsewhere ?? 0}
           away={[...away]}
+          codes={codes}
+          codeOwners={Object.fromEntries(owners)}
           payPanel={
             book ? (
               <PayPalPayouts

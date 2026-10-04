@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { handleForDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
-import { AFFILIATE_CODE_PATTERN, VIA_COOKIE_SECONDS, viaCookieName } from "@/lib/affiliate-setting";
+import { AFFILIATE_CODE_PATTERN, VIA_COOKIE_SECONDS, viaCookieName, viaCookieValue } from "@/lib/affiliate-setting";
 import { needsConsent } from "@/lib/pixels";
 import { dynamicPolicy, isDynamicPage, isEventRoomPage, isStorePage, newNonce, roomPermissions } from "@/lib/csp";
 import { fromAnotherSite } from "@/lib/request-guard";
@@ -38,6 +38,11 @@ const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|community|p|affil
  * (lib/affiliates.ts). Set here so it works without JavaScript; whether the
  * code is real, and still inside the window, is decided at the checkout.
  *
+ * Both ends of the journey are kept: the click just made, and the earliest one
+ * the visitor still carries. Which of the two earns the sale is the store's
+ * own setting, read at the checkout — nothing here needs to know it, so no
+ * store's record is read on a page view to find out.
+ *
  * Not set here where the law asks for consent before such a cookie (the same
  * places the ad pixels ask first, lib/pixels.ts): there the store page asks
  * the visitor (components/affiliate-click.tsx), and a yes sets this same
@@ -47,9 +52,10 @@ function withAffiliateClick(request: NextRequest, handle: string, response: Next
   const code = request.nextUrl.searchParams.get("via")?.toLowerCase() ?? "";
   if (!handle || !AFFILIATE_CODE_PATTERN.test(code)) return response;
   if (needsConsent(request.headers.get("x-vercel-ip-country"))) return response;
+  const name = viaCookieName(handle);
   response.cookies.set({
-    name: viaCookieName(handle),
-    value: `${code}.${Math.floor(Date.now() / 1000)}`,
+    name,
+    value: viaCookieValue(request.cookies.get(name)?.value, code, Date.now() / 1000),
     path: "/",
     maxAge: VIA_COOKIE_SECONDS,
     httpOnly: true,

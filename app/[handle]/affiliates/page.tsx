@@ -7,7 +7,9 @@ import { normaliseHandle, storeForPage } from "@/lib/store";
 import { formatMoney } from "@/lib/money";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
-import { commissionRate, nextPayday, paydayWords, payoutPromise } from "@/lib/affiliate-setting";
+import { attributionWords, commissionRate, nextPayday, paydayWords, payoutPromise } from "@/lib/affiliate-setting";
+import { codeOwners } from "@/lib/affiliate-codes";
+import { listCodes, offLabel } from "@/lib/discount";
 import {
   MAX_NOTE_LENGTH,
   affiliateCookieName,
@@ -103,6 +105,21 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
   const terms = store.affiliates;
   const book = affiliate ? await readBook(store, affiliate.id) : null;
   const row = book?.rows[0] ?? null;
+  // Codes of the store's own that this affiliate was given, which earn with no
+  // click at all (lib/affiliate-codes.ts). Only asked for once they are in.
+  const myCodes =
+    affiliate?.status === "approved" && on && store.hasDiscounts && store.stripeAccountId
+      ? await (async () => {
+          const owners = await codeOwners(store).catch(() => new Map<string, string>());
+          const mine = [...owners].filter(([, id]) => id === affiliate.id).map(([promo]) => promo);
+          if (!mine.length) return [];
+          const listed = await listCodes(store.stripeAccountId as string).catch(() => ({ state: "error" as const }));
+          if (listed.state !== "ok") return [];
+          return listed.codes
+            .filter((code) => code.active && code.off !== null && mine.includes(code.id))
+            .map((code) => ({ id: code.id, code: code.code, label: offLabel(code.off as NonNullable<typeof code.off>) }));
+        })()
+      : [];
   // The next day the creator said they pay, or null when they promised none.
   const due = nextPayday(terms.payday);
   const notice = token && !linkFor ? NOTICES.expired : NOTICES[status] ?? null;
@@ -229,6 +246,35 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                   <p className="st-muted mt-2 text-sm">
                     {`Or add ?via=${affiliate.code} to the address of any page of this store.`}
                   </p>
+                  <p className="st-muted mt-2 text-sm">{attributionWords(store.affiliates)}</p>
+                  {/*
+                    A code of the store's own, given to this affiliate
+                    (lib/affiliate-codes.ts). It is the only thing on this page
+                    that earns without a click, so it is worth more to an
+                    affiliate who talks than the link above it.
+                  */}
+                  {myCodes.length ? (
+                    <>
+                      <p className="st-label mt-7">{myCodes.length === 1 ? "Your code" : "Your codes"}</p>
+                      <ul className="mt-2 flex flex-wrap gap-2">
+                        {myCodes.map((code) => (
+                          <li
+                            key={code.id}
+                            className="rounded-2xl px-4 py-2 font-mono text-sm font-bold"
+                            style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
+                          >
+                            {code.code}
+                            <span className="st-muted ml-2 font-sans text-xs font-normal">{code.label}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="st-muted mt-2 text-sm">
+                        {myCodes.length === 1
+                          ? "Say it out loud, print it, put it in a caption. A buyer who types it at checkout earns you your share even if they never clicked your link — which is how a sale from a podcast, a stage or a video without links reaches you at all."
+                          : "Say them out loud, print them, put them in a caption. A buyer who types one at checkout earns you your share even if they never clicked your link."}
+                      </p>
+                    </>
+                  ) : null}
                   {affiliate.rate !== null ? (
                     <p className="st-muted mt-2 text-sm">
                       {`${store.name} set your share at ${affiliate.rate}% of what a buyer pays before tax, on every one-time purchase through your link, except any product they took out of the program.`}
@@ -408,7 +454,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                   <ul className="mt-6 space-y-3">
                     {[
                       `${terms.percent}% of what a buyer pays before tax, on one-time purchases made through your link (memberships and payment plans do not earn)${different.length ? "; some products differ, below" : ""}.`,
-                      `A purchase counts if it is made within ${terms.days} ${terms.days === 1 ? "day" : "days"} of their last click on your link, and the last affiliate link they followed is the one credited.`,
+                      attributionWords(terms),
                       "A refunded sale earns nothing, a partly refunded one earns only on what was kept, and your own purchases never earn.",
                       payoutPromise(terms, store.name),
                       store.affiliates.buyers

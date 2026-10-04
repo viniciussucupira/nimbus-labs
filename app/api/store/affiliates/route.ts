@@ -3,16 +3,21 @@ import { StoreFullError, setAffiliateSetting, storeForEmail } from "@/lib/store"
 import { readMoney } from "@/lib/money";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { MAX_COMMISSION, MIN_COMMISSION, parseAffiliateSetting } from "@/lib/affiliate-setting";
-import { MAX_REFERENCE_LENGTH, addPayout, decide, removePayout, setAffiliateRate } from "@/lib/affiliates";
+import { MAX_REFERENCE_LENGTH, addPayout, decide, readAffiliate, removePayout, setAffiliateRate } from "@/lib/affiliates";
+import { PROMO_ID_PATTERN, giveCode, takeCodeBack } from "@/lib/affiliate-codes";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * The creator running their affiliate programme, one action at a time:
  *
- * `{ action: "settings", enabled, percent, days, payday, hold, rates: { <product>: 0-90 } }`,
+ * `{ action: "settings", enabled, percent, days, rule, payday, hold, rates: { <product>: 0-90 } }`,
  *   where `payday` is the day of the month they pay (1-28, or 0 for no promised
- *   day) and `hold` is how many days a sale waits before it can be paid;
+ *   day), `hold` is how many days a sale waits before it can be paid, and
+ *   `rule` is "last" or "first": which of two links a buyer followed earns it;
+ * `{ action: "code", promo, id }`, giving one of the creator's own discount
+ *   codes to one affiliate so a sale that used it earns them their share with
+ *   no click at all; an empty `id` takes the code back;
  * `{ action: "approve" | "decline" | "remove" | "restore", id }`;
  * `{ action: "payout", id, amount: "25.50", date: "2026-09-26", reference }`,
  *   which only writes down a payment the creator made themselves;
@@ -33,6 +38,8 @@ export async function POST(request: NextRequest) {
       // Out-of-range numbers are refused, not quietly replaced by the defaults.
       if (Number(body.percent) !== setting.percent) return fail("percent");
       if (Number(body.days) !== setting.days) return fail("days");
+      // A rule we do not have is refused rather than quietly becoming "last".
+      if (body.rule !== undefined && body.rule !== setting.rule) return fail("rule");
       if (Number(body.payday) !== setting.payday) return fail("payday");
       if (Number(body.hold) !== setting.hold) return fail("hold");
       const asked = body.rates && typeof body.rates === "object" ? Object.keys(body.rates as object).length : 0;
@@ -71,6 +78,17 @@ export async function POST(request: NextRequest) {
       if (rate !== null && (rate < MIN_COMMISSION || rate > MAX_COMMISSION)) return fail("rate");
       const done = await setAffiliateRate(store, text(body.id, 20), rate);
       return done ? Response.json({ ok: true, rate: done.rate }) : fail("unknown");
+    }
+    if (action === "code") {
+      const promo = text(body.promo, 90);
+      if (!PROMO_ID_PATTERN.test(promo)) return fail("promo");
+      const id = text(body.id, 20);
+      if (!id) return (await takeCodeBack(store, promo)) ? Response.json({ ok: true }) : fail("unknown");
+      // Only somebody already in the programme, so a code cannot be handed to
+      // an address nobody has approved.
+      const affiliate = await readAffiliate(store, id);
+      if (affiliate?.status !== "approved") return fail("unknown");
+      return (await giveCode(store, promo, id)) ? Response.json({ ok: true }) : fail("unknown");
     }
     if (action === "unpay") {
       return (await removePayout(store, text(body.payout, 20))) ? Response.json({ ok: true }) : fail("unknown");

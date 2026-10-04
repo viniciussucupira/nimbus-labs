@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { AFFILIATE_CODE_PATTERN, VIA_COOKIE_SECONDS, viaCookieName } from "@/lib/affiliate-setting";
+import { AFFILIATE_CODE_PATTERN, VIA_COOKIE_SECONDS, viaCookieName, viaCookieValue } from "@/lib/affiliate-setting";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
 
@@ -32,9 +32,13 @@ export async function POST(request: NextRequest) {
   if (!store?.affiliates.enabled) return done();
   const response = done();
   const secure = request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto") === "https";
+  const name = viaCookieName(store.handle);
+  // The same value the proxy writes, first click and all, so a visitor who
+  // consented here is not treated differently from one who never had to.
+  const value = viaCookieValue(request.cookies.get(name)?.value, code, Date.now() / 1000);
   response.headers.append(
     "Set-Cookie",
-    `${viaCookieName(store.handle)}=${code}.${Math.floor(Date.now() / 1000)}; Path=/; Max-Age=${VIA_COOKIE_SECONDS}; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`,
+    `${name}=${value}; Path=/; Max-Age=${VIA_COOKIE_SECONDS}; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`,
   );
   return response;
 }

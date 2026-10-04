@@ -21,6 +21,26 @@
  * batch, and on the day itself the batch arrives in their inbox.
  */
 
+/**
+ * Which affiliate a sale belongs to when the buyer followed more than one
+ * link before paying.
+ *
+ * "last" is the last link they followed, and is the default here and on every
+ * other platform: it lets an affiliate win a buyer by offering something
+ * better, and it leaves the buyer free to choose whose link to use.
+ *
+ * "first" is the affiliate who found the buyer in the first place, however
+ * many links they followed afterwards. It rewards the person who did the
+ * introducing rather than the person who caught them at the till.
+ *
+ * There is deliberately no third rule splitting one commission between
+ * several affiliates. Hotmart offers it and says in its own help pages that
+ * professional affiliates feel cheated by it — somebody who bought nothing
+ * but a click takes a share of the work another affiliate did. One sale, one
+ * affiliate, and the creator chooses which end of the journey counts.
+ */
+export type AttributionRule = "last" | "first";
+
 export type AffiliateSetting = {
   /** Switched on by the creator in the studio. Off until they do. */
   enabled: boolean;
@@ -28,6 +48,8 @@ export type AffiliateSetting = {
   percent: number;
   /** How many days after a click a purchase still counts for that affiliate. */
   days: number;
+  /** Which of two links a buyer followed earns the sale. */
+  rule: AttributionRule;
   /**
    * A different share for some products, by product id. 0 leaves a product
    * out of the programme; a product not listed earns the store-wide share.
@@ -54,13 +76,40 @@ export type AffiliateSetting = {
    * member affiliates. A buyer the creator declined or removed stays out.
    */
   buyers: boolean;
+  /**
+   * Whether this creator has said their programme may be listed in a public
+   * directory of Marktmorgen affiliate programmes, if one ever opens.
+   *
+   * There is no directory. Nothing reads this to build a page, and the switch
+   * says so in the future tense wherever it is shown. It exists now because
+   * the slow part of a directory is not the page — that is a listing over the
+   * share, the window and the payday each store already keeps — it is consent.
+   * A directory opened without it means going back to every creator and asking,
+   * and most never answer; asked once when they set the programme up, the
+   * permission is simply there on the day the thing is worth opening.
+   *
+   * Which is not yet. A catalogue with ten stores in it tells an affiliate
+   * there is nobody here, and operating a public marketplace brings duties
+   * that cannot be switched off afterwards. So: the answer is collected, and
+   * the page is not built, and this is in no plan card or comparison anywhere.
+   */
+  directory: boolean;
 };
 
 /** The published limits. */
 export const MIN_COMMISSION = 1;
 export const MAX_COMMISSION = 90;
 export const MIN_COOKIE_DAYS = 1;
-export const MAX_COOKIE_DAYS = 90;
+/**
+ * The longest window a creator can set, in days.
+ *
+ * Hotmart's own help pages offer 60, 90, 180 days "or for ever". There is no
+ * such thing as a cookie that lasts for ever — Chrome caps any cookie's life
+ * at 400 days whatever the site asks for — so the honest ceiling is a number
+ * under that cap, and 365 is the one that reads as a year and never relies on
+ * a browser keeping a promise it has already said it will not keep.
+ */
+export const MAX_COOKIE_DAYS = 365;
 /** The last day of the month that exists in every month. */
 export const MAX_PAYDAY = 28;
 /** No day promised. */
@@ -73,10 +122,12 @@ export const NO_AFFILIATES: AffiliateSetting = {
   enabled: false,
   percent: 20,
   days: 30,
+  rule: "last",
   rates: {},
   payday: NO_PAYDAY,
   hold: 0,
   buyers: false,
+  directory: false,
 };
 
 const whole = (value: unknown, min: number, max: number): number | null => {
@@ -100,6 +151,9 @@ export function parseAffiliateSetting(raw: unknown): AffiliateSetting {
     enabled: value.enabled === true,
     percent: whole(value.percent, MIN_COMMISSION, MAX_COMMISSION) ?? NO_AFFILIATES.percent,
     days: whole(value.days, MIN_COOKIE_DAYS, MAX_COOKIE_DAYS) ?? NO_AFFILIATES.days,
+    // Missing on every programme written down before the rule existed, and
+    // they were all last click, which is what missing means here.
+    rule: value.rule === "first" ? "first" : "last",
     rates,
     // Both are new, and every programme written down before they existed has
     // neither. Missing means no promised day and no wait, which is what those
@@ -107,6 +161,8 @@ export function parseAffiliateSetting(raw: unknown): AffiliateSetting {
     payday: whole(value.payday, NO_PAYDAY, MAX_PAYDAY) ?? NO_AFFILIATES.payday,
     hold: whole(value.hold, 0, MAX_HOLD_DAYS) ?? NO_AFFILIATES.hold,
     buyers: value.buyers === true,
+    // Consent is given, never assumed: anything but an explicit yes is a no.
+    directory: value.directory === true,
   };
 }
 
@@ -185,9 +241,58 @@ export function viaCookieName(handle: string): string {
 /** The longest any store's window can be, so the cookie never outlives it. */
 export const VIA_COOKIE_SECONDS = MAX_COOKIE_DAYS * 24 * 60 * 60;
 
-/** Reads the cookie: the code and the click's time, or null. */
-export function readViaCookie(raw: string | undefined): { code: string; at: number } | null {
+/** One click on one affiliate's link: whose code, and when. */
+export type Click = { code: string; at: number };
+
+/**
+ * What the cookie holds, now that a store can earn its sales on the first
+ * click instead of the last.
+ *
+ * `last` is the most recent link followed, which is all the cookie used to
+ * carry. `first` is the earliest one still remembered, kept so a store set to
+ * first click has something to credit — a cookie that only ever held the
+ * latest click cannot answer who found the buyer.
+ *
+ * On a cookie written before `first` existed the two are the same click, which
+ * is the truth about what is known of that visitor.
+ */
+export type Via = { last: Click; first: Click };
+
+const ONE = /^([a-z0-9]{3,20})\.(\d{9,11})$/;
+
+/** Reads the cookie, or null when there is nothing usable in it. */
+export function readViaCookie(raw: string | undefined): Via | null {
   if (!raw) return null;
-  const match = raw.match(/^([a-z0-9]{3,20})\.(\d{9,11})$/);
-  return match ? { code: match[1], at: Number(match[2]) } : null;
+  // "<last>~<first>", and a bare "<last>" from before the first was kept.
+  const [latest, earliest] = raw.split("~", 2);
+  const lastMatch = latest?.match(ONE);
+  if (!lastMatch) return null;
+  const last: Click = { code: lastMatch[1], at: Number(lastMatch[2]) };
+  const firstMatch = earliest?.match(ONE);
+  const first: Click = firstMatch ? { code: firstMatch[1], at: Number(firstMatch[2]) } : last;
+  // A first click later than the last one is a cookie somebody has edited.
+  return { last, first: first.at <= last.at ? first : last };
+}
+
+/**
+ * The cookie to write for a click on `code`, keeping whatever first click the
+ * visitor already carries.
+ *
+ * Nothing here decides whether the code is real or whether the window has
+ * passed: both are the checkout's to decide, against the store's own setting,
+ * which this cannot see. All it does is remember both ends of the journey.
+ */
+export function viaCookieValue(existing: string | undefined, code: string, nowSeconds: number): string {
+  const at = Math.floor(nowSeconds);
+  const before = readViaCookie(existing);
+  const first = before?.first ?? { code, at };
+  return `${code}.${at}~${first.code}.${first.at}`;
+}
+
+/** The sentence the affiliate and the creator both read about the rule. */
+export function attributionWords(setting: AffiliateSetting): string {
+  const window = `${setting.days} ${setting.days === 1 ? "day" : "days"}`;
+  return setting.rule === "first"
+    ? `The first affiliate link a buyer follows earns the sale, for ${window} after that first click, even if they follow somebody else's link later.`
+    : `The last affiliate link a buyer follows earns the sale, for ${window} after that click.`;
 }
