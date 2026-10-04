@@ -72,7 +72,7 @@ const STORES = [
       { label: "5 weeks", price: "$39" },
     ],
     links: ["Free recipe of the week", "About Jenny"],
-    tint: "#ff7a59",
+    tint: "#9a4a33",
   },
   {
     handle: "mornpractice",
@@ -85,7 +85,7 @@ const STORES = [
       { label: "Plan + 2 calls", price: "$89" },
     ],
     links: ["Free hip routine", "Book a session"],
-    tint: "#15a37a",
+    tint: "#1f6b53",
   },
   {
     handle: "lightandgrain",
@@ -98,7 +98,7 @@ const STORES = [
       { label: "Everything", price: "$59" },
     ],
     links: ["Before and after", "How I shoot"],
-    tint: "#ffcf4d",
+    tint: "#8a6a1f",
   },
   {
     handle: "thequietdesk",
@@ -111,7 +111,7 @@ const STORES = [
       { label: "Course + templates", price: "$69" },
     ],
     links: ["Free first lesson", "Student results"],
-    tint: "#5a36ee",
+    tint: "#4946a6",
   },
   {
     handle: "saltandsteel",
@@ -124,7 +124,7 @@ const STORES = [
       { label: "With the live Q&A", price: "$79" },
     ],
     links: ["Free knife guide", "Watch a clip"],
-    tint: "#e8456b",
+    tint: "#8d3352",
   },
 ] as const;
 
@@ -817,7 +817,12 @@ const SOLD: { label: string; photo: string }[] = [
   { label: "Bookbinding workshops", photo: "photo-1757085242652-f8cd4d3de889" },
 ];
 
-const TINTS = ["#ff7a59", "#15a37a", "#ffcf4d", "#5a36ee", "#e8456b"];
+/*
+ * The five store colours, muted to sit with the palette. A creator
+ * choosing their own colour is a real feature of the product, so these
+ * stay distinguishable; they no longer shout over the page they are on.
+ */
+const TINTS = ["#9a4a33", "#1f6b53", "#8a6a1f", "#4946a6", "#8d3352"];
 
 export function SoldMarquee() {
   /*

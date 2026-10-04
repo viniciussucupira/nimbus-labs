@@ -23,7 +23,7 @@ const JENNY = "photo-1613666517563-d19a4585d1fe";
  * like a page with nothing left to show.
  */
 const COVER = "photo-1627815416399-ddaae0e2fa54";
-const PRODUCT = "photo-1588702547954-4800ead296ef";
+const PRODUCT = "photo-1556908153-1055164fe2df";
 
 type Step = { key: string; icon: IconName; title: string; caption: string };
 
