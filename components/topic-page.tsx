@@ -446,7 +446,7 @@ function HeroContents({ blocks, light = false }: { blocks: Block[]; light?: bool
           <li key={t}>
             <a
               href={`#${sectionId(t)}`}
-              className={`flex items-baseline gap-3 rounded-[10px] px-2 py-2 text-[0.9375rem] transition-colors ${
+              className={`flex min-h-11 items-baseline gap-3 rounded-[10px] px-2 py-2 text-[0.9375rem] transition-colors ${
                 light ? "text-ink-soft hover:bg-paper hover:text-ink" : "text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
