@@ -167,7 +167,19 @@ export default function DemoStorePage() {
               ))}
             </ul>
 
-            <form action="/api/demo/checkout" method="post" className="mt-6">
+            {/*
+              target="_top" is what makes this page buyable from the home
+              page, where it is shown inside an <iframe> (components/
+              home-parts.tsx). Stripe Checkout refuses to render inside a
+              frame, so without this the response landed in the frame and the
+              buyer got a blank panel reading "This content is blocked.
+              Contact the site owner to fix the issue." — on the one page whose
+              whole job is to prove that paying works.
+
+              Outside a frame "_top" is this same window, so the standalone
+              /demo page is unchanged. tests/demo-checkout.test.ts holds it.
+            */}
+            <form action="/api/demo/checkout" method="post" target="_top" className="mt-6">
               <fieldset>
                 <legend className="font-semibold">
                   Choose your plan
