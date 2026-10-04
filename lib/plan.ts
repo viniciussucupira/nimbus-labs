@@ -134,3 +134,24 @@ export function parseCycle(raw: unknown): Cycle | null {
  * the first sale proves nothing to anybody.
  */
 export const TRIAL_DAYS = 14;
+
+/**
+ * Days after a charge in which we give it back in full, on request.
+ *
+ * The trial answers "is this the right tool", which you can tell in a
+ * fortnight. This answers a different question — "was paying for it worth
+ * it" — and that one is only answered by using it on a real month of real
+ * sales, which is longer than the trial and starts after it. A window
+ * shorter than that asks a creator to decide before they can know, which is
+ * how a refund policy ends up being a formality rather than a promise.
+ *
+ * It covers every charge, not only the first: a renewal, a plan change, a
+ * switch from monthly to yearly. The yearly plans are why it has to. Three
+ * hundred dollars taken in one payment is the charge most worth standing
+ * behind, and the one a creator is most likely to regret in week three.
+ *
+ * Every public sentence about refunds reads this number, including the
+ * Refund Policy and the Terms, and INVITE_HOLD_DAYS is derived from it so
+ * credit is never paid out on a payment that can still be given back.
+ */
+export const REFUND_DAYS = 30;

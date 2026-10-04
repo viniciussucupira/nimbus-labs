@@ -5,12 +5,12 @@
  * page writes them down twice: once for a reader, once in the form a search
  * engine reads. One list, so the two can never say different things.
  */
-import { PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
+import { PRICE_CENTS, REFUND_DAYS, TRIAL_DAYS } from "@/lib/plan";
 
 export const HOME_QUESTIONS = [
   {
     q: "Can I sign up and start selling today?",
-    a: `Yes. You take your store address, connect your own Stripe account and put up what you sell; a buyer can pay for it on your account, with nothing taken on top. The address, the page, the editor and connecting Stripe cost nothing. The $${PRICE_CENTS / 100} subscription switches on your checkout — selling, and giving things away for an email address — and its first ${TRIAL_DAYS} days are free. Your card is taken when the trial starts and first charged when it ends, so you can make a sale before you decide, and canceling inside the trial means it is never charged. The trial is for your first store; a second store is paid from day one.`,
+    a: `Yes. You take your store address, connect your own Stripe account and put up what you sell; a buyer can pay for it on your account, with nothing taken on top. The address, the page, the editor and connecting Stripe cost nothing. The $${PRICE_CENTS / 100} subscription switches on your checkout — selling, and giving things away for an email address — and its first ${TRIAL_DAYS} days are free. Your card is taken when the trial starts and first charged when it ends, so you can make a sale before you decide, and canceling inside the trial means it is never charged. The trial is for your first store; a second store is paid from day one. After that, every charge is covered by a ${REFUND_DAYS}-day money-back guarantee: ask inside ${REFUND_DAYS} days of any charge, for any reason or none, and it comes back in full.`,
   },
   {
     q: "Who holds the money from my sales?",

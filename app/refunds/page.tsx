@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { LegalPage, LegalSection } from "@/components/legal-page";
+import { REFUND_DAYS, TRIAL_DAYS } from "@/lib/plan";
 
 export const metadata: Metadata = {
   title: "Refund Policy — Marktmorgen",
   description:
-    "Cancel anytime. Full refund if requested within 14 days of a charge.",
+    `Cancel anytime. Every charge refunded in full on request within ${REFUND_DAYS} days of it.`,
 };
 
 export default function RefundsPage() {
   return (
-    <LegalPage title="Refund Policy" lastUpdated="October 2, 2026">
+    <LegalPage title="Refund Policy" lastUpdated="October 3, 2026">
       <p>
         This Refund Policy applies to what you pay Marktmorgen, a product of
         Solrenning, an independent software studio, for the creator store at
@@ -40,14 +41,31 @@ export default function RefundsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="2. 14-day full refund">
+      <LegalSection id="guarantee" title={`2. ${REFUND_DAYS}-day money-back guarantee`}>
         <p>
-          If you request a refund within fourteen (14) days of a charge, we
-          will refund that charge in full. This applies to the initial
-          subscription payment, to later renewal charges, monthly or yearly,
-          and to a charge made when you switch plans or between monthly and
-          yearly billing, provided the request is made within 14 days of the
-          specific charge.
+          If you request a refund within thirty ({REFUND_DAYS}) days of a
+          charge, we will refund that charge in full. No reason is required
+          and none will be asked for.
+        </p>
+        <p>
+          This applies to every charge, not only your first: the initial
+          subscription payment, later renewal charges on either plan, monthly
+          or yearly, and a charge made when you switch plans or switch between
+          monthly and yearly billing. Each charge has its own {REFUND_DAYS}{" "}
+          days, counted from the day that charge was made.
+        </p>
+        <p>
+          It is separate from, and comes after, the free trial. The first{" "}
+          {TRIAL_DAYS} days of your first store cost nothing and are never
+          charged if you cancel inside them; this guarantee covers what
+          happens once you have actually been charged.
+        </p>
+        <p>
+          A refund closes the paid features of the store it was for — your
+          checkout, and on Pro the email sending — from the day it is made.
+          Everything you built stays where it is, and your own Stripe account,
+          its customers and its payout history are untouched: that money was
+          never ours to return.
         </p>
       </LegalSection>
 
@@ -75,11 +93,12 @@ export default function RefundsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="4. After 14 days">
+      <LegalSection title={`4. After ${REFUND_DAYS} days`}>
         <p>
-          Refunds are not available for requests made more than 14 days after
-          a charge, except where applicable consumer law requires them. You may still cancel at any time to stop
-          future charges.
+          Refunds are not available for requests made more than {REFUND_DAYS}{" "}
+          days after a charge, except where applicable consumer law requires
+          them. You may still cancel at any time to stop future charges, and
+          the charge after this one has a fresh {REFUND_DAYS} days of its own.
         </p>
       </LegalSection>
 

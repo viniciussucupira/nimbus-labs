@@ -5,6 +5,7 @@ import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { isDomainsConfigured } from "@/lib/domains";
+import { REFUND_DAYS } from "@/lib/plan";
 import { HelpSearch } from "@/components/help-search";
 import { CopyLink } from "@/components/copy-link";
 import { formatMoney } from "@/lib/money";
@@ -200,7 +201,7 @@ const SECTIONS: Section[] = [
       {
         q: "What about refunds on the Marktmorgen subscription itself?",
         a: [
-          "Ask within 14 days of a charge and we refund that charge in full, including renewals. You can cancel at any time and keep access until the end of the period you already paid for. The refund policy page has the exact wording.",
+          `Ask within ${REFUND_DAYS} days of a charge and we refund that charge in full, for any reason or none — renewals and yearly payments included, each with its own ${REFUND_DAYS} days. You can cancel at any time and keep access until the end of the period you already paid for. The refund policy page has the exact wording.`,
         ],
       },
       {

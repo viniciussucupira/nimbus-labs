@@ -119,6 +119,44 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           }}
         />
         {children}
+        {/*
+          And the thing that brings them back, at the end of the body.
+
+          This used to be a React effect, which meant the sections were
+          hidden at first paint and uncovered only once the bundle had
+          downloaded, parsed and hydrated. On a good connection that gap is
+          invisible. On a phone on mobile data it is seconds of a page with
+          a header and nothing under it — the visitor is looking at the
+          blank middle the comment above says must never happen, and the
+          cause is the animation itself.
+
+          So the observer starts here instead, as plain script at the end of
+          the body: it runs the moment the HTML is parsed, before any bundle
+          is asked for, and it is not waiting on React to be alive. Anything
+          already on screen is shown at once — a visitor who has not scrolled
+          has not scrolled to it — and only what is still below the fold is
+          left for the observer. If any of it throws, the attribute comes
+          off and the whole page is simply there.
+
+          The React component on each page does the same work again on a
+          client-side navigation, where no script in this file runs a second
+          time. Adding the class twice costs nothing.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              '(function(){try{var d=document,r=d.documentElement;' +
+              'if(r.getAttribute("data-reveal")!=="on")return;' +
+              'var n=d.querySelectorAll(".reveal");if(!n.length)return;' +
+              'var o=new IntersectionObserver(function(e){e.forEach(function(x){' +
+              'if(x.isIntersecting){x.target.classList.add("is-in");o.unobserve(x.target)}})},' +
+              '{rootMargin:"0px 0px -6% 0px",threshold:0.1});' +
+              'var h=window.innerHeight||0,i;' +
+              'for(i=0;i<n.length;i++){' +
+              'if(n[i].getBoundingClientRect().top<h){n[i].classList.add("is-in")}else{o.observe(n[i])}}' +
+              '}catch(e){try{document.documentElement.removeAttribute("data-reveal")}catch(_){}}})()',
+          }}
+        />
         <Toaster />
         <SiteData />
       </body>

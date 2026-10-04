@@ -16,12 +16,29 @@
 import { claimHandle, createStore, setSubscription, storeForEmail } from "@/lib/store";
 import { inviteCode, inviteView, inviterFor, recordInvite, creditKey, OWED_KEY } from "@/lib/creator-invites";
 import { INVITE_STRIPE_VERSION, paidOn, settleInvites } from "@/lib/creator-invite-credit";
-import { INVITE_BONUS_CENTS, INVITE_CODE_PATTERN, INVITE_COOKIE, inviteShare } from "@/lib/creator-invite-rules";
+import { INVITE_BONUS_CENTS, INVITE_CODE_PATTERN, INVITE_COOKIE, INVITE_HOLD_DAYS, inviteShare } from "@/lib/creator-invite-rules";
 import { GET as accept } from "@/app/invite/[code]/accept/route";
 import { store as redis } from "./redis-stub";
 import { done, is, part } from "./check";
 
 const DAY = 86_400;
+
+/*
+  Every age in this file is written against INVITE_HOLD_DAYS rather than as a
+  number of its own. The hold is the refund window plus a week, so when the
+  refund window went from 14 days to 30 the hold went from 21 to 37 — and
+  fixtures written as "35 days ago" and "invited 60 days ago" quietly swapped
+  which side of the hold they were on, and which side of the invite. Said this
+  way, each payment keeps the position in the story it was written to have.
+*/
+/** Paid, but still inside the hold: earns nothing yet. */
+const INSIDE = INVITE_HOLD_DAYS - 11;
+/** Paid and out of the hold. */
+const PAST = INVITE_HOLD_DAYS + 4;
+/** The first payment of all, also out of the hold. */
+const LONG_PAST = INVITE_HOLD_DAYS + 8;
+/** When the invites were accepted: before every payment above. */
+const INVITED = LONG_PAST + 15;
 const NOW = Date.now();
 const nowS = Math.floor(NOW / 1000);
 
@@ -120,18 +137,18 @@ async function main(): Promise<void> {
   is("a code nobody has leads nowhere", await inviterFor("zzzzzzzz"), null);
 
   part("Who counts as invited");
-  is("a creator is never their own invite", await recordInvite(ana, code, NOW - 60 * DAY * 1000), "own");
+  is("a creator is never their own invite", await recordInvite(ana, code, NOW - INVITED * DAY * 1000), "own");
   // Ana's second store is still Ana.
   const second = await createStore("ana@example.com", "ana-two", "Ana Two", "");
   if (!second.ok) throw new Error("no second store");
   is("nor is one of their other stores", await recordInvite(second.store, code, NOW), "already");
   is("an unknown code counts for nobody", await recordInvite(bea, "zzzzzzzz", NOW), "no_code");
-  is("Bea, invited by Ana", await recordInvite(bea, code, NOW - 60 * DAY * 1000), "recorded");
+  is("Bea, invited by Ana", await recordInvite(bea, code, NOW - INVITED * DAY * 1000), "recorded");
   const danCode = await inviteCode(dan.sid);
   if (!danCode) throw new Error("no code");
   is("a second invite for Bea does not take her over", await recordInvite(bea, danCode, NOW), "already");
-  is("Cal, invited by Ana", await recordInvite(cal, code, NOW - 60 * DAY * 1000), "recorded");
-  is("Eve, invited by Dan", await recordInvite(eve, danCode, NOW - 60 * DAY * 1000), "recorded");
+  is("Cal, invited by Ana", await recordInvite(cal, code, NOW - INVITED * DAY * 1000), "recorded");
+  is("Eve, invited by Dan", await recordInvite(eve, danCode, NOW - INVITED * DAY * 1000), "recorded");
 
   part("Accepting an invite keeps it; a bad one keeps nothing");
   const req = { nextUrl: { protocol: "https:" } } as never;
@@ -154,14 +171,17 @@ async function main(): Promise<void> {
   await setSubscription("cal@example.com", { customerId: "cus_Cal0001", subscriptionId: "sub_Cal0001", active: true });
   await setSubscription("eve@example.com", { customerId: "cus_Eve0001", subscriptionId: "sub_Eve0001", active: true });
   invoices.set("cus_Bea0001", [
-    invoice("in_BeaRecent1", 2900, 10, 10, "pi_bea_recent"),
-    invoice("in_BeaRefund1", 2900, 35, 35, "pi_bea_refunded"),
-    invoice("in_BeaFirst01", 2900, 45, 45, "pi_bea_first"),
+    invoice("in_BeaRecent1", 2900, INSIDE, INSIDE, "pi_bea_recent"),
+    invoice("in_BeaRefund1", 2900, PAST, PAST, "pi_bea_refunded"),
+    invoice("in_BeaFirst01", 2900, LONG_PAST, LONG_PAST, "pi_bea_first"),
   ]);
   refunds.set("pi_bea_refunded", [{ amount: 2900, status: "succeeded" }]);
   // Cal paid us long before Ana's invite: she left and came back.
-  invoices.set("cus_Cal0001", [invoice("in_CalNow001", 2900, 30, 30, "pi_cal_now"), invoice("in_CalOld001", 2900, 400, 400, "pi_cal_old")]);
-  invoices.set("cus_Eve0001", [invoice("in_EveFirst01", 9900, 40, 40, "pi_eve_first")]);
+  invoices.set("cus_Cal0001", [
+    invoice("in_CalNow001", 2900, PAST, PAST, "pi_cal_now"),
+    invoice("in_CalOld001", 2900, 400, 400, "pi_cal_old"),
+  ]);
+  invoices.set("cus_Eve0001", [invoice("in_EveFirst01", 9900, PAST, PAST, "pi_eve_first")]);
 
   part("The daily run");
   const first = await settleInvites(Date.now() + 60_000, NOW);

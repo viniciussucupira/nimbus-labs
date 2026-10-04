@@ -28,7 +28,7 @@
  * a creator in any country, the same day, with no payout account to set up —
  * and a program is only offered in the form it is actually paid.
  */
-import { PLAN_PRICES } from "@/lib/plan";
+import { PLAN_PRICES, REFUND_DAYS } from "@/lib/plan";
 
 /** Of every payment an invited creator makes to us, the share credited to whoever invited them. */
 export const INVITE_SHARE_PERCENT = 50;
@@ -37,12 +37,17 @@ export const INVITE_SHARE_PERCENT = 50;
 export const INVITE_BONUS_CENTS = PLAN_PRICES.creator.month;
 
 /**
- * Days after a payment before its credit is added. Our Refund Policy gives a
- * full refund on request within 14 days of a charge; a week more lets a
- * refund asked for on the last day be made before anything is credited on
- * the back of a payment that is given back.
+ * Days after a payment before its credit is added.
+ *
+ * Our Refund Policy gives a full refund on request within REFUND_DAYS of a
+ * charge, so the hold is that window and a week: a refund asked for on the
+ * last day of it is made before anything has been credited on the back of a
+ * payment that is given back. It is written as the sum rather than as a
+ * number so that lengthening the refund window cannot quietly start paying
+ * credit on refundable payments — which is exactly what happened the day
+ * the window went from fourteen days to thirty and this said 21.
  */
-export const INVITE_HOLD_DAYS = 21;
+export const INVITE_HOLD_DAYS = REFUND_DAYS + 7;
 
 /** How long an accepted invite waits for its creator to make their store. */
 export const INVITE_COOKIE_DAYS = 60;

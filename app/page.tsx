@@ -9,7 +9,7 @@ import { FeatureVisual, type VisualKey } from "@/components/feature-visuals";
 import { DemoWindow, Faq, HeroFlow, Pricing, RevealOnScroll, SoldMarquee } from "@/components/home-parts";
 import { HomeData } from "@/components/structured-data";
 import { HOME_QUESTIONS } from "@/lib/home-faq";
-import { PLAN_PRICES, PRICE_CENTS, TRIAL_DAYS } from "@/lib/plan";
+import { PLAN_PRICES, PRICE_CENTS, REFUND_DAYS, TRIAL_DAYS } from "@/lib/plan";
 import { isDomainsConfigured } from "@/lib/domains";
 
 const HOME_TITLE = "Marktmorgen — the link-in-bio store that pays into your own Stripe";
@@ -285,10 +285,10 @@ export default function Home() {
                 body: "The payment happens on Stripe's own checkout. We never see a card number.",
               },
               {
-                icon: "door" as IconName,
-                figure: "2 clicks",
-                title: "To cancel",
-                body: "From your own studio. No email, no chat, no second request.",
+                icon: "receipt" as IconName,
+                figure: `${REFUND_DAYS} days`,
+                title: "To change your mind",
+                body: "Any charge back in full on request, renewals included. Cancelling is two clicks in your studio.",
               },
               {
                 icon: "download" as IconName,
@@ -586,7 +586,15 @@ export default function Home() {
             <ul className="mx-auto mt-10 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[0.9375rem] text-white/80">
               {[
                 { icon: "calendar" as IconName, text: `${TRIAL_DAYS} days free` },
-                { icon: "door" as IconName, text: "Cancel in two clicks" },
+                /*
+                  The strongest of the four, and the only one that costs us
+                  anything to mean. It replaced "Cancel in two clicks", which
+                  is a smaller promise made in the same breath — cancelling
+                  stops the next charge, this gives back the one already
+                  made — and cancelling is still written out in full in both
+                  plan cards and in the Refund Policy.
+                */
+                { icon: "receipt" as IconName, text: `${REFUND_DAYS}-day money-back guarantee` },
                 { icon: "percent" as IconName, text: "0% of your sales" },
                 { icon: "lock" as IconName, text: "Payments by Stripe" },
               ].map((f) => (

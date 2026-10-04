@@ -11,13 +11,24 @@ import {
   PLAN_PRICES,
   PLAN_TITLES,
   PRO_MONTHLY_EMAILS,
+  REFUND_DAYS,
   TRIAL_DAYS,
   TRIAL_MONTHLY_EMAILS,
   type Tier,
   yearSaving,
 } from "@/lib/plan";
 
-/* Reveals every element with .reveal as it scrolls into view, once. */
+/*
+ * Reveals every element with .reveal as it scrolls into view, once.
+ *
+ * On a first load this has already been done by the script at the end of
+ * the body in app/layout.tsx, which runs as soon as the HTML is parsed
+ * rather than waiting for this bundle to hydrate. What that script cannot
+ * cover is a client-side navigation, where no script in the document runs
+ * again and the new page's sections arrive hidden. That is what this is
+ * for, so it does exactly the same two things: show whatever is already on
+ * screen, and observe the rest.
+ */
 export function RevealOnScroll() {
   useEffect(() => {
     const nodes = Array.from(document.querySelectorAll<HTMLElement>(".reveal"));
@@ -39,7 +50,12 @@ export function RevealOnScroll() {
       },
       { rootMargin: "0px 0px -6% 0px", threshold: 0.1 },
     );
-    nodes.forEach((n) => io.observe(n));
+    const fold = window.innerHeight;
+    nodes.forEach((n) => {
+      if (n.classList.contains("is-in")) return;
+      if (n.getBoundingClientRect().top < fold) n.classList.add("is-in");
+      else io.observe(n);
+    });
     return () => io.disconnect();
   }, []);
   return null;
@@ -493,6 +509,10 @@ function PlanTerms({ tier, yearly }: { tier: Tier; yearly: boolean }) {
     [
       "First charge",
       `$${charged} ${yearly ? "for the year" : "for the month"}, on the day the trial ends. We email you a week before.`,
+    ],
+    [
+      "Money back",
+      `Ask within ${REFUND_DAYS} days of any charge and it comes back in full, for any reason or none. Renewals and yearly payments too.`,
     ],
     ["Cancelling", "Two clicks in your studio, any time. Inside the trial, the card is never charged."],
     ["Fees", "0% of your sales. Stripe charges its own processing fee, on your own account."],

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
 import { isDomainsConfigured } from "@/lib/domains";
 import { formatMoney } from "@/lib/money";
+import { REFUND_DAYS } from "@/lib/plan";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
 export const metadata: Metadata = {
@@ -313,8 +314,8 @@ export default function TermsPage() {
           >
             Refund Policy
           </Link>
-          . In summary, you may request a full refund within 14 days of a
-          charge.
+          . In summary, every charge is refunded in full on request within
+          {REFUND_DAYS} days of that charge, for any reason or none.
         </p>
         <p>
           A refund on something you bought from a creator&apos;s store is a
