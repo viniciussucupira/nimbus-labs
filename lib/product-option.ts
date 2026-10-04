@@ -41,6 +41,31 @@ export const MAX_OPTIONS = 3;
 /** Long enough for "5 weeks" or "Commercial licence". */
 export const MAX_OPTION_LABEL_LENGTH = 40;
 
+/**
+ * The shape an option id has to have, which is the shape every id here has
+ * (lib/store.ts, freshId: ten characters out of a uuid).
+ *
+ * It matters more than it looks. The store's own index carries the ids of a
+ * product's options inside the one record that holds the whole store, and that
+ * record may weigh a megabyte. The index drops an id it does not recognise
+ * when it reads one back, so an option whose id did not match this used to be
+ * written into the record and then silently vanish from the index — and the
+ * size of the index, which is what decides how many products a store may
+ * really hold, rested on nothing but the convention that ids come from
+ * freshId. Refusing the id here makes the two ends agree, and makes that size
+ * a thing the code enforces rather than a thing it assumes.
+ *
+ * Forty, which is four times what freshId produces and the same bound the
+ * option route already truncates an incoming id to — so an option whose id is
+ * longer than this is one the studio cannot edit, move or remove today, and
+ * refusing it orphans nothing that works. At forty, a store at the published
+ * ceiling spends about 300 KB of the record on its index and keeps a third of
+ * the record spare; at sixty-four it keeps less than a fifth, which is to say
+ * the published ceiling would depend on nothing else about a store ever
+ * growing. tests/catalog-ceiling.test.ts does that arithmetic on every run.
+ */
+export const OPTION_ID = /^[A-Za-z0-9_-]{1,40}$/;
+
 export type ProductOption = {
   /**
    * Unique across the whole store, not just this product.
@@ -66,7 +91,9 @@ export function parseOptions(raw: unknown): ProductOption[] {
   for (const entry of raw) {
     if (!entry || typeof entry !== "object") continue;
     const value = entry as Partial<ProductOption>;
-    if (typeof value.id !== "string" || !value.id) continue;
+    // An id the store's index cannot carry is dropped here rather than stored
+    // and then lost on the next read (OPTION_ID above).
+    if (typeof value.id !== "string" || !OPTION_ID.test(value.id)) continue;
     if (typeof value.label !== "string" || !value.label) continue;
     if (typeof value.priceCents !== "number") continue;
     if (!Number.isInteger(value.priceCents) || value.priceCents < 0) continue;
