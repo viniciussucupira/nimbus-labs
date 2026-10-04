@@ -22,9 +22,21 @@ export type VisualKey =
   | "domain"
   | "insights";
 
+/*
+ * The frame every one of these mockups sits in.
+ *
+ * min-w-0 because these are drawings of a screen and their rows are built
+ * from truncating text and nowrap badges, which together give the frame an
+ * intrinsic width of about 410px. Without this the frame refuses to shrink
+ * below that, and because it is a grid item in the hero it takes the heading
+ * and the paragraph beside it along — the drawing wins and the words get cut
+ * off. With it the rows truncate, which is what they were already written to
+ * do: every one of them carries `min-w-0 flex-1 truncate` and had no ancestor
+ * willing to apply the pressure.
+ */
 function Window({ bar, children }: { bar: string; children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-[var(--r-xl)] border border-white/10 bg-white text-ink shadow-[var(--shadow-device)]">
+    <div className="min-w-0 overflow-hidden rounded-[var(--r-xl)] border border-white/10 bg-white text-ink shadow-[var(--shadow-device)]">
       <div className="flex items-center gap-2 border-b border-line bg-paper px-4 py-2.5">
         <span className="flex gap-1.5" aria-hidden="true">
           <span className="h-2.5 w-2.5 rounded-full bg-sand-deep" />
@@ -168,7 +180,7 @@ function CourseVisual() {
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sand" aria-hidden="true">
           <div className="h-full w-2/3 rounded-full bg-violet-brand" />
         </div>
-        <ul className="mt-4 space-y-2">
+        <ul className="mt-4 min-w-0 space-y-2">
           {lessons.map((l) => (
             <li key={l.t} className="flex items-center gap-3 rounded-[var(--r-sm)] border border-line px-3 py-2.5 text-[13px]">
               <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full ${l.done ? "bg-mint-soft text-mint-deep" : "bg-sand text-ink-soft"}`}>
@@ -356,7 +368,7 @@ function InsightsVisual() {
             <span key={i} className="flex-1 rounded-t-[6px] bg-violet-brand/80" style={{ height: `${h}%` }} />
           ))}
         </div>
-        <ul className="mt-4 space-y-1.5 text-[12.5px]">
+        <ul className="mt-4 min-w-0 space-y-1.5 text-[12.5px]">
           {sources.map((s, i) => (
             <li key={s} className="flex items-center gap-3">
               <span className="w-20 shrink-0 font-medium text-ink">{s}</span>

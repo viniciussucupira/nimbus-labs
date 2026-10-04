@@ -498,8 +498,18 @@ export function TopicPageView({ page }: { page: TopicPage }) {
               : "surface-navy nb-grid-lines overflow-hidden"
           }
         >
+          {/*
+            min-w-0 on both columns, and it is not decoration. A grid item
+            defaults to min-width:auto, so a column cannot shrink below the
+            widest thing in it — and the illustration on the right has an
+            intrinsic width of 410px. On a 375px phone that dragged the whole
+            implicit column to 410px, the heading and this paragraph with it,
+            and the section's own overflow-hidden then quietly cut the words
+            off at the screen edge instead of letting them wrap. Measured, not
+            guessed: 409.663px of column inside a 342.69px container.
+          */}
           <div className="container-page grid items-center gap-12 py-14 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
-            <div className={light ? "" : "on-dark"}>
+            <div className={`min-w-0 ${light ? "" : "on-dark"}`}>
               <p className="eyebrow nb-fade-up">{page.eyebrow}</p>
               {/*
                 The expressive face carries a few words, never a clause. Set a
@@ -544,7 +554,7 @@ export function TopicPageView({ page }: { page: TopicPage }) {
               ) : null}
             </div>
             {page.visual ? (
-              <div className="nb-fade-up nb-delay-2 flex justify-center lg:justify-end">
+              <div className="nb-fade-up nb-delay-2 flex min-w-0 justify-center lg:justify-end">
                 <FeatureVisual visual={page.visual} tone={light ? "light" : "dark"} />
               </div>
             ) : heroStore ? (
