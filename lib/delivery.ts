@@ -38,16 +38,25 @@ export const DELIVERY_ALLOWANCE_BYTES = 200 * 1024 * 1024 * 1024;
  * pulled fifty thousand times. At the published rate that is thousands of
  * dollars against a $29 subscription, and no sale anywhere in it.
  *
- * So free copies pause at twice the allowance, by themselves, and start
+ * So free copies pause at fifty gigabytes a month, by themselves, and start
  * again when the month turns. Nobody is cut off from something they bought,
- * because nobody bought it; the creator is told the same day, in their
- * studio and by email; and the cost of a store nobody is watching is bounded
- * at roughly what that store pays us.
+ * because nobody bought it, and the creator is told the same day.
  *
- * It is deliberately far above the published allowance. A store meeting this
- * is not a store doing well — it is a store being used as a file host.
+ * Fifty, and not more, because the figure has to be set against what the
+ * plan brings in rather than against what feels generous. At $0.11 a
+ * gigabyte — the rate for a file too large to cache, which is the worst
+ * case — fifty gigabytes is $5.50 against the $27.86 a $29 subscription
+ * leaves after the card fee. This was twice the published allowance, 400 GB,
+ * until the totals were added up: at that figure one store giving things
+ * away could cost $44 a month on its own, and the plan lost money in its own
+ * worst case. A brake set above the revenue it protects is not a brake.
+ *
+ * And it is not tight for giving things away. Fifty gigabytes is a ten
+ * megabyte lead magnet downloaded five thousand times in a month, or a
+ * hundred megabyte video five hundred times. A store past it is not running
+ * a storefront any more.
  */
-export const FREE_PAUSE_ABOVE_BYTES = 2 * DELIVERY_ALLOWANCE_BYTES;
+export const FREE_PAUSE_ABOVE_BYTES = 50 * 1024 * 1024 * 1024;
 
 /** Counters are dropped a while after the month they describe. */
 const KEEP_SECONDS = 70 * 24 * 60 * 60;

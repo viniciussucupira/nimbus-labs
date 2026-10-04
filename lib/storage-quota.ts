@@ -35,18 +35,24 @@ const GB = 1024 * 1024 * 1024;
 /**
  * Where new uploads stop, on every plan.
  *
- * Five hundred gigabytes. At $0.023 a gigabyte a month that is $11.50 at the
- * very top, against the $27.86 a $29 subscription leaves after the card fee
- * — so even a store sitting on the brake for a year stays profitable.
+ * Two hundred gigabytes. At $0.023 a gigabyte a month that is $4.60 at the
+ * very top, against the $27.86 a $29 subscription leaves after the card fee.
  *
- * And it is not a number a creator selling their own work meets. Five
- * hundred gigabytes is a thousand half-gigabyte videos, or two hundred
- * thousand ebooks. A store holding more than that is not a storefront.
+ * It was five hundred until the worst case of each plan was actually added
+ * up rather than eyeballed. At that figure storage alone took $11.50 of a
+ * $27.86 plan, and with every other brake at its limit the cheapest plan
+ * lost money in its own worst case. A brake is only a brake if the sum of
+ * all of them sits well under the revenue they protect.
+ *
+ * And it is not a number a creator selling their own work meets. Two hundred
+ * gigabytes is four hundred half-gigabyte videos, or eighty thousand ebooks,
+ * against the two to five gigabytes a real store holds. A store past it is
+ * not a storefront any more.
  *
  * It is the same on both plans on purpose: a brake that differs by plan is a
  * plan limit wearing a disguise, and would end up on the pricing page.
  */
-export const STORAGE_BRAKE_BYTES = 500 * GB;
+export const STORAGE_BRAKE_BYTES = 200 * GB;
 
 export type StorageUse = { bytes: number; brake: number; left: number; full: boolean };
 

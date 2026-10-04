@@ -91,8 +91,18 @@ export const PRO_ON_SALE = true;
 /**
  * Emails a Pro store may send to its list in a calendar month: one-off
  * emails and automatic sequences together. Published, like every limit here.
+ *
+ * Twenty-five thousand, and the number is set against the price rather than
+ * picked for the page. Every email costs us $0.0009 to send, so this is
+ * $22.50 at the top, against the $95.83 a $99 subscription leaves after the
+ * card fee. It was fifty thousand, which was $45 — nearly half the plan on
+ * one line, and enough to put Pro into a loss once every other brake was at
+ * its limit too.
+ *
+ * It is still five full sends a month to a list of five thousand, which is
+ * more than almost anybody writes.
  */
-export const PRO_MONTHLY_EMAILS = 50_000;
+export const PRO_MONTHLY_EMAILS = 25_000;
 /** The same, while the free trial runs, so a trial cannot be used to spam. */
 export const TRIAL_MONTHLY_EMAILS = 1_000;
 

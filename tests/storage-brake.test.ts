@@ -39,9 +39,10 @@ test("the brake is set where a year of sitting on it is still profitable", () =>
   const monthlyCost = (STORAGE_BRAKE_BYTES / GB) * 0.023;
   // What a $29 subscription leaves after the card fee, per lib/delivery.ts.
   assert.ok(
-    monthlyCost < 27.86 / 2,
-    `a store parked on the brake costs $${monthlyCost.toFixed(2)} a month, which must stay well under ` +
-      "what the cheapest plan brings in",
+    monthlyCost < 27.86 / 4,
+    `a store parked on the brake costs $${monthlyCost.toFixed(2)} a month. Storage is one of four ` +
+      "costs a single store can run up at once, so on its own it has to stay well under a quarter " +
+      "of what the cheapest plan brings in — otherwise the four together put the plan into a loss.",
   );
 });
 
@@ -92,7 +93,7 @@ test("only an upload is ever refused by it, never a download", () => {
 });
 
 test("the figures read as figures", () => {
-  assert.equal(storageWords(STORAGE_BRAKE_BYTES), "500 GB");
+  assert.equal(storageWords(STORAGE_BRAKE_BYTES), "200 GB");
   assert.equal(storageWords(1.5 * 1024 * GB), "1.5 TB");
   assert.equal(storageWords(2.5 * GB), "2.5 GB");
   assert.equal(storageWords(40 * GB), "40 GB");
