@@ -26,7 +26,7 @@ export function ResendPurchase({ reference, email }: { reference: string; email:
         type="button"
         disabled={busy}
         aria-busy={busy}
-        className="inline-flex min-h-6 items-center text-xs font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep"
+        className="inline-flex min-h-11 -my-2.5 items-center text-xs font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep"
         onClick={async () => {
           setBusy(true);
           setError(null);

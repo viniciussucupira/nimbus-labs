@@ -665,8 +665,12 @@ html {
   cursor: not-allowed;
   transform: none;
 }
+/*
+ * 40px was below both platforms' guidance. 44 is Apple's number and the
+ * smaller of the two, which is the one to meet.
+ */
 .btn-sm {
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 1rem;
   font-size: 0.9375rem;
 }
@@ -763,10 +767,21 @@ html {
 }
 
 /* A text link with an arrow that moves a few pixels on hover. */
+/*
+ * A link with an arrow, at a size a thumb can hit.
+ *
+ * These were 24px tall. Apple asks for 44pt and Google for 48dp, and the
+ * reason is not politeness: a 24px target on a phone is missed often
+ * enough that people stop trying. The text stays where it is — the extra
+ * height is padding above and below, so nothing moves on the page — and
+ * a negative margin takes the added space back out of the layout.
+ */
 .link-arrow {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  min-height: 44px;
+  margin-block: -0.625rem;
   font-weight: 600;
   color: var(--violet-deep);
   text-decoration: none;

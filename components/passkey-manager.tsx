@@ -190,7 +190,7 @@ export function PasskeyManager({ initial, fresh }: { initial: PasskeyRow[]; fres
                 onClick={() => void remove(row)}
                 disabled={busy !== null}
                 aria-busy={busy === row.id}
-                className="inline-flex min-h-6 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
+                className="inline-flex min-h-11 -my-2.5 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
               >
                 Remove
               </button>

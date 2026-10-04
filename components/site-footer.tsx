@@ -105,7 +105,7 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
               <li key={link.label}>
                 <FooterAnchor
                   link={link}
-                  className="inline-flex min-h-6 items-center transition-colors hover:text-ink"
+                  className="inline-flex min-h-11 -my-2.5 items-center transition-colors hover:text-ink"
                 />
               </li>
             ))}
@@ -149,7 +149,7 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
                   <li key={link.label}>
                     <FooterAnchor
                       link={link}
-                      className="inline-flex min-h-6 items-center text-white/80 transition-colors hover:text-white"
+                      className="inline-flex min-h-11 -my-2.5 items-center text-white/80 transition-colors hover:text-white"
                     />
                   </li>
                 ))}
@@ -171,7 +171,7 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
               <li key={link.href}>
                 <FooterAnchor
                   link={link}
-                  className="inline-flex min-h-6 items-center text-white/80 transition-colors hover:text-white"
+                  className="inline-flex min-h-11 -my-2.5 items-center text-white/80 transition-colors hover:text-white"
                 />
               </li>
             ))}

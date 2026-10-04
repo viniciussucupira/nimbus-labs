@@ -549,7 +549,7 @@ function Drafts({
             <span className="flex items-center gap-4">
               <button
                 type="button"
-                className="inline-flex min-h-6 items-center text-sm font-bold text-violet-deep underline underline-offset-4"
+                className="inline-flex min-h-11 -my-2.5 items-center text-sm font-bold text-violet-deep underline underline-offset-4"
                 aria-current={open?.id === d.id ? "true" : undefined}
                 onClick={() => {
                   onOpen(d);
@@ -562,7 +562,7 @@ function Drafts({
                 type="button"
                 disabled={busy !== null}
                 aria-busy={busy === d.id}
-                className="inline-flex min-h-6 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
+                className="inline-flex min-h-11 -my-2.5 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
                 onClick={async () => {
                   if (!window.confirm("Delete this draft?")) return;
                   setBusy(d.id);

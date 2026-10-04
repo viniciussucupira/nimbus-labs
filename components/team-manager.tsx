@@ -127,7 +127,7 @@ export function TeamManager({
                   type="button"
                   disabled={busy !== null}
                   aria-busy={busy === `remove-${m.email}`}
-                  className="inline-flex min-h-6 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
+                  className="inline-flex min-h-11 -my-2.5 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
                   onClick={() => {
                     if (window.confirm(`Take ${m.email} off the team? It counts from their next click.`)) {
                       void run(`remove-${m.email}`, { action: "remove", email: m.email }, `${m.email} is off the team.`);
@@ -153,7 +153,7 @@ export function TeamManager({
                   type="button"
                   disabled={busy !== null}
                   aria-busy={busy === `revoke-${i.id}`}
-                  className="inline-flex min-h-6 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
+                  className="inline-flex min-h-11 -my-2.5 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
                   onClick={() => void run(`revoke-${i.id}`, { action: "revoke", id: i.id }, "Invitation taken back.")}
                 >
                   Take back

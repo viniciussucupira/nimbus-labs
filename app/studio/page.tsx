@@ -998,13 +998,13 @@ export default async function StudioPage({
                                   href={`/api/integrations/zoom/host?${new URLSearchParams({ scope: meeting.scope, ...(store.sid ? { store: store.sid } : {}) })}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4"
+                                  className="inline-flex min-h-11 -my-2.5 items-center text-sm font-semibold text-violet-deep underline underline-offset-4"
                                 >
                                   Start in Zoom
                                 </a>
                               ) : null}
                               {room ? (
-                                <a href={room} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4">
+                                <a href={room} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 -my-2.5 items-center text-sm font-semibold text-violet-deep underline underline-offset-4">
                                   {roomLabel(room) === "Join the call" ? "Join" : roomLabel(room)}
                                 </a>
                               ) : null}
@@ -1043,7 +1043,7 @@ export default async function StudioPage({
                               {emails.length > 1 ? (
                                 <a
                                   href={`mailto:?bcc=${emails.map(encodeURIComponent).join(",")}`}
-                                  className="mt-2 inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4"
+                                  className="mt-2 inline-flex min-h-11 -my-2.5 items-center text-sm font-semibold text-violet-deep underline underline-offset-4"
                                 >
                                   Email everyone (in blind copy)
                                 </a>

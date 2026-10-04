@@ -387,7 +387,7 @@ export function CallEditor({ product, email, meetings = [] }: { product: Product
             setDraft(toDraft(null, "weekly"));
             setOpen(true);
           }}
-          className="inline-flex min-h-6 items-center text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+          className="inline-flex min-h-11 -my-2.5 items-center text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
         >
           Sell this as a paid call with a calendar
         </button>
@@ -397,7 +397,7 @@ export function CallEditor({ product, email, meetings = [] }: { product: Product
             setDraft(toDraft(null, "live"));
             setOpen(true);
           }}
-          className="inline-flex min-h-6 items-center text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+          className="inline-flex min-h-11 -my-2.5 items-center text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
         >
           Sell seats in live sessions on set dates
         </button>
@@ -473,7 +473,7 @@ export function CallEditor({ product, email, meetings = [] }: { product: Product
               setDraft(toDraft(setup, setup.kind));
               setOpen(true);
             }}
-            className="inline-flex min-h-6 items-center text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+            className="inline-flex min-h-11 -my-2.5 items-center text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
           >
             {live ? "Change the sessions" : "Change the hours"}
           </button>
@@ -481,7 +481,7 @@ export function CallEditor({ product, email, meetings = [] }: { product: Product
             type="button"
             aria-busy={busy} disabled={busy}
             onClick={() => send({ id: product.id, remove: true }, live ? "It's no longer sold as live sessions." : "It's no longer sold as a call.")}
-            className="inline-flex min-h-6 items-center text-ink-soft underline underline-offset-4 transition hover:text-danger"
+            className="inline-flex min-h-11 -my-2.5 items-center text-ink-soft underline underline-offset-4 transition hover:text-danger"
           >
             {live ? "Stop selling it as live sessions" : "Stop selling it as a call"}
           </button>
@@ -644,7 +644,7 @@ export function CallEditor({ product, email, meetings = [] }: { product: Product
             <button
               type="button"
               onClick={() => setDraft({ ...draft, sessions: [...draft.sessions, newSession(draft.tz, draft.sessions[draft.sessions.length - 1])] })}
-              className="mt-3 inline-flex min-h-6 items-center text-sm font-semibold text-violet-deep underline underline-offset-4"
+              className="mt-3 inline-flex min-h-11 -my-2.5 items-center text-sm font-semibold text-violet-deep underline underline-offset-4"
             >
               Add a session
             </button>

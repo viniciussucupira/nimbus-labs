@@ -126,7 +126,7 @@ function inAWeek(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const small = "inline-flex min-h-6 items-center text-sm font-semibold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40";
+const small = "inline-flex min-h-11 -my-2.5 items-center text-sm font-semibold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep disabled:no-underline disabled:opacity-40";
 
 /** The community's live events, in the studio: scheduling, changing, cancelling, replays, and who is coming. */
 export function CommunityEventsStudio({
