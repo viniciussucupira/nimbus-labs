@@ -45,7 +45,7 @@ import { remindAbandoned } from "@/lib/checkout-recovery";
 import { recoveryOn } from "@/lib/recovery-setting";
 import { type Store, storesAfter } from "@/lib/store";
 import { sellsThings } from "@/lib/catalog";
-import { affiliatesOn, noteSession } from "@/lib/affiliates";
+import { affiliatesOn, listPartners, noteSession } from "@/lib/affiliates";
 import { affiliateForCodes, codeOwners } from "@/lib/affiliate-codes";
 import { revokeRefunded, storeHasKeys } from "@/lib/licence-keys";
 import { markRefundedReviews, storeHasReviews } from "@/lib/review-proof";
@@ -131,11 +131,18 @@ async function sweepStore(store: Store, counts: SweepCounts, deadline: number, r
     // through a link, and through a discount code given to an affiliate, which
     // is the only trace left by a sale made on a podcast or from a stage. The
     // store's given-away codes are read once, not once an order.
+    // A partner's standing share has to be written for every sale, not only
+    // the ones somebody referred, so the store's partners are read once here
+    // and a sale is passed on when a link, a code or a partner touches it.
     if (affiliatesOn(store)) {
-      const owners = paid.length ? await codeOwners(store) : new Map<string, string>();
+      const [owners, partners] = paid.length
+        ? await Promise.all([codeOwners(store), listPartners(store)])
+        : [new Map<string, string>(), []];
       for (const row of paid) {
         const code = owners.size ? affiliateForCodes(row as { discounts?: unknown }, owners) : "";
-        if (row.metadata?.via || code) await noteSession(store, row as Parameters<typeof noteSession>[1], owners);
+        if (row.metadata?.via || code || partners.length) {
+          await noteSession(store, row as Parameters<typeof noteSession>[1], owners, partners);
+        }
       }
     }
     // The creator's phone and email platform, told of each sale once.

@@ -15,8 +15,16 @@ import {
   MAX_PAYDAY,
   MIN_COMMISSION,
   MIN_COOKIE_DAYS,
+  commissionRate,
   ordinal,
 } from "@/lib/affiliate-setting";
+import {
+  MAX_COMMITTED_SHARE,
+  MAX_PARTNER_SHARE,
+  MIN_PARTNER_SHARE,
+  SHARE_PROBLEMS,
+  creatorKeeps,
+} from "@/lib/partner-share";
 import type { Affiliate, AffiliateStatus, LineStatus, Payout } from "@/lib/affiliates";
 import { StoreField } from "@/components/studio-store-pin";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
@@ -27,6 +35,13 @@ const MESSAGES: Record<string, string> = {
   days: `Type a whole number of days from ${MIN_COOKIE_DAYS} to ${MAX_COOKIE_DAYS}.`,
   rate: `A product's own share is a whole number from 0 to ${MAX_COMMISSION}; 0 leaves it out.`,
   rule: "Pick whether the first or the last link a buyer followed earns the sale.",
+  share_percent: SHARE_PROBLEMS.percent,
+  share_products: SHARE_PROBLEMS.products,
+  share_crowded: SHARE_PROBLEMS.crowded,
+  share_committed: SHARE_PROBLEMS.committed,
+  invite_email: "Type the email address to send the invitation to.",
+  owner: "That is your own address. A partner is somebody else.",
+  full: "This program is full. Remove somebody before inviting another partner.",
   promo: "That discount code is no longer on your Stripe account. Reload the page.",
   payday: `Pick a day from the 1st to the ${MAX_PAYDAY}th, or no fixed day.`,
   hold: `Type a whole number of days from 0 to ${MAX_HOLD_DAYS}.`,
@@ -397,6 +412,18 @@ export function AffiliateStudio({
           </section>
         ) : null}
 
+        {/*
+          Inviting a partner, which is not the same act as taking on an
+          affiliate. An affiliate applies to you; a partner is somebody you
+          went and asked — the person who built the course with you, or whose
+          newsletter carried the launch. So the creator sends this, and the
+          person needs no account here at all: an address that can receive
+          PayPal is the whole requirement (lib/affiliates.ts invitePartner).
+        */}
+        {setting.enabled && products.length ? (
+          <PartnerInvite products={products} setting={setting} busy={busy} act={act} error={errorAt("invite")} />
+        ) : null}
+
         <section aria-labelledby="people-title" className="card p-6 sm:p-8">
           <h2 id="people-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Your affiliates</h2>
           {members.length === 0 ? (
@@ -417,6 +444,8 @@ export function AffiliateStudio({
                   error={errorAt(`m-${row.affiliate.id}`)}
                   codes={codes}
                   codeOf={codeOwners}
+                  products={products}
+                  setting={setting}
                 />
               ))}
             </ul>
@@ -827,6 +856,8 @@ function Member({
   error,
   codes,
   codeOf,
+  products,
+  setting,
 }: {
   row: Row;
   today: string;
@@ -836,12 +867,19 @@ function Member({
   codes: StoreCode[];
   /** Which of those codes this affiliate has, by Stripe's promotion code id. */
   codeOf: Record<string, string>;
+  /** The store's paid products, for choosing what a partner shares in. */
+  products: { id: string; title: string; credited: boolean }[];
+  /** The programme's own terms, so the screen can say what the creator keeps. */
+  setting: AffiliateSetting;
 }) {
   const { affiliate } = row;
   const currency = useStoreCurrency();
   const where = `m-${affiliate.id}`;
   const theirs = codes.filter((c) => codeOf[c.id] === affiliate.id);
   const free = codes.filter((c) => !codeOf[c.id]);
+  const [sharing, setSharing] = useState(false);
+  const [percent, setPercent] = useState(affiliate.share ? String(affiliate.share.percent) : "");
+  const [shared, setShared] = useState<string[]>(affiliate.share?.products ?? []);
   const [paying, setPaying] = useState(false);
   const [amount, setAmount] = useState(row.owed > 0 ? moneyField(row.owed, currency) : "");
   const [date, setDate] = useState(today);
@@ -914,6 +952,123 @@ function Member({
         with no click and no cookie, which is the only way a sale made on a
         podcast, from a stage or in a caption without links is credited at all.
       */}
+      {/*
+        A standing share of a product, whoever brought the buyer: what Hotmart
+        calls co-production (lib/partner-share.ts). Different from the share
+        above it, which is per sale they referred. The cap and what the creator
+        keeps are both shown while they choose, not after.
+      */}
+      {affiliate.status === "approved" && products.length ? (
+        <div className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">
+          <p className="field-label">A share of the product itself</p>
+          {sharing ? (
+            <form
+              className="mt-2"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const done = await act(
+                  where,
+                  { action: "share", id: affiliate.id, percent: Number(percent.trim()), products: shared },
+                  "Partner share saved. It applies to sales from now on.",
+                );
+                if (done) setSharing(false);
+              }}
+            >
+              <label className="block" htmlFor={`${where}-share`}>
+                <span className="field-label">Their share of every sale, %</span>
+                <input
+                  id={`${where}-share`}
+                  type="number"
+                  min={MIN_PARTNER_SHARE}
+                  max={MAX_PARTNER_SHARE}
+                  step={1}
+                  value={percent}
+                  onChange={(e) => setPercent(e.target.value)}
+                  className="field w-28"
+                  required
+                />
+              </label>
+              <fieldset className="mt-3">
+                <legend className="field-label">Of which products</legend>
+                <ul className="mt-1.5 space-y-1">
+                  {products.map((product) => {
+                    const on = shared.includes(product.id);
+                    const affiliateShare = commissionRate(setting, product.id);
+                    const keeps = creatorKeeps({
+                      partners: on && Number(percent.trim()) > 0 ? [Number(percent.trim())] : [],
+                      affiliatePercent: affiliateShare,
+                    });
+                    return (
+                      <li key={product.id}>
+                        <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 hover:bg-paper">
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={(e) =>
+                              setShared((prev) => (e.target.checked ? [...prev, product.id] : prev.filter((x) => x !== product.id)))
+                            }
+                            className="h-5 w-5 shrink-0 accent-[var(--violet)]"
+                          />
+                          <span className="min-w-0 flex-1 truncate text-ink">{product.title}</span>
+                          <span className={`shrink-0 text-xs ${keeps < 25 ? "font-bold text-danger" : ""}`}>
+                            {`you keep ${keeps}%`}
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </fieldset>
+              <p className="mt-2 text-xs">
+                {`${MIN_PARTNER_SHARE}% to ${MAX_PARTNER_SHARE}% of what a buyer pays before tax, on every sale of the products you tick — whoever brought the buyer. Partners and the affiliate commission together cannot pass ${MAX_COMMITTED_SHARE}% of a sale. "You keep" already counts the affiliate commission on that product, and Stripe's fee comes out of your part. They are paid by you, in the same batch as your affiliates, on the same day.`}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="submit" className="btn btn-primary btn-sm" disabled={busy !== null}>
+                  Save
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSharing(false)}>
+                  Cancel
+                </button>
+                {affiliate.share ? (
+                  <button
+                    type="button"
+                    className="inline-flex min-h-11 items-center text-sm font-bold text-ink-soft underline underline-offset-4 hover:text-danger"
+                    disabled={busy !== null}
+                    onClick={async () => {
+                      const done = await act(
+                        where,
+                        { action: "share", id: affiliate.id, percent: null },
+                        "Partner share ended. What they already earned stays owed to them.",
+                      );
+                      if (done) {
+                        setSharing(false);
+                        setPercent("");
+                        setShared([]);
+                      }
+                    }}
+                  >
+                    End the partnership
+                  </button>
+                ) : null}
+              </div>
+            </form>
+          ) : (
+            <p className="mt-1">
+              {affiliate.share
+                ? `Takes ${affiliate.share.percent}% of every sale of ${affiliate.share.products.length} ${affiliate.share.products.length === 1 ? "product" : "products"}, whoever brought the buyer. `
+                : "No share. A partner earns on every sale of a product, not only the ones they send you — for helping make it, or for lending their audience to it. "}
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center font-bold text-violet-deep underline underline-offset-4"
+                onClick={() => setSharing(true)}
+              >
+                {affiliate.share ? "Change it" : "Make them a partner"}
+              </button>
+            </p>
+          )}
+        </div>
+      ) : null}
+
       {affiliate.status === "approved" && codes.length ? (
         <div className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">
           <p className="field-label">Their discount code</p>
@@ -1056,5 +1211,150 @@ function Member({
       )}
       {error}
     </li>
+  );
+}
+
+/**
+ * Inviting a partner from outside the programme.
+ *
+ * Kept apart from the affiliate list because it is a different act: an
+ * affiliate applies to the creator, a partner is somebody the creator asked.
+ * The email carries the terms, and opening it is the acceptance — so what is
+ * typed here is what that person is agreeing to, and the screen says what the
+ * creator will be left with before it is sent rather than after.
+ */
+function PartnerInvite({
+  products,
+  setting,
+  busy,
+  act,
+  error,
+}: {
+  products: { id: string; title: string; credited: boolean }[];
+  setting: AffiliateSetting;
+  busy: string | null;
+  act: (where: string, payload: Record<string, unknown>, confirmation: string) => Promise<boolean>;
+  error: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [percent, setPercent] = useState("");
+  const [chosen, setChosen] = useState<string[]>([]);
+  const share = Number(percent.trim());
+
+  if (!open) {
+    return (
+      <section className="card p-6 sm:p-8">
+        <h2 className="text-lg font-semibold tracking-[-0.02em] text-ink">Partners</h2>
+        <p className="mt-2 text-sm text-ink-soft">
+          Somebody who helped make a product, or lent their audience to it, can take a share of every sale of it —
+          not only the sales they send you. They need no account here: an email address that can receive PayPal is all,
+          and you pay them in the same batch as your affiliates, on the same day.
+        </p>
+        <button type="button" className="btn btn-secondary mt-4" onClick={() => setOpen(true)}>
+          Invite a partner
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="card p-6 sm:p-8">
+      <h2 className="text-lg font-semibold tracking-[-0.02em] text-ink">Invite a partner</h2>
+      <form
+        className="mt-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const done = await act(
+            "invite",
+            { action: "invite", email: email.trim(), percent: share, products: chosen },
+            "Invitation sent. They become a partner when they open it.",
+          );
+          if (done) {
+            setOpen(false);
+            setEmail("");
+            setPercent("");
+            setChosen([]);
+          }
+        }}
+      >
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem]">
+          <label className="block" htmlFor="partner-email">
+            <span className="field-label">Their email</span>
+            <input
+              id="partner-email"
+              type="email"
+              required
+              maxLength={254}
+              autoComplete="off"
+              placeholder="partner@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="field"
+            />
+          </label>
+          <label className="block" htmlFor="partner-percent">
+            <span className="field-label">Their share, %</span>
+            <input
+              id="partner-percent"
+              type="number"
+              inputMode="numeric"
+              min={MIN_PARTNER_SHARE}
+              max={MAX_PARTNER_SHARE}
+              step={1}
+              required
+              value={percent}
+              onChange={(e) => setPercent(e.target.value)}
+              className="field"
+            />
+          </label>
+        </div>
+
+        <fieldset className="mt-4">
+          <legend className="field-label">Of which products</legend>
+          <ul className="mt-1.5 space-y-1">
+            {products.map((product) => {
+              const on = chosen.includes(product.id);
+              const affiliateShare = commissionRate(setting, product.id);
+              const keeps = creatorKeeps({
+                partners: on && share > 0 ? [share] : [],
+                affiliatePercent: affiliateShare,
+              });
+              return (
+                <li key={product.id}>
+                  <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 hover:bg-paper">
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={(e) =>
+                        setChosen((prev) => (e.target.checked ? [...prev, product.id] : prev.filter((x) => x !== product.id)))
+                      }
+                      className="h-5 w-5 shrink-0 accent-[var(--violet)]"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{product.title}</span>
+                    <span className={`shrink-0 text-xs ${keeps < 25 ? "font-bold text-danger" : "text-ink-soft"}`}>
+                      {`you keep ${keeps}%`}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </fieldset>
+
+        <p className="mt-3 text-xs text-ink-soft">
+          {`The email states the share and the products, and opening it is how they accept — so what you type here is what they are agreeing to. Partners and the affiliate commission together cannot pass ${MAX_COMMITTED_SHARE}% of a sale. "You keep" already counts the affiliate commission on that product, and Stripe's fee comes out of your part. A refunded sale earns them nothing.`}
+        </p>
+        {error}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="submit" className="btn btn-primary" disabled={busy !== null || !chosen.length}>
+            {busy === "invite" ? "Sending…" : "Send the invitation"}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }

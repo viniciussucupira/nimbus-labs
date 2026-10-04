@@ -2,8 +2,20 @@ import type { NextRequest } from "next/server";
 import { StoreFullError, setAffiliateSetting, storeForEmail } from "@/lib/store";
 import { readMoney } from "@/lib/money";
 import { guardStoreWrite, text } from "@/lib/store-request";
-import { MAX_COMMISSION, MIN_COMMISSION, parseAffiliateSetting } from "@/lib/affiliate-setting";
-import { MAX_REFERENCE_LENGTH, addPayout, decide, readAffiliate, removePayout, setAffiliateRate } from "@/lib/affiliates";
+import { MAX_COMMISSION, MIN_COMMISSION, commissionRate, parseAffiliateSetting } from "@/lib/affiliate-setting";
+import { parsePartnerShare, shareProblem } from "@/lib/partner-share";
+import { readAllListings } from "@/lib/catalog";
+import {
+  MAX_REFERENCE_LENGTH,
+  addPayout,
+  decide,
+  invitePartner,
+  listPartners,
+  readAffiliate,
+  removePayout,
+  setAffiliateRate,
+  setPartnerShare,
+} from "@/lib/affiliates";
 import { PROMO_ID_PATTERN, giveCode, takeCodeBack } from "@/lib/affiliate-codes";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,7 +36,15 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  *   which only writes down a payment the creator made themselves;
  * `{ action: "unpay", payout }`, to take back one written down by mistake;
  * `{ action: "rate", id, rate: 1-90 | null }`, a share for this affiliate
- *   alone, or back to the program's own shares.
+ *   alone, or back to the program's own shares;
+ * `{ action: "share", id, percent, products: [<product>] }`, a standing share
+ *   of every sale of those products — what Hotmart calls co-production — or
+ *   `{ action: "share", id, percent: null }` to end it. Refused when
+ *   everything promised on one product, affiliate commission included, would
+ *   pass the cap in lib/partner-share.ts;
+ * `{ action: "invite", email, percent, products }`, the same thing for
+ *   somebody not in the programme at all: they are emailed the terms and the
+ *   record is made, already approved, when they open the link.
  */
 export async function POST(request: NextRequest) {
   const guarded = await guardStoreWrite(request, "settings", 16_000);
@@ -79,6 +99,55 @@ export async function POST(request: NextRequest) {
       if (rate !== null && (rate < MIN_COMMISSION || rate > MAX_COMMISSION)) return fail("rate");
       const done = await setAffiliateRate(store, text(body.id, 20), rate);
       return done ? Response.json({ ok: true, rate: done.rate }) : fail("unknown");
+    }
+    if (action === "invite") {
+      // A partner the creator brings from outside: they need no account here,
+      // only an address that can receive PayPal. Checked against the same cap
+      // as any other share, before the email goes out.
+      const share = parsePartnerShare({ percent: body.percent, products: body.products });
+      if (!share) return fail(Array.isArray(body.products) && body.products.length ? "share_percent" : "share_products");
+      const others: Record<string, number[]> = {};
+      for (const other of await listPartners(store)) {
+        if (other.status !== "approved" || !other.share) continue;
+        for (const product of other.share.products) (others[product] ??= []).push(other.share.percent);
+      }
+      const affiliatePercent: Record<string, number> = {};
+      for (const product of share.products) affiliatePercent[product] = commissionRate(store.affiliates, product);
+      const problem = shareProblem({ percent: share.percent, products: share.products, others, affiliatePercent });
+      if (problem) return fail(`share_${problem}`);
+
+      const titles = new Map((await readAllListings(store)).map((p) => [p.id, p.title]));
+      const origin = new URL(request.url).origin;
+      const sent = await invitePartner({ store, email: text(body.email, 254), share, titles, origin });
+      return sent === "sent" ? Response.json({ ok: true }) : fail(sent === "email" ? "invite_email" : sent);
+    }
+    if (action === "share") {
+      const id = text(body.id, 20);
+      const affiliate = await readAffiliate(store, id);
+      if (!affiliate) return fail("unknown");
+      // Clearing it: nothing already earned is touched.
+      if (body.share === null || body.percent === "" || body.percent === null) {
+        return (await setPartnerShare(store, id, null)) ? Response.json({ ok: true }) : fail("unknown");
+      }
+      const share = parsePartnerShare({ percent: body.percent, products: body.products });
+      if (!share) return fail(Array.isArray(body.products) && body.products.length ? "share_percent" : "share_products");
+
+      // The cap counts everything promised on each of these products at once:
+      // the other partners' shares and the affiliate commission, which rides
+      // on the same sale (lib/partner-share.ts).
+      const others: Record<string, number[]> = {};
+      for (const other of await listPartners(store)) {
+        if (other.id === id || other.status !== "approved" || !other.share) continue;
+        for (const product of other.share.products) {
+          (others[product] ??= []).push(other.share.percent);
+        }
+      }
+      const affiliatePercent: Record<string, number> = {};
+      for (const product of share.products) affiliatePercent[product] = commissionRate(store.affiliates, product);
+
+      const problem = shareProblem({ percent: share.percent, products: share.products, others, affiliatePercent });
+      if (problem) return fail(`share_${problem}`);
+      return (await setPartnerShare(store, id, share)) ? Response.json({ ok: true }) : fail("unknown");
     }
     if (action === "code") {
       const promo = text(body.promo, 90);

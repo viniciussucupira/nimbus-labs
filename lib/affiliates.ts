@@ -71,6 +71,7 @@ import {
   readViaCookie,
 } from "@/lib/affiliate-setting";
 import { affiliateForCodes, codeOwners } from "@/lib/affiliate-codes";
+import { type PartnerShare, parsePartnerShare, shareCents, shareOn } from "@/lib/partner-share";
 import { bondFor, rememberBuyer } from "@/lib/affiliate-bond";
 import type { Store } from "@/lib/store";
 import { plainAmount } from "@/lib/money";
@@ -105,6 +106,8 @@ const codesKey = (id: string) => `nl:aff:${id}:codes`;
 const clicksKey = (id: string) => `nl:aff:${id}:clicks`;
 const salesKey = (id: string) => `nl:aff:${id}:sales`;
 const payoutsKey = (id: string) => `nl:aff:${id}:payouts`;
+/** A partner's share of one sale, keyed "<sale reference>:<partner id>". */
+const sharesKey = (id: string) => `nl:aff:${id}:shares`;
 const linkKey = (token: string) => `nl:aff:link:${sha(`nimbus-aff-link:${token}`).slice(0, 40)}`;
 const sessionKey = (token: string) => `nl:aff:session:${sha(`nimbus-aff-session:${token}`).slice(0, 40)}`;
 const seenKey = (parts: string) => `nl:aff:seen:${sha(`nimbus-aff-seen:${parts}`).slice(0, 40)}`;
@@ -133,6 +136,13 @@ export type Affiliate = {
   rate: number | null;
   /** The PayPal address they asked to be paid at; empty: the address they joined with. */
   paypal: string;
+  /**
+   * A standing share of every sale of certain products, whoever brought the
+   * buyer — what Hotmart calls co-production (lib/partner-share.ts). Null for
+   * an ordinary affiliate, which is almost everybody. Somebody can hold both:
+   * the two add up, and the cap counts them together.
+   */
+  share: PartnerShare | null;
 };
 
 /**
@@ -142,9 +152,11 @@ export type Affiliate = {
  *   "code"   they typed a discount code given to that affiliate, with no
  *            click anywhere (lib/affiliate-codes.ts);
  *   "buyer"  they had been credited to that affiliate before, and the creator
- *            asked for their buyers to stay theirs (lib/affiliate-bond.ts).
+ *            asked for their buyers to stay theirs (lib/affiliate-bond.ts);
+ *   "partner" nobody brought this buyer to them: they hold a standing share
+ *            of the product itself (lib/partner-share.ts).
  */
-export type Credit = "click" | "code" | "buyer";
+export type Credit = "click" | "code" | "buyer" | "partner";
 
 /** A sale that came through an affiliate's link. */
 export type Referral = {
@@ -172,6 +184,38 @@ export type Referral = {
   self: boolean;
   /** What credited it: a click, a code, or the buyer being theirs already. */
   how: Credit;
+};
+
+/**
+ * A partner's share of one sale (lib/partner-share.ts).
+ *
+ * Written for every sale of a product they share in, whoever brought the
+ * buyer — which is the whole difference from a Referral, and why it is kept
+ * apart rather than squeezed into one. One sale can produce several of these
+ * and a Referral besides: the affiliate who brought the buyer, and each
+ * partner who shares in the product. They all end up in the same row of the
+ * same book, and are paid in the same batch.
+ */
+export type PartnerEarning = {
+  /** The Checkout Session, or one-click payment, that paid for it. */
+  ref: string;
+  /** The payment behind it, which is what a refund is made against. */
+  pi: string;
+  /** The partner. */
+  aff: string;
+  /** When it was paid, in seconds. */
+  at: number;
+  product: string;
+  title: string;
+  /** What was paid before tax, in the currency's smallest unit. */
+  base: number;
+  /** What was paid in all, tax included. */
+  total: number;
+  currency: string;
+  /** The share it earns, in percent, as it stood when the buyer paid. */
+  percent: number;
+  /** Bought by the partner themselves: written down, earns nothing. */
+  self: boolean;
 };
 
 export type Payout = {
@@ -219,6 +263,7 @@ function parseAffiliate(raw: unknown): Affiliate | null {
           ? value.rate
           : null,
       paypal: typeof value.paypal === "string" && EMAIL_PATTERN.test(value.paypal) ? value.paypal : "",
+      share: parsePartnerShare(value.share),
     };
   } catch {
     return null;
@@ -238,6 +283,30 @@ export async function setAffiliateRate(store: Store, id: string, rate: number | 
   const next: Affiliate = { ...affiliate, rate };
   await writeAffiliate(store, next);
   return next;
+}
+
+/**
+ * Sets, or clears with null, a partner's standing share of certain products.
+ *
+ * Whether the share is allowed at all — the cap over everything promised on
+ * one product, affiliate commission included — is decided by the caller with
+ * lib/partner-share.ts shareProblem, which needs the other partners and the
+ * programme's own rates. This only writes what it is given.
+ *
+ * Shares already earned are untouched by a change here: each one was written
+ * down with the percentage it was made at, exactly as a commission is.
+ */
+export async function setPartnerShare(store: Store, id: string, share: PartnerShare | null): Promise<Affiliate | null> {
+  const affiliate = await readAffiliate(store, id);
+  if (!affiliate) return null;
+  const next: Affiliate = { ...affiliate, share };
+  await writeAffiliate(store, next);
+  return next;
+}
+
+/** Everybody in this programme who holds a standing share of something. */
+export async function listPartners(store: Store): Promise<Affiliate[]> {
+  return (await listAffiliates(store)).filter((a) => a.share !== null);
 }
 
 /**
@@ -292,7 +361,36 @@ function parseReferral(raw: unknown): Referral | null {
       // Sales written down before a code or a bond could credit anybody have
       // neither field, and every one of those came from a click. `byCode` is
       // read for the ones written in between.
-      how: value.how === "code" || value.how === "buyer" ? value.how : value.byCode === true ? "code" : "click",
+      how:
+        value.how === "code" || value.how === "buyer" || value.how === "partner"
+          ? value.how
+          : value.byCode === true
+            ? "code"
+            : "click",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parsePartnerEarning(raw: unknown): PartnerEarning | null {
+  if (typeof raw !== "string") return null;
+  try {
+    const value = JSON.parse(raw) as Partial<PartnerEarning>;
+    if (typeof value.ref !== "string" || typeof value.aff !== "string") return null;
+    const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : 0);
+    return {
+      ref: value.ref,
+      pi: typeof value.pi === "string" ? value.pi : "",
+      aff: value.aff,
+      at: n(value.at),
+      product: typeof value.product === "string" ? value.product : "",
+      title: typeof value.title === "string" ? value.title : "",
+      base: n(value.base),
+      total: n(value.total),
+      currency: readCurrencyCode(value.currency),
+      percent: n(value.percent),
+      self: value.self === true,
     };
   } catch {
     return null;
@@ -380,7 +478,19 @@ export function affiliateLink(store: Store, code: string): string {
 
 export type ApplyRequest = "sent" | "email" | "limited" | "unavailable" | "owner" | "error";
 
-type LinkGrant = { s: string; e: string; n: string };
+/**
+ * What an emailed link stands for.
+ *
+ * `s` the store, `e` the address it was sent to, `n` what they wrote about
+ * where they would share it. And for a partner the creator invited rather than
+ * somebody who applied: `k` marks it an invitation, so opening it makes a
+ * record that is already approved, and `p` is the share that comes with it.
+ *
+ * A partner is not an applicant. Hotmart has the producer send the invitation,
+ * and that is the right way round: somebody who helped make the product should
+ * not have to apply to an affiliate programme to be paid for it.
+ */
+type LinkGrant = { s: string; e: string; n: string; k?: 1; p?: PartnerShare };
 
 /**
  * Emails a link to the address typed. Opening it is what makes the
@@ -434,12 +544,84 @@ export async function requestAffiliateLink(input: {
   return sent ? "sent" : "error";
 }
 
+export type InviteResult = "sent" | "email" | "owner" | "unavailable" | "full" | "error";
+
+/**
+ * Invites somebody to be a partner on certain products, at a share.
+ *
+ * Nothing is written down until they open the link, so an address typed wrong
+ * leaves no half-made partner behind. Opening it makes a record that is
+ * already approved, with the share attached — they agreed to it by opening an
+ * email that states it, which is the whole point of sending the terms in the
+ * message rather than afterwards.
+ *
+ * Whether the share is allowed — the cap over everything promised on a
+ * product — is the caller's to check with lib/partner-share.ts, the same as
+ * setting one on somebody already in the programme.
+ */
+export async function invitePartner(input: {
+  store: Store;
+  email: string;
+  share: PartnerShare;
+  titles: Map<string, string>;
+  origin: string;
+}): Promise<InviteResult> {
+  const { store, share, origin } = input;
+  const raw = input.email.trim();
+  if (!raw || raw.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(raw)) return "email";
+  if (!affiliatesOn(store) || !isSenderConfigured()) return "unavailable";
+  const email = normaliseEmail(raw);
+  if (email === normaliseEmail(store.email)) return "owner";
+
+  const statsId = store.statsId as string;
+  const [known] = await redisPipeline([["HGET", emailsKey(statsId), email]]);
+  if (typeof known !== "string") {
+    const [count] = await redisPipeline([["HLEN", peopleKey(statsId)]]);
+    if (Number(count) >= MAX_AFFILIATES) return "full";
+  }
+
+  const token = randomBytes(32).toString("hex");
+  const grant: LinkGrant = { s: statsId, e: email, n: "Invited as a partner", k: 1, p: share };
+  await redisPipeline([["SET", linkKey(token), JSON.stringify(grant), "EX", AFFILIATE_LINK_SECONDS]]);
+
+  const named = share.products.map((id) => input.titles.get(id) ?? "a product").slice(0, 12);
+  const sent = await sendEmail({
+    from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
+    to: email,
+    subject: `${store.name} wants you as a partner`,
+    text: [
+      `${store.name} is offering you ${share.percent}% of every sale of:`,
+      "",
+      ...named.map((title) => `  • ${title}`),
+      "",
+      `That is ${share.percent}% of what each buyer pays before tax, on every sale — not only the ones you send them. A refunded sale earns nothing, and a partly refunded one earns on what was kept.`,
+      "",
+      "Open this link to accept and see your own page, which shows every sale you have earned on and what you have been paid:",
+      "",
+      `${origin}/@${store.handle}/affiliates?token=${token}`,
+      "",
+      `${store.name} pays you directly, from their own account. Marktmorgen never holds this money, so there is no balance to wait on and nothing to claim by a deadline. You will be asked for the PayPal address to be paid at; you need no account with us.`,
+      "",
+      "The link works for 24 hours. If this was not meant for you, ignore it; nothing happens unless the link is used.",
+    ].join("\n"),
+    replyTo: store.email,
+  });
+  return sent ? "sent" : "error";
+}
+
 function parseGrant(raw: unknown): LinkGrant | null {
   if (typeof raw !== "string") return null;
   try {
     const value = JSON.parse(raw) as Partial<LinkGrant>;
     if (typeof value.s !== "string" || typeof value.e !== "string") return null;
-    return { s: value.s, e: value.e, n: typeof value.n === "string" ? value.n : "" };
+    const share = parsePartnerShare(value.p);
+    return {
+      s: value.s,
+      e: value.e,
+      n: typeof value.n === "string" ? value.n : "",
+      ...(value.k === 1 ? { k: 1 as const } : {}),
+      ...(share ? { p: share } : {}),
+    };
   } catch {
     return null;
   }
@@ -488,6 +670,14 @@ export async function openAffiliateLink(store: Store, token: string): Promise<Op
   let created = false;
   const [knownId] = await redisPipeline([["HGET", emailsKey(statsId), grant.e]]);
   if (typeof knownId === "string") affiliate = await readAffiliate(store, knownId);
+  // An invitation the creator sent (grant.k) arrives already decided: opening
+  // it approves them and attaches the share the email stated. Somebody the
+  // creator had declined or removed is let back in by it, because inviting
+  // them is the creator changing their mind, in their own words.
+  if (affiliate && grant.k === 1) {
+    affiliate = { ...affiliate, status: "approved", decidedAt: Date.now(), share: grant.p ?? affiliate.share };
+    await writeAffiliate(store, affiliate);
+  }
   if (!affiliate) {
     const [count] = await redisPipeline([["HLEN", peopleKey(statsId)]]);
     if (Number(count) >= MAX_AFFILIATES) return { ok: false, reason: "full" };
@@ -500,7 +690,20 @@ export async function openAffiliateLink(store: Store, token: string): Promise<Op
       if (!affiliate) return { ok: false, reason: "expired" };
     } else {
       const code = await claimCode(store, grant.e, id);
-      affiliate = { id, email: grant.e, code, status: "pending", appliedAt: Date.now(), decidedAt: 0, note: grant.n, rate: null, paypal: "" };
+      const now = Date.now();
+      const invited = grant.k === 1;
+      affiliate = {
+        id,
+        email: grant.e,
+        code,
+        status: invited ? "approved" : "pending",
+        appliedAt: now,
+        decidedAt: invited ? now : 0,
+        note: grant.n,
+        rate: null,
+        paypal: "",
+        share: invited ? grant.p ?? null : null,
+      };
       await writeAffiliate(store, affiliate);
       created = true;
     }
@@ -513,7 +716,7 @@ export async function openAffiliateLink(store: Store, token: string): Promise<Op
     ["DEL", linkKey(token)],
   ]);
 
-  if (created && isSenderConfigured()) {
+  if (created && isSenderConfigured() && grant.k !== 1) {
     await sendEmail({
       from: `Marktmorgen <${senderAddress()}>`,
       to: store.email,
@@ -534,7 +737,9 @@ export async function openAffiliateLink(store: Store, token: string): Promise<Op
     await alertCreator(
       store,
       "affiliate",
-      { title: "New affiliate application", body: `Someone applied to promote ${store.name}. Approve or decline them in your studio.`, url: store.sid ? `/studio/affiliates?store=${store.sid}` : "/studio/affiliates" },
+      grant.k === 1
+        ? { title: "Your partner accepted", body: `Somebody you invited as a partner on ${store.name} opened their link.`, url: store.sid ? `/studio/affiliates?store=${store.sid}` : "/studio/affiliates" }
+        : { title: "New affiliate application", body: `Someone applied to promote ${store.name}. Approve or decline them in your studio.`, url: store.sid ? `/studio/affiliates?store=${store.sid}` : "/studio/affiliates" },
       { seed: affiliate.id },
     ).catch((error) => console.error("an application notification failed", error));
   }
@@ -610,7 +815,7 @@ export async function joinAsBuyer(store: Store, sessionId: string): Promise<Join
     } else {
       const code = await claimCode(store, email, id);
       const now = Date.now();
-      affiliate = { id, email, code, status: "approved", appliedAt: now, decidedAt: now, note: "Joined after buying", rate: null, paypal: "" };
+      affiliate = { id, email, code, status: "approved", appliedAt: now, decidedAt: now, note: "Joined after buying", rate: null, paypal: "", share: null };
       await writeAffiliate(store, affiliate);
       created = true;
     }
@@ -802,6 +1007,51 @@ async function writeReferral(store: Store, referral: Referral): Promise<void> {
   await redisPipeline([["HSETNX", salesKey(store.statsId), referral.ref, JSON.stringify(referral)]]);
 }
 
+/**
+ * Writes down every partner's share of one sale.
+ *
+ * Called for every settled sale of the store, not only the ones an affiliate
+ * brought — a partner shares in the product, so the buyer's route to it is
+ * beside the point. Each line is written once per sale per partner, so the
+ * thanks page and the five-minute sweep can both call this and the second one
+ * changes nothing.
+ *
+ * A sale of a product nobody shares in writes nothing and costs one read of
+ * the programme's people, which is why the caller passes `partners` in when it
+ * is looking at a page of sales at a time.
+ */
+export async function notePartners(
+  store: Store,
+  sale: { ref: string; pi: string; at: number; product: string; title: string; base: number; total: number; currency: string; buyer: string },
+  partners?: Affiliate[],
+): Promise<void> {
+  if (!store.statsId || !isRedisConfigured() || !sale.ref || !sale.product) return;
+  const holders = (partners ?? (await listAffiliates(store))).filter(
+    (a) => a.status === "approved" && shareOn(a.share, sale.product) > 0,
+  );
+  if (!holders.length) return;
+  const buyer = sale.buyer ? normaliseEmail(sale.buyer) : "";
+  const commands: (string | number)[][] = [];
+  for (const partner of holders) {
+    const earning: PartnerEarning = {
+      ref: sale.ref,
+      pi: sale.pi,
+      aff: partner.id,
+      at: sale.at,
+      product: sale.product,
+      title: sale.title.slice(0, 200),
+      base: sale.base,
+      total: sale.total,
+      currency: readCurrencyCode(sale.currency),
+      percent: shareOn(partner.share, sale.product),
+      // A 50% partner buying their own product at 50% off is not a sale.
+      self: Boolean(buyer) && normaliseEmail(partner.email) === buyer,
+    };
+    commands.push(["HSETNX", sharesKey(store.statsId), `${sale.ref}:${partner.id}`, JSON.stringify(earning)]);
+  }
+  await redisPipeline(commands);
+}
+
 async function isSelf(store: Store, aff: string, buyer: string): Promise<boolean> {
   if (!buyer) return false;
   const affiliate = await readAffiliate(store, aff);
@@ -835,7 +1085,12 @@ type SessionLike = {
  * credited from the code typed into it, if that code was given to somebody —
  * which is how a sale made on a podcast or from a stage earns anything at all.
  */
-export async function noteSession(store: Store, session: SessionLike, owners?: Map<string, string>): Promise<void> {
+export async function noteSession(
+  store: Store,
+  session: SessionLike,
+  owners?: Map<string, string>,
+  partners?: Affiliate[],
+): Promise<void> {
   const meta = session.metadata ?? {};
   if (typeof session.id !== "string") return;
   if (session.mode !== undefined && session.mode !== "payment") return;
@@ -843,10 +1098,33 @@ export async function noteSession(store: Store, session: SessionLike, owners?: M
   const handles = saleHandles(store);
   if (!handles.has(meta.store ?? "")) return;
 
-  // The click first: a buyer who followed a link and then typed a code they
-  // saw elsewhere still belongs to the affiliate whose link they followed.
-  let aff = meta.via ?? "";
+  const total = typeof session.amount_total === "number" ? session.amount_total : 0;
+  const tax = typeof session.total_details?.amount_tax === "number" ? session.total_details.amount_tax : 0;
+  const pi =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent && typeof session.payment_intent === "object" && typeof (session.payment_intent as { id?: unknown }).id === "string"
+        ? ((session.payment_intent as { id: string }).id)
+        : "";
   const buyer = typeof session.customer_details?.email === "string" ? session.customer_details.email : "";
+  const base = Math.max(0, total - tax);
+  const at = typeof session.created === "number" ? session.created : Math.floor(Date.now() / 1000);
+  const currency = readCurrencyCode(session.currency);
+
+  // Partners first, and whatever happens next. A partner shares in the
+  // product, so how the buyer arrived is beside the point — and this is the
+  // one part that has to run for a sale no affiliate brought at all, which is
+  // most of them (lib/partner-share.ts).
+  await notePartners(
+    store,
+    { ref: session.id, pi, at, product: meta.product ?? "", title: meta.title ?? "", base, total, currency, buyer },
+    partners,
+  ).catch((error) => console.error("noting a partner's share failed", error));
+
+  // Then the affiliate. The click first: a buyer who followed a link and then
+  // typed a code they saw elsewhere still belongs to the affiliate whose link
+  // they followed.
+  let aff = meta.via ?? "";
   let own: number | null = null;
   // How the sale found its affiliate, which the creator's book and the
   // affiliate's own page both say out loud.
@@ -873,15 +1151,6 @@ export async function noteSession(store: Store, session: SessionLike, owners?: M
     aff = found;
     own = who.rate;
   }
-  const total = typeof session.amount_total === "number" ? session.amount_total : 0;
-  const tax = typeof session.total_details?.amount_tax === "number" ? session.total_details.amount_tax : 0;
-  const pi =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : session.payment_intent && typeof session.payment_intent === "object" && typeof (session.payment_intent as { id?: unknown }).id === "string"
-        ? ((session.payment_intent as { id: string }).id)
-        : "";
-  const base = Math.max(0, total - tax);
   // Through a link, the shares were worked out and written onto the order when
   // the buyer started paying, and those are the ones that stand — the creator
   // changing a share afterwards does not reach back into a sale already made.
@@ -903,12 +1172,12 @@ export async function noteSession(store: Store, session: SessionLike, owners?: M
     ref: session.id,
     pi,
     aff,
-    at: typeof session.created === "number" ? session.created : Math.floor(Date.now() / 1000),
+    at,
     product: meta.product ?? "",
     title: (meta.title ?? "").slice(0, 200),
     base,
     total,
-    currency: readCurrencyCode(session.currency),
+    currency,
     rate,
     self: await isSelf(store, aff, buyer),
     how,
@@ -927,15 +1196,33 @@ export async function noteSession(store: Store, session: SessionLike, owners?: M
 /** Writes down a paid offer after paying that follows an affiliate's sale. */
 export async function noteCharge(store: Store, pi: Record<string, unknown>): Promise<void> {
   const meta = (pi.metadata ?? {}) as Record<string, string>;
-  const aff = meta.via ?? "";
-  if (!AFFILIATE_ID_PATTERN.test(aff) || pi.status !== "succeeded" || typeof pi.id !== "string") return;
+  if (pi.status !== "succeeded" || typeof pi.id !== "string") return;
   const amount = typeof pi.amount === "number" ? pi.amount : 0;
   const buyer = typeof pi.receipt_email === "string" ? pi.receipt_email : "";
+  const at = typeof pi.created === "number" ? pi.created : Math.floor(Date.now() / 1000);
+
+  // A partner shares in the product whether or not an affiliate's link was
+  // involved, and an offer taken after paying is a sale of a product.
+  await notePartners(store, {
+    ref: pi.id,
+    pi: pi.id,
+    at,
+    product: meta.product ?? "",
+    title: `${(meta.title ?? "").slice(0, 180)} (added after paying)`,
+    // A one-click charge never carries tax: the whole amount is the base.
+    base: amount,
+    total: amount,
+    currency: readCurrencyCode(pi.currency),
+    buyer,
+  }).catch((error) => console.error("noting a partner's share failed", error));
+
+  const aff = meta.via ?? "";
+  if (!AFFILIATE_ID_PATTERN.test(aff)) return;
   await writeReferral(store, {
     ref: pi.id,
     pi: pi.id,
     aff,
-    at: typeof pi.created === "number" ? pi.created : Math.floor(Date.now() / 1000),
+    at,
     product: meta.product ?? "",
     title: `${(meta.title ?? "").slice(0, 180)} (added after paying)`,
     // A one-click charge never carries tax: the whole amount is the base.
@@ -1053,11 +1340,12 @@ export function settleLine(referral: Referral, refunded: number): Line {
 export async function readBook(store: Store, only?: string): Promise<Book> {
   if (!store.statsId || !isRedisConfigured()) return { rows: [], lines: [], payouts: [], refundsChecked: true, currency: store.currency, elsewhere: 0 };
   const statsId = store.statsId;
-  const [people, clicks, sales, payouts] = await redisPipeline([
+  const [people, clicks, sales, payouts, shares] = await redisPipeline([
     ["HGETALL", peopleKey(statsId)],
     ["HGETALL", clicksKey(statsId)],
     ["HGETALL", salesKey(statsId)],
     ["HGETALL", payoutsKey(statsId)],
+    ["HGETALL", sharesKey(statsId)],
   ]);
   const affiliates = pairs(people)
     .map(([, raw]) => parseAffiliate(raw))
@@ -1066,15 +1354,37 @@ export async function readBook(store: Store, only?: string): Promise<Book> {
   const referrals = pairs(sales)
     .map(([, raw]) => parseReferral(raw))
     .filter((r): r is Referral => r !== null && (!only || r.aff === only));
+  // A partner's standing share of a sale reads as one more Referral, credited
+  // "partner" (lib/partner-share.ts). Keeping the shape means the payouts, the
+  // batches, the spreadsheet and the partner's own page all work unchanged,
+  // and one sale can produce several of these alongside a commission.
+  const partnerLines: Referral[] = pairs(shares)
+    .map(([, raw]) => parsePartnerEarning(raw))
+    .filter((e): e is PartnerEarning => e !== null && (!only || e.aff === only))
+    .map((e) => ({
+      ref: `${e.ref}:${e.aff}`,
+      pi: e.pi,
+      aff: e.aff,
+      at: e.at,
+      product: e.product,
+      title: e.title,
+      base: e.base,
+      total: e.total,
+      currency: e.currency,
+      rate: e.percent,
+      self: e.self,
+      how: "partner" as const,
+    }));
   const paid = pairs(payouts)
     .map(([, raw]) => parsePayout(raw))
     .filter((p): p is Payout => p !== null && (!only || p.aff === only))
     .sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.at - a.at);
 
+  const everything = [...referrals, ...partnerLines];
   let refunds = new Map<string, number>();
   let refundsChecked = true;
-  if (referrals.length) {
-    const since = Math.min(...referrals.map((r) => r.at));
+  if (everything.length) {
+    const since = Math.min(...everything.map((r) => r.at));
     try {
       const read = await refundsSince(store, since);
       refunds = read.byIntent;
@@ -1084,7 +1394,7 @@ export async function readBook(store: Store, only?: string): Promise<Book> {
       refundsChecked = false;
     }
   }
-  const lines = referrals.map((r) => settleLine(r, r.pi ? refunds.get(r.pi) ?? 0 : 0)).sort((a, b) => b.at - a.at);
+  const lines = everything.map((r) => settleLine(r, r.pi ? refunds.get(r.pi) ?? 0 : 0)).sort((a, b) => b.at - a.at);
 
   // A sale made less than the creator's wait ago is not payable yet, so their
   // refund window can pass before the money leaves them. `hold` is 0 for a

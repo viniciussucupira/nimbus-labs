@@ -105,6 +105,11 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
   const terms = store.affiliates;
   const book = affiliate ? await readBook(store, affiliate.id) : null;
   const row = book?.rows[0] ?? null;
+  // The products a partner shares in, by name, so their own page can say what
+  // they hold rather than leaving them to trust the email they accepted.
+  const myShared = affiliate?.share
+    ? (await readListings(store, affiliate.share.products)).filter((p) => p.priceCents > 0).map((p) => p.title)
+    : [];
   // Codes of the store's own that this affiliate was given, which earn with no
   // click at all (lib/affiliate-codes.ts). Only asked for once they are in.
   const myCodes =
@@ -272,6 +277,23 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
                         {myCodes.length === 1
                           ? "Say it out loud, print it, put it in a caption. A buyer who types it at checkout earns you your share even if they never clicked your link — which is how a sale from a podcast, a stage or a video without links reaches you at all."
                           : "Say them out loud, print them, put them in a caption. A buyer who types one at checkout earns you your share even if they never clicked your link."}
+                      </p>
+                    </>
+                  ) : null}
+                  {/*
+                    A standing share of the product itself, which earns on
+                    every sale and not only the ones they send
+                    (lib/partner-share.ts). Said plainly, because it is the
+                    part somebody agreed to in an email and should be able to
+                    check without asking.
+                  */}
+                  {affiliate.share ? (
+                    <>
+                      <p className="st-label mt-7">Your partner share</p>
+                      <p className="st-muted mt-2 text-sm">
+                        {`${affiliate.share.percent}% of what a buyer pays before tax on every sale of ${
+                          myShared.length ? myShared.join(", ") : "the products you share in"
+                        } — whoever brought the buyer, and whether or not they came through your link. A refunded sale earns nothing, a partly refunded one earns on what was kept, and your own purchases never earn.`}
                       </p>
                     </>
                   ) : null}

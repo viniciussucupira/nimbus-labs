@@ -230,7 +230,7 @@ test("the click wins over the code, always", () => {
 test("a code only ever earns for somebody the creator approves today", () => {
   const src = readFileSync(join(process.cwd(), "lib/affiliates.ts"), "utf8");
   const start = src.indexOf("export async function noteSession");
-  const body = src.slice(start, start + 3_000);
+  const body = src.slice(start, src.indexOf("export async function noteCharge"));
   assert.match(
     body,
     /status !== "approved"\) return/,
@@ -251,8 +251,8 @@ test("the sweep looks at codes too, or a sale with no click is never written dow
   );
   assert.match(
     sweep,
-    /await codeOwners\(store\)/,
-    "reading the store's given-away codes once, not once per order",
+    /codeOwners\(store\), listPartners\(store\)/,
+    "reading the store's given-away codes and its partners once, not once per order",
   );
 });
 

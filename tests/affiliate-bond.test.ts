@@ -196,12 +196,13 @@ test("the bond is written after the sale, never instead of it", () => {
 
 test("a sale says which of the three credited it", () => {
   const src = readFileSync(join(process.cwd(), "lib/affiliates.ts"), "utf8");
-  assert.match(src, /export type Credit = "click" \| "code" \| "buyer"/, "the creator's book should be able to say so");
-  assert.match(
-    src,
-    /value\.how === "code" \|\| value\.how === "buyer" \? value\.how : value\.byCode === true \? "code" : "click"/,
-    "and a sale written down before this existed came from a click, which is what reading it has to conclude",
-  );
+  assert.match(src, /export type Credit = "click" \| "code" \| "buyer" \| "partner"/, "the creator's book should be able to say so");
+  // A sale written down before any of this existed came from a click, which
+  // is what reading one has to conclude.
+  const read = src.slice(src.indexOf("      how:"), src.indexOf("      how:") + 260);
+  assert.match(read, /value\.how === "code" \|\| value\.how === "buyer" \|\| value\.how === "partner"/);
+  assert.match(read, /value\.byCode === true/);
+  assert.match(read, /: "click"/);
 });
 
 test("nothing user-facing promises a cookie will last, which is the part nobody can watch", () => {
