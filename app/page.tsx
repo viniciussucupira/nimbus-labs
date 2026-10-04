@@ -52,8 +52,6 @@ const REASONS: {
   visual: VisualKey;
   href: string;
   link: string;
-  photo: string;
-  alt: string;
 }[] = [
   {
     icon: "bank",
@@ -64,8 +62,6 @@ const REASONS: {
     visual: "stripe",
     href: "/platform/your-stripe",
     link: "How the money moves",
-    photo: "photo-1671581084367-1bf522951eae",
-    alt: "A desk with a printed statement, a marker and a laptop",
   },
   {
     icon: "tag",
@@ -76,8 +72,6 @@ const REASONS: {
     visual: "options",
     href: "/platform/price-options",
     link: "See price options",
-    photo: "photo-1613574714687-c33b9e90200d",
-    alt: "Ingredients and recipe cards laid out on a counter",
   },
   {
     icon: "bolt",
@@ -88,8 +82,6 @@ const REASONS: {
     visual: "delivery",
     href: "/platform/instant-delivery",
     link: "How delivery works",
-    photo: "photo-1740710543611-80b658171bc3",
-    alt: "A woman at a laptop, close up, opening something she has just bought",
   },
 ];
 
@@ -293,75 +285,57 @@ export default function Home() {
           what the limit is — and every one of them is a measurement or a
           number stated elsewhere on this site, not a slogan.
         */}
-        <section aria-label="What you can check before you sign up" className="surface-lilac section-tight">
+        <section aria-label="What you can check before you sign up" className="surface-sand section-tight">
           {/*
-            Four facts, each on its own photograph.
+            Four numbers, and nothing behind them.
 
-            This was the dullest band on the page: four icons in tinted
-            squares with text beside them, 475px of it, not one image.
-            Kajabi's answer to exactly this problem is a card whose
-            background IS a photograph, darkened, with the words in white
-            on top — which is why their page can be a third of the length
-            of ours and still feel full.
+            These were photographs with the figure laid over the top: a
+            runner at dawn under "97-100 Google PageSpeed", a desk under
+            "200 GB", a woman at a laptop under "2 clicks to cancel". Not
+            one of them showed what its number was about — the runner was a
+            pun on the word speed — and a picture that illustrates nothing
+            makes the thing it sits behind harder to read, not easier.
 
-            Taken, and taken further: the figure is set at display size
-            rather than caption size, so what the card is actually claiming
-            is the thing you see from across the room. The gradient is
-            heavy enough at the bottom that white type clears contrast on
-            any crop these photographs can produce.
+            The number is the content here. It gets the page to itself.
           */}
-          <ul className="container-page grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="container-page grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-4">
             {[
               {
+                icon: "gauge" as IconName,
                 figure: "97\u2013100",
                 title: "Google PageSpeed",
                 body: "Mobile performance on the demo store, measured September 17, 2026, before its photos were added.",
-                photo: "photo-1671580704901-98cedb46e06b",
-                alt: "A runner on a trail at first light",
               },
               {
+                icon: "lock" as IconName,
                 figure: "Stripe",
                 title: "Handles the card",
                 body: "The payment happens on Stripe's own checkout. We never see a card number.",
-                photo: "photo-1671581084718-c4c04fc00250",
-                alt: "A statement and a marker on a working desk",
               },
               {
+                icon: "door" as IconName,
                 figure: "2 clicks",
                 title: "To cancel",
                 body: "From your own studio. No email to us, no chat, no second request.",
-                photo: "photo-1671581081519-321ab53e0dac",
-                alt: "A woman at a laptop, close up",
               },
               {
+                icon: "download" as IconName,
                 figure: "200 GB",
                 title: "Of downloads a month",
                 body: "Stated here, not buried in the terms, and nothing is cut off if you pass it. Files up to 5 GB each.",
-                photo: "photo-1671581081106-283f2bcdef71",
-                alt: "A light desk with a laptop and a notebook",
               },
             ].map((f) => (
-              <li
-                key={f.title}
-                className="reveal relative aspect-[4/5] overflow-hidden rounded-[var(--r-lg)] bg-sand-deep shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09),0_14px_32px_-16px_rgba(42,23,144,0.22)] sm:aspect-[5/4] lg:aspect-[4/5]"
-              >
-                <img
-                  src={PHOTO(f.photo, 560, 700)}
-                  srcSet={`${PHOTO(f.photo, 400, 500)} 400w, ${PHOTO(f.photo, 560, 700)} 560w, ${PHOTO(f.photo, 900, 1125)} 900w`}
-                  sizes="(min-width: 1024px) 23vw, (min-width: 640px) 46vw, 92vw"
-                  alt={f.alt}
-                  width={560}
-                  height={700}
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/55 to-black/15" />
-                <div className="absolute inset-x-0 bottom-0 p-5">
-                  <p className="text-[2rem] font-semibold leading-none tracking-[-0.04em] text-white">{f.figure}</p>
-                  <p className="mt-2 text-[0.9375rem] font-semibold text-white">{f.title}</p>
-                  <p className="mt-1.5 text-[0.8125rem] leading-snug text-white/75">{f.body}</p>
-                </div>
+              <li key={f.title} className="reveal flex gap-3.5">
+                <span className="icon-tile icon-tile-sm">
+                  <Icon name={f.icon} size={18} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[1.5rem] font-semibold leading-none tracking-[-0.03em] text-ink">
+                    {f.figure}
+                  </span>
+                  <span className="mt-2 block text-[0.9375rem] font-semibold leading-snug text-ink-soft">{f.title}</span>
+                  <span className="mt-1 block text-[0.875rem] leading-snug text-ink-mute">{f.body}</span>
+                </span>
               </li>
             ))}
           </ul>
@@ -376,7 +350,7 @@ export default function Home() {
           a paragraph about categories, and a strip that never stops is what
           a market looks like.
         */}
-        <section aria-label="Things people sell from a Marktmorgen store" className="surface-lilac overflow-hidden py-5">
+        <section aria-label="Things people sell from a Marktmorgen store" className="surface-paper overflow-hidden py-5">
           <SoldMarquee />
         </section>
 
@@ -384,7 +358,7 @@ export default function Home() {
         <BuyerPath />
 
         {/* ------------------------------------------------------ why Marktmorgen */}
-        <section className="surface-gold section">
+        <section className="section">
           <div className="container-page">
             <div className="reveal max-w-2xl">
               <h2 className="t-h2 balance">Built around the one thing that is yours: the money</h2>
@@ -409,19 +383,14 @@ export default function Home() {
                     </Link>
                   </div>
                   {/*
-                    The photograph and the drawing, overlapping.
+                    The drawing, on its own.
 
-                    Stan's hero works because a portrait and a product card
-                    sit on top of each other at slightly different angles:
-                    the photograph gives the block a reason to exist and the
-                    card gives it the proof. Three sections of pure diagram
-                    was the longest stretch of this page with no human being
-                    in it — 5,736px of it.
-
-                    The photograph is the ground, tilted a degree and a half
-                    and tinted at the corner; the drawing of the real screen
-                    sits over its lower edge, straight, because the thing
-                    being proved must never look styled.
+                    A photograph used to sit above this, tilted, with the
+                    drawing overlapping its lower edge. The drawing is the
+                    evidence — it is the screen this actually happens on —
+                    and a stock photograph of a desk laid over evidence
+                    does not strengthen it, it decorates it. Proof is shown,
+                    not illustrated.
 
                     min-w-0 is not decoration. A grid item will not shrink
                     below the widest thing inside it unless you say so, and
@@ -429,28 +398,8 @@ export default function Home() {
                     wide, so without it the whole page grows a sideways
                     scrollbar on a phone.
                   */}
-                  <div className={`relative flex min-w-0 justify-center ${i % 2 === 1 ? "lg:order-1" : ""}`}>
-                    <div className="relative w-full">
-                      <div
-                        className="overflow-hidden rounded-[var(--r-xl)] shadow-[0_18px_44px_-20px_rgba(42,23,144,0.45)]"
-                        style={{ transform: i % 2 === 1 ? "rotate(1.5deg)" : "rotate(-1.5deg)" }}
-                      >
-                        <img
-                          src={PHOTO(r.photo, 760, 560)}
-                          srcSet={`${PHOTO(r.photo, 560, 412)} 560w, ${PHOTO(r.photo, 760, 560)} 760w, ${PHOTO(r.photo, 1120, 824)} 1120w`}
-                          sizes="(min-width: 1024px) 44vw, 92vw"
-                          alt={r.alt}
-                          width={760}
-                          height={560}
-                          loading="lazy"
-                          decoding="async"
-                          className="aspect-[19/14] w-full object-cover"
-                        />
-                      </div>
-                      <div className="relative -mt-14 flex justify-center px-2 sm:-mt-16">
-                        <FeatureVisual visual={r.visual} tone="light" />
-                      </div>
-                    </div>
+                  <div className={`flex min-w-0 justify-center ${i % 2 === 1 ? "lg:order-1 lg:justify-start" : "lg:justify-end"}`}>
+                    <FeatureVisual visual={r.visual} tone="light" />
                   </div>
                 </article>
               ))}
@@ -494,7 +443,7 @@ export default function Home() {
         </section>
 
         {/* ------------------------------------------------------ who it's for */}
-        <section className="surface-coral section">
+        <section className="surface-sand section">
           <div className="container-page">
             <div className="reveal flex flex-col justify-between gap-6 md:flex-row md:items-end">
               <div className="max-w-2xl">
@@ -583,7 +532,7 @@ export default function Home() {
         </section>
 
         {/* -------------------------------------------------------- compare */}
-        <section id="compare" className="surface-mint section scroll-mt-20">
+        <section id="compare" className="section scroll-mt-20">
           <div className="container-page">
             <div className="reveal max-w-2xl">
               <h2 className="t-h2 balance">How we compare with Stan</h2>
@@ -719,41 +668,8 @@ export default function Home() {
         </section>
 
         {/* -------------------------------------------------------- pricing */}
-        <section id="pricing" className="surface-lilac section scroll-mt-20">
+        <section id="pricing" className="surface-sand section scroll-mt-20">
           <div className="container-page">
-            {/*
-              Four photographs across the top of the price block, at the
-              same width as every other card on this page.
-
-              Kajabi renders its images at three widths and no others —
-              87%, 28% and 16% of the viewport — and that discipline is
-              most of why their page feels composed. This one was rendering
-              at nine, which reads as drift rather than rhythm. Four across
-              the full container puts these on the card step, the same one
-              the facts under the hero and the creator grid use.
-            */}
-            <ul className="reveal grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-              {[
-                { id: "photo-1649479435119-1d987ed1ae36", alt: "A meal prepared and plated on a counter" },
-                { id: "photo-1655175468016-a38acfa1277b", alt: "A sampler pad under studio light" },
-                { id: "photo-1613463251864-2a2bc3952817", alt: "Watercolor supplies laid out on a table" },
-                { id: "photo-1613463639651-4aca3f3dd83e", alt: "A movement teacher mid-session in a bright room" },
-              ].map((p) => (
-                <li key={p.id} className="overflow-hidden rounded-[var(--r-lg)] shadow-[0_14px_32px_-18px_rgba(42,23,144,0.4)]">
-                  <img
-                    src={PHOTO(p.id, 560, 420)}
-                    srcSet={`${PHOTO(p.id, 400, 300)} 400w, ${PHOTO(p.id, 560, 420)} 560w, ${PHOTO(p.id, 900, 675)} 900w`}
-                    sizes="(min-width: 1024px) 22vw, 46vw"
-                    alt={p.alt}
-                    width={560}
-                    height={420}
-                    loading="lazy"
-                    decoding="async"
-                    className="aspect-[4/3] w-full object-cover"
-                  />
-                </li>
-              ))}
-            </ul>
             <div className="reveal mx-auto mt-10 max-w-2xl text-center">
               <h2 className="t-h2 balance">Two plans. Your sales stay yours.</h2>
               <p className="mt-5 text-ink-soft">
@@ -767,7 +683,7 @@ export default function Home() {
         </section>
 
         {/* ------------------------------------------------------------ faq */}
-        <section id="faq" className="surface-rose section scroll-mt-20">
+        <section id="faq" className="section scroll-mt-20">
           <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr]">
             <div className="reveal">
               <h2 className="t-h2 balance">Including the awkward ones</h2>
@@ -778,24 +694,6 @@ export default function Home() {
                 </Link>{" "}
                 answers the rest, in writing.
               </p>
-              {/*
-                A photograph in the column that would otherwise be three
-                lines of text and a lot of air, held to the card step so it
-                does not become an image width of its own.
-              */}
-              <div className="mt-8 hidden max-w-[19rem] overflow-hidden rounded-[var(--r-lg)] shadow-[0_18px_44px_-20px_rgba(42,23,144,0.4)] lg:block">
-                <img
-                  src={PHOTO("photo-1611248293543-e71973f8b94b", 560, 700)}
-                  srcSet={`${PHOTO("photo-1611248293543-e71973f8b94b", 400, 500)} 400w, ${PHOTO("photo-1611248293543-e71973f8b94b", 560, 700)} 560w`}
-                  sizes="22vw"
-                  alt="A desk with a laptop and an open notebook"
-                  width={560}
-                  height={700}
-                  loading="lazy"
-                  decoding="async"
-                  className="aspect-[4/5] w-full object-cover"
-                />
-              </div>
             </div>
             <div className="reveal">
               <Faq />
@@ -804,29 +702,7 @@ export default function Home() {
         </section>
 
         {/* ------------------------------------------------------ final CTA */}
-        <section className="surface-signature on-dark relative overflow-hidden">
-          {/*
-            The last screen, on a photograph.
-
-            It was 669px of violet with four icons on it — the weakest end
-            to a page this long, and the one place a visitor decides. The
-            photograph is somebody at the moment this product is for: work
-            finished, about to be sold. It is darkened far past the point
-            where the headline and both buttons clear contrast, and the
-            violet of the section still sits over it, so the band belongs
-            to the same morning as everything above it.
-          */}
-          <img
-            src={PHOTO("photo-1644375391877-0ae77eeed8fc", 1600, 900)}
-            srcSet={`${PHOTO("photo-1644375391877-0ae77eeed8fc", 900, 506)} 900w, ${PHOTO("photo-1644375391877-0ae77eeed8fc", 1600, 900)} 1600w`}
-            sizes="100vw"
-            alt=""
-            width={1600}
-            height={900}
-            loading="lazy"
-            decoding="async"
-            className="absolute inset-0 -z-10 h-full w-full object-cover opacity-25"
-          />
+        <section className="surface-signature on-dark overflow-hidden">
           <div className="container-narrow relative py-20 text-center sm:py-28">
             {/*
               The five example stores, one last time.

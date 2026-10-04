@@ -322,6 +322,81 @@ body {
   text-wrap: pretty;
 }
 
+/* =====================================================================
+   The small things that separate careful work from quick work.
+
+   None of these is visible on its own. Together they are most of the
+   difference between a page that was set and a page that was typed.
+   ===================================================================== */
+
+/*
+ * A heading should start where the text under it starts. A capital T or
+ * V or Y leaves a wedge of space beside it that the eye reads as an
+ * indent, so the line looks a few pixels out from the paragraph below.
+ * Pulling the heading back by a hair puts the two edges on one line.
+ */
+.t-display,
+.t-h1,
+.t-h2 {
+  text-wrap: balance;
+  margin-left: -0.03em;
+}
+
+/*
+ * A paragraph should never end on one word alone. `pretty` asks the
+ * browser to avoid it, and every paragraph of running text on this site
+ * now gets it rather than the few that were marked by hand.
+ */
+p {
+  text-wrap: pretty;
+}
+
+/*
+ * Figures in a column have to line up, and a price next to a price has
+ * to be comparable at a glance, which proportional digits prevent.
+ */
+.tabular,
+[class*="tabular-nums"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * A link inside a paragraph is underlined, but the underline should pass
+ * behind the descenders rather than cutting through them, and sit far
+ * enough below the baseline to be read as a rule and not a strikethrough.
+ */
+a {
+  text-underline-offset: 0.18em;
+  text-decoration-skip-ink: auto;
+}
+
+/*
+ * Selection, which almost no page sets and every reader uses. The
+ * browser default is a flat blue that belongs to no site; this is the
+ * brand's own violet at the strength where black text stays readable
+ * through it.
+ */
+::selection {
+  background: rgba(90, 54, 238, 0.18);
+}
+.on-dark ::selection {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+/*
+ * Anything the page scrolls to lands under the header rather than
+ * behind it, and lands gently.
+ */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 /* -------------------------------------------------------------- layout */
 
 .container-page {
@@ -489,423 +564,31 @@ body {
 }
 
 /* =====================================================================
-   The sunrise, carried down the page.
+   Two light surfaces, not five.
 
-   The hero paints a market morning: a violet sky, a rose haze, a coral
-   ring and a gold sun. Below it those same lights come back one at a
-   time, each as a wash over warm paper rather than a field of colour.
-   That is where the variety on this page comes from, and the reason it
-   stays one site rather than five: every tint is drawn from the one
-   picture at the top, and they arrive in the order the sun does —
-   lilac, gold, coral, mint, rose — never shuffled.
+   The page used to run lilac, gold, coral, mint and rose down its
+   length, one per section. Each was defensible on its own and the set
+   was not: a reader cannot see the order a designer had in mind, so
+   five tints with no visible logic read as randomness, and randomness
+   is what makes a page feel unconsidered however carefully each part
+   was made.
 
-   Every ink step was measured on every base. The weakest pairing on
-   any of them is --ink-mute at 5.2:1, on lilac, coral and rose; the
-   strongest is --ink at 15.5:1 on gold. All clear AA for body text, as
-   they do on paper.
+   The colour on this page comes from its photographs, which are real
+   and are what the page is about. The surfaces behind them alternate
+   between warm paper and a slightly warmer sand, so a reader can see
+   the structure without being told it.
+
+   --sand and --paper are declared with the other neutrals at the top of
+   this file; these two classes are the whole surface system.
    ===================================================================== */
-.surface-lilac,
-.surface-gold,
-.surface-coral,
-.surface-mint,
-.surface-rose {
-  position: relative;
-  isolation: isolate;
-}
-
-/*
- * Each one is a base plus three lights: one high, one low, and one wide
- * and faint across the middle so a tall section does not go flat where
- * most of its words are.
- */
-
-/* First light: the violet of the sky. */
-.surface-lilac {
-  background-color: #f2ecff;
-  background-image:
-    radial-gradient(48rem 26rem at 88% -8%, rgba(90, 54, 238, 0.18), transparent 64%),
-    radial-gradient(60rem 34rem at 50% 50%, rgba(123, 92, 255, 0.07), transparent 70%),
-    radial-gradient(36rem 24rem at 2% 104%, rgba(47, 116, 245, 0.13), transparent 62%);
-}
-
-/* The sun itself, warm and low. */
-.surface-gold {
-  background-color: #fdf2dc;
-  background-image:
-    radial-gradient(52rem 28rem at 82% -10%, rgba(255, 176, 48, 0.3), transparent 64%),
-    radial-gradient(64rem 36rem at 46% 48%, rgba(255, 207, 77, 0.1), transparent 70%),
-    radial-gradient(40rem 26rem at 0% 100%, rgba(255, 122, 89, 0.16), transparent 62%);
-}
-
-/* The ring around it. */
-.surface-coral {
-  background-color: #fdece4;
-  background-image:
-    radial-gradient(50rem 28rem at 6% -8%, rgba(255, 110, 74, 0.26), transparent 64%),
-    radial-gradient(62rem 34rem at 54% 50%, rgba(255, 150, 110, 0.08), transparent 70%),
-    radial-gradient(42rem 26rem at 96% 102%, rgba(255, 199, 64, 0.2), transparent 62%);
-}
-
-/* The cool side of the morning, and the colour money already wears here. */
-.surface-mint {
-  background-color: #e7f6ee;
-  background-image:
-    radial-gradient(48rem 26rem at 86% -8%, rgba(21, 163, 122, 0.2), transparent 64%),
-    radial-gradient(60rem 34rem at 44% 52%, rgba(21, 163, 122, 0.07), transparent 70%),
-    radial-gradient(38rem 24rem at 0% 100%, rgba(47, 116, 245, 0.12), transparent 62%);
-}
-
-/* The haze, last. */
-.surface-rose {
-  background-color: #fdeaef;
-  background-image:
-    radial-gradient(50rem 28rem at 10% -8%, rgba(232, 69, 107, 0.2), transparent 64%),
-    radial-gradient(60rem 34rem at 52% 50%, rgba(232, 69, 107, 0.07), transparent 70%),
-    radial-gradient(40rem 26rem at 94% 104%, rgba(90, 54, 238, 0.15), transparent 62%);
-}
-
-/*
- * What each light does to the small things standing in it.
- *
- * Only three things take the section's hue: the eyebrow above the
- * heading, the tile an icon sits in, and the hairline of a card. Links
- * and buttons stay violet everywhere, because on this site violet means
- * "this does something" and a colour that means one thing must not be
- * spent on decoration.
- *
- * Every pairing below was measured on its own section's base.
- */
-.surface-gold .eyebrow {
-  color: #7d4700; /* 6.8:1 on #fdf2dc */
-}
-.surface-gold .icon-tile {
-  background: #fce7bd;
-  color: #7d4700;
-}
-.surface-coral .eyebrow {
-  color: #9c2f16; /* 6.5:1 on #fdece4 */
-}
-.surface-coral .icon-tile {
-  background: #ffded0;
-  color: #9c2f16;
-}
-.surface-mint .eyebrow {
-  color: var(--mint-deep); /* 5.9:1 on #e7f6ee */
-}
-.surface-mint .icon-tile {
-  background: #d2efe1;
-  color: var(--mint-deep);
-}
-.surface-rose .eyebrow {
-  color: #99183f; /* 7.1:1 on #fdeaef */
-}
-.surface-rose .icon-tile {
-  background: #fbd6e0;
-  color: #99183f;
-}
-.surface-lilac .eyebrow {
-  color: var(--violet-deep);
-}
-
-/*
- * A card on a tinted section.
- *
- * White cards on a tint read as holes punched in it. These keep the
- * paper warm and let the tint show at the edge instead, so the section
- * stays one surface with things resting on it.
- */
-.surface-gold .card,
-.surface-coral .card,
-.surface-mint .card,
-.surface-rose .card,
-.surface-lilac .card {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: saturate(1.1);
-}
-.surface-gold .card-flat,
-.surface-coral .card-flat,
-.surface-mint .card-flat,
-.surface-rose .card-flat,
-.surface-lilac .card-flat {
-  background: rgba(255, 255, 255, 0.52);
-}
-
-/* A hairline between two light sections: a join, not a border. */
-.rule-soft {
-  border-top: 1px solid var(--line);
-}
-
-/* A hairline grid that fades out: texture without noise. */
-.nb-grid-lines::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 80% 70% at 60% 40%, #000 20%, transparent 75%);
-}
-
-/* ------------------------------------------------------------- buttons */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 48px;
-  padding: 0 1.35rem;
-  border-radius: var(--r-sm);
-  border: 1px solid transparent;
-  font-weight: 600;
-  font-size: 1rem;
-  line-height: 1;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    background-color var(--d-base) var(--ease),
-    border-color var(--d-base) var(--ease),
-    color var(--d-base) var(--ease),
-    box-shadow var(--d-base) var(--ease),
-    transform var(--d-fast) var(--ease);
-}
-.btn:active {
-  transform: translateY(var(--press)) scale(0.99);
-}
-/*
- * Working, not just unavailable.
- *
- * A button mid-request keeps its own label — every one of them says what it
- * is doing, "Saving…" rather than nothing — and the cursor and the dimming
- * carry the rest. aria-busy is what a screen reader reads; this is what
- * everybody else sees.
- */
-.btn[aria-busy="true"] {
-  cursor: progress;
-  opacity: 0.75;
-  transform: none;
-}
-.btn:disabled,
-.btn[aria-disabled="true"] {
-  opacity: 0.55;
-  cursor: not-allowed;
-  transform: none;
-}
-.btn-sm {
-  min-height: 40px;
-  padding: 0 1rem;
-  font-size: 0.9375rem;
-}
-.btn-lg {
-  min-height: 56px;
-  padding: 0 1.75rem;
-  font-size: 1.0625rem;
-}
-.btn-block {
-  width: 100%;
-}
-/* On a phone no button may push past the edge of the screen: a label longer
-   than the room it has breaks onto a second line instead. Buttons that fit
-   are unchanged, because text only wraps when it has to. */
-@media (max-width: 479px) {
-  .btn {
-    max-width: 100%;
-    white-space: normal;
-    text-align: center;
-    line-height: 1.25;
-    padding-block: 0.55rem;
-  }
-}
-/* A button whose label may be longer than a small phone is wide: it may
-   break onto a second line instead of pushing past the edge of its card. */
-.btn-wrap {
-  max-width: 100%;
-  white-space: normal;
-  text-align: center;
-  line-height: 1.25;
-  padding-block: 0.6rem;
-}
-.btn-primary {
-  background-color: var(--violet);
-  color: #fff;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 10px 24px -10px rgba(63, 34, 196, 0.65);
-}
-.btn-primary:hover {
-  background-color: var(--violet-deep);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 14px 30px -12px rgba(63, 34, 196, 0.75);
-}
-.btn-light {
-  background-color: #fff;
-  color: var(--ink);
-  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.5);
-}
-.btn-light:hover {
-  background-color: var(--lilac);
-  color: var(--violet-ink);
-}
-.btn-secondary {
-  background-color: #fff;
-  color: var(--ink);
-  border-color: var(--line-strong);
-  box-shadow: var(--shadow-xs);
-}
-.btn-secondary:hover {
-  border-color: var(--ink-mute);
-  background-color: var(--paper);
-}
-.btn-ghost {
-  background-color: transparent;
-  color: var(--ink);
-}
-.btn-ghost:hover {
+.surface-sand {
   background-color: var(--sand);
 }
-.btn-outline-light {
-  background-color: rgba(255, 255, 255, 0.04);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.3);
+.surface-paper {
+  background-color: var(--paper);
 }
-.btn-outline-light:hover {
-  background-color: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.6);
-}
-.btn-danger {
+.surface-white {
   background-color: #fff;
-  color: var(--danger);
-  border-color: #f0c4c0;
-}
-.btn-danger:hover {
-  background-color: var(--danger-soft);
-  border-color: var(--danger);
-}
-.on-dark .btn:focus-visible,
-.btn-light:focus-visible,
-.btn-outline-light:focus-visible {
-  outline-color: #fff;
-}
-
-/* A text link with an arrow that moves a few pixels on hover. */
-.link-arrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-weight: 600;
-  color: var(--violet-deep);
-  text-decoration: none;
-  transition: color var(--d-base) var(--ease);
-}
-.link-arrow .arrow {
-  transition: transform var(--d-base) var(--ease);
-}
-.link-arrow:hover .arrow {
-  transform: translateX(3px);
-}
-.link-arrow:hover {
-  color: var(--violet-ink);
-}
-.on-dark .link-arrow,
-.link-arrow.on-dark {
-  color: #fff;
-}
-.on-dark .link-arrow:hover,
-.link-arrow.on-dark:hover {
-  color: #d9d0ff;
-}
-
-.link {
-  color: var(--violet-deep);
-  font-weight: 600;
-  text-decoration: underline;
-  text-decoration-color: rgba(63, 34, 196, 0.35);
-  text-underline-offset: 3px;
-  transition: text-decoration-color var(--d-base) var(--ease);
-}
-.link:hover {
-  text-decoration-color: currentColor;
-}
-
-/* --------------------------------------------------------------- cards */
-
-.card {
-  background: #fff;
-  border: 1px solid transparent;
-  border-radius: var(--r-lg);
-  /*
-   * Elevation, not a drop shadow.
-   *
-   * Four layers doing four jobs: a hairline that belongs to the brand
-   * rather than to grey, a highlight along the top edge so the card
-   * catches the light the section is lit by, a tight contact shadow, and
-   * a wide violet-tinted one for the distance off the page. A single
-   * rgba(0,0,0,.1) blur under every card is what makes a page of cards
-   * look printed rather than lit.
-   */
-  box-shadow:
-    inset 0 0 0 1px rgba(42, 23, 144, 0.09),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 1px 2px rgba(23, 26, 46, 0.04),
-    0 14px 32px -16px rgba(42, 23, 144, 0.22);
-}
-.card-flat {
-  background: #fff;
-  border: 1px solid transparent;
-  border-radius: var(--r-lg);
-  box-shadow: inset 0 0 0 1px rgba(42, 23, 144, 0.08);
-}
-.card-hover {
-  transition:
-    box-shadow var(--d-base) var(--ease),
-    border-color var(--d-base) var(--ease),
-    transform var(--d-base) var(--ease);
-}
-.card-hover:hover {
-  box-shadow: var(--shadow-md);
-  border-color: var(--line-strong);
-  transform: translateY(var(--lift));
-}
-.panel-dark {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--r-lg);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-}
-
-/* =====================================================================
-   Grain.
-
-   A flat fill is the thing that dates a page fastest: screens render it
-   perfectly, and perfectly even colour is the one thing no real surface
-   has. A single layer of very fine noise over the dark sections puts
-   the grain back, at an opacity low enough that nobody will ever point
-   at it — they will only notice that the violet looks like a material
-   instead of a value.
-
-   It is drawn once, as a pseudo-element the pointer cannot reach, and
-   it sits under the content because every dark surface here already
-   isolates its own stacking context.
-   ===================================================================== */
-.surface-night::before,
-.surface-daybreak::before,
-.surface-navy::before,
-.surface-signature::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  opacity: 0.4;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  background-size: 160px 160px;
-  mix-blend-mode: overlay;
 }
 
 /* =====================================================================
