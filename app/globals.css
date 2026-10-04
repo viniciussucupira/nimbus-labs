@@ -1048,7 +1048,7 @@ html {
 }
 .on-dark .icon-tile {
   background: rgba(255, 255, 255, 0.08);
-  color: #d9d0ff;
+  color: var(--violet-glow);
 }
 
 /* ---------------------------------------------------------------- tags */
@@ -1091,6 +1091,13 @@ html {
   background: rgba(255, 255, 255, 0.12);
   color: var(--on-dark);
 }
+/*
+ * .icon-tile-sm is a modifier, not a tile of its own: it changes the size
+ * and nothing else, so it is only ever written beside .icon-tile. On its
+ * own it draws a transparent 36px box with the glyph in the corner of it,
+ * which is what it did in the plan cards until this note was here.
+ */
+
 /*
  * A tag keeps its meaning on a dark surface.
  *

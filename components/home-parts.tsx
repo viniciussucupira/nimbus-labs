@@ -579,7 +579,7 @@ function PlanCard({
       <ul className="mt-7 space-y-5">
         {groups.map((group) => (
           <li key={group.title} className="flex gap-3.5">
-            <span className="icon-tile-sm shrink-0" aria-hidden="true">
+            <span className="icon-tile icon-tile-sm" aria-hidden="true">
               <Icon name={group.icon} size={17} strokeWidth={1.9} />
             </span>
             <span>
