@@ -295,6 +295,24 @@ body {
   line-height: 1.12;
   letter-spacing: -0.02em;
 }
+/*
+ * A section heading inside a page: the step the ladder was missing.
+ *
+ * Between .t-h2 and .t-h3 there was nothing, and the jump was 1.9× on a
+ * desktop where every other step on this ladder is about 1.2×. So fourteen
+ * section headings across the inner pages papered over the gap by taking
+ * .t-h3 and then overriding its size with a flat 1.5rem or 1.6rem — which
+ * left them larger on a phone than .t-h3 ever gets on a desktop, and not
+ * scaling at all. One step, fluid like the rest: 22px on a phone, 26px from
+ * about 950px up.
+ */
+.t-section {
+  font-weight: 600;
+  font-size: clamp(1.375rem, 1.2rem + 0.72vw, 1.625rem);
+  line-height: 1.22;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
 .t-h3 {
   font-weight: 600;
   font-size: clamp(1.2rem, 1.08rem + 0.5vw, 1.45rem);

@@ -123,7 +123,7 @@ export default async function MessageThreadPage({ params, searchParams }: Params
             return (
               <li key={`${message.at}-${i}`} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div className={`cm-dm-bubble ${mine ? "cm-dm-mine" : ""}`}>
-                  <PostText text={message.text} className="text-[0.95rem]" />
+                  <PostText text={message.text} className="text-[0.9375rem]" />
                   <p className="st-muted mt-1 text-xs font-semibold">
                     <time dateTime={new Date(message.at * 1000).toISOString()}>{whenWords(message.at)}</time>
                   </p>

@@ -86,7 +86,7 @@ function BlockView({ block }: { block: Block }) {
     case "cards":
       return (
         <section className="reveal" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <h2 id={sectionId(block.title)} className="t-section">{block.title}</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {block.items.map((item) => (
               <article key={item.title} className="card p-6">
@@ -104,7 +104,7 @@ function BlockView({ block }: { block: Block }) {
     case "how":
       return (
         <section className="reveal" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <h2 id={sectionId(block.title)} className="t-section">{block.title}</h2>
           <ol className="mt-6 grid gap-4 md:grid-cols-3">
             {block.items.map((item, i) => (
               <li key={item.title} className="card-flat relative p-6">
@@ -122,7 +122,7 @@ function BlockView({ block }: { block: Block }) {
     case "features":
       return (
         <section className="reveal" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <h2 id={sectionId(block.title)} className="t-section">{block.title}</h2>
           {block.intro ? <p className="mt-3 max-w-2xl text-ink-soft">{block.intro}</p> : null}
           <ul className="mt-6 grid gap-4 sm:grid-cols-2">
             {block.items.map((item) => {
@@ -159,7 +159,7 @@ function BlockView({ block }: { block: Block }) {
     case "uses":
       return (
         <section className="reveal" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <h2 id={sectionId(block.title)} className="t-section">{block.title}</h2>
           <ul className="mt-6 grid gap-4 md:grid-cols-3">
             {block.items.map((item) => (
               <li key={item.who} className="rounded-[var(--r-lg)] bg-sand p-6">
@@ -175,7 +175,7 @@ function BlockView({ block }: { block: Block }) {
     case "limits":
       return (
         <section className="reveal rounded-[var(--r-lg)] border border-line bg-white p-6 sm:p-8" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="flex items-center gap-2 text-[1.25rem] font-semibold tracking-[-0.02em] text-ink">
+          <h2 id={sectionId(block.title)} className="t-h3 flex items-center gap-2 text-ink">
             <Icon name="info" size={20} className="text-violet-deep" />
             {block.title}
           </h2>
@@ -194,7 +194,7 @@ function BlockView({ block }: { block: Block }) {
     case "faq":
       return (
         <section className="reveal" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <h2 id={sectionId(block.title)} className="t-section">{block.title}</h2>
           <div className="mt-6 divide-y divide-line overflow-hidden rounded-[var(--r-lg)] border border-line bg-white">
             {block.items.map((item) => (
               <details key={item.q} className="group">
@@ -212,7 +212,7 @@ function BlockView({ block }: { block: Block }) {
     case "ladder":
       return (
         <section className="reveal" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <h2 id={sectionId(block.title)} className="t-section">{block.title}</h2>
           {block.intro ? <p className="mt-3 max-w-2xl text-ink-soft">{block.intro}</p> : null}
           <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {block.items.map((item) => (
@@ -241,7 +241,7 @@ function BlockView({ block }: { block: Block }) {
     case "steps":
       return (
         <section className="reveal" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <h2 id={sectionId(block.title)} className="t-section">{block.title}</h2>
           <ol className="mt-6 grid gap-3">
             {block.items.map((item, i) => (
               <li key={item.title} className="card-flat flex gap-4 p-5 sm:p-6">
@@ -261,7 +261,7 @@ function BlockView({ block }: { block: Block }) {
     case "facts":
       return (
         <section className="reveal" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <h2 id={sectionId(block.title)} className="t-section">{block.title}</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {block.items.map((item, i) => (
               <div key={item.label} className={i === 0 ? "rounded-[var(--r-lg)] bg-night p-6 text-white" : "card-flat p-6"}>
@@ -278,7 +278,7 @@ function BlockView({ block }: { block: Block }) {
     case "table":
       return (
         <section className="reveal" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <h2 id={sectionId(block.title)} className="t-section">{block.title}</h2>
           <div className="mt-6 hidden overflow-hidden rounded-[var(--r-lg)] border border-line bg-white shadow-[var(--shadow-sm)] sm:block">
             <table className="table-clean text-[0.9375rem]">
               <thead>
@@ -348,7 +348,7 @@ function BlockView({ block }: { block: Block }) {
     case "storecard":
       return (
         <section className="reveal" aria-labelledby={sectionId(block.title)}>
-          <h2 id={sectionId(block.title)} className="t-h3 text-[1.5rem]">{block.title}</h2>
+          <h2 id={sectionId(block.title)} className="t-section">{block.title}</h2>
           <div className="mt-6">
             <StoreCard block={block} />
           </div>
@@ -382,7 +382,7 @@ function Related({ slugs }: { slugs: string[] }) {
     <section aria-labelledby="related-title" className="border-t border-line bg-white">
       <div className="container-page max-w-[64rem]! py-14 sm:py-16">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <h2 id="related-title" className="t-h3 text-[1.5rem]">Works well with</h2>
+          <h2 id="related-title" className="t-section">Works well with</h2>
           <Link href="/platform" className="link-arrow text-sm">
             Every feature
             <Icon name="arrow-right" size={16} className="arrow" />

@@ -626,7 +626,7 @@ export default function HelpPage() {
                     <Icon name={iconFor(section.emoji)} size={22} />
                   </span>
                   <div>
-                    <h2 className="t-h3 text-[1.6rem]">{section.title}</h2>
+                    <h2 className="t-section">{section.title}</h2>
                     <p className="mt-1 text-ink-soft">{section.blurb}</p>
                   </div>
                 </div>
@@ -656,7 +656,7 @@ export default function HelpPage() {
 
             <section className="reveal card flex flex-col gap-6 p-7 sm:flex-row sm:items-center sm:justify-between sm:p-9">
               <div>
-                <h2 className="t-h3 text-[1.6rem]">Still stuck?</h2>
+                <h2 className="t-section">Still stuck?</h2>
                 <p className="mt-2 max-w-md text-ink-soft">
                   Write to us. A person reads it, and you will get an answer even if the answer is that we have not built
                   that part yet.

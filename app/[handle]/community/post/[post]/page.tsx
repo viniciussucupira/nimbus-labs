@@ -89,7 +89,7 @@ function CommentItem({
                   rows={3}
                   maxLength={MAX_COMMENT_TEXT}
                   defaultValue={comment.text}
-                  className="st-field resize-y text-[0.95rem]"
+                  className="st-field resize-y text-[0.9375rem]"
                 />
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button type="submit" className="cm-pill">Save</button>
@@ -97,7 +97,7 @@ function CommentItem({
                 </div>
               </form>
             ) : (
-              <PostText text={comment.text} className="mt-1 text-[0.95rem]" named={named} store={store} />
+              <PostText text={comment.text} className="mt-1 text-[0.9375rem]" named={named} store={store} />
             )}
           </div>
           <div className="st-muted mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs font-semibold">

@@ -194,7 +194,7 @@ export function LegalSection({
 }) {
   return (
     <section id={id ?? sectionId(title)} className="scroll-mt-24 space-y-4">
-      <h2 className="text-[1.3rem] font-semibold tracking-[-0.02em] text-ink">{title}</h2>
+      <h2 className="t-section text-ink">{title}</h2>
       {children}
     </section>
   );

@@ -162,7 +162,7 @@ export function CommunityBar({
             </span>
           )}
           <span className="min-w-0">
-            <span className="block truncate text-[0.95rem] font-bold leading-tight">{config.name}</span>
+            <span className="block truncate text-[0.9375rem] font-bold leading-tight">{config.name}</span>
             <span className="st-muted block truncate text-xs font-semibold">{`by ${store.name} · back to the store`}</span>
           </span>
         </Link>
@@ -514,7 +514,7 @@ export function PostCard({
       <header className="flex items-start gap-3">
         <Face store={store} author={post.a} name={name} />
         <div className="min-w-0 flex-1">
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.95rem] font-bold leading-tight">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.9375rem] font-bold leading-tight">
             <span className="min-w-0 break-words">{name}</span>
             {post.a === CREATOR ? <CreatorBadge /> : <LevelBadge level={levels?.get(post.a)} />}
           </p>

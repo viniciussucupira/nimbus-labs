@@ -225,8 +225,8 @@ export function CommunityRoom({
                   {!mine ? (
                     <p className="text-xs font-bold">{names[message.a] ?? "A member"}</p>
                   ) : null}
-                  <p className="cm-text text-[0.95rem]">{message.text}</p>
-                  <p className="st-muted mt-0.5 flex items-center justify-end gap-2 text-[0.7rem] font-semibold">
+                  <p className="cm-text text-[0.9375rem]">{message.text}</p>
+                  <p className="st-muted mt-0.5 flex items-center justify-end gap-2 text-[0.6875rem] font-semibold">
                     {owner ? (
                       <button
                         type="button"

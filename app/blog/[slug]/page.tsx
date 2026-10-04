@@ -194,7 +194,7 @@ export default async function BlogPostPage({
           <ShareRow url={`${SITE_URL}/blog/${post.slug}`} title={post.title} />
 
           <aside className="surface-night on-dark mt-16 overflow-hidden rounded-[var(--r-xl)] p-8 sm:p-10">
-            <h2 className="t-h3 text-[1.6rem] text-white">See it working before you believe us</h2>
+            <h2 className="t-section text-white">See it working before you believe us</h2>
             <p className="mt-3 max-w-lg text-white/80">
               The demo store is a real Stripe checkout with a test card. Buy the file, watch it arrive, then decide.
             </p>

@@ -137,11 +137,9 @@ export function BlogCard({ post, lead = false }: { post: BlogPost; lead?: boolea
         <span className="tag tag-brand">{post.category}</span>
         <span className="text-ink-mute">{post.readMinutes} min read</span>
       </p>
-      <h3
-        className={`mt-4 font-semibold leading-snug tracking-[-0.02em] text-ink ${
-          lead ? "text-[1.45rem] sm:text-[1.6rem]" : "text-[1.2rem]"
-        }`}
-      >
+      {/* The ladder, not two fixed sizes: the lead post takes the section step
+          and the rest take the one below it, and both scale with the screen. */}
+      <h3 className={`mt-4 text-ink ${lead ? "t-section" : "t-h3"}`}>
         <Link href={`/blog/${post.slug}`} className="after:absolute after:inset-0 after:rounded-[var(--r-lg)]">
           {post.title}
         </Link>
