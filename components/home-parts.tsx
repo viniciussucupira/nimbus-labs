@@ -639,7 +639,7 @@ function CostAtVolume() {
         })}
       </ul>
       <p className="mt-3 text-xs text-ink-mute">
-        {`Marktmorgen and Stan's Creator plan are both $${flat} a month with 0% of sales; Marktmorgen Pro and Stan's Creator Pro are both $${PLAN_PRICES.pro.month / 100}. Gumroad takes 10% plus 50 cents on a sale you bring yourself and has no monthly fee, so under about nine sales a month it costs less. Prices read on each company's own pricing page on September 20, 2026.`}
+        {`Gumroad takes 10% plus 50 cents on a sale you bring yourself and has no monthly fee, so under about nine sales a month it costs less. Prices read on each company's own pricing page on September 20, 2026.`}
       </p>
     </div>
   );

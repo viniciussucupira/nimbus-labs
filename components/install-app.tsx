@@ -85,9 +85,8 @@ export function InstallApp() {
         <div className="max-w-2xl">
           <p className="font-semibold text-ink">Install it like an app, on Android and on iPhone</p>
           <p className="mt-1.5 text-[0.9375rem] text-ink-soft">
-            Your store installs with its own name and icon on the home screen, with no app store in the way. Stan&apos;s creator
-            app is on Apple devices only: its help center says it is &ldquo;currently only available on iPhone and
-            iPad.&rdquo; Native apps are on our list, and this line will say so the day they exist.
+            Your store installs with its own name and icon on the home screen, with no app store in the way. A native
+            app is not built yet, and this line will say so the day it is.
           </p>
         </div>
       </div>

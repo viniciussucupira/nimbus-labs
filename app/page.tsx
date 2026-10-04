@@ -661,7 +661,7 @@ export default function Home() {
             <div className="reveal mx-auto mt-10 max-w-2xl text-center">
               <h2 className="t-h2 balance">Two plans. Your sales stay yours.</h2>
               <p className="mt-5 text-ink-soft">
-                {`The same $${PRICE} and $${PLAN_PRICES.pro.month / 100} a month as Stan's two plans, the same 14-day free trial, 0% of your sales, and the sale itself landing in your own Stripe account. The $${PRICE} plan holds what Stan keeps for its $${PLAN_PRICES.pro.month / 100} one: discount codes, pixels, funnels, order bumps, upsells, payment plans and limited quantities.`}
+                {`$${PRICE} a month for everything that sells: discount codes, pixels, funnels, order bumps, upsells, payment plans and limited quantities. $${PLAN_PRICES.pro.month / 100} adds email to your list. Neither takes a cent of what you sell.`}
               </p>
             </div>
             <div className="reveal mx-auto mt-12 max-w-5xl">
