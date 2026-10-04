@@ -1200,7 +1200,9 @@ a.chip {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  min-height: 40px;
+  /* The monthly/yearly switch is a control somebody uses to decide what
+     to pay. 44px is the smaller of the two platforms' minimums. */
+  min-height: 44px;
   padding: 0 0.95rem;
   border-radius: 999px;
   font-size: 0.9375rem;
