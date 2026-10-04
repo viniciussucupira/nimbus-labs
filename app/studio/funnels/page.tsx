@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { idsOfKind, readAllListings, readProduct } from "@/lib/catalog";
+import { BUMP_CHOICES, idsOfKind, readCards, readListings, readProduct } from "@/lib/catalog";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -40,8 +40,12 @@ export default async function StudioFunnelsPage({ searchParams }: Params) {
 
   // Only a plain one-off sale can be followed by offers. Every card is read
   // once; the product being edited is read in full, for its funnel.
-  const listings = await readAllListings(store);
-  const owners = listings.filter((p) => isOneOff(p));
+  // A product that can own a funnel is one that is paid, not a membership and
+  // not a call — every one of which the store's own index answers. The names
+  // are the one card hash. No product record is read to build this list.
+  const cards = await readCards(store);
+  const notOneOff = new Set([...idsOfKind(store, "free"), ...idsOfKind(store, "recurring"), ...idsOfKind(store, "call")]);
+  const owners = [...cards.values()].filter((p) => !notOneOff.has(p.id));
   const withOffers = new Set(idsOfKind(store, "funnel"));
   const asked = typeof query.product === "string" ? query.product : "";
   const find = typeof query.q === "string" ? query.q.trim().slice(0, 80) : "";
@@ -55,6 +59,18 @@ export default async function StudioFunnelsPage({ searchParams }: Params) {
     .sort((a, b) => Number(withOffers.has(b.id)) - Number(withOffers.has(a.id)));
   const listed = matching.slice(0, NAV_LIMIT);
   if (selected && !listed.some((p) => p.id === selected.id)) listed.unshift(selected);
+  /*
+   * The two pickers below want things the card does not carry — whether a
+   * product has a file, and whether it has an image. The index still rules
+   * most of a catalogue out before a single read: a membership, a call, a free
+   * product and one with price options can never be offered after paying. Only
+   * what survives is read, and at most BUMP_CHOICES of it, which is already
+   * more than a list to pick from can usefully hold. This used to read every
+   * product in the store.
+   */
+  const withOptions = new Set(store.catalog.items.filter((item) => item.options.length > 0).map((item) => item.id));
+  const candidates = owners.filter((p) => !withOptions.has(p.id)).slice(0, BUMP_CHOICES).map((p) => p.id);
+  const listings = await readListings(store, candidates);
   // A bundle is offered like any product, unless it holds a course (lib/bundles.ts).
   const offerable = (await offerableAfterPaying(store, listings))
     .filter((p) => canBeBumped(p))

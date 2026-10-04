@@ -263,13 +263,13 @@ const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 const listingKey = (catalog: string, product: string) => `nl:catalog:${catalog}:l:${product}`;
 /**
- * Every product's title, in one hash.
+ * Every product's card, in one hash.
  *
  * The index in the store record already answers what kind of thing each
  * product is — paid or free, a call, a course, a membership, limited, hidden —
- * without reading a single product record. The one thing it does not carry is
- * the name, and a name is what most screens in the studio actually want: a
- * list to pick from, a label beside a sale, a row in a table.
+ * without reading a single product record. What it does not carry is the
+ * three things every list in the studio also wants: the name, the price, and
+ * whether the product has a sales page of its own.
  *
  * So those screens were reading every product in the store to learn two
  * thousand strings. Upstash bills by the command, not by the round trip, so a
@@ -283,6 +283,28 @@ const listingKey = (catalog: string, product: string) => `nl:catalog:${catalog}:
  * of them is one HGETALL.
  */
 const titlesKey = (catalog: string) => `nl:catalog:${catalog}:t`;
+
+/** What one product contributes to a list, without reading its record. */
+export type Card = { id: string; title: string; priceCents: number; page: boolean };
+
+/** The card as it is stored: an array, because this is written per product. */
+function cardValue(product: Product): string {
+  return JSON.stringify([product.title, product.priceCents, product.page ? 1 : 0]);
+}
+
+/**
+ * A stored card, or null when the value predates the shape — which sends the
+ * reader down its healing path rather than guessing a price of zero.
+ */
+function parseCard(id: string, raw: string): Card | null {
+  try {
+    const value = JSON.parse(raw) as unknown;
+    if (!Array.isArray(value) || typeof value[0] !== "string" || typeof value[1] !== "number") return null;
+    return { id, title: value[0], priceCents: value[1], page: value[2] === 1 };
+  } catch {
+    return null;
+  }
+}
 const extrasKey = (catalog: string, product: string) => `nl:catalog:${catalog}:x:${product}`;
 
 type Command = (string | number)[];
@@ -705,7 +727,7 @@ export async function readAllListings(store: Store): Promise<Listing[]> {
 }
 
 /**
- * Every product's name, by id, in one command.
+ * Every product's card, by id, in one command.
  *
  * For the screens that want a list to pick from and nothing else. A store
  * still on the old inline layout has its products in its own record, so those
@@ -717,34 +739,55 @@ export async function readAllListings(store: Store): Promise<Listing[]> {
  * whose cache could not be filled gets the right answer slowly rather than the
  * wrong answer quickly.
  */
-export async function readTitles(store: Store): Promise<Map<string, string>> {
+export async function readCards(store: Store): Promise<Map<string, Card>> {
   const catalog = store.catalog;
-  if (catalog.inline) return new Map(catalog.inline.map((p) => [p.id, p.title]));
+  const cardOf = (p: { id: string; title: string; priceCents: number; page: boolean }): Card => ({
+    id: p.id,
+    title: p.title,
+    priceCents: p.priceCents,
+    page: p.page,
+  });
+  if (catalog.inline) return new Map(catalog.inline.map((p) => [p.id, cardOf(p)]));
   const ids = productIds(store);
   if (!ids.length || !catalog.id || !isRedisConfigured()) return new Map();
 
   const [reply] = await redisPipeline([["HGETALL", titlesKey(catalog.id)]]);
-  const found = new Map<string, string>();
+  const found = new Map<string, Card>();
+  const raw = new Map<string, string>();
   if (Array.isArray(reply)) {
     const flat = reply.map(String);
-    for (let i = 0; i + 1 < flat.length; i += 2) found.set(flat[i], flat[i + 1]);
+    for (let i = 0; i + 1 < flat.length; i += 2) raw.set(flat[i], flat[i + 1]);
   } else if (reply && typeof reply === "object") {
-    for (const [id, title] of Object.entries(reply as Record<string, unknown>)) found.set(id, String(title));
+    for (const [id, value] of Object.entries(reply as Record<string, unknown>)) raw.set(id, String(value));
   }
-  // Only ids the index still lists: a hash entry left by a product removed
-  // before this existed is not a product.
+  // Only ids the index still lists: an entry left by a product removed before
+  // this existed is not a product.
   const known = new Set(ids);
-  for (const id of [...found.keys()]) if (!known.has(id)) found.delete(id);
+  for (const [id, value] of raw) {
+    if (!known.has(id)) continue;
+    const card = parseCard(id, value);
+    if (card) found.set(id, card);
+  }
   if (found.size >= ids.length) return found;
 
-  // Missing, so this store predates the hash: pay the old cost once.
+  // Missing or in an older shape, so this store predates it: pay the old cost
+  // once, and leave the hash right for every read after this one.
   const listings = await readListings(store, ids.filter((id) => !found.has(id)));
   if (!listings.length) return found;
-  for (const listing of listings) found.set(listing.id, listing.title);
+  for (const listing of listings) found.set(listing.id, cardOf(listing));
   await redisPipeline([
-    ["HSET", titlesKey(catalog.id), ...listings.flatMap((l) => [l.id, l.title])],
-  ]).catch((error) => console.error("filling the product titles failed", error));
+    [
+      "HSET",
+      titlesKey(catalog.id),
+      ...listings.flatMap((l) => [l.id, JSON.stringify([l.title, l.priceCents, l.page ? 1 : 0])]),
+    ],
+  ]).catch((error) => console.error("filling the product cards failed", error));
   return found;
+}
+
+/** Just the names, for the screens that want nothing else. */
+export async function readTitles(store: Store): Promise<Map<string, string>> {
+  return new Map([...(await readCards(store))].map(([id, card]) => [id, card.title]));
 }
 
 /** When the studio's list is one page of a longer one, as the studio page read it. */
@@ -869,7 +912,7 @@ export function productWrites(catalog: string, product: Product): Command[] {
   return [
     ["SET", listingKey(catalog, product.id), listing],
     heavy ? ["SET", extrasKey(catalog, product.id), extras] : ["DEL", extrasKey(catalog, product.id)],
-    ["HSET", titlesKey(catalog), product.id, product.title],
+    ["HSET", titlesKey(catalog), product.id, cardValue(product)],
   ];
 }
 

@@ -51,6 +51,17 @@ async function silenced(email: string, changedId: string): Promise<string[]> {
   try {
     const store = await storeForEmail(email);
     if (!store) return [];
+    /*
+     * This one still reads the catalogue, and deliberately.
+     *
+     * Which products a change has silenced can only be answered by looking at
+     * every product that could refer to the changed one, and "has a bump" and
+     * "has a payment plan" are not in the index. Narrowing it would mean
+     * sometimes failing to tell a creator that their change just turned
+     * something off — a correctness answer traded for a cost that is not
+     * really there, because unlike a page this runs when a product is saved,
+     * which happens a few times a day rather than a few times a minute.
+     */
     const all = await readAllListings(store);
     const deep = new Set([...idsOfKind(store, "funnel"), changedId]);
     const full = await readProducts(store, deep);

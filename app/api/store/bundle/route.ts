@@ -7,7 +7,7 @@ import {
   removeProduct,
   setProductBundle,
 } from "@/lib/store";
-import { readAllListings, readListings } from "@/lib/catalog";
+import { BUMP_CHOICES, idsOfKind, readCards, readListings } from "@/lib/catalog";
 import { MAX_BUNDLE_ITEMS, bundleOwnerProblem, itemsProblem, whyNotInBundle } from "@/lib/bundle-rules";
 import { jsonAccess } from "@/lib/studio-route";
 import { guardStoreWrite, text } from "@/lib/store-request";
@@ -35,8 +35,25 @@ export async function GET(request: NextRequest) {
   const page = Math.max(1, Math.min(200, Number(params.get("page")) || 1));
   const owner = params.get("for") ?? "";
   try {
-    const listings = (await readAllListings(access.store)).filter((p) => p.id !== owner);
-    const matches = query ? listings.filter((p) => p.title.toLowerCase().includes(query)) : listings;
+    /*
+     * Whether a product can go in a bundle needs things the card does not
+     * carry, but the store's own index rules most of a catalogue out before a
+     * single read: a membership, a call and a product with price options can
+     * never go in one. Names come from the card hash, so the search is one
+     * command, and only what survives both is read — at most BUMP_CHOICES,
+     * which is far more than a picker showing PICKER_PAGE at a time can reach.
+     * This used to read every product in the store on every keystroke.
+     */
+    const store = access.store;
+    const cards = await readCards(store);
+    const ruledOut = new Set([...idsOfKind(store, "recurring"), ...idsOfKind(store, "call")]);
+    const withOptions = new Set(store.catalog.items.filter((item) => item.options.length > 0).map((item) => item.id));
+    const narrowed = [...cards.values()].filter(
+      (card) => card.id !== owner && !ruledOut.has(card.id) && !withOptions.has(card.id),
+    );
+    const named = query ? narrowed.filter((card) => card.title.toLowerCase().includes(query)) : narrowed;
+    const listings = await readListings(store, named.slice(0, BUMP_CHOICES).map((card) => card.id));
+    const matches = listings;
     // What can go in first, then the rest, each in the creator's own order.
     const sorted = [...matches.filter((p) => !whyNotInBundle(p)), ...matches.filter((p) => whyNotInBundle(p))];
     const from = (page - 1) * PICKER_PAGE;

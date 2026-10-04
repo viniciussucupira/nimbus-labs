@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { type Reward, pointsOf, readRewards } from "@/lib/community-points";
-import { readAllListings } from "@/lib/catalog";
+import { idsOfKind, readCards } from "@/lib/catalog";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { studioPath, studioView } from "@/lib/studio-route";
@@ -194,19 +194,25 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
     }));
   }
 
-  // Every card, read once for the lists on this page.
-  const listings = await readAllListings(store);
-  const products = listings.map((p) => ({
+  // The name and the price come from the one card hash; what kind of thing
+  // each product is comes from the store's own index. No product record is
+  // read here at all — this used to read every one of them (lib/catalog.ts).
+  const cards = await readCards(store);
+  const free = new Set(idsOfKind(store, "free"));
+  const recurring = new Set(idsOfKind(store, "recurring"));
+  const course = new Set(idsOfKind(store, "course"));
+  const call = new Set(idsOfKind(store, "call"));
+  const products = [...cards.values()].map((p) => ({
     id: p.id,
     title: p.title,
-    free: isFree(p),
-    kind: isFree(p)
+    free: free.has(p.id),
+    kind: free.has(p.id)
       ? "Free, for a confirmed address"
-      : p.recurring
+      : recurring.has(p.id)
         ? `Membership · ${formatMoney(p.priceCents, store.currency)} — while it is paid`
-        : p.course
+        : course.has(p.id)
           ? `Course · ${formatMoney(p.priceCents, store.currency)}`
-          : p.call
+          : call.has(p.id)
             ? `Call · ${formatMoney(p.priceCents, store.currency)}`
             : formatMoney(p.priceCents, store.currency),
   }));
@@ -245,15 +251,18 @@ export default async function StudioCommunityPage({ searchParams }: Params) {
           canSettings={can(view.role, "settings")}
           isOwner={view.role === "owner"}
           rewards={rewards}
-          courses={listings.filter((p) => p.course).map((p) => ({ id: p.id, title: p.title }))}
+          courses={[...course].flatMap((id) => {
+            const card = cards.get(id);
+            return card ? [{ id, title: card.title }] : [];
+          })}
           events={
             config ? (
               <CommunityEventsStudio
                 events={coming}
                 past={over}
                 products={config.access.flatMap((pid) => {
-                  const p = listings.find((l) => l.id === pid);
-                  return p ? [{ id: p.id, title: p.title }] : [];
+                  const card = cards.get(pid);
+                  return card ? [{ id: pid, title: card.title }] : [];
                 })}
                 spaces={config.spaces.map((s) => ({ id: s.id, name: s.name }))}
                 canManage={can(view.role, "events")}

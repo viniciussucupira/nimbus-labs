@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash } from "node:crypto";
 import { isFree } from "@/lib/store";
-import { readAllListings, readListings } from "@/lib/catalog";
+import { readCards, readListing, readListings } from "@/lib/catalog";
 import { studioPath, studioView } from "@/lib/studio-route";
 import { StudioHeader } from "@/components/studio-header";
 import { StudioStorePin } from "@/components/studio-store-pin";
@@ -50,14 +50,19 @@ export default async function StudioPagesPage({ searchParams }: Params) {
   // show next.
   const asked = typeof query.product === "string" ? query.product : "";
   const find = typeof query.q === "string" ? query.q.trim().slice(0, 80) : "";
-  const products = await readAllListings(store);
-  const selected = products.find((p) => p.id === asked) ?? products.find((p) => p.page) ?? products[0] ?? null;
+  // The name and whether the product already has a page of blocks are both on
+  // its card, so the list and the search cost one command rather than one read
+  // per product (lib/catalog.ts). The chosen product is read in full below.
+  const products = [...(await readCards(store)).values()];
+  const chosen = products.find((p) => p.id === asked) ?? products.find((p) => p.page) ?? products[0] ?? null;
+  // One product read in full: the one actually being edited.
+  const selected = chosen ? await readListing(store, chosen.id) : null;
   // Products with a page of blocks first, NAV_LIMIT at a time.
   const matching = (find ? products.filter((p) => p.title.toLowerCase().includes(find.toLowerCase())) : products)
     .slice()
     .sort((a, b) => Number(b.page) - Number(a.page));
   const listed = matching.slice(0, NAV_LIMIT);
-  if (selected && !listed.some((p) => p.id === selected.id)) listed.unshift(selected);
+  if (chosen && !listed.some((p) => p.id === chosen.id)) listed.unshift(chosen);
   // What the selected product offers in the box at checkout, for where its buttons lead.
   const related = selected?.bump ? await readListings(store, [selected.bump.productId]) : [];
   const [page, about, summary, reviews] = selected
