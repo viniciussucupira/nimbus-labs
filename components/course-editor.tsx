@@ -746,3 +746,97 @@ export function GiveTriesBack({ productId, email }: { productId: string; email: 
   );
 }
 
+
+/**
+ * The course's start date: the one thing that makes it a cohort.
+ *
+ * A date here moves every module's clock off each student's joining day and
+ * onto this one, so the whole room opens week three on the same morning. No
+ * date, and the course stays what it was: everyone in week one on their own
+ * first day, whenever that is.
+ *
+ * The date is picked as a day and sent as the second that day begins in the
+ * creator's own zone, because "the 4th" starts at a different moment in
+ * Auckland and in Los Angeles, and the person running the course is the one
+ * who decides which. What the student then sees is that moment shown in
+ * their zone, which is the honest answer to "when does this open for me".
+ */
+export function CourseStart({ productId, startsAt }: { productId: string; startsAt: number | null }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // A date input wants "YYYY-MM-DD" in the viewer's own zone.
+  const asDay = (seconds: number) => {
+    const d = new Date(seconds * 1000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const [day, setDay] = useState(startsAt === null ? "" : asDay(startsAt));
+
+  async function send(at: number | null) {
+    setBusy(true);
+    setError(null);
+    const answer = await post({ id: productId, action: "start", at });
+    setBusy(false);
+    if (!answer.ok) {
+      setError(answer.error === "start" ? "That date is outside what a course start can be." : problem(answer));
+      return;
+    }
+    toast(at === null ? "This course has no fixed start." : "The start date is set.");
+    router.refresh();
+  }
+
+  return (
+    <div>
+      <label className="field-label" htmlFor={`start-${productId}`}>
+        The day this course begins
+      </label>
+      <p className="field-hint mt-1">
+        Leave it empty and each student starts on the day they join, which is how this course works now. Set a date and
+        everyone moves through it together from that morning: module one opens then, and a module set to open after seven
+        days opens seven days after that date for the whole room at once. Somebody who joins later finds everything up to
+        that moment already open.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <input
+          id={`start-${productId}`}
+          type="date"
+          value={day}
+          disabled={busy}
+          className="field w-auto"
+          onChange={(event) => setDay(event.target.value)}
+        />
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          disabled={busy || !day}
+          onClick={() => {
+            // Midnight on the chosen day, in this browser's own zone.
+            const [y, m, d] = day.split("-").map(Number);
+            if (!y || !m || !d) return;
+            void send(Math.floor(new Date(y, m - 1, d, 0, 0, 0, 0).getTime() / 1000));
+          }}
+        >
+          {busy ? "Saving…" : startsAt === null ? "Make it a cohort" : "Change the date"}
+        </button>
+        {startsAt !== null ? (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={busy}
+            onClick={() => {
+              setDay("");
+              void send(null);
+            }}
+          >
+            Remove the date
+          </button>
+        ) : null}
+      </div>
+      {error ? (
+        <p className="notice notice-error mt-2" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}

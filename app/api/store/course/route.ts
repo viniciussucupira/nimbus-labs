@@ -207,6 +207,21 @@ export async function POST(request: NextRequest) {
         return Response.json({ ok: true, course: result.course, quiz: read.quiz });
       }
 
+      /*
+        The course's start date, or null to take it off.
+        Sent as a day the creator picked, already turned into seconds at
+        midnight in their own zone by the studio, because "the 4th" is a
+        different moment in Auckland and in Los Angeles and the one who
+        decides which is the creator running the course.
+      */
+      if (action === "start") {
+        const at = body.at === null ? null : Number(body.at);
+        const result = editCourse(course, { op: "start", at });
+        if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });
+        await save(result.course);
+        return Response.json({ ok: true, course: result.course });
+      }
+
       if (action === "cert") {
         const result = editCourse(course, { op: "certificate", on: body.on === true });
         if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: 400 });

@@ -11,12 +11,13 @@ import { photoUrl } from "@/lib/photo-limits";
 import { canSellProduct } from "@/lib/store-checkout";
 import { membershipPrice } from "@/lib/product-recurring";
 import { activePwyw } from "@/lib/pay-what-you-want";
-import { isOpen, lessonCount, lessonsInOrder, readCourse } from "@/lib/course";
+import { beforeStart, isCohort, isOpen, lessonCount, lessonsInOrder, readCourse } from "@/lib/course";
 import { courseAccess, doneLessons, emailKey, touchStudent } from "@/lib/learn";
 import { heldBack, passedQuizzes, requiredQuizLessons } from "@/lib/quiz";
 import { MAX_CERT_NAME, MIN_CERT_NAME, certificateOf, hasFinished } from "@/lib/certificate";
 import { canManage } from "@/lib/membership-manage";
 import { CourseOutline } from "@/components/course-outline";
+import { LocalDay } from "@/components/local-day";
 import { readListing } from "@/lib/catalog";
 
 type Params = {
@@ -284,6 +285,29 @@ export default async function CoursePage({ params, searchParams }: Params) {
 
         <div className="st-card mt-6 p-6 sm:p-8">
           <h2 className="font-display text-xl font-semibold">What is inside</h2>
+          {/*
+            A course that runs to a timetable says so here, above the
+            outline, and says it to a visitor as well as to a student.
+
+            Somebody who has bought and is waiting needs to be told they are
+            waiting on a date and not on something they failed to do — a page
+            of locked modules with no explanation reads as a broken purchase.
+            Somebody who has not bought needs it before they pay, because a
+            course that begins in three weeks is a different thing from one
+            that begins when you press the button, and finding that out after
+            paying is the kind of surprise that earns a refund.
+          */}
+          {isCohort(course) ? (
+            <p className="st-muted mt-3 text-sm">
+              {beforeStart(course)
+                ? "Everyone on this course moves through it together. It begins on "
+                : "Everyone on this course moves through it together. It began on "}
+              <LocalDay seconds={course.startsAt!} />
+              {beforeStart(course)
+                ? ", and the first module opens that morning — buying earlier holds your place rather than starting you early."
+                : ", and everything released up to now is open to you from the day you join."}
+            </p>
+          ) : null}
           <div className="mt-4">
             <CourseOutline course={course} base={base} start={start} done={done} held={held} />
           </div>

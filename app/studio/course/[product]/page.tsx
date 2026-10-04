@@ -16,7 +16,7 @@ import { canSellProduct } from "@/lib/store-checkout";
 import { passedFor } from "@/lib/quiz";
 import { certificatesFor } from "@/lib/certificate";
 import {
-  CertificateSwitch,
+  CertificateSwitch, CourseStart,
   CourseEditor,
   GiveTriesBack,
   StudentAccess,
@@ -153,6 +153,7 @@ export default async function StudioCoursePage({
             your name and the date, and it has an address of its own that anyone can open to check it is real.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <CourseStart productId={product.id} startsAt={course.startsAt} />
             <CertificateSwitch productId={product.id} on={course.certificate} />
             {course.certificate ? (
               <Link
