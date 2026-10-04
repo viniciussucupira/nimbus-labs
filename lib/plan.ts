@@ -74,8 +74,10 @@ export const PLAN_TITLES: Record<Tier, string> = {
 /**
  * Whether Pro can be bought.
  *
- * Pro is what costs us money to run for a creator. Two things are built and
- * in it today: email to their list, and their own domain. Nothing else is
+ * Pro is what costs us money to run for a creator, or what a creator buys
+ * back from us. Three things are built and in it today: email to their
+ * list, their own domain, and taking our name off the foot of their page.
+ * Nothing else is
  * part of it until it exists in the code — an API is not built, and is not
  * sold. Several stores per account are built, and are not a Pro feature: an
  * account runs up to five (lib/store.ts, MAX_STORES_PER_ACCOUNT), each on a
@@ -95,12 +97,18 @@ export const PRO_MONTHLY_EMAILS = 50_000;
 export const TRIAL_MONTHLY_EMAILS = 1_000;
 
 /**
- * What only Pro switches on. "email" and "domain" are the ones built. "api"
- * is a name kept for when it is, and "stores" one kept from when several
- * stores were planned for Pro: they are built and on every plan (above), and
- * nothing reads either name.
+ * What only Pro switches on. "email", "domain" and "branding" are the ones
+ * built. "api" is a name kept for when it is, and "stores" one kept from
+ * when several stores were planned for Pro: they are built and on every
+ * plan (above), and nothing reads either name.
+ *
+ * "branding" is the one that costs us nothing to run and something to give:
+ * it takes our name off the foot of the creator's page. It is here rather
+ * than on every plan because the name at the foot of a page is how a store
+ * brings us the next creator, and a store that would rather not carry it is
+ * buying back the thing it would otherwise have paid us in.
  */
-export type ProFeature = "email" | "domain" | "stores" | "api";
+export type ProFeature = "email" | "domain" | "branding" | "stores" | "api";
 
 /**
  * Whether a store may use a Pro feature right now: paid up, on Pro. Read from

@@ -55,9 +55,17 @@ export const ACCENTS = [
   { hex: "#15112e", label: "Ink" },
 ] as const;
 
-export type StoreLook = { theme: ThemeId; accent: string };
+/**
+ * `badge` is whether "Made with Marktmorgen" is printed at the foot of the
+ * creator's page. It starts true, and only a store on Pro may turn it off —
+ * that check is not here, because this file never reads a plan. The page
+ * that draws the badge asks canUse(store, "branding") as well, so a store
+ * that leaves Pro gets the badge back the same day rather than keeping an
+ * entitlement it no longer pays for.
+ */
+export type StoreLook = { theme: ThemeId; accent: string; badge: boolean };
 
-export const DEFAULT_LOOK: StoreLook = { theme: "light", accent: "#5a36ee" };
+export const DEFAULT_LOOK: StoreLook = { theme: "light", accent: "#5a36ee", badge: true };
 
 /** Exactly six hex digits after a hash, lower case. Nothing else is a colour here. */
 export const HEX_PATTERN = /^#[0-9a-f]{6}$/;
@@ -84,6 +92,9 @@ export function parseLook(raw: unknown): StoreLook {
   return {
     theme: isTheme(value.theme) ? value.theme : DEFAULT_LOOK.theme,
     accent: normaliseHex(value.accent) ?? DEFAULT_LOOK.accent,
+    // Anything that is not an explicit false leaves the badge on, so a store
+    // saved before this field existed keeps showing it.
+    badge: value.badge !== false,
   };
 }
 
@@ -215,8 +226,16 @@ export type LookColours = {
   dark: boolean;
 };
 
-/** Every colour the page paints, worked out from the two things the creator chose. */
-export function lookColours(look: StoreLook): LookColours {
+/**
+ * Every colour the page paints, worked out from the two things the creator
+ * chose. It takes only those two rather than a whole StoreLook, because the
+ * badge has nothing to do with colour and several callers — an Open Graph
+ * image, the studio's live preview — have a theme and an accent in hand and
+ * no store behind them.
+ */
+export type LookPaint = Pick<StoreLook, "theme" | "accent">;
+
+export function lookColours(look: LookPaint): LookColours {
   const palette = PALETTES[look.theme] ?? PALETTES.light;
   const picked = normaliseHex(look.accent) ?? DEFAULT_LOOK.accent;
   const away = palette.dark ? WHITE : BLACK;
@@ -272,7 +291,7 @@ export function lookColours(look: StoreLook): LookColours {
 }
 
 /** The same colours as CSS custom properties, for the page's outermost element. */
-export function lookStyle(look: StoreLook): Record<string, string> {
+export function lookStyle(look: LookPaint): Record<string, string> {
   const c = lookColours(look);
   return {
     "--st-bg": c.bg,

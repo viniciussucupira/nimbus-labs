@@ -12,6 +12,7 @@ import { canSell, canSellProduct } from "@/lib/store-checkout";
 import { linkHost } from "@/lib/product-link";
 import { isConnectInTestMode } from "@/lib/stripe-connect";
 import { lookStyle } from "@/lib/store-look";
+import { canUse } from "@/lib/plan";
 import { photoUrl } from "@/lib/photo-limits";
 import { canManage } from "@/lib/membership-manage";
 import { canRecover, sellsDeliverables } from "@/lib/buyer-orders";
@@ -390,9 +391,22 @@ export default async function StorePage({ params, searchParams }: Params) {
                 </Link>
               </p>
             ) : null}
-            <Link href="/" className="st-footer-link text-sm font-semibold">
-              Made with Marktmorgen
-            </Link>
+            {/*
+              Our name at the foot of the page, unless this store is on Pro
+              and has asked for it off.
+
+              Both halves are read here, every time the page is drawn, and
+              the plan is the half that decides: a store that leaves Pro
+              shows the badge again from that moment, without anything
+              having to go back and rewrite its settings. The setting is
+              kept either way, so coming back to Pro restores the choice
+              rather than losing it.
+            */}
+            {store.look.badge || !canUse(store, "branding") ? (
+              <Link href="/" className="st-footer-link text-sm font-semibold">
+                Made with Marktmorgen
+              </Link>
+            ) : null}
             <StoreTracking store={store} countVisit />
           </div>
         </div>

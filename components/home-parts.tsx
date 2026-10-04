@@ -422,6 +422,7 @@ const PRO_INCLUDED = [
   "Community announcements emailed to the members who asked for them, counted in the same monthly allowance",
   "One email that asks each buyer for a review, 3 to 30 days after buying",
   `The same AI drafting, with the monthly allowance raised from ${AI_MONTHLY.creator} to ${AI_MONTHLY.pro} drafts, and emails among the things it drafts`,
+  "Our name off the foot of your page, so it carries yours and nothing of ours",
 ];
 
 /*
@@ -470,13 +471,13 @@ function proGroups(domains: boolean): PlanGroup[] {
     domains
       ? {
           icon: "globe",
-          title: "Your store on your own domain",
-          body: "Add one record where you bought the domain and the certificate is made for you. Your marktmorgen.com address keeps working too.",
+          title: "Your name on it, and only yours",
+          body: "Your store on your own domain, with the certificate made for you, and our name off the foot of the page.",
         }
       : {
-          icon: "star",
-          title: "Ask every buyer for a review",
-          body: "One email, 3 to 30 days after they buy, and community announcements emailed to the members who asked for them.",
+          icon: "eye",
+          title: "Your name on it, and only yours",
+          body: "Our name comes off the foot of your page, so what a buyer reads at the bottom of it is yours.",
         },
   ];
 }

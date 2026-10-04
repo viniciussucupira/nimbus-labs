@@ -80,7 +80,7 @@ import {
   readSubscription,
   trialOffered,
 } from "@/lib/billing";
-import { PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, priceWords, yearSaving } from "@/lib/plan";
+import { canUse, PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, priceWords, yearSaving } from "@/lib/plan";
 import { studioPath, studioView } from "@/lib/studio-route";
 import { type Permission, type Role, ROLE_NAMES, ROLE_SUMMARIES, can } from "@/lib/team-roles";
 import { MAX_TEAM, readTeam } from "@/lib/team";
@@ -869,6 +869,7 @@ export default async function StudioPage({
                   name={store.name}
                   handle={store.handle}
                   currency={store.currency}
+                  canHideBadge={canUse(store, "branding")}
                 />
               </div>
             ) : null}

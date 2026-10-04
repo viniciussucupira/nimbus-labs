@@ -94,6 +94,7 @@ export function LookEditor({
   name,
   handle,
   currency = "usd",
+  canHideBadge = false,
 }: {
   look: StoreLook;
   photoId: string | null;
@@ -101,15 +102,18 @@ export function LookEditor({
   handle: string;
   /** The store's currency, so the sample price reads like the real ones. */
   currency?: string;
+  /** Whether this store's plan lets it take our name off the page. */
+  canHideBadge?: boolean;
 }) {
   const router = useRouter();
   const [theme, setTheme] = useState<ThemeId>(look.theme);
   const [accent, setAccent] = useState(look.accent);
+  const [badge, setBadge] = useState(look.badge);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const fileRef = useRef<HTMLInputElement>(null);
 
   const preset = ACCENTS.some((option) => option.hex === accent);
-  const changed = theme !== look.theme || accent !== look.accent;
+  const changed = theme !== look.theme || accent !== look.accent || badge !== look.badge;
   const colours = useMemo(() => lookColours({ theme, accent }), [theme, accent]);
   // Said out loud when the page will not paint exactly what was picked, so the
   // creator is never left wondering why their button is darker than their logo.
@@ -128,7 +132,7 @@ export function LookEditor({
     if (status.kind === "working") return;
     setStatus({ kind: "working", what: "look" });
     try {
-      const data = await post("/api/store/look", { theme, accent });
+      const data = await post("/api/store/look", { theme, accent, badge });
       if (data.ok) {
         setStatus({ kind: "idle" });
         toast("Look saved.");
@@ -333,6 +337,38 @@ export function LookEditor({
             </p>
           </fieldset>
 
+          {/*
+            Our name at the foot of their page.
+
+            Shown to everyone, not only to the stores that can turn it off.
+            A control a creator cannot find is a feature they do not know
+            they are paying for, and one that silently is not there on the
+            cheaper plan is worse than one that says so. On Creator it is
+            disabled and says what it costs; on Pro it is a switch.
+          */}
+          <fieldset className="mt-2">
+            <legend className="field-label">Our name on your page</legend>
+            <label className="mt-2 flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={!badge}
+                disabled={!canHideBadge}
+                onChange={(event) => setBadge(!event.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 accent-[var(--violet)] disabled:opacity-40"
+              />
+              <span>
+                <span className="block text-[0.9375rem] font-medium text-ink">
+                  Take &ldquo;Made with Marktmorgen&rdquo; off the foot of my page
+                </span>
+                <span className="field-hint mt-1 block">
+                  {canHideBadge
+                    ? "Your page carries your name and nothing of ours. Leaving Pro puts it back, and your choice here is kept for if you return."
+                    : "On Pro. Every page keeps the line until then — it is how a store brings us the next creator, which is part of what the lower price is."}
+                </span>
+              </span>
+            </label>
+          </fieldset>
+
           {status.kind === "error" ? (
             <p className="notice notice-error" role="alert">{status.message}</p>
           ) : null}
@@ -352,6 +388,7 @@ export function LookEditor({
                 onClick={() => {
                   setTheme(look.theme);
                   setAccent(look.accent);
+                  setBadge(look.badge);
                   setStatus({ kind: "idle" });
                 }}
                 className="btn btn-ghost"
