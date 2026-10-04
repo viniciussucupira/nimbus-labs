@@ -23,13 +23,14 @@
 import { createHash, randomBytes } from "node:crypto";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { MAX_IMPORT, MAX_LEADS } from "@/lib/contact-rules";
 
-/** How many addresses one store's list may hold. */
-export const MAX_LEADS = 100_000;
 /** How many product names one address keeps. */
 const MAX_TITLES = 20;
-/** How many addresses one import may bring. */
-export const MAX_IMPORT = 5_000;
+
+// Re-exported so the many callers that import them from here keep working;
+// they are declared in lib/contact-rules.ts, which a page may import too.
+export { MAX_IMPORT, MAX_LEADS };
 
 export type ContactSource = "free" | "buyer" | "import";
 

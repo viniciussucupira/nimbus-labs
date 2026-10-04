@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/icons";
+import { listSizeWords } from "@/lib/contact-rules";
 import { HOME_QUESTIONS } from "@/lib/home-faq";
 import {
   PLAN_NAMES,
@@ -408,7 +409,7 @@ const INCLUDED = [
   "Mailchimp, Kit, beehiiv or MailerLite built in, and webhooks for Zapier or Make",
   "A team of you plus up to five people per store, each with a role, and notifications of sales on your phone",
   "Sign-in without passwords, and a full refund that closes access by itself",
-  "Free products that build an email list you can download",
+  `Free products that build an email list you can download, up to ${listSizeWords()} people on it`,
   "Your list, products and past buyers brought over from another platform, from a spreadsheet",
   `Product descriptions and course outlines drafted with AI from your own words, ${AI_MONTHLY.creator} drafts a month (${AI_MONTHLY.trial} during the free trial)`,
 ];
@@ -466,7 +467,7 @@ function proGroups(domains: boolean): PlanGroup[] {
     {
       icon: "mail",
       title: "Write to your own list from here",
-      body: `One-off emails and sequences that send themselves after someone joins or buys — up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month, sent from your name, with replies coming to you.`,
+      body: `A list of up to ${listSizeWords()} people, with one-off emails and sequences that send themselves after someone joins or buys — up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} sends a month, from your name, and replies coming to you.`,
     },
     domains
       ? {
