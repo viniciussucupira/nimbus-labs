@@ -25,7 +25,7 @@ import {
   SHARE_PROBLEMS,
   creatorKeeps,
 } from "@/lib/partner-share";
-import type { Affiliate, AffiliateStatus, LineStatus, Payout } from "@/lib/affiliates";
+import type { Affiliate, AffiliateStatus, Credit, LineStatus, Payout } from "@/lib/affiliates";
 import { StoreField } from "@/components/studio-store-pin";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
@@ -93,8 +93,26 @@ type LineView = {
   rate: number;
   commission: number;
   status: LineStatus;
+  /** What tied the sale to them: a click, a code, the buyer, a partner share. */
+  how: Credit;
   /** What the sale was paid in. */
   currency: string;
+};
+
+/**
+ * How a sale reached them, in the creator's words.
+ *
+ * Shown because three of these four were invisible: a creator could not tell
+ * a sale their affiliate's link brought from one their code brought with no
+ * click at all, or from a buyer who had been theirs for a year, or from a
+ * partner's standing share. Four different things were all just "a sale", and
+ * a feature nobody can see the effect of is a feature nobody switches on.
+ */
+const CREDIT_WORDS: Record<Credit, string> = {
+  click: "Their link",
+  code: "Their code",
+  buyer: "A buyer who was already theirs",
+  partner: "Partner share",
 };
 
 /** An amount in the currency it was paid in (lib/money.ts). */
@@ -461,6 +479,31 @@ export function AffiliateStudio({
               It is corrected the next time this page opens.
             </p>
           ) : null}
+          {/*
+            What brought each sale, counted. Three of the four routes were
+            invisible before this: a creator could see their affiliates earning
+            and not see that eleven of those sales came from a code nobody
+            clicked, or from buyers who had been theirs for a year. A thing
+            whose effect cannot be seen is a thing nobody switches on.
+          */}
+          {lines.length ? (
+            <ul className="mt-3 flex flex-wrap gap-2 text-xs">
+              {(["click", "code", "buyer", "partner"] as const)
+                .map((how) => ({ how, rows: lines.filter((l) => l.how === how && l.commission > 0) }))
+                .filter(({ rows }) => rows.length)
+                .map(({ how, rows }) => (
+                  <li key={how} className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-paper px-3 ring-1 ring-line">
+                    <span className="font-semibold text-ink">{CREDIT_WORDS[how]}</span>
+                    <span className="text-ink-soft">
+                      {`${rows.length} ${rows.length === 1 ? "sale" : "sales"} · ${money(
+                        rows.reduce((sum, r) => sum + r.commission, 0),
+                        currency,
+                      )}`}
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          ) : null}
           {lines.length === 0 ? (
             <p className="mt-2 text-sm text-ink-soft">None yet. Each one appears here once Stripe says it is paid.</p>
           ) : (
@@ -470,7 +513,7 @@ export function AffiliateStudio({
                   <span className="min-w-0">
                     <span className="block font-semibold text-ink">{line.title}</span>
                     <span className="block text-xs text-ink-soft [overflow-wrap:anywhere]">
-                      {`${day(line.at)} · ${who.get(line.aff)?.email ?? "A removed affiliate"} · ${money(line.base, line.currency)} before tax · ${line.rate}%`}
+                      {`${day(line.at)} · ${who.get(line.aff)?.email ?? "A removed affiliate"} · ${money(line.base, line.currency)} before tax · ${line.rate}% · ${CREDIT_WORDS[line.how]}`}
                       {line.refunded ? ` · ${money(line.refunded, line.currency)} refunded` : ""}
                     </span>
                   </span>

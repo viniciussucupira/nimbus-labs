@@ -272,3 +272,44 @@ test("an invitation cannot be used to attach a share nobody checked", () => {
   assert.match(body, /shareProblem\(/, "the invite path has to run the same cap");
   assert.ok(body.indexOf("shareProblem(") < body.indexOf("invitePartner("), "and run it before sending anything");
 });
+
+// ---- a moat switched off is not a moat ---------------------------------
+
+test("the creator can see which of the four routes brought each sale", () => {
+  // Three of these were invisible. A creator saw their affiliates earning and
+  // could not tell a sale the link brought from one a code brought with no
+  // click at all, from a buyer who had been theirs for a year, or from a
+  // partner's standing share. Four different things all read as "a sale", and
+  // the three new ones are exactly the ones worth switching on.
+  const studio = readFileSync(join(process.cwd(), "components/affiliate-studio.tsx"), "utf8");
+  assert.match(studio, /const CREDIT_WORDS: Record<Credit, string>/, "each route needs a name a creator recognises");
+  for (const words of ["Their link", "Their code", "A buyer who was already theirs", "Partner share"]) {
+    assert.ok(studio.includes(words), `the book should be able to say "${words}"`);
+  }
+  assert.match(studio, /CREDIT_WORDS\[line\.how\]/, "and say it on the line itself");
+
+  const page = readFileSync(join(process.cwd(), "app/studio/affiliates/page.tsx"), "utf8");
+  assert.match(page, /how: line\.how/, "which means the page has to pass it through");
+});
+
+test("and see the four counted, which is the number that argues for itself", () => {
+  const studio = readFileSync(join(process.cwd(), "components/affiliate-studio.tsx"), "utf8");
+  const at = studio.indexOf('["click", "code", "buyer", "partner"] as const');
+  assert.ok(at > 0, "the four routes should be counted above the book");
+  const block = studio.slice(at, at + 900);
+  assert.match(block, /l\.how === how && l\.commission > 0/, "counting what actually earned, not what was written down");
+  assert.match(block, /rows\.reduce\(\(sum, r\) => sum \+ r\.commission, 0\)/, "with the money beside the count");
+  assert.match(block, /filter\(\(\{ rows \}\) => rows\.length\)/, "and no empty row for a route nobody used");
+});
+
+test("no number is invented for a store that has the bond switched off", () => {
+  // The tempting thing here was a counterfactual: "you would have earned X."
+  // It cannot be honest. With the bond off, nothing is written down, so there
+  // is nothing to count — and recording buyers against affiliates anyway, for
+  // a creator who did not ask for it, would be collecting what we are not
+  // using. The switch says what it does; the figures stay real.
+  const bond = readFileSync(join(process.cwd(), "lib/affiliate-bond.ts"), "utf8");
+  assert.match(bond, /if \(!bondsBuyers\(store\)/, "nothing is remembered unless the creator asked for it");
+  const studio = readFileSync(join(process.cwd(), "components/affiliate-studio.tsx"), "utf8");
+  assert.doesNotMatch(studio, /would have earned|could have earned|missed out/i, "no invented counterfactual");
+});

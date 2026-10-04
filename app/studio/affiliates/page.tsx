@@ -144,6 +144,7 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
             commission: line.commission,
             currency: line.currency,
             status: line.status,
+            how: line.how,
           }))}
           payouts={book?.payouts ?? []}
           refundsChecked={book?.refundsChecked ?? true}
