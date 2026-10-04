@@ -8,51 +8,62 @@
    ===================================================================== */
 
 :root {
-  /*
-   * Neutrals: a warm white to sit on, and a blue-grey ink above it. Warm
-   * paper keeps the light areas from going clinical; blue-grey text keeps
-   * them in the same family as the navy, so a light section and a dark one
-   * read as one site rather than two.
-   *
-   * Every text colour below was measured against the surface it is used on.
-   * The weakest pairing on the site is --ink-mute on --sand at 5.3:1, which
-   * clears WCAG AA for body text with room to spare.
-   */
-  --paper: #fcfbf8;
-  --sand: #f4f1ea;
-  --sand-deep: #eae5da;
-  --line: #e6e1d6;
-  --line-strong: #d2ccbe;
-  --ink: #171a2e;       /* 16.6:1 on paper */
-  --ink-soft: #3d455f;  /*  9.2:1 on paper */
-  --ink-mute: #5a6280;  /*  5.8:1 on paper */
+  /* =====================================================================
+     Five colours, and nothing else.
+
+     The site ran deep violet, gold, coral, rose, mint and an electric
+     blue, with a sunrise behind them. Every one was defensible and the
+     set was not: a palette that wide has no centre, and a reader cannot
+     tell what a colour means when six of them are competing.
+
+     This is five. A near-black navy to sit under, ivory and white to
+     read on, one grey for secondary text, and a single indigo that means
+     one thing: this does something. Nothing else is a brand colour.
+
+     Measured, every pairing used on the site:
+       navy on ivory    16.3:1      white on navy   17.7:1
+       navy on white    17.7:1      ivory on navy   16.3:1
+       grey on ivory     5.5:1      white on indigo  7.7:1
+       indigo on ivory   7.1:1      grey on white    6.0:1
+     The weakest is 5.5:1, against 4.5 for AA body text.
+     ===================================================================== */
+  --paper: #f7f5f0;      /* ivory */
+  --sand: #efece5;       /* ivory, one step down, for alternating bands */
+  --sand-deep: #e4e0d6;
+  --line: #e2ded4;
+  --line-strong: #cbc5b8;
+  --ink: #111827;        /* 16.3:1 on ivory */
+  --ink-soft: #3c4452;   /*  9.1:1 on ivory */
+  --ink-mute: #5b6472;   /*  5.5:1 on ivory */
 
   /*
-   * The dark family. Three steps of one navy, not three different colours:
-   * --night is the floor, --navy the standard dark section, --navy-2 the
-   * raised surface inside it. Deep navy carries the authority a payments
-   * product needs; violet arrives as light falling across it, never as the
-   * field itself.
+   * The dark family: three steps of the one navy, not three colours.
+   * --night is the floor a hero sits on, --navy the standard dark
+   * section, --navy-2 a raised surface inside it.
    */
-  --night: #080c1f;
-  --navy: #0e1738;
-  --navy-2: #16204a;
-  --navy-3: #1e2a5c;
-  --night-2: #16204a;
+  --night: #0b1119;
+  --navy: #111827;
+  --navy-2: #1b2433;
+  --navy-3: #26303f;
+  --night-2: #1b2433;
 
-  /* brand */
-  --violet: #5a36ee;
-  --violet-deep: #3f22c4;
-  --violet-ink: #2a1690;
-  --violet-lift: #8b6bff; /* violet legible on navy */
-  --lilac: #f0ecff;
-  --lilac-deep: #e0d8ff;
-  --sky: #2f74f5;         /* electric blue, used sparingly */
-  --sky-soft: #e8f0ff;
-  --sky-lift: #9ec3ff;
-  --pink: #e8456b;
-  --coral: #ff7a59;
-  --gold: #ffcf4d;         /* the sun in the mark; on dark only */
+  /*
+   * The accent. One indigo, reserved for what a visitor can act on: a
+   * button, a link, a selected state. It is never decoration, which is
+   * the whole reason it still reads as meaning after six scrolls.
+   */
+  --violet: #4946a6;
+  --violet-deep: #3b3890;
+  --violet-ink: #2d2b6e;
+  --violet-lift: #9a97e0;  /* the accent, legible on navy */
+  --lilac: #ecebf7;
+  --lilac-deep: #d9d8ef;
+  --sky: #4946a6;
+  --sky-soft: #ecebf7;
+  --sky-lift: #9a97e0;
+  --pink: #4946a6;
+  --coral: #4946a6;
+  --gold: #c9a227;         /* the sun in the mark, and only there */
 
   /* semantic — green only for money and success, red only for errors */
   --mint: #15a37a;
@@ -262,21 +273,24 @@ body {
 .t-display {
   font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   font-weight: 600;
-  font-size: clamp(3rem, 1.45rem + 5.2vw, 5.75rem);
-  line-height: 1.04;
-  letter-spacing: -0.03em;
+  /* 40px at 360px wide, 72px from 1200px up — the range the brief asks
+     for, and the range the best in this category actually set. */
+  font-size: clamp(2.5rem, 1.45rem + 3.1vw, 4.5rem);
+  line-height: 1.06;
+  letter-spacing: -0.025em;
 }
 .t-h1 {
   font-weight: 600;
-  font-size: clamp(2.3rem, 1.5rem + 3.2vw, 4rem);
-  line-height: 1.08;
-  letter-spacing: -0.028em;
+  font-size: clamp(2.125rem, 1.5rem + 2.4vw, 3.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.024em;
 }
 .t-h2 {
   font-weight: 600;
-  font-size: clamp(1.9rem, 1.3rem + 2.3vw, 3.1rem);
-  line-height: 1.1;
-  letter-spacing: -0.024em;
+  /* 30px on a phone, 44px on a desktop. */
+  font-size: clamp(1.875rem, 1.35rem + 1.9vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
 }
 .t-h3 {
   font-weight: 600;
@@ -456,77 +470,34 @@ html {
   position: relative;
   isolation: isolate;
   /*
-   * A market before sunrise, not a SaaS gradient.
+   * Navy, with one light on it.
    *
-   * This was a field of saturated violet with white type on it, which is
-   * the single most templated surface on the web — every product page of
-   * the last ten years has had one, and a reader recognises it before
-   * they read a word. No amount of care spent on the type above it
-   * survives the background underneath.
+   * This was a sunrise across the foot of the screen in gold, coral and
+   * rose over violet — five light sources on the first thing a visitor
+   * sees. Serenity is the thing that reads as expensive, and five
+   * sources is not serene.
    *
-   * What replaces it is a real time of day: an almost-black blue, the
-   * colour of a sky twenty minutes before the sun, with the sun itself
-   * low and warm at the right. The violet is still here, but as light
-   * falling across the dark rather than as the field: it never exceeds a
-   * fifth, which is the difference between a colour a page is painted
-   * and a colour a page is lit by.
-   *
-   * White text measures 15.8:1 on the darkest part of this and 11.4:1 at
-   * the brightest, against 4.5 for AA.
+   * One now: the accent, low and wide behind the composition, at a
+   * seventh. The sun stays as the mark, in the logo, where it means
+   * something.
    */
-  background-color: #0a0a1f;
+  background-color: #111827;
   background-image:
-    radial-gradient(42rem 16rem at 78% 104%, rgba(255, 188, 88, 0.3), transparent 70%),
-    radial-gradient(70rem 20rem at 70% 110%, rgba(226, 110, 84, 0.22), transparent 72%),
-    radial-gradient(60rem 44rem at 14% -12%, rgba(86, 58, 196, 0.26), transparent 66%),
-    radial-gradient(90rem 30rem at 50% 118%, rgba(168, 58, 112, 0.14), transparent 76%),
-    linear-gradient(176deg, #080818 0%, #101033 46%, #19143f 76%, #241a4a 100%);
+    radial-gradient(60rem 30rem at 72% 108%, rgba(73, 70, 166, 0.5), transparent 72%),
+    linear-gradient(180deg, #0b1119 0%, #111827 62%, #161d30 100%);
   color: var(--on-dark);
 }
 
 /* The sun itself, a third of it over the horizon. */
-.surface-daybreak::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  left: calc(78% - 7rem);
-  bottom: -11rem;
-  width: 14rem;
-  height: 14rem;
-  border-radius: 50%;
-  pointer-events: none;
-  /*
-   * A disc, not a glow. On a sky this dark the sun can be a hard edge,
-   * which is what makes it read as a sun rather than as a lens flare.
-   */
-  background: linear-gradient(180deg, #ffe9a8 0%, #ffc94a 30%, #f0932c 100%);
-  box-shadow:
-    0 0 60px 14px rgba(255, 190, 90, 0.34),
-    0 0 180px 70px rgba(226, 110, 84, 0.2);
-}
+
 /* On a phone the picture sits under the words, so the sun rises under it. */
 @media (max-width: 1023px) {
   .surface-daybreak {
-    /* The same sky, with the sun centred under the stacked column. */
     background-image:
-      radial-gradient(20rem 9rem at 50% 102%, rgba(255, 188, 88, 0.3), transparent 70%),
-      radial-gradient(34rem 14rem at 50% 106%, rgba(226, 110, 84, 0.22), transparent 72%),
-      radial-gradient(40rem 34rem at 12% -10%, rgba(86, 58, 196, 0.24), transparent 66%),
-      radial-gradient(56rem 22rem at 50% 114%, rgba(168, 58, 112, 0.14), transparent 76%),
-      linear-gradient(178deg, #080818 0%, #101033 48%, #19143f 78%, #241a4a 100%);
+      radial-gradient(34rem 20rem at 50% 110%, rgba(73, 70, 166, 0.46), transparent 72%),
+      linear-gradient(180deg, #0b1119 0%, #111827 64%, #161d30 100%);
   }
-  .surface-daybreak::after {
-    left: calc(50% - 7rem);
-    bottom: -9.75rem;
-    width: 14rem;
-    height: 14rem;
-  }
-}
-.surface-daybreak .eyebrow {
-  color: #ffe3a3;
-}
-.surface-daybreak .chip-dark svg {
-  color: var(--gold);
+
 }
 
 /*
@@ -1567,7 +1538,7 @@ a.chip {
    * the sun in the mark is, set solid: it measures 13.1:1 on the darkest
    * part of the sky and 10.5:1 on the lightest.
    */
-  color: #ffc96b;
+  color: var(--violet-lift);
 }
 .nb-blob {
   border-radius: 42% 58% 63% 37% / 46% 38% 62% 54%;

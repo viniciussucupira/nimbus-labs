@@ -576,7 +576,6 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
           yearly={yearly}
         />
       </div>
-      <CostAtVolume />
       <div className="card-flat mt-6 grid gap-4 p-6 text-sm sm:grid-cols-3 sm:p-7">
         <p className="flex gap-2 text-ink-soft">
           <Icon name="clock" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
@@ -600,99 +599,6 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
           </span>
         </p>
       </div>
-    </div>
-  );
-}
-
-/*
- * What the platform takes as sales grow, worked out from published prices.
- * Card processing is left out because every option pays it, to Stripe.
- */
-const AVERAGE_PRICE = 27;
-const SALES_LEVELS = [20, 75, 370];
-const GUMROAD_RATE = 0.1;
-const GUMROAD_PER_SALE = 0.5;
-
-function money(value: number): string {
-  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
-
-function CostAtVolume() {
-  const flat = PLAN_PRICES.creator.month / 100;
-  return (
-    <div className="card-flat mt-6 p-6 sm:p-7">
-      <p className="font-semibold text-ink">What you pay as your sales grow</p>
-      {/* This table is the monthly price on every row, whichever way the
-          switch above it is set: paying yearly changes what each platform
-          costs, and a comparison where one column quietly moved to a yearly
-          rate would be worth nothing. */}
-      <p className="mt-1 text-sm text-ink-soft">{`Each month, at a $${AVERAGE_PRICE} average price, comparing monthly billing on every platform. Card processing is not included: every option pays it on top.`}</p>
-      {/*
-        Four money columns do not fit a 320px screen, and a table that is cut
-        off at the edge hides the column the whole comparison turns on. Above
-        640px it stays a table, because that is what it is; below, each level
-        of sales becomes its own small card with the three platforms listed
-        under it, so nothing is clipped and nothing has to be scrolled
-        sideways to be found.
-      */}
-      <table className="mt-4 hidden w-full text-left text-sm tabular-nums sm:table">
-        <caption className="sr-only">What each platform takes each month at three levels of sales</caption>
-        <thead>
-          <tr className="text-ink-mute">
-            <th scope="col" className="py-2 pr-2 font-semibold">Your sales</th>
-            <th scope="col" className="px-2 py-2 font-semibold text-violet-deep">Marktmorgen</th>
-            <th scope="col" className="px-2 py-2 font-semibold">Stan Creator</th>
-            <th scope="col" className="py-2 pl-2 font-semibold">Gumroad</th>
-          </tr>
-        </thead>
-        <tbody>
-          {SALES_LEVELS.map((n) => {
-            const revenue = n * AVERAGE_PRICE;
-            const gumroad = revenue * GUMROAD_RATE + n * GUMROAD_PER_SALE;
-            return (
-              <tr key={n} className="border-t border-line">
-                <th scope="row" className="py-2.5 pr-2 font-normal text-ink">
-                  <span className="font-semibold">{money(revenue)}</span>
-                  <span className="block text-xs text-ink-mute">{`${n} sales`}</span>
-                </th>
-                <td className="px-2 py-2.5 font-semibold text-violet-deep">{money(flat)}</td>
-                <td className="px-2 py-2.5 text-ink">{money(flat)}</td>
-                <td className="py-2.5 pl-2 text-ink">{money(gumroad)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      <ul className="mt-4 grid gap-3 sm:hidden">
-        {SALES_LEVELS.map((n) => {
-          const revenue = n * AVERAGE_PRICE;
-          const gumroad = revenue * GUMROAD_RATE + n * GUMROAD_PER_SALE;
-          return (
-            <li key={n} className="rounded-[var(--r-md)] border border-line p-4">
-              <p className="flex items-baseline justify-between gap-3">
-                <span className="font-semibold text-ink tabular-nums">{money(revenue)}</span>
-                <span className="text-xs text-ink-mute">{`${n} sales a month`}</span>
-              </p>
-              <dl className="mt-3 grid gap-1.5 border-t border-line pt-3 text-sm tabular-nums">
-                {[
-                  { k: "Marktmorgen", v: money(flat), ours: true },
-                  { k: "Stan Creator", v: money(flat), ours: false },
-                  { k: "Gumroad", v: money(gumroad), ours: false },
-                ].map((r) => (
-                  <div key={r.k} className="flex items-baseline justify-between gap-3">
-                    <dt className={r.ours ? "font-semibold text-violet-deep" : "text-ink-soft"}>{r.k}</dt>
-                    <dd className={r.ours ? "font-semibold text-violet-deep" : "text-ink"}>{r.v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </li>
-          );
-        })}
-      </ul>
-      <p className="mt-3 text-xs text-ink-mute">
-        {`Gumroad takes 10% plus 50 cents on a sale you bring yourself and has no monthly fee, so under about nine sales a month it costs less. Prices read on each company's own pricing page on September 20, 2026.`}
-      </p>
     </div>
   );
 }

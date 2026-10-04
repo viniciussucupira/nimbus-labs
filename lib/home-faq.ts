@@ -17,8 +17,8 @@ export const HOME_QUESTIONS = [
     a: "You do. Payments go to your own Stripe account through direct charges, so payouts follow your Stripe settings and we never sit between you and your buyer's money. We charge a monthly subscription and take 0% of your sales.",
   },
   {
-    q: "What happens if Marktmorgen disappears?",
-    a: "Your Stripe account, your customers and your payouts stay yours, because they were never held by us. Your email list downloads as a file at any time, and a shutdown would come with notice in writing.",
+    q: "What happens to my payments and customer data if I leave?",
+    a: "Your Stripe account, its customers and its payout history stay with you, because they were never held by us: every charge was made on your account. Your email list, your buyers and your product list download as files at any time. What does not travel is what runs here — your store page, your course pages and the links that deliver your files — so buyers would need somewhere new to collect what they bought. A shutdown would come with notice in writing."
   },
   {
     q: "What does Stan have that Marktmorgen does not, yet?",

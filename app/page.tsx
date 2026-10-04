@@ -75,7 +75,7 @@ const REASONS: {
   },
   {
     icon: "bolt",
-    title: "Checked against Stripe, not against a page",
+    title: "Reliable access after payment",
     body: "A file downloads, a course opens, a booked call lands on both calendars — but only after we ask Stripe's own record whether the payment settled, and we ask again on every download. A link somebody guesses or forwards opens nothing. If the buyer never comes back from checkout, the confirmation reaches them by email within minutes.",
     example:
       "A buyer on a new phone types the email address they paid with, and every purchase from that store comes back to them — a month or a year later, for as long as the store is open and the product is still there.",
@@ -184,12 +184,6 @@ const COMPARE = [
   { row: "Changing your store address", stan: "Old links forwarded on a best-effort basis", nimbus: "Old addresses keep working, up to 10 held at once", key: false },
 ];
 
-const SPEED = [
-  { label: "Marktmorgen demo store", score: 98, shown: "97–100", ours: true },
-  { label: "Stan store A", score: 57, shown: "57", ours: false },
-  { label: "Stan store B", score: 57, shown: "57", ours: false },
-  { label: "Stan store C", score: 58, shown: "58", ours: false },
-];
 
 export default function Home() {
   return (
@@ -210,8 +204,8 @@ export default function Home() {
                 Your money.
               </h1>
               <p className="t-lead measure mt-7 text-white/80">
-                Files, courses, memberships and booked calls, sold from the link in your bio. The card is charged on
-                your own Stripe account, so the money is yours before it is anybody else&apos;s.
+                Sell digital products, courses, memberships and booked sessions from one well-made storefront.
+                Payments are processed through your own Stripe account.
               </p>
               {/*
                 On a phone the two calls to action run the width of the
@@ -290,9 +284,9 @@ export default function Home() {
             {[
               {
                 icon: "gauge" as IconName,
-                figure: "97\u2013100",
-                title: "Google PageSpeed",
-                body: "Mobile performance on the demo store, measured September 17, 2026.",
+                figure: "No account",
+                title: "For your buyers",
+                body: "They pay and receive what they bought. Nothing to sign up for, no password to keep.",
               },
               {
                 icon: "lock" as IconName,
@@ -310,7 +304,7 @@ export default function Home() {
                 icon: "download" as IconName,
                 figure: "200 GB",
                 title: "Of downloads a month",
-                body: "Files up to 5 GB each. Nothing is cut off if you pass it.",
+                body: "Files up to 5 GB each. Past it we write to you rather than cutting anything off.",
               },
             ].map((f) => (
               <li key={f.title} className="reveal flex gap-3.5">
@@ -349,7 +343,7 @@ export default function Home() {
         <section className="section">
           <div className="container-page">
             <div className="reveal max-w-2xl">
-              <h2 className="t-h2 balance">What makes this different</h2>
+              <h2 className="t-h2 balance">Built for the people who use it</h2>
             </div>
 
             <div className="mt-14 space-y-16 sm:mt-16 sm:space-y-20">
@@ -408,7 +402,7 @@ export default function Home() {
               <div className="lg:w-[17rem] lg:shrink-0">
                 <span className="tag tag-next">Not here yet</span>
                 <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                  Not built yet, so not sold. Named here rather than left for you to find.
+                  Currently unavailable. Each one is explained on the feature page.
                 </p>
               </div>
               <ul className="flex flex-wrap gap-2.5">
@@ -602,55 +596,22 @@ export default function Home() {
               </ul>
             </div>
 
-            <div className="reveal mt-6 grid gap-6 lg:grid-cols-[1.1fr_1fr]">
-              <div className="card-flat p-6 sm:p-7">
-                <div className="flex items-center gap-3">
-                  <span className="icon-tile icon-tile-sm">
-                    <Icon name="gauge" size={18} />
-                  </span>
-                  <p className="font-semibold text-ink">Speed on a phone</p>
-                </div>
-                <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                  Google PageSpeed Insights, mobile performance score, measured on September 17, 2026. Three public Stan
-                  stores chosen at random, same tool, same day. The demo store had no photographs on it when it was
-                  measured; it has them now, and photographs lower the score.
-                </p>
-                <ul className="mt-5 space-y-3">
-                  {SPEED.map((s) => (
-                    <li key={s.label} className="grid grid-cols-[8.5rem_1fr_3.5rem] items-center gap-3 text-[0.9375rem]">
-                      <span className={s.ours ? "font-semibold text-ink" : "text-ink-soft"}>{s.label}</span>
-                      <span className="h-2.5 overflow-hidden rounded-full bg-white ring-1 ring-line">
-                        <span
-                          className={`block h-full rounded-full ${s.ours ? "bg-violet-brand" : "bg-ink-mute/45"}`}
-                          style={{ width: `${s.score}%` }}
-                        />
-                      </span>
-                      <span className={`text-right tabular-nums ${s.ours ? "font-semibold text-ink" : "text-ink-soft"}`}>
-                        {s.shown}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div className="card-flat flex flex-col justify-between p-6 sm:p-7">
-                <div>
-                  <p className="font-semibold text-ink">Where Stan is ahead today</p>
-                  <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                    Stan has PayPal at checkout, affiliates paid with no PayPal account of your own, automatic Instagram
-                    replies, Zoom links made for each booking and webinar, and an iPhone app. We do not have those, and we say so on every page that could make you think otherwise.
-                  </p>
-                </div>
-                <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3">
-                  <Link href="/proof/everything" className="link-arrow text-[0.9375rem]">
-                    Feature by feature
-                    <Icon name="arrow-right" size={16} className="arrow" />
-                  </Link>
-                  <Link href="/proof/compare" className="link-arrow text-[0.9375rem]">
-                    The full comparison
-                    <Icon name="arrow-right" size={16} className="arrow" />
-                  </Link>
-                </div>
-              </div>
+            {/*
+              The speed chart that used to sit here measured the demo store
+              before it had any photographs on it, and said so in its own
+              caption — a number that discredits itself in the sentence
+              under it is worth less than no number. It comes back when
+              there is a measurement of the page as it stands.
+            */}
+            <div className="reveal mt-8 flex flex-wrap items-center gap-x-8 gap-y-3">
+              <Link href="/proof/everything" className="link-arrow text-[0.9375rem]">
+                Feature by feature
+                <Icon name="arrow-right" size={16} className="arrow" />
+              </Link>
+              <Link href="/proof/compare" className="link-arrow text-[0.9375rem]">
+                The full comparison
+                <Icon name="arrow-right" size={16} className="arrow" />
+              </Link>
             </div>
           </div>
         </section>
