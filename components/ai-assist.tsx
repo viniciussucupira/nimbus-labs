@@ -81,7 +81,7 @@ export function AiAssist<T>({
 
   return (
     <details className="rounded-2xl border border-violet-brand/25 bg-lilac/40 px-4 py-3">
-      <summary className="flex min-h-[40px] cursor-pointer items-center gap-2 text-sm font-semibold text-violet-deep">
+      <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold text-violet-deep">
         <Icon name="sparkle" size={16} />
         {title}
       </summary>

@@ -213,7 +213,8 @@ export function FunnelEditor({
       <div className="mt-6 rounded-2xl bg-paper p-4 ring-1 ring-line sm:p-5">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-ink-mute">The path</p>
         <div className="mt-3 flex items-center gap-2 text-sm">
-          <span className="inline-flex min-h-[32px] items-center gap-2 rounded-full bg-white px-3 font-semibold text-ink ring-1 ring-line">
+          {/* A badge, not a button: the 44px floor is for things a thumb presses. */}
+          <span className="inline-flex min-h-8 items-center gap-2 rounded-full bg-white px-3 font-semibold text-ink ring-1 ring-line">
             <Icon name="card" size={16} />
             <span className="max-w-[12rem] truncate">{owner.title}</span>
             <span className="text-ink-mute">{ownerPrice}</span>

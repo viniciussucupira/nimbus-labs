@@ -149,11 +149,11 @@ export function SaleEditor({
           <p className="text-xs text-ink-soft">In your computer&apos;s time zone. At most {MAX_SALE_DAYS} days.</p>
           <fieldset>
             <legend className="field-label">What it covers</legend>
-            <label className="mt-2 flex min-h-[40px] items-center gap-3 text-sm text-ink">
+            <label className="mt-2 flex min-h-11 items-center gap-3 text-sm text-ink">
               <input type="radio" checked={all} onChange={() => setAll(true)} className="h-4 w-4" />
               Every product it can cover, including ones added while it runs
             </label>
-            <label className="flex min-h-[40px] items-center gap-3 text-sm text-ink">
+            <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
               <input type="radio" checked={!all} onChange={() => setAll(false)} className="h-4 w-4" />
               Only the ones I pick
             </label>

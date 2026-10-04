@@ -140,7 +140,7 @@ function CommentItem({
               <input type="hidden" name="parent" value={comment.id} />
               <label htmlFor={`reply-text-${comment.id}`} className="sr-only">{`Reply to ${name}`}</label>
               <div className="flex gap-2">
-                <input id={`reply-text-${comment.id}`} name="text" required maxLength={MAX_COMMENT_TEXT} placeholder={`Reply to ${name}…`} className="st-field min-w-0 flex-1 !min-h-[40px] !py-2 text-sm" autoComplete="off" />
+                <input id={`reply-text-${comment.id}`} name="text" required maxLength={MAX_COMMENT_TEXT} placeholder={`Reply to ${name}…`} className="st-field min-w-0 flex-1 !min-h-11 !py-2 text-sm" autoComplete="off" />
                 <button type="submit" className="cm-pill">Reply</button>
               </div>
             </form>

@@ -119,7 +119,7 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
     <footer className="surface-night on-dark overflow-hidden">
       <div className="container-page grid gap-12 py-16 lg:grid-cols-[15rem_1fr] lg:gap-16 lg:py-20">
         <div className="max-w-xs">
-          <Link href="/" className="inline-block rounded-[10px]" aria-label="Marktmorgen, home">
+          <Link href="/" className="inline-flex min-h-11 items-center rounded-[10px]" aria-label="Marktmorgen, home">
             <Logo tone="light" />
           </Link>
           <p className="mt-4 text-[0.9375rem] leading-relaxed text-white/70">

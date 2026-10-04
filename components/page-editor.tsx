@@ -524,7 +524,7 @@ export function PageEditor({
               type="button"
               aria-pressed={view === v}
               onClick={() => setView(v)}
-              className={`min-h-[40px] rounded-full px-4 text-sm font-semibold transition-colors ${view === v ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-ink-soft hover:text-ink"}`}
+              className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition-colors ${view === v ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-ink-soft hover:text-ink"}`}
             >
               {v === "build" ? "Build" : "Preview"}
             </button>
@@ -546,7 +546,7 @@ export function PageEditor({
                 type="button"
                 aria-pressed={wide === w}
                 onClick={() => setWide(w)}
-                className={`min-h-11 rounded-full px-3 font-semibold ring-1 ${wide === w ? "bg-lilac text-violet-ink ring-violet-brand/40" : "text-ink-soft ring-line"}`}
+                className={`inline-flex min-h-11 items-center rounded-full px-3 font-semibold ring-1 ${wide === w ? "bg-lilac text-violet-ink ring-violet-brand/40" : "text-ink-soft ring-line"}`}
               >
                 {w ? "Wide" : "Phone"}
               </button>

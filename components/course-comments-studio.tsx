@@ -173,7 +173,7 @@ export function CourseCommentsStudio({
                 {!c.fromCreator ? (
                   <button
                     type="button"
-                    className="min-h-[32px] text-ink-soft underline underline-offset-4 hover:text-violet-deep"
+                    className="inline-flex min-h-11 items-center text-ink-soft underline underline-offset-4 hover:text-violet-deep"
                     disabled={busy !== null}
                     onClick={async () => {
                       if (await act(`hide-${c.id}`, { action: "cm-hide", comment: c.id, hidden: !c.hidden })) {
@@ -186,7 +186,7 @@ export function CourseCommentsStudio({
                 ) : null}
                 <button
                   type="button"
-                  className="min-h-[32px] text-ink-soft underline underline-offset-4 hover:text-danger"
+                  className="inline-flex min-h-11 items-center text-ink-soft underline underline-offset-4 hover:text-danger"
                   disabled={busy !== null}
                   onClick={async () => {
                     if (confirming !== c.id) return setConfirming(c.id);

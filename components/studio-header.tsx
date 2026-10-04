@@ -47,7 +47,7 @@ export function StudioHeader({
         <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <details className="group relative min-w-0">
             <summary
-              className="flex min-h-[40px] min-w-0 cursor-pointer list-none items-center gap-2 rounded-full bg-paper px-3 py-1.5 ring-1 ring-line transition hover:ring-violet-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-brand motion-reduce:transition-none [&::-webkit-details-marker]:hidden"
+              className="flex min-h-11 min-w-0 cursor-pointer list-none items-center gap-2 rounded-full bg-paper px-3 py-1.5 ring-1 ring-line transition hover:ring-violet-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-brand motion-reduce:transition-none [&::-webkit-details-marker]:hidden"
               aria-label={`Store: ${current.name}. Switch store`}
             >
               <span

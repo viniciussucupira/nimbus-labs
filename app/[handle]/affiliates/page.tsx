@@ -407,7 +407,7 @@ export default async function AffiliatesPage({ params, searchParams }: Params) {
 
               <form action="/api/store/affiliates/signout" method="post" className="mt-8">
                 <input type="hidden" name="handle" value={store.handle} />
-                <button type="submit" className="st-footer-link min-h-[44px] text-sm font-semibold">
+                <button type="submit" className="st-footer-link inline-flex min-h-11 items-center text-sm font-semibold">
                   Sign out on this browser
                 </button>
               </form>

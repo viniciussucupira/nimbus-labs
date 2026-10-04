@@ -103,7 +103,7 @@ function One({
               <form action="/api/store/course/comment" method="post">
                 <Fields where={where} action={comment.hidden ? "show" : "hide"} />
                 <input type="hidden" name="id" value={comment.id} />
-                <button type="submit" className="st-footer-link min-h-[32px] font-semibold">
+                <button type="submit" className="st-footer-link inline-flex min-h-11 items-center font-semibold">
                   {comment.hidden ? "Show" : "Hide"}
                 </button>
               </form>
@@ -111,7 +111,7 @@ function One({
             <form action="/api/store/course/comment" method="post">
               <Fields where={where} action="delete" />
               <input type="hidden" name="id" value={comment.id} />
-              <button type="submit" className="st-footer-link min-h-[32px] font-semibold">
+              <button type="submit" className="st-footer-link inline-flex min-h-11 items-center font-semibold">
                 {answers > 0 ? "Delete with its answers" : "Delete"}
               </button>
             </form>

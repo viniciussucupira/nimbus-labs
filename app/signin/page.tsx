@@ -153,7 +153,7 @@ export default async function SignInPage({
       </aside>
 
       <main id="content" className="flex min-h-screen flex-col px-4 py-8 sm:px-8 lg:min-h-0 lg:justify-center lg:py-16">
-        <Link href="/" className="w-fit rounded-[10px] lg:hidden" aria-label="Marktmorgen, home">
+        <Link href="/" className="inline-flex min-h-11 w-fit items-center rounded-[10px] lg:hidden" aria-label="Marktmorgen, home">
           <Logo />
         </Link>
 

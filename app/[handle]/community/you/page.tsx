@@ -87,14 +87,14 @@ export default async function CommunityYouPage({ params, searchParams }: Params)
                 ))}
               </fieldset>
             ) : null}
-            <label className="flex min-h-6 items-start gap-3">
+            <label className="flex min-h-11 items-start gap-3">
               <input type="checkbox" name="dir" value="1" defaultChecked={member.dir} className="mt-0.5 h-5 w-5 shrink-0" />
               <span>
                 <span className="block font-semibold">List me in the member directory</span>
                 <span className="st-muted block text-sm">By this name, with the month you joined. Off unless you check it.</span>
               </span>
             </label>
-            <label className="flex min-h-6 items-start gap-3">
+            <label className="flex min-h-11 items-start gap-3">
               <input type="checkbox" name="mail" value="1" defaultChecked={member.mail} className="mt-0.5 h-5 w-5 shrink-0" />
               <span>
                 <span className="block font-semibold">{`Email me ${store.name}'s announcements and event reminders`}</span>

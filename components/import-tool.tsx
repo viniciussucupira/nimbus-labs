@@ -432,7 +432,7 @@ export function ImportTool({
               type="file"
               accept=".csv,.tsv,.txt,text/csv"
               onChange={(e) => choose(e.target.files?.[0])}
-              className="mx-auto mt-3 block w-full max-w-xs text-sm file:mr-3 file:min-h-[40px] file:cursor-pointer file:rounded-full file:border-0 file:bg-lilac file:px-4 file:font-bold file:text-violet-deep"
+              className="mx-auto mt-3 block w-full max-w-xs text-sm file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-full file:border-0 file:bg-lilac file:px-4 file:font-bold file:text-violet-deep"
             />
             <a href={example} download={`example-${kind}.csv`} className="mt-3 inline-block text-xs font-bold text-ink-soft underline underline-offset-4 hover:text-violet-deep">
               Download an example file

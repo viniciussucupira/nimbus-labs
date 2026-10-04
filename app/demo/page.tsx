@@ -283,17 +283,15 @@ export default function DemoStorePage() {
         <footer className="mt-10 text-center text-sm text-ink-soft">
           <p>
             Store built with{" "}
-            <Link
-              href="/"
-              className="link inline-block py-2"
-            >
+            {/* Inline in the sentence, so it keeps the line's own height. */}
+            <Link href="/" className="link">
               Marktmorgen
             </Link>
           </p>
           <p className="mt-1">
             <Link
               href="/demo/recover"
-              className="link inline-block py-2"
+              className="link inline-flex min-h-11 items-center py-2"
             >
               Bought this already and lost the file?
             </Link>
@@ -301,19 +299,19 @@ export default function DemoStorePage() {
           <p className="mt-1 flex justify-center gap-5">
             <Link
               href="/terms"
-              className="inline-block py-2 underline underline-offset-2 hover:text-violet-deep"
+              className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-violet-deep"
             >
               Terms
             </Link>
             <Link
               href="/privacy"
-              className="inline-block py-2 underline underline-offset-2 hover:text-violet-deep"
+              className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-violet-deep"
             >
               Privacy
             </Link>
             <Link
               href="/refunds"
-              className="inline-block py-2 underline underline-offset-2 hover:text-violet-deep"
+              className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-violet-deep"
             >
               Refunds
             </Link>

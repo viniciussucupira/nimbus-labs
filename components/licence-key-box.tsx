@@ -49,7 +49,7 @@ export function LicenceKeyBox({
             {revoked ? null : (
               <button
                 type="button"
-                className="btn st-btn btn-sm min-h-[40px] self-start sm:self-auto"
+                className="btn st-btn btn-sm inline-flex min-h-11 items-center self-start sm:self-auto"
                 onClick={async () => {
                   try {
                     await navigator.clipboard.writeText(value);

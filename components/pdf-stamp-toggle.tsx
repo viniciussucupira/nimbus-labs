@@ -76,7 +76,7 @@ export function PdfStampToggle({ product }: { product: Product }) {
   const id = `stamp-${product.id}`;
   return (
     <div className="mt-3 rounded-[var(--r-sm)] border border-line bg-white p-4">
-      <label htmlFor={id} className="flex min-h-6 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
+      <label htmlFor={id} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
         <input
           id={id}
           type="checkbox"

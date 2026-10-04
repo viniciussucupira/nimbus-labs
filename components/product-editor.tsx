@@ -391,7 +391,7 @@ function ProductForm({
 
       {free || draft.every ? null : (
         <div className="rounded-2xl border border-line bg-paper p-4">
-          <label htmlFor={`product-pwyw-${id}`} className="flex min-h-[24px] cursor-pointer items-start gap-3">
+          <label htmlFor={`product-pwyw-${id}`} className="flex min-h-11 cursor-pointer items-start gap-3">
             <input
               id={`product-pwyw-${id}`}
               type="checkbox"
@@ -1690,7 +1690,7 @@ export function ProductEditor({
                         onClick={() => toggle(product.id)}
                         aria-expanded={open}
                         aria-controls={panel}
-                        className="group -m-1 flex min-h-[24px] min-w-0 items-baseline gap-2 rounded-lg p-1 text-left font-bold text-ink focus-visible:outline-2 focus-visible:outline-violet-brand"
+                        className="group -m-1 flex min-h-11 min-w-0 items-baseline gap-2 rounded-lg p-1 text-left font-bold text-ink focus-visible:outline-2 focus-visible:outline-violet-brand"
                       >
                         <span
                           aria-hidden="true"

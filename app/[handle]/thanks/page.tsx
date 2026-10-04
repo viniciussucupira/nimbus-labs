@@ -893,7 +893,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                         type="submit"
                         name="answer"
                         value="no"
-                        className="st-footer-link min-h-[44px] px-1 text-sm font-semibold"
+                        className="st-footer-link inline-flex min-h-11 items-center px-1 text-sm font-semibold"
                       >
                         No thanks
                       </button>

@@ -196,7 +196,7 @@ export function CheckoutFieldsEditor({ product }: { product: Product }) {
                 </p>
               )}
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <label htmlFor={`${id}-r`} className="flex min-h-[24px] cursor-pointer items-center gap-2 text-sm text-ink">
+                <label htmlFor={`${id}-r`} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-ink">
                   <input
                     id={`${id}-r`}
                     type="checkbox"

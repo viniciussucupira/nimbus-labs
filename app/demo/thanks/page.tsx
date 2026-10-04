@@ -118,7 +118,7 @@ export default async function DemoThanksPage({
         <p className="mt-8 text-center text-sm">
           <Link
             href="/demo"
-            className="inline-block py-2 font-bold text-violet-deep underline underline-offset-2"
+            className="inline-flex min-h-11 items-center font-bold text-violet-deep underline underline-offset-2"
           >
             Back to the store
           </Link>
@@ -127,7 +127,7 @@ export default async function DemoThanksPage({
           </span>
           <Link
             href="/demo/recover"
-            className="inline-block py-2 font-bold text-violet-deep underline underline-offset-2"
+            className="inline-flex min-h-11 items-center font-bold text-violet-deep underline underline-offset-2"
           >
             Lost your download?
           </Link>

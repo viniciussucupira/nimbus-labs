@@ -167,7 +167,8 @@ export function PaymentsPanel({
                       {members.map((way) => (
                         <li
                           key={way.type}
-                          className="inline-flex min-h-[32px] items-center gap-1.5 rounded-full bg-mint-soft px-3 py-1 text-sm font-semibold text-mint-deep"
+                          /* A badge, not a button: the 44px floor is for things a thumb presses. */
+                          className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-mint-soft px-3 py-1 text-sm font-semibold text-mint-deep"
                           title={way.note || undefined}
                         >
                           <Icon name="check" size={14} />

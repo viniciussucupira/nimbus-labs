@@ -1141,10 +1141,10 @@ html {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  /* Tall enough to be a comfortable target wherever one of these is a
-     control, and the same height when it is only a label, so a row that
-     mixes the two still lines up. */
-  min-height: 40px;
+  /* The 44px a thumb needs wherever one of these is a control, and the same
+     height when it is only a label, so a row that mixes the two still lines
+     up. */
+  min-height: 44px;
   padding: 0.35rem 0.85rem;
   border-radius: 999px;
   border: 1px solid var(--line);
@@ -2578,7 +2578,7 @@ a.rv-line:hover {
 }
 .cm-tab {
   display: flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -2676,7 +2676,7 @@ a.rv-line:hover {
   align-items: center;
   gap: 0.6rem;
   overflow: hidden;
-  min-height: 42px;
+  min-height:44px;
   border-radius: 0.7rem;
   border: 1px solid var(--st-line);
   padding: 0.4rem 0.7rem;
@@ -2716,7 +2716,7 @@ fieldset:disabled .cm-poll-row {
    borrows the bar's own text colour rather than the page's. */
 .cm-search {
   width: 100%;
-  min-height: 40px;
+  min-height:44px;
   border-radius: 999px;
   border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
   background: color-mix(in srgb, currentColor 8%, transparent);
@@ -2747,7 +2747,7 @@ fieldset:disabled .cm-poll-row {
 }
 .cm-side {
   display: flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   border-radius: 0.75rem;
   padding: 0 0.75rem;
@@ -2776,7 +2776,7 @@ fieldset:disabled .cm-poll-row {
 }
 .cm-chip {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   white-space: nowrap;
   border-radius: 999px;
@@ -2865,7 +2865,7 @@ fieldset:disabled .cm-poll-row {
 }
 .cm-pill {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   gap: 0.4rem;
   border-radius: 999px;
@@ -2931,7 +2931,7 @@ fieldset:disabled .cm-poll-row {
 .cm-menu-item {
   display: flex;
   width: 100%;
-  min-height: 40px;
+  min-height:44px;
   align-items: center;
   border-radius: 0.65rem;
   padding: 0 0.75rem;
@@ -2951,6 +2951,12 @@ fieldset:disabled .cm-poll-row {
   color: #ff8a80;
 }
 .cm-quiet-link {
+  /* A text link, so it carries no colour of its own — but it is a link
+     standing on its own, not one inside a sentence, so it carries the 44px
+     a thumb needs. Every use of it is a row of its own or a cell in one. */
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   color: inherit;
   cursor: pointer;
 }
@@ -2959,7 +2965,7 @@ fieldset:disabled .cm-poll-row {
 }
 .cm-mini {
   display: inline-flex;
-  min-height: 24px;
+  min-height: 44px;
   align-items: center;
   font-size: 0.75rem;
   font-weight: 650;
@@ -2970,7 +2976,8 @@ fieldset:disabled .cm-poll-row {
 }
 .cm-reply > summary {
   list-style: none;
-  min-height: 24px;
+  display: flex;
+  min-height: 44px;
   align-items: center;
 }
 .cm-reply > summary::-webkit-details-marker {

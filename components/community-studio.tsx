@@ -624,7 +624,7 @@ function SpaceRow({
             <label htmlFor={`${where}-about`} className="field-label">One line about it</label>
             <input id={`${where}-about`} className="field mt-1" maxLength={MAX_SPACE_ABOUT} value={about} onChange={(e) => setAbout(e.target.value)} />
           </div>
-          <label className="flex min-h-6 items-center gap-2 text-sm">
+          <label className="flex min-h-11 items-center gap-2 text-sm">
             <input type="checkbox" className="h-5 w-5" checked={creatorOnly} onChange={(e) => setCreatorOnly(e.target.checked)} />
             Only I start posts here (members still comment)
           </label>
@@ -701,7 +701,7 @@ function OnlyPicker({
       </p>
       <div className="mt-2 space-y-1.5">
         {open.map((product) => (
-          <label key={product.id} className="flex min-h-6 items-start gap-2 text-sm">
+          <label key={product.id} className="flex min-h-11 items-start gap-2 text-sm">
             <input
               type="checkbox"
               className="mt-0.5 h-5 w-5 shrink-0"
@@ -960,7 +960,7 @@ function Spaces({
               <input id="cm-space-about" className="field" maxLength={MAX_SPACE_ABOUT} placeholder="One line about it (optional)" value={about} onChange={(e) => setAbout(e.target.value)} />
             </div>
           </div>
-          <label className="mt-3 flex min-h-6 items-center gap-2 text-sm">
+          <label className="mt-3 flex min-h-11 items-center gap-2 text-sm">
             <input type="checkbox" className="h-5 w-5" checked={creatorOnly} onChange={(e) => setCreatorOnly(e.target.checked)} />
             Only I start posts here (members still comment)
           </label>

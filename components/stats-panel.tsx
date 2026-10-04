@@ -162,7 +162,7 @@ export function StatsPanel({ data, canExport = true }: { data: StatsData; canExp
               type="button"
               aria-pressed={range === key}
               onClick={() => choose(key)}
-              className={`min-h-8 rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+              className={`inline-flex min-h-11 items-center rounded-full px-3 py-1.5 text-sm font-semibold transition ${
                 range === key ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-ink-soft hover:text-ink"
               }`}
             >

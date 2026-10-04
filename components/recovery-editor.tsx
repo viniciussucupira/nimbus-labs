@@ -104,7 +104,7 @@ export function RecoveryEditor({
         <p className="mt-5 text-sm text-ink-soft">Connect your Stripe account first, and this can be switched on.</p>
       ) : (
         <form onSubmit={save} className="mt-5 space-y-4">
-          <label className="flex min-h-6 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
+          <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
             <input
               type="checkbox"
               checked={enabled}

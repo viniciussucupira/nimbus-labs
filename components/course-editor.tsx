@@ -658,7 +658,7 @@ export function CertificateSwitch({ productId, on }: { productId: string; on: bo
   const [error, setError] = useState<string | null>(null);
   return (
     <div>
-      <label className="flex min-h-6 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
+      <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
         <input
           type="checkbox"
           checked={on}

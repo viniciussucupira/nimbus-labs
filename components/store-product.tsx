@@ -198,7 +198,7 @@ const GIFT_PROBLEMS: Record<string, string> = {
 export function GiftBox({ store, product, problem = "" }: { store: Store; product: Listing; problem?: string }) {
   return (
     <details id="gift" className="mt-4 scroll-mt-24 rounded-2xl px-4 py-3" style={{ border: "1px solid var(--st-line)" }} open={Boolean(problem)}>
-      <summary className="flex min-h-[40px] cursor-pointer items-center text-sm font-semibold" style={{ color: "var(--st-text)" }}>
+      <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold" style={{ color: "var(--st-text)" }}>
         Buy it as a gift
       </summary>
       <form action="/api/store/checkout" method="post" className="mt-2 space-y-3 pb-1" data-checkout="">

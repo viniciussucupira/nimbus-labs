@@ -205,7 +205,7 @@ export function CommunityComposer({
                   maxLength={MAX_POLL_OPTION_TEXT}
                   onChange={(e) => setOptions(options.map((o, j) => (j === i ? e.target.value : o)))}
                   placeholder={`Answer ${i + 1}`}
-                  className="st-field min-w-0 flex-1 !min-h-[40px] !py-2 text-sm"
+                  className="st-field min-w-0 flex-1 !min-h-11 !py-2 text-sm"
                   autoComplete="off"
                 />
                 {options.length > MIN_POLL_OPTIONS ? (
@@ -250,7 +250,7 @@ export function CommunityComposer({
                 value={days}
                 onChange={(e) => setDays(e.target.value)}
                 placeholder="never"
-                className="st-field !min-h-[40px] !py-2 w-28 text-sm"
+                className="st-field !min-h-11 !py-2 w-28 text-sm"
               />
               <span className="st-muted text-xs">days. Leave it empty and it stays open.</span>
             </span>
@@ -268,7 +268,7 @@ export function CommunityComposer({
           <div className="min-w-0 flex-1">
             <label htmlFor="post-alt" className="st-label text-sm">What the picture shows</label>
             <input id="post-alt" name="img_alt" maxLength={MAX_ALT_LENGTH} value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="For people who cannot see it" className="st-field mt-1" />
-            <button type="button" className="cm-quiet-link mt-2 min-h-6 text-sm font-semibold underline underline-offset-4" onClick={() => setImage(null)}>
+            <button type="button" className="cm-quiet-link mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4" onClick={() => setImage(null)}>
               Remove the picture
             </button>
           </div>
@@ -287,12 +287,12 @@ export function CommunityComposer({
       {owner ? (
         <fieldset className="mt-4 space-y-2">
           <legend className="sr-only">Announcement</legend>
-          <label className="flex min-h-6 items-start gap-2 text-sm">
+          <label className="flex min-h-11 items-start gap-2 text-sm">
             <input type="checkbox" name="kind" value="announcement" checked={announce} onChange={(e) => setAnnounce(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0" />
             <span>Mark it as an announcement</span>
           </label>
           {announce ? (
-            <label className={`flex min-h-6 items-start gap-2 text-sm ${canEmail && reach > 0 ? "" : "st-muted"}`}>
+            <label className={`flex min-h-11 items-start gap-2 text-sm ${canEmail && reach > 0 ? "" : "st-muted"}`}>
               <input type="checkbox" name="email" value="1" disabled={!canEmail || reach === 0} className="mt-0.5 h-5 w-5 shrink-0" />
               <span>
                 {!canEmail

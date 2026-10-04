@@ -401,7 +401,7 @@ function EventRow({
 
       {event.people.length ? (
         <details className="mt-3">
-          <summary className="inline-flex min-h-6 cursor-pointer items-center text-sm font-semibold text-ink">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center text-sm font-semibold text-ink">
             {`Who is coming (${event.going})`}
           </summary>
           <ul className="mt-2 divide-y divide-line text-sm">
@@ -655,7 +655,7 @@ function EventForm({
 
       {mode === "new" && spaces.length ? (
         <div>
-          <label className="flex min-h-6 cursor-pointer items-start gap-3">
+          <label className="flex min-h-11 cursor-pointer items-start gap-3">
             <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={draft.announce} onChange={(e) => set({ announce: e.target.checked })} />
             <span>
               <span className="block font-semibold text-ink">Announce it in the feed</span>

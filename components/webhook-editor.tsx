@@ -300,7 +300,7 @@ function EventChoices({ idPrefix, value, onToggle }: { idPrefix: string; value: 
   return (
     <div className="mt-2 grid gap-2 sm:grid-cols-2">
       {EVENTS.map((event) => (
-        <label key={event.key} htmlFor={`${idPrefix}-${event.key}`} className="flex min-h-6 cursor-pointer items-start gap-3 rounded-[10px] px-2 py-1.5 text-sm transition hover:bg-paper">
+        <label key={event.key} htmlFor={`${idPrefix}-${event.key}`} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-[10px] px-2 py-1.5 text-sm transition hover:bg-paper">
           <input
             id={`${idPrefix}-${event.key}`}
             type="checkbox"

@@ -142,7 +142,7 @@ export function ReviewForm({
         <form action="/api/store/review" method="post" className="mt-3">
           {hidden}
           <input type="hidden" name="action" value="delete" />
-          <button type="submit" className="st-footer-link min-h-[44px] text-sm font-semibold underline underline-offset-4">
+          <button type="submit" className="st-footer-link inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">
             Delete my review
           </button>
         </form>

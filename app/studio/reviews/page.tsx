@@ -72,7 +72,7 @@ export default async function StudioReviewsPage({ searchParams }: Params) {
     <Link
       href={studioPath(store, view === "new" ? "" : "view=all", "reviews")}
       aria-current={(view === "new") === queue ? "page" : undefined}
-      className={`inline-flex min-h-[40px] items-center rounded-full px-4 text-sm font-semibold ${
+      className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold ${
         (view === "new") === queue ? "bg-white text-ink shadow-sm ring-1 ring-line" : "text-ink-soft hover:text-ink"
       }`}
     >

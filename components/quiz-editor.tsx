@@ -203,7 +203,7 @@ export function QuizEditor({
           <span id={`${prefix}-tries`} className="mt-1 block text-xs text-ink-soft">{`1 to ${MAX_ATTEMPTS}, or empty for no limit. You can give a student their tries back from the list of students.`}</span>
         </label>
       </div>
-      <label className="mt-3 flex min-h-6 cursor-pointer items-start gap-3 text-sm text-ink">
+      <label className="mt-3 flex min-h-11 cursor-pointer items-start gap-3 text-sm text-ink">
         <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0 accent-violet-brand" checked={draft.required} onChange={(e) => setDraft({ ...draft, required: e.target.checked })} />
         <span>
           <span className="font-semibold">Students must pass it to go on.</span> The lessons after this one stay locked until they do, and a
@@ -246,7 +246,7 @@ export function QuizEditor({
               <fieldset className="mt-3">
                 <legend className="sr-only">{`How many right answers question ${qi + 1} has`}</legend>
                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink">
-                  <label className="flex min-h-6 cursor-pointer items-center gap-2">
+                  <label className="flex min-h-11 cursor-pointer items-center gap-2">
                     <input
                       type="radio"
                       name={`${qid}-kind`}
@@ -256,7 +256,7 @@ export function QuizEditor({
                     />
                     One right answer
                   </label>
-                  <label className="flex min-h-6 cursor-pointer items-center gap-2">
+                  <label className="flex min-h-11 cursor-pointer items-center gap-2">
                     <input
                       type="radio"
                       name={`${qid}-kind`}
