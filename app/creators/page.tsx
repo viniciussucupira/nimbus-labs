@@ -64,7 +64,7 @@ export default function CreatorsPage() {
                 </p>
               </div>
               <p className="mt-8 flex items-center gap-2 text-[0.9375rem] text-white/80">
-                <Icon name="clock" size={18} className="text-[#b9a8ff]" />
+                <Icon name="clock" size={18} className="text-violet-lift" />
                 Two minutes, eight questions, three of them optional
               </p>
             </div>

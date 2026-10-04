@@ -160,7 +160,8 @@ export function SiteFooter({ variant = "full" }: { variant?: "full" | "slim" }) 
       </div>
 
       <div className="container-page text-white/80"><MoreFromUs /></div>
-      <div className="container-page border-t border-white/12 py-7 text-[0.8125rem] leading-relaxed text-white/70">
+      {/* pb clears the home indicator on an iPhone; the inset is zero everywhere else. */}
+      <div className="container-page border-t border-white/12 pt-7 pb-[max(1.75rem,env(safe-area-inset-bottom))] text-[0.8125rem] leading-relaxed text-white/70">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
           <p>
             {`© ${year} Marktmorgen, by Solrenning — an independent software studio.`}

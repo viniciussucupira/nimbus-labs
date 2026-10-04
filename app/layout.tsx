@@ -26,10 +26,24 @@ const accent = Instrument_Serif({
 const SITE_TITLE =
   "Marktmorgen — the link-in-bio store that pays into your own Stripe";
 const SITE_DESCRIPTION =
-  "A fast store page for creators who sell files, courses, calls and memberships. Buyers pay into your own Stripe account, what they bought is theirs as soon as Stripe confirms the payment, and Marktmorgen takes 0% of your sales.";
+  "A storefront for creators selling digital products, courses, memberships and booked sessions. Payments are processed through your own Stripe account, and Marktmorgen takes 0% of your sales.";
 
 export const viewport: Viewport = {
-  themeColor: "#0d0b24",
+  /*
+   * The colour the phone paints its own chrome with: the status bar on
+   * Android, and the area behind a translucent status bar on an iPhone
+   * with the site installed. It was still the violet-black of the old
+   * palette, so on a phone the browser framed the page in a colour the
+   * page no longer uses.
+   */
+  themeColor: "#111827",
+  /*
+   * Required on an iPhone with a notch or a Dynamic Island. Without it
+   * the page is letterboxed between the safe areas and `env(safe-area-inset-*)`
+   * reports zero, so nothing can reach the full screen and nothing can
+   * compensate for the parts of it that are covered.
+   */
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {

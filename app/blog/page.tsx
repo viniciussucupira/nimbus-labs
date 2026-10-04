@@ -79,7 +79,7 @@ export default function BlogIndexPage() {
                   "When to stay on Gumroad, and when to move",
                 ].map((line) => (
                   <li key={line} className="flex gap-3">
-                    <span aria-hidden="true" className="text-[#b9a8ff]">
+                    <span aria-hidden="true" className="text-violet-lift">
                       →
                     </span>
                     <span>{line}</span>

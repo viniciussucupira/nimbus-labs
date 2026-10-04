@@ -7,7 +7,7 @@
   "scope": "/studio",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#fbfaf7",
+  "background_color": "#f7f5f0",
   "theme_color": "#ffffff",
   "categories": ["business", "productivity"],
   "lang": "en",
