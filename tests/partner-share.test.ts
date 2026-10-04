@@ -233,7 +233,7 @@ test("the partner needs no account anywhere, which is where Hotmart stops", () =
   const aff = readFileSync(join(process.cwd(), "lib/affiliates.ts"), "utf8");
   const at = aff.indexOf("export async function invitePartner");
   assert.ok(at > 0, "the creator has to be able to invite somebody from outside");
-  const body = aff.slice(at, at + 3_500);
+  const body = aff.slice(at, aff.indexOf("export async function acceptPartnership"));
   assert.match(body, /you need no account with us/, "and the email has to say so");
   assert.match(body, /% of every sale of/, "the email states the share");
   assert.match(body, /pays you directly, from their own account/, "and who pays, because it is not us");
@@ -243,7 +243,7 @@ test("nothing is written down until the invitation is opened", () => {
   // An address typed wrong should leave no half-made partner in the programme.
   const aff = readFileSync(join(process.cwd(), "lib/affiliates.ts"), "utf8");
   const at = aff.indexOf("export async function invitePartner");
-  const body = aff.slice(at, at + 3_500);
+  const body = aff.slice(at, aff.indexOf("export async function acceptPartnership"));
   assert.doesNotMatch(body, /writeAffiliate/, "the record is made when they open the link, not when it is sent");
   // The reason belongs in the comment over it, which is above `at`.
   assert.match(

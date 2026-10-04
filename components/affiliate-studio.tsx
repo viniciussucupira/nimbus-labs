@@ -40,6 +40,7 @@ const MESSAGES: Record<string, string> = {
   share_crowded: SHARE_PROBLEMS.crowded,
   share_committed: SHARE_PROBLEMS.committed,
   invite_email: "Type the email address to send the invitation to.",
+  gone: "That offer is no longer there. The store may have withdrawn it.",
   owner: "That is your own address. A partner is somebody else.",
   full: "This program is full. Remove somebody before inviting another partner.",
   promo: "That discount code is no longer on your Stripe account. Reload the page.",
@@ -1355,6 +1356,83 @@ function PartnerInvite({
           </button>
         </div>
       </form>
+    </section>
+  );
+}
+
+/**
+ * A partnership somebody else is offering you, waiting in your own studio.
+ *
+ * Here rather than in an emailed link because this creator already has a
+ * place they open on purpose, and an inbox is a place things get lost. The
+ * terms are on the card: the share, the products, and what it means that it
+ * applies to every sale. Pressing accept is the agreement — which is why the
+ * number and the names have to be on the screen and not in a message
+ * somewhere else.
+ */
+export function PartnerOffers({ offers }: { offers: { id: string; words: string; storeName: string; percent: number }[] }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [gone, setGone] = useState<string[]>([]);
+  const left = offers.filter((o) => !gone.includes(o.id));
+  if (!left.length) return null;
+
+  const answer = async (id: string, accept: boolean, name: string) => {
+    setBusy(id);
+    try {
+      const response = await fetch("/api/store/affiliates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "answer", invite: id, accept }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!data.ok) {
+        toast(MESSAGES[data.error ?? ""] ?? "That offer is no longer there. Reload the page.");
+        setGone((prev) => [...prev, id]);
+        return;
+      }
+      toast(accept ? `You are now a partner of ${name}. Your share starts on their next sale.` : "Offer declined.");
+      setGone((prev) => [...prev, id]);
+      router.refresh();
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section aria-labelledby="offers-title" className="card p-6 sm:p-8">
+      <h2 id="offers-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">
+        {left.length === 1 ? "A partnership offered to you" : "Partnerships offered to you"}
+      </h2>
+      <ul className="mt-4 space-y-3">
+        {left.map((offer) => (
+          <li key={offer.id} className="rounded-2xl border-2 border-violet-brand/30 bg-paper p-4">
+            <p className="text-sm text-ink">{offer.words}</p>
+            <p className="mt-2 text-xs text-ink-soft">
+              You keep earning it for as long as the partnership runs, and a refunded sale earns nothing. They pay you
+              directly from their own account — Marktmorgen never holds it. You can be paid at any PayPal address.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={busy !== null}
+                onClick={() => answer(offer.id, true, offer.storeName)}
+              >
+                {busy === offer.id ? "Saving…" : `Accept ${offer.percent}%`}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                disabled={busy !== null}
+                onClick={() => answer(offer.id, false, offer.storeName)}
+              >
+                Decline
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

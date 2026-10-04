@@ -73,6 +73,7 @@ import {
 import { affiliateForCodes, codeOwners } from "@/lib/affiliate-codes";
 import { type PartnerShare, parsePartnerShare, shareCents, shareOn } from "@/lib/partner-share";
 import { bondFor, rememberBuyer } from "@/lib/affiliate-bond";
+import { offerPartnership } from "@/lib/partner-invites";
 import type { Store } from "@/lib/store";
 import { plainAmount } from "@/lib/money";
 import { alertCreator } from "@/lib/phone-alerts";
@@ -544,7 +545,7 @@ export async function requestAffiliateLink(input: {
   return sent ? "sent" : "error";
 }
 
-export type InviteResult = "sent" | "email" | "owner" | "unavailable" | "full" | "error";
+export type InviteResult = "sent" | "waiting" | "email" | "owner" | "unavailable" | "full" | "error";
 
 /**
  * Invites somebody to be a partner on certain products, at a share.
@@ -565,6 +566,8 @@ export async function invitePartner(input: {
   share: PartnerShare;
   titles: Map<string, string>;
   origin: string;
+  /** True when this address already has a store here, so the studio asks instead. */
+  alreadyHere?: boolean;
 }): Promise<InviteResult> {
   const { store, share, origin } = input;
   const raw = input.email.trim();
@@ -580,11 +583,44 @@ export async function invitePartner(input: {
     if (Number(count) >= MAX_AFFILIATES) return "full";
   }
 
+  const named = share.products.map((id) => input.titles.get(id) ?? "a product").slice(0, 12);
+
+  // Somebody who already has a store here has a better place to be asked than
+  // an inbox: their own studio (lib/partner-invites.ts). The offer waits there
+  // with the terms written out. This moves the agreement, it does not skip it —
+  // nothing is written into this programme until they accept.
+  if (input.alreadyHere) {
+    const left = await offerPartnership(email, {
+      sid: store.sid,
+      storeName: store.name,
+      handle: store.handle,
+      share,
+      titles: named,
+    });
+    if (!left.ok) return left.reason === "full" ? "full" : "error";
+    await sendEmail({
+      from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
+      to: email,
+      subject: `${store.name} wants you as a partner`,
+      text: [
+        `${store.name} is offering you ${share.percent}% of every sale of:`,
+        "",
+        ...named.map((title) => `  • ${title}`),
+        "",
+        "It is waiting in your own studio, with the terms, to accept or decline:",
+        "",
+        `${SITE_URL}/studio/affiliates`,
+        "",
+        "Nothing happens until you answer it. Declining tells them nothing beyond that you declined.",
+      ].join("\n"),
+      replyTo: store.email,
+    }).catch((error) => console.error("telling a creator about a partnership offer failed", error));
+    return "waiting";
+  }
+
   const token = randomBytes(32).toString("hex");
   const grant: LinkGrant = { s: statsId, e: email, n: "Invited as a partner", k: 1, p: share };
   await redisPipeline([["SET", linkKey(token), JSON.stringify(grant), "EX", AFFILIATE_LINK_SECONDS]]);
-
-  const named = share.products.map((id) => input.titles.get(id) ?? "a product").slice(0, 12);
   const sent = await sendEmail({
     from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
@@ -607,6 +643,23 @@ export async function invitePartner(input: {
     replyTo: store.email,
   });
   return sent ? "sent" : "error";
+}
+
+/**
+ * Writes in a partner who has just accepted, from their own studio.
+ *
+ * The only path that makes a partner without an emailed link, and it is not a
+ * shortcut: the person pressed the button, on a page showing the share and the
+ * products. That is a better record of agreement than a link opened in a mail
+ * app, not a worse one. It goes through the same grant the email would have
+ * carried, so the record is made exactly as it is made everywhere else.
+ */
+export async function acceptPartnership(store: Store, email: string, share: PartnerShare): Promise<OpenResult> {
+  if (!affiliatesOn(store)) return { ok: false, reason: "unavailable" };
+  const token = randomBytes(32).toString("hex");
+  const grant: LinkGrant = { s: store.statsId as string, e: normaliseEmail(email), n: "Accepted a partnership", k: 1, p: share };
+  await redisPipeline([["SET", linkKey(token), JSON.stringify(grant), "EX", 600]]);
+  return openAffiliateLink(store, token);
 }
 
 function parseGrant(raw: unknown): LinkGrant | null {

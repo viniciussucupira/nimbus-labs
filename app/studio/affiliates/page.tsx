@@ -13,6 +13,8 @@ import { PayPalPayouts } from "@/components/paypal-payouts";
 import { onTheirWay, payableLines, readPayPal, settlePayPal } from "@/lib/paypal-payouts";
 import { batchTotal } from "@/lib/affiliate-payouts";
 import { codeOwners } from "@/lib/affiliate-codes";
+import { offerWords, waitingFor } from "@/lib/partner-invites";
+import { PartnerOffers } from "@/components/affiliate-studio";
 import { listCodes, offLabel } from "@/lib/discount";
 
 type Params = { searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
@@ -50,6 +52,15 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
       ? listCodes(store.stripeAccountId).catch(() => ({ state: "error" as const }))
       : Promise.resolve({ state: "unavailable" as const }),
   ]);
+  // Partnerships other creators here have offered this one, waiting to be
+  // accepted or declined (lib/partner-invites.ts). Read for the person signed
+  // in, not for the store, because the offer was made to an address.
+  const offers = (await waitingFor(view.email ?? store.email).catch(() => [])).map((invite) => ({
+    id: invite.id,
+    words: offerWords(invite),
+    storeName: invite.storeName,
+    percent: invite.share.percent,
+  }));
   const codes =
     codeList.state === "ok"
       ? codeList.codes
@@ -104,6 +115,12 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
           <p className="notice notice-error mt-6" role="alert">
             We could not read your affiliates just now. Nothing was changed. Try again in a moment.
           </p>
+        ) : null}
+
+        {offers.length ? (
+          <div className="mt-8">
+            <PartnerOffers offers={offers} />
+          </div>
         ) : null}
 
         <AffiliateStudio

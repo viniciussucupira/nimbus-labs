@@ -1,12 +1,14 @@
 import type { NextRequest } from "next/server";
-import { StoreFullError, setAffiliateSetting, storeForEmail } from "@/lib/store";
+import { StoreFullError, setAffiliateSetting, storeForEmail, storeForId } from "@/lib/store";
 import { readMoney } from "@/lib/money";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { MAX_COMMISSION, MIN_COMMISSION, commissionRate, parseAffiliateSetting } from "@/lib/affiliate-setting";
 import { parsePartnerShare, shareProblem } from "@/lib/partner-share";
 import { readAllListings } from "@/lib/catalog";
+import { answerInvite, waitingOne } from "@/lib/partner-invites";
 import {
   MAX_REFERENCE_LENGTH,
+  acceptPartnership,
   addPayout,
   decide,
   invitePartner,
@@ -44,7 +46,11 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
  *   pass the cap in lib/partner-share.ts;
  * `{ action: "invite", email, percent, products }`, the same thing for
  *   somebody not in the programme at all: they are emailed the terms and the
- *   record is made, already approved, when they open the link.
+ *   record is made, already approved, when they open the link — unless that
+ *   address already has a store here, in which case the offer waits in their
+ *   own studio instead of their inbox;
+ * `{ action: "answer", invite, accept: true | false }`, that creator
+ *   answering one. Only the address it was left for can answer it.
  */
 export async function POST(request: NextRequest) {
   const guarded = await guardStoreWrite(request, "settings", 16_000);
@@ -100,6 +106,26 @@ export async function POST(request: NextRequest) {
       const done = await setAffiliateRate(store, text(body.id, 20), rate);
       return done ? Response.json({ ok: true, rate: done.rate }) : fail("unknown");
     }
+    if (action === "answer") {
+      // The invited creator answering, from their own studio. `guarded.email`
+      // is the person signed in — not `guarded.ref`, which is a store — so an
+      // offer can only ever be answered by the address it was left for.
+      const invite = await waitingOne(guarded.email, text(body.invite, 20));
+      if (!invite) return fail("gone");
+      if (body.accept !== true) {
+        await answerInvite(guarded.email, invite.id);
+        return Response.json({ ok: true, accepted: false });
+      }
+      const from = await storeForId(invite.sid).catch(() => null);
+      if (!from) {
+        await answerInvite(guarded.email, invite.id);
+        return fail("gone");
+      }
+      const made = await acceptPartnership(from, guarded.email, invite.share);
+      if (!made.ok) return fail(made.reason === "full" ? "full" : "unavailable");
+      await answerInvite(guarded.email, invite.id);
+      return Response.json({ ok: true, accepted: true });
+    }
     if (action === "invite") {
       // A partner the creator brings from outside: they need no account here,
       // only an address that can receive PayPal. Checked against the same cap
@@ -118,8 +144,15 @@ export async function POST(request: NextRequest) {
 
       const titles = new Map((await readAllListings(store)).map((p) => [p.id, p.title]));
       const origin = new URL(request.url).origin;
-      const sent = await invitePartner({ store, email: text(body.email, 254), share, titles, origin });
-      return sent === "sent" ? Response.json({ ok: true }) : fail(sent === "email" ? "invite_email" : sent);
+      const to = text(body.email, 254);
+      // Somebody who already has a store here is asked in their own studio
+      // instead of an inbox (lib/partner-invites.ts). The agreement moves; it
+      // is not skipped. Their own store is never offered a partnership.
+      const theirs = to ? await storeForEmail(to).catch(() => null) : null;
+      const alreadyHere = Boolean(theirs && theirs.sid !== store.sid);
+      const sent = await invitePartner({ store, email: to, share, titles, origin, alreadyHere });
+      if (sent === "sent" || sent === "waiting") return Response.json({ ok: true, waiting: sent === "waiting" });
+      return fail(sent === "email" ? "invite_email" : sent);
     }
     if (action === "share") {
       const id = text(body.id, 20);
