@@ -13,7 +13,7 @@ import {
   REDIRECT_ABOVE_BYTES,
   type ProductFile,
 } from "@/lib/product-file";
-import { recordDelivery } from "@/lib/delivery";
+import { folderFromPathname, freeDeliveryPaused, recordDelivery } from "@/lib/delivery";
 import { fileHeaders } from "@/lib/request-guard";
 
 /** A short answer in plain text, never cached and never indexed. */
@@ -63,7 +63,34 @@ async function signedDownload(pathname: string): Promise<string | null> {
  * than opening in a tab. Either way the delivery is counted against the
  * store's month, since that is the one cost that grows with use.
  */
-export async function serveFile(file: ProductFile): Promise<Response> {
+export async function serveFile(
+  file: ProductFile,
+  { paid = true }: { paid?: boolean } = {},
+): Promise<Response> {
+  /*
+    The one place a delivery is ever refused, and it is never a paid one.
+
+    A file somebody bought goes out at any number: taking the money and then
+    not completing the sale is the thing this company is supposed to be the
+    opposite of. A free copy is different — nobody paid for it, so a free
+    file that finds its way somewhere it was not meant to go can run up
+    thousands of dollars against a $29 subscription with no sale anywhere in
+    it. Those pause by themselves, far above the published allowance, and
+    start again when the month turns.
+
+    `paid` defaults to true so that a new door added later errs toward
+    serving the file rather than toward refusing somebody who paid.
+  */
+  if (!paid) {
+    const folder = folderFromPathname(file.pathname);
+    if (folder && (await freeDeliveryPaused(folder))) {
+      return plain(
+        429,
+        "This free download is paused until next month. The store has given away more this month than its plan covers. Anything you have bought is unaffected, and the creator has been told.",
+      );
+    }
+  }
+
   if (file.bytes > REDIRECT_ABOVE_BYTES) {
     const url = await signedDownload(file.pathname);
     if (!url) return plain(502, "We could not fetch the file right now.");

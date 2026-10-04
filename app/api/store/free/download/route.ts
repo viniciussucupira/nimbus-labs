@@ -89,6 +89,6 @@ export async function POST(request: NextRequest) {
     });
   }
   return product.file
-    ? serveFile(product.file)
+    ? serveFile(product.file, { paid: false })
     : plain(404, "There is nothing on this yet. Ask the store about it.");
 }

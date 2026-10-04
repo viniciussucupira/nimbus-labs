@@ -4,6 +4,7 @@ import { LegalPage, LegalSection } from "@/components/legal-page";
 import { isDomainsConfigured } from "@/lib/domains";
 import { formatMoney } from "@/lib/money";
 import { REFUND_DAYS } from "@/lib/plan";
+import { DELIVERY_ALLOWANCE_BYTES, bytesWords } from "@/lib/delivery";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
 export const metadata: Metadata = {
@@ -219,7 +220,39 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="5. Subscriptions and payment">
+      <LegalSection id="fair-use" title="5. What the subscription covers">
+        <p>
+          The published limits are the ones in your studio and on our pricing
+          page: the number of products a store may list, the size of a single
+          file, how many emails a month a plan may send, and{" "}
+          {bytesWords(DELIVERY_ALLOWANCE_BYTES)} of downloads a month per
+          store. You can see every one of them while you use the Services.
+          None of them is hidden in this document and then discovered by being
+          enforced against you.
+        </p>
+        <p>
+          We do not stop a download because a store has passed that figure.
+          Somebody paid you for that file, and cutting your buyer off to
+          protect our costs would be taking money for a sale and then not
+          completing it. Going past the allowance is a conversation with you,
+          not a door closed on your customer.
+        </p>
+        <p>
+          What we ask in return is that the Services are used to sell your own
+          work to your own audience, and not as general file hosting, a
+          content delivery network, a backup service, or a way to distribute
+          very large files at a scale the subscription does not cover. If a
+          single store’s storage or downloads stay far above the published
+          allowance, we will write to you first, with the figures, and discuss
+          a plan that fits what you are doing. We may limit or suspend a store
+          only if that use continues after we have written to you and given
+          you a reasonable time to answer, or where the use is plainly abusive
+          or unlawful. We will not do it silently, and never in the middle of
+          delivering something a buyer has already paid for.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="6. Subscriptions and payment">
         <p>
           A creator store subscription is charged at the price shown at
           checkout, and these Terms apply to it. The sales a
@@ -269,7 +302,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="6. Creator invites" id="invites">
+      <LegalSection title="7. Creator invites" id="invites">
         <p>
           Your studio gives you a link to invite other creators. When someone
           accepts your invite and then makes the first store of a new
@@ -296,7 +329,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="7. Cancellation">
+      <LegalSection title="8. Cancellation">
         <p>
           You may cancel your subscription at any time, for any reason. After
           you cancel, you will not be charged for future billing periods. You
@@ -305,7 +338,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="8. Refunds">
+      <LegalSection title="9. Refunds">
         <p>
           Refunds of what you pay <em>us</em> are governed by our{" "}
           <Link
@@ -324,7 +357,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="9. Intellectual property">
+      <LegalSection title="10. Intellectual property">
         <p>
           Marktmorgen and its licensors own all rights in the Services,
           including the software, branding, design, and documentation. These
@@ -346,7 +379,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="10. Disclaimer of warranties">
+      <LegalSection title="11. Disclaimer of warranties">
         <p>
           THE SERVICES ARE PROVIDED “AS IS” AND “AS AVAILABLE.” TO THE MAXIMUM
           EXTENT PERMITTED BY LAW, WE DISCLAIM ALL WARRANTIES, EXPRESS OR
@@ -356,7 +389,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="11. Limitation of liability">
+      <LegalSection title="12. Limitation of liability">
         <p>
           TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, MARKTMORGEN AND
           ITS OWNERS, OFFICERS, AND CONTRACTORS WILL NOT BE LIABLE FOR ANY
@@ -380,7 +413,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="12. Indemnification">
+      <LegalSection title="13. Indemnification">
         <p>
           You agree to indemnify and hold Marktmorgen harmless from claims
           arising out of your User Content, the products you sell through a
@@ -389,7 +422,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="13. Termination">
+      <LegalSection title="14. Termination">
         <p>
           We may suspend or terminate your access if you breach these Terms, if
           required by law, or if we discontinue the Services. Upon termination,
@@ -406,7 +439,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="14. Changes to these Terms">
+      <LegalSection title="15. Changes to these Terms">
         <p>
           We may update these Terms from time to time. The &ldquo;Last
           updated&rdquo; date at the top of this page will change when we do. Material changes
@@ -415,7 +448,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="15. Governing law">
+      <LegalSection title="16. Governing law">
         <p>
           These Terms are governed by the laws of the Federative Republic of
           Brazil, without regard to conflict-of-law rules. Courts located in
@@ -424,7 +457,7 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="16. Contact">
+      <LegalSection title="17. Contact">
         <p>
           Marktmorgen
           <br />

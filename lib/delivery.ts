@@ -28,8 +28,44 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
  */
 export const DELIVERY_ALLOWANCE_BYTES = 200 * 1024 * 1024 * 1024;
 
+/**
+ * Where free copies stop, and only free copies.
+ *
+ * A paid download is never refused, at any number, for the reason above: the
+ * buyer paid for that file. But the delivery that can run away without
+ * anybody having paid for anything is the free one — a lead magnet that
+ * finds an audience, or is posted somewhere it was not meant to go, and is
+ * pulled fifty thousand times. At the published rate that is thousands of
+ * dollars against a $29 subscription, and no sale anywhere in it.
+ *
+ * So free copies pause at twice the allowance, by themselves, and start
+ * again when the month turns. Nobody is cut off from something they bought,
+ * because nobody bought it; the creator is told the same day, in their
+ * studio and by email; and the cost of a store nobody is watching is bounded
+ * at roughly what that store pays us.
+ *
+ * It is deliberately far above the published allowance. A store meeting this
+ * is not a store doing well — it is a store being used as a file host.
+ */
+export const FREE_PAUSE_ABOVE_BYTES = 2 * DELIVERY_ALLOWANCE_BYTES;
+
 /** Counters are dropped a while after the month they describe. */
 const KEEP_SECONDS = 70 * 24 * 60 * 60;
+
+/**
+ * The stores that have passed the allowance this month.
+ *
+ * Kept as a set the moment a store crosses, rather than found later by
+ * reading every counter, because reading every counter means scanning the
+ * whole keyspace once a day on a store we pay per command for — and the
+ * crossing is a single moment that already has the number in its hand.
+ *
+ * It exists because the creator could see they were over and we could not.
+ * The warning in their studio has been there all along; the one that reaches
+ * us had not, so the first we would hear of a store sending twenty-five
+ * terabytes was the invoice, a month late and already paid.
+ */
+const overKey = (month: string) => `nl:store:delivery:over:${month}`;
 
 /** The month a delivery belongs to, in UTC so it never depends on a server. */
 export function monthKey(now: Date = new Date()): string {
@@ -73,12 +109,25 @@ export async function recordDelivery(
   const folder = folderFromPathname(pathname);
   if (!folder) return;
 
-  const key = counterKey(folder, monthKey());
+  const month = monthKey();
+  const key = counterKey(folder, month);
   try {
-    await redisPipeline([
+    const [total] = await redisPipeline([
       ["INCRBY", key, Math.round(bytes)],
       ["EXPIRE", key, KEEP_SECONDS],
     ]);
+    // Written down once, on the delivery that takes the store past the line.
+    // Checking the crossing rather than the total keeps a store that is far
+    // over from writing this on every file it hands out for the rest of the
+    // month.
+    const now = Number(total);
+    const before = now - Math.round(bytes);
+    if (Number.isFinite(now) && now > DELIVERY_ALLOWANCE_BYTES && before <= DELIVERY_ALLOWANCE_BYTES) {
+      await redisPipeline([
+        ["SADD", overKey(month), folder],
+        ["EXPIRE", overKey(month), KEEP_SECONDS],
+      ]);
+    }
   } catch (error) {
     console.error("could not record a delivery", error);
   }
@@ -108,5 +157,59 @@ export async function deliveredThisMonth(
   } catch (error) {
     console.error("could not read this month's deliveries", error);
     return { bytes: 0, allowance, over: false };
+  }
+}
+
+/**
+ * Every store past the allowance this month, with what it has sent.
+ *
+ * Read by the daily usage watch (app/api/cron/usage/route.ts), which is the
+ * only thing that tells us. Nothing here stops a delivery: a creator over
+ * the line is a conversation, and this is what makes the conversation
+ * possible in the week it matters rather than after the invoice.
+ */
+export async function storesOverAllowance(
+  now: Date = new Date(),
+): Promise<{ folder: string; bytes: number }[]> {
+  if (!isRedisConfigured()) return [];
+  const month = monthKey(now);
+  try {
+    const [raw] = await redisPipeline([["SMEMBERS", overKey(month)]]);
+    const folders = Array.isArray(raw) ? raw.filter((f): f is string => typeof f === "string" && f !== "") : [];
+    if (folders.length === 0) return [];
+    const totals = await redisPipeline(folders.map((f) => ["GET", counterKey(f, month)]));
+    return folders
+      .map((folder, i) => ({ folder, bytes: Number(totals[i]) || 0 }))
+      .filter((row) => row.bytes > DELIVERY_ALLOWANCE_BYTES)
+      .sort((a, b) => b.bytes - a.bytes);
+  } catch (error) {
+    console.error("could not read the stores over the allowance", error);
+    return [];
+  }
+}
+
+/** "1.4 TB", for a line in an email. */
+export function bytesWords(bytes: number): string {
+  const gb = bytes / (1024 * 1024 * 1024);
+  if (gb >= 1024) return `${(gb / 1024).toFixed(1)} TB`;
+  return `${gb < 10 ? gb.toFixed(1) : Math.round(gb)} GB`;
+}
+
+/**
+ * Whether this store's free copies are paused for the rest of the month.
+ *
+ * Asked before a free file is handed over, and never before a paid one.
+ * Answers false if it cannot be read: a counter we cannot reach must not
+ * become a reason to refuse somebody.
+ */
+export async function freeDeliveryPaused(folder: string): Promise<boolean> {
+  if (!isRedisConfigured() || !folder) return false;
+  try {
+    const [raw] = await redisPipeline([["GET", counterKey(folder, monthKey())]]);
+    const bytes = Number(raw);
+    return Number.isFinite(bytes) && bytes > FREE_PAUSE_ABOVE_BYTES;
+  } catch (error) {
+    console.error("could not read this month's deliveries", error);
+    return false;
   }
 }
