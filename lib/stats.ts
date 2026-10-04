@@ -30,6 +30,7 @@ import { onAccount } from "@/lib/stripe-account";
 import type { Listing, Store } from "@/lib/store";
 import { listingFinder, productIds, recordListings } from "@/lib/catalog";
 import { plainAmount } from "@/lib/money";
+import { revenueBySource } from "@/lib/came-from";
 
 /** Days kept, a little over a year, so a year-on-year look is possible. */
 const TTL_SECONDS = 400 * 86400;
@@ -391,6 +392,12 @@ export type SalesStats = {
    * dollars make a number that means nothing. They are in the CSV.
    */
   elsewhere: number;
+  /**
+   * What each of the creator's own links brought in, over the same 90 days,
+   * biggest first (lib/came-from.ts). Only the store's own currency, for the
+   * reason above. "direct" is every sale that carried no tag.
+   */
+  bySource: { source: string; currency: string; cents: number; sales: number }[];
 };
 
 export type AllTimeSales = {
@@ -493,7 +500,7 @@ export async function readPaidSales(store: Store, since: number, pages: number):
       currency: currencyOf(pi),
       row: pi,
       upsell: true,
-          // An upsell is taken in one click after a checkout that already has
+      // An upsell is taken in one click after a checkout that already has
       // its channel. It belongs to the same visit, and the sale it followed
       // carries the tag, so this is left blank rather than guessed at.
       source: "",
@@ -513,7 +520,7 @@ export async function readSales(store: Store, now = Date.now()): Promise<SalesSt
   const cut7 = dayKey(now - 6 * 86400_000);
   const cut30 = dayKey(now - 29 * 86400_000);
   const zero = () => ({ sales: 0, cents: 0 });
-  const out: SalesStats = { byDay: {}, byProduct: {}, totals: { d7: zero(), d30: zero(), d90: zero() }, partial, elsewhere: 0 };
+  const out: SalesStats = { byDay: {}, byProduct: {}, totals: { d7: zero(), d30: zero(), d90: zero() }, partial, elsewhere: 0, bySource: [] };
   for (const sale of sales) {
     if (sale.currency !== store.currency) {
       out.elsewhere += 1;
@@ -532,6 +539,16 @@ export async function readSales(store: Store, now = Date.now()): Promise<SalesSt
       out.totals[w].cents += sale.cents;
     }
   }
+  // What each link brought in, over the same ninety days. Only the store's
+  // own currency: the sales in another one are counted in `elsewhere` and
+  // left out of every total here, for the reason given on that field.
+  out.bySource = revenueBySource(
+    sales.filter((sale) => sale.currency === store.currency).map((sale) => ({
+      cents: sale.cents,
+      currency: sale.currency,
+      source: sale.source,
+    })),
+  );
   return out;
 }
 
@@ -605,6 +622,15 @@ export type StatsData = {
   elsewhere: number;
   /** The first day all-time visits cover, or empty when unknown. */
   since: string;
+  /**
+   * What each link brought in over the last 90 days, biggest first.
+   *
+   * The whole point of tagging a link is this row and not the visitor count
+   * beside it: four hundred people from a newsletter and six hundred dollars
+   * in the same month were two numbers that never met, and a creator cannot
+   * decide where to spend their week on the first one alone.
+   */
+  revenueBySource: { source: string; cents: number; sales: number }[];
 };
 
 const EMPTY_WINDOW: WindowStats = { visitors: 0, views: 0, checkouts: 0, sources: [], mediums: [], campaigns: [], checkoutsByProduct: {}, linkClicks: {} };
@@ -663,6 +689,9 @@ export function studioStats(
     currency: store.currency,
     elsewhere: sales?.elsewhere ?? 0,
     since: stats.life?.since ?? "",
+    revenueBySource: (sales?.bySource ?? [])
+      .filter((row) => row.currency === store.currency)
+      .map(({ source, cents, sales: n }) => ({ source, cents, sales: n })),
   };
 }
 

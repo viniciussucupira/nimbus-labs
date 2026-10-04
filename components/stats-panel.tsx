@@ -129,6 +129,11 @@ export function StatsPanel({ data, canExport = true }: { data: StatsData; canExp
     { label: "Sales", value: salesHere ? count(totals.sales) : "—", note: salesNote },
     { label: "Revenue", value: salesHere ? money(totals.cents) : "—", note: "Before Stripe's fee" },
     { label: "Conversion", value: salesHere ? rate(totals.sales, totals.visitors) : "—", note: "Sales for every 100 visitors" },
+    {
+      label: "Per visitor",
+      value: salesHere && totals.visitors > 0 ? money(Math.round(totals.cents / totals.visitors)) : "—",
+      note: "What the average visitor was worth",
+    },
   ];
 
   // Products, the best sellers first: by revenue, then sales, then checkouts.
@@ -241,6 +246,49 @@ export function StatsPanel({ data, canExport = true }: { data: StatsData; canExp
               </table>
             </div>
           </details>
+        </div>
+      ) : null}
+
+      {/*
+        Money by link, above the visitor counts rather than below them.
+
+        The visitor list was always here and never answered the question a
+        creator actually has on a Monday morning: not where people came from,
+        but which of those places paid. Those were two numbers that never met
+        — four hundred visits from a newsletter in one list, six hundred
+        dollars in another — and you cannot decide where to spend the week on
+        the first one alone. Only the last ninety days, because that is as far
+        back as the sales reading goes, and it says so.
+      */}
+      {data.revenueBySource.length ? (
+        <div className="mt-6 overflow-x-auto" tabIndex={0} role="region" aria-labelledby="numbers-revenue-source">
+          <table className="w-full text-left text-sm">
+            <caption id="numbers-revenue-source" className="text-left text-sm font-bold text-ink">
+              What each link brought in, last 90 days
+            </caption>
+            <thead>
+              <tr className="border-b border-line text-xs uppercase tracking-wide text-ink-soft">
+                <th scope="col" className="py-1 font-semibold">Link</th>
+                <th scope="col" className="py-1 text-right font-semibold">Sales</th>
+                <th scope="col" className="py-1 text-right font-semibold">Revenue</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.revenueBySource.map((row) => (
+                <tr key={row.source} className="border-b border-line/60">
+                  <th scope="row" className="py-1 pr-3 font-medium text-ink">
+                    {row.source === "direct" ? "No tag on the link" : row.source}
+                  </th>
+                  <td className="py-1 text-right tabular-nums">{count(row.sales)}</td>
+                  <td className="py-1 text-right font-semibold tabular-nums text-ink">{money(row.cents)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-ink-soft">
+            Read from your own Stripe account, so it is the money that actually arrived. A sale counts under the tag on
+            the page it was bought from; one with no tag is counted as untagged rather than guessed at.
+          </p>
         </div>
       ) : null}
 
