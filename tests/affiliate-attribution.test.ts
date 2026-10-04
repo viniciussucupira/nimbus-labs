@@ -314,8 +314,15 @@ test("a directory nobody can visit is in no plan card and no comparison", () => 
 test("nothing anywhere builds a page out of that consent yet", () => {
   // The day this changes, it should change on purpose: a public cross-store
   // listing is a different business, with duties that do not switch off again.
+  //
+  // One file may read it: lib/directory-index.ts, which keeps the list of who
+  // said yes and counts it, and builds nothing. That index had to exist
+  // alongside the consent, because the only other way to enumerate stores is
+  // a SCAN of the whole keyspace — right for a nightly job, far too expensive
+  // for a page. tests/directory-index.test.ts holds the rest of this.
   const hits = walk("app")
     .concat(walk("lib"), walk("components"))
-    .filter((file) => /affiliates\.directory/.test(readFileSync(join(process.cwd(), file), "utf8")));
-  assert.deepEqual(hits, [], "the flag is set by the studio form and read by nothing: no page is made from it");
+    .filter((file) => /affiliates\.directory/.test(readFileSync(join(process.cwd(), file), "utf8")))
+    .filter((file) => file !== "lib/directory-index.ts");
+  assert.deepEqual(hits, [], "the flag is read only by the index that records it: no page is made from it");
 });

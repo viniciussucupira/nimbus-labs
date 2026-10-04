@@ -260,6 +260,9 @@ export class MemoryRedis {
         return [...this.set(key)];
       case "SCARD":
         return this.set(key).size;
+      case "SSCAN":
+        // Every member at once, with the cursor back at "0", as SCAN does here.
+        return ["0", [...this.set(key)]];
       case "SPOP": {
         const set = this.set(key);
         const first = [...set][0];

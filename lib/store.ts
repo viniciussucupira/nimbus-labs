@@ -35,6 +35,7 @@ import type { CallPackage } from "@/lib/call-package-rules";
 import type { PodcastRef } from "@/lib/podcast-rules";
 import { cache } from "react";
 import { pointDomain } from "@/lib/domains";
+import { rememberListing } from "@/lib/directory-index";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { type Held, LockBusyError, holdLock, releaseLock, setIfHeld, takeLock } from "@/lib/redis-lock";
 import { type ProductFile } from "@/lib/product-file";
@@ -2063,6 +2064,12 @@ export async function setAffiliateSetting(
     const rates = Object.fromEntries(Object.entries(parsed.rates).filter(([id]) => known.has(id)));
     return { affiliates: { ...parsed, rates }, statsId: store.statsId ?? newListId() };
   });
+  // Whether this creator said their programme may be listed one day, kept in
+  // step on the save rather than reconstructed later by walking every store
+  // (lib/directory-index.ts). Nothing reads the list to publish anything.
+  if (next) {
+    await rememberListing(next).catch((error) => console.error("remembering a directory listing failed", error));
+  }
   return next ? { ok: true, store: next } : { ok: false, reason: "none" };
 }
 
