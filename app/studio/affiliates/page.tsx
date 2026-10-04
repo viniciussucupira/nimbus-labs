@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { readAllListings } from "@/lib/catalog";
+import { idsOfKind, readTitles } from "@/lib/catalog";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { studioPath, studioView } from "@/lib/studio-route";
@@ -72,8 +72,12 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
     return null;
   });
   // Every card, read once for the lists on this page.
-  const listings = await readAllListings(store);
-  const titles = new Map(listings.map((p) => [p.id, p.title]));
+  // Names only, which is one command rather than one per product. Which of
+  // them are paid, and which are one-off rather than a membership, is already
+  // in the store's own index — no product record is read here at all.
+  const titles = await readTitles(store);
+  const paid = new Set(idsOfKind(store, "paid"));
+  const recurring = new Set(idsOfKind(store, "recurring"));
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -126,9 +130,9 @@ export default async function StudioAffiliatesPage({ searchParams }: Params) {
         <AffiliateStudio
           handle={store.handle}
           setting={store.affiliates}
-          products={listings
-            .filter((p) => p.priceCents > 0)
-            .map((p) => ({ id: p.id, title: p.title, credited: p.recurring === null }))}
+          products={[...titles]
+            .filter(([id]) => paid.has(id))
+            .map(([id, title]) => ({ id, title, credited: !recurring.has(id) }))}
           rows={(book?.rows ?? []).map((row) => ({
             ...row,
             link: affiliateLink(store, row.affiliate.code),

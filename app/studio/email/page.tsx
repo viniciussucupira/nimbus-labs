@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { aiLeft, isAiConfigured } from "@/lib/ai";
 import { productLink } from "@/lib/checkout-recovery";
-import { readAllListings } from "@/lib/catalog";
+import { readTitles } from "@/lib/catalog";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { studioPath, studioView } from "@/lib/studio-route";
@@ -42,8 +42,9 @@ export default async function StudioEmailPage({ searchParams }: Params) {
     usedThisMonth(store.listId),
     listBroadcasts(store.listId),
     readFlows(store.listId),
-    // Every card, for the products a flow or a broadcast can be about.
-    readAllListings(store),
+    // The names of the products a flow or a broadcast can be about: one
+    // command, where reading every card was one per product (lib/catalog.ts).
+    readTitles(store),
     listDrafts(store.listId),
   ]);
   const role = view.role;
@@ -126,7 +127,7 @@ export default async function StudioEmailPage({ searchParams }: Params) {
             used={used}
             allowance={allowance}
             trial={trial}
-            products={listings.map((p) => ({ id: p.id, title: p.title }))}
+            products={[...listings].map(([id, title]) => ({ id, title }))}
             broadcasts={broadcasts.map((b) => ({
               id: b.id,
               subject: b.subject,
@@ -139,7 +140,7 @@ export default async function StudioEmailPage({ searchParams }: Params) {
               productId: b.productId,
             }))}
             flows={flows.map((f) => ({ ...f, stats: stats.get(f.id) ?? { started: 0, sent: 0 } }))}
-            links={Object.fromEntries(listings.map((p) => [p.id, productLink(store, p.id)]))}
+            links={Object.fromEntries([...listings].map(([id]) => [id, productLink(store, id)]))}
             ai={isAiConfigured() && can(role, "draft") ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
           />
         )}

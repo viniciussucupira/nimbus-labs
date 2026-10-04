@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ensureStatsId, isFree } from "@/lib/store";
-import { readAllListings } from "@/lib/catalog";
+import { idsOfKind, readTitles } from "@/lib/catalog";
 import { studioPath, studioView } from "@/lib/studio-route";
 import { StudioHeader } from "@/components/studio-header";
 import { StudioStorePin } from "@/components/studio-store-pin";
@@ -39,9 +39,12 @@ export default async function StudioIntegrationsPage({ searchParams }: Params) {
       console.error("reading the email platform failed", error);
       return null;
     }),
-    // Every card, for choosing which buyers are sent and with which tags (lib/catalog.ts).
-    readAllListings(store),
+    // Names only; whether a product is free is already in the store's own
+    // index, so nothing here reads a product record (lib/catalog.ts).
+    readTitles(store),
   ]);
+
+  const free = new Set(idsOfKind(store, "free"));
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -69,7 +72,7 @@ export default async function StudioIntegrationsPage({ searchParams }: Params) {
         ) : (
           <EmailSyncEditor
             view={view}
-            products={listings.map((p) => ({ id: p.id, title: p.title, free: isFree(p) }))}
+            products={[...listings].map(([id, title]) => ({ id, title, free: free.has(id) }))}
           />
         )}
       </main>

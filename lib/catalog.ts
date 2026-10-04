@@ -253,6 +253,27 @@ export const CATALOG_ID_PATTERN = /^[0-9a-f]{32}$/;
 const SAFE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 const listingKey = (catalog: string, product: string) => `nl:catalog:${catalog}:l:${product}`;
+/**
+ * Every product's title, in one hash.
+ *
+ * The index in the store record already answers what kind of thing each
+ * product is — paid or free, a call, a course, a membership, limited, hidden —
+ * without reading a single product record. The one thing it does not carry is
+ * the name, and a name is what most screens in the studio actually want: a
+ * list to pick from, a label beside a sale, a row in a table.
+ *
+ * So those screens were reading every product in the store to learn two
+ * thousand strings. Upstash bills by the command, not by the round trip, so a
+ * store at the ceiling cost two thousand commands every time its creator
+ * opened the email page — per view, per creator, with no ceiling of its own.
+ * That is the cost-without-a-limit this whole product is supposed not to have.
+ *
+ * A hash rather than one JSON blob on purpose: a title changes with HSET and a
+ * product goes with HDEL, each one command under the lock the store is already
+ * holding, with nothing to read first and nothing to re-serialise. Reading all
+ * of them is one HGETALL.
+ */
+const titlesKey = (catalog: string) => `nl:catalog:${catalog}:t`;
 const extrasKey = (catalog: string, product: string) => `nl:catalog:${catalog}:x:${product}`;
 
 type Command = (string | number)[];
@@ -674,6 +695,49 @@ export async function readAllListings(store: Store): Promise<Listing[]> {
   return readListings(store);
 }
 
+/**
+ * Every product's name, by id, in one command.
+ *
+ * For the screens that want a list to pick from and nothing else. A store
+ * still on the old inline layout has its products in its own record, so those
+ * cost no read at all.
+ *
+ * It heals itself. A store written before the hash existed has none, so the
+ * first read falls back to the listings once — the old cost, once — and leaves
+ * the hash behind for every read after it. The write is best-effort: a store
+ * whose cache could not be filled gets the right answer slowly rather than the
+ * wrong answer quickly.
+ */
+export async function readTitles(store: Store): Promise<Map<string, string>> {
+  const catalog = store.catalog;
+  if (catalog.inline) return new Map(catalog.inline.map((p) => [p.id, p.title]));
+  const ids = productIds(store);
+  if (!ids.length || !catalog.id || !isRedisConfigured()) return new Map();
+
+  const [reply] = await redisPipeline([["HGETALL", titlesKey(catalog.id)]]);
+  const found = new Map<string, string>();
+  if (Array.isArray(reply)) {
+    const flat = reply.map(String);
+    for (let i = 0; i + 1 < flat.length; i += 2) found.set(flat[i], flat[i + 1]);
+  } else if (reply && typeof reply === "object") {
+    for (const [id, title] of Object.entries(reply as Record<string, unknown>)) found.set(id, String(title));
+  }
+  // Only ids the index still lists: a hash entry left by a product removed
+  // before this existed is not a product.
+  const known = new Set(ids);
+  for (const id of [...found.keys()]) if (!known.has(id)) found.delete(id);
+  if (found.size >= ids.length) return found;
+
+  // Missing, so this store predates the hash: pay the old cost once.
+  const listings = await readListings(store, ids.filter((id) => !found.has(id)));
+  if (!listings.length) return found;
+  for (const listing of listings) found.set(listing.id, listing.title);
+  await redisPipeline([
+    ["HSET", titlesKey(catalog.id), ...listings.flatMap((l) => [l.id, l.title])],
+  ]).catch((error) => console.error("filling the product titles failed", error));
+  return found;
+}
+
 /** When the studio's list is one page of a longer one, as the studio page read it. */
 export type ProductPaging = {
   page: number;
@@ -770,13 +834,14 @@ export function productWrites(catalog: string, product: Product): Command[] {
   return [
     ["SET", listingKey(catalog, product.id), listing],
     heavy ? ["SET", extrasKey(catalog, product.id), extras] : ["DEL", extrasKey(catalog, product.id)],
+    ["HSET", titlesKey(catalog), product.id, product.title],
   ];
 }
 
 /** The writes that forget one product's records. */
 export function productDrops(catalog: string, id: string): Command[] {
   if (!SAFE_ID.test(id)) return [];
-  return [["DEL", listingKey(catalog, id), extrasKey(catalog, id)]];
+  return [["DEL", listingKey(catalog, id), extrasKey(catalog, id)], ["HDEL", titlesKey(catalog), id]];
 }
 
 /**
