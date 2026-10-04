@@ -71,7 +71,7 @@ import {
   isConnectInTestMode,
 } from "@/lib/stripe-connect";
 import { ORDERS_PAGE_SIZE, canSell, listSales } from "@/lib/store-checkout";
-import { deliveredThisMonth } from "@/lib/delivery";
+import { FREE_PAUSE_ABOVE_BYTES, bytesWords, deliveredThisMonth } from "@/lib/delivery";
 import { MAX_LEADS, listSize } from "@/lib/free";
 import { readableSize } from "@/lib/product-file";
 import {
@@ -80,6 +80,7 @@ import {
   readSubscription,
   trialOffered,
 } from "@/lib/billing";
+import { STORAGE_BRAKE_BYTES, storageWords } from "@/lib/storage-quota";
 import { canUse, PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, priceWords, yearSaving } from "@/lib/plan";
 import { studioPath, studioView } from "@/lib/studio-route";
 import { type Permission, type Role, ROLE_NAMES, ROLE_SUMMARIES, can } from "@/lib/team-roles";
@@ -1469,6 +1470,36 @@ export default async function StudioPage({
                     store keeps selling as usual.
                   </p>
                 ) : null}
+                {/*
+                  The two figures that act on their own, said before they act.
+
+                  Section 5 of the Terms promises that every limit is one you
+                  can see while you use the Services, and that none of them is
+                  discovered by being enforced against you. These two were
+                  built and shown nowhere, which made that sentence untrue the
+                  day it was written. They are far above any real store — a
+                  storefront holds two to five gigabytes, not two hundred —
+                  and they are here so that the promise is kept rather than
+                  merely made.
+                */}
+                <dl className="mt-5 grid gap-3 border-t border-line pt-4 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="font-semibold text-ink">Free downloads this month</dt>
+                    <dd className="text-ink-soft">
+                      {`${bytesWords(Math.min(delivery.bytes, FREE_PAUSE_ABOVE_BYTES))} of ${bytesWords(FREE_PAUSE_ABOVE_BYTES)}. `}
+                      Past that, copies you give away pause until the month turns. Anything anyone has bought is never
+                      affected.
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-semibold text-ink">Files stored</dt>
+                    <dd className="text-ink-soft">
+                      {`Up to ${storageWords(STORAGE_BRAKE_BYTES)} a store. `}
+                      Past that you are asked to delete something before adding more. Nothing already there stops
+                      working, and nothing already sold is touched.
+                    </dd>
+                  </div>
+                </dl>
               </div>
             ) : null}
 

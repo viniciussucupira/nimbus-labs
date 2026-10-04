@@ -111,3 +111,29 @@ test("the creator is told what to do about it, in the studio", () => {
     );
   }
 });
+
+test("every brake that acts on its own is shown before it acts", () => {
+  // Section 5 of the Terms promises each limit is one you can see while you
+  // use the Services, and that none is discovered by being enforced against
+  // you. Both brakes were built and drawn nowhere, which made that sentence
+  // untrue the day it was written. It is a promise about the studio, so the
+  // studio is where it is checked.
+  const studio = readFileSync(join(process.cwd(), "app/studio/page.tsx"), "utf8");
+  assert.match(
+    studio,
+    /STORAGE_BRAKE_BYTES/,
+    "the storage brake must be visible in the studio: the Terms say no limit is found by hitting it",
+  );
+  assert.match(
+    studio,
+    /FREE_PAUSE_ABOVE_BYTES/,
+    "and so must the point where free downloads pause",
+  );
+
+  const terms = readFileSync(join(process.cwd(), "app/terms/page.tsx"), "utf8");
+  assert.match(
+    terms,
+    /None of them is hidden in this document and then discovered by being\s*\n?\s*enforced against you/,
+    "and the clause that makes this a promise has to still be there",
+  );
+});
