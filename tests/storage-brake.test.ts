@@ -1,0 +1,112 @@
+/**
+ * The brake on storage, and the two things it must never do.
+ *
+ * Storage was the one cost with no measurement of any kind. Nothing bounded
+ * what a store could hold except 2,000 products times a 5 GB file — ten
+ * terabytes, about $230 a month, for ever, from a creator paying $29,
+ * whether or not they ever sold anything.
+ *
+ * What it must never do is show up as a plan limit. Stan publishes no
+ * storage limit, no file-count limit and no bandwidth limit; their only
+ * published figure is 5 GB a file, which is also ours. A quota on our
+ * pricing page would lose us a line to them to guard against a number no
+ * honest creator reaches. So it is one high figure, the same on every plan,
+ * and it lives nowhere a plan is chosen.
+ *
+ * And it must never reach a buyer. It is checked when a creator uploads,
+ * which is the one moment where saying no costs nobody anything.
+ */
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { STORAGE_BRAKE_BYTES, storageWords } from "@/lib/storage-quota";
+
+const GB = 1024 * 1024 * 1024;
+
+function walk(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    if (entry === "node_modules" || entry === ".next" || entry.startsWith(".")) continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) out.push(...walk(full));
+    else if (full.endsWith(".ts") || full.endsWith(".tsx")) out.push(full);
+  }
+  return out;
+}
+
+test("the brake is set where a year of sitting on it is still profitable", () => {
+  const monthlyCost = (STORAGE_BRAKE_BYTES / GB) * 0.023;
+  // What a $29 subscription leaves after the card fee, per lib/delivery.ts.
+  assert.ok(
+    monthlyCost < 27.86 / 2,
+    `a store parked on the brake costs $${monthlyCost.toFixed(2)} a month, which must stay well under ` +
+      "what the cheapest plan brings in",
+  );
+});
+
+test("it is far above anything a store selling its own work would hold", () => {
+  assert.ok(
+    STORAGE_BRAKE_BYTES >= 100 * GB,
+    "set this low enough to touch a real creator and it stops being a brake and becomes a plan limit",
+  );
+});
+
+test("it is the same on every plan, so it cannot drift into being a plan feature", () => {
+  const src = readFileSync(join(process.cwd(), "lib/storage-quota.ts"), "utf8");
+  assert.doesNotMatch(
+    src,
+    /Record<\s*Tier/,
+    "a brake that differs by plan is a plan limit in disguise, and ends up on the pricing page",
+  );
+});
+
+test("it appears nowhere a creator is choosing or comparing a plan", () => {
+  const selling = [
+    "components/home-parts.tsx",
+    "app/page.tsx",
+    "lib/site-pages.ts",
+    "lib/feature-pages.ts",
+  ];
+  for (const file of selling) {
+    const src = readFileSync(join(process.cwd(), file), "utf8");
+    assert.doesNotMatch(
+      src,
+      /STORAGE_BRAKE_BYTES|storageUsed/,
+      `${file} is where a plan is sold. Stan publishes no storage limit; ours must not appear here.`,
+    );
+  }
+});
+
+test("only an upload is ever refused by it, never a download", () => {
+  const callers = walk(join(process.cwd(), "app"))
+    .concat(walk(join(process.cwd(), "lib")))
+    .filter((f) => !f.endsWith("lib/storage-quota.ts"))
+    .filter((f) => /storageUsed/.test(readFileSync(f, "utf8")));
+
+  assert.deepEqual(
+    callers.map((f) => f.replace(process.cwd() + "/", "")),
+    ["app/api/store/file/route.ts"],
+    "the brake belongs at upload authorization and nowhere else. A buyer who paid is never refused.",
+  );
+});
+
+test("the figures read as figures", () => {
+  assert.equal(storageWords(STORAGE_BRAKE_BYTES), "500 GB");
+  assert.equal(storageWords(1.5 * 1024 * GB), "1.5 TB");
+  assert.equal(storageWords(2.5 * GB), "2.5 GB");
+  assert.equal(storageWords(40 * GB), "40 GB");
+  assert.equal(storageWords(900 * 1024 * 1024), "900 MB");
+});
+
+test("the creator is told what to do about it, in the studio", () => {
+  for (const file of ["components/product-editor.tsx", "components/course-editor.tsx"]) {
+    const src = readFileSync(join(process.cwd(), file), "utf8");
+    assert.match(src, /storage_full:/, `${file} should say what a full store means and what to do`);
+    assert.match(
+      src,
+      /storage_full:[^\n]*nothing already bought is affected/,
+      "and should say plainly that nobody's purchase is touched",
+    );
+  }
+});

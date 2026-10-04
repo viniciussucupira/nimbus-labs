@@ -103,6 +103,7 @@ const MESSAGES: Record<string, string> = {
   course: "This is a course: it cannot be free, and it delivers its lessons rather than a file or a link of its own. Its lessons are changed from its own page.",
   bundle: "This is a bundle: one sale, at one price, of the products in it. It cannot be free, a membership, pay what you want, have several prices or a file of its own. Change what is in it on its bundle page.",
   too_big: `That file is over ${maxFileLabel()}, the largest one file can be.`,
+  storage_full: "Your store is holding as much as one store can hold. Delete a file you no longer sell to make room — nothing already bought is affected.",
   wrong_type: "That kind of file is not one a store can sell here.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",

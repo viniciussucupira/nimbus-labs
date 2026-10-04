@@ -13,6 +13,7 @@ import {
   ownsPath,
 } from "@/lib/product-file";
 import { ITEM_ID_PATTERN, findLesson, readCourses } from "@/lib/course";
+import { storageUsed } from "@/lib/storage-quota";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 /** How long the creator has to start the upload after asking for the door. */
@@ -81,6 +82,16 @@ export async function POST(request: NextRequest) {
         const folder = await storeFolder(ref);
         if (!ownsPath(pathname, folder, productId)) throw new Error("invalid");
 
+        /*
+          The storage brake (lib/storage-quota.ts). Checked here, before a
+          single byte is signed for, because this is the one moment where
+          saying no costs nobody anything: no buyer is waiting, nothing
+          already sold is touched, and nothing that exists stops working.
+          It sits far above any real store and is not a plan limit.
+        */
+        const held = await storageUsed(folder);
+        if (held.full) throw new Error("storage_full");
+
         return {
           // Scoped to this one path, so the token cannot sign anything else.
           // There is nothing to cache: a token that fits one upload fits no
@@ -108,7 +119,7 @@ export async function POST(request: NextRequest) {
     return Response.json(answer);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "server_error";
-    const known = ["signed_out", "none", "unknown", "invalid", "forbidden", "gone"].includes(reason);
+    const known = ["signed_out", "none", "unknown", "invalid", "forbidden", "gone", "storage_full"].includes(reason);
     if (!known) console.error("signing an upload failed", error);
     return Response.json(
       { ok: false, error: known ? reason : "server_error" },

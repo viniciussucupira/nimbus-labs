@@ -44,6 +44,7 @@ const MESSAGES: Record<string, string> = {
   not_course: "This product is no longer a course. Reload the page.",
   busy: "Another change to this course is still saving. Try again in a moment.",
   invalid: "That upload could not be checked. Try again.",
+  storage_full: "Your store is holding as much as one store can hold. Delete a file you no longer sell to make room — nothing already bought is affected.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   server_error: "Something went wrong on our side. Try again in a moment.",
