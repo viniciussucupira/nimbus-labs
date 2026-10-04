@@ -37,17 +37,9 @@ export function RevealOnScroll() {
 }
 
 /*
- * The hero: one composition that shows the whole sale — the store, the Stripe
- * checkout, the file delivered and the money landing in the creator's own
- * account. It plays through once and then stays on the last step; the three
- * buttons under it let anyone step back and forth. With reduced motion it
- * opens on the finished state.
+ * The hero: one store, changing. See HeroFlow for why it is one object
+ * rather than the five it used to be.
  */
-const FLOW = [
-  { key: "pick", label: "Pick a plan", short: "Pick" },
-  { key: "pay", label: "Pay on Stripe", short: "Pay" },
-  { key: "get", label: "File delivered", short: "Get the file" },
-] as const;
 
 const REDUCE = "(prefers-reduced-motion: reduce)";
 const subscribeReduce = (cb: () => void) => {
@@ -140,8 +132,6 @@ const FACE = (id: string, s = 96) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=${s}&h=${s}&q=70`;
 
 export function HeroFlow() {
-  const [played, setPlayed] = useState(0);
-  const [chosen, setChosen] = useState<number | null>(null);
   const [store, setStore] = useState(0);
   const reduce = useSyncExternalStore(
     subscribeReduce,
@@ -149,24 +139,23 @@ export function HeroFlow() {
     () => false,
   );
 
-  // With reduced motion the finished sale shows at once; otherwise it plays
-  // through once. A step somebody picked always wins.
-  const step = chosen ?? (reduce ? 2 : played);
-
-  useEffect(() => {
-    if (chosen !== null || reduce || played >= 2) return;
-    const t = setTimeout(() => setPlayed((s) => Math.min(2, s + 1)), played === 0 ? 2200 : 1900);
-    return () => clearTimeout(t);
-  }, [chosen, reduce, played]);
-
   /*
-   * The store on the phone changes every five seconds, for as long as
-   * anybody is looking. Five seconds is long enough to read the name, the
-   * thing for sale and both prices without hurrying, and the only motion
-   * is the fade — nothing slides, so nothing has to be chased.
+   * One store at a time, changing every five seconds.
    *
-   * It stops entirely for anyone who has asked motion to stop; they see
-   * the first store, which is the one the rest of the page talks about.
+   * This used to be a three-step animation of a whole sale — the store,
+   * then Stripe's checkout, then the file delivered, then a bar showing
+   * what the platform took, with buttons to step through it. Five
+   * objects, and the section immediately below this one draws the same
+   * sale properly in five steps. A first screen that explains the
+   * mechanism is a first screen that has given up on being looked at.
+   *
+   * What is left is the thing being sold: a creator's store, real enough
+   * to read, changing often enough that nobody sees the same one twice.
+   *
+   * Five seconds is long enough to read the name, the product and both
+   * prices without hurrying. It stops entirely for anyone who has asked
+   * motion to stop; they see the first store, which is the one the rest
+   * of the page talks about.
    */
   useEffect(() => {
     if (reduce) return;
@@ -176,255 +165,103 @@ export function HeroFlow() {
 
   const s = STORES[store];
 
-  const choose = (i: number) => setChosen(i);
-
-  const paying = step === 1;
-  const paid = step === 2;
-
   return (
-    <div className="relative mx-auto w-full max-w-[35rem]">
-      {/*
-        Two compositions, not one squeezed.
-        On a wide screen the three cards overlap in depth, which is what makes
-        it read as one movement. On a phone there is no depth to spend: the
-        same three pieces stack in the order they happen — the store, then
-        whichever card the current step is on, then where the money landed —
-        so nothing is laid over the phone it is meant to be explaining.
-      */}
-      <div className="flex flex-col items-center gap-4 lg:relative lg:block lg:h-[35rem]">
-        {/* soft light behind the devices */}
+    <div className="relative mx-auto w-full max-w-[32rem]">
+      <div className="relative mx-auto w-[17rem] sm:w-[19rem]">
+        {/*
+          The light the phone sits in. One soft source behind it, the
+          colour of the store currently on screen, so the whole
+          composition changes temperature with the store rather than
+          sitting on a fixed violet.
+        */}
         <div
           aria-hidden="true"
-          className="absolute left-[56%] top-[38%] h-[78%] w-[86%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(124,92,255,0.5),transparent)] blur-2xl"
+          className="absolute left-1/2 top-1/2 -z-10 h-[115%] w-[135%] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl transition-colors duration-[1200ms]"
+          style={{ background: `radial-gradient(closest-side, ${s.tint}55, transparent)` }}
         />
-        {/*
-          The thread the sale runs along. Two faint strokes from the store to
-          the checkout and from the checkout down to the delivery: enough to
-          read the three cards as one movement, far too faint to compete with
-          them. Hidden on a phone, where the cards are already stacked in the
-          order they happen.
-        */}
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          className="pointer-events-none absolute inset-0 hidden h-full w-full lg:block"
-        >
-          <path
-            d="M34 26 C 52 22, 58 24, 70 30"
-            fill="none"
-            stroke="rgba(255,255,255,0.22)"
-            strokeWidth="0.35"
-            strokeDasharray="1.6 1.6"
-            vectorEffect="non-scaling-stroke"
-          />
-          <path
-            d="M82 50 C 84 60, 80 64, 74 70"
-            fill="none"
-            stroke="rgba(255,255,255,0.22)"
-            strokeWidth="0.35"
-            strokeDasharray="1.6 1.6"
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
 
-        {/* the store, on a phone */}
-        <div className="w-[15.5rem] lg:absolute lg:left-0 lg:top-0 lg:w-[54%] lg:max-w-[16.5rem]">
-          <div className="device">
-            <div className="device-screen">
-              <div className="flex items-center justify-between px-4 pb-1 pt-2.5 text-[10px] font-semibold text-ink-mute">
-                <span>9:41</span>
-                <span className="rounded-[5px] bg-white px-1.5 py-0.5 text-[9px] text-ink-soft ring-1 ring-line">
-                  {`marktmorgen.com/@${s.handle}`}
-                </span>
-              </div>
-              {/*
-                Everything below changes with the store. The key on this
-                wrapper is the store's own, so React replaces the subtree
-                rather than editing it, and the CSS animation on .nb-swap
-                runs again from the top each time.
-              */}
-              <div key={s.handle} className="nb-swap px-3.5 pb-4 pt-2">
-                <div className="flex items-center gap-2.5">
-                  <img
-                    src={FACE(s.photo)}
-                    alt=""
-                    width={40}
-                    height={40}
-                    fetchPriority="high"
-                    className="h-10 w-10 rounded-full bg-sand-deep object-cover ring-2 ring-white"
-                    style={{ boxShadow: `0 0 0 3px ${s.tint}33` }}
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate text-[13px] font-semibold leading-tight text-ink">{s.name}</p>
-                    <p className="truncate text-[10.5px] text-ink-mute">{s.line}</p>
-                  </div>
+        <div className="device">
+          <div className="device-screen">
+            <div className="flex items-center justify-between px-4 pb-1 pt-2.5 text-[10px] font-semibold text-ink-mute">
+              <span>9:41</span>
+              <span className="rounded-[5px] bg-white px-1.5 py-0.5 text-[9px] text-ink-soft ring-1 ring-line">
+                {`marktmorgen.com/@${s.handle}`}
+              </span>
+            </div>
+            {/*
+              The key is the store's own, so React replaces the subtree
+              rather than editing it and the fade runs again from the top.
+            */}
+            <div key={s.handle} className="nb-swap px-4 pb-5 pt-2">
+              <div className="flex items-center gap-3">
+                <img
+                  src={FACE(s.photo, 112)}
+                  alt=""
+                  width={44}
+                  height={44}
+                  fetchPriority="high"
+                  className="h-11 w-11 rounded-full bg-sand-deep object-cover ring-2 ring-white"
+                  style={{ boxShadow: `0 0 0 3px ${s.tint}33` }}
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-semibold leading-tight text-ink">{s.name}</p>
+                  <p className="truncate text-[11px] text-ink-mute">{s.line}</p>
                 </div>
-                <div className="mt-3 rounded-[12px] border border-line bg-white p-2.5">
-                  <p className="text-[11px] font-semibold text-ink" style={{ color: s.tint }}>
-                    {s.item}
-                  </p>
-                  <div className="mt-2 grid gap-1.5">
-                    <div className="flex items-center justify-between rounded-[9px] border border-line px-2.5 py-2 text-[11.5px]">
-                      <span className="text-ink-soft">{s.options[0].label}</span>
-                      <span className="font-semibold text-ink">{s.options[0].price}</span>
-                    </div>
-                    <div
-                      className={`flex items-center justify-between rounded-[9px] border px-2.5 py-2 text-[11.5px] transition-colors duration-500 ${
-                        step === 0 ? "border-violet-brand bg-lilac" : "border-violet-brand/50 bg-lilac/60"
-                      }`}
-                    >
-                      <span className="flex min-w-0 items-center gap-1.5 font-medium text-ink">
-                        <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-violet-brand text-white">
-                          <Icon name="check" size={9} strokeWidth={3} />
-                        </span>
-                        <span className="truncate">{s.options[1].label}</span>
+              </div>
+              <div className="mt-3.5 rounded-[12px] border border-line bg-white p-3">
+                <p className="text-[12px] font-semibold" style={{ color: s.tint }}>
+                  {s.item}
+                </p>
+                <div className="mt-2.5 grid gap-1.5">
+                  <div className="flex items-center justify-between rounded-[9px] border border-line px-3 py-2 text-[12px]">
+                    <span className="text-ink-soft">{s.options[0].label}</span>
+                    <span className="font-semibold text-ink">{s.options[0].price}</span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-[9px] border border-violet-brand bg-lilac px-3 py-2 text-[12px]">
+                    <span className="flex min-w-0 items-center gap-1.5 font-medium text-ink">
+                      <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-violet-brand text-white">
+                        <Icon name="check" size={9} strokeWidth={3} />
                       </span>
-                      <span className="font-semibold text-ink">{s.options[1].price}</span>
-                    </div>
+                      <span className="truncate">{s.options[1].label}</span>
+                    </span>
+                    <span className="font-semibold text-ink">{s.options[1].price}</span>
                   </div>
-                  <div
-                    className={`mt-2.5 rounded-[9px] py-2 text-center text-[11.5px] font-semibold text-white transition-colors duration-500 ${
-                      step === 0 ? "bg-violet-brand" : "bg-ink/80"
-                    }`}
+                </div>
+                <div className="mt-3 rounded-[9px] bg-violet-brand py-2.5 text-center text-[12px] font-semibold text-white">
+                  Continue to checkout
+                </div>
+              </div>
+              <div className="mt-2.5 grid gap-1.5">
+                {s.links.map((l) => (
+                  <p
+                    key={l}
+                    className="truncate rounded-[9px] border border-line bg-white px-3 py-2.5 text-[11.5px] font-medium text-ink-soft"
                   >
-                    Continue to checkout
-                  </div>
-                </div>
-                <div className="mt-2 grid gap-1.5">
-                  {s.links.map((l) => (
-                    <p key={l} className="truncate rounded-[9px] border border-line bg-white px-2.5 py-2 text-[11px] font-medium text-ink-soft">
-                      {l}
-                    </p>
-                  ))}
-                </div>
+                    {l}
+                  </p>
+                ))}
               </div>
-            </div>
-          </div>
-
-        </div>
-
-        {/*
-          The slot the step's card sits in on a phone. It keeps one height
-          whichever card is showing, so stepping through the sale does not
-          make the page under it jump. At 640px the wrapper stops existing
-          (`display: contents`) and both cards go back to being positioned
-          against the composition itself.
-        */}
-        <div className="flex min-h-[15.5rem] w-full max-w-[18rem] items-center justify-center lg:contents">
-        {/* the Stripe checkout */}
-        <div
-          className={`w-[17rem] transition-all duration-700 [transition-timing-function:var(--ease)] lg:absolute lg:right-0 lg:top-[7%] lg:w-[54%] lg:max-w-[16.5rem] ${
-            step === 1 ? "opacity-100" : "hidden opacity-100 lg:block"
-          } ${step === 0 ? "lg:translate-y-3 lg:opacity-65" : "lg:translate-y-0 lg:opacity-100"}`}
-          aria-hidden={step === 0}
-        >
-          <div className="rounded-[16px] bg-white p-3.5 text-ink shadow-[var(--shadow-lg)] ring-1 ring-black/5">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] text-ink-mute">Pay Harbor Kitchen</p>
-              <Icon name="lock" size={13} className="text-ink-mute" />
-            </div>
-            <p className="mt-1 text-[22px] font-semibold tracking-[-0.03em]">$39.00</p>
-            <p className="text-[10.5px] text-ink-mute">Weekly Meal Planner · 5 weeks</p>
-            <div className="mt-3 grid gap-1.5 text-[11px]">
-              <div className="rounded-[8px] border border-line px-2.5 py-1.5 text-ink-soft">sam@example.com</div>
-              <div className="flex items-center justify-between rounded-[8px] border border-line px-2.5 py-1.5 text-ink-soft">
-                <span>•••• 4242</span>
-                <Icon name="card" size={13} />
-              </div>
-            </div>
-            <div
-              className={`mt-3 flex h-8 items-center justify-center gap-1.5 rounded-[8px] text-[11.5px] font-semibold text-white transition-colors duration-500 ${
-                paid ? "bg-mint-brand" : "bg-ink"
-              }`}
-            >
-              {paying ? (
-                <>
-                  <span className="spinner" aria-hidden="true" /> Processing
-                </>
-              ) : paid ? (
-                <>
-                  <Icon name="check" size={13} strokeWidth={2.5} /> Paid
-                </>
-              ) : (
-                "Pay $39.00"
-              )}
-            </div>
-            <p className="mt-2 text-center text-[9.5px] text-ink-mute">Secure checkout by Stripe</p>
-          </div>
-        </div>
-
-        {/* delivered */}
-        <div
-          className={`w-[17rem] transition-all duration-700 [transition-timing-function:var(--ease)] lg:absolute lg:bottom-[5.25rem] lg:right-[3%] lg:w-[62%] lg:max-w-[18.5rem] ${
-            paid
-              ? "opacity-100 lg:translate-y-0"
-              : "hidden lg:block lg:pointer-events-none lg:translate-y-4 lg:opacity-0"
-          }`}
-          aria-hidden={!paid}
-        >
-          <div className="rounded-[16px] bg-white p-3 shadow-[var(--shadow-lg)] ring-1 ring-black/5">
-            <div className="flex items-center gap-2">
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-mint-soft text-mint-deep">
-                <Icon name="check" size={14} strokeWidth={2.5} />
-              </span>
-              <p className="text-[12px] font-semibold text-ink">Payment confirmed — your file is ready</p>
-            </div>
-            <div className="mt-2.5 flex items-center gap-2.5 rounded-[10px] border border-line p-2">
-              <img
-                src="/demo/five-1.webp"
-                alt=""
-                width={36}
-                height={46}
-                className="h-[46px] w-9 rounded-[4px] border border-line object-cover object-top"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[11.5px] font-medium text-ink">meal-planner-5-weeks.pdf</p>
-                <p className="text-[10px] text-ink-mute">The link works for 3 days</p>
-              </div>
-              <span className="grid h-7 w-7 place-items-center rounded-[8px] bg-violet-brand text-white">
-                <Icon name="download" size={14} strokeWidth={2.2} />
-              </span>
             </div>
           </div>
         </div>
 
         {/*
-          Where the money ended up, along the bottom of the whole composition.
-          It is here from the first frame rather than arriving with the sale,
-          because it is the claim the page is making: the line is the
-          creator's own Stripe account, and the figure beside it is what the
-          platform took. The row fills as the sale completes.
+          The four stores waiting their turn, down the left of the phone
+          and overlapping its edge. The one coming up next lifts and
+          brightens a beat before it arrives, so the change is announced
+          rather than sprung.
+
+          Only from 1024px up: below that the phone has the column to
+          itself and faces beside it would crowd what they decorate.
         */}
-        </div>
-
-        {/*
-          The other four, waiting their turn.
-
-          One phone is a diagram of a store; five faces is the market the
-          name promises. They stand in the open ground under the phone —
-          measured, not guessed: the phone ends at 67% of the composition's
-          height and the money bar starts at 87%, and the right half of
-          that band is taken by the delivery card, so this is the one
-          rectangle with nothing in it.
-
-          They are the stores not currently on the screen, at four sizes
-          and four heights so the row reads as a crowd rather than a
-          toolbar, and the one coming up next lifts and brightens a beat
-          before it arrives — the change on the phone is announced rather
-          than sprung.
-
-          Only from 1024px up: below that the pieces are stacked in a
-          column and there is no open ground to stand in.
-        */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden lg:block">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-24 hidden w-24 lg:block">
           {STORES.map((o, i) => {
             const slot = ((i - store + STORES.length) % STORES.length) - 1;
             const spot = [
-              { top: "69%", left: "1%", size: 56 },
-              { top: "73%", left: "13%", size: 44 },
-              { top: "70%", left: "24%", size: 50 },
-              { top: "74%", left: "36%", size: 40 },
+              { top: "6%", left: "8%", size: 58 },
+              { top: "30%", left: "34%", size: 44 },
+              { top: "54%", left: "4%", size: 50 },
+              { top: "76%", left: "30%", size: 38 },
             ][slot];
             if (!spot) return null;
             const next = slot === 0;
@@ -437,9 +274,9 @@ export function HeroFlow() {
                   left: spot.left,
                   width: spot.size,
                   height: spot.size,
-                  opacity: next ? 1 : 0.62,
+                  opacity: next ? 1 : 0.55,
                   transform: next ? "scale(1.16) translateY(-6px)" : "scale(1)",
-                  boxShadow: `0 0 0 2px rgba(255,255,255,${next ? 0.92 : 0.4}), 0 12px 28px -8px ${o.tint}aa`,
+                  boxShadow: `0 0 0 2px rgba(255,255,255,${next ? 0.9 : 0.35}), 0 12px 28px -8px ${o.tint}aa`,
                 }}
               >
                 <img
@@ -455,86 +292,19 @@ export function HeroFlow() {
             );
           })}
         </div>
-
-        <div className="w-full max-w-[20rem] lg:absolute lg:inset-x-0 lg:bottom-0 lg:max-w-none">
-          <div className="flex items-center justify-between gap-3 rounded-[14px] border border-white/14 bg-[#05081a]/85 px-3.5 py-3 backdrop-blur-sm lg:px-4">
-            <span className="flex min-w-0 items-center gap-2.5">
-              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] bg-white/10 text-[#b9a8ff]">
-                <Icon name="bank" size={17} />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-[12px] font-semibold text-white">Your Stripe account</span>
-                <span className="block text-[10.5px] text-white/70">Marktmorgen&rsquo;s cut: $0.00</span>
-              </span>
-            </span>
-            {/*
-              A figure on a screen has to say what it is. This one is the
-              gross payment — what the buyer paid, before Stripe takes its own
-              processing fee on the creator's account — and it is labeled as
-              that both on screen and for a screen reader, in both states.
-            */}
-            <span className="shrink-0 text-right">
-              <span className="block text-[9.5px] font-medium uppercase tracking-[0.08em] text-white/55">
-                Gross payment
-              </span>
-              <span
-                className={`mt-0.5 block rounded-[9px] px-2.5 py-1 text-[13px] font-semibold tabular-nums transition-colors duration-700 ${
-                  paid ? "bg-mint-soft text-mint-deep" : "bg-white/10 text-white/70"
-                }`}
-              >
-                {paid ? "+$39.00" : "$0.00"}
-              </span>
-            </span>
-          </div>
-        </div>
       </div>
 
       {/*
-        What this picture is, said on the picture.
-
-        It is a drawing of a sale, not a screenshot of one that happened, and
-        the figure in the bar is what the buyer paid rather than what is left
-        after the card is processed. Both of those are one line to say and
-        would be a small lie to leave out on a page whose argument is that we
-        do not tell them. The store it draws is the demo, which anybody can
-        open and buy from with a test card.
+        One line, said once. What the picture is, and that the people in
+        it are not customers of ours.
       */}
-      <p className="mt-6 text-center text-[0.8125rem] leading-relaxed text-white/70">
-        Five example stores we built, and a sale drawn from the{" "}
-        <Link href="/demo" className="font-medium text-white underline underline-offset-4 decoration-white/40 hover:decoration-white">
+      <p className="mt-7 text-center text-[0.8125rem] leading-relaxed text-white/65">
+        Five example stores we built. The photographs are licensed stock, not customers of ours. The{" "}
+        <Link href="/demo" className="font-medium text-white/85 underline underline-offset-4 decoration-white/30 hover:decoration-white">
           demo store
-        </Link>
-        , which you can buy from with a test card. The people in the photographs are licensed stock, not customers of
-        ours. The $39.00 is the gross payment; Stripe takes its own processing fee from it on your account, and
-        Marktmorgen takes nothing on top.
+        </Link>{" "}
+        is the one you can buy from, with a test card.
       </p>
-
-      <div className="mt-5 flex justify-center" role="group" aria-label="Steps of a sale">
-        <ol className="flex items-center gap-1 rounded-[12px] bg-[#120a45]/55 p-1 ring-1 ring-white/14">
-          {FLOW.map((s, i) => (
-            <li key={s.key}>
-              <button
-                type="button"
-                onClick={() => choose(i)}
-                aria-pressed={step === i}
-                className={`flex h-11 items-center gap-1.5 rounded-[9px] px-3 text-[13px] font-medium transition-colors sm:h-10 ${
-                  step === i ? "bg-white text-ink" : "text-white/80 hover:bg-white/12 hover:text-white"
-                }`}
-              >
-                <span
-                  className={`grid h-5 w-5 place-items-center rounded-full text-[11px] font-semibold ${
-                    step === i ? "bg-violet-brand text-white" : "bg-white/15 text-white"
-                  }`}
-                >
-                  {i + 1}
-                </span>
-                <span className="whitespace-nowrap sm:hidden">{s.short}</span>
-                <span className="hidden whitespace-nowrap sm:inline">{s.label}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-      </div>
     </div>
   );
 }

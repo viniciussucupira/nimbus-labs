@@ -200,7 +200,6 @@ export default function Home() {
       <main id="content">
         {/* ------------------------------------------------------------ hero */}
         <section className="surface-daybreak on-dark overflow-hidden">
-          <div className="awning" aria-hidden="true" />
           <div className="container-page grid items-center gap-12 pb-28 pt-12 sm:gap-14 sm:pt-16 lg:grid-cols-[1.04fr_1fr] lg:gap-12 lg:pb-32 lg:pt-20">
             <div className="nb-fade-up">
               <h1 className="t-display text-white">
@@ -246,24 +245,15 @@ export default function Home() {
                 />
               </div>
               {/*
-                Three facts, not three adjectives. Each one is checkable
-                elsewhere on this site inside a minute: the price page, the
-                money section and the demo store. They are kept short enough
-                to sit two to a row on a phone rather than stacking into a
-                third list.
+                The three chips are gone with the rest of the clutter.
+
+                They repeated the sentence directly above them — 0% of your
+                sales is in that paragraph, the trial is in the line below —
+                and three pills under a paragraph that already says the same
+                thing is the house style of a page with nothing to show. The
+                band under this screen states all three as measurements with
+                a source, which is worth more than a pill.
               */}
-              <ul className="mt-7 flex flex-wrap gap-2">
-                {[
-                  { icon: "percent" as IconName, text: "0% of your sales" },
-                  { icon: "bank" as IconName, text: "Your own Stripe" },
-                  { icon: "calendar" as IconName, text: `${TRIAL_DAYS} days free` },
-                ].map((c) => (
-                  <li key={c.text} className="chip chip-dark">
-                    <Icon name={c.icon} size={15} />
-                    {c.text}
-                  </li>
-                ))}
-              </ul>
               <p className="mt-4 text-sm text-white/80">
                 {`Your card is taken when the trial starts and first charged ${TRIAL_DAYS} days later, at $${PRICE} a month. Cancel in two clicks, from your own studio, and it is never charged.`}
               </p>
