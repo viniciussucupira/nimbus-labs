@@ -68,7 +68,7 @@ const REASONS: {
     title: "Several prices for one product",
     body: "One week for $27, five weeks for $39. Up to three options on any product, and each option delivers its own file.",
     example:
-      "Stan's own help center lists this among its common feature requests and says there is no native way to do it — read on September 18, 2026.",
+      "A week at one price, five weeks at another, the season at a third. The buyer picks; each one hands over its own file.",
     visual: "options",
     href: "/platform/price-options",
     link: "See price options",
@@ -210,10 +210,8 @@ export default function Home() {
                 Your money.
               </h1>
               <p className="t-lead measure mt-7 text-white/80">
-                Sell files, courses, calls and memberships from the link in your bio. Buyers pay straight into your own
-                Stripe account. Marktmorgen takes{" "}
-                <strong className="font-semibold text-white">0% of your sales</strong> — only Stripe charges its own
-                processing fee, on your account.
+                Files, courses, memberships and booked calls, sold from the link in your bio. The card is charged on
+                your own Stripe account, so the money is yours before it is anybody else&apos;s.
               </p>
               {/*
                 On a phone the two calls to action run the width of the
@@ -255,7 +253,7 @@ export default function Home() {
                 a source, which is worth more than a pill.
               */}
               <p className="mt-4 text-sm text-white/80">
-                {`Your card is taken when the trial starts and first charged ${TRIAL_DAYS} days later, at $${PRICE} a month. Cancel in two clicks, from your own studio, and it is never charged.`}
+                {`$${PRICE} a month. Free for ${TRIAL_DAYS} days.`}
               </p>
             </div>
 
@@ -294,7 +292,7 @@ export default function Home() {
                 icon: "gauge" as IconName,
                 figure: "97\u2013100",
                 title: "Google PageSpeed",
-                body: "Mobile performance on the demo store, measured September 17, 2026, before its photos were added.",
+                body: "Mobile performance on the demo store, measured September 17, 2026.",
               },
               {
                 icon: "lock" as IconName,
@@ -306,13 +304,13 @@ export default function Home() {
                 icon: "door" as IconName,
                 figure: "2 clicks",
                 title: "To cancel",
-                body: "From your own studio. No email to us, no chat, no second request.",
+                body: "From your own studio. No email, no chat, no second request.",
               },
               {
                 icon: "download" as IconName,
                 figure: "200 GB",
                 title: "Of downloads a month",
-                body: "Stated here, not buried in the terms, and nothing is cut off if you pass it. Files up to 5 GB each.",
+                body: "Files up to 5 GB each. Nothing is cut off if you pass it.",
               },
             ].map((f) => (
               <li key={f.title} className="reveal flex gap-3.5">
@@ -351,7 +349,7 @@ export default function Home() {
         <section className="section">
           <div className="container-page">
             <div className="reveal max-w-2xl">
-              <h2 className="t-h2 balance">Built around the one thing that is yours: the money</h2>
+              <h2 className="t-h2 balance">What makes this different</h2>
             </div>
 
             <div className="mt-14 space-y-16 sm:mt-16 sm:space-y-20">
@@ -410,7 +408,7 @@ export default function Home() {
               <div className="lg:w-[17rem] lg:shrink-0">
                 <span className="tag tag-next">Not here yet</span>
                 <p className="mt-3 text-[0.9375rem] text-ink-soft">
-                  Not offered yet, so not sold. Stan has each of these today, and we do not.
+                  Not built yet, so not sold. Named here rather than left for you to find.
                 </p>
               </div>
               <ul className="flex flex-wrap gap-2.5">
@@ -676,7 +674,7 @@ export default function Home() {
         <section id="faq" className="section scroll-mt-20">
           <div className="container-page grid gap-10 lg:grid-cols-[1fr_1.6fr]">
             <div className="reveal">
-              <h2 className="t-h2 balance">Including the awkward ones</h2>
+              <h2 className="t-h2 balance">Questions</h2>
               <p className="mt-5 text-ink-soft">
                 Something else?{" "}
                 <Link href="/help" className="link">
@@ -723,9 +721,9 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <h2 className="t-h1 balance text-white">Put your first product up today</h2>
+            <h2 className="t-h1 balance text-white">Open your store</h2>
             <p className="t-lead mx-auto mt-6 max-w-xl text-white/80">
-              {`Take your address, connect your own Stripe account and list what you sell. Your checkout is free for ${TRIAL_DAYS} days; your card is taken at the start and first charged $${PRICE} when the trial ends, unless you cancel before it.`}
+              {`Take your address, connect Stripe, list what you sell. Free for ${TRIAL_DAYS} days, then $${PRICE} a month.`}
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
               <Link href="/signin" className="btn btn-light btn-lg">

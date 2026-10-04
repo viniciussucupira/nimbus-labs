@@ -371,7 +371,7 @@ function InsightsVisual() {
 
 const CAPTIONS: Record<VisualKey, string> = {
   store: "A store page, drawn from the demo store you can open and buy from.",
-  options: "Try it: the buyer is charged the price they picked, as the creator saved it.",
+  options: "The buyer is charged the price they picked, as the creator saved it.",
   delivery: "What the buyer sees after paying, and how they get it back later.",
   stripe: "The path of one sale. Marktmorgen is not on it.",
   course: "A student's view of a course, with a module that opens on a later day.",

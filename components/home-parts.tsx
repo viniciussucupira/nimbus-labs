@@ -862,28 +862,32 @@ const SOLD: { label: string; photo: string }[] = [
 const TINTS = ["#ff7a59", "#15a37a", "#ffcf4d", "#5a36ee", "#e8456b"];
 
 export function SoldMarquee() {
-  // One of each. The track travels its whole overflow and comes back,
-  // rather than holding the list twice to hide a snap.
-  const row = SOLD;
+  /*
+   * Typographic, not photographic.
+   *
+   * This ran forty stock thumbnails — a loaf, a yoga mat, a sampler pad.
+   * Stock photography is the ceiling on how considered a page can look,
+   * because it is the one thing every templated site has; the best in
+   * this category either commission portraits of named customers or draw
+   * their own product, and neither is a thumbnail of somebody else's
+   * bread.
+   *
+   * The names are the content. Set in one line, moving, they say what
+   * forty pictures said and say it faster.
+   */
   return (
-    <div className="marquee py-1" aria-hidden="true">
-      <ul className="marquee-track">
-        {row.map((item, i) => (
-          <li
-            key={`${item.label}-${i}`}
-            className="flex shrink-0 items-center gap-3 rounded-full bg-white/85 py-1.5 pl-1.5 pr-5 text-[0.9375rem] font-medium text-ink shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09),0_8px_20px_-12px_rgba(42,23,144,0.3)]"
-          >
-            <img
-              src={FACE(item.photo, 96)}
-              alt=""
-              width={40}
-              height={40}
-              loading="lazy"
-              decoding="async"
-              className="h-10 w-10 shrink-0 rounded-full object-cover"
-              style={{ boxShadow: `0 0 0 2px ${TINTS[i % TINTS.length]}55` }}
-            />
-            <span className="whitespace-nowrap">{item.label}</span>
+    <div className="marquee" aria-hidden="true">
+      <ul className="marquee-track items-center">
+        {SOLD.map((item, i) => (
+          <li key={item.label} className="flex shrink-0 items-center gap-[var(--gap-sm)]">
+            <span className="whitespace-nowrap text-[1.0625rem] text-ink-soft">{item.label}</span>
+            {i < SOLD.length - 1 ? (
+              <span
+                aria-hidden="true"
+                className="h-1 w-1 shrink-0 rounded-full"
+                style={{ background: TINTS[i % TINTS.length] }}
+              />
+            ) : null}
           </li>
         ))}
       </ul>

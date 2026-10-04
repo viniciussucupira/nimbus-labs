@@ -38,7 +38,7 @@ export function OptionsDemo() {
   const [chosen, setChosen] = useState("five");
   const price = OPTIONS.find((o) => o.id === chosen)?.price ?? 0;
   return (
-    <Frame bar="Try it: pick a size">
+    <Frame bar="Pick a size">
       <form className="p-5" onSubmit={(e) => e.preventDefault()}>
         <fieldset>
           <legend className="text-[15px] font-semibold text-ink">Weekly meal planner</legend>
@@ -100,7 +100,7 @@ export function BumpDemo() {
       ? `Buy both for $${base + extra}`
       : `Buy for $${base}`;
   return (
-    <Frame bar="Try it: the checkout extras">
+    <Frame bar="At checkout">
       <form className="p-5" onSubmit={(e) => e.preventDefault()}>
         <p className="text-[15px] font-semibold text-ink">Five-week meal planner</p>
         <fieldset className="mt-4">
