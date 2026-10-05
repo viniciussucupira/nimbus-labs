@@ -139,11 +139,11 @@ export const FEATURE_PAGES: TopicPage[] = [
       },
       {
         kind: "facts",
-        title: "Measured on September 17, 2026",
+        title: "Measured on October 5, 2026",
         items: [
-          { value: "$39", label: "Test purchase of the five-week option, in production", tone: "" },
-          { value: "8,929", label: "Bytes delivered — identical to the original file", tone: "" },
-          { value: "54", label: "Automated checks passing on the store that day", tone: "" },
+          { value: "$27", label: "Test purchase of the one-week option on the demo store, in production", tone: "" },
+          { value: "2,364", label: "Bytes delivered — identical to the original file", tone: "" },
+          { value: "76", label: "Automated checks passing on the demo store that day", tone: "" },
         ],
       },
       {
