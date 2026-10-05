@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
 import { isDomainsConfigured } from "@/lib/domains";
 import { formatMoney } from "@/lib/money";
-import { REFUND_DAYS } from "@/lib/plan";
+import { PRO_MONTHLY_EMAILS, REFUND_DAYS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
 import { DELIVERY_ALLOWANCE_BYTES, OVER_ALLOWANCE_CENTS_PER_GB, bytesWords } from "@/lib/delivery";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
@@ -306,11 +306,11 @@ export default function TermsPage() {
           There are two plans. Marktmorgen, at $29 a month or $300 a year,
           includes everything you need to sell. Marktmorgen Pro, at $99 a month or $948
           a year, adds email to your list{domains ? " and your store on a domain you own" : ""},
-          with up to 50,000 emails a month,
+          with up to {PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month,
           counted together for one-off emails, sequences, community
           announcements and the emails that ask buyers for a review; during
           the free
-          trial a store may send up to 1,000 emails a month, and the full
+          trial a store may send up to {TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month, and the full
           number opens with the first payment. Emails not sent in a month do
           not carry over, and emails beyond a month&apos;s allowance wait for
           the next month.

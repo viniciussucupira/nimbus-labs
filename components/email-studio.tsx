@@ -2,6 +2,7 @@
 
 import { AiAssist, AiOn } from "@/components/ai-assist";
 import { EMAIL_GOALS, type EmailGoal } from "@/lib/ai-rules";
+import { PRO_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
@@ -163,7 +164,7 @@ export function EmailStudio(props: {
           <p className="mt-2 text-3xl font-semibold tabular-nums">{`${n(props.used)} of ${n(props.allowance)}`}</p>
           <p className="mt-1 text-sm text-ink-soft">
             {props.trial
-              ? "emails sent. During the free trial a month holds 1,000; the full 50,000 opens with your first payment."
+              ? `emails sent. During the free trial a month holds ${TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")}; the full ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} opens with your first payment.`
               : "emails sent, one-off and sequences together. The count starts again on the first of the month."}
           </p>
         </div>

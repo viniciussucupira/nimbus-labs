@@ -5,10 +5,14 @@
 // changes the same day: the help centre and these pages are read against the
 // code, not against a plan.
 import { isDomainsConfigured } from "@/lib/domains";
+import { PRO_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
 import type { TopicPage } from "@/lib/site-pages";
 
 /** Whether stores can be put on their own domain on this deployment. */
 const DOMAINS = isDomainsConfigured();
+/** What Pro and the trial send in a month, as the pages say it: read from the limit the code enforces, never typed. */
+const PRO_EMAILS = PRO_MONTHLY_EMAILS.toLocaleString("en-US");
+const TRIAL_EMAILS = TRIAL_MONTHLY_EMAILS.toLocaleString("en-US");
 
 const WORKING = { label: "Working today", tone: "live" as const };
 
@@ -601,7 +605,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Write to the people",
     highlight: "who asked to hear from you",
     intro:
-      "One-off emails, emails for later and sequences that send themselves, under your name, to everyone who agreed. Up to 50,000 a month on Pro.",
+      `One-off emails, emails for later and sequences that send themselves, under your name, to everyone who agreed. Up to ${PRO_EMAILS} a month on Pro.`,
     badge: { label: "Working today, on Pro", tone: "live" as const },
     accent: "from-violet-brand to-sky-brand",
     visual: "email",
@@ -648,7 +652,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           "Emails are written, not designed: text with links and lists, no images or templates.",
           "No A/B tests and no open or click counts.",
-          "During the free trial a store sends up to 1,000 emails; the full 50,000 opens with the first payment.",
+          `During the free trial a store sends up to ${TRIAL_EMAILS} emails; the full ${PRO_EMAILS} opens with the first payment.`,
           "Up to ten sequences of up to ten emails each.",
         ],
       },

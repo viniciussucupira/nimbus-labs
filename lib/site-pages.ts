@@ -1,6 +1,7 @@
 // Content for every page behind a menu item. One entry per page, so that
 // each menu item opens something different and real.
 import { isDomainsConfigured } from "@/lib/domains";
+import { PRO_MONTHLY_EMAILS } from "@/lib/plan";
 import { paypalSalesConfigured } from "@/lib/paypal-sales";
 import type { IconName } from "@/components/icons";
 import type { VisualKey } from "@/components/feature-visuals";
@@ -479,7 +480,7 @@ export const PAGES: TopicPage[] = [
         title: "Marketing",
         head: ["", "Stan", "Marktmorgen"],
         rows: [
-          ["Email broadcasts and flows", "Yes, on the $99 plan only", "Yes, on the $99 Pro plan: one-off emails, emails scheduled for later and sequences that send themselves, up to 50,000 a month, only to people who agreed"],
+          ["Email broadcasts and flows", "Yes, on the $99 plan only", `Yes, on the $99 Pro plan: one-off emails, emails scheduled for later and sequences that send themselves, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month, only to people who agreed`],
           ["Abandoned-checkout email", "Yes \u2014 a flow with an abandoned-cart trigger, on the $99 plan", "One reminder per checkout, on the $29 plan, only to buyers who agreed on Stripe's page. Off until you switch it on, and only for a Stripe account in the United States. Not for calls or live sessions"],
           ["Instagram auto-DM", "Yes, on the $29 plan", "Not available"],
           ["Funnels up to 20 pages", "Yes, on the $99 plan, since June 2026 \u2014 landing pages, checkout and upsells", "Mostly, on the $29 plan, as steps you connect: a landing page that gives something free for an email and shows a paid product next, a sales page, a box at checkout, and up to five one-click offers after paying with a path for yes and for no. No builder that chains pages together, and no thank-you page of your own"],
