@@ -301,7 +301,7 @@ export const PAGES: TopicPage[] = [
     title: "A slow store is",
     highlight: "a store people leave",
     intro:
-      "Measured with Google PageSpeed Insights on a simulated phone, on September 17, 2026, and with Lighthouse on the same build. You can run the same test yourself on any store.",
+      "Measured with Google PageSpeed Insights on a simulated phone, on October 5, 2026. You can run the same test yourself on any store, ours included.",
     badge: PROOF,
     accent: "from-sky-brand to-mint-brand",
     blocks: [
@@ -309,19 +309,20 @@ export const PAGES: TopicPage[] = [
         kind: "facts",
         title: "Performance score on mobile",
         items: [
-          { value: "97–100", label: "Marktmorgen demo store", tone: "bg-mint-brand text-ink" },
-          { value: "57", label: "Two Stan stores, measured the same day", tone: "bg-ink text-white" },
-          { value: "58", label: "A third Stan store, same test", tone: "bg-ink text-white" },
+          { value: "93–94", label: "Marktmorgen demo store, measured twice", tone: "bg-mint-brand text-ink" },
+          { value: "58–59", label: "Two Stan stores, measured the same day", tone: "bg-ink text-white" },
+          { value: "46", label: "A third Stan store, same test", tone: "bg-ink text-white" },
         ],
       },
       {
         kind: "steps",
         title: "How the test was run",
         items: [
-          { title: "Same tool for everyone", body: "Google PageSpeed Insights, mobile, simulated slow 4G, Lighthouse 13.4.1." },
-          { title: "Stan stores picked at random", body: "Public stores, measured on the same day, one run each." },
-          { title: "Our store measured twice", body: "Because the score moves a few points between runs." },
-          { title: "Nothing hidden", body: "The demo store had no photos when it was measured. It has a portrait and product pictures now, and photos can lower the score, so a store with them may score below the number above." },
+          { title: "Same tool for everyone", body: "Google PageSpeed Insights, mobile, simulated slow 4G, Lighthouse 13.5.0." },
+          { title: "Stan stores from Stan's own list", body: "Three public stores of creators Stan named in its \"25 in 25\" winners post: the first on the list and every sixth after it. Measured on the same day, one run each." },
+          { title: "Our store measured twice", body: "Because the score moves a few points between runs. It scored 93 and 94." },
+          { title: "A real store, with its photos", body: "The demo store is an ordinary store on the $29 plan, drawn by the same pages as every creator's, with a portrait and a product picture on it. A store with more or heavier pictures can score lower." },
+          { title: "The number we retired", body: "Until October 5, 2026 this page said 97 to 100. That was measured on September 17 on an earlier demo, a simpler page with no photos that was not built the way a store is. It is gone, and so is its score." },
         ],
       },
       {
@@ -405,7 +406,7 @@ export const PAGES: TopicPage[] = [
         title: "The store",
         head: ["", "Stan", "Marktmorgen"],
         rows: [
-          ["Store page on a phone", "Yes", "Yes, and faster (97\u2013100 against 57\u201358 on PageSpeed)"],
+          ["Store page on a phone", "Yes", "Yes, and faster (93\u201394 against 46\u201359 on PageSpeed, October 5, 2026)"],
           ["Themes and colors", "Yes, limited", "Yes \u2014 four themes, ten colors or any color of your own, and your photo. Every color is checked for contrast before your page uses it"],
           ["A line about you on the page", "A short profile bio, and no separate About Me page", "Every store, under your name"],
           ["Products on one store", "Unlimited", "Up to 2,000 products and 100 links, 24 products a page on the store and search in your studio — Stan is ahead here"],

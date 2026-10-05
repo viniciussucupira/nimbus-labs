@@ -62,7 +62,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "palette", title: "Colors that stay readable", body: "Every color is checked for contrast before your page uses it, so your words never disappear into it." },
           { icon: "phone", title: "Your store, as an app", body: "On iPhone and Android, straight from the browser, your store installs to the home screen as an app of its own, with its name, its icon and its color. No app store." },
           { icon: "refresh", title: "Change your address freely", body: "Old addresses stay with your store and lead to the new one, up to ten at once, so the link in your bio keeps working." },
-          { icon: "gauge", title: "Fast on a phone", body: "The demo store scored 97 to 100 for performance on Google PageSpeed, on a simulated phone, on September 17, 2026." },
+          { icon: "gauge", title: "Fast on a phone", body: "The demo store, a real store with photos on it, scored 93 and 94 for performance on Google PageSpeed, on a simulated phone, on October 5, 2026." },
         ],
       },
       {
@@ -2050,7 +2050,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         kind: "features",
         title: "What food creators use most",
         items: [
-          { icon: "phone", title: "Opened in a kitchen, on a phone", body: "The demo store scored 97 to 100 on Google PageSpeed on a simulated phone, on September 17, 2026.", href: "/proof/speed" },
+          { icon: "phone", title: "Opened in a kitchen, on a phone", body: "The demo store, a real store with photos on it, scored 93 and 94 on Google PageSpeed on a simulated phone, on October 5, 2026.", href: "/proof/speed" },
           { icon: "book", title: "A cooking course", body: "Batch cooking on video, a free first lesson on your store, a module that opens each week.", href: "/platform/courses" },
           { icon: "download", title: "Lost the plan? Back by email", body: "A buyer who changes phones gets everything they bought again, with the address they paid with.", href: "/platform/instant-delivery" },
           { icon: "chart", title: "Which post sold the plan", body: "Visits from Instagram, TikTok and Pinterest counted separately, next to the sales from your Stripe.", href: "/platform/insights" },
