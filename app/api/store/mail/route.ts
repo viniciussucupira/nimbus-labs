@@ -14,9 +14,14 @@ import { sendBatch } from "@/lib/email";
 import { advanceBroadcast, cancelBroadcast, createBroadcast } from "@/lib/broadcasts";
 import { removeFlow, saveFlow } from "@/lib/flows";
 import { removeDraft, saveDraft } from "@/lib/mail-drafts";
+import { copyOf, keepSending } from "@/lib/mail-reuse";
+import { readListings } from "@/lib/catalog";
 import type { Permission } from "@/lib/team-roles";
 
 export const maxDuration = 60;
+
+/** Refusals of "keep sending" that have words of their own in the studio. */
+const KEEP_REFUSALS = new Set(["unsent", "excludes", "already", "full"]);
 
 /**
  * Which part of a role each action needs (lib/team-roles.ts): writing and
@@ -33,6 +38,9 @@ const MAIL_PERMISSIONS: Record<string, Permission> = {
   cancel: "send",
   flow: "send",
   "flow-remove": "send",
+  // A sent email written again is a new draft; kept sending, it reaches the list.
+  copy: "draft",
+  keep: "send",
 };
 
 /**
@@ -46,6 +54,9 @@ const MAIL_PERMISSIONS: Record<string, Permission> = {
  *   { action: "broadcast", subject, body, productId, notProductId, sendAt, draftId? }
  *   { action: "cancel", id }
  *   { action: "flow", flow: {...} }  /  { action: "flow-remove", id }
+ *   { action: "copy", id }   a sent email's subject and text, to write again
+ *   { action: "keep", id }   a sent email becomes one more email of a sequence,
+ *                            for everybody who joins from now on (lib/mail-reuse.ts)
  *
  * Only the store settled by lib/studio-route.ts is ever touched: nothing in
  * the body names a list or a store. What each action needs of a role is in
@@ -166,6 +177,20 @@ export async function POST(request: NextRequest) {
       const raw = body.flow && typeof body.flow === "object" ? (body.flow as Record<string, unknown>) : {};
       const result = await saveFlow(store, raw);
       return result.ok ? Response.json({ ok: true, flows: result.flows }) : fail(result.reason);
+    }
+
+    if (action === "copy") {
+      const copy = await copyOf(store, text(body.id, 40));
+      return copy ? Response.json({ ok: true, copy }) : fail("unknown", 404);
+    }
+
+    if (action === "keep") {
+      // One product's name, when the email was written to the people who got
+      // it: one record read, never the catalogue.
+      const current = store;
+      const kept = await keepSending(current, text(body.id, 40), async (id) => (await readListings(current, [id]))[0]?.title ?? null);
+      if (!kept.ok) return fail(KEEP_REFUSALS.has(kept.reason) ? `keep_${kept.reason}` : kept.reason);
+      return Response.json({ ok: true, flows: kept.flows, name: kept.name, waitHours: kept.waitHours, position: kept.position });
     }
 
     if (action === "flow-remove") {

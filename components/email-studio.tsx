@@ -39,6 +39,12 @@ const MESSAGES: Record<string, string> = {
   full: "A store keeps 20 drafts at most. Send or delete one first.",
   list: "This store has no list yet, so there is nowhere to keep a draft.",
   role: "Your role on this store does not include this.",
+  keep_unsent: "Only an email that has finished going out can be kept sending.",
+  keep_excludes:
+    "This email left out the people who already own a product, and a sequence cannot leave anyone out. Write it again instead, and choose who it goes to.",
+  keep_already: "This email is already going to new people by itself. It is under Sequences.",
+  keep_full: "That sequence already holds 10 emails. Remove one under Sequences first.",
+  too_many_flows: "A store keeps 10 sequences at most. Remove one under Sequences first.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
@@ -140,7 +146,7 @@ export function EmailStudio(props: {
               />
             </AiOn>
             <Drafts drafts={props.drafts} products={props.products} open={open} onOpen={setOpen} />
-            <History broadcasts={props.broadcasts} products={props.products} canSend={props.canSend} />
+            <History broadcasts={props.broadcasts} products={props.products} canSend={props.canSend} onOpen={setOpen} />
             {props.canSend ? <Flows flows={props.flows} products={props.products} /> : null}
           </>
         ) : props.canSettings ? (
@@ -622,18 +628,54 @@ const STATUS: Record<string, string> = {
   failed: "Stopped",
 };
 
+/** "a day", "3 days", "5 hours": how long after joining a kept email goes. */
+function waitWords(hours: number): string {
+  if (hours % 24 === 0) return hours === 24 ? "a day" : `${hours / 24} days`;
+  return hours === 1 ? "an hour" : `${hours} hours`;
+}
+
 function History({
   broadcasts,
   products,
   canSend,
+  onOpen,
 }: {
   broadcasts: BroadcastRow[];
   products: { id: string; title: string }[];
   canSend: boolean;
+  /** Puts a sent email back in the composer, as a new one. */
+  onOpen: (draft: DraftRow | null) => void;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   if (!broadcasts.length) return null;
+
+  /** A sent email's subject and text, back in the composer to change and send. */
+  async function again(b: BroadcastRow) {
+    setBusy(true);
+    setError(null);
+    const a = await call({ action: "copy", id: b.id });
+    setBusy(false);
+    const copy = a.ok ? (a.copy as { subject: string; body: string; productId: string | null } | undefined) : undefined;
+    if (!copy) return setError(message(a));
+    // No id: it is a new email, not the draft of an old one. The time makes
+    // the composer start afresh even when the same email is opened twice.
+    onOpen({ id: "", subject: copy.subject, body: copy.body, productId: copy.productId, by: "", savedAt: String(Date.now()) });
+    document.getElementById("compose-title")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  /** The email joins a sequence, and goes by itself to everybody who arrives from now on. */
+  async function keep(b: BroadcastRow) {
+    setBusy(true);
+    setError(null);
+    const a = await call({ action: "keep", id: b.id });
+    setBusy(false);
+    if (!a.ok) return setError(a.error === "too_many" ? MESSAGES.too_many_flows : message(a));
+    const who = b.productId ? `gets ${products.find((p) => p.id === b.productId)?.title ?? "that product"}` : "joins your list";
+    toast(`Done. Everyone who ${who} from now on gets this email ${waitWords(Number(a.waitHours))} later. It is under Sequences, switched on.`);
+    router.refresh();
+  }
   return (
     <section className="card mt-8 p-6 sm:p-8" aria-labelledby="history-title">
       <h2 id="history-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Sent and scheduled</h2>
@@ -680,9 +722,34 @@ function History({
                 Cancel it
               </button>
             ) : null}
+            {b.status === "sent" ? (
+              <div className="mt-1 flex flex-wrap gap-x-5">
+                <button
+                  type="button"
+                  aria-busy={busy} disabled={busy}
+                  className="inline-flex min-h-11 items-center text-sm font-bold text-ink underline underline-offset-4"
+                  onClick={() => again(b)}
+                >
+                  Write it again
+                </button>
+                {canSend ? (
+                  <button
+                    type="button"
+                    aria-busy={busy} disabled={busy}
+                    className="inline-flex min-h-11 items-center text-left text-sm font-bold text-ink underline underline-offset-4"
+                    onClick={() => keep(b)}
+                  >
+                    {b.productId
+                      ? `Keep sending it to everyone who gets ${products.find((p) => p.id === b.productId)?.title ?? "that product"}`
+                      : "Keep sending it to everyone who joins"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>
+      <Feedback error={error} done={null} />
     </section>
   );
 }

@@ -34,6 +34,13 @@ export type Flow = {
   steps: FlowStep[];
   active: boolean;
   createdAt: number;
+  /**
+   * Made from emails that had already gone out (lib/mail-reuse.ts, "Keep
+   * sending it"), which is how the next one kept finds the sequence to join.
+   * It changes nothing about how the sequence is sent, and it stays through
+   * an edit in the studio.
+   */
+  kept?: boolean;
 };
 
 const QUEUE = "nl:mail:flowq";
@@ -113,6 +120,7 @@ export async function saveFlow(store: Store, raw: Record<string, unknown>): Prom
     steps,
     active: raw.active === true,
     createdAt: at >= 0 ? flows[at].createdAt : Math.floor(Date.now() / 1000),
+    ...(raw.kept === true || (at >= 0 && flows[at].kept === true) ? { kept: true } : {}),
   };
   const next = [...flows];
   if (at >= 0) next[at] = flow;
