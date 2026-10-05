@@ -9,6 +9,7 @@ import { StudioHeader } from "@/components/studio-header";
 import { StudioStorePin } from "@/components/studio-store-pin";
 import { listCounts } from "@/lib/contacts";
 import { listBroadcasts } from "@/lib/broadcasts";
+import { broadcastMoney, flowMoney, readMailRevenue } from "@/lib/mail-revenue";
 import { flowStats, readFlows } from "@/lib/flows";
 import { inTrial, monthlyAllowance, usedThisMonth } from "@/lib/mail";
 import { PRO_MONTHLY_EMAILS, TRIAL_DAYS, TRIAL_MONTHLY_EMAILS, priceWords, yearSaving } from "@/lib/plan";
@@ -48,7 +49,12 @@ export default async function StudioEmailPage({ searchParams }: Params) {
     listDrafts(store.listId),
   ]);
   const role = view.role;
-  const stats = await flowStats(flows);
+  // What each email sold, from the creator's own Stripe account, cached for
+  // ten minutes (lib/mail-revenue.ts). Asked only when something was sent.
+  const [stats, revenue] = await Promise.all([
+    flowStats(flows),
+    broadcasts.length || flows.length ? readMailRevenue(store) : Promise.resolve(null),
+  ]);
   const trial = allowance > 0 && inTrial(store);
 
   return (
@@ -138,8 +144,11 @@ export default async function StudioEmailPage({ searchParams }: Params) {
               sent: b.sent,
               note: b.note,
               productId: b.productId,
+              tagged: b.tagged,
+              money: broadcastMoney(revenue, b.id),
             }))}
-            flows={flows.map((f) => ({ ...f, stats: stats.get(f.id) ?? { started: 0, sent: 0 } }))}
+            currency={store.currency}
+            flows={flows.map((f) => ({ ...f, stats: stats.get(f.id) ?? { started: 0, sent: 0 }, money: flowMoney(revenue, f.id) }))}
             links={Object.fromEntries([...listings].map(([id]) => [id, productLink(store, id)]))}
             ai={isAiConfigured() && can(role, "draft") ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
           />

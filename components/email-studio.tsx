@@ -11,6 +11,7 @@ import type { Flow } from "@/lib/flows";
 import type { MailSettings } from "@/lib/store";
 import { StoreField } from "@/components/studio-store-pin";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
+import { formatMoney } from "@/lib/money";
 
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
@@ -76,8 +77,18 @@ type BroadcastRow = {
   sent: number;
   note: string;
   productId: string | null;
+  /** Whether its links carry its tag, so its sales can be counted at all (lib/mail-links.ts). */
+  tagged: boolean;
+  /** What it sold, from the creator's own Stripe account; null when nothing is counted for it. */
+  money: Money | null;
 };
-type FlowRow = Flow & { stats: { started: number; sent: number } };
+type Money = { sales: number; cents: number };
+type FlowRow = Flow & { stats: { started: number; sent: number }; money: Money | null };
+
+/** "3 sales · $117.00 from its links in the last 90 days", in the store's own currency. */
+function soldWords(money: Money, currency: string): string {
+  return `${n(money.sales)} ${money.sales === 1 ? "sale" : "sales"} · ${formatMoney(money.cents, currency)} from its links in the last 90 days`;
+}
 export type DraftRow = { id: string; subject: string; body: string; productId: string | null; by: string; savedAt: string };
 
 const TIME: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
@@ -115,6 +126,8 @@ export function EmailStudio(props: {
   trial: boolean;
   products: { id: string; title: string }[];
   broadcasts: BroadcastRow[];
+  /** The store's currency, for what each email sold. */
+  currency: string;
   flows: FlowRow[];
   drafts: DraftRow[];
   canSend: boolean;
@@ -146,8 +159,8 @@ export function EmailStudio(props: {
               />
             </AiOn>
             <Drafts drafts={props.drafts} products={props.products} open={open} onOpen={setOpen} />
-            <History broadcasts={props.broadcasts} products={props.products} canSend={props.canSend} onOpen={setOpen} />
-            {props.canSend ? <Flows flows={props.flows} products={props.products} /> : null}
+            <History broadcasts={props.broadcasts} products={props.products} canSend={props.canSend} onOpen={setOpen} currency={props.currency} />
+            {props.canSend ? <Flows flows={props.flows} products={props.products} currency={props.currency} /> : null}
           </>
         ) : props.canSettings ? (
           <div className="card p-6 sm:p-8">
@@ -639,12 +652,14 @@ function History({
   products,
   canSend,
   onOpen,
+  currency,
 }: {
   broadcasts: BroadcastRow[];
   products: { id: string; title: string }[];
   canSend: boolean;
   /** Puts a sent email back in the composer, as a new one. */
   onOpen: (draft: DraftRow | null) => void;
+  currency: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -706,6 +721,13 @@ function History({
               )}
             </p>
             {b.note ? <p className="mt-1 text-sm text-ink-soft">{b.note}</p> : null}
+            {/* Said only for an email whose links were tagged: for an older
+                one nothing could be counted, and "no sales" would be a guess. */}
+            {b.status === "sent" && b.tagged ? (
+              <p className="mt-1 text-sm font-semibold text-ink">
+                {b.money ? soldWords(b.money, currency) : "No sale from its links yet"}
+              </p>
+            ) : null}
             {b.status === "scheduled" && canSend ? (
               <button
                 type="button"
@@ -781,7 +803,7 @@ function toDraft(flow: FlowRow | null, products: { id: string }[]): FlowDraft {
   };
 }
 
-function Flows({ flows, products }: { flows: FlowRow[]; products: { id: string; title: string }[] }) {
+function Flows({ flows, products, currency }: { flows: FlowRow[]; products: { id: string; title: string }[]; currency: string }) {
   const router = useRouter();
   const [draft, setDraft] = useState<FlowDraft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -842,6 +864,7 @@ function Flows({ flows, products }: { flows: FlowRow[]; products: { id: string; 
               </div>
               <p className="mt-1 text-sm text-ink-soft">{`${triggerWords(f)} · ${f.steps.length} ${f.steps.length === 1 ? "email" : "emails"}`}</p>
               <p className="mt-1 text-sm text-ink-soft">{`${n(f.stats.started)} started · ${n(f.stats.sent)} emails sent`}</p>
+              {f.money ? <p className="mt-1 text-sm font-semibold text-ink">{soldWords(f.money, currency)}</p> : null}
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm font-bold">
                 <button type="button" className="text-ink-soft underline underline-offset-4 hover:text-violet-deep" onClick={() => setDraft(toDraft(f, products))}>
                   Edit

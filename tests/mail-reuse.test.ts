@@ -33,6 +33,7 @@ function sent(over: Partial<Broadcast> = {}): Broadcast {
     note: "",
     failures: 0,
     listed: true,
+    tagged: false,
     ...over,
   };
 }

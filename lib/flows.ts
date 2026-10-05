@@ -18,6 +18,7 @@ import { isMailable, leadsKey, mailable, parseContact } from "@/lib/contacts";
 import { MAX_MAIL_BODY, MAX_SUBJECT, monthlyAllowance, sendTo } from "@/lib/mail";
 import type { Store } from "@/lib/store";
 import { hasProduct } from "@/lib/catalog";
+import { stepCampaign } from "@/lib/mail-links";
 
 export const MAX_FLOWS = 10;
 export const MAX_STEPS = 10;
@@ -269,7 +270,7 @@ export async function sendDueSteps(
     if (!still.length) return;
 
     const key = `fl:${flow.id}:${step.id}:${createHash("sha256").update([...still].sort().join(",")).digest("hex").slice(0, 32)}`;
-    const result = await sendTo(store, still, step.subject, step.body, key);
+    const result = await sendTo(store, still, step.subject, step.body, key, { medium: "sequence", campaign: stepCampaign(flow.id, step.id) });
     if (result.rest.length) {
       if (result.stopped === "refused") counts.dropped += result.rest.length;
       else {

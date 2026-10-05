@@ -631,6 +631,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "ban", title: "One-click unsubscribe", body: "In every email, and in the header mail apps use. Whoever leaves is never written to again, whatever a later import says." },
           { icon: "pin", title: "Your postal address", body: "In every email, as US law (CAN-SPAM) requires of commercial email, with a line on why the reader is getting it." },
           { icon: "download", title: "Your list is yours", body: "Download it as a CSV any time, from any plan. Bring one in from a spreadsheet, up to 50,000 addresses a file, confirming each time that those people agreed.", href: "/platform/switching-to-marktmorgen" },
+          { icon: "chart", title: "What each email sold", body: "Links to your store in an email carry that email's tag, so a sale made on the page a link opened is counted for it, read from your own Stripe account. One tag per email, never one per reader: no tracking pixel, and nothing kept about who clicked." },
           { icon: "repeat", title: "An email that worked, used again", body: "From the list of what you sent: write it again as a new email, or keep sending it by itself to everyone who joins from now on. It becomes one more email of a sequence you can open, pause or delete, counted in the same monthly emails." },
           { icon: "sparkle", title: "A first draft with AI", body: "Pick what the email is for and which product it is about, say it in a few words, and the subject and body are filled in for you to read and change, with the product's link. Your unsubscribe link and postal address are added at the bottom as always." },
           { icon: "chat", title: "Announcements to your community", body: "A post in your community can also go by email to the members who asked for it, counted in the same monthly emails.", href: "/platform/community" },
@@ -652,7 +653,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do yet",
         items: [
           "Emails are written, not designed: text with links and lists, no images or templates.",
-          "No A/B tests and no open or click counts.",
+          "No A/B tests and no open or click counts. What an email sold counts a purchase made on the page its link opened; somebody who comes back later by themselves is not counted for it.",
           `During the free trial a store sends up to ${TRIAL_EMAILS} emails; the full ${PRO_EMAILS} opens with the first payment.`,
           "Up to ten sequences of up to ten emails each.",
         ],

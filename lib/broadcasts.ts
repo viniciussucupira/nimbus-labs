@@ -18,6 +18,7 @@ import { audience } from "@/lib/contacts";
 import { BATCH_SIZE, MAX_MAIL_BODY, MAX_SUBJECT, monthlyAllowance, sendTo, usedThisMonth } from "@/lib/mail";
 import type { Store } from "@/lib/store";
 import { hasProduct } from "@/lib/catalog";
+import { broadcastCampaign } from "@/lib/mail-links";
 
 export type BroadcastStatus = "scheduled" | "sending" | "sent" | "waiting" | "cancelled" | "failed";
 
@@ -46,6 +47,13 @@ export type Broadcast = {
   failures: number;
   /** Whether who it goes to has been written down yet. */
   listed: boolean;
+  /**
+   * Whether the links to the store in it carry this email's tag
+   * (lib/mail-links.ts), which is what lets its sales be counted. False for
+   * every email made before that existed: for those there is nothing to
+   * count, and the studio says nothing rather than "no sales".
+   */
+  tagged: boolean;
 };
 
 export const MAX_SCHEDULE_DAYS = 365;
@@ -63,7 +71,7 @@ function parse(raw: unknown): Broadcast | null {
     if (!BROADCAST_ID.test(value.id)) return null;
     // Written before the exclusion existed: it goes to everyone it was
     // addressed to, exactly as it was when it was scheduled.
-    return { ...value, notProductId: typeof value.notProductId === "string" ? value.notProductId : null };
+    return { ...value, notProductId: typeof value.notProductId === "string" ? value.notProductId : null, tagged: value.tagged === true };
   } catch {
     return null;
   }
@@ -141,6 +149,7 @@ export async function createBroadcast(
     note: "",
     failures: 0,
     listed: false,
+    tagged: true,
   };
   await save(broadcast);
   await redisPipeline([
@@ -210,7 +219,16 @@ export async function advanceBroadcast(
       const [chunk] = await redisPipeline([["LRANGE", toKey(id), b.sent, b.sent + BATCH_SIZE - 1]]);
       const emails = Array.isArray(chunk) ? (chunk as string[]) : [];
       if (!emails.length) break;
-      const result = await sendTo(store, emails, b.subject, b.body, `bc:${id}:${b.sent}`);
+      const result = await sendTo(
+        store,
+        emails,
+        b.subject,
+        b.body,
+        `bc:${id}:${b.sent}`,
+        // Only an email made since links were tagged: one scheduled before
+        // goes out exactly as it was written and scheduled.
+        b.tagged ? { medium: "broadcast", campaign: broadcastCampaign(id) } : undefined,
+      );
       // Whatever went before a stop counts, so the next run starts after it.
       const processed = emails.length - result.rest.length;
       if (processed > 0) b = { ...b, sent: b.sent + processed };

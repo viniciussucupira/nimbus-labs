@@ -19,6 +19,7 @@ import { PRO_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS, canUse } from "@/lib/plan";
 import { tokensFor } from "@/lib/contacts";
 import { SITE_URL } from "@/lib/site-url";
 import type { Store } from "@/lib/store";
+import { type MailTag, taggedLink } from "@/lib/mail-links";
 
 export const MAX_SUBJECT = 150;
 export const MAX_MAIL_BODY = 20_000;
@@ -167,27 +168,38 @@ function escape(text: string): string {
 const URL_PATTERN = /(https:\/\/[^\s<>"')\]]+)/g;
 const BULLET = /^[-•]\s+/;
 
-function linked(text: string): string {
+/** The full stop or comma that ends a sentence, which the pattern above takes for part of the address. */
+const TRAILING = /[.,;:!?]+$/;
+
+/**
+ * `goesTo` is where a link leads when that is not the address as written:
+ * the same address with the email's tag on it (lib/mail-links.ts). The reader
+ * always sees what the creator typed.
+ */
+function linked(text: string, goesTo?: (href: string) => string): string {
   return text
     .split(URL_PATTERN)
-    .map((part, i) =>
-      i % 2 === 1
-        ? `<a href="${escape(part)}" style="color:#4c1d95;text-decoration:underline">${escape(part)}</a>`
-        : escape(part).replace(/\n/g, "<br>"),
-    )
+    .map((part, i) => {
+      if (i % 2 === 0) return escape(part).replace(/\n/g, "<br>");
+      // "…at https://example.com/plan." — the full stop belongs to the
+      // sentence. Left inside the link it opened a page that is not there.
+      const tail = part.match(TRAILING)?.[0] ?? "";
+      const href = tail ? part.slice(0, -tail.length) : part;
+      return `<a href="${escape(goesTo ? goesTo(href) : href)}" style="color:#4c1d95;text-decoration:underline">${escape(href)}</a>${escape(tail)}`;
+    })
     .join("");
 }
 
 /** The creator's text as HTML: paragraphs, lists and links, nothing else. */
-export function bodyHtml(body: string): string {
+export function bodyHtml(body: string, goesTo?: (href: string) => string): string {
   const blocks = body.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
   const out: string[] = [];
   for (const block of blocks) {
     let list: string[] = [];
     let para: string[] = [];
     const flush = () => {
-      if (para.length) out.push(`<p style="margin:0 0 16px">${linked(para.join("\n"))}</p>`);
-      if (list.length) out.push(`<ul style="margin:0 0 16px;padding-left:22px">${list.map((l) => `<li style="margin:0 0 6px">${linked(l)}</li>`).join("")}</ul>`);
+      if (para.length) out.push(`<p style="margin:0 0 16px">${linked(para.join("\n"), goesTo)}</p>`);
+      if (list.length) out.push(`<ul style="margin:0 0 16px;padding-left:22px">${list.map((l) => `<li style="margin:0 0 6px">${linked(l, goesTo)}</li>`).join("")}</ul>`);
       para = [];
       list = [];
     };
@@ -216,7 +228,7 @@ export type Rendered = { subject: string; html: string; text: string; headers: R
 export type Door = { page: string; oneClick: string; why: string; label: string; after: string };
 
 /** One email, for one reader, with everything it has to carry. */
-export function render(store: Store, subject: string, body: string, token: string | null, door?: Door): Rendered {
+export function render(store: Store, subject: string, body: string, token: string | null, door?: Door, tag?: MailTag): Rendered {
   const fromName = store.mail?.fromName || store.name;
   const address = store.mail?.address ?? "";
   const unsub = door ? door.page : token ? `${SITE_URL}/unsubscribe?t=${token}` : `${SITE_URL}/@${store.handle}`;
@@ -226,7 +238,7 @@ export function render(store: Store, subject: string, body: string, token: strin
   const after = door ? door.after : `in one click, and ${fromName} will not email you again.`;
   const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f7f5f0">
 <div style="max-width:560px;margin:0 auto;padding:32px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1c1917">
-<div style="background:#ffffff;border-radius:16px;padding:28px 24px">${bodyHtml(body)}</div>
+<div style="background:#ffffff;border-radius:16px;padding:28px 24px">${bodyHtml(body, tag ? (href) => taggedLink(href, store, tag) : undefined)}</div>
 <div style="padding:20px 8px 0;font-size:13px;line-height:1.5;color:#57534e">
 <p style="margin:0 0 8px">${escape(why)}</p>
 <p style="margin:0 0 8px"><a href="${escape(unsub)}" style="color:#57534e;text-decoration:underline">${escape(label)}</a> ${escape(after)}</p>
@@ -286,6 +298,8 @@ export async function sendTo(
   subject: string,
   body: string,
   keyBase: string,
+  /** Which email this is, so a sale from one of its links can be counted for it (lib/mail-links.ts). */
+  tag?: MailTag,
 ): Promise<SendOutcome> {
   const done: string[] = [];
   for (let i = 0; i < emails.length; ) {
@@ -298,7 +312,7 @@ export async function sendTo(
     const messages: BatchMessage[] = chunk
       .filter((email) => tokens.has(email))
       .map((email) => {
-        const r = render(store, subject, body, tokens.get(email)!);
+        const r = render(store, subject, body, tokens.get(email)!, undefined, tag);
         return { from: fromLine(store), to: email, subject: r.subject, text: r.text, html: r.html, replyTo: store.email, headers: r.headers };
       });
     if (messages.length) await paced();
