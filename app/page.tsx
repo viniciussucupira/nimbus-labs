@@ -11,6 +11,7 @@ import { HomeData } from "@/components/structured-data";
 import { HOME_QUESTIONS } from "@/lib/home-faq";
 import { PLAN_PRICES, PRICE_CENTS, REFUND_DAYS, TRIAL_DAYS } from "@/lib/plan";
 import { isDomainsConfigured } from "@/lib/domains";
+import { PLANS_ON_SALE } from "@/lib/opening";
 
 const HOME_TITLE = "Marktmorgen — the link-in-bio store that pays into your own Stripe";
 const HOME_DESCRIPTION =
@@ -246,7 +247,7 @@ export default function Home() {
                 a source, which is worth more than a pill.
               */}
               <p className="mt-4 text-sm text-white/80">
-                {`$${PRICE} a month. Free for ${TRIAL_DAYS} days.`}
+                {PLANS_ON_SALE ? `$${PRICE} a month. Free for ${TRIAL_DAYS} days.` : `Not on sale yet. $${PRICE} a month when it is.`}
               </p>
             </div>
 
@@ -580,7 +581,9 @@ export default function Home() {
             </ul>
             <h2 className="t-h1 balance text-white">Open your store</h2>
             <p className="t-lead mx-auto mt-6 max-w-xl text-white/80">
-              {`Take your address, connect Stripe, list what you sell. Free for ${TRIAL_DAYS} days, then $${PRICE} a month.`}
+              {PLANS_ON_SALE
+                ? `Take your address, connect Stripe, list what you sell. Free for ${TRIAL_DAYS} days, then $${PRICE} a month.`
+                : `Take your address, connect Stripe, list what you sell. The plan is not on sale yet: $${PRICE} a month when it is.`}
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
               <Link href="/signin" className="btn btn-light btn-lg">
@@ -594,7 +597,7 @@ export default function Home() {
             </div>
             <ul className="mx-auto mt-10 flex max-w-2xl flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[0.9375rem] text-white/80">
               {[
-                { icon: "calendar" as IconName, text: `${TRIAL_DAYS} days free` },
+                { icon: "calendar" as IconName, text: PLANS_ON_SALE ? `${TRIAL_DAYS} days free` : "Free to set up" },
                 /*
                   The strongest of the four, and the only one that costs us
                   anything to mean. It replaced "Cancel in two clicks", which

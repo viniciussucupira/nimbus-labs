@@ -82,6 +82,7 @@ import {
 } from "@/lib/billing";
 import { STORAGE_BRAKE_BYTES, storageWords } from "@/lib/storage-quota";
 import { canUse, PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, priceWords, yearSaving } from "@/lib/plan";
+import { PLANS_ON_SALE } from "@/lib/opening";
 import { studioPath, studioView } from "@/lib/studio-route";
 import { type Permission, type Role, ROLE_NAMES, ROLE_SUMMARIES, can } from "@/lib/team-roles";
 import { MAX_TEAM, readTeam } from "@/lib/team";
@@ -315,6 +316,10 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
   "pro-closed": {
     title: "That plan is not open yet",
     body: "Nothing was charged and nothing was changed.",
+  },
+  "not-open": {
+    title: "Plans are not on sale yet",
+    body: "Marktmorgen is still being built, so no plan can be started. Nothing was charged and nothing was changed.",
   },
   already: {
     title: "You already pay for this store",
@@ -685,7 +690,7 @@ export default async function StudioPage({
         ...(connectReady
           ? [{ key: "stripe", title: "Connect your Stripe account", hint: "Where your buyers' money goes: yours, not ours.", done: store.stripeChargesEnabled, href: "#stripe" }]
           : []),
-        ...(billingReadyForSteps
+        ...(billingReadyForSteps && (PLANS_ON_SALE || paid)
           ? [{ key: "plan", title: "Turn on your checkout", hint: withTrial ? `Free for ${TRIAL_DAYS} days, and nothing is charged today.` : `${priceWords("creator", "month")}, from today.`, done: paid, href: "#billing" }]
           : []),
         ...(connectReady && store.stripeChargesEnabled
@@ -1666,6 +1671,20 @@ export default async function StudioPage({
                       No email to us, no chat, no second request. This button
                       is the whole of it, and you can change your mind until
                       the day it stops.
+                    </p>
+                  </>
+                ) : !PLANS_ON_SALE ? (
+                  <>
+                    <p className="mt-5 text-ink-soft">
+                      Your address, your page, the editor and connecting Stripe
+                      are free and stay free. What a plan switches on is your
+                      checkout: taking a card for what you sell, and handing
+                      out what you give away for an email address.
+                    </p>
+                    {/* Not open yet (lib/opening.ts): no button that the
+                        checkout would refuse, and the reason in its place. */}
+                    <p className="notice notice-info mt-5" data-plans-closed="">
+                      {`Plans are not on sale yet. Marktmorgen is still being built, and we take no card until it opens. Your store and everything you set up in it stay as they are. When plans open, they are ${priceWords("creator", "month")} or ${priceWords("creator", "year")}${PRO_ON_SALE ? `, and ${priceWords("pro", "month")} or ${priceWords("pro", "year")} with email to your list` : ""}.`}
                     </p>
                   </>
                 ) : (

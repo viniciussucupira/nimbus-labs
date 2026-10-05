@@ -7,6 +7,7 @@ import { FeatureVisual } from "@/components/feature-visuals";
 import { JsonLd } from "@/components/structured-data";
 import { PAGES, type Block, type TopicPage } from "@/lib/site-pages";
 import { PLAN_PRICES, TRIAL_DAYS } from "@/lib/plan";
+import { PLANS_ON_SALE, startWords } from "@/lib/opening";
 
 const PHOTO = (id: string) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=160&h=160&q=72`;
@@ -540,7 +541,7 @@ export function TopicPageView({ page }: { page: TopicPage }) {
               {page.section !== "proof" ? (
                 <div className="nb-fade-up nb-delay-3 mt-8 flex flex-wrap items-center gap-3">
                   <Link href="/signin" className={`btn btn-lg ${light ? "btn-primary" : "btn-light"}`}>
-                    {`Try it free for ${TRIAL_DAYS} days`}
+                    {startWords(TRIAL_DAYS)}
                     <Icon name="arrow-right" size={18} />
                   </Link>
                   <Link
@@ -614,7 +615,11 @@ export function TopicPageView({ page }: { page: TopicPage }) {
           <div className="container-narrow py-16 text-center sm:py-20">
             <h2 className="t-h2 balance">{pro ? "Pro, when you are ready for it" : "Want this on your own store?"}</h2>
             <p className="mx-auto mt-4 max-w-xl text-ink-soft">
-              {pro
+              {!PLANS_ON_SALE
+                ? pro
+                  ? `Pro is ${dollars(PLAN_PRICES.pro.month)} a month, or ${dollars(PLAN_PRICES.pro.year)} a year, with everything on the ${dollars(PLAN_PRICES.creator.month)} plan. Neither plan is on sale yet. You can open a store and set it up today.`
+                  : `Take your address and put your first product up today. The plan is ${dollars(PLAN_PRICES.creator.month)} a month and 0% of your sales, and it is not on sale yet.`
+                : pro
                 ? `Pro is ${dollars(PLAN_PRICES.pro.month)} a month, or ${dollars(PLAN_PRICES.pro.year)} a year, with everything on the ${dollars(PLAN_PRICES.creator.month)} plan. Start on either, try it free for ${TRIAL_DAYS} days, and switch from your studio whenever you like.`
                 : `Take your address, connect your own Stripe account and put your first product up. ${dollars(PLAN_PRICES.creator.month)} a month and 0% of your sales, free for the first ${TRIAL_DAYS} days.`}
             </p>

@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { away, creatorFrom } from "@/lib/studio-route";
 import { createBillingCheckout, endLapsed, findStoreSubscriptions, isBillingConfigured } from "@/lib/billing";
 import { PRO_ON_SALE, parseCycle, parseTier } from "@/lib/plan";
+import { PLANS_ON_SALE } from "@/lib/opening";
 import { accountStores, setSubscription } from "@/lib/store";
 import { limited } from "@/lib/request-guard";
 
@@ -27,6 +28,8 @@ export async function POST(request: NextRequest) {
 
   if (!isBillingConfigured()) return away(origin, studio("billing=unavailable"));
   if (store.subscriptionActive) return away(origin, studio("billing=already"));
+  // Not open yet (lib/opening.ts): no card is taken, and Stripe is not asked.
+  if (!PLANS_ON_SALE) return away(origin, studio("billing=not-open"));
 
   let fields: FormData | null = null;
   try {

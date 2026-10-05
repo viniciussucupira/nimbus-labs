@@ -6,6 +6,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/icons";
 import { listSizeWords } from "@/lib/contact-rules";
 import { HOME_QUESTIONS } from "@/lib/home-faq";
+import { PLANS_ON_SALE } from "@/lib/opening";
 import {
   PLAN_NAMES,
   PLAN_PRICES,
@@ -508,6 +509,8 @@ function PlanTerms({ tier, yearly }: { tier: Tier; yearly: boolean }) {
   const { month, year } = PLAN_PRICES[tier];
   const charged = yearly ? year / 100 : month / 100;
   const rows: [string, string][] = [
+    // Not open yet (lib/opening.ts): said first, in the card it is about.
+    ...(PLANS_ON_SALE ? [] : [["On sale", "Not yet. Marktmorgen is still being built, and these are the terms this plan opens with."] as [string, string]]),
     ["Free trial", `${TRIAL_DAYS} days. Your card is taken when it starts, so you can sell before you decide.`],
     [
       "First charge",

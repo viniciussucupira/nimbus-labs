@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { PAGES, type TopicPage } from "@/lib/site-pages";
 import { PLAN_PRICES, TRIAL_DAYS } from "@/lib/plan";
+import { startWords } from "@/lib/opening";
 
 export const metadata: Metadata = {
   title: "Every feature — Marktmorgen",
@@ -44,7 +45,7 @@ export default function PlatformIndex() {
             </p>
             <div className="nb-fade-up nb-delay-3 mt-8 flex flex-wrap items-center gap-3">
               <Link href="/signin" className="btn btn-primary btn-lg">
-                {`Try it free for ${TRIAL_DAYS} days`}
+                {startWords(TRIAL_DAYS)}
                 <Icon name="arrow-right" size={18} />
               </Link>
               <Link href="/mission" className="btn btn-secondary btn-lg">

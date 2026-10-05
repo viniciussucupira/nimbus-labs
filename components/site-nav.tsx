@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon, type IconName } from "@/components/icons";
 import { Logo } from "@/components/logo";
+import { PLANS_ON_SALE, PREVIEW_LINE, PREVIEW_LINK } from "@/lib/opening";
 
 type MenuItem = {
   label: string;
@@ -251,14 +252,29 @@ export function SiteNav() {
   };
 
   return (
-    <div className="sticky top-0 z-50">
-      {/* A keyboard user can jump the whole menu in one key press. */}
+    <>
+      {/* A keyboard user can jump the whole menu in one key press. First on
+          the page, ahead of the line below, and fixed so that it shows where
+          the reader is whichever of the two it sits above. */}
       <a
         href="#content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-[60] focus:rounded-[10px] focus:bg-white focus:px-4 focus:py-2.5 focus:font-semibold focus:text-violet-deep focus:shadow-lg"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-[60] focus:rounded-[10px] focus:bg-white focus:px-4 focus:py-2.5 focus:font-semibold focus:text-violet-deep focus:shadow-lg"
       >
         Skip to the page content
       </a>
+      {/* What the site is today, before anything else it says
+          (lib/opening.ts). It scrolls away with the page; the menu stays. */}
+      {PLANS_ON_SALE ? null : (
+        <div className="bg-ink text-white" data-preview-bar="">
+          <p className="container-page py-2.5 text-center text-[0.8125rem] leading-snug sm:text-sm">
+            {PREVIEW_LINE}{" "}
+            <Link href={PREVIEW_LINK.href} className="whitespace-nowrap font-semibold underline underline-offset-2">
+              {PREVIEW_LINK.label}
+            </Link>
+          </p>
+        </div>
+      )}
+    <div className="sticky top-0 z-50">
 
       <div
         ref={headerRef}
@@ -496,5 +512,6 @@ export function SiteNav() {
         </div>
       </div>
     </div>
+    </>
   );
 }

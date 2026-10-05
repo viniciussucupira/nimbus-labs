@@ -7,6 +7,7 @@ import { PasskeySignIn } from "@/components/passkey-signin";
 import { ToastOnLoad } from "@/components/toast";
 import { isConnectConfigured } from "@/lib/stripe-connect";
 import { PLAN_NAMES, TRIAL_DAYS, priceWords } from "@/lib/plan";
+import { PLANS_ON_SALE } from "@/lib/opening";
 import { formatMoney } from "@/lib/money";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS } from "@/lib/creator-invite-rules";
 
@@ -168,7 +169,9 @@ export default async function SignInPage({
             <div className="notice mt-6" role="status">
               <p className="font-semibold">{`You picked ${picked.name}, ${picked.words}`}</p>
               <p className="mt-1">
-                {`Nothing is paid here. Your store is made first and the ${TRIAL_DAYS} free days start when you switch your checkout on in your studio, where ${picked.name} at ${picked.words} is one of the plans waiting for you. You can take the other one instead, or move between them later.`}
+                {PLANS_ON_SALE
+                  ? `Nothing is paid here. Your store is made first and the ${TRIAL_DAYS} free days start when you switch your checkout on in your studio, where ${picked.name} at ${picked.words} is one of the plans waiting for you. You can take the other one instead, or move between them later.`
+                  : `Nothing is paid here, and no plan is on sale yet. Your store is made first, and you can set it up today. ${picked.name} at ${picked.words} is one of the plans that will be in your studio on the day they open.`}
               </p>
             </div>
           ) : null}
@@ -196,7 +199,9 @@ export default async function SignInPage({
                 { title: "Take your store address", body: "marktmorgen.com/@yourname, live the moment you take it." },
                 {
                   title: "Put up your first product",
-                  body: isConnectConfigured()
+                  body: !PLANS_ON_SALE
+                    ? "Set everything up today. Plans are not on sale yet, so taking a card starts on the day they are."
+                    : isConnectConfigured()
                     ? `Connect your own Stripe account when you are ready to take a card. The first ${TRIAL_DAYS} days of the plan are free.`
                     : "Taking a card is not switched on yet; everything else is.",
                 },

@@ -7,6 +7,7 @@ import { SiteNav } from "@/components/site-nav";
 import { isBillingConfigured } from "@/lib/billing";
 import { PLAN_PRICES, PRICE_CENTS, REFUND_DAYS, TRIAL_DAYS, YEAR_PRICE_CENTS } from "@/lib/plan";
 import { isConnectConfigured } from "@/lib/stripe-connect";
+import { PLANS_ON_SALE } from "@/lib/opening";
 import { isDomainsConfigured } from "@/lib/domains";
 
 export const metadata: Metadata = {
@@ -145,6 +146,12 @@ const ORDERS_LINE =
  */
 const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year, or $${PLAN_PRICES.pro.month / 100} and $${PLAN_PRICES.pro.year / 100} on Pro, free for the first ${TRIAL_DAYS} days, with an email a week before the first charge, canceled in two clicks from your studio`;
 
+/**
+ * The same line while plans are not on sale (lib/opening.ts): the code is
+ * there and nobody can press it, which this page counts as not built.
+ */
+const BILLING_CLOSED_LINE = `Starting a paid plan: the subscription is written, at $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year and $${PLAN_PRICES.pro.month / 100} or $${PLAN_PRICES.pro.year / 100} on Pro, and it is not on sale until Marktmorgen opens`;
+
 /** The store on its own domain: built, and live where this deployment can add domains. */
 const DOMAIN_LINE =
   "Your store on your own domain, on Pro: type it in the studio, add the one record we show you, and the certificate is handled for you";
@@ -191,7 +198,8 @@ export default function MissionPage() {
   // Whether this deployment can actually reach Stripe decides which list the
   // line belongs in. A feature nobody here can press is not a built feature.
   const ready = isConnectConfigured();
-  const billing = isBillingConfigured();
+  const billingReached = isBillingConfigured();
+  const billing = billingReached && PLANS_ON_SALE;
   const domains = isDomainsConfigured();
   const built = [
     ...BUILT,
@@ -202,7 +210,7 @@ export default function MissionPage() {
   const notBuilt = [
     ...(domains ? [] : ["Your own domain for your store"]),
     ...(ready ? [] : [STRIPE_LINE, CHECKOUT_LINE, ORDERS_LINE]),
-    ...(billing ? [] : [BILLING_LINE]),
+    ...(billing ? [] : [billingReached ? BILLING_CLOSED_LINE : BILLING_LINE]),
     ...NOT_BUILT,
   ];
   return (
