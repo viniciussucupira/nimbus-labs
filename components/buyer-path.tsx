@@ -11,18 +11,19 @@ import { InstallApp } from "@/components/install-app";
  *
  * Nothing moves by itself: the visitor picks a step, or presses Next. Every
  * screen is drawn from the live demo store, with its own words and prices, and
- * the section says so rather than calling a drawing a screenshot.
+ * the section says so rather than calling a drawing a screenshot. The demo
+ * is an ordinary store (lib/house-store.ts), so these are the store page,
+ * the product card and the thanks page every creator's store has; when the
+ * words on those change, the words here change with them.
  */
 const PHOTO = (id: string, w: number, h: number, faces = true) =>
   `https://images.unsplash.com/${id}?auto=format&fit=crop${faces ? "&crop=faces" : ""}&w=${w}&h=${h}&q=68`;
 const JENNY = "photo-1613666517563-d19a4585d1fe";
 /*
- * Two photographs, not one twice. The banner across the top of the store
- * and the picture on the product card are different pictures, because a
- * thumbnail of the image directly above it is the clearest way to look
- * like a page with nothing left to show.
+ * The picture on the product card. The store page has no banner across its
+ * top — a creator's store never had one; only the demo's old page did — so
+ * there is one photograph here beside the portrait, and no second.
  */
-const COVER = "photo-1627815416399-ddaae0e2fa54";
 const PRODUCT = "photo-1556908153-1055164fe2df";
 
 type Step = { key: string; icon: IconName; title: string; caption: string };
@@ -42,75 +43,75 @@ function Screen({ step }: { step: string }) {
   switch (step) {
     case "store":
       return (
-        <div>
+        <div className="px-5 pb-6 pt-7 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={PHOTO(COVER, 640, 220, false)} alt="" width={640} height={220} loading="lazy" className="h-28 w-full bg-sand-deep object-cover" />
-          <div className="px-5 pb-6 text-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={PHOTO(JENNY, 144, 144)}
-              alt="Jenny, the fictional cook of the demo store"
-              width={144}
-              height={144}
-              loading="lazy"
-              className="-mt-9 inline-block h-[4.5rem] w-[4.5rem] rounded-full bg-sand-deep object-cover ring-4 ring-paper"
-            />
-            <p className="mt-2 text-lg font-semibold text-ink">Harbor Kitchen</p>
-            <p className="text-[13px] text-ink-soft">Simple family meals by Jenny</p>
-            <div className="mt-5 space-y-2.5 text-left">
-              <div className="overflow-hidden rounded-[14px] border border-line bg-white">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={PHOTO(PRODUCT, 560, 200, false)} alt="" width={560} height={200} loading="lazy" className="h-24 w-full bg-sand-deep object-cover" />
-                <p className="flex items-center justify-between px-4 py-3 text-[13px]">
-                  <span className="font-semibold text-ink">Weekly Meal Planner</span>
-                  <span className="font-semibold text-violet-deep">from $27</span>
-                </p>
-              </div>
-              {["Free recipe of the week", "About Jenny"].map((l) => (
-                <p key={l} className="rounded-[12px] border border-line bg-white px-4 py-3 text-[13px] font-medium text-ink-soft">
-                  {l}
-                </p>
-              ))}
+          <img
+            src={PHOTO(JENNY, 144, 144)}
+            alt="Jenny, the fictional cook of the demo store"
+            width={144}
+            height={144}
+            loading="lazy"
+            className="inline-block h-[4.5rem] w-[4.5rem] rounded-full bg-sand-deep object-cover ring-4 ring-paper"
+          />
+          <p className="mt-2 text-lg font-semibold text-ink">Harbor Kitchen</p>
+          <p className="text-[12px] font-semibold text-ink-soft">@harborkitchen</p>
+          <p className="mt-2 text-[13px] text-ink-soft">Simple family meals by Jenny, a fictional cook.</p>
+          <div className="mt-5 space-y-2.5 text-left">
+            <div className="overflow-hidden rounded-[14px] border border-line bg-white">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={PHOTO(PRODUCT, 560, 200, false)} alt="" width={560} height={200} loading="lazy" className="h-24 w-full bg-sand-deep object-cover" />
+              <p className="flex items-center justify-between px-4 pt-3 text-[13px]">
+                <span className="font-semibold text-ink">Weekly Meal Planner</span>
+                <span className="font-semibold text-violet-deep">from $27</span>
+              </p>
+              <p className="px-4 pb-3 pt-1 text-[12px] leading-snug text-ink-soft">
+                Simple family meal plans with breakfasts, lunches, dinners and a grocery list for each week.
+              </p>
             </div>
+            <p className="rounded-[12px] border border-line bg-white px-4 py-3 text-center text-[13px] font-semibold text-ink">
+              Open a store like this one
+              <span className="mt-0.5 block font-mono text-[11px] font-normal text-ink-soft">marktmorgen.com</span>
+            </p>
           </div>
         </div>
       );
     case "choose":
       return (
         <div className="p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-deep">Weekly meal planner</p>
-          <p className="mt-1 text-lg font-semibold text-ink">Choose your plan</p>
-          <ul className="mt-3 space-y-1.5 text-[13px] text-ink-soft">
-            {["Simple family meals for every day", "Grocery list you can print", "Download right after payment"].map((l) => (
-              <li key={l} className="flex items-center gap-2">
-                <Icon name="check" size={14} strokeWidth={2.4} className="text-mint-deep" />
-                {l}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 space-y-2">
-            <div className="flex items-center justify-between rounded-[12px] border border-line bg-white px-4 py-3">
-              <span className="text-[13px] font-medium text-ink">
-                1 week
-                <span className="block text-[11.5px] font-normal text-ink-soft">PDF, 1 page</span>
-              </span>
-              <span className="text-[15px] font-semibold text-ink">$27</span>
-            </div>
-            <div className="flex items-center justify-between rounded-[12px] border-2 border-violet-brand bg-lilac px-4 py-3">
-              <span className="flex items-center gap-2.5 text-[13px] font-medium text-ink">
-                <span className="grid h-4 w-4 place-items-center rounded-full bg-violet-brand text-white">
-                  <Icon name="check" size={10} strokeWidth={3} />
-                </span>
-                <span>
-                  5 weeks
-                  <span className="block text-[11.5px] font-normal text-ink-soft">PDF, 5 pages</span>
-                </span>
-              </span>
-              <span className="text-[15px] font-semibold text-violet-deep">$39</span>
+          <div className="overflow-hidden rounded-[14px] border border-line bg-white">
+            <div className="p-4">
+              <p className="flex items-start justify-between gap-3">
+                <span className="text-[15px] font-semibold text-ink">Weekly Meal Planner</span>
+                <span className="shrink-0 rounded-full bg-lilac px-2.5 py-0.5 text-[12px] font-semibold text-violet-deep">from $27</span>
+              </p>
+              <p className="mt-1.5 text-[12.5px] leading-snug text-ink-soft">
+                Simple family meal plans with breakfasts, lunches, dinners and a grocery list for each week.
+              </p>
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between rounded-[12px] border border-line bg-white px-4 py-3">
+                  <span className="flex items-center gap-2.5 text-[13px] font-semibold text-ink">
+                    <span className="h-4 w-4 rounded-full border border-line-strong bg-white" />
+                    1 week
+                  </span>
+                  <span className="text-[15px] font-semibold text-ink">$27</span>
+                </div>
+                <div className="flex items-center justify-between rounded-[12px] border-2 border-violet-brand bg-lilac px-4 py-3">
+                  <span className="flex items-center gap-2.5 text-[13px] font-semibold text-ink">
+                    <span className="grid h-4 w-4 place-items-center rounded-full border-2 border-violet-brand bg-white">
+                      <span className="h-2 w-2 rounded-full bg-violet-brand" />
+                    </span>
+                    5 weeks
+                  </span>
+                  <span className="text-[15px] font-semibold text-violet-deep">$39</span>
+                </div>
+              </div>
+              <p className="mt-4 rounded-[12px] bg-violet-brand px-4 py-3 text-center text-[14px] font-semibold text-white">Continue with this option</p>
             </div>
           </div>
-          <p className="mt-4 rounded-[12px] bg-violet-brand px-4 py-3 text-center text-[14px] font-semibold text-white">Continue to checkout</p>
-          <p className="mt-2 text-center text-[11.5px] text-ink-soft">Secure checkout by Stripe. The money goes straight to the creator.</p>
+          <p className="mt-3 rounded-[12px] border border-dashed border-line-strong px-4 py-3 text-[11.5px] leading-snug text-ink-soft">
+            <span className="font-semibold text-ink">This is a demo store.</span> Its checkout runs in Stripe&apos;s test mode: no real money moves and no
+            real card is charged.
+          </p>
         </div>
       );
     case "pay":
@@ -137,18 +138,20 @@ function Screen({ step }: { step: string }) {
       return (
         <div className="p-5">
           <div className="rounded-[16px] border border-line bg-white p-5">
-            <span className="grid h-11 w-11 place-items-center rounded-full bg-mint-soft text-mint-deep">
-              <Icon name="check" size={22} strokeWidth={2.4} />
-            </span>
-            <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-mint-deep">Payment confirmed</p>
-            <p className="mt-1 text-lg font-semibold text-ink">Thank you. Your file is ready.</p>
-            <p className="mt-1 text-[13px] text-ink-soft">You paid $39 for Weekly Meal Planner, 5 weeks.</p>
-            <p className="mt-4 flex items-center justify-center gap-2 rounded-[12px] bg-violet-brand px-4 py-3 text-center text-[14px] font-semibold text-white">
-              <Icon name="download" size={16} strokeWidth={2.2} /> Download the PDF
+            <span className="inline-block rounded-full bg-mint-soft px-2.5 py-0.5 text-[12px] font-semibold text-mint-deep">Paid</span>
+            <p className="mt-3 text-xl font-semibold text-ink">Thank you</p>
+            <p className="mt-1.5 text-[13px] leading-snug text-ink-soft">
+              You bought <span className="font-semibold text-ink">Weekly Meal Planner (5 weeks)</span> from Harbor Kitchen for $39.
             </p>
-            <p className="mt-2 text-center text-[11.5px] text-ink-soft">PDF, 5 pages. This link works for 3 days.</p>
+            <p className="mt-4 flex items-center justify-center gap-2 rounded-[12px] bg-violet-brand px-4 py-3 text-center text-[14px] font-semibold text-white">
+              <Icon name="download" size={16} strokeWidth={2.2} /> Download it
+            </p>
+            <p className="mt-3 text-[11.5px] leading-snug text-ink-soft">
+              This link works for about 72 more hours. After that it is not lost: type the address you paid with, and a new link is emailed to you.
+            </p>
           </div>
-          <div className="mt-3 grid grid-cols-3 gap-2">
+          <p className="mt-4 text-[11.5px] font-semibold text-ink-soft">Three pages of the file</p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
             {["/demo/five-1.webp", "/demo/five-2.webp", "/demo/five-3.webp"].map((src) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img key={src} src={src} alt="" width={420} height={544} loading="lazy" className="h-24 w-full rounded-[8px] border border-line object-cover object-top" />
@@ -318,7 +321,7 @@ export function BuyerPath() {
                   <div className="flex items-center justify-between px-5 pb-1 pt-3 text-[11px] font-semibold text-ink-soft">
                     <span>9:41</span>
                     <span className="rounded-[6px] bg-white px-2 py-0.5 text-[10px] text-ink-soft ring-1 ring-line">
-                      {step.key === "pay" ? "checkout.stripe.com" : step.key === "money" ? "dashboard.stripe.com" : "marktmorgen.com/demo"}
+                      {step.key === "pay" ? "checkout.stripe.com" : step.key === "money" ? "dashboard.stripe.com" : "marktmorgen.com/@harborkitchen"}
                     </span>
                   </div>
                   <div key={step.key} className="nb-screen-in">
