@@ -14,7 +14,7 @@ import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { noticeCreator } from "@/lib/account-notice";
 import type { MeetProvider } from "@/lib/call-setup";
 import { ACCOUNT_NAMES, beginConsent, finishConsent, takeConsent } from "@/lib/meet-connect";
-import { ZOOM_REVIEW_QUERY, isConfigured, isZoomReview, offeredProviders } from "@/lib/meet-providers";
+import { ZOOM_REVIEW_QUERY, cameForZoom, isConfigured, isZoomReview, offeredProviders } from "@/lib/meet-providers";
 import { clientAddress, withinLimit } from "@/lib/request-guard";
 import { originFrom } from "@/lib/request-origin";
 import { ensureStatsId } from "@/lib/store";
@@ -40,7 +40,9 @@ export async function startConnect(request: NextRequest, provider: MeetProvider)
   const { store, ref, email, origin } = creator;
   // The review link's form says so (components/meeting-connections.tsx), and
   // the page it goes back to keeps the word, so the Zoom card stays in sight.
-  const review = provider === "zoom" && isZoomReview(request.nextUrl.searchParams.get("zoom"));
+  // A browser that arrived by the listing's link before logging in carries
+  // the same word in a cookie (lib/zoom-arrival.ts).
+  const review = provider === "zoom" && (isZoomReview(request.nextUrl.searchParams.get("zoom")) || cameForZoom(request.cookies));
   if (!offeredProviders(store, review).includes(provider)) return notFound();
   const kept = review && !offeredProviders(store).includes(provider) ? `&${ZOOM_REVIEW_QUERY}` : "";
   const back = (query: string) => away(origin, studioPath(store, `${query}${kept}`, "meetings"));

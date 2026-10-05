@@ -1043,7 +1043,10 @@ export default function PrivacyPage() {
           says so. A creator&apos;s own browser keeps <code>nl_device</code>{" "}
           for 400 days and <code>nl_store</code> for a year, and{" "}
           <code>nl_pk</code> for five minutes while signing in with a
-          passkey, as section 1 describes.
+          passkey, as section 1 describes. Opening the Video calls page from
+          our listing in Zoom&apos;s Marketplace sets <code>nl_zoom</code>{" "}
+          for 30 days: it remembers only that the browser came to connect
+          Zoom, so the Zoom option is still there after logging in.
         </p>
         <p>
           You can control cookies through your browser settings. Disabling

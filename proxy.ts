@@ -6,6 +6,7 @@ import { needsConsent } from "@/lib/pixels";
 import { dynamicPolicy, isDynamicPage, isEventRoomPage, isStorePage, newNonce, roomPermissions } from "@/lib/csp";
 import { fromAnotherSite } from "@/lib/request-guard";
 import { isPlatformHost, requestHost } from "@/lib/request-origin";
+import { ZOOM_ARRIVAL_COOKIE, ZOOM_ARRIVAL_SECONDS, arrivedForZoom } from "@/lib/zoom-arrival";
 
 /**
  * A creator's own domain, served as their store.
@@ -58,6 +59,29 @@ function withAffiliateClick(request: NextRequest, handle: string, response: Next
     value: viaCookieValue(request.cookies.get(name)?.value, code, Date.now() / 1000),
     path: "/",
     maxAge: VIA_COOKIE_SECONDS,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: request.nextUrl.protocol === "https:",
+  });
+  return response;
+}
+
+/**
+ * Somebody who opens the Video calls page by the link in Zoom's Marketplace
+ * listing (or the review link) came to connect Zoom, and is usually not
+ * logged in yet. The word in the address does not survive logging in and
+ * making a store, so it is kept in a cookie here (lib/meet-providers.ts).
+ */
+function withZoomArrival(request: NextRequest, response: NextResponse): NextResponse {
+  const { pathname, searchParams } = request.nextUrl;
+  if (pathname !== "/studio/meetings" || !arrivedForZoom({ zoom: searchParams.get("zoom") ?? undefined, from: searchParams.get("from") ?? undefined })) {
+    return response;
+  }
+  response.cookies.set({
+    name: ZOOM_ARRIVAL_COOKIE,
+    value: "1",
+    path: "/",
+    maxAge: ZOOM_ARRIVAL_SECONDS,
     httpOnly: true,
     sameSite: "lax",
     secure: request.nextUrl.protocol === "https:",
@@ -156,7 +180,7 @@ export async function proxy(request: NextRequest) {
     headers.delete(DOMAIN_HEADER);
     headers.delete(PATH_HEADER);
     const policy = withPolicy(request.nextUrl.pathname, headers);
-    return answer(withAffiliateClick(request, store, NextResponse.next({ request: { headers } })), policy);
+    return answer(withZoomArrival(request, withAffiliateClick(request, store, NextResponse.next({ request: { headers } }))), policy);
   }
 
   const { pathname, search } = request.nextUrl;

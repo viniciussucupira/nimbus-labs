@@ -92,6 +92,8 @@ type Connection = {
 };
 
 const connKey = (statsId: string, provider: MeetProvider) => `nl:meet:conn:${statsId}:${provider}`;
+/** The test meeting a creator made to check a connection (lib/meet-test.ts): forgotten with the connection it was made on. */
+export const testKey = (statsId: string, provider: MeetProvider) => `nl:meet:test:${statsId}:${provider}`;
 const refreshLockKey = (statsId: string, provider: MeetProvider) => `nl:meet:refresh:${statsId}:${provider}`;
 const hash = (value: string) => createHash("sha256").update(value).digest("hex").slice(0, 40);
 const stateKey = (state: string) => `nl:meet:state:${hash(`meet-state:${state}`)}`;
@@ -303,7 +305,10 @@ async function keepConnection(
   // A different account connected in its place: the old one's access is given back.
   if (before && before.account.id !== traded.account.id) {
     await giveBack(input.statsId, before).catch(() => {});
-    await redisPipeline([["SREM", userKey(provider, before.account.id), input.statsId]]).catch(() => {});
+    await redisPipeline([
+      ["SREM", userKey(provider, before.account.id), input.statsId],
+      ["DEL", testKey(input.statsId, provider)],
+    ]).catch(() => {});
   }
   return { ok: true, view: viewOf(connection), replaced: Boolean(before) };
 }
@@ -331,6 +336,7 @@ export async function disconnect(statsId: string, provider: MeetProvider): Promi
     await giveBack(statsId, c).catch((error) => console.error("giving a meeting connection back failed", error));
     await redisPipeline([
       ["DEL", connKey(statsId, provider)],
+      ["DEL", testKey(statsId, provider)],
       ["SREM", userKey(provider, c.account.id), statsId],
     ]);
     return viewOf(c);
@@ -353,7 +359,7 @@ export async function forgetUser(
     const c = await withLock(refreshLockKey(statsId, provider), 20, 9_000, async () => {
       const found = await readConnection(statsId, provider);
       if (!found || found.account.id !== accountId) return null;
-      await redisPipeline([["DEL", connKey(statsId, provider)]]);
+      await redisPipeline([["DEL", connKey(statsId, provider)], ["DEL", testKey(statsId, provider)]]);
       return found;
     });
     if (c) forgot.push({ statsId, owner: c.owner, account: viewOf(c).account });

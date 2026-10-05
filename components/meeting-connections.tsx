@@ -6,6 +6,7 @@ import { toast } from "@/components/toast";
 import { Icon } from "@/components/icons";
 import type { MeetProvider } from "@/lib/call-setup";
 import type { MeetView } from "@/lib/meet-connect";
+import type { TestMeeting } from "@/lib/meet-test";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 /** Each account as the studio describes it: what it makes, and what connecting it lets us do. */
@@ -43,6 +44,8 @@ const MESSAGES: Record<string, string> = {
   role: "Only the store's owner and Admins can do that.",
   limited: "That is too many changes in a minute. Wait a moment and try again.",
   server_error: "Something went wrong on our side. Nothing was changed; try again in a moment.",
+  not_connected: "That account is not connected, or needs connecting again. Connect it, then try once more.",
+  meeting_failed: "The provider did not do it. What it answered is under Recent problems; try again in a moment.",
 };
 
 // In UTC, said so: the server draws this first, and the browser must draw the same text.
@@ -62,10 +65,49 @@ function when(ms: number): string {
  * the review link's visit (lib/meet-providers.ts): Zoom's form then says so,
  * for the route to let it through.
  */
-export function MeetingConnections({ view, pin, review = false }: { view: MeetView; pin: string; review?: boolean }) {
+export function MeetingConnections({
+  view,
+  pin,
+  review = false,
+  tests: firstTests = {},
+}: {
+  view: MeetView;
+  pin: string;
+  review?: boolean;
+  /** The test meeting each connected account has, where it has one (lib/meet-test.ts). */
+  tests?: Partial<Record<MeetProvider, TestMeeting>>;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState<MeetProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tests, setTests] = useState(firstTests);
+  const [testing, setTesting] = useState<MeetProvider | null>(null);
+
+  /** Makes the test meeting on the connected account, or deletes it there. */
+  async function test(provider: MeetProvider, make: boolean) {
+    if (testing || busy) return;
+    setTesting(provider);
+    setError(null);
+    try {
+      const response = await fetch("/api/integrations/meetings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: make ? "test" : "untest", provider }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; test?: TestMeeting | null };
+      if (data.ok) {
+        setTests((all) => ({ ...all, [provider]: data.test ?? undefined }));
+        toast(make ? `Test meeting made on your ${ACCOUNTS[provider].name} account.` : "Test meeting deleted.");
+        return;
+      }
+      setError(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
+      if (data.error === "meeting_failed") router.refresh();
+    } catch {
+      setError(MESSAGES.server_error);
+    } finally {
+      setTesting(null);
+    }
+  }
 
   async function disconnect(provider: MeetProvider) {
     setBusy(provider);
@@ -169,6 +211,50 @@ export function MeetingConnections({ view, pin, review = false }: { view: MeetVi
                 ) : null}
               </div>
               <p className="mt-3 text-xs text-ink-soft">{info.asks}</p>
+
+              {connection && !connection.broken ? (
+                <div className="mt-5 border-t border-line pt-5" data-meet-test={provider}>
+                  <h3 className="text-sm font-semibold text-ink">Check that it works</h3>
+                  {tests[provider] ? (
+                    <>
+                      <p className="mt-1 text-sm text-ink-soft">
+                        {`A test meeting is on your ${info.name} account, set for ${when(tests[provider].start)}, with nobody invited. Open it to see it, then delete it.`}
+                      </p>
+                      <p className="mt-2 break-all text-sm">
+                        <a href={tests[provider].link} target="_blank" rel="noopener noreferrer" className="link">
+                          {tests[provider].link}
+                        </a>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => test(provider, false)}
+                        disabled={testing !== null || busy !== null}
+                        aria-busy={testing === provider}
+                        className="btn btn-secondary btn-sm mt-3"
+                      >
+                        <Icon name="trash" size={16} />
+                        {testing === provider ? "Deleting…" : "Delete the test meeting"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="mt-1 text-sm text-ink-soft">
+                        {`Make one ${info.meeting} meeting on your account, an hour from now, with nobody invited, the same way a booking's is made. You get its link here, and delete it with one click.`}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => test(provider, true)}
+                        disabled={testing !== null || busy !== null}
+                        aria-busy={testing === provider}
+                        className="btn btn-secondary btn-sm mt-3"
+                      >
+                        <Icon name="video" size={16} />
+                        {testing === provider ? "Making it…" : "Make a test meeting"}
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : null}
             </section>
           );
         })}

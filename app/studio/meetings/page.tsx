@@ -8,7 +8,8 @@ import { StudioStorePin } from "@/components/studio-store-pin";
 import { MeetingConnections } from "@/components/meeting-connections";
 import { ToastOnLoad } from "@/components/toast";
 import { ACCOUNT_NAMES, meetView } from "@/lib/meet-connect";
-import { arrivedForZoom, configuredProviders, offeredProviders } from "@/lib/meet-providers";
+import { arrivedForZoom, cameForZoom, configuredProviders, offeredProviders } from "@/lib/meet-providers";
+import { readTests } from "@/lib/meet-test";
 import { MEET_NAMES, isMeetProvider } from "@/lib/call-setup";
 
 export const metadata: Metadata = {
@@ -75,8 +76,9 @@ export default async function StudioMeetingsPage({ searchParams }: Params) {
   const store = loaded.statsId ? loaded : ((await ensureStatsId(access.ref)) ?? loaded);
   // The review link (`?zoom=review`) and the address Zoom's listing opens
   // (`?from=zoom`, lib/meet-providers.ts) offer Zoom on this visit to a store
-  // it is not open to yet.
-  const review = arrivedForZoom(query);
+  // it is not open to yet; so does a browser that arrived that way before
+  // logging in (the cookie proxy.ts sets, lib/zoom-arrival.ts).
+  const review = arrivedForZoom(query) || cameForZoom(jar);
   const view = await meetView(store.statsId, store, review).catch((error) => {
     console.error("reading the meeting connections failed", error);
     return null;
@@ -84,6 +86,10 @@ export default async function StudioMeetingsPage({ searchParams }: Params) {
   // What the store is offered, and any account it has connected either way.
   const offered = view ? view.providers : offeredProviders(store, review);
   if (offered.length === 0) notFound();
+  // The test meeting each connected account has, where one was made (lib/meet-test.ts).
+  const tests = view
+    ? await readTests(store.statsId, offered.filter((p) => view.connected[p])).catch(() => ({}))
+    : {};
   const said = outcome(typeof query.meet === "string" ? query.meet : "", typeof query.p === "string" ? query.p : "");
   const names = offered.map((p) => MEET_NAMES[p]);
 
@@ -119,7 +125,7 @@ export default async function StudioMeetingsPage({ searchParams }: Params) {
               We could not read your connections just now. Nothing was changed. Try again in a moment.
             </p>
           ) : (
-            <MeetingConnections view={view} pin={store.sid ? `?store=${store.sid}` : ""} review={review} />
+            <MeetingConnections view={view} pin={store.sid ? `?store=${store.sid}` : ""} review={review} tests={tests} />
           )}
         </main>
       </StudioStorePin>

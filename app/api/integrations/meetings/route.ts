@@ -1,31 +1,59 @@
 import { type NextRequest, after } from "next/server";
 import { noticeCreator } from "@/lib/account-notice";
 import { isMeetProvider } from "@/lib/call-setup";
-import { ACCOUNT_NAMES, disconnect, meetView } from "@/lib/meet-connect";
-import { isConfigured } from "@/lib/meet-providers";
+import { ACCOUNT_NAMES, NotConnected, disconnect, logProblem, meetView } from "@/lib/meet-connect";
+import { ProviderError, isConfigured } from "@/lib/meet-providers";
+import { makeTest, removeTest } from "@/lib/meet-test";
 import { withinLimit } from "@/lib/request-guard";
 import { guardStoreWrite } from "@/lib/store-request";
 
 /** Changes a store may make here in a minute: each one reaches Google or Zoom. */
 const PER_MINUTE = 20;
 
+/** Making a meeting at the provider can take seconds, and a token may be renewed first. */
+export const maxDuration = 30;
+
 /**
- * Disconnects the store's Google Calendar or Zoom (lib/meet-connect.ts):
- * `{ action: "disconnect", provider }`. The access is given back to the
- * provider, the tokens are deleted, and the owner is told by email. Only the
- * owner and Admins ("settings", lib/team-roles.ts).
+ * The store's Google Calendar or Zoom connection, `{ action, provider }`:
+ *
+ *   disconnect   the access is given back to the provider, the tokens are
+ *                deleted, and the owner is told by email (lib/meet-connect.ts)
+ *   test         makes one test meeting on the connected account, or gives
+ *                back the one already there (lib/meet-test.ts)
+ *   untest       deletes that test meeting on the account, and forgets it
+ *
+ * Only the owner and Admins ("settings", lib/team-roles.ts).
  */
 export async function POST(request: NextRequest) {
   const guarded = await guardStoreWrite(request, "settings", 2_000);
   if (!guarded.ok) return guarded.response;
   const { store, body } = guarded;
   const provider = body.provider;
-  if (body.action !== "disconnect" || !isMeetProvider(provider) || !isConfigured(provider)) {
+  const action = body.action;
+  if ((action !== "disconnect" && action !== "test" && action !== "untest") || !isMeetProvider(provider) || !isConfigured(provider)) {
     return Response.json({ ok: false, error: "invalid" }, { status: 400 });
   }
-  if (!store.statsId) return Response.json({ ok: true, view: await meetView(null, store) });
+  if (!store.statsId) {
+    return action === "disconnect"
+      ? Response.json({ ok: true, view: await meetView(null, store) })
+      : Response.json({ ok: false, error: "not_connected" }, { status: 400 });
+  }
   if (!(await withinLimit("meet-manage", store.statsId, PER_MINUTE, 60))) {
     return Response.json({ ok: false, error: "limited" }, { status: 429 });
+  }
+  if (action === "test" || action === "untest") {
+    try {
+      if (action === "test") return Response.json({ ok: true, test: await makeTest(store.statsId, provider) });
+      await removeTest(store.statsId, provider);
+      return Response.json({ ok: true, test: null });
+    } catch (error) {
+      if (error instanceof NotConnected) return Response.json({ ok: false, error: "not_connected" }, { status: 400 });
+      const why = error instanceof ProviderError ? error.message : "it could not be reached";
+      console.error("a test meeting failed", error);
+      // Said where every meeting that could not be made is said: under Recent problems.
+      await logProblem(store.statsId, provider, action === "test" ? "A test meeting could not be made" : "The test meeting could not be deleted", why);
+      return Response.json({ ok: false, error: "meeting_failed" }, { status: 502 });
+    }
   }
   try {
     const was = await disconnect(store.statsId, provider);

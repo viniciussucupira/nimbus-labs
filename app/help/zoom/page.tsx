@@ -18,7 +18,7 @@ const link = "text-black underline underline-offset-2 hover:no-underline";
  */
 export default function ZoomGuidePage() {
   return (
-    <LegalPage title="Zoom for Marktmorgen" lastUpdated="October 2, 2026">
+    <LegalPage title="Zoom for Marktmorgen" lastUpdated="October 5, 2026">
       <p>
         Marktmorgen is a link-in-bio store where creators sell digital
         products, courses, memberships and paid video calls. The Zoom app lets
@@ -28,7 +28,12 @@ export default function ZoomGuidePage() {
       </p>
       <p>
         Connecting Zoom becomes available to every store once Zoom approves our
-        Marketplace listing. Until then, your studio does not show the Zoom option.
+        Marketplace listing. Until then, the Zoom option is shown to anyone who
+        opens Video calls from the listing, or from this link:{" "}
+        <Link href="/studio/meetings?from=zoom" className={link}>marktmorgen.com/studio/meetings?from=zoom</Link>.
+        If you are not logged in yet, log in or start a store first; your
+        browser remembers that you came for Zoom, and the Zoom card is there
+        when you open Video calls.
       </p>
 
       <LegalSection title="Adding the app" id="add">
@@ -38,6 +43,11 @@ export default function ZoomGuidePage() {
           <li>Under Zoom, click <strong className="text-black">Connect Zoom</strong>.</li>
           <li>Zoom asks you to sign in if you are not signed in already, then shows the permissions Marktmorgen asks for. Click <strong className="text-black">Allow</strong>.</li>
           <li>You come back to Video calls, where Zoom shows as <strong className="text-black">Connected</strong>, with the account&apos;s address. The store&apos;s owner is emailed each time an account is connected or disconnected.</li>
+          <li>
+            To check that it works, click <strong className="text-black">Make a test meeting</strong> under Zoom. One scheduled
+            meeting is made on your Zoom account, an hour from now, with nobody invited, and its join link is shown. Click{" "}
+            <strong className="text-black">Delete the test meeting</strong> to remove it from your Zoom account.
+          </li>
         </ol>
       </LegalSection>
 

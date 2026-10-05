@@ -115,23 +115,7 @@ const ZOOM_PREVIEW_STORES = new Set(["dc83ed016f0d4a83b71461bca159d8f5"]);
 /** Zoom's App Marketplace reviewers sign up with their work address. */
 const ZOOM_REVIEWER = /@([a-z0-9-]+\.)*(zoom\.us|zoom\.com)$/i;
 
-/** The word that opens Zoom on one visit to the Video calls page: `?zoom=review`. */
-export const ZOOM_REVIEW_QUERY = "zoom=review";
-
-/** Whether an address asks for the review link's view: `?zoom=review`, given as the value of `zoom`. */
-export function isZoomReview(value: string | string[] | null | undefined): boolean {
-  return value === "review";
-}
-
-/**
- * Whether a visit to the Video calls page is for Zoom: by the review link, or
- * by `?from=zoom`, the address the app's listing in Zoom's Marketplace sends
- * people to. Someone who arrives from that listing came to connect Zoom, so
- * the page offers it; which accounts may add the app is still Zoom's to say.
- */
-export function arrivedForZoom(query: { zoom?: string | string[]; from?: string | string[] }): boolean {
-  return isZoomReview(query.zoom) || query.from === "zoom";
-}
+export { ZOOM_ARRIVAL_COOKIE, ZOOM_ARRIVAL_SECONDS, ZOOM_REVIEW_QUERY, arrivedForZoom, cameForZoom, isZoomReview } from "@/lib/zoom-arrival";
 
 /** A store, or just its id, as a studio page has it. */
 export type OfferedTo = { sid?: string | null; email?: string | null } | string | null | undefined;

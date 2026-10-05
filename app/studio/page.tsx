@@ -37,7 +37,7 @@ import { WebhookEditor } from "@/components/webhook-editor";
 import { calendarBusy, calendarView, ensureFeedToken, overlaps, slotRooms } from "@/lib/calendar-sync";
 import { roomKind, roomLabel } from "@/lib/call-rooms";
 import { type MeetView, meetView } from "@/lib/meet-connect";
-import { configuredProviders, offeredProviders } from "@/lib/meet-providers";
+import { cameForZoom, configuredProviders, isConfigured, offeredProviders } from "@/lib/meet-providers";
 import { slotMeetings } from "@/lib/meet-links";
 import type { MeetRecord } from "@/lib/meet-records";
 import { keepHandle, webhooksView } from "@/lib/webhooks";
@@ -588,8 +588,12 @@ export default async function StudioPage({
   // Read whenever the deployment has either app: an account connected while
   // it was offered stays in sight even once it is not (lib/meet-connect.ts).
   const meetOn = store ? configuredProviders().length > 0 : false;
+  // Somebody who opened the link in Zoom's Marketplace listing before logging
+  // in came to connect Zoom (lib/zoom-arrival.ts): it is offered here too,
+  // and the way to it is said at the top of the studio.
+  const arrivedZoom = cameForZoom(cookieStore) && isConfigured("zoom");
   const meet: MeetView | null =
-    store && meetOn && (may("products") || may("orders")) ? await meetView(store.statsId, store).catch(() => null) : null;
+    store && meetOn && (may("products") || may("orders")) ? await meetView(store.statsId, store, arrivedZoom).catch(() => null) : null;
   const meetAccounts = meet
     ? meet.providers.flatMap((p) => {
         const c = meet.connected[p];
@@ -768,6 +772,15 @@ export default async function StudioPage({
                 { href: "#account", label: "Account" },
               ]}
             />
+            {arrivedZoom && may("settings") && !meet?.connected.zoom ? (
+              <p className="notice notice-info mt-6" data-zoom-arrival="">
+                {"You came here to connect Zoom. "}
+                <Link href={studioPath(store, "", "meetings")} className="link font-semibold">
+                  Open Video calls
+                </Link>
+                {" and click Connect Zoom."}
+              </p>
+            ) : null}
             {role === "owner" ? <StudioStart steps={startSteps} /> : null}
             <StudioTools
               tools={[
@@ -794,8 +807,8 @@ export default async function StudioPage({
                   ? [{ href: studioPath(store, "", "integrations"), title: "Email platforms", text: "Mailchimp, Kit, beehiiv or MailerLite, kept fed.", icon: "plug" as const }]
                   : []),
                 // Only once the deployment has the Google or Zoom app's keys (lib/meet-providers.ts).
-                ...(may("settings") && meetOn && (meet?.providers ?? offeredProviders(store)).length > 0
-                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${(meet?.providers ?? offeredProviders(store)).map((p) => MEET_NAMES[p]).join(" or ")} links, made for your bookings and live events.`, icon: "video" as const }]
+                ...(may("settings") && meetOn && (meet?.providers ?? offeredProviders(store, arrivedZoom)).length > 0
+                  ? [{ href: studioPath(store, "", "meetings"), title: "Video calls", text: `${(meet?.providers ?? offeredProviders(store, arrivedZoom)).map((p) => MEET_NAMES[p]).join(" or ")} links, made for your bookings and live events.`, icon: "video" as const }]
                   : []),
                 // Read from the creator's own Stripe account (lib/membership-numbers.ts).
                 ...(may("stats") && sellsMemberships(store)
