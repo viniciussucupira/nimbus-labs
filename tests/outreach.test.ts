@@ -154,6 +154,18 @@ async function main(): Promise<void> {
   is("and closes the whole site", robotsAllows(named, "/partners"), false);
   is("named with nothing closed means open, whatever everybody else is told", robotsDisallows("User-agent: *\nDisallow: /\n\nUser-agent: MarktmorgenOutreach\nDisallow:\n"), []);
 
+  const SHOPIFY = "User-agent: *\nDisallow: /admin\nDisallow: /cart/\nDisallow: /*/cart/\nDisallow: /checkout\nDisallow: /*/checkout\nDisallow: /collections/*sort_by*\nDisallow: /*/collections/*sort_by*\nDisallow: /blogs/*+*\nDisallow: /*?*oseid=*\nDisallow: /*preview_theme_id*\nDisallow: /search\nDisallow: /cdn/wpm/*.js\nDisallow: /*.atom$\n";
+  const shop = robotsDisallows(SHOPIFY);
+  is("Shopify's own robots.txt, on every Shopify store, leaves the front page open", robotsAllows(shop, "/"), true);
+  is("and the contact page", robotsAllows(shop, "/pages/contact-us"), true);
+  is("a star stands for any run of characters", [robotsAllows(shop, "/en/cart/"), robotsAllows(shop, "/collections/all?sort_by=price"), robotsAllows(shop, "/cdn/wpm/a.js")], [false, false, false]);
+  is("a query a rule names is closed, another is not", [robotsAllows(shop, "/pages/x?a=1&oseid=2"), robotsAllows(shop, "/pages/x?a=1")], [false, true]);
+  is("a rule that ends in $ covers only what ends there", [robotsAllows(shop, "/blogs/news.atom"), robotsAllows(shop, "/blogs/news.atom.html")], [false, true]);
+  is("a plain rule is a prefix", [robotsAllows(shop, "/search"), robotsAllows(shop, "/searching"), robotsAllows(shop, "/pages/search")], [false, false, true]);
+  is("an exact rule with $", [robotsAllows(["/only$"], "/only"), robotsAllows(["/only$"], "/only/more")], [false, true]);
+  const STORE_FRONT = `<a href="/products/spice-club"><span>Partner pick</span></a><a href="/collections/collaborations">Go to Chef Collaborations</a><a href="/pages/drjanegoodallcollaboration">LEARN MORE</a><a href="/pages/collab-one">Collabs</a><a href="/pages/collab-two">Collabs</a><a href="/blogs/news/about-us">About</a><a href="/pages/about-us">What We Do</a><a href="/pages/press">Press</a><a href="/pages/wholesale">Wholesale</a><a href="/pages/contact-us"><style>@media (max-width: 767px) { .partner { } }</style>Contact</a><a href="/pages/affiliate">Affiliate</a>`;
+  is("a shop's shelves and journal are not contact pages, and one of each kind comes before a second of any", contactPages(STORE_FRONT, "https://shop.example/"), ["https://shop.example/pages/collab-one", "https://shop.example/pages/contact-us", "https://shop.example/pages/press"]);
+
   part("Reading a business's website");
   const copper = site(COPPER);
   const read = await readSite("copperoak.com", copper);

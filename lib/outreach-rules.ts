@@ -231,7 +231,25 @@ export function refusesProposals(text: string): boolean {
   );
 }
 
-/** The pages of a site worth reading for where to write: its own, a few, the likeliest first. */
+/** A shop's shelves, its journal and its machinery: never where a business says how to write to it. */
+const NOT_A_CONTACT_PAGE = /^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?(?:products?|collections?|blogs?|news|articles?|cart|checkout|account|search|tags?|categor(?:y|ies))(?:\/|$)/i;
+
+/** How likely a link is to lead to where proposals are sent: 4 the desk for them, 3 contact, 2 press, 1 about, 0 neither. */
+function contactRank(path: string, text: string): number {
+  const last = path.replace(/\/+$/, "").split("/").pop() ?? "";
+  if (/^(?:partner|sponsor|collab|creator|influencer|affiliate|ambassador|advertis|work-?with)/.test(last) || /\b(?:partner(?:ship)?s?|sponsor(?:ship)?s?|collaborate|collabs?|creators?|influencers?|affiliates?|ambassadors?|advertis(?:e|ing)|work with us)\b/.test(text)) return 4;
+  if (/^(?:contact|get-in-touch|reach-us)/.test(last) || /\b(?:contact(?: us)?|get in touch|reach us)\b/.test(text)) return 3;
+  if (/^(?:press|media)/.test(last) || /\b(?:press|media)\b/.test(text)) return 2;
+  if (/^about/.test(last) || /\babout\b/.test(text)) return 1;
+  return 0;
+}
+
+/**
+ * The pages of a site worth reading for where to write: its own, a few. One
+ * of each kind before a second of any — the partners page, the contact page,
+ * the press page — so that three links that all say "collaboration" do not
+ * crowd out the contact page, which is where most businesses print an address.
+ */
 export function contactPages(html: string, base: string): string[] {
   const home = new URL(base);
   const found = new Map<string, number>();
@@ -243,23 +261,18 @@ export function contactPages(html: string, base: string): string[] {
       continue;
     }
     if (url.protocol !== "https:" || siteDomain(url.hostname) !== siteDomain(home.hostname)) continue;
-    const words = `${url.pathname} ${match[2].replace(/<[^>]+>/g, " ")}`.toLowerCase();
-    const rank = /partner|sponsor|collab|creator|affiliate|ambassador|advertis|work[- ]with/.test(words)
-      ? 4
-      : /contact|get[- ]in[- ]touch|reach[- ]us/.test(words)
-        ? 3
-        : /press|media/.test(words)
-          ? 2
-          : /about/.test(words)
-            ? 1
-            : 0;
+    if (NOT_A_CONTACT_PAGE.test(url.pathname)) continue;
+    const text = match[2].replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().toLowerCase().slice(0, 80);
+    const rank = contactRank(url.pathname.toLowerCase(), text);
     if (rank === 0) continue;
-    url.hash = "";
     const key = `${url.origin}${url.pathname}`;
     if (key === `${home.origin}${home.pathname}`) continue;
     if ((found.get(key) ?? 0) < rank) found.set(key, rank);
   }
-  return [...found.entries()].sort((a, b) => b[1] - a[1]).map(([url]) => url).slice(0, MAX_PAGES_READ - 1);
+  const ranked = [...found.entries()].sort((a, b) => b[1] - a[1]);
+  const firsts = ranked.filter(([, rank], i) => ranked.findIndex(([, r]) => r === rank) === i);
+  const rest = ranked.filter((entry) => !firsts.includes(entry));
+  return [...firsts, ...rest].map(([url]) => url).slice(0, MAX_PAGES_READ - 1);
 }
 
 /** Pages of one site read for one search, its front page included. */
@@ -310,11 +323,33 @@ export function robotsDisallows(robots: string): string[] {
   return named ? ours : everybody;
 }
 
+/**
+ * Whether one Disallow rule covers a path, read as robots.txt means it
+ * (RFC 9309): the rule is a prefix of the path, "*" stands for any run of
+ * characters, and "$" at the end means the path ends there. Shopify's own
+ * robots.txt, on every Shopify store, closes the cart under any first
+ * folder with a rule that starts "/" and a star: read as a prefix up to its
+ * star, that rule would close the whole site, which is not what it says.
+ */
+function ruleCovers(rule: string, path: string): boolean {
+  const toEnd = rule.endsWith("$");
+  const parts = (toEnd ? rule.slice(0, -1) : rule).split("*");
+  if (!path.startsWith(parts[0])) return false;
+  if (parts.length === 1) return !toEnd || path.length === parts[0].length;
+  let at = parts[0].length;
+  for (let i = 1; i < parts.length; i += 1) {
+    const part = parts[i];
+    if (toEnd && i === parts.length - 1) return path.length - at >= part.length && path.endsWith(part);
+    const found = path.indexOf(part, at);
+    if (found < 0) return false;
+    at = found + part.length;
+  }
+  return true;
+}
+
+/** `path`: the path of the page, with its query when it has one. */
 export function robotsAllows(disallows: string[], path: string): boolean {
-  return !disallows.some((rule) => {
-    const prefix = rule.replace(/\*.*$/, "").replace(/\$$/, "");
-    return prefix !== "" && path.startsWith(prefix);
-  });
+  return !disallows.some((rule) => rule !== "" && ruleCovers(rule, path));
 }
 
 // ---- May this one be written ---------------------------------------------------

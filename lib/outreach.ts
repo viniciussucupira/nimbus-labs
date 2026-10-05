@@ -61,7 +61,8 @@ import type { Store } from "@/lib/store";
 
 /** Who is reading, said to every site read. */
 export const READER = `${READER_NAME}/1.0 (+${SITE_URL}/help#outreach)`;
-const PAGE_BYTES = 700_000;
+// A shop's front page is often most of a megabyte of markup; one that is cut short reads as no page at all.
+const PAGE_BYTES = 3_000_000;
 const PAGE_MS = 8_000;
 
 /** One page of somebody's site, or null when it could not or should not be read. For tests to stand in for. */
@@ -135,13 +136,12 @@ export async function readSite(raw: string, reader: PageReader = readPage): Prom
   const disallows = await siteRules(home.origin, reader);
   if (!robotsAllows(disallows, home.pathname || "/")) return { ok: false, reason: "unreadable" };
 
-  const pages = [front];
-  for (const url of contactPages(front.html, front.url)) {
-    if (pages.length >= MAX_PAGES_READ) break;
-    if (!robotsAllows(disallows, new URL(url).pathname)) continue;
-    const page = await reader(url);
-    if (page && siteDomain(new URL(page.url).hostname) === siteDomain(home.hostname)) pages.push(page);
-  }
+  // The few pages its own menu points to, asked for together: each once, and none that robots.txt closes.
+  const wanted = contactPages(front.html, front.url)
+    .filter((url) => robotsAllows(disallows, new URL(url).pathname))
+    .slice(0, MAX_PAGES_READ - 1);
+  const others = await Promise.all(wanted.map((url) => reader(url)));
+  const pages = [front, ...others.filter((page): page is { url: string; html: string } => page !== null && siteDomain(new URL(page.url).hostname) === siteDomain(home.hostname))];
 
   const found = new Map<string, FoundAddress & { refuses: boolean }>();
   // The contact and partner pages before the front page: the address printed
@@ -231,7 +231,7 @@ export async function startPitch(
   const email = input.email.trim().toLowerCase();
   if (!isOwnAddress(email, page.hostname)) return { ok: false, reason: "unpublished" };
   const reader = options.reader ?? readPage;
-  if (!robotsAllows(await siteRules(page.origin, reader), page.pathname || "/")) return { ok: false, reason: "unreadable" };
+  if (!robotsAllows(await siteRules(page.origin, reader), `${page.pathname || "/"}${page.search}`)) return { ok: false, reason: "unreadable" };
   const read = await reader(page.toString());
   if (!read) return { ok: false, reason: "unreadable" };
   const address = publishedAddresses(read.html, read.url, new URL(read.url).hostname).find((a) => a.email === email);

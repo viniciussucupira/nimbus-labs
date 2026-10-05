@@ -6,6 +6,9 @@ import { AI_PER_MINUTE, MAX_AI_NOTES } from "@/lib/ai-rules";
 import { dropPitch, editPitch, readSite, saveSender, setPitchStatus, startPitch } from "@/lib/outreach";
 import { MAX_PITCH_BODY, MAX_PITCH_SUBJECT, PITCH_STATUSES, type PitchStatus, isGoal } from "@/lib/outreach-rules";
 
+/** Reading somebody else's website and asking the model can each take seconds. */
+export const maxDuration = 60;
+
 /** Sites one store has read for a contact in a minute, and in a day. */
 const FINDS_PER_MINUTE = 6;
 const FINDS_PER_DAY = 60;
