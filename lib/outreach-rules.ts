@@ -181,20 +181,35 @@ export function isOwnAddress(email: string, host: string): boolean {
   return domain === site || domain.endsWith(`.${site}`) || site.endsWith(`.${domain}`);
 }
 
-const ENTITIES: Record<string, string> = { "&amp;": "&", "&lt;": "<", "&gt;": ">", "&quot;": '"', "&#39;": "'", "&#64;": "@", "&#x40;": "@", "&commat;": "@", "&#46;": ".", "&period;": ".", "&nbsp;": " " };
+const ENTITIES: Record<string, string> = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", commat: "@", period: ".",
+  rsquo: "\u2019", lsquo: "\u2018", rdquo: "\u201d", ldquo: "\u201c", ndash: "\u2013", mdash: "\u2014", hellip: "\u2026",
+  copy: "\u00a9", reg: "\u00ae", trade: "\u2122",
+};
+
+/**
+ * What a page wrote as &#64;, &#x27; or &amp;, as the character a reader
+ * sees: every numbered one, and the named ones a sentence or an address is
+ * written with. One pass, so what a page escaped twice stays escaped once.
+ */
+function decodeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z]{2,8});/gi, (whole, name: string) => {
+    if (name[0] !== "#") return ENTITIES[name.toLowerCase()] ?? whole;
+    const code = name[1].toLowerCase() === "x" ? parseInt(name.slice(2), 16) : parseInt(name.slice(1), 10);
+    return code >= 32 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff) ? String.fromCodePoint(code) : " ";
+  });
+}
 
 /** A page's HTML as the words a reader sees, with what a mailto: link points at kept beside it. */
 export function pageText(html: string): string {
-  return html
+  const stripped = html
     .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
     .replace(/<!--[\s\S]*?-->/g, " ")
     // The whole opening tag gives way to the address, or it would go with the tag.
     .replace(/<a\b[^>]*\bhref\s*=\s*["']mailto:([^"'?]+)[^"']*["'][^>]*>/gi, (_, to: string) => ` ${to.replace(/%40/gi, "@")} `)
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&(?:amp|lt|gt|quot|#39|#64|#x40|commat|#46|period|nbsp);/gi, (m) => ENTITIES[m.toLowerCase()] ?? " ")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/<[^>]+>/g, " ");
+  return decodeEntities(stripped).replace(/\s+/g, " ").trim();
 }
 
 /**

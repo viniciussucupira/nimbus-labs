@@ -48,6 +48,7 @@ import {
   draftLinks,
   isOwnAddress,
   isRoleAddress,
+  pageText,
   pitchFooter,
   pitchProblem,
   pitchText,
@@ -135,6 +136,7 @@ async function main(): Promise<void> {
   is("an address written with &#64; is read, and the desk comes before the person", onPartners.map((a) => a.email), ["partnerships@copperoak.com", "dana.lee@copperoak.com"]);
   is("each says whether it is a desk", onPartners.map((a) => a.role), [true, false]);
   is("and keeps the words around it", onPartners[0].line.includes("Creators and sponsors"), true);
+  is("what a page wrote as numbered or named entities is read as a reader sees it", pageText("<p>Stripe&#x27;s fee &amp; ours &#8212; &ldquo;none&rdquo;&nbsp;here. hello&#x40;brand&#46;com &unknown; &#0; &amp;#64;</p>"), "Stripe's fee & ours \u2014 \u201cnone\u201d here. hello@brand.com &unknown; &#64;");
   is("a picture's name is not an address", publishedAddresses('<img src="a@2x.png"> team@2x.png', "https://x.com/", "2x.png").length, 0);
 
   part("A page that says no");
