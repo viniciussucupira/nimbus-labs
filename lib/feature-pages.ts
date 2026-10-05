@@ -2032,7 +2032,6 @@ export const CREATOR_PAGES: TopicPage[] = [
         items: [
           { label: "Weekly meal planner, 1 week", detail: "PDF, 1 page", price: "$27" },
           { label: "Weekly meal planner, 5 weeks", detail: "PDF, 5 pages", price: "$39" },
-          { label: "Free recipe of the week", detail: "On the page, no payment", price: "Free" },
         ],
       },
       {

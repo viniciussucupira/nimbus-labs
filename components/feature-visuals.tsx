@@ -79,11 +79,10 @@ function StoreVisual() {
           H
         </span>
         <p className="mt-3 text-[17px] font-semibold tracking-[-0.01em]">Harbor Kitchen</p>
-        <p className="text-[13px] text-ink-soft">Simple family meals by Jenny</p>
+        <p className="text-[13px] text-ink-soft">Simple family meals by Jenny, a fictional cook</p>
         <div className="mt-5 space-y-2.5 text-left">
-          <Row icon="file" title="Weekly meal planner" sub="Two sizes, delivered as a PDF" end={<Price>from $27</Price>} />
-          <Row icon="gift" title="Free recipe of the week" sub="For your email address" end={<Price>Free</Price>} />
-          <Row icon="link" title="Cooking videos" sub="youtube.com" />
+          <Row icon="file" title="Weekly Meal Planner" sub="Two sizes, delivered as a PDF" end={<Price>from $27</Price>} />
+          <Row icon="link" title="Open a store like this one" sub="marktmorgen.com" />
         </div>
         <div className="mt-5 flex items-center justify-center gap-2 text-[11px] font-semibold text-ink-soft">
           <span>Theme</span>
