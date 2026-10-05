@@ -630,6 +630,7 @@ export function ProductCard({
   selling,
   manageable,
   eager = false,
+  first = false,
   rating = null,
   bundleItems = null,
   soon = false,
@@ -646,6 +647,12 @@ export function ProductCard({
   soon?: boolean;
   /** Near the top of the page: the picture is fetched right away. */
   eager?: boolean;
+  /**
+   * The first product on the page: its picture is usually the biggest thing
+   * a phone draws first, so the browser is told to fetch it ahead of
+   * everything else it has found. One picture a page, or the hint means nothing.
+   */
+  first?: boolean;
   /** Its buyers' reviews, shown only when lib/reviews.ts says a page may. */
   rating?: Summary | null;
   /** For a bundle: what it hands over now (lib/bundles.ts, offeredItems). */
@@ -667,6 +674,7 @@ export function ProductCard({
       width={image.width}
       height={image.height}
       loading={eager ? "eager" : "lazy"}
+      fetchPriority={first ? "high" : undefined}
       decoding="async"
       className={style === "preview" ? "st-cover" : style === "callout" ? "st-callout-img" : "st-thumb"}
       style={style === "preview" ? { aspectRatio: `${image.width} / ${image.height}` } : undefined}

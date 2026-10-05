@@ -257,6 +257,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                 {listings.map((product, index) => (
                   <ProductCard
                     eager={index < 3 && page === 1}
+                    first={index === 0 && page === 1}
                     key={product.id}
                     store={store}
                     product={product}
