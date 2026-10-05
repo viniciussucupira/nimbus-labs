@@ -10,6 +10,7 @@ import { pruneResearch } from "@/lib/creator-research-store";
 import { recoverFailedPayments } from "@/lib/payment-recovery";
 import { settleInvites } from "@/lib/creator-invite-credit";
 import { sendWinBacks } from "@/lib/winback-send";
+import { ensureDemoStore } from "@/lib/demo-seed";
 
 export const maxDuration = 60;
 
@@ -37,6 +38,10 @@ export const maxDuration = 60;
  * store is also moved the first time it is written, so this reaches the
  * ones nobody touches; a store already moved is passed over, and a walk the
  * clock cuts short carries on the next day.
+ *
+ * Last, the demo store is checked against the code that makes it
+ * (lib/demo-seed.ts): one read on a day when nothing is missing, so it is put
+ * right even on a day nobody opens it.
  *
  * Safe to run more than once: each job only writes what is still wrong, and
  * one run at a time.
@@ -108,8 +113,16 @@ async function run(request: NextRequest): Promise<Response> {
     }
     // Creator research answers are kept 24 months, as the privacy policy says.
     await pruneResearch().catch((error: unknown) => console.error("pruning old research answers failed", error));
+    // The demo store, as the code says it should be. What is still missing
+    // is named in the answer and in the log, and never fails the run: the
+    // jobs above are about money, and this one is not.
+    const demo = await ensureDemoStore().catch((error: unknown) => {
+      console.error("checking the demo store failed", error);
+      return null;
+    });
+    if (demo && demo.pending.length) console.error("the demo store is missing something", demo.pending);
     const ok = plans !== null && (billing !== null || !isBillingConfigured());
-    return Response.json({ ok, ...(plans ?? {}), billing, recovered, comeBack, invites, catalogs }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ok, ...(plans ?? {}), billing, recovered, comeBack, invites, catalogs, demo }, { status: ok ? 200 : 500, headers: { "Cache-Control": "no-store" } });
   } finally {
     await redisPipeline([["DEL", "nl:plans:lock"]]).catch(() => {});
   }

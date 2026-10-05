@@ -2,7 +2,7 @@
  * Session packages and membership tiers, run against Stripe itself, every
  * day, by a scheduled job (app/api/cron/stripe-check).
  *
- * In Stripe's test mode, on the demo's sandbox account (lib/demo-store.ts):
+ * In Stripe's test mode, on the demo store's test account (lib/demo-account.ts):
  * no real money, and nothing on any creator's account. Every request is
  * built by the very functions the features use (callCheckoutBody,
  * sessionCouponBody, packageCheckoutBody, tierPriceBody, previewBody,

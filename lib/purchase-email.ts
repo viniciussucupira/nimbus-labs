@@ -45,7 +45,7 @@ import { isSettled } from "@/lib/instant-pay";
 import { canUseDomain } from "@/lib/domains";
 import { canManage } from "@/lib/membership-manage";
 import { everyLabel } from "@/lib/product-recurring";
-import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-store";
+import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-account";
 import { SITE_URL } from "@/lib/site-url";
 import type { Listing, Store } from "@/lib/store";
 import { listingsNamed, readListing, recordListings } from "@/lib/catalog";
@@ -124,10 +124,10 @@ export function canConfirm(store: Store): boolean {
     isRedisConfigured() &&
     isSenderConfigured() &&
     Boolean(store.stripeAccountId) &&
-    // The demo store sells from its own page, on its own account; a creator
-    // store pointed at that same account still never writes to its buyers.
-    store.stripeAccountId !== DEMO_CONNECTED_ACCOUNT &&
-    store.handle !== "demo"
+    // Nothing sold on the demo's account is ever confirmed by email
+    // (lib/house-store.ts): its checkout takes any address and charges
+    // nothing, so a confirmation would be a way to write to anybody.
+    store.stripeAccountId !== DEMO_CONNECTED_ACCOUNT
   );
 }
 

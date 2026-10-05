@@ -37,6 +37,7 @@ import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { renewPath } from "@/lib/membership-access";
 import { LicenceKeyBox } from "@/components/licence-key-box";
 import { reviewable } from "@/lib/review-proof";
+import { takesReviews } from "@/lib/house-store";
 import { type Review, readReview, reviewId } from "@/lib/reviews";
 import { REVIEW_NOTICES, ReviewForm } from "@/components/review-form";
 import { type SaleRecord, noteSale } from "@/lib/sale-events";
@@ -488,7 +489,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   // for, by this checkout, with money (lib/review-proof.ts has the rule the
   // form is checked against again when it is sent).
   const toReview =
-    order.state === "paid" && sessionId && !booked && !ended && order.amount > 0 && order.email
+    order.state === "paid" && sessionId && !booked && !ended && order.amount > 0 && order.email && takesReviews(store)
       ? [order.product, ...(order.bump ? [order.bump.product] : []), ...bundled]
           .filter(reviewable)
           .filter((p, i, all) => all.findIndex((q) => q.id === p.id) === i)

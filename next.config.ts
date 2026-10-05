@@ -78,7 +78,9 @@ const nextConfig: NextConfig = {
       ...to("/studio", "/app", "/dashboard", "/account", "/settings"),
       ...to("/blog", "/journal", "/articles", "/posts", "/news"),
       ...to("/creators", "/creator"),
-      ...to("/demo", "/demo-store", "/example", "/preview"),
+      // The demo's own thanks and recover pages are gone with the page they
+      // belonged to: the demo is a store now, with a store's own (lib/house-store.ts).
+      ...to("/demo", "/demo-store", "/example", "/preview", "/demo/thanks", "/demo/recover"),
       ...to("/terms", "/terms-of-service", "/tos"),
       ...to("/privacy", "/privacy-policy"),
       ...to("/refunds", "/refund", "/refund-policy"),

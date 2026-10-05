@@ -250,7 +250,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
           ) : (
             <div className="mt-6 space-y-6">
               {selling ? (
-                <form action="/api/store/checkout" method="post" data-checkout="">
+                <form action="/api/store/checkout" method="post" target="_top" data-checkout="">
                   <input type="hidden" name="handle" value={store.handle} />
                   <input type="hidden" name="product" value={product.id} />
                   <button type="submit" className="btn st-btn btn-lg btn-block">{`${access.state === "ended" ? "Renew" : "Buy the course"} · ${price}`}</button>

@@ -14,6 +14,7 @@
  */
 
 import { STRIPE_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
+import { DEMO_CONNECTED_ACCOUNT, demoKey } from "@/lib/demo-account";
 
 /** Local tests may point this at a mock on 127.0.0.1; nothing else is taken. */
 const STRIPE_API = /^http:\/\/127\.0\.0\.1:\d+$/.test(
@@ -26,6 +27,21 @@ export function platformKey(): string | null {
   const key = process.env.STRIPE_SECRET_KEY?.trim();
   if (!key || !/^(sk|rk)_(test|live)_/.test(key)) return null;
   return key;
+}
+
+/**
+ * The key a request on this account is signed with.
+ *
+ * Ours, for every creator's account. The demo store's own test key for the
+ * demo store's account (lib/demo-account.ts), and never ours: that account
+ * lives in Stripe's test mode, and a key from another mode cannot reach it —
+ * so on the day our own key is a live one the demo store would otherwise
+ * stop selling, and, worse, anything that did get through would be the demo
+ * asking Stripe for real money. Decided here, in the one function every
+ * request on a creator's account passes through, so no caller can choose.
+ */
+export function keyFor(account: string): string | null {
+  return account === DEMO_CONNECTED_ACCOUNT ? demoKey() : platformKey();
 }
 
 /**
@@ -80,7 +96,7 @@ export async function onAccount(
    */
   idempotencyKey?: string,
 ): Promise<Record<string, unknown>> {
-  const key = platformKey();
+  const key = keyFor(account);
   if (!key) throw new Error("Selling is not configured");
 
   // Given up after STRIPE_TIMEOUT_MS (lib/fetch-timeout.ts) as a network

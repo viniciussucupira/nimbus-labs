@@ -38,6 +38,7 @@
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
+import { isHouseAddress } from "@/lib/house-store";
 
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const MAX_EMAIL_LENGTH = 254;
@@ -139,6 +140,8 @@ export async function sendMoveLink(
 ): Promise<boolean> {
   const fromAddress = normaliseEmail(from);
   const toAddress = normaliseEmail(to);
+  // Nobody becomes the demo store's owner, by this door either (lib/house-store.ts).
+  if (isHouseAddress(toAddress)) return false;
   const token = randomToken();
 
   await redisPipeline([
@@ -247,6 +250,10 @@ export async function sendSignInLink(
   origin: string,
 ): Promise<boolean> {
   const address = normaliseEmail(email);
+  // The demo store's owner is nobody (lib/house-store.ts): no link is made
+  // for that address, so no session can ever be opened as it. The caller
+  // answers as it does for any address, and says nothing about this one.
+  if (isHouseAddress(address)) return false;
   const token = randomToken();
 
   await redisPipeline([

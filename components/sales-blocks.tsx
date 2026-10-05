@@ -104,7 +104,7 @@ export function ActionButton({ ctx, label, large = false }: { ctx: BlockContext;
     );
   }
   return (
-    <form action="/api/store/checkout" method="post" data-checkout="" className="contents">
+    <form action="/api/store/checkout" method="post" target="_top" data-checkout="" className="contents">
       <input type="hidden" name="handle" value={ctx.action.handle} />
       <input type="hidden" name="product" value={ctx.action.product} />
       <button type="submit" className={className}>

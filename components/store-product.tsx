@@ -171,7 +171,7 @@ export function PackageOffer({ store, product }: { store: Store; product: Listin
   if (!pkg || product.call?.kind !== "weekly") return null;
   const saving = packageSaving(pkg, product.priceCents);
   return (
-    <form action="/api/store/package" method="post" className="mt-3" data-checkout="">
+    <form action="/api/store/package" method="post" target="_top" className="mt-3" data-checkout="">
       <input type="hidden" name="handle" value={store.handle} />
       <input type="hidden" name="product" value={product.id} />
       <button type="submit" className="btn btn-block" style={{ border: "1px solid var(--st-line-strong)", color: "var(--st-text)", background: "var(--st-card)" }}>
@@ -201,7 +201,7 @@ export function GiftBox({ store, product, problem = "" }: { store: Store; produc
       <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold" style={{ color: "var(--st-text)" }}>
         Buy it as a gift
       </summary>
-      <form action="/api/store/checkout" method="post" className="mt-2 space-y-3 pb-1" data-checkout="">
+      <form action="/api/store/checkout" method="post" target="_top" className="mt-2 space-y-3 pb-1" data-checkout="">
         <input type="hidden" name="handle" value={store.handle} />
         <input type="hidden" name="product" value={product.id} />
         {problem && GIFT_PROBLEMS[problem] ? (
@@ -397,9 +397,17 @@ export function BuyBox({
 
   return (
     <>
-    <form action="/api/store/checkout" method="post" className="mt-4" data-checkout="">
+    <form action="/api/store/checkout" method="post" target="_top" className="mt-4" data-checkout="">
       <input type="hidden" name="handle" value={store.handle} />
       <input type="hidden" name="product" value={product.id} />
+      {/*
+        target="_top", here and on every form that opens a payment page:
+        Stripe and PayPal refuse to be drawn inside a frame, and the home
+        page shows the demo store in one (components/home-parts.tsx). Without
+        it the payment page lands in the frame and the buyer sees a blocked,
+        empty panel. On a page that is not framed "_top" is the same window,
+        so nothing changes. tests/demo-store.test.ts holds every such form.
+      */}
       {/*
         Radio cards, and nothing else. The form sends the id of the option the
         buyer picked; what it costs is read from the creator's own record on
@@ -535,7 +543,7 @@ export function BuyBox({
  */
 function PayPalButton({ store, product, alone }: { store: Store; product: Listing; alone: boolean }) {
   return (
-    <form action="/api/store/paypal/checkout" method="post" className={alone ? "mt-4" : "mt-3"}>
+    <form action="/api/store/paypal/checkout" method="post" target="_top" className={alone ? "mt-4" : "mt-3"}>
       <input type="hidden" name="handle" value={store.handle} />
       <input type="hidden" name="product" value={product.id} />
       <button type="submit" className={`btn btn-block ${alone ? "st-btn" : "st-btn-ghost"}`}>

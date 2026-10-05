@@ -21,6 +21,7 @@
  * design and the possible design are the same design here.
  */
 import { STRIPE_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
+import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-account";
 
 /** Local tests may point this at a mock on 127.0.0.1; nothing else is taken. */
 const STRIPE_ROOT = /^http:\/\/127\.0\.0\.1:\d+$/.test(
@@ -55,6 +56,16 @@ export function isConnectConfigured(): boolean {
 /** True when the platform key is a test key, so the UI can say so plainly. */
 export function isConnectInTestMode(): boolean {
   return /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY?.trim() ?? "");
+}
+
+/**
+ * Whether what this store sells is paid for in Stripe's test mode: the site
+ * as a whole is, or the store charges the demo's account. Asked of the store
+ * and not only of our own key, because the demo store stays in test mode on
+ * the day everything else stops being (lib/demo-account.ts).
+ */
+export function sellsInTestMode(store: { stripeAccountId: string | null }): boolean {
+  return store.stripeAccountId === DEMO_CONNECTED_ACCOUNT || isConnectInTestMode();
 }
 
 /**

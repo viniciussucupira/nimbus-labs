@@ -7,6 +7,8 @@ import { SITE_URL } from "@/lib/site-url";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { iconUrl, shortName, themeColour } from "@/lib/store-app";
 import { StoreApp } from "@/components/store-app";
+import { isHouseStore } from "@/lib/house-store";
+import { DemoStrip } from "@/components/demo-notes";
 
 /**
  * Around every page of a creator's store: the store's own manifest, icon and
@@ -16,6 +18,10 @@ import { StoreApp } from "@/components/store-app";
  *
  * Addresses without an "@" also pass through here and meet the not-found
  * page; for those this adds nothing, and the site's own head stands.
+ *
+ * The demo store is drawn by these same pages, and carries one thing more: a
+ * strip across the top of each of them saying that it is a demo and which
+ * card to pay with (lib/house-store.ts).
  */
 const loadStore = cache(async (raw: string) => {
   const decoded = decodeURIComponent(raw);
@@ -52,9 +58,10 @@ export default async function StoreLayout({ children, params }: LayoutProps<"/[h
   // sent to the same page at the address that always works.
   const asked = await headers();
   const reachedOn = asked.get("x-nimbus-domain");
+  const { handle } = await params;
+  // The read the head above already made for this visit: nothing is asked twice.
+  const store = await loadStore(handle);
   if (reachedOn) {
-    const { handle } = await params;
-    const store = await loadStore(handle);
     if (store && (store.domain?.name !== reachedOn || !canUseDomain(store))) {
       const path = asked.get("x-nimbus-path") ?? "/";
       const own = /^\/@/.test(path) ? path : `/@${store.handle}${path === "/" || path.startsWith("/?") ? path.slice(1) : path}`;
@@ -63,6 +70,7 @@ export default async function StoreLayout({ children, params }: LayoutProps<"/[h
   }
   return (
     <>
+      {store && isHouseStore(store) ? <DemoStrip /> : null}
       {children}
       <StoreApp />
     </>

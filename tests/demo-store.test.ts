@@ -1,0 +1,308 @@
+/**
+ * The demo store is a store.
+ *
+ * "Live demo store" was a page written by hand: it shared no code with a
+ * creator's store, so what a visitor tried there was not what a creator's
+ * buyers get. It is now made by lib/demo-seed.ts with the functions the
+ * studio's own routes call, and drawn, sold and handed over by the pages and
+ * the checkout every store runs on. What is checked here, by running it:
+ *
+ *   - made once, it is a store that can sell: its address, its product with
+ *     two prices, a file behind each in the store's own folder, its picture
+ *     and photo, its long description;
+ *   - asked again it reads one mark and writes nothing; after a deployment
+ *     that changes the code it is brought in line without fetching anything
+ *     it already has; a photograph that could not be fetched is named, left
+ *     alone for a while and then tried again;
+ *   - its checkout is the real one, signed with the demo's own test key on
+ *     the demo's own account — also on the day our own key is a live one —
+ *     and carries the store's name, which a refusal never costs the checkout;
+ *   - the few ways it is not like other stores (lib/house-store.ts): nobody
+ *     can sign in as its owner, it takes no reviews, it writes to no buyer,
+ *     and its pages say it is a demo;
+ *   - nothing of the hand-written demo is left, /demo leads to the store,
+ *     and every form that opens a payment page leaves the frame the home
+ *     page shows the store in.
+ */
+import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
+import { join } from "node:path";
+import { DEMO_PRODUCT, DEMO_STORE, type SeedDeps, ensureDemoStore, imageSize, seedFingerprint } from "@/lib/demo-seed";
+import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-account";
+import { getDemoFile } from "@/lib/demo-file";
+import { HOUSE_HANDLE, HOUSE_OWNER, isHouseStore, takesReviews } from "@/lib/house-store";
+import { addProduct, claimHandle, setProductLink, setStripeAccount, setSubscription, storeFolder, storeForEmail, storeForHandle } from "@/lib/store";
+import { productIds, readListings, readProduct } from "@/lib/catalog";
+import { canSell, canSellProduct, createCheckout } from "@/lib/store-checkout";
+import { keyFor } from "@/lib/stripe-account";
+import { sellsInTestMode } from "@/lib/stripe-connect";
+import { ownsPath } from "@/lib/product-file";
+import { ownsImagePath } from "@/lib/product-image";
+import { imageFolder } from "@/lib/store";
+import { readAbout } from "@/lib/product-about";
+import { readPhoto } from "@/lib/store-photo";
+import { canConfirm } from "@/lib/purchase-email";
+import { provePurchase } from "@/lib/review-proof";
+import { sendSignInLink } from "@/lib/auth";
+import { MAX_BIO_LENGTH } from "@/lib/store";
+import { store as redis } from "./redis-stub";
+import { done, is, part } from "./check";
+
+const DEMO_KEY = "sk_test_demo_only_a_stand_in";
+const OUR_TEST_KEY = "sk_test_platform_only_a_stand_in";
+const OUR_LIVE_KEY = "sk_live_platform_only_a_stand_in";
+
+/** A WebP's first thirty bytes, saying how big it is: all that is ever read of it here. */
+function webp(width: number, height: number): Uint8Array {
+  const bytes = new Uint8Array(64);
+  bytes.set([0x52, 0x49, 0x46, 0x46, 56, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x58, 10, 0, 0, 0, 0, 0, 0, 0]);
+  const w = width - 1;
+  const h = height - 1;
+  bytes.set([w & 255, (w >> 8) & 255, (w >> 16) & 255, h & 255, (h >> 8) & 255, (h >> 16) & 255], 24);
+  return bytes;
+}
+
+// ---- Stand-ins for everything outside ----------------------------------------
+
+const puts: { pathname: string; bytes: number; type: string }[] = [];
+const removed: string[] = [];
+const fetched: string[] = [];
+let photoHostDown = false;
+const deps: SeedDeps = {
+  putFile: async (pathname, bytes, type) => {
+    puts.push({ pathname, bytes: bytes.byteLength, type });
+  },
+  removeFile: async (pathname) => {
+    removed.push(pathname);
+  },
+  fetchBytes: async (url) => {
+    fetched.push(url);
+    if (photoHostDown) throw new Error("fetch_502");
+    return url.includes(DEMO_STORE.photo.id) ? webp(480, 480) : webp(1200, 675);
+  },
+};
+
+type Call = { key: string; account: string; method: string; path: string; body: URLSearchParams };
+const stripe: Call[] = [];
+const emails: unknown[] = [];
+let refuseName = false;
+globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+  const url = new URL(String(input));
+  if (url.hostname === "api.resend.com") {
+    emails.push(JSON.parse(String(init?.body)));
+    return new Response(JSON.stringify({ id: "email_1" }));
+  }
+  const headers = new Headers(init?.headers);
+  const call: Call = {
+    key: (headers.get("authorization") ?? "").replace(/^Bearer /, ""),
+    account: headers.get("stripe-account") ?? "",
+    method: init?.method ?? "GET",
+    path: url.pathname.replace(/^\/v1/, ""),
+    body: new URLSearchParams(String(init?.body ?? "")),
+  };
+  stripe.push(call);
+  if (call.path === "/checkout/sessions" && call.method === "POST") {
+    if (refuseName && call.body.has("branding_settings[display_name]")) {
+      return new Response(JSON.stringify({ error: { type: "invalid_request_error", message: "Received unknown parameter: branding_settings" } }), { status: 400 });
+    }
+    return new Response(JSON.stringify({ id: `cs_test_${"d".repeat(24)}`, url: "https://checkout.stripe.com/c/pay/demo" }));
+  }
+  return new Response(JSON.stringify({ error: { message: `no stand-in for ${call.method} ${call.path}` } }), { status: 404 });
+}) as typeof fetch;
+
+// ---- Reading the source, for the parts that are markup ------------------------
+
+const read = (file: string) => readFileSync(join(process.cwd(), file), "utf8");
+const withoutComments = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+function sources(dir: string, out: string[] = []): string[] {
+  for (const name of readdirSync(join(process.cwd(), dir))) {
+    const path = `${dir}/${name}`;
+    if (statSync(join(process.cwd(), path)).isDirectory()) sources(path, out);
+    else if (/\.tsx?$/.test(name)) out.push(path);
+  }
+  return out;
+}
+
+async function theProduct() {
+  const store = (await storeForEmail(HOUSE_OWNER))!;
+  const listing = (await readListings(store, productIds(store))).find((p) => p.title === DEMO_PRODUCT.title)!;
+  return { store, listing };
+}
+
+async function main(): Promise<void> {
+  redis.clear();
+  process.env.STRIPE_SECRET_KEY = OUR_TEST_KEY;
+  process.env.STRIPE_DEMO_SECRET_KEY = DEMO_KEY;
+  process.env.RESEND_API_KEY = "re_test_demo_only";
+
+  part("Made once, it is a store that can sell");
+  is("there is no store before", await storeForHandle(HOUSE_HANDLE), null);
+  const first = await ensureDemoStore(deps);
+  is("it is made, with nothing missing", [first.ok, first.pending, first.ran], [true, [], true]);
+  let { store, listing } = await theProduct();
+  is("at the address stores have", (await storeForHandle(HOUSE_HANDLE))?.email, HOUSE_OWNER);
+  is("named, and saying in its own description that it is a demo", [store.name, /fictional/.test(store.bio) && /demo store/.test(store.bio)], ["Harbor Kitchen", true]);
+  is("its description fits what a store may say", store.bio.length <= MAX_BIO_LENGTH && store.bio === DEMO_STORE.bio, true);
+  is("it is the house's", isHouseStore(store), true);
+  is("on the demo's own account, on the $29 plan, with no subscription written down", [store.stripeAccountId, store.stripeChargesEnabled, store.subscriptionActive, store.tier, store.subscriptionId], [DEMO_CONNECTED_ACCOUNT, true, true, "creator", null]);
+  is("it can sell", canSell(store), true);
+  is("one product, with the two prices", [productIds(store).length, listing.options.map((o) => [o.label, o.priceCents])], [1, [["1 week", 2700], ["5 weeks", 3900]]]);
+  is("which can be bought", canSellProduct(store, listing), true);
+
+  const folder = await storeFolder(HOUSE_OWNER);
+  is(
+    "each price has its own file, in the store's own folder, exactly as long as the file is",
+    listing.options.map((o) => [o.file?.name, o.file ? ownsPath(o.file.pathname, folder, o.id) : false, o.file?.bytes, o.file?.contentType]),
+    DEMO_PRODUCT.options.map((want) => [want.file, true, getDemoFile(want.file).byteLength, "application/pdf"]),
+  );
+  is("and each of those files was put in the file store", listing.options.every((o) => puts.some((p) => p.pathname === o.file?.pathname && p.type === "application/pdf")), true);
+  is(
+    "its picture is in the store's own picture folder, measured from the file itself, across the card",
+    [listing.image ? ownsImagePath(listing.image.path, await imageFolder(HOUSE_OWNER)) : false, listing.image?.width, listing.image?.height, listing.image?.alt, listing.display],
+    [true, 1200, 675, DEMO_PRODUCT.image.alt, "preview"],
+  );
+  is("the store has its photo, kept where every store's is", (await readPhoto(store.photoId ?? ""))?.type, "image/webp");
+  is("the product's page has its long description", [listing.about, await readAbout(store.statsId, listing.id)], [true, DEMO_PRODUCT.about]);
+  is("and one link", store.links.map((l) => [l.title, l.url]), [[DEMO_STORE.link.title, DEMO_STORE.link.url]]);
+  is("two files and one picture were put, two photographs fetched", [puts.length, fetched.length], [3, 2]);
+
+  part("Asked again, it does only what is missing");
+  const [putsBefore, fetchedBefore] = [puts.length, fetched.length];
+  const again = await ensureDemoStore(deps);
+  is("everything in place is one read of the mark", [again.ok, again.pending, again.ran], [true, [], false]);
+  is("and nothing is put or fetched", [puts.length, fetched.length], [putsBefore, fetchedBefore]);
+
+  // Another deployment: the mark carries the fingerprint of other code.
+  const mark = JSON.parse((await redis.pipeline([["GET", "nl:house:seed"]]))[0] as string) as Record<string, unknown>;
+  is("the mark carries this code's fingerprint", mark.v, seedFingerprint());
+  await redis.pipeline([["SET", "nl:house:seed", JSON.stringify({ ...mark, v: "another-deployment" })]]);
+  const after = await ensureDemoStore(deps);
+  is("after a deployment that changed the code it is gone through again", [after.ok, after.pending, after.ran], [true, [], true]);
+  is("without putting or fetching what is already there", [puts.length, fetched.length], [putsBefore, fetchedBefore]);
+  is("and without a second product, option or link", [productIds((await theProduct()).store).length, (await theProduct()).listing.options.length, (await theProduct()).store.links.length], [1, 2, 1]);
+
+  // The store's photo is gone and the place it is fetched from is down.
+  ({ store } = await theProduct());
+  await redis.pipeline([["SET", "nl:house:seed", JSON.stringify({ ...mark, v: "another-deployment", photo: "" })]]);
+  photoHostDown = true;
+  const failed = await ensureDemoStore(deps);
+  is("a photograph that cannot be fetched is named, and the store is still there", [failed.ok, failed.pending], [true, ["photo:fetch_502"]]);
+  const tries = fetched.length;
+  const soon = await ensureDemoStore(deps);
+  is("it is not tried again on the next visit", [soon.ran, soon.pending, fetched.length], [false, ["photo:fetch_502"], tries]);
+  photoHostDown = false;
+  const stale = JSON.parse((await redis.pipeline([["GET", "nl:house:seed"]]))[0] as string) as Record<string, unknown>;
+  await redis.pipeline([["SET", "nl:house:seed", JSON.stringify({ ...stale, at: (stale.at as number) - 3600 })]]);
+  const healed = await ensureDemoStore(deps);
+  is("later it is, and then nothing is missing", [healed.ran, healed.pending, fetched.length], [true, [], tries + 1]);
+
+  part("A picture's size is read from the picture");
+  is("an extended WebP", imageSize(webp(1200, 675)), { width: 1200, height: 675 });
+  const lossy = new Uint8Array(40);
+  lossy.set([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x20, 0, 0, 0, 0, 0, 0, 0, 0x9d, 0x01, 0x2a, 0xe0, 0x01, 0x68, 0x01]);
+  is("a plain WebP", imageSize(lossy), { width: 480, height: 360 });
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 4, 0, 0, 0xff, 0xc0, 0, 11, 8, 0x02, 0xa3, 0x04, 0xb0, 3, 0, 0, 0, 0, 0, 0]);
+  is("a JPEG", imageSize(jpeg), { width: 1200, height: 675 });
+  is("anything else is not measured", imageSize(new Uint8Array(40)), null);
+
+  part("Its checkout is the real one, on the demo's own account and key");
+  is("the demo's account is asked with the demo's key", keyFor(DEMO_CONNECTED_ACCOUNT), DEMO_KEY);
+  is("a creator's account with ours", keyFor("acct_1Creator00001"), OUR_TEST_KEY);
+  ({ store, listing } = await theProduct());
+  const product = (await readProduct(store, listing.id))!;
+  const five = product.options.find((o) => o.label === "5 weeks")!;
+  stripe.length = 0;
+  const opened = await createCheckout(store, product, "https://marktmorgen.com", five.id);
+  const sent = stripe[0];
+  is("one request, and it opens", [stripe.length, opened.url], [1, "https://checkout.stripe.com/c/pay/demo"]);
+  is("signed with the demo's key, on the demo's account", [sent.key, sent.account], [DEMO_KEY, DEMO_CONNECTED_ACCOUNT]);
+  is("for the price of the option picked, read from the store", [sent.body.get("line_items[0][price_data][unit_amount]"), sent.body.get("metadata[option]"), sent.body.get("metadata[store]")], ["3900", five.id, HOUSE_HANDLE]);
+  is("coming back to the store's own thanks page", sent.body.get("success_url"), `https://marktmorgen.com/@${HOUSE_HANDLE}/thanks?session_id={CHECKOUT_SESSION_ID}`);
+  is("and named as the store is, not as its test account is", sent.body.get("branding_settings[display_name]"), "Harbor Kitchen");
+
+  stripe.length = 0;
+  refuseName = true;
+  const unnamed = await createCheckout(store, product, "https://marktmorgen.com", five.id);
+  refuseName = false;
+  is("a refused name never costs the checkout: it opens without", [stripe.length, stripe[1]?.body.has("branding_settings[display_name]"), unnamed.url], [2, false, "https://checkout.stripe.com/c/pay/demo"]);
+
+  // The day our own key is a live one.
+  process.env.STRIPE_SECRET_KEY = OUR_LIVE_KEY;
+  stripe.length = 0;
+  await createCheckout(store, product, "https://marktmorgen.com", five.id);
+  is("with a live key of ours, the demo still asks with its test key", [stripe[0].key, stripe[0].account], [DEMO_KEY, DEMO_CONNECTED_ACCOUNT]);
+  is("and still says it sells in test mode", sellsInTestMode(store), true);
+  is("which a creator's store then does not", sellsInTestMode({ stripeAccountId: "acct_1Creator00001" }), false);
+  process.env.STRIPE_DEMO_SECRET_KEY = "sk_live_never_for_the_demo";
+  is("a live key is never taken for the demo's account", keyFor(DEMO_CONNECTED_ACCOUNT), null);
+  process.env.STRIPE_DEMO_SECRET_KEY = DEMO_KEY;
+  process.env.STRIPE_SECRET_KEY = OUR_TEST_KEY;
+
+  // A creator's store beside it is named by its own Stripe account, as before.
+  await claimHandle("owner@example.com", "sourdough", "Sourdough", "");
+  await setStripeAccount("owner@example.com", "acct_1Creator00001", true);
+  await setSubscription("owner@example.com", { customerId: "cus_Owner00001", subscriptionId: "sub_Owner00001", active: true });
+  const made = await addProduct("owner@example.com", "Starter Guide", "", "19");
+  if (!made.ok) throw new Error("no product");
+  await setProductLink("owner@example.com", made.product.id, "https://example.com/guide");
+  const theirs = (await storeForEmail("owner@example.com"))!;
+  stripe.length = 0;
+  await createCheckout(theirs, (await readProduct(theirs, made.product.id))!, "https://marktmorgen.com");
+  is("a creator's checkout is asked with our key and carries no name of ours", [stripe[0].key, stripe[0].account, stripe[0].body.has("branding_settings[display_name]")], [OUR_TEST_KEY, "acct_1Creator00001", false]);
+
+  part("The ways it is not like other stores");
+  emails.length = 0;
+  const keys = async () => ((await redis.pipeline([["SCAN", "0", "MATCH", "*", "COUNT", 100000]]))[0] as [string, string[]])[1].length;
+  const keysBefore = await keys();
+  is("no sign-in link is made for its owner", await sendSignInLink(HOUSE_OWNER, "https://marktmorgen.com"), false);
+  is("nothing is written and nothing is sent", [await keys(), emails.length], [keysBefore, 0]);
+  is("it takes no reviews, and a creator's store does", [takesReviews(store), takesReviews(theirs)], [false, true]);
+  stripe.length = 0;
+  is("an order of its is proof of nothing to review", (await provePurchase(store, `cs_test_${"d".repeat(24)}`)).state, "no");
+  is("and Stripe is not even asked", stripe.length, 0);
+  is("it writes to no buyer", canConfirm(store), false);
+  const plans = withoutComments(read("lib/billing-sync.ts"));
+  is("the daily check of plans asks only about a store that names a subscription", /if \(!store\.subscriptionActive \|\| !store\.subscriptionId \|\|/.test(plans), true);
+  const studio = withoutComments(read("app/studio/page.tsx"));
+  is("and so does the studio", /store\?\.subscriptionId && isBillingConfigured\(\)\s*\?\s*await readSubscription/.test(studio), true);
+
+  part("Its pages are the pages every store has, and say that it is a demo");
+  const layout = withoutComments(read("app/[handle]/layout.tsx"));
+  is("the strip is on every page of the demo store, and of no other", /store && isHouseStore\(store\) \? <DemoStrip \/> : null/.test(layout), true);
+  const notes = read("components/demo-notes.tsx");
+  is("it says no real money moves, and which card to type", /no real money moves/.test(notes) && /\{TEST_CARD\}/.test(notes), true);
+  const page = withoutComments(read("app/[handle]/page.tsx"));
+  is("the store page asks the store whether it sells in test mode", /const rehearsal = selling && sellsInTestMode\(store\);/.test(page), true);
+  is("and the product page does too", /const rehearsal = selling && sellsInTestMode\(store\);/.test(withoutComments(read("app/[handle]/p/[product]/page.tsx"))), true);
+
+  part("Nothing of the hand-written demo is left");
+  is("no page of its own, no thanks page, no routes", ["app/demo/thanks", "app/demo/recover", "app/api/demo"].map((p) => existsSync(join(process.cwd(), p))), [false, false, false]);
+  const demo = withoutComments(read("app/demo/page.tsx"));
+  is("/demo makes sure the store is there and sends the visitor to it", /await ensureDemoStore\(\)/.test(demo) && /if \(seed\.ok\) redirect\(`\/@\$\{HOUSE_HANDLE\}`\);/.test(demo), true);
+  is("and draws no product or buy button of its own", /<form|<button|priceCents|\$\d/.test(demo), false);
+  is("the home page still shows it in a frame", /<iframe[^>]*src="\/demo"/.test(read("components/home-parts.tsx")), true);
+  const everything = [...sources("app"), ...sources("components"), ...sources("lib")];
+  is(
+    "nothing anywhere posts to the old demo routes",
+    everything.filter((file) => /\/api\/demo\//.test(withoutComments(read(file)))),
+    [],
+  );
+
+  part("Every form that opens a payment page leaves the frame it is in");
+  const OPENS = /action=(?:"\/api\/store\/(?:checkout|package|paypal\/checkout)"|\{[^}]*"\/api\/store\/book"[^}]*\})/;
+  const forms = [...sources("app"), ...sources("components")].flatMap((file) =>
+    [...withoutComments(read(file)).matchAll(/<form\b[^>]*>/g)].map((m) => ({ file, tag: m[0] })).filter((f) => OPENS.test(f.tag)),
+  );
+  is("there are such forms to check", forms.length >= 9, true);
+  is("each of them has target=\"_top\"", forms.filter((f) => !/target="_top"/.test(f.tag)).map((f) => f.file), []);
+  const marked = [...sources("app"), ...sources("components")].flatMap((file) =>
+    [...withoutComments(read(file)).matchAll(/<form\b[^>]*data-checkout[^>]*>/g)].filter((m) => !/target="_top"/.test(m[0])).map(() => file),
+  );
+  is("and so has every form marked as opening a checkout", marked, []);
+
+  done();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

@@ -43,6 +43,7 @@ import { REVIEW_STORES_KEY, markRefunded } from "@/lib/reviews";
 import type { Listing, Store } from "@/lib/store";
 import { readListings } from "@/lib/catalog";
 import { deliveredIds } from "@/lib/bundle-rules";
+import { takesReviews } from "@/lib/house-store";
 
 const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
 const INTENT_ID = /^pi_[A-Za-z0-9]{10,200}$/;
@@ -106,6 +107,8 @@ async function invoicePayment(account: string, invoice: unknown): Promise<string
 export async function provePurchase(store: Store, reference: string): Promise<ProofResult> {
   const account = store.stripeAccountId;
   if (!account) return { state: "no" };
+  // The demo store takes none (lib/house-store.ts): a purchase there is free.
+  if (!takesReviews(store)) return { state: "no" };
   const handles = saleHandles(store);
   try {
     if (SESSION_ID.test(reference)) {

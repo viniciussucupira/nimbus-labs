@@ -124,7 +124,7 @@ export default async function RenewPage({ params, searchParams }: Params) {
                 {`Renew ${product.title}`}
               </Link>
             ) : (
-              <form action="/api/store/checkout" method="post" className="mt-7" data-checkout="">
+              <form action="/api/store/checkout" method="post" target="_top" className="mt-7" data-checkout="">
                 <input type="hidden" name="handle" value={store.handle} />
                 <input type="hidden" name="product" value={product.id} />
                 <button type="submit" className="btn st-btn btn-lg btn-block">

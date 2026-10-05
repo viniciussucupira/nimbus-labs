@@ -135,9 +135,9 @@ export function roomPermissions(): string {
   return `camera=(self ${room}), microphone=(self ${room}), display-capture=(self ${room}), fullscreen=(self ${room}), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), browsing-topics=()`;
 }
 
-/** Whether a page rendered per visit is a store's own page (under /@, or the demo store's thanks page). */
+/** Whether a page rendered per visit is a store's own page (under /@; the demo store's are among them). */
 export function isStorePage(pathname: string): boolean {
-  return /^\/(?:@|%40)/i.test(pathname) || /^\/demo\/thanks(\/|$)/.test(pathname);
+  return /^\/(?:@|%40)/i.test(pathname);
 }
 
 /** The policy for a page built ahead of time, which has no nonce to carry. */
@@ -168,5 +168,5 @@ export function newNonce(): string {
  * this about the path it rewrites to, which always starts with /@.
  */
 export function isDynamicPage(pathname: string): boolean {
-  return /^\/(?:@|%40)/i.test(pathname) || /^\/(studio|signin|unsubscribe)(\/|$)/.test(pathname) || /^\/demo\/thanks(\/|$)/.test(pathname);
+  return /^\/(?:@|%40)/i.test(pathname) || /^\/(studio|signin|unsubscribe)(\/|$)/.test(pathname);
 }

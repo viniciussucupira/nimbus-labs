@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { BLOG_POSTS } from "@/lib/blog";
 import { PAGES } from "@/lib/site-pages";
 import { SITE_URL } from "@/lib/site-url";
+import { HOUSE_HANDLE } from "@/lib/house-store";
 
 /**
  * Every page on this site that is worth finding, listed for search engines.
@@ -13,9 +14,9 @@ import { SITE_URL } from "@/lib/site-url";
  * the sitemap — it just never gets read.
  *
  * Deliberately absent: /studio and /signin, which are a creator's own account
- * and carry noindex already; the demo's thanks and recover pages, which only
- * make sense mid-purchase; and creator store pages, which are listed by their
- * own owners rather than by us.
+ * and carry noindex already; and creator store pages, which are listed by
+ * their own owners rather than by us. The demo store is the one store that is
+ * ours (lib/house-store.ts), so it is listed, at the address stores have.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const url = (path: string) => `${SITE_URL}${path}`;
@@ -33,7 +34,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/help", priority: 0.6 },
     { path: "/developers", priority: 0.4 },
     { path: "/creators", priority: 0.5 },
-    { path: "/demo", priority: 0.5 },
+    { path: `/@${HOUSE_HANDLE}`, priority: 0.5 },
     { path: "/terms", priority: 0.3 },
     { path: "/privacy", priority: 0.3 },
     { path: "/refunds", priority: 0.3 },

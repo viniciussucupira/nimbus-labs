@@ -23,7 +23,9 @@ import { outOfKeys } from "@/lib/licence-keys";
 import { canWrite } from "@/lib/mail";
 import { canManage } from "@/lib/membership-manage";
 import { canUseDomain } from "@/lib/domains";
-import { isConnectInTestMode } from "@/lib/stripe-connect";
+import { isHouseStore } from "@/lib/house-store";
+import { sellsInTestMode } from "@/lib/stripe-connect";
+import { DemoNote } from "@/components/demo-notes";
 import { SITE_URL } from "@/lib/site-url";
 import { EMPTY_PAGE, type SalesPage } from "@/lib/sales-page";
 import { readPage } from "@/lib/sales-page-store";
@@ -225,7 +227,8 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const soon = await isSoon(store, product.id).catch(() => false);
   const query = searchParams ? await searchParams : {};
   const giftProblem = typeof query.gift === "string" ? query.gift : "";
-  const rehearsal = selling && isConnectInTestMode();
+  // Asked of the store, as on the store page (lib/house-store.ts).
+  const rehearsal = selling && sellsInTestMode(store);
   const [about, stock, noKeys, page, summary, related, inside] = await Promise.all([
     product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""),
     stockLeft(store, product).catch(() => null),
@@ -293,7 +296,9 @@ export default async function ProductPage({ params, searchParams }: Params) {
 
   // Bought with the creator's own PayPal as well, or instead (lib/paypal-sales.ts).
   const byPayPal = paypalReady(store, product);
-  const payments = free ? null : rehearsal ? (
+  const payments = free ? null : rehearsal && isHouseStore(store) ? (
+    <DemoNote />
+  ) : rehearsal ? (
     <p className="st-note mt-6 text-sm">
       <strong>This checkout is running in Stripe&apos;s test mode.</strong> No real money moves through it and no
       real card is charged, so do not put a card you own into it.

@@ -15,6 +15,7 @@ import { renewPath } from "@/lib/membership-access";
 import { LicenceKeyBox } from "@/components/licence-key-box";
 import { readListing, readListings } from "@/lib/catalog";
 import { reviewable } from "@/lib/review-proof";
+import { takesReviews } from "@/lib/house-store";
 import { type PurchaseItems } from "@/lib/buyer-orders";
 import { BundleDelivery } from "@/components/bundle-delivery";
 
@@ -205,7 +206,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
     ...(purchase.bumpItems?.lines ?? []).map((line) => line.productId),
   ];
   const canReview = new Set(
-    email && purchases
+    email && purchases && takesReviews(store)
       ? (await readListings(store, purchases.filter((p) => p.kind !== "imported").flatMap(inOrder))).filter(reviewable).map((p) => p.id)
       : [],
   );

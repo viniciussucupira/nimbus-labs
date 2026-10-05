@@ -10,7 +10,9 @@ import { readPage, sellsAny, visibleCount } from "@/lib/catalog";
 import { offeredItems } from "@/lib/bundles";
 import { canSell, canSellProduct } from "@/lib/store-checkout";
 import { linkHost } from "@/lib/product-link";
-import { isConnectInTestMode } from "@/lib/stripe-connect";
+import { isHouseStore } from "@/lib/house-store";
+import { sellsInTestMode } from "@/lib/stripe-connect";
+import { DemoNote } from "@/components/demo-notes";
 import { lookStyle } from "@/lib/store-look";
 import { canUse } from "@/lib/plan";
 import { photoUrl } from "@/lib/photo-limits";
@@ -140,8 +142,10 @@ export default async function StorePage({ params, searchParams }: Params) {
   // Sold through the creator's own PayPal as well, or instead (lib/paypal-sales.ts).
   const byPayPal = sellsThroughPayPal(store);
   // A buyer standing in front of a checkout deserves to know it is a rehearsal
-  // before typing a card number into it, not after.
-  const rehearsal = selling && isConnectInTestMode();
+  // before typing a card number into it, not after. Asked of the store: the
+  // demo store stays in test mode whatever our own key is (lib/house-store.ts).
+  const rehearsal = selling && sellsInTestMode(store);
+  const demo = isHouseStore(store);
   // The note about payments is about things that cost money. A page that only
   // gives things away has no card to talk about.
   const hasPriced = sellsAny(store, "paid");
@@ -307,7 +311,9 @@ export default async function StorePage({ params, searchParams }: Params) {
                 creator's real prices; what is missing is the till, and this
                 says so without promising a date for it.
               */}
-              {!hasPriced ? null : rehearsal ? (
+              {!hasPriced ? null : demo && rehearsal ? (
+                <DemoNote full />
+              ) : rehearsal ? (
                 <p className="st-note mt-6 text-sm">
                   <strong>
                     This checkout is running in Stripe&apos;s test mode.

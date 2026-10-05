@@ -76,7 +76,7 @@ export function SessionPicker({
   }
 
   return (
-    <form action={move ? "/api/store/book/move" : "/api/store/book"} method="post" className="mt-6" {...(move ? {} : { "data-checkout": "" })}>
+    <form action={move ? "/api/store/book/move" : "/api/store/book"} method="post" target="_top" className="mt-6" {...(move ? {} : { "data-checkout": "" })}>
       <input type="hidden" name="handle" value={handle} />
       <input type="hidden" name="product" value={productId} />
       <input type="hidden" name="tz" value={tz} />

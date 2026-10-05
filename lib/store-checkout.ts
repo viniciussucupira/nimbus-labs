@@ -35,6 +35,7 @@ import { isLive, membershipStatus, soldAMembership } from "@/lib/membership-acce
 import { purchaseRefunded } from "@/lib/refunds";
 import { MIN_BUNDLE_ITEMS, bundleFromMeta, bundleMeta, deliverableItems } from "@/lib/bundle-rules";
 import { type BundleContents, contentsOf } from "@/lib/bundles";
+import { isHouseStore } from "@/lib/house-store";
 
 /**
  * How long a paid link keeps working.
@@ -47,6 +48,9 @@ import { type BundleContents, contentsOf } from "@/lib/bundles";
 export const DOWNLOAD_WINDOW_SECONDS = 3 * 24 * 60 * 60;
 
 const SESSION_ID_PATTERN = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
+
+/** The name printed at the top of Stripe's page (Stripe API 2025-09-30.clover and later). */
+const DISPLAY_NAME = "branding_settings[display_name]";
 
 export function isSellingConfigured(): boolean {
   return platformKey() !== null;
@@ -412,6 +416,14 @@ export async function createCheckout(
     body.set("cancel_url", `${origin}/@${store.handle}/left?p=${encodeURIComponent(product.id)}`);
   }
 
+  // The demo store's account is a test account whose own name cannot be
+  // changed — neither we nor its dashboard may rename it — so its checkout
+  // carries the store's name itself, where Stripe would otherwise print the
+  // account's (lib/house-store.ts). Every other store's checkout is named by
+  // its creator's own Stripe account, which is theirs to name.
+  let named = isHouseStore(store);
+  if (named) body.set(DISPLAY_NAME, store.name);
+
   const open = async (fresh: boolean) => {
     if (pwyw) {
       // The line becomes the creator's choose-your-price Price instead of an
@@ -438,6 +450,14 @@ export async function createCheckout(
     try {
       session = await open(fresh);
     } catch (error) {
+      if (named && error instanceof StripeError && error.status === 400) {
+        // A name is never worth a checkout: refused, it opens under the
+        // account's own name, as it would have without it.
+        console.error("Stripe refused the demo checkout's display name; opening it without", error);
+        body.delete(DISPLAY_NAME);
+        named = false;
+        continue;
+      }
       if (asking && refusedRecovery(error)) {
         // Stripe decides which accounts it will ask for consent on behalf of.
         // One it refuses still sells: the checkout is opened again without
