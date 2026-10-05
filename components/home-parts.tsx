@@ -97,7 +97,9 @@ const STORES = [
       { label: "1 week", price: "$27" },
       { label: "5 weeks", price: "$39" },
     ],
-    links: ["Free recipe of the week", "About Jenny"],
+    // The one of the five that can be opened: the live demo store, with the
+    // one link it really has (lib/demo-seed.ts).
+    links: ["Open a store like this one"],
     tint: "#9a4a33",
   },
   {
@@ -265,7 +267,7 @@ export function HeroFlow() {
                   </div>
                 </div>
                 <div className="mt-3 rounded-[9px] bg-violet-brand py-2.5 text-center text-[12px] font-semibold text-white">
-                  Continue to checkout
+                  Continue with this option
                 </div>
               </div>
               <div className="mt-2.5 grid gap-1.5">
