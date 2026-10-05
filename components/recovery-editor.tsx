@@ -11,8 +11,6 @@ const MESSAGES: Record<string, string> = {
   address: "Add the postal address your reminders carry. US law asks every email about buying something to include one.",
   address_long: `Keep the address under ${MAX_RECOVERY_ADDRESS} characters.`,
   stripe: "Connect your Stripe account first.",
-  country:
-    "Your Stripe account is not in the United States. Stripe asks buyers for this consent only on checkouts of US businesses, so no reminder could ever be sent, and it stays off.",
   unavailable: "Email sending is not set up on our side yet, so nothing was changed.",
   none: "This account has no store yet.",
   signed_out: "Your session ended. Log in again.",
@@ -20,7 +18,7 @@ const MESSAGES: Record<string, string> = {
   server_error: "Something went wrong on our side, or Stripe did not answer. Nothing was changed; try again in a moment.",
 };
 
-/** One reminder after an abandoned checkout, to buyers who agreed to it. */
+/** One reminder after an abandoned checkout, to buyers who asked for it or agreed to it. */
 export function RecoveryEditor({
   recovery,
   suggestedAddress,
@@ -53,7 +51,6 @@ export function RecoveryEditor({
         router.refresh();
         return;
       }
-      if (data.error === "country") setEnabled(false);
       setError(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
     } catch {
       setError(MESSAGES.server_error);
@@ -71,8 +68,10 @@ export function RecoveryEditor({
         <span className={`tag ${recovery.enabled ? "tag-live" : ""}`}>{recovery.enabled ? "On" : "Off"}</span>
       </div>
       <p className="mt-2 text-ink-soft">
-        When a buyer leaves your checkout without paying, and checked Stripe&apos;s box on that page to hear from you, they
-        get one email about an hour later with a link back to the product. Nobody who did not check it is ever written to.
+        When a buyer leaves your checkout without paying, they can get one email about an hour later with a link back to
+        the product. Only a buyer who said yes: by asking for it on the page the way back from the checkout leads to, or,
+        on a Stripe account in the United States, by checking Stripe&apos;s box on the checkout itself. Nobody else is
+        ever written to.
       </p>
       <ul className="mt-4 space-y-2 text-sm text-ink-soft">
         <li className="flex gap-2">
@@ -86,13 +85,17 @@ export function RecoveryEditor({
         <li className="flex gap-2">
           <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-brand" />
           <span>
-            While it is on, a checkout left open closes after 1 hour instead of Stripe&apos;s usual 24, so the reminder
-            arrives while it still matters.
+            A buyer who goes back from the checkout lands on a page of your store that says nothing was charged, links
+            back to the product, and offers the reminder. Their address is used for that one email, is not shown to you
+            and is not added to your list.
           </span>
         </li>
         <li className="flex gap-2">
           <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-brand" />
-          <span>Stripe shows that box only on checkouts of US businesses, so this needs a Stripe account in the United States.</span>
+          <span>
+            Stripe shows its own box only on checkouts of US businesses. With a US account, a checkout left open also
+            closes after 1 hour instead of Stripe&apos;s usual 24, so that reminder arrives while it still matters.
+          </span>
         </li>
         <li className="flex gap-2">
           <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-brand" />

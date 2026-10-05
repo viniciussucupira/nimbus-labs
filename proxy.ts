@@ -29,7 +29,7 @@ import { isPlatformHost, requestHost } from "@/lib/request-origin";
 const DOMAIN_HEADER = "x-nimbus-domain";
 /** The path and query a visitor asked for on a creator's domain, before it was rewritten. */
 const PATH_HEADER = "x-nimbus-path";
-const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|community|p|affiliates|renew|certificate|review|waitlist|podcast)(\/|$)/;
+const STORE_PATHS = /^\/(thanks|free|manage|orders|course|book|community|p|affiliates|renew|certificate|review|waitlist|podcast|left)(\/|$)/;
 
 /**
  * A visitor who followed an affiliate's link (?via=<code>) keeps the code and

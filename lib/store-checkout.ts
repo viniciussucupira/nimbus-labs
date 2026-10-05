@@ -402,7 +402,15 @@ export async function createCheckout(
   // leave without paying (lib/checkout-recovery.ts). Set before the closing
   // time below, so a held unit's shorter time still wins.
   const recovering = recoveryOn(store);
-  if (recovering) applyRecovery(body);
+  // Stripe's own box only where Stripe offers it (a US account). Asking for
+  // it anywhere else is a checkout refused and opened again without it.
+  if (recovering && store.recovery.asks) applyRecovery(body);
+  // And the way back from the checkout leads to a page that says nothing was
+  // charged and offers one reminder, which the buyer asks for themselves
+  // (lib/checkout-ask.ts). Not for a call: its checkout holds a time.
+  if (recovering && !product.call) {
+    body.set("cancel_url", `${origin}/@${store.handle}/left?p=${encodeURIComponent(product.id)}`);
+  }
 
   const open = async (fresh: boolean) => {
     if (pwyw) {

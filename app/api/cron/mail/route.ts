@@ -12,6 +12,7 @@ import { sendCallReminders } from "@/lib/call-reminders";
 import { runEventQueue } from "@/lib/community-event-mail";
 import { SITE_URL } from "@/lib/site-url";
 import { sweepCheckouts } from "@/lib/checkout-sweep";
+import { sendAsked } from "@/lib/checkout-ask";
 import { deliverDue, watchStripe } from "@/lib/webhooks";
 import { settlePendingOffers } from "@/lib/upsell";
 import { sendReviewRequests } from "@/lib/review-requests";
@@ -107,6 +108,13 @@ async function run(request: NextRequest, started: number): Promise<Response> {
       checkouts = await sweepCheckouts(started + 12_000);
     } catch (error) {
       console.error("the checkout pass failed", error);
+    }
+    // The reminders buyers asked for themselves on the way back from a
+    // checkout (lib/checkout-ask.ts): due an hour after they asked, and few.
+    try {
+      await sendAsked(storeForHandle, started + 20_000);
+    } catch (error) {
+      console.error("sending asked-for checkout reminders failed", error);
     }
     let offers = null;
     try {

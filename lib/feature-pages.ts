@@ -426,7 +426,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "tag", title: "Pay what you want", body: "Your price becomes the minimum, at least $1 or the smallest price your store's currency allows, with a suggested price already in the box. Stripe refuses anything under the minimum." },
           { icon: "card", title: "The ways to pay your Stripe has on", body: "Apple Pay, Google Pay, Link, Klarna, Afterpay, Affirm, iDEAL, Bancontact and others you switch on in your own Stripe account, in any of 15 currencies.", href: "/platform/currencies-and-ways-to-pay" },
           { icon: "type", title: "Questions at checkout", body: "Up to three, on Stripe's page before paying: a short answer, a number or a list to choose from. The answers are in your list of sales." },
-          { icon: "mail", title: "One reminder after a checkout left unpaid", body: "Only to a buyer who agreed on Stripe's page, about an hour later, once. Off until you switch it on." },
+          { icon: "mail", title: "One reminder after a checkout left unpaid", body: "Only to a buyer who said yes: by asking for it on the page the way back from the checkout leads to, in any country, or by checking Stripe's own box where Stripe shows one. About an hour later, once. Off until you switch it on." },
         ],
       },
       {
@@ -449,7 +449,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           "A payment plan cannot be canceled from your page; a buyer who needs to change something replies to their order confirmation email, which reaches you.",
           "Pay what you want is for a product with one price, sold once: not with memberships, price options, payment plans, the box at checkout, calls or discount codes.",
           "Questions are short answers, numbers or lists: no phone-number or checkbox question, and none on free products.",
-          "The reminder after an unpaid checkout needs a Stripe account in the United States, because Stripe asks buyers for that consent only on checkouts of US businesses. It is not sent for calls or live sessions.",
+          "Stripe shows its own consent box only on checkouts of US businesses, so outside the United States the reminder after an unpaid checkout reaches only a buyer who goes back from the checkout and asks for it. It is not sent for calls or live sessions.",
         ],
       },
       {

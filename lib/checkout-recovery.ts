@@ -185,7 +185,49 @@ export async function remindAbandoned(
   const left = await stockLeft(store, product).catch(() => null);
   if (left === 0) return "skip";
 
-  const statsId = store.statsId;
+  const created = typeof session.created === "number" ? session.created : closed - RECOVERY_OPEN_SECONDS;
+  return deliver(store, product, email, {
+    claim: id,
+    since: created,
+    why: `It reached you because you agreed, on the checkout page, to hear from ${store.name}.`,
+  });
+}
+
+/**
+ * Sends the reminder a buyer asked for themselves, on the way back from a
+ * checkout they did not finish (lib/checkout-ask.ts). The same email, under
+ * the same limits; what differs is who said yes, and where.
+ */
+export async function remindAsked(
+  store: Store,
+  ask: { productId: string; email: string; askedAt: number; key: string },
+): Promise<RemindOutcome> {
+  if (!recoveryOn(store) || !store.stripeAccountId || !store.statsId) return "skip";
+  const product = await readListing(store, ask.productId);
+  if (!product || product.call || product.hidden || !canSellProduct(store, product)) return "skip";
+  const left = await stockLeft(store, product).catch(() => null);
+  if (left === 0) return "skip";
+  return deliver(store, product, ask.email, {
+    claim: `ask-${ask.key}`,
+    since: ask.askedAt,
+    why: `It reached you because you asked for it on ${store.name}'s store.`,
+  });
+}
+
+/**
+ * The one email, and everything that stands in front of it whoever agreed:
+ * never twice for one checkout, once per address and product in a week,
+ * never to an address that pressed stop or left the creator's list, and
+ * never to somebody who has paid for it since.
+ */
+async function deliver(
+  store: Store,
+  product: NonNullable<Awaited<ReturnType<typeof readListing>>>,
+  email: string,
+  how: { claim: string; since: number; why: string },
+): Promise<RemindOutcome> {
+  const id = how.claim;
+  const statsId = store.statsId as string;
   const [sent, off, once, contact] = await redisPipeline([
     ["EXISTS", sentKey(id)],
     ["EXISTS", offKey(statsId, email)],
@@ -197,8 +239,7 @@ export async function remindAbandoned(
   // reminder is their email.
   if (store.listId && parseContact(contact)?.unsub) return "skip";
 
-  const created = typeof session.created === "number" ? session.created : closed - RECOVERY_OPEN_SECONDS;
-  if (await paidSince(store, email, product.id, created)) {
+  if (await paidSince(store, email, product.id, how.since)) {
     await redisPipeline([["SET", sentKey(id), "paid", "EX", ONCE_PER_SECONDS]]);
     return "skip";
   }
@@ -229,7 +270,7 @@ export async function remindAbandoned(
     "",
     `The price: ${priceWords}. The checkout opens at today's price.`,
     "",
-    `This is the only reminder about that checkout. It reached you because you agreed, on the checkout page, to hear from ${name}.`,
+    `This is the only reminder about that checkout. ${how.why}`,
     "",
     `Stop these reminders from ${name}: ${stop.page}`,
     `${name} · ${store.recovery.address}`,

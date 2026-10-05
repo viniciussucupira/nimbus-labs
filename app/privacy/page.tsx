@@ -82,10 +82,15 @@ export default function PrivacyPage() {
         <p>
           <strong className="text-black">A reminder after an unpaid checkout.</strong>{" "}
           Only on stores whose creator switched it on, and only for a buyer who
-          agreed on Stripe&apos;s own checkout page to hear from that creator:
-          if they leave without paying, we email them once, on the
-          creator&apos;s behalf, with a link back to the product. Stripe keeps
-          the address and the answer on the creator&apos;s account. We keep a
+          agreed on Stripe&apos;s own checkout page to hear from that creator,
+          or who, on the page the way back from that checkout leads to, typed
+          their address and asked for the reminder themselves: if they leave
+          without paying, we email them once, on the creator&apos;s behalf,
+          with a link back to the product. For the first, Stripe keeps the
+          address and the answer on the creator&apos;s account. For the
+          second, the address waits with us for about an hour, until the
+          reminder is sent or dropped; it is not shown to the creator and is
+          not added to any list. We keep a
           mark that the reminder for that checkout was handled, for two weeks;
           a one-way hash of the address and the product for a week, so nobody
           gets two reminders about the same thing; and the link in the reminder
