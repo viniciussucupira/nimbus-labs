@@ -77,6 +77,8 @@ type BroadcastRow = {
   sent: number;
   note: string;
   productId: string | null;
+  /** Everybody, only buyers, or only people who have not bought yet (lib/contacts.ts). */
+  who: Who;
   /** Whether its links carry its tag, so its sales can be counted at all (lib/mail-links.ts). */
   tagged: boolean;
   /** What it sold, from the creator's own Stripe account; null when nothing is counted for it. */
@@ -89,7 +91,17 @@ type FlowRow = Flow & { stats: { started: number; sent: number }; money: Money |
 function soldWords(money: Money, currency: string): string {
   return `${n(money.sales)} ${money.sales === 1 ? "sale" : "sales"} · ${formatMoney(money.cents, currency)} from its links in the last 90 days`;
 }
-export type DraftRow = { id: string; subject: string; body: string; productId: string | null; by: string; savedAt: string };
+export type DraftRow = {
+  id: string;
+  subject: string;
+  body: string;
+  productId: string | null;
+  by: string;
+  savedAt: string;
+  /** Set when a sent email is written again, so it starts addressed to the same people. */
+  who?: Who;
+};
+type Who = "all" | "buyers" | "leads";
 
 const TIME: Intl.DateTimeFormatOptions = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
 
@@ -331,6 +343,8 @@ function Compose(props: {
   const [body, setBody] = useState(props.draft?.body ?? "");
   const [productId, setProductId] = useState(props.draft?.productId ?? "");
   const [notProductId, setNotProductId] = useState("");
+  // Everybody, only people who have bought something, or only those who have not yet.
+  const [who, setWho] = useState<Who>(props.draft?.who ?? "all");
   const [draftId, setDraftId] = useState(props.draft?.id ?? "");
   const [later, setLater] = useState(false);
   const [at, setAt] = useState("");
@@ -344,13 +358,13 @@ function Compose(props: {
 
   useEffect(() => {
     let live = true;
-    call({ action: "count", productId, notProductId }).then((a) => {
+    call({ action: "count", productId, notProductId, who }).then((a) => {
       if (live && a.ok) setReach(Number(a.count) || 0);
     });
     return () => {
       live = false;
     };
-  }, [productId, notProductId]);
+  }, [productId, notProductId, who]);
 
   async function send(payload: Record<string, unknown>, success: string) {
     setBusy(true);
@@ -444,8 +458,25 @@ function Compose(props: {
         </p>
         <label className="block">
           <span className="field-label">Send to</span>
-          <select className="field mt-2" value={productId} onChange={(e) => setProductId(e.target.value)}>
+          <select
+            className="field mt-2"
+            value={who === "all" ? productId : `@${who}`}
+            onChange={(e) => {
+              // The two kinds of reader are choices of their own, beside the
+              // products: picking one clears the other.
+              const value = e.target.value;
+              if (value === "@buyers" || value === "@leads") {
+                setWho(value === "@buyers" ? "buyers" : "leads");
+                setProductId("");
+              } else {
+                setWho("all");
+                setProductId(value);
+              }
+            }}
+          >
             <option value="">Everyone you can write to</option>
+            <option value="@buyers">Everyone who has bought something</option>
+            <option value="@leads">Everyone who has not bought yet</option>
             {props.products.map((p) => (
               <option key={p.id} value={p.id}>{`Only those who got ${p.title}`}</option>
             ))}
@@ -524,7 +555,7 @@ function Compose(props: {
                 onClick={async () => {
                   const sendAt = later && at ? new Date(at).getTime() : undefined;
                   const ok = await send(
-                    { action: "broadcast", subject, body, productId, notProductId, sendAt, draftId: draftId || undefined },
+                    { action: "broadcast", subject, body, productId, notProductId, who, sendAt, draftId: draftId || undefined },
                     later ? "Your email is scheduled." : "Your email is on its way.",
                   );
                   if (ok) {
@@ -672,11 +703,11 @@ function History({
     setError(null);
     const a = await call({ action: "copy", id: b.id });
     setBusy(false);
-    const copy = a.ok ? (a.copy as { subject: string; body: string; productId: string | null } | undefined) : undefined;
+    const copy = a.ok ? (a.copy as { subject: string; body: string; productId: string | null; who?: Who } | undefined) : undefined;
     if (!copy) return setError(message(a));
     // No id: it is a new email, not the draft of an old one. The time makes
     // the composer start afresh even when the same email is opened twice.
-    onOpen({ id: "", subject: copy.subject, body: copy.body, productId: copy.productId, by: "", savedAt: String(Date.now()) });
+    onOpen({ id: "", subject: copy.subject, body: copy.body, productId: copy.productId, who: copy.who, by: "", savedAt: String(Date.now()) });
     document.getElementById("compose-title")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -687,8 +718,13 @@ function History({
     const a = await call({ action: "keep", id: b.id });
     setBusy(false);
     if (!a.ok) return setError(a.error === "too_many" ? MESSAGES.too_many_flows : message(a));
-    const who = b.productId ? `gets ${products.find((p) => p.id === b.productId)?.title ?? "that product"}` : "joins your list";
-    toast(`Done. Everyone who ${who} from now on gets this email ${waitWords(Number(a.waitHours))} later. It is under Sequences, switched on.`);
+    const event =
+      b.who === "buyers"
+        ? "buys something for the first time"
+        : b.productId
+          ? `gets ${products.find((p) => p.id === b.productId)?.title ?? "that product"}`
+          : "joins your list";
+    toast(`Done. Everyone who ${event} from now on gets this email ${waitWords(Number(a.waitHours))} later. It is under Sequences, switched on.`);
     router.refresh();
   }
   return (
@@ -754,14 +790,18 @@ function History({
                 >
                   Write it again
                 </button>
-                {canSend ? (
+                {/* Not offered for an email to people who have not bought:
+                    a sequence cannot leave out the ones who join by buying. */}
+                {canSend && b.who !== "leads" ? (
                   <button
                     type="button"
                     aria-busy={busy} disabled={busy}
                     className="inline-flex min-h-11 items-center text-left text-sm font-bold text-ink underline underline-offset-4"
                     onClick={() => keep(b)}
                   >
-                    {b.productId
+                    {b.who === "buyers"
+                      ? "Keep sending it to everyone who buys"
+                      : b.productId
                       ? `Keep sending it to everyone who gets ${products.find((p) => p.id === b.productId)?.title ?? "that product"}`
                       : "Keep sending it to everyone who joins"}
                   </button>
@@ -777,7 +817,7 @@ function History({
 }
 
 type StepDraft = { id?: string; wait: string; unit: "hours" | "days"; subject: string; body: string };
-type FlowDraft = { id?: string; name: string; trigger: "joined" | "product"; productId: string; active: boolean; steps: StepDraft[] };
+type FlowDraft = { id?: string; name: string; trigger: "joined" | "product" | "bought"; productId: string; active: boolean; steps: StepDraft[] };
 
 function toDraft(flow: FlowRow | null, products: { id: string }[]): FlowDraft {
   if (!flow) {
@@ -812,7 +852,9 @@ function Flows({ flows, products, currency }: { flows: FlowRow[]; products: { id
   const triggerWords = (f: FlowRow) =>
     f.trigger === "joined"
       ? "Starts when someone joins your list"
-      : `Starts when someone who agreed to hear from you gets ${products.find((p) => p.id === f.productId)?.title ?? "a product"}`;
+      : f.trigger === "bought"
+        ? "Starts the first time someone who agreed to hear from you buys anything"
+        : `Starts when someone who agreed to hear from you gets ${products.find((p) => p.id === f.productId)?.title ?? "a product"}`;
 
   async function save() {
     if (!draft) return;
@@ -906,9 +948,12 @@ function Flows({ flows, products, currency }: { flows: FlowRow[]; products: { id
             <select
               className="field mt-2"
               value={draft.trigger}
-              onChange={(e) => setDraft({ ...draft, trigger: e.target.value === "product" ? "product" : "joined" })}
+              onChange={(e) =>
+                setDraft({ ...draft, trigger: e.target.value === "product" ? "product" : e.target.value === "bought" ? "bought" : "joined" })
+              }
             >
               <option value="joined">Someone joins your list</option>
+              <option value="bought">Someone who agreed to hear from you buys anything, the first time</option>
               {products.length ? <option value="product">Someone who agreed to hear from you gets a product</option> : null}
             </select>
           </label>

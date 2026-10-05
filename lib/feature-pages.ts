@@ -619,8 +619,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "How your list grows and hears from you",
         items: [
           { title: "People join", body: "A free product for an email, or a box checked at checkout. Every free-product address is confirmed from its own inbox." },
-          { title: "Sequences welcome them", body: "A welcome when someone joins, a few emails in the days after someone buys. Each person goes through a sequence once." },
-          { title: "You write when you have news", body: "To everyone who agreed, or only to the buyers of one product. Now, or at the time you choose." },
+          { title: "Sequences welcome them", body: "A welcome when someone joins, a few emails after someone gets one product, or after the first time they buy anything at all. Each person goes through a sequence once." },
+          { title: "You write when you have news", body: "To everyone who agreed, to everyone who has bought something, to everyone who has not bought yet, or to the people who got one product. Now, or at the time you choose." },
         ],
       },
       {

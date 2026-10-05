@@ -8,10 +8,10 @@ import {
   storeForHandle,
 } from "@/lib/store";
 import { guardStoreWrite, text } from "@/lib/store-request";
-import { MAX_IMPORT, audience, importContacts, listCounts, readAddresses } from "@/lib/contacts";
+import { MAX_IMPORT, WHO, type Who, audience, importContacts, listCounts, readAddresses } from "@/lib/contacts";
 import { MAX_MAIL_BODY, MAX_SUBJECT, fromLine, monthlyAllowance, render, reserve, release } from "@/lib/mail";
 import { sendBatch } from "@/lib/email";
-import { advanceBroadcast, cancelBroadcast, createBroadcast } from "@/lib/broadcasts";
+import { advanceBroadcast, cancelBroadcast, createBroadcast, whoOf } from "@/lib/broadcasts";
 import { removeFlow, saveFlow } from "@/lib/flows";
 import { removeDraft, saveDraft } from "@/lib/mail-drafts";
 import { copyOf, keepSending } from "@/lib/mail-reuse";
@@ -48,10 +48,10 @@ const MAIL_PERMISSIONS: Record<string, Permission> = {
  *
  *   { action: "settings", fromName, address }
  *   { action: "import", text, confirm: true }
- *   { action: "count", productId, notProductId }
+ *   { action: "count", productId, notProductId, who }   who: "all" | "buyers" | "leads"
  *   { action: "test", subject, body }
  *   { action: "draft-save", id?, subject, body, productId }  /  { action: "draft-remove", id }
- *   { action: "broadcast", subject, body, productId, notProductId, sendAt, draftId? }
+ *   { action: "broadcast", subject, body, productId, notProductId, who, sendAt, draftId? }
  *   { action: "cancel", id }
  *   { action: "flow", flow: {...} }  /  { action: "flow-remove", id }
  *   { action: "copy", id }   a sent email's subject and text, to write again
@@ -106,7 +106,8 @@ export async function POST(request: NextRequest) {
       if (!store.listId) return Response.json({ ok: true, count: 0 });
       const productId = text(body.productId, 40) || undefined;
       const notProductId = text(body.notProductId, 40) || undefined;
-      return Response.json({ ok: true, count: (await audience(store.listId, productId, notProductId)).length });
+      const who = WHO.includes(body.who as Who) ? (body.who as Who) : "all";
+      return Response.json({ ok: true, count: (await audience(store.listId, productId, notProductId, whoOf(store, who))).length });
     }
 
     if (action === "test") {
@@ -153,6 +154,7 @@ export async function POST(request: NextRequest) {
         body: text(body.body, MAX_MAIL_BODY * 2),
         productId: text(body.productId, 40),
         notProductId: text(body.notProductId, 40),
+        who: text(body.who, 10),
         sendAt: typeof body.sendAt === "number" ? body.sendAt : undefined,
       });
       if (!created.ok) return fail(created.reason);

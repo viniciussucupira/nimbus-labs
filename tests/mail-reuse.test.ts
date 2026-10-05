@@ -24,6 +24,7 @@ function sent(over: Partial<Broadcast> = {}): Broadcast {
     body: "Hello.\n\nIt is ready.",
     productId: null,
     notProductId: null,
+    who: "all",
     status: "sent",
     createdAt: 1,
     sendAt: 1,
@@ -144,4 +145,17 @@ test("the sequence is saved by the one place that checks a sequence", () => {
 test("the mark that says a sequence was kept survives an edit in the studio", () => {
   const src = read("lib/flows.ts");
   assert.match(src, /raw\.kept === true \|\| \(at >= 0 && flows\[at\]\.kept === true\)/);
+});
+
+test("an email to buyers is kept for everybody who buys, in a sequence of its own", () => {
+  const plan = planKeep(sent({ who: "buyers" }), LIST, [flow({ kept: true })], null);
+  assert.ok(plan.ok);
+  assert.equal(plan.raw.trigger, "bought");
+  assert.equal(plan.raw.id, undefined, "not the sequence for everybody who joins");
+  assert.equal(plan.name, "Kept sending to everyone who buys");
+});
+
+test("an email to people who have not bought is not kept sending to people who join by buying", () => {
+  assert.deepEqual(planKeep(sent({ who: "leads" }), LIST, [], null), { ok: false, reason: "excludes" });
+  assert.deepEqual(planKeep(sent({ who: "buyers", productId: "prod1" }), LIST, [], "Plan"), { ok: false, reason: "excludes" });
 });

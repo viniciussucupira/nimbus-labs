@@ -14,10 +14,10 @@
  */
 import { randomBytes } from "node:crypto";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
-import { audience } from "@/lib/contacts";
+import { WHO, type Who, audience } from "@/lib/contacts";
 import { BATCH_SIZE, MAX_MAIL_BODY, MAX_SUBJECT, monthlyAllowance, sendTo, usedThisMonth } from "@/lib/mail";
 import type { Store } from "@/lib/store";
-import { hasProduct } from "@/lib/catalog";
+import { hasProduct, idsOfKind } from "@/lib/catalog";
 import { broadcastCampaign } from "@/lib/mail-links";
 
 export type BroadcastStatus = "scheduled" | "sending" | "sent" | "waiting" | "cancelled" | "failed";
@@ -36,6 +36,12 @@ export type Broadcast = {
    * it is "the people who took that, and have not bought this".
    */
   notProductId: string | null;
+  /**
+   * Everybody, only the people who have bought something, or only the ones
+   * who have not bought yet (lib/contacts.ts). Narrowed further by the two
+   * above when they are set: "buyers, leaving out whoever has the course".
+   */
+  who: Who;
   status: BroadcastStatus;
   createdAt: number;
   sendAt: number;
@@ -71,7 +77,7 @@ function parse(raw: unknown): Broadcast | null {
     if (!BROADCAST_ID.test(value.id)) return null;
     // Written before the exclusion existed: it goes to everyone it was
     // addressed to, exactly as it was when it was scheduled.
-    return { ...value, notProductId: typeof value.notProductId === "string" ? value.notProductId : null, tagged: value.tagged === true };
+    return { ...value, notProductId: typeof value.notProductId === "string" ? value.notProductId : null, tagged: value.tagged === true, who: WHO.includes(value.who) ? value.who : "all" };
   } catch {
     return null;
   }
@@ -97,6 +103,14 @@ export async function listBroadcasts(listId: string | null, limit = 30): Promise
   return rows.map(parse).filter((b): b is Broadcast => b !== null);
 }
 
+/**
+ * Who a kind of reader is, for this store today: the products sold for money
+ * come from the store's own index, so nothing is read to know them.
+ */
+export function whoOf(store: Store, kind: Who): { kind: Who; paid: ReadonlySet<string> } | undefined {
+  return kind === "all" ? undefined : { kind, paid: new Set(idsOfKind(store, "paid")) };
+}
+
 export type CreateResult =
   | { ok: true; broadcast: Broadcast }
   | { ok: false; reason: "subject" | "body" | "when" | "product" | "empty" | "allowance" | "setup" | "plan" };
@@ -104,7 +118,7 @@ export type CreateResult =
 /** Writes a broadcast down to go now or later. What it may contain is checked here. */
 export async function createBroadcast(
   store: Store,
-  input: { subject: unknown; body: unknown; productId: unknown; notProductId: unknown; sendAt: unknown },
+  input: { subject: unknown; body: unknown; productId: unknown; notProductId: unknown; sendAt: unknown; who?: unknown },
 ): Promise<CreateResult> {
   if (monthlyAllowance(store) === 0) return { ok: false, reason: "plan" };
   if (!store.mail || !store.listId) return { ok: false, reason: "setup" };
@@ -118,6 +132,7 @@ export async function createBroadcast(
   if (notProductId && !hasProduct(store, notProductId)) return { ok: false, reason: "product" };
   // "Only the people who got X, who have not got X" is nobody, every time.
   if (notProductId && notProductId === productId) return { ok: false, reason: "empty" };
+  const who: Who = WHO.includes(input.who as Who) ? (input.who as Who) : "all";
   const now = Math.floor(Date.now() / 1000);
   let sendAt = now;
   if (input.sendAt !== undefined && input.sendAt !== null && input.sendAt !== "") {
@@ -126,7 +141,7 @@ export async function createBroadcast(
     sendAt = Math.max(at, now);
   }
   // Checked now for a send that starts now; a scheduled one is checked again when it starts.
-  const reach = (await audience(store.listId, productId ?? undefined, notProductId ?? undefined)).length;
+  const reach = (await audience(store.listId, productId ?? undefined, notProductId ?? undefined, whoOf(store, who))).length;
   if (reach === 0) return { ok: false, reason: "empty" };
   if (sendAt <= now + 60) {
     const left = monthlyAllowance(store) - (await usedThisMonth(store.listId));
@@ -140,6 +155,7 @@ export async function createBroadcast(
     body,
     productId,
     notProductId,
+    who,
     status: "scheduled",
     createdAt: now,
     sendAt,
@@ -205,7 +221,7 @@ export async function advanceBroadcast(
     }
 
     if (!b.listed) {
-      const to = await audience(b.listId, b.productId ?? undefined, b.notProductId ?? undefined);
+      const to = await audience(b.listId, b.productId ?? undefined, b.notProductId ?? undefined, whoOf(store, b.who));
       const commands: (string | number)[][] = [["DEL", toKey(id)]];
       for (let i = 0; i < to.length; i += 500) commands.push(["RPUSH", toKey(id), ...to.slice(i, i + 500)]);
       commands.push(["EXPIRE", toKey(id), 60 * 86_400]);

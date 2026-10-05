@@ -548,15 +548,39 @@ export async function audience(
   listId: string,
   productId?: string,
   notProductId?: string,
+  who?: { kind: Who; paid: ReadonlySet<string> },
 ): Promise<string[]> {
   const out: string[] = [];
   await forEachContact(listId, (email, contact) => {
     if (!mailable(contact)) return;
     if (productId && !contact.ids.includes(productId)) return;
     if (notProductId && contact.ids.includes(notProductId)) return;
+    if (who && who.kind !== "all" && isBuyer(contact, who.paid) !== (who.kind === "buyers")) return;
     out.push(email);
   });
   return out;
+}
+
+/**
+ * The two halves of a list that are worth writing to differently.
+ *
+ *   buyers   have paid for something. The cheapest sale there is: somebody
+ *            who has already decided the creator is worth money.
+ *   leads    agreed to hear from the creator — took something free, joined a
+ *            waitlist, came in on an import — and have not bought yet. The
+ *            people a first offer is for.
+ *
+ * Read from what a contact has always carried, like the two narrowings
+ * above: what they asked for or bought, and how they first agreed. A buyer is
+ * somebody holding a product that is sold for money today, or who first
+ * agreed at a checkout — the second half so that deleting a product, or
+ * making it free, does not turn the people who paid for it back into leads.
+ */
+export type Who = "all" | "buyers" | "leads";
+export const WHO: readonly Who[] = ["all", "buyers", "leads"];
+
+export function isBuyer(contact: Pick<Contact, "ids" | "source">, paid: ReadonlySet<string>): boolean {
+  return contact.source === "buyer" || contact.ids.some((id) => paid.has(id));
 }
 
 /** Addresses read out of whatever the creator pasted or uploaded. */

@@ -56,6 +56,9 @@ export type KeepPlan =
 const subjectOf = (text: string) => text.replace(/\s+/g, " ").trim();
 const bodyOf = (text: string) => text.replace(/\r\n?/g, "\n").trim();
 
+/** The sequence for an email that was written to everybody who has bought something. */
+export const KEEP_BUYERS_NAME = "Kept sending to everyone who buys";
+
 /** What the sequence is called, so the creator finds it under Sequences. */
 export function keepName(productTitle: string | null): string {
   const name = productTitle ? `Kept sending to everyone who gets ${productTitle}` : "Kept sending to everyone who joins";
@@ -74,8 +77,13 @@ export function planKeep(broadcast: Broadcast | null, listId: string | null, flo
   if (!broadcast || !listId || broadcast.listId !== listId) return { ok: false, reason: "unknown" };
   if (broadcast.status !== "sent") return { ok: false, reason: "unsent" };
   if (broadcast.notProductId) return { ok: false, reason: "excludes" };
+  // Written only to the people who have not bought: everybody who joins
+  // includes the ones who join by buying, and a sequence cannot tell them apart.
+  if (broadcast.who === "leads") return { ok: false, reason: "excludes" };
+  // Buyers who also hold one product is a narrowing a sequence has no trigger for.
+  if (broadcast.who === "buyers" && broadcast.productId) return { ok: false, reason: "excludes" };
 
-  const trigger: Flow["trigger"] = broadcast.productId ? "product" : "joined";
+  const trigger: Flow["trigger"] = broadcast.who === "buyers" ? "bought" : broadcast.productId ? "product" : "joined";
   const productId = broadcast.productId;
   const subject = subjectOf(broadcast.subject);
   const body = bodyOf(broadcast.body);
@@ -86,7 +94,7 @@ export function planKeep(broadcast: Broadcast | null, listId: string | null, flo
 
   const last = home?.steps.reduce((most, s) => Math.max(most, s.delayHours), 0) ?? 0;
   const waitHours = home ? Math.min(last + KEEP_GAP_HOURS, MAX_DELAY_HOURS) : KEEP_FIRST_HOURS;
-  const name = home?.name ?? keepName(productTitle);
+  const name = home?.name ?? (trigger === "bought" ? KEEP_BUYERS_NAME : keepName(productTitle));
   return {
     ok: true,
     name,
@@ -128,8 +136,11 @@ export async function keepSending(
 }
 
 /** A sent email's subject and text, to write again. Only the store's own. */
-export async function copyOf(store: Store, broadcastId: string): Promise<{ subject: string; body: string; productId: string | null } | null> {
+export async function copyOf(
+  store: Store,
+  broadcastId: string,
+): Promise<{ subject: string; body: string; productId: string | null; who: Broadcast["who"] } | null> {
   const broadcast = await readBroadcast(broadcastId);
   if (!broadcast || !store.listId || broadcast.listId !== store.listId) return null;
-  return { subject: broadcast.subject, body: broadcast.body, productId: broadcast.productId };
+  return { subject: broadcast.subject, body: broadcast.body, productId: broadcast.productId, who: broadcast.who };
 }

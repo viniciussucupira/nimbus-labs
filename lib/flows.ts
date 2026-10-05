@@ -17,7 +17,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { isMailable, leadsKey, mailable, parseContact } from "@/lib/contacts";
 import { MAX_MAIL_BODY, MAX_SUBJECT, monthlyAllowance, sendTo } from "@/lib/mail";
 import type { Store } from "@/lib/store";
-import { hasProduct } from "@/lib/catalog";
+import { hasProduct, idsOfKind } from "@/lib/catalog";
 import { stepCampaign } from "@/lib/mail-links";
 
 export const MAX_FLOWS = 10;
@@ -29,8 +29,11 @@ export type FlowStep = { id: string; delayHours: number; subject: string; body: 
 export type Flow = {
   id: string;
   name: string;
-  /** "joined": agreed to hear from the creator; "product": got or bought one product. */
-  trigger: "joined" | "product";
+  /**
+   * "joined": agreed to hear from the creator; "product": got or bought one
+   * product; "bought": paid for anything at all, the first time they do.
+   */
+  trigger: "joined" | "product" | "bought";
   productId: string | null;
   steps: FlowStep[];
   active: boolean;
@@ -96,7 +99,7 @@ export async function saveFlow(store: Store, raw: Record<string, unknown>): Prom
   if (!store.listId || !store.mail) return { ok: false, reason: "setup" };
   const name = typeof raw.name === "string" ? raw.name.replace(/\s+/g, " ").trim().slice(0, MAX_FLOW_NAME) : "";
   if (!name) return { ok: false, reason: "name" };
-  const trigger = raw.trigger === "joined" || raw.trigger === "product" ? raw.trigger : null;
+  const trigger = raw.trigger === "joined" || raw.trigger === "product" || raw.trigger === "bought" ? raw.trigger : null;
   if (!trigger) return { ok: false, reason: "trigger" };
   const productId = trigger === "product" && typeof raw.productId === "string" ? raw.productId : null;
   if (trigger === "product" && !(productId && hasProduct(store, productId))) return { ok: false, reason: "product" };
@@ -160,11 +163,16 @@ export async function flowStats(flows: Flow[]): Promise<Map<string, { started: n
 export async function enroll(store: Store, email: string, event: { joined: boolean; productId?: string }): Promise<void> {
   try {
     if (!store.listId || monthlyAllowance(store) === 0) return;
+    // Whether what they just got is sold for money: the store's own index
+    // knows, so "bought" costs no read.
+    const paid = Boolean(event.productId) && idsOfKind(store, "paid").includes(event.productId as string);
     const flows = (await readFlows(store.listId)).filter(
       (f) =>
         f.active &&
         f.steps.length > 0 &&
-        ((f.trigger === "joined" && event.joined) || (f.trigger === "product" && event.productId && f.productId === event.productId)),
+        ((f.trigger === "joined" && event.joined) ||
+          (f.trigger === "product" && event.productId && f.productId === event.productId) ||
+          (f.trigger === "bought" && paid)),
     );
     if (!flows.length) return;
     const address = normaliseEmail(email);

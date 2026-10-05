@@ -144,6 +144,7 @@ export default async function StudioEmailPage({ searchParams }: Params) {
               sent: b.sent,
               note: b.note,
               productId: b.productId,
+              who: b.who,
               tagged: b.tagged,
               money: broadcastMoney(revenue, b.id),
             }))}
