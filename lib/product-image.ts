@@ -31,6 +31,20 @@ export const MAX_SOURCE_BYTES = 30 * 1024 * 1024;
 /** The long side, in pixels, a picture is shrunk to when it is bigger. */
 export const IMAGE_LONG_SIDE = 1600;
 
+/**
+ * The long side of the second, smaller copy made of a picture, for phones.
+ *
+ * Measured on a store page with one picture on it (PageSpeed, October 5,
+ * 2026): the picture was the last thing the phone drew, 3.6 seconds in, and
+ * 70% of its bytes were for pixels the phone did not have. A phone of about
+ * 400 points across at twice the density draws eight hundred pixels, so that
+ * is what the copy holds; a sharper or wider screen still gets the full one.
+ * The browser chooses between the two itself (imageSrcSet, below).
+ *
+ * A picture already this small has no copy: it is its own.
+ */
+export const SMALL_LONG_SIDE = 800;
+
 /** Long enough to describe a cover to somebody who cannot see it. */
 export const MAX_ALT_LENGTH = 150;
 
@@ -48,7 +62,16 @@ export type ProductImage = {
   /** What a screen reader says instead. Empty means a decorative picture. */
   alt: string;
   bytes: number;
+  /**
+   * The smaller copy for phones, when one was made (SMALL_LONG_SIDE): the
+   * same picture in the same shape, so only its width is kept. Null for a
+   * picture that is small already, and for every picture from before copies
+   * were made — those are shown from the one file, as they always were.
+   */
+  small: SmallCopy | null;
 };
+
+export type SmallCopy = { path: string; width: number; bytes: number };
 
 /** How a product's card is drawn on the store page. */
 export const DISPLAY_STYLES = [
@@ -101,6 +124,28 @@ export function imageUrl(image: Pick<ProductImage, "path">): string {
   return `/api/image/${image.path.slice("images/".length)}`;
 }
 
+/**
+ * What to hand the browser so it picks the copy that fits the screen: the
+ * two files with the width of each, or nothing when there is only one.
+ */
+export function imageSrcSet(image: Pick<ProductImage, "path" | "width" | "small">): string | undefined {
+  if (!image.small || image.small.width >= image.width) return undefined;
+  return `${imageUrl(image.small)} ${image.small.width}w, ${imageUrl(image)} ${image.width}w`;
+}
+
+/**
+ * How wide each kind of picture is drawn, for the browser to choose by.
+ * A card's cover runs the width of the card: the screen less the page's
+ * margins, and never more than the column the store page is held to. The
+ * product page's own picture sits inside the card's padding as well.
+ */
+export const IMAGE_SIZES = {
+  cover: "(max-width: 36rem) calc(100vw - 2rem), 34rem",
+  hero: "(max-width: 42rem) calc(100vw - 4rem), 37rem",
+  /** Beside the title, or in a list: a few dozen points across. */
+  thumb: "6rem",
+} as const;
+
 /** The type a picture is served as, from its own name. */
 export function imageType(file: string): "image/webp" | "image/jpeg" {
   return file.endsWith(".jpg") ? "image/jpeg" : "image/webp";
@@ -121,5 +166,23 @@ export function parseProductImage(raw: unknown): ProductImage | null {
     height,
     alt: typeof value.alt === "string" ? value.alt.replace(/\s+/g, " ").trim().slice(0, MAX_ALT_LENGTH) : "",
     bytes: typeof value.bytes === "number" && value.bytes > 0 ? value.bytes : 0,
+    small: parseSmall(value.small, value.path, width),
   };
+}
+
+/** The smaller copy as it was stored: in the same folder, and narrower than the picture it is a copy of. */
+function parseSmall(raw: unknown, path: string, width: number): SmallCopy | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  if (typeof value.path !== "string" || !IMAGE_PATH_PATTERN.test(value.path) || value.path === path) return null;
+  if (value.path.slice(0, value.path.lastIndexOf("/")) !== path.slice(0, path.lastIndexOf("/"))) return null;
+  const w = typeof value.width === "number" && Number.isInteger(value.width) ? value.width : 0;
+  if (w <= 0 || w >= width) return null;
+  return { path: value.path, width: w, bytes: typeof value.bytes === "number" && value.bytes > 0 ? value.bytes : 0 };
+}
+
+/** Every file a picture is kept in: itself and its smaller copy. For deleting them together. */
+export function imagePaths(image: Pick<ProductImage, "path" | "small"> | null | undefined): string[] {
+  if (!image) return [];
+  return image.small ? [image.path, image.small.path] : [image.path];
 }

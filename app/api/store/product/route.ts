@@ -1,3 +1,4 @@
+import { imagePaths } from "@/lib/product-image";
 import type { NextRequest } from "next/server";
 import { del } from "@/lib/blob";
 import {
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest) {
         const going = removed.product;
         const had: { pathname: string }[] = filesOnProduct(going);
         // Its picture goes with it, and so does its long description.
-        if (going.image) had.push({ pathname: going.image.path });
+        had.push(...imagePaths(going.image).map((pathname) => ({ pathname })));
         // A course takes its lessons with it: their records, and their files.
         const course = going.course ? await readCourse(going.course.id).catch(() => null) : null;
         if (course) had.push(...filesInCourse(course));

@@ -13,6 +13,7 @@ import {
   MAX_ALT_LENGTH,
   MAX_IMAGE_BYTES,
   MAX_SOURCE_BYTES,
+  SMALL_LONG_SIDE,
   imagePath,
   imageUrl,
 } from "@/lib/product-image";
@@ -33,12 +34,13 @@ const MESSAGES: Record<string, string> = {
 };
 
 /**
- * Shrinks a picture in the browser: never more than IMAGE_LONG_SIDE on its
- * long side and never more than a megabyte, keeping its shape. WebP where the
- * browser can write it, JPEG where it cannot. Also used for the picture on a
- * community post (components/community-composer.tsx).
+ * Shrinks a picture in the browser: never more than `longSide` on its long
+ * side (IMAGE_LONG_SIDE unless told otherwise) and never more than a
+ * megabyte, keeping its shape. WebP where the browser can write it, JPEG
+ * where it cannot. Also used for the picture on a community post
+ * (components/community-composer.tsx).
  */
-export async function shrink(file: File): Promise<{ blob: Blob; width: number; height: number }> {
+export async function shrink(file: File, longSide: number = IMAGE_LONG_SIDE): Promise<{ blob: Blob; width: number; height: number }> {
   const url = URL.createObjectURL(file);
   try {
     const image = new Image();
@@ -49,7 +51,7 @@ export async function shrink(file: File): Promise<{ blob: Blob; width: number; h
     const h = image.naturalHeight;
     if (!w || !h) throw new Error("unreadable");
 
-    let scale = Math.min(1, IMAGE_LONG_SIDE / Math.max(w, h));
+    let scale = Math.min(1, longSide / Math.max(w, h));
     for (let attempt = 0; attempt < 4; attempt += 1) {
       const width = Math.max(1, Math.round(w * scale));
       const height = Math.max(1, Math.round(h * scale));
@@ -181,7 +183,27 @@ export function ProductImageEditor({ product, folder }: { product: Product; fold
         contentType: shrunk.blob.type,
         onUploadProgress: (progress) => setPercent(progress.percentage),
       });
-      const problem = await post({ action: "attach", path, width: shrunk.width, height: shrunk.height, alt });
+      // A second, smaller copy for phones, which the page lets the browser
+      // choose (lib/product-image.ts, SMALL_LONG_SIDE). Only for a picture
+      // bigger than that; and a copy that cannot be made or sent is simply
+      // left out — the picture is attached without it, as it always was.
+      let small: { path: string; width: number } | null = null;
+      if (Math.max(shrunk.width, shrunk.height) > SMALL_LONG_SIDE) {
+        try {
+          const copy = await shrink(file, SMALL_LONG_SIDE);
+          const smallPath = imagePath(folder, freshId(), copy.blob.type);
+          await uploadPresigned(smallPath, copy.blob, {
+            access: "private",
+            handleUploadUrl: "/api/store/image/upload",
+            clientPayload: JSON.stringify({ productId: product.id }),
+            contentType: copy.blob.type,
+          });
+          small = { path: smallPath, width: copy.width };
+        } catch {
+          small = null;
+        }
+      }
+      const problem = await post({ action: "attach", path, width: shrunk.width, height: shrunk.height, alt, ...(small ? { small } : {}) });
       if (problem) {
         setError(problem);
         return;

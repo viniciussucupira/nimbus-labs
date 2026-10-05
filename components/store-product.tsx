@@ -8,7 +8,7 @@ import { everyLabel, membershipPrice } from "@/lib/product-recurring";
 import { canGiveProduct } from "@/lib/free";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { activePwyw } from "@/lib/pay-what-you-want";
-import { imageUrl } from "@/lib/product-image";
+import { imageUrl, IMAGE_SIZES, imageSrcSet } from "@/lib/product-image";
 import type { PageAction } from "@/components/sales-blocks";
 import { RatingLine } from "@/components/review-list";
 import type { Summary } from "@/lib/review-summary";
@@ -667,9 +667,13 @@ export function ProductCard({
   const picture = image ? (
     // A plain img: the picture was already sized in the creator's browser and
     // its address never changes, so there is nothing for an optimiser to add.
+    // A phone is handed the smaller copy made beside it, when there is one,
+    // and picks between the two itself (lib/product-image.ts, imageSrcSet).
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={imageUrl(image)}
+      srcSet={imageSrcSet(image)}
+      sizes={image.small ? (style === "preview" ? IMAGE_SIZES.cover : IMAGE_SIZES.thumb) : undefined}
       alt={image.alt}
       width={image.width}
       height={image.height}

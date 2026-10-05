@@ -42,7 +42,7 @@ import { timed } from "@/lib/fetch-timeout";
 import { HOUSE_HANDLE, HOUSE_OWNER } from "@/lib/house-store";
 import { readAbout, writeAbout } from "@/lib/product-about";
 import { type ProductFile, fileFolder } from "@/lib/product-file";
-import { IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES, type ProductImage, imagePath } from "@/lib/product-image";
+import { IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES, SMALL_LONG_SIDE, type ProductImage, imagePath, imagePaths } from "@/lib/product-image";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { SITE_URL } from "@/lib/site-url";
 import {
@@ -110,6 +110,8 @@ Choose one week, or five weeks at a lower price per week. Each is a PDF you down
   image: {
     id: "photo-1535473895227-bdecb20fb157",
     query: "fm=webp&fit=crop&w=1200&h=675&q=70",
+    /** The same photograph at the width of the smaller copy made for phones (SMALL_LONG_SIDE). */
+    small: `fm=webp&fit=crop&w=${SMALL_LONG_SIDE}&h=450&q=70`,
     alt: "A table seen from above, covered with prepared dishes and vegetables",
   },
   options: [
@@ -363,35 +365,53 @@ async function ensureFiles(store: Store, product: Listing, deps: SeedDeps, pendi
   return store;
 }
 
-/** The product's picture, kept in the store's own picture folder. */
+/**
+ * The product's picture and its smaller copy for phones, kept in the store's
+ * own picture folder: the two files a creator's browser makes and sends when
+ * a picture is added in the studio (components/product-image-editor.tsx).
+ */
 async function ensureImage(store: Store, product: Listing, was: string, deps: SeedDeps, pending: string[]): Promise<{ store: Store; source: string }> {
   const want = DEMO_PRODUCT.image;
-  if (product.image && was === want.id) {
-    if (product.image.alt === want.alt && product.display === "preview") return { store, source: was };
-  }
+  // Where the two files came from. Another photograph, or another size of
+  // this one, is another source, and is fetched again.
+  const source = `${want.id}?${want.query}|${want.small}`;
+  const have = product.image && was === source ? product.image : null;
+  if (have && have.alt === want.alt && product.display === "preview") return { store, source };
   try {
-    let image: ProductImage | null = product.image && was === want.id ? { ...product.image, alt: want.alt } : null;
+    let image: ProductImage | null = have ? { ...have, alt: want.alt } : null;
     if (!image) {
-      const bytes = await deps.fetchBytes(`${PHOTOS}${want.id}?${want.query}`);
-      const type = sniffPhotoType(bytes);
-      const size = imageSize(bytes);
-      if (!type || !(IMAGE_CONTENT_TYPES as readonly string[]).includes(type) || !size) throw new Error("type");
-      if (bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("too_big");
-      const path = imagePath(await imageFolder(REF), sha(bytes).slice(0, 32), type);
-      await deps.putFile(path, bytes, type);
-      image = { path, width: size.width, height: size.height, alt: want.alt, bytes: bytes.byteLength };
+      const folder = await imageFolder(REF);
+      const fetched = async (query: string) => {
+        const bytes = await deps.fetchBytes(`${PHOTOS}${want.id}?${query}`);
+        const type = sniffPhotoType(bytes);
+        const size = imageSize(bytes);
+        if (!type || !(IMAGE_CONTENT_TYPES as readonly string[]).includes(type) || !size) throw new Error("type");
+        if (bytes.byteLength > MAX_IMAGE_BYTES) throw new Error("too_big");
+        const path = imagePath(folder, sha(bytes).slice(0, 32), type);
+        await deps.putFile(path, bytes, type);
+        return { path, width: size.width, height: size.height, bytes: bytes.byteLength };
+      };
+      const full = await fetched(want.query);
+      const copy = await fetched(want.small);
+      if (copy.width >= full.width || copy.path === full.path) throw new Error("small");
+      image = { ...full, alt: want.alt, small: { path: copy.path, width: copy.width, bytes: copy.bytes } };
     }
-    const done = await setProductImage(REF, product.id, image);
+    const attached = image;
+    const done = await setProductImage(REF, product.id, attached);
     if (!done.ok) {
       pending.push(refused("image", done.reason));
       return { store, source: was };
     }
     store = done.store;
-    if (done.removed && done.removed.path !== image.path) await deps.removeFile(done.removed.path).catch(() => {});
+    // The picture it replaced, and that picture's own copy, once nothing points at them.
+    const kept = new Set(imagePaths(attached));
+    for (const gone of imagePaths(done.removed)) {
+      if (!kept.has(gone)) await deps.removeFile(gone).catch(() => {});
+    }
     // Across the whole card: the one product is what the page is for.
     const shown = await setProductDisplay(REF, product.id, "preview");
     if (shown.ok) store = shown.store;
-    return { store, source: want.id };
+    return { store, source };
   } catch (error) {
     pending.push(refused("image", why(error)));
     return { store, source: was };

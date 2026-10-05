@@ -36,7 +36,7 @@ import { canSell, canSellProduct, createCheckout } from "@/lib/store-checkout";
 import { keyFor } from "@/lib/stripe-account";
 import { sellsInTestMode } from "@/lib/stripe-connect";
 import { ownsPath } from "@/lib/product-file";
-import { ownsImagePath } from "@/lib/product-image";
+import { imagePaths, imageSrcSet, imageUrl, ownsImagePath, parseProductImage } from "@/lib/product-image";
 import { imageFolder } from "@/lib/store";
 import { readAbout } from "@/lib/product-about";
 import { readPhoto } from "@/lib/store-photo";
@@ -77,7 +77,8 @@ const deps: SeedDeps = {
   fetchBytes: async (url) => {
     fetched.push(url);
     if (photoHostDown) throw new Error("fetch_502");
-    return url.includes(DEMO_STORE.photo.id) ? webp(480, 480) : webp(1200, 675);
+    if (url.includes(DEMO_STORE.photo.id)) return webp(480, 480);
+    return url.includes("w=800") ? webp(800, 450) : webp(1200, 675);
   },
 };
 
@@ -163,7 +164,17 @@ async function main(): Promise<void> {
   is("the store has its photo, kept where every store's is", (await readPhoto(store.photoId ?? ""))?.type, "image/webp");
   is("the product's page has its long description", [listing.about, await readAbout(store.statsId, listing.id)], [true, DEMO_PRODUCT.about]);
   is("and one link", store.links.map((l) => [l.title, l.url]), [[DEMO_STORE.link.title, DEMO_STORE.link.url]]);
-  is("two files and one picture were put, two photographs fetched", [puts.length, fetched.length], [3, 2]);
+  is(
+    "beside it, the smaller copy a phone is handed, in the same folder",
+    [listing.image?.small ? ownsImagePath(listing.image.small.path, await imageFolder(HOUSE_OWNER)) : false, listing.image?.small?.width, listing.image?.small?.path !== listing.image?.path],
+    [true, 800, true],
+  );
+  is(
+    "and the page offers the browser both, with the width of each",
+    listing.image ? imageSrcSet(listing.image) : "",
+    listing.image ? `${imageUrl(listing.image.small!)} 800w, ${imageUrl(listing.image)} 1200w` : "none",
+  );
+  is("two files and the two sizes of the picture were put; the photo and the two sizes fetched", [puts.length, fetched.length], [4, 3]);
 
   part("Asked again, it does only what is missing");
   const [putsBefore, fetchedBefore] = [puts.length, fetched.length];
@@ -203,6 +214,24 @@ async function main(): Promise<void> {
   const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 4, 0, 0, 0xff, 0xc0, 0, 11, 8, 0x02, 0xa3, 0x04, 0xb0, 3, 0, 0, 0, 0, 0, 0]);
   is("a JPEG", imageSize(jpeg), { width: 1200, height: 675 });
   is("anything else is not measured", imageSize(new Uint8Array(40)), null);
+
+  part("A picture and its smaller copy");
+  const big = { path: `images/${"a".repeat(24)}/${"1".repeat(32)}.webp`, width: 1600, height: 900, alt: "", bytes: 300_000 };
+  const copy = { path: `images/${"a".repeat(24)}/${"2".repeat(32)}.webp`, width: 800, bytes: 90_000 };
+  is("kept together", parseProductImage({ ...big, small: copy })?.small, copy);
+  is("a picture from before copies were made has none, and is shown from its one file", [parseProductImage(big)?.small, imageSrcSet({ ...big, small: null })], [null, undefined]);
+  is("a copy as wide as the picture is not one", parseProductImage({ ...big, small: { ...copy, width: 1600 } })?.small, null);
+  is("nor is one that is the picture itself", parseProductImage({ ...big, small: { ...copy, path: big.path } })?.small, null);
+  is("nor one from another store's folder", parseProductImage({ ...big, small: { ...copy, path: `images/${"b".repeat(24)}/${"2".repeat(32)}.webp` } })?.small, null);
+  is("both files are deleted together", imagePaths({ ...big, small: copy }), [big.path, copy.path]);
+  const card = withoutComments(read("components/store-product.tsx"));
+  is("the store page's card hands the browser both", /srcSet=\{imageSrcSet\(image\)\}/.test(card) && /sizes=\{image\.small \?/.test(card), true);
+  is("and tells it to fetch the first product's picture first", /fetchPriority=\{first \? "high" : undefined\}/.test(card), true);
+  is("the product's own page hands it both too", /srcSet=\{imageSrcSet\(product\.image\)\}/.test(withoutComments(read("app/[handle]/p/[product]/page.tsx"))), true);
+  const editor = withoutComments(read("components/product-image-editor.tsx"));
+  is("the studio makes the copy when a picture is added, and sends it with the picture", /await shrink\(file, SMALL_LONG_SIDE\)/.test(editor) && /\.\.\.\(small \? \{ small \} : \{\}\)/.test(editor), true);
+  const attach = withoutComments(read("app/api/store/image/route.ts"));
+  is("what is attached is checked as the picture is, and deleted with it", /smallWidth < width/.test(attach) && /copyKind === copy\.contentType/.test(attach) && /del\(imagePaths\(result\.removed\)\)/.test(attach), true);
 
   part("Its checkout is the real one, on the demo's own account and key");
   is("the demo's account is asked with the demo's key", keyFor(DEMO_CONNECTED_ACCOUNT), DEMO_KEY);

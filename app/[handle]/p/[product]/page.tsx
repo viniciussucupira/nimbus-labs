@@ -14,7 +14,7 @@ import { readListing, readListings } from "@/lib/catalog";
 import { canSell, canSellProduct, sellableOptions } from "@/lib/store-checkout";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
-import { imageUrl } from "@/lib/product-image";
+import { imageUrl, IMAGE_SIZES, imageSrcSet } from "@/lib/product-image";
 import { type Block, type Piece, aboutBlocks, aboutExcerpt, readAbout } from "@/lib/product-about";
 import { activePlan, planWords } from "@/lib/product-extras";
 import { activePwyw } from "@/lib/pay-what-you-want";
@@ -384,6 +384,8 @@ export default async function ProductPage({ params, searchParams }: Params) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imageUrl(product.image)}
+                srcSet={imageSrcSet(product.image)}
+                sizes={product.image.small ? IMAGE_SIZES.hero : undefined}
                 alt={product.image.alt}
                 width={product.image.width}
                 height={product.image.height}

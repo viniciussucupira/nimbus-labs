@@ -14,6 +14,8 @@ import {
   MAX_ALT_LENGTH,
   MAX_IMAGE_BYTES,
   type ProductImage,
+  type SmallCopy,
+  imagePaths,
   isDisplayStyle,
   ownsImagePath,
 } from "@/lib/product-image";
@@ -57,6 +59,12 @@ async function firstBytes(path: string): Promise<Uint8Array | null> {
  * how big it really is and what it says it is, and its first bytes have to be
  * a JPEG's or a WebP's. The old picture is deleted only after the record that
  * replaced it is written.
+ *
+ * `attach` may also name `small: { path, width }`: the smaller copy the
+ * browser made for phones (lib/product-image.ts, SMALL_LONG_SIDE). It is
+ * held to every check the picture itself is, and has to be narrower than it;
+ * one that fails any of them is deleted and left out, and the picture is
+ * attached without it — a copy is never worth refusing a picture for.
  */
 export async function POST(request: NextRequest) {
   const guarded = await guardStoreWrite(request, "products", 2_000);
@@ -104,17 +112,43 @@ export async function POST(request: NextRequest) {
       const width = side(body.width);
       const height = side(body.height);
       if (!width || !height) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
-      image = { path, width, height, alt, bytes: found.size };
+
+      // The smaller copy for phones, checked exactly as the picture was.
+      let small: SmallCopy | null = null;
+      const sent = body.small && typeof body.small === "object" ? (body.small as Record<string, unknown>) : null;
+      const smallPath = sent ? text(sent.path, 200) : "";
+      if (smallPath && smallPath !== path && ownsImagePath(smallPath, await imageFolder(ref))) {
+        const smallWidth = side(sent?.width);
+        try {
+          const copy = await head(smallPath);
+          const first = await firstBytes(smallPath);
+          const copyKind = first ? sniffPhotoType(first) : null;
+          const good =
+            smallWidth > 0 &&
+            smallWidth < width &&
+            copy.size <= MAX_IMAGE_BYTES &&
+            copyKind !== null &&
+            (IMAGE_CONTENT_TYPES as readonly string[]).includes(copyKind) &&
+            copyKind === copy.contentType;
+          if (good) small = { path: smallPath, width: smallWidth, bytes: copy.size };
+          else await del(smallPath).catch(() => {});
+        } catch (error) {
+          console.error("checking a picture's smaller copy failed; attached without it", error);
+          await del(smallPath).catch(() => {});
+        }
+      }
+      image = { path, width, height, alt, bytes: found.size, small };
     }
 
     const result = await setProductImage(ref, id, image);
     if (!result.ok) {
-      if (image) await del(image.path).catch(() => {});
+      if (image) await del(imagePaths(image)).catch(() => {});
       return Response.json({ ok: false, error: result.reason }, { status: result.reason === "unknown" ? 404 : 400 });
     }
     // Best effort, and deliberately after the write.
     if (result.removed && result.removed.path !== image?.path) {
-      await del(result.removed.path).catch((error: unknown) => {
+      // The picture and the smaller copy made of it go together.
+      await del(imagePaths(result.removed)).catch((error: unknown) => {
         console.error("could not delete a replaced product picture", error);
       });
     }
