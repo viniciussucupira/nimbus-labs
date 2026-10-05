@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   const domains = isDomainsConfigured();
   return (
-    <LegalPage title="Terms of Service" lastUpdated="October 2, 2026">
+    <LegalPage title="Terms of Service" lastUpdated="October 5, 2026">
       <p>
         These Terms of Service (“Terms”) govern your access to and use of the
         websites, products, and subscription services operated by Solrenning
@@ -212,6 +212,19 @@ export default function TermsPage() {
           apply to you and to your readers, including the CAN-SPAM Act in the
           United States. Every email carries an unsubscribe link that we honor
           permanently, and you may not ask anyone to do more than click it.
+        </p>
+        <p>
+          If you use Outreach to write to a business, you are the sender of
+          that email: it leaves from your own mailbox, under your own name. You
+          agree to send it only to the business address the studio found for
+          it, with the closing lines the studio adds left as they are; to send
+          what you have read and stand behind, with nothing in it that is
+          untrue; never to use it to write to a private person, or to a list;
+          to stop writing to a business the moment it asks, and to record it
+          in your studio; and to follow your mail provider&apos;s rules and the
+          laws on commercial email that apply to you and to the business you
+          write to. The studio refuses what it can tell is not allowed, but it
+          is not legal advice, and what you send is yours to answer for.
         </p>
         <p>
           We may investigate suspected violations and take action, including

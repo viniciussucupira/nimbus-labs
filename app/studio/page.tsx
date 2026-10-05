@@ -810,6 +810,10 @@ export default async function StudioPage({
                 ...(PRO_ON_SALE && may("draft")
                   ? [{ href: studioPath(store, "", "email"), title: "Email", text: "One-off emails and sequences to your list.", icon: "mail" as const, tag: "Pro" }]
                   : []),
+                // One email to one business, opened in the creator's own mailbox (lib/outreach.ts).
+                ...(may("draft")
+                  ? [{ href: studioPath(store, "", "outreach"), title: "Outreach", text: "A short pitch to a sponsor, a partner or a business, for you to send.", icon: "target" as const }]
+                  : []),
                 ...(may("team")
                   ? [
                       {

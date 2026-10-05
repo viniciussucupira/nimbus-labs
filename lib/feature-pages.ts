@@ -6,6 +6,8 @@
 // code, not against a plan.
 import { isDomainsConfigured } from "@/lib/domains";
 import { PRO_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
+import { AI_MONTHLY } from "@/lib/ai-rules";
+import { EXPECTATION, OPEN_COUNTRIES_WORDS, PITCHES_PER_DAY, REPITCH_DAYS } from "@/lib/outreach-rules";
 import type { TopicPage } from "@/lib/site-pages";
 
 /** Whether stores can be put on their own domain on this deployment. */
@@ -1663,6 +1665,81 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Do I still need Pro?", a: "No. Connecting a platform is on every plan. Pro is for writing to your list from Marktmorgen itself." },
           { q: "What starts on the platform?", a: "Whatever you set up there. On Kit, people are added to the form you pick, which starts what you attached to it." },
+        ],
+      },
+    ],
+  },
+  {
+    slug: "outreach",
+    section: "platform",
+    eyebrow: "Outreach",
+    title: "Write to the business",
+    highlight: "that could pay you",
+    intro:
+      "Name a brand that could sponsor you, a partner who could sell your product for a share, or a company that could buy it. Your store finds the address that business published for being written to, writes a short email from what you tell it, and opens it as a draft in your own mailbox. You read it and send it yourself. On every plan.",
+    badge: WORKING,
+    accent: "from-violet-brand to-sky-brand",
+    plan: "creator",
+    group: "grow",
+    menu: { label: "Outreach", description: "A pitch to a sponsor, a partner or a business.", icon: "target" },
+    related: ["affiliates", "email", "store-page", "insights"],
+    blocks: [
+      {
+        kind: "how",
+        title: "From a name to a draft in your mailbox",
+        items: [
+          { title: "Name the business", body: "Type its website, pick its country, and say in a sentence or two what you would offer: a sponsored video, a share of each sale, a product for its team." },
+          { title: "Pick where to write", body: "Your store reads up to four pages of that website and lists the addresses the business printed there itself, the desk for partnerships first, each with the page it came from." },
+          { title: "Read it, change it, send it", body: "A short email is written from your words and the business's own description of itself. It opens as a draft in your Gmail or your mail app, and you press Send." },
+        ],
+      },
+      {
+        kind: "lead",
+        text: "Stan has no tool for writing to a sponsor, and Beacons writes a pitch without finding who to send it to or checking where it may be sent (both read on October 5, 2026). Here the contact, the rules of each country and the email are one tool, inside the plan you already pay for.",
+      },
+      {
+        kind: "features",
+        title: "What it holds every email to",
+        items: [
+          { icon: "check", title: "An address the business published", body: "Only an address at the business's own domain, printed on its own website. The page and the date it was read are kept with each email, so you can show where it came from." },
+          { icon: "globe", title: "The law of the country", body: `For businesses in ${OPEN_COUNTRIES_WORDS}. Where only a company, or only a desk like partnerships@, may be written to, anything else is refused.` },
+          { icon: "ban", title: "No means no", body: "A page that says it does not want proposals is not written to, and a website that closes itself to our reader in robots.txt is not read." },
+          { icon: "mail", title: "Who you are, on every one", body: "Your name, your store, your postal address, where you found the address and how to stop it, under your own words. Those lines stay." },
+          { icon: "shield", title: "A way out that needs nobody", body: "Every email carries a link the business can press to close itself to your store, or to every store here, for good. Your studio has the same button." },
+          { icon: "list", title: "What became of each", body: "Draft, sent, answered, a deal, or asked to stop, in one list." },
+        ],
+      },
+      {
+        kind: "uses",
+        title: "Three reasons to write",
+        items: [
+          { icon: "target", who: "A sponsor", what: "A brand whose customers are the people who follow you, for a paid mention or a collaboration." },
+          { icon: "handshake", who: "A partner who sells for a share", what: "Somebody with an audience of their own, who would recommend your product through your affiliate program." },
+          { icon: "basket", who: "A business that would buy", what: "A company your product or your time would be useful to, for its team or its customers." },
+        ],
+      },
+      {
+        kind: "limits",
+        title: "What it does not do",
+        items: [
+          "It does not choose the businesses: you name each one.",
+          "It does not send anything. Every email leaves from your own mailbox, when you press Send.",
+          "It does not write to private people, only to businesses.",
+          "It does not write to businesses in Germany, the Netherlands, Spain, Italy or Poland, where the law asks for consent first, or in a country whose law we have not read yet.",
+          "A business that prints no address on its own website cannot be written to from here. Many use a contact form instead, and the page links you to their site.",
+          "It does not read your mailbox: you mark a pitch as sent, answered or a deal yourself.",
+          `At most ${PITCHES_PER_DAY} a day, and the same business once in ${REPITCH_DAYS} days.`,
+          "It is not legal advice. The email is yours, and you are its sender.",
+        ],
+      },
+      {
+        kind: "faq",
+        title: "Questions about Outreach",
+        items: [
+          { q: "Does it cost extra?", a: `No. It is on every plan. Each email written uses one of the month's writing drafts: ${AI_MONTHLY.trial} on the free trial, ${AI_MONTHLY.creator} on Creator and ${AI_MONTHLY.pro} on Pro.` },
+          { q: "Will businesses answer?", a: EXPECTATION },
+          { q: `Why only ${PITCHES_PER_DAY} a day?`, a: "A mailbox that writes to many strangers in a day gets marked as spam, and then stops reaching the people who asked to hear from you. A few specific emails do better than many." },
+          { q: "What does the business see?", a: "An email from you, from your own address, with your name, your store and your postal address under it, the page where you found their address, and a link to stop it." },
         ],
       },
     ],

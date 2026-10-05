@@ -118,6 +118,7 @@ const BUILT = [
   "Live events in the community: up to 50 coming up, RSVPs with a cap of 1 to 5,000 if you want one, the way in on the event's page from 15 minutes before, only to members who may come, in a private Jitsi Meet room shown on the page or at your own link, reminders a day and an hour before, emails when one moves or is canceled, and replays from YouTube, Vimeo or Loom",
   "Bundles: 2 to 20 of your one-off products at one price, each delivered as if bought on its own, with what the buyer keeps fixed when they pay",
   "Drafts: any product unpublished and kept in the studio until you publish it again",
+  "Outreach: a short email to a business you name, at the address it printed on its own website, held to the law of its country, written for you and opened as a draft in your own mailbox for you to send",
   "Moving from another platform, from a spreadsheet: your list, up to 50,000 a file, only people you confirm agreed; your products, up to 500 a file, as drafts; and your past buyers, up to 20,000 a file, who keep what they bought and come into your community, with one email to them if you choose",
   "A live demo store anyone can buy from with a test card, before signing up",
 ];
@@ -173,7 +174,7 @@ const RELEASES: { date: string; items: string }[] = [
   { date: "September 22, 2026", items: "Paid calls, courses, numbers and ad pixels, offers before and after paying, payment plans, sales tax, yearly plans, email to your list and your own domain on Pro, and buyers getting any purchase again by email." },
   { date: "September 26, 2026", items: "Up to 200 products with pictures and pages of their own, questions at checkout, pay what you want, free trials and fixed-length memberships, group calls and live sessions with reminders and self-serve moves, a confirmation email for every purchase, every store installable as its own app, 43 Stripe countries, and one reminder after an unpaid checkout. Then a community for your buyers, funnels of offers after paying, an affiliate program, calendar sync, webhooks, course quizzes and certificates, license keys, stamped PDFs, longer windows and exports for your numbers, and memberships whose access ends when they do." },
   { date: "September 27, 2026", items: "Up to 2,000 products, a private video room for each booking, up to five stores in one account and a team with roles for each, passkeys, 15 currencies and more ways to pay, sales and landing pages, reviews only buyers can write, Mailchimp, Kit, beehiiv and MailerLite built in, and notifications on your phone. Then live events in the community, bundles, drafts, moving your list, products and past buyers from another platform, and Google Meet links made on your own Google Calendar." },
-  { date: "October 5, 2026", items: "The demo store became an ordinary store, made and drawn by the same code as every creator's, and product pictures reach a phone at the phone's own size." },
+  { date: "October 5, 2026", items: "The demo store became an ordinary store, made and drawn by the same code as every creator's, and product pictures reach a phone at the phone's own size. Then Outreach: one short email to a business that could sponsor you, sell for you or buy from you, written from what you say and opened as a draft in your own mailbox." },
 ];
 
 /* Facts a creator can check before trusting us with a store. */

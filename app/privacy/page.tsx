@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="October 3, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="October 5, 2026">
       <p>
         Marktmorgen (“Marktmorgen,” “we,” “us,” or “our”) is operated by
         Solrenning, an independent software studio. This Privacy Policy
@@ -766,6 +766,27 @@ export default function PrivacyPage() {
           &ldquo;stop&rdquo; or by emailing us, and we will not contact you
           again.
         </p>
+        <p>
+          <strong className="text-black">Outreach by creators.</strong> A
+          creator can use their studio to prepare one email to a business they
+          name: a proposal to sponsor them, to sell their product for a share,
+          or to buy from them. For that, a reader that identifies itself as
+          MarktmorgenOutreach opens up to four pages of that business&apos;s
+          own website, once, and we keep, for that creator&apos;s store only:
+          the address the business printed there, the page it was printed on,
+          the words around it, the date, the draft, and what became of it
+          (sent, answered, or asked to stop). Addresses are taken only from
+          the business&apos;s own website and only at its own domain; in the
+          United Kingdom, Ireland, France and Sweden only an address that
+          names a desk, not a person, can be used. We send none of these
+          emails: the creator sends each one from their own mailbox and is its
+          sender. Our legal basis is the legitimate interest of that creator,
+          and ours, in one relevant business proposal reaching the address a
+          business published for being written to. Every such email ends with
+          a link that closes your business to that store, or to every store
+          here, in one press and for good; and a robots.txt rule for
+          MarktmorgenOutreach keeps the reader off your site entirely.
+        </p>
       </LegalSection>
 
       <LegalSection title="2. How we use information">
@@ -920,7 +941,11 @@ export default function PrivacyPage() {
             product&apos;s description, a course outline or an email), and
             which receives only what that creator typed into the box for it,
             the product&apos;s name, price and kind, and the store&apos;s
-            name; never anything about their buyers, members or list;
+            name; never anything about their buyers, members or list. For an
+            Outreach email it receives what the creator typed, the
+            creator&apos;s name, the names of their products, and the name and
+            description a business gives itself on its own website; never
+            the address the email is for;
           </li>
           <li>
             <strong className="text-black">Unsplash</strong>, which serves the
@@ -1090,6 +1115,12 @@ export default function PrivacyPage() {
           kept for up to 24 months from the last contact. If you ask us to
           stop, we keep only your name and contact detail on a do-not-contact
           list, so that we can respect your request.
+        </p>
+        <p>
+          A creator&apos;s Outreach records are kept while their store exists,
+          up to 400 at a time, the oldest unanswered ones making room for new
+          ones. When a business asks a store, or every store, to stop, we keep
+          its domain on that list for good, so that the request holds.
         </p>
       </LegalSection>
 

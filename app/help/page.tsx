@@ -10,6 +10,7 @@ import { HelpSearch } from "@/components/help-search";
 import { CopyLink } from "@/components/copy-link";
 import { formatMoney } from "@/lib/money";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
+import { EXPECTATION, MAX_PAGES_READ, OPEN_COUNTRIES_WORDS, PITCHES_PER_DAY, REPITCH_DAYS } from "@/lib/outreach-rules";
 
 /** An anchor for one answer, from its question. */
 function answerId(q: string): string {
@@ -526,6 +527,39 @@ const SECTIONS: Section[] = [
         a: [
           "Send them to \u201cGet it again\u201d at the bottom of your store page, at your store address followed by /orders \u2014 they type the address they paid with and a link to everything they bought arrives in their inbox. That answers most of these without you doing anything.",
           "If it still does not appear, check the payment in your own Stripe dashboard: a payment that did not complete is the most common cause. If Stripe shows the payment succeeded and the file still did not arrive, email us with the order details and we will look at it with you.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "outreach",
+    emoji: "🤝",
+    title: "Outreach",
+    blurb: "Writing to a business that could sponsor you, sell for you or buy from you.",
+    tone: "bg-lilac",
+    items: [
+      {
+        q: "Can my store help me find sponsors and partners?",
+        a: [
+          `Yes, one business at a time. In your studio, Outreach takes the website of a business you name and what you would offer it. We read that website for an address the business prints there itself, write a short email from what you typed and what its own site says, and open it as a draft in your own Gmail or mail app. You read it, change it and press Send yourself. Nothing is ever sent from our side, and nothing goes out that you did not read.`,
+          `It is for three things: a brand that would sponsor you, somebody with an audience who would sell your product for a share, and a company that would buy what you make. It is on every plan and uses the same monthly drafts as the other writing help: 20 on the free trial, 100 on Creator and 400 on Pro.`,
+          EXPECTATION,
+        ],
+      },
+      {
+        q: "Who can I write to, and what are the rules?",
+        a: [
+          `Businesses only, never a private person, and only at an address that business published on its own website. An address found anywhere else is not used, and we keep which page printed it and when, so you can show where it came from.`,
+          `For businesses in ${OPEN_COUNTRIES_WORDS}, where the law allows a first email to a business. For the United Kingdom and Sweden that means companies, not sole traders; and for the United Kingdom, Ireland, France and Sweden, only an address that names a desk, like partnerships@ or hello@, not a person. Germany, the Netherlands, Spain, Italy and Poland ask for the business's consent first, so nothing is written there, and for every other country we have not read the law yet, so nothing is written there either.`,
+          `Every email ends with your name, your store address and your postal address, where the address was found, and a line saying that a reply stops it, with a link the business can press to stop it without you. Those lines are not yours to remove: each is something the law asks for. A page that says it does not want proposals is not written to. You can write at most ${PITCHES_PER_DAY} a day, and to the same business once in ${REPITCH_DAYS} days. When a business asks you to stop, one press in your studio records it, or the business presses its own link, and your store can never write to it again.`,
+          "This is not legal advice, and the email is yours: you are its sender. If you are unsure whether you may write to somebody, do not.",
+        ],
+      },
+      {
+        q: "I run a website and saw MarktmorgenOutreach in my logs. What is it?",
+        a: [
+          `It is the reader behind Outreach. A creator typed your website's address because they want to propose something to your business, and we read up to ${MAX_PAGES_READ} pages of it, once, to see what you do and which address you publish for being written to. It follows your robots.txt: a path you disallow is not read, and “User-agent: MarktmorgenOutreach” with “Disallow: /” keeps it out entirely.`,
+          "It does not crawl, does not come back on a schedule and does not build a list: what it read is kept only with the one email that creator wrote. No email is sent by us; the creator sends it from their own mailbox. If one reached you and you would rather it had not, press the link at the end of it: one button closes your business to that store, and a second closes it to every store here, for good. Or reply to the creator and say so: their studio has a button for exactly that.",
         ],
       },
     ],
