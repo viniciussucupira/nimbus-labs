@@ -19,6 +19,9 @@ const HOME_DESCRIPTION =
 export const metadata: Metadata = {
   title: HOME_TITLE,
   description: HOME_DESCRIPTION,
+  // Zoom's Marketplace checks that this domain is ours by reading this tag
+  // from the home page, for the app that makes Zoom meetings (lib/meet-providers.ts).
+  other: { "zoom-domain-verification": "ZOOM_verify_6f2160153a5d41208ff71fe77f6b7c01" },
   openGraph: {
     type: "website",
     url: "/",
