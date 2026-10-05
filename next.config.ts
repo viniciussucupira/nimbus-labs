@@ -103,9 +103,9 @@ const nextConfig: NextConfig = {
    * is the rule that matters most: without it anyone can put the studio
    * inside an invisible frame on their own site and collect a signed-in
    * creator's clicks on buttons they never meant to press. 'self' is used
-   * rather than 'none' because the home page shows the demo store in a frame
-   * of its own, and that has to keep working; X-Frame-Options says the same
-   * to browsers that predate the policy.
+   * rather than 'none' so that a page of ours may still show another of
+   * ours, as the home page once showed the demo store; X-Frame-Options says
+   * the same to browsers that predate the policy.
    *
    * Strict-Transport-Security deliberately has no includeSubDomains: these
    * pages are also served on creators' own domains, and on theirs it would

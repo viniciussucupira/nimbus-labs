@@ -6,7 +6,7 @@ import { BuyerPath } from "@/components/buyer-path";
 import { SiteNav } from "@/components/site-nav";
 import { Icon, type IconName } from "@/components/icons";
 import { FeatureVisual, type VisualKey } from "@/components/feature-visuals";
-import { DemoWindow, Faq, HeroFlow, Pricing, RevealOnScroll, SoldMarquee } from "@/components/home-parts";
+import { Faq, HeroFlow, Pricing, RevealOnScroll, SoldMarquee } from "@/components/home-parts";
 import { HomeData } from "@/components/structured-data";
 import { HOME_QUESTIONS } from "@/lib/home-faq";
 import { PLAN_PRICES, PRICE_CENTS, REFUND_DAYS, TRIAL_DAYS } from "@/lib/plan";
@@ -221,10 +221,16 @@ export default function Home() {
                   real store with a test card in under a minute — and an
                   offer that good should not be dressed as a footnote.
                 */}
-                <DemoWindow
-                  label="See the live demo"
-                  className="btn btn-outline-light btn-lg w-full min-[480px]:w-auto"
-                />
+                {/*
+                  A link to the store itself, not a window over this page.
+                  The demo is an ordinary store, and a store squeezed into a
+                  frame with a scroll bar of its own is not what a buyer of a
+                  creator's sees.
+                */}
+                <Link href="/demo" className="btn btn-outline-light btn-lg w-full min-[480px]:w-auto">
+                  See the live demo
+                  <Icon name="arrow-right" size={18} />
+                </Link>
               </div>
               {/*
                 The three chips are gone with the rest of the clutter.

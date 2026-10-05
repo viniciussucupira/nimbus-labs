@@ -2,8 +2,7 @@
 
 import { AI_MONTHLY } from "@/lib/ai-rules";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/icons";
 import { listSizeWords } from "@/lib/contact-rules";
 import { HOME_QUESTIONS } from "@/lib/home-faq";
@@ -781,108 +780,6 @@ export function Faq() {
         );
       })}
     </ul>
-  );
-}
-
-/*
- * A window that opens the live demo store without leaving the page. Focus
- * moves into it, stays inside it while it is open, and returns to the button
- * that opened it. It is drawn straight into <body>, so no animated parent can
- * pin it inside a column.
- */
-export function DemoWindow({
-  label = "Try the live demo",
-  className = "link-arrow on-dark",
-}: {
-  label?: string;
-  className?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const opener = useRef<HTMLButtonElement>(null);
-  const dialog = useRef<HTMLDivElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-
-  const close = useCallback(() => {
-    setOpen(false);
-    opener.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    closeRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-      if (e.key === "Tab" && dialog.current) {
-        const items = dialog.current.querySelectorAll<HTMLElement>("button, a, iframe");
-        const first = items[0];
-        const last = items[items.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [open, close]);
-
-  return (
-    <>
-      <button ref={opener} type="button" onClick={() => setOpen(true)} className={className}>
-        {label}
-        <Icon name="arrow-right" size={18} className="arrow" />
-      </button>
-
-      {open &&
-        createPortal(
-        <div
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-night/70 backdrop-blur-sm sm:items-center sm:p-6"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) close();
-          }}
-        >
-          <div
-            ref={dialog}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="demo-window-title"
-            className="nb-pop flex h-[92dvh] w-full max-w-[26rem] flex-col overflow-hidden rounded-t-[20px] bg-white shadow-[var(--shadow-lg)] sm:h-[min(52rem,90dvh)] sm:rounded-[20px]"
-          >
-            <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
-              <div>
-                <p id="demo-window-title" className="text-[0.9375rem] font-semibold text-ink">
-                  Live demo store
-                </p>
-                <p className="text-[0.8125rem] text-ink-mute">Stripe test mode · card 4242 4242 4242 4242</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <Link href="/demo" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
-                  Full page
-                </Link>
-                <button
-                  ref={closeRef}
-                  type="button"
-                  onClick={close}
-                  className="grid h-10 w-10 place-items-center rounded-[10px] text-ink-soft transition-colors hover:bg-sand hover:text-ink"
-                >
-                  <span className="sr-only">Close the demo</span>
-                  <Icon name="close" size={20} />
-                </button>
-              </div>
-            </div>
-            <iframe src="/demo" title="Live demo store" className="w-full flex-1 border-0" />
-          </div>
-        </div>,
-          document.body,
-        )}
-    </>
   );
 }
 
