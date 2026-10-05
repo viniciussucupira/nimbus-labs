@@ -10,6 +10,7 @@ import { StudioStorePin } from "@/components/studio-store-pin";
 import { listCounts } from "@/lib/contacts";
 import { listBroadcasts } from "@/lib/broadcasts";
 import { broadcastMoney, flowMoney, readMailRevenue } from "@/lib/mail-revenue";
+import { sellsSomething } from "@/lib/mail-starters";
 import { flowStats, readFlows } from "@/lib/flows";
 import { inTrial, monthlyAllowance, usedThisMonth } from "@/lib/mail";
 import { PRO_MONTHLY_EMAILS, TRIAL_DAYS, TRIAL_MONTHLY_EMAILS, priceWords, yearSaving } from "@/lib/plan";
@@ -149,6 +150,7 @@ export default async function StudioEmailPage({ searchParams }: Params) {
               money: broadcastMoney(revenue, b.id),
             }))}
             currency={store.currency}
+            sells={sellsSomething(store)}
             flows={flows.map((f) => ({ ...f, stats: stats.get(f.id) ?? { started: 0, sent: 0 }, money: flowMoney(revenue, f.id) }))}
             links={Object.fromEntries([...listings].map(([id]) => [id, productLink(store, id)]))}
             ai={isAiConfigured() && can(role, "draft") ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}

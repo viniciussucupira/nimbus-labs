@@ -15,6 +15,7 @@ import { advanceBroadcast, cancelBroadcast, createBroadcast, whoOf } from "@/lib
 import { removeFlow, saveFlow } from "@/lib/flows";
 import { removeDraft, saveDraft } from "@/lib/mail-drafts";
 import { copyOf, keepSending } from "@/lib/mail-reuse";
+import { setUpStarters } from "@/lib/mail-starters";
 import { readListings } from "@/lib/catalog";
 import type { Permission } from "@/lib/team-roles";
 
@@ -41,6 +42,9 @@ const MAIL_PERMISSIONS: Record<string, Permission> = {
   // A sent email written again is a new draft; kept sending, it reaches the list.
   copy: "draft",
   keep: "send",
+  // The two sequences written for the creator. Made switched off, but a
+  // sequence all the same, so it is for whoever may reach the list.
+  starters: "send",
 };
 
 /**
@@ -55,6 +59,8 @@ const MAIL_PERMISSIONS: Record<string, Permission> = {
  *   { action: "cancel", id }
  *   { action: "flow", flow: {...} }  /  { action: "flow-remove", id }
  *   { action: "copy", id }   a sent email's subject and text, to write again
+ *   { action: "starters" }   the welcome and the after-a-first-purchase sequences, written
+ *                            and left switched off, where the store has none (lib/mail-starters.ts)
  *   { action: "keep", id }   a sent email becomes one more email of a sequence,
  *                            for everybody who joins from now on (lib/mail-reuse.ts)
  *
@@ -193,6 +199,12 @@ export async function POST(request: NextRequest) {
       const kept = await keepSending(current, text(body.id, 40), async (id) => (await readListings(current, [id]))[0]?.title ?? null);
       if (!kept.ok) return fail(KEEP_REFUSALS.has(kept.reason) ? `keep_${kept.reason}` : kept.reason);
       return Response.json({ ok: true, flows: kept.flows, name: kept.name, waitHours: kept.waitHours, position: kept.position });
+    }
+
+    if (action === "starters") {
+      const made = await setUpStarters(store);
+      if (!made.ok) return fail(made.reason === "nothing" ? "starters_nothing" : made.reason);
+      return Response.json({ ok: true, flows: made.flows, made: made.made });
     }
 
     if (action === "flow-remove") {

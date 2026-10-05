@@ -40,6 +40,7 @@ const MESSAGES: Record<string, string> = {
   full: "A store keeps 20 drafts at most. Send or delete one first.",
   list: "This store has no list yet, so there is nowhere to keep a draft.",
   role: "Your role on this store does not include this.",
+  starters_nothing: "Your store already has a sequence for each of those moments. They are under Sequences.",
   keep_unsent: "Only an email that has finished going out can be kept sending.",
   keep_excludes:
     "This email left out the people who already own a product, and a sequence cannot leave anyone out. Write it again instead, and choose who it goes to.",
@@ -140,6 +141,8 @@ export function EmailStudio(props: {
   broadcasts: BroadcastRow[];
   /** The store's currency, for what each email sold. */
   currency: string;
+  /** Whether anything on the store is sold for money. */
+  sells: boolean;
   flows: FlowRow[];
   drafts: DraftRow[];
   canSend: boolean;
@@ -172,7 +175,7 @@ export function EmailStudio(props: {
             </AiOn>
             <Drafts drafts={props.drafts} products={props.products} open={open} onOpen={setOpen} />
             <History broadcasts={props.broadcasts} products={props.products} canSend={props.canSend} onOpen={setOpen} currency={props.currency} />
-            {props.canSend ? <Flows flows={props.flows} products={props.products} currency={props.currency} /> : null}
+            {props.canSend ? <Flows flows={props.flows} products={props.products} currency={props.currency} sells={props.sells} /> : null}
           </>
         ) : props.canSettings ? (
           <div className="card p-6 sm:p-8">
@@ -843,7 +846,18 @@ function toDraft(flow: FlowRow | null, products: { id: string }[]): FlowDraft {
   };
 }
 
-function Flows({ flows, products, currency }: { flows: FlowRow[]; products: { id: string; title: string }[]; currency: string }) {
+function Flows({
+  flows,
+  products,
+  currency,
+  sells,
+}: {
+  flows: FlowRow[];
+  products: { id: string; title: string }[];
+  currency: string;
+  /** Whether the store sells anything for money, so a first purchase can happen at all. */
+  sells: boolean;
+}) {
   const router = useRouter();
   const [draft, setDraft] = useState<FlowDraft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -886,6 +900,14 @@ function Flows({ flows, products, currency }: { flows: FlowRow[]; products: { id
     router.refresh();
   }
 
+  // Which of the two starter sequences this store has no sequence for yet.
+  // The after-a-purchase one is made only by a store that sells something,
+  // and the server decides that; here it is offered whenever none exists.
+  const missing = {
+    welcome: flows.length < 10 && !flows.some((f) => f.trigger === "joined"),
+    bought: flows.length < 10 && sells && !flows.some((f) => f.trigger === "bought"),
+  };
+
   const setStep = (i: number, change: Partial<StepDraft>) =>
     draft && setDraft({ ...draft, steps: draft.steps.map((s, j) => (j === i ? { ...s, ...change } : s)) });
 
@@ -896,6 +918,46 @@ function Flows({ flows, products, currency }: { flows: FlowRow[]; products: { id
         Emails that go out by themselves: a welcome when someone joins, a few tips in the days after they buy. Each person
         goes through a sequence once, and stops the moment they unsubscribe.
       </p>
+      {/*
+        The two sequences worth having from the first day, written for the
+        creator (lib/mail-starters.ts). Offered only for a moment — joining,
+        a first purchase — that no sequence of theirs starts on yet, and made
+        switched off: nothing is sent until they have read one and turned it on.
+      */}
+      {!draft && (missing.welcome || missing.bought) ? (
+        <div className="mt-4 rounded-[var(--r-sm)] bg-sand p-4">
+          <p className="font-semibold text-ink">
+            {missing.welcome && missing.bought
+              ? "Start with two sequences, written for you"
+              : missing.welcome
+                ? "Add a welcome for everyone who joins"
+                : "Add a thank-you after a first purchase"}
+          </p>
+          <p className="mt-1 text-sm text-ink-soft">
+            {missing.welcome && missing.bought
+              ? "A welcome for everyone who joins your list, and a thank-you after someone's first purchase. We write them from your store's name, products and links, and leave them switched off. Read them, change what you like, then switch them on."
+              : "We write it from your store's name, products and links, and leave it switched off. Read it, change what you like, then switch it on."}
+          </p>
+          <button
+            type="button"
+            aria-busy={busy} disabled={busy}
+            className="btn btn-secondary mt-3"
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              const a = await call({ action: "starters" });
+              setBusy(false);
+              if (!a.ok) return setError(a.error === "too_many" ? MESSAGES.too_many_flows : message(a));
+              const made = Array.isArray(a.made) ? a.made.length : 0;
+              toast(made === 1 ? "Written. It is below, switched off, for you to read." : "Written. Both are below, switched off, for you to read.");
+              router.refresh();
+            }}
+          >
+            Write them for me
+          </button>
+          <Feedback error={error} done={null} />
+        </div>
+      ) : null}
       {flows.length ? (
         <ul className="mt-4 space-y-3">
           {flows.map((f) => (

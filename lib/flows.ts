@@ -45,6 +45,12 @@ export type Flow = {
    * an edit in the studio.
    */
   kept?: boolean;
+  /**
+   * One of the two sequences written for the creator and left switched off
+   * (lib/mail-starters.ts). Says where it came from; changes nothing about
+   * how it is sent, and stays through an edit.
+   */
+  starter?: "welcome" | "bought";
 };
 
 const QUEUE = "nl:mail:flowq";
@@ -89,6 +95,8 @@ async function writeFlows(listId: string, flows: Flow[]): Promise<void> {
   await redisPipeline([["SET", flowsKey(listId), JSON.stringify(flows)]]);
 }
 
+const starterOf = (raw: unknown): Flow["starter"] => (raw === "welcome" || raw === "bought" ? raw : undefined);
+
 export type FlowResult =
   | { ok: true; flows: Flow[] }
   | { ok: false; reason: "name" | "trigger" | "product" | "steps" | "step" | "too_many" | "unknown" | "setup" | "plan" };
@@ -116,6 +124,8 @@ export async function saveFlow(store: Store, raw: Record<string, unknown>): Prom
   const at = id ? flows.findIndex((f) => f.id === id) : -1;
   if (id && at < 0) return { ok: false, reason: "unknown" };
   if (!id && flows.length >= MAX_FLOWS) return { ok: false, reason: "too_many" };
+  // Where a written-for-you sequence came from stays with it through an edit.
+  const starter = starterOf(raw.starter) ?? (at >= 0 ? flows[at].starter : undefined);
   const flow: Flow = {
     id: id ?? newId(),
     name,
@@ -125,6 +135,7 @@ export async function saveFlow(store: Store, raw: Record<string, unknown>): Prom
     active: raw.active === true,
     createdAt: at >= 0 ? flows[at].createdAt : Math.floor(Date.now() / 1000),
     ...(raw.kept === true || (at >= 0 && flows[at].kept === true) ? { kept: true } : {}),
+    ...(starter ? { starter } : {}),
   };
   const next = [...flows];
   if (at >= 0) next[at] = flow;
