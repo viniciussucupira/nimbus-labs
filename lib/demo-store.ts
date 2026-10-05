@@ -51,6 +51,9 @@ export const LOWEST_PRICE_CENTS = Math.min(
   ...DEMO_PRODUCT.options.map((option) => option.priceCents),
 );
 
+/** The fictional creator's store, as the demo page and Stripe's checkout both name it. */
+export const DEMO_STORE_NAME = "Harbor Kitchen";
+
 // Stripe sandbox connected account of the fictional creator. Charges are made
 // directly on this account (direct charges), so the money lands with the
 // creator, not with Marktmorgen.
@@ -181,7 +184,25 @@ export async function createDemoCheckout(
   onlyInstantMethods(body);
   inTheCurrencyShown(body);
 
-  const session = await stripeRequest("POST", "/checkout/sessions", body);
+  // The name the buyer reads at the top of Stripe's page and under the Pay
+  // button. Without this it is the sandbox account's own name — "Jenny Test
+  // Store Full" — on the one screen of the demo where the visitor is deciding
+  // whether this looks like a shop. The account is a Standard one, so neither
+  // the platform nor its "view as" dashboard may rename it; the session can
+  // carry the name itself (branding_settings, Stripe API 2025-09-30.clover).
+  const named = new URLSearchParams(body);
+  named.set("branding_settings[display_name]", DEMO_STORE_NAME);
+
+  let session: Record<string, unknown>;
+  try {
+    session = await stripeRequest("POST", "/checkout/sessions", named);
+  } catch (error) {
+    // A name is never worth a checkout: if Stripe refuses the parameter, the
+    // session is opened as it always was, under the account's own name.
+    if (!(error instanceof StripeError) || error.status !== 400) throw error;
+    console.error("Stripe refused the demo checkout's display name; opening it without", error);
+    session = await stripeRequest("POST", "/checkout/sessions", body);
+  }
   if (typeof session.url !== "string") {
     throw new Error("Stripe did not return a checkout URL");
   }

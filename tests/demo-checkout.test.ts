@@ -61,3 +61,20 @@ test("nothing else in the demo navigates out of the frame by accident", () => {
   assert.match(recover, /fetch\("\/api\/demo\/recover"/, "recovery answers in place rather than navigating");
   assert.ok(!/target="_top"/.test(recover), "a form that does not navigate has no reason to leave the frame");
 });
+
+test("Stripe's page names the demo store, not the sandbox account behind it", () => {
+  // The account is a Standard one and neither the platform nor its "view as"
+  // dashboard may rename it — both were tried — so the session carries the
+  // name. Without it the buyer reads "Jenny Test Store Full" above the price.
+  const src = withoutComments(read("lib/demo-store.ts"));
+  assert.match(src, /export const DEMO_STORE_NAME = "Harbor Kitchen";/, "one name, shared with the page");
+  assert.match(src, /named\.set\("branding_settings\[display_name\]", DEMO_STORE_NAME\)/, "the session carries the store's name");
+});
+
+test("a refused name never costs the checkout", () => {
+  const src = withoutComments(read("lib/demo-store.ts"));
+  const at = src.indexOf("export async function createDemoCheckout");
+  const body = src.slice(at, src.indexOf("export type DemoOrder"));
+  assert.match(body, /error\.status !== 400\) throw error;/, "only a refusal of the request itself is retried");
+  assert.match(body, /session = await stripeRequest\("POST", "\/checkout\/sessions", body\);/, "and the retry is the session as it always was");
+});
