@@ -7,7 +7,8 @@
  * about anybody: the figures are a count and a sum, cached for ten minutes
  * so that opening the email page does not ask Stripe every time.
  *
- *   nl:stats:<statsId>:mailsales   the last reading (JSON), for ten minutes
+ *   nl:stats:<statsId>:mailsales    the last reading (JSON), for ten minutes
+ *   nl:stats:<statsId>:mailvisits   the same for visits, for ten minutes
  *
  * What a figure means, exactly: checkouts paid on the page one of that
  * email's links opened, in the store's own currency, over the last
@@ -15,8 +16,8 @@
  * added, and neither is somebody who came back later by themselves.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
-import { STATS_DAYS, readPaidSales } from "@/lib/stats";
-import { MAIL_SOURCE, broadcastCampaign, flowCampaignPrefix } from "@/lib/mail-links";
+import { STATS_DAYS, campaignViews, readPaidSales } from "@/lib/stats";
+import { MAIL_SOURCE, broadcastCampaigns, flowCampaignPrefix } from "@/lib/mail-links";
 import type { Store } from "@/lib/store";
 
 export type MailMoney = { sales: number; cents: number };
@@ -42,9 +43,20 @@ export function moneyByCampaign(
   return by;
 }
 
-/** What one one-off email sold; null when nothing is counted for it. */
+/**
+ * What one one-off email sold; null when nothing is counted for it. An email
+ * that tried two subject lines is the sum of every tag its links carried.
+ */
 export function broadcastMoney(revenue: MailRevenue | null, broadcastId: string): MailMoney | null {
-  return revenue?.by[broadcastCampaign(broadcastId)] ?? null;
+  if (!revenue) return null;
+  const total = { sales: 0, cents: 0 };
+  for (const campaign of broadcastCampaigns(broadcastId)) {
+    const money = revenue.by[campaign];
+    if (!money) continue;
+    total.sales += money.sales;
+    total.cents += money.cents;
+  }
+  return total.sales ? total : null;
 }
 
 /** What every email of one sequence sold together. */
@@ -77,6 +89,44 @@ export async function readMailRevenue(store: Store): Promise<MailRevenue | null>
     return out;
   } catch (error) {
     console.error("reading what the emails sold failed", error);
+    return null;
+  }
+}
+
+const visitsKey = (statsId: string) => `nl:stats:${statsId}:mailvisits`;
+
+/**
+ * How many times each one-off email's links opened a page of the store, over
+ * the last STATS_DAYS days: the count the store already keeps of visits by
+ * the tag they arrive with (lib/stats.ts), added up for each email.
+ *
+ * Not an open rate and not a click rate. Nothing in the email reports back
+ * (app/privacy says so), so what is counted is a page of the store being
+ * loaded through one of the email's links, by nobody in particular. Null for
+ * an email, or altogether, when it could not be read: the studio then says
+ * nothing rather than "no visits".
+ */
+export async function readMailVisits(store: Pick<Store, "statsId">, broadcastIds: string[]): Promise<Record<string, number> | null> {
+  if (!store.statsId || !isRedisConfigured() || !broadcastIds.length) return null;
+  try {
+    const [cached] = await redisPipeline([["GET", visitsKey(store.statsId)]]);
+    let by: Record<string, number> | null = null;
+    if (typeof cached === "string") {
+      const kept = JSON.parse(cached) as Record<string, number>;
+      // The cache answers only when it was made for every email asked about:
+      // one sent a minute ago is read afresh rather than shown as nothing.
+      if (broadcastIds.every((id) => typeof kept[id] === "number")) by = kept;
+    }
+    if (!by) {
+      const views = await campaignViews(store.statsId, broadcastIds.flatMap(broadcastCampaigns));
+      if (!views) return null;
+      by = {};
+      for (const id of broadcastIds) by[id] = broadcastCampaigns(id).reduce((sum, campaign) => sum + (views[campaign] ?? 0), 0);
+      await redisPipeline([["SET", visitsKey(store.statsId), JSON.stringify(by), "EX", CACHE_SECONDS]]).catch(() => {});
+    }
+    return by;
+  } catch (error) {
+    console.error("reading the visits the emails brought failed", error);
     return null;
   }
 }

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="October 5, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="October 6, 2026">
       <p>
         Marktmorgen (“Marktmorgen,” “we,” “us,” or “our”) is operated by
         Solrenning, an independent software studio. This Privacy Policy
@@ -302,7 +302,12 @@ export default function PrivacyPage() {
           behalf, under the creator&apos;s name, through our email provider.
           For each one we use your address, the email the creator wrote and a
           random code for your unsubscribe link. We do not put tracking pixels
-          or tracked links in them. When you unsubscribe — one press, from the
+          or tracked links in them. A link to the creator&apos;s own store
+          carries a tag naming the email it is in, or one of two subject lines
+          when the creator is trying two, each sent to a part of the list
+          chosen at random. The tag is the same for everyone who got that
+          email or that subject line: it lets the store count visits and sales
+          by email, and says nothing about who you are. When you unsubscribe — one press, from the
           link or your mail app&apos;s own button — we record it and when, and
           you are not written to by that creator again unless you check their
           box again yourself.

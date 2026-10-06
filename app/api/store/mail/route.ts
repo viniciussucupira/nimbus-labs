@@ -162,6 +162,9 @@ export async function POST(request: NextRequest) {
         notProductId: text(body.notProductId, 40),
         who: text(body.who, 10),
         sendAt: typeof body.sendAt === "number" ? body.sendAt : undefined,
+        // A second subject line to try against the first; what it may be is
+        // decided where the email is written down (lib/mail-test.ts).
+        test: body.test && typeof body.test === "object" ? body.test : undefined,
       });
       if (!created.ok) return fail(created.reason);
       const id = created.broadcast.id;

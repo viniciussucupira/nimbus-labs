@@ -299,6 +299,38 @@ export async function readStats(store: Store, now = Date.now()): Promise<Stats |
   return { days, windows, life };
 }
 
+/**
+ * Page loads that arrived wearing each of these campaign tags, over the last
+ * `days` days, today included: what an email's links brought to the store
+ * (lib/mail-links.ts), or one subject line's share of them (lib/mail-test.ts).
+ *
+ * Read from the days themselves, a few fields of each, rather than from the
+ * all-time record: that one lets its smallest tags go once it is full, and an
+ * email nobody clicked much is exactly the one whose count has to be right.
+ * A load, not a person: somebody who opens the link twice is counted twice.
+ * Null when it could not be read at all, which is not the same as none.
+ */
+export async function campaignViews(
+  statsId: string | null,
+  campaigns: string[],
+  days = STATS_DAYS,
+  now = Date.now(),
+): Promise<Record<string, number> | null> {
+  if (!statsId || !isRedisConfigured()) return null;
+  const tags = [...new Set(campaigns.map(cleanTag).filter(Boolean))];
+  const out: Record<string, number> = Object.fromEntries(tags.map((tag) => [tag, 0]));
+  if (!tags.length) return out;
+  const dates = lastDays(now, Math.max(1, Math.min(Math.floor(days), KEPT_DAYS)));
+  const replies = await redisPipeline(dates.map((date) => ["HMGET", countsKey(statsId, date), ...tags.map((tag) => `g:${tag}`)]));
+  for (const reply of replies) {
+    if (!Array.isArray(reply)) continue;
+    reply.forEach((count, i) => {
+      if (i < tags.length) out[tags[i]] += Number(count) || 0;
+    });
+  }
+  return out;
+}
+
 /** Fields the all-time record keeps for itself rather than as counts. */
 const LIFE_OWN = new Set(["started", "since", "filled", "u"]);
 /** Beyond this many fields, the smallest sources and tags are let go. */

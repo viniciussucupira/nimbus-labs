@@ -12,13 +12,16 @@
  *   nl:mail:bcs:<listId>   the store's broadcasts, newest first
  *   nl:mail:queue          broadcasts waiting or under way
  */
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomInt } from "node:crypto";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { WHO, type Who, audience } from "@/lib/contacts";
 import { BATCH_SIZE, MAX_MAIL_BODY, MAX_SUBJECT, monthlyAllowance, sendTo, usedThisMonth } from "@/lib/mail";
 import type { Store } from "@/lib/store";
 import { hasProduct, idsOfKind } from "@/lib/catalog";
-import { broadcastCampaign } from "@/lib/mail-links";
+import { broadcastCampaign, isOwnLink, variantCampaign } from "@/lib/mail-links";
+import { type Counted, type SubjectTest, MIN_TEST_REACH, chooseSubject, newTest, parseTest, partAt, splitFor } from "@/lib/mail-test";
+import { campaignViews, readPaidSales } from "@/lib/stats";
+import { moneyByCampaign } from "@/lib/mail-revenue";
 
 export type BroadcastStatus = "scheduled" | "sending" | "sent" | "waiting" | "cancelled" | "failed";
 
@@ -60,6 +63,12 @@ export type Broadcast = {
    * count, and the studio says nothing rather than "no sales".
    */
   tagged: boolean;
+  /**
+   * A second subject line tried against the first on part of the list, the
+   * rest getting the one that did better (lib/mail-test.ts). Null for an
+   * email with one subject, which is every email made before this existed.
+   */
+  test: SubjectTest | null;
 };
 
 export const MAX_SCHEDULE_DAYS = 365;
@@ -77,7 +86,13 @@ function parse(raw: unknown): Broadcast | null {
     if (!BROADCAST_ID.test(value.id)) return null;
     // Written before the exclusion existed: it goes to everyone it was
     // addressed to, exactly as it was when it was scheduled.
-    return { ...value, notProductId: typeof value.notProductId === "string" ? value.notProductId : null, tagged: value.tagged === true, who: WHO.includes(value.who) ? value.who : "all" };
+    return {
+      ...value,
+      notProductId: typeof value.notProductId === "string" ? value.notProductId : null,
+      tagged: value.tagged === true,
+      who: WHO.includes(value.who) ? value.who : "all",
+      test: parseTest(value.test),
+    };
   } catch {
     return null;
   }
@@ -113,12 +128,30 @@ export function whoOf(store: Store, kind: Who): { kind: Who; paid: ReadonlySet<s
 
 export type CreateResult =
   | { ok: true; broadcast: Broadcast }
-  | { ok: false; reason: "subject" | "body" | "when" | "product" | "empty" | "allowance" | "setup" | "plan" };
+  | { ok: false; reason: "subject" | "body" | "when" | "product" | "empty" | "allowance" | "setup" | "plan" | "test_subject" | "test_small" | "test_links" };
+
+const LINK = /https:\/\/[^\s<>"')\]]+/g;
+
+/**
+ * Whether an email has a link to the creator's own store in it. A test of two
+ * subject lines is decided by what those links bring; without one there is
+ * nothing to count, and the "winner" would be the first subject every time.
+ */
+export function linksToStore(body: string, store: Pick<Store, "handle" | "domain">): boolean {
+  for (const found of body.match(LINK) ?? []) {
+    try {
+      if (isOwnLink(new URL(found.replace(/[.,;:!?]+$/, "")), store)) return true;
+    } catch {
+      // Not an address after all: not a link to the store either.
+    }
+  }
+  return false;
+}
 
 /** Writes a broadcast down to go now or later. What it may contain is checked here. */
 export async function createBroadcast(
   store: Store,
-  input: { subject: unknown; body: unknown; productId: unknown; notProductId: unknown; sendAt: unknown; who?: unknown },
+  input: { subject: unknown; body: unknown; productId: unknown; notProductId: unknown; sendAt: unknown; who?: unknown; test?: unknown },
 ): Promise<CreateResult> {
   if (monthlyAllowance(store) === 0) return { ok: false, reason: "plan" };
   if (!store.mail || !store.listId) return { ok: false, reason: "setup" };
@@ -143,6 +176,14 @@ export async function createBroadcast(
   // Checked now for a send that starts now; a scheduled one is checked again when it starts.
   const reach = (await audience(store.listId, productId ?? undefined, notProductId ?? undefined, whoOf(store, who))).length;
   if (reach === 0) return { ok: false, reason: "empty" };
+  // A second subject line, when one was asked for. Refused here, with the
+  // reason, whenever it could not be a real test: the creator finds out while
+  // they can still change the email, not from a result that means nothing.
+  const asked = newTest(input.test, subject, MAX_SUBJECT);
+  if (asked === "subject") return { ok: false, reason: "test_subject" };
+  const test = asked === "none" ? null : asked;
+  if (test && reach < MIN_TEST_REACH) return { ok: false, reason: "test_small" };
+  if (test && !linksToStore(body, store)) return { ok: false, reason: "test_links" };
   if (sendAt <= now + 60) {
     const left = monthlyAllowance(store) - (await usedThisMonth(store.listId));
     if (reach > left) return { ok: false, reason: "allowance" };
@@ -166,6 +207,7 @@ export async function createBroadcast(
     failures: 0,
     listed: false,
     tagged: true,
+    test,
   };
   await save(broadcast);
   await redisPipeline([
@@ -193,6 +235,7 @@ export async function advanceBroadcast(
   load: (handle: string) => Promise<Store | null>,
   deadline: number,
 ): Promise<Broadcast | null> {
+  const seconds = () => Math.floor(Date.now() / 1000);
   const [got] = await redisPipeline([["SET", lockKey(id), "1", "NX", "EX", 90]]);
   if (got === null) return null;
   try {
@@ -222,28 +265,68 @@ export async function advanceBroadcast(
 
     if (!b.listed) {
       const to = await audience(b.listId, b.productId ?? undefined, b.notProductId ?? undefined, whoOf(store, b.who));
+      let test = b.test;
+      if (test) {
+        if (to.length < MIN_TEST_REACH) {
+          // Scheduled for a list that has shrunk since: everyone gets the
+          // first subject, and the studio says no test was run.
+          test = { ...test, skipped: true, a: 0, b: 0 };
+        } else {
+          // Who gets which subject is chance and nothing else: the list is
+          // put in a random order once, here, and written down in it.
+          shuffle(to);
+          test = { ...test, ...splitFor(to.length, test.share) };
+        }
+      }
       const commands: (string | number)[][] = [["DEL", toKey(id)]];
       for (let i = 0; i < to.length; i += 500) commands.push(["RPUSH", toKey(id), ...to.slice(i, i + 500)]);
       commands.push(["EXPIRE", toKey(id), 60 * 86_400]);
       await redisPipeline(commands);
-      b = { ...b, status: "sending", total: to.length, note: "", listed: true };
+      b = { ...b, status: "sending", total: to.length, note: "", listed: true, test };
       await save(b);
     }
     if (b.status === "waiting") b = { ...b, status: "sending", note: "" };
 
     while (b.sent < b.total && Date.now() < deadline) {
-      const [chunk] = await redisPipeline([["LRANGE", toKey(id), b.sent, b.sent + BATCH_SIZE - 1]]);
+      // With two subjects on trial the list has three parts, and a batch
+      // never crosses from one into the next (lib/mail-test.ts).
+      const running: SubjectTest | null = b.test && !b.test.skipped ? b.test : null;
+      const { part, end } = running ? partAt(running, b.sent, b.total) : { part: "rest" as const, end: b.total };
+      if (running && part === "rest" && !running.winner) {
+        // The test's own emails have all gone. The rest wait for the hours
+        // the creator chose, counted from now, and then get the better one.
+        if (!running.endsAt) {
+          b = { ...b, test: { ...running, endsAt: seconds() + running.hours * 3_600 } };
+          await save(b);
+        }
+        if (seconds() < (b.test as SubjectTest).endsAt) {
+          // No note: the studio says what is being waited for, with the
+          // numbers and the time, from the test itself.
+          b = { ...b, status: "waiting", note: "" };
+          break;
+        }
+        const counted = await countTest(store, b);
+        const chosen = chooseSubject(running, counted.visits, counted.sales);
+        b = { ...b, test: { ...(b.test as SubjectTest), winner: chosen.winner, why: chosen.why, visits: counted.visits, sales: counted.sales } };
+        // Written down before anything more is sent, so a run cut short here
+        // cannot send half the rest under one subject and half under the other.
+        await save(b);
+        continue;
+      }
+      const subject = running && (part === "b" || (part === "rest" && running.winner === "b")) ? running.subjectB : b.subject;
+      const campaign = part === "rest" ? broadcastCampaign(id) : variantCampaign(id, part);
+      const [chunk] = await redisPipeline([["LRANGE", toKey(id), b.sent, Math.min(b.sent + BATCH_SIZE, end) - 1]]);
       const emails = Array.isArray(chunk) ? (chunk as string[]) : [];
       if (!emails.length) break;
       const result = await sendTo(
         store,
         emails,
-        b.subject,
+        subject,
         b.body,
         `bc:${id}:${b.sent}`,
         // Only an email made since links were tagged: one scheduled before
         // goes out exactly as it was written and scheduled.
-        b.tagged ? { medium: "broadcast", campaign: broadcastCampaign(id) } : undefined,
+        b.tagged ? { medium: "broadcast", campaign } : undefined,
       );
       // Whatever went before a stop counts, so the next run starts after it.
       const processed = emails.length - result.rest.length;
@@ -276,6 +359,45 @@ export async function advanceBroadcast(
   } finally {
     await redisPipeline([["DEL", lockKey(id)]]).catch(() => {});
   }
+}
+
+/** A random order, in place: every order as likely as any other. */
+function shuffle(list: string[]): void {
+  for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1);
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+}
+
+/**
+ * What each subject line has brought so far: visits to the store, from the
+ * store's own count of them, and sales, from the creator's own Stripe
+ * account. Either is null when it could not be read; neither is guessed.
+ * Sales are read only for a test that is decided by them.
+ */
+async function countTest(store: Store, b: Broadcast): Promise<{ visits: Counted; sales: Counted }> {
+  const a = variantCampaign(b.id, "a");
+  const bee = variantCampaign(b.id, "b");
+  let visits: Counted = null;
+  let sales: Counted = null;
+  try {
+    // Every day the test could have been running on, and one to spare.
+    const days = Math.ceil((Date.now() / 1000 - b.sendAt) / 86_400) + 2;
+    const views = await campaignViews(store.statsId, [a, bee], days);
+    if (views) visits = { a: views[a] ?? 0, b: views[bee] ?? 0 };
+  } catch (error) {
+    console.error("reading a subject test's visits failed", error);
+  }
+  if (b.test?.by === "sales" && store.stripeAccountId) {
+    try {
+      const read = await readPaidSales(store, b.sendAt - 60, 5);
+      const by = moneyByCampaign(read.sales, store.currency);
+      sales = { a: by[a]?.sales ?? 0, b: by[bee]?.sales ?? 0 };
+    } catch (error) {
+      console.error("reading a subject test's sales failed", error);
+    }
+  }
+  return { visits, sales };
 }
 
 /** Moves every waiting or scheduled broadcast on. For the scheduled job. */
