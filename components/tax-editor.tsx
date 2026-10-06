@@ -32,6 +32,8 @@ export function TaxEditor({
   const router = useRouter();
   const [enabled, setEnabled] = useState(tax.enabled);
   const [included, setIncluded] = useState(tax.included);
+  const [ids, setIds] = useState(tax.ids);
+  const [invoices, setInvoices] = useState(tax.invoices);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +45,7 @@ export function TaxEditor({
       const response = await fetch("/api/store/tax", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled, included }),
+        body: JSON.stringify({ enabled, included, ids, invoices }),
       });
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (data.ok) {
@@ -62,7 +64,7 @@ export function TaxEditor({
   return (
     <section className="card mt-8 p-6 sm:p-8" aria-labelledby="tax-title">
       <h2 id="tax-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">
-        Sales tax
+        Tax and invoices
       </h2>
       <p className="mt-2 text-ink-soft">
         Stripe Tax works out sales tax or VAT from each buyer&apos;s address, for the places where you have told Stripe
@@ -113,6 +115,38 @@ export function TaxEditor({
               <input type="radio" name="tax-included" checked={included} onChange={() => setIncluded(true)} className="mt-0.5 h-4 w-4" />
               <span>My prices already include it (usual in Europe, the UK and Australia)</span>
             </label>
+          </fieldset>
+
+          <fieldset className="space-y-3 border-t border-line pt-4">
+            <legend className="field-label">Business buyers</legend>
+            <label className="flex items-start gap-3 text-sm font-semibold text-ink">
+              <input
+                type="checkbox"
+                checked={ids}
+                onChange={(e) => setIds(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-violet-brand"
+              />
+              Let a business give its VAT or tax number at checkout
+            </label>
+            <p className="pl-7 text-xs text-ink-soft">
+              A company in the EU or the UK that enters a valid number is not charged the tax, under the reverse charge,
+              instead of paying it and claiming it back months later. The number is saved on your own Stripe account.
+              Buyers without one are never stopped or asked twice.
+            </p>
+            <label className="flex items-start gap-3 text-sm font-semibold text-ink">
+              <input
+                type="checkbox"
+                checked={invoices}
+                onChange={(e) => setInvoices(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-violet-brand"
+              />
+              Offer an invoice at checkout
+            </label>
+            <p className="pl-7 text-xs text-ink-soft">
+              Stripe draws the invoice on your account, with you as the seller and tax on its own line, and hands the
+              buyer the PDF. Nobody has to write to you for one. Memberships and payment plans are already invoiced by
+              Stripe at every payment, so this covers single payments.
+            </p>
           </fieldset>
 
           {enabled ? (

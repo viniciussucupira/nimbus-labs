@@ -24,7 +24,7 @@ import { isPaidUp } from "@/lib/billing";
 import { StripeError, checkoutClosesAt, onAccount, platformKey } from "@/lib/stripe-account";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { type CameFrom, hasSource } from "@/lib/came-from";
-import { applyTax } from "@/lib/tax";
+import { applyTax, applyTaxDocuments, refusedTaxDocuments, withoutTaxDocuments } from "@/lib/tax";
 import { inTheCurrencyShown, isSettled, onlyInstantMethods, reusableMethod, saveCardForOffers } from "@/lib/instant-pay";
 import { activePwyw, pwywPriceId } from "@/lib/pay-what-you-want";
 import { type Answer, applyCheckoutFields, readAnswers } from "@/lib/checkout-fields";
@@ -399,6 +399,10 @@ export async function createCheckout(
   // Sales tax, when the creator has switched it on: worked out by Stripe Tax
   // from the buyer's address, on the creator's account, for every line.
   applyTax(store, body);
+  // And the two documents a business buyer needs: the box for their own tax
+  // number, and an invoice drawn up by Stripe on the creator's account
+  // (lib/tax.ts). Set before the closing time below, as recovery is.
+  applyTaxDocuments(store, body, recurring);
   onlyInstantMethods(body);
   inTheCurrencyShown(body);
   // A store with reminders on: Stripe asks the buyer whether they want to
@@ -445,6 +449,7 @@ export async function createCheckout(
   // and a kept Price that was archived — still opens its checkout.
   let session: Record<string, unknown> | null = null;
   let asking = recovering;
+  let documents = store.tax.ids || store.tax.invoices;
   let fresh = false;
   while (session === null) {
     try {
@@ -465,6 +470,15 @@ export async function createCheckout(
         console.error("checkout refused the reminder fields; opened without them", error);
         withoutRecovery(body);
         asking = false;
+        continue;
+      }
+      if (documents && refusedTaxDocuments(error)) {
+        // A tax number box and an invoice are worth a great deal to a business
+        // buyer and nothing at all to a sale that never happens. Refused on
+        // this account, the checkout opens again without them and sells.
+        console.error("checkout refused the tax number box or the invoice; opened without them", error);
+        withoutTaxDocuments(body);
+        documents = false;
         continue;
       }
       // The kept Price was archived or deleted in the creator's dashboard: make
