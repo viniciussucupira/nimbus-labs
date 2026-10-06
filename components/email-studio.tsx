@@ -32,6 +32,7 @@ const MESSAGES: Record<string, string> = {
     "Two subject lines are compared by the visits and sales the email's links bring, and this email has no link to your store. Add a link to your store or to a product, or send it without the test.",
   allowance: "This goes to more people than this month's emails have left. Send it to a smaller group, or next month.",
   day: "Today's sending is full. A test can go out again tomorrow.",
+  sender: "Email is waiting on our side: the service that sends it has reached its volume for the month. Nothing was sent; it opens again as soon as that is raised, or when the month turns.",
   setup: "Save the name and postal address your emails carry first, at the top of this page.",
   plan: "Email to your list is part of Pro.",
   name: "Give the sequence a name.",

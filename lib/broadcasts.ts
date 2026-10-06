@@ -15,7 +15,7 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { WHO, type Who, audience } from "@/lib/contacts";
-import { BATCH_SIZE, MAX_MAIL_BODY, MAX_SUBJECT, monthlyAllowance, sendTo, usedThisMonth } from "@/lib/mail";
+import { BATCH_SIZE, MAX_MAIL_BODY, MAX_SUBJECT, SENDER_WAIT_NOTE, monthlyAllowance, sendTo, usedThisMonth } from "@/lib/mail";
 import type { Store } from "@/lib/store";
 import { hasProduct, idsOfKind } from "@/lib/catalog";
 import { broadcastCampaign, isOwnLink, variantCampaign } from "@/lib/mail-links";
@@ -337,6 +337,12 @@ export async function advanceBroadcast(
       }
       if (result.stopped === "day") {
         b = { ...b, status: "waiting", note: "Going out in daily portions: the rest continue tomorrow, by themselves." };
+        break;
+      }
+      if (result.stopped === "sender") {
+        // Not this store's doing and not its month: the sender's own ceiling
+        // (lib/mail.ts). It waits, and the scheduled job takes it up again.
+        b = { ...b, status: "waiting", note: SENDER_WAIT_NOTE };
         break;
       }
       if (result.stopped) {

@@ -6,6 +6,7 @@
  * the provider ever changes.
  */
 import { RESEND_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 
 // Local tests may point this at a mock server on 127.0.0.1; nothing else is
 // accepted, so a test can never reach the real sender.
@@ -23,6 +24,38 @@ export const NIMBUS_FROM =
 export const STORE_FROM =
   process.env.RECOVERY_FROM_EMAIL?.trim() ||
   "Harbor Kitchen <onboarding@resend.dev>";
+
+/**
+ * How many emails of every kind this deployment has handed to the sender in a
+ * calendar month (UTC): sign-in links, receipts and creators' list email
+ * together, because the sender counts them together.
+ *
+ * It is counted here, in the one place everything is sent from, so that list
+ * email can be held back before the sender's own ceiling is reached
+ * (lib/mail.ts, senderRoom). A count that could not be written is let go: no
+ * email is ever lost, or held up, over a counter.
+ */
+export const sentKey = (now = new Date()) => `nl:sender:${now.toISOString().slice(0, 7)}`;
+
+async function countSent(n: number): Promise<void> {
+  if (n <= 0 || !isRedisConfigured()) return;
+  const key = sentKey();
+  await redisPipeline([
+    ["INCRBY", key, n],
+    ["EXPIRE", key, 70 * 86_400],
+  ]).catch(() => {});
+}
+
+/** Every email handed to the sender this month, of every kind. 0 when it cannot be read. */
+export async function sentThisMonth(): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+  try {
+    const [raw] = await redisPipeline([["GET", sentKey()]]);
+    return Number(raw) || 0;
+  } catch {
+    return 0;
+  }
+}
 
 function getKey(): string | null {
   const key = process.env.RESEND_API_KEY?.trim();
@@ -125,7 +158,10 @@ export async function sendEmail(message: {
           signal,
         }),
       );
-      if (response.ok) return true;
+      if (response.ok) {
+        await countSent(1);
+        return true;
+      }
       if (response.status === 429 && attempt < 2) {
         await pause(1_000 + attempt * 1_000);
         continue;
@@ -166,6 +202,9 @@ export async function sendBatch(
   const key = getKey();
   if (!key) return "retry";
   if (messages.length === 0) return "sent";
+  // What actually goes: a message with no address that can be written to is
+  // left out below, and is not counted as sent either.
+  const going = messages.slice(0, 100).filter((m) => oneAddress(m.to) !== null);
   try {
     // Given up after RESEND_TIMEOUT_MS: "retry", with the same key next time.
     const response = await timed(RESEND_TIMEOUT_MS, (signal) => fetch(`${BASE}/emails/batch`, {
@@ -176,9 +215,7 @@ export async function sendBatch(
         "Idempotency-Key": idempotencyKey.slice(0, 256),
       },
       body: JSON.stringify(
-        messages
-          .slice(0, 100)
-          .filter((m) => oneAddress(m.to) !== null)
+        going
           .map((m) => {
             const replyTo = oneAddress(m.replyTo);
             const headers = cleanHeaders(m.headers);
@@ -196,7 +233,10 @@ export async function sendBatch(
       cache: "no-store",
       signal,
     }));
-    if (response.ok) return "sent";
+    if (response.ok) {
+      await countSent(going.length);
+      return "sent";
+    }
     console.error("batch rejected", response.status);
     return response.status === 429 || response.status >= 500 ? "retry" : "refused";
   } catch (error) {
