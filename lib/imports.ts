@@ -69,6 +69,7 @@ import { grantImported, importedFor } from "@/lib/imported-purchases";
 import { deliverableItems } from "@/lib/bundle-rules";
 import { NIMBUS_FROM, isSenderConfigured, sendBatch } from "@/lib/email";
 import { releaseDay, reserveDay } from "@/lib/mail";
+import { healthTags, noteSent, pausedFor, rampBack, rampRoom, startRamp } from "@/lib/mail-health";
 import { isPaidUp } from "@/lib/billing";
 import { storeBase } from "@/lib/purchase-email";
 
@@ -700,9 +701,28 @@ export async function movedEmail(store: Store, job: ImportJob, email: string): P
 }
 
 async function mailStep(job: ImportJob, store: Store): Promise<"more" | "done" | "retry"> {
-  const [popped] = await redisPipeline([["SPOP", mailKey(job.id), MAIL_CHUNK]]);
+  const [waiting] = await redisPipeline([["SCARD", mailKey(job.id)]]);
+  if (!(Number(waiting) > 0)) return "done";
+  // These addresses are the creator's word alone. Once too many of them have
+  // bounced, or been answered with a spam report, the rest are not written
+  // to (lib/mail-health.ts): they are counted as not emailed, and the report
+  // says so.
+  const paused = await pausedFor(job.sid);
+  // And until then they go out in portions that double, a hundred buyers
+  // first, so that a file of dead addresses is found while few have been
+  // written to. A portion not yet open is waited for; nobody is dropped.
+  const portion = paused ? MAIL_CHUNK : await rampRoom(job.sid, Math.min(MAIL_CHUNK, Number(waiting)));
+  if (portion <= 0) return "retry";
+  const [popped] = await redisPipeline([["SPOP", mailKey(job.id), portion]]);
   const emails = (Array.isArray(popped) ? popped : typeof popped === "string" ? [popped] : []).map(String);
   if (emails.length === 0) return "done";
+  if (paused) {
+    job.counts.unmailed += emails.length;
+    return "more";
+  }
+  /** What was taken from the portion and did not go is given back to it. */
+  const unsent = (n: number) => rampBack(job.sid, n);
+  const tags = healthTags(store, false);
   const messages = [];
   for (const email of emails) {
     const letter = await movedEmail(store, job, email);
@@ -717,12 +737,17 @@ async function mailStep(job: ImportJob, store: Store): Promise<"more" | "done" |
         .map((para) => `<p>${escapeHtml(para).replace(/\n/g, "<br>")}</p>`)
         .join("")}</div>`,
       replyTo: store.email,
+      tags,
     });
   }
-  if (messages.length === 0) return "more";
+  if (messages.length === 0) {
+    await unsent(portion);
+    return "more";
+  }
   // The company's day first: over it, the same buyers wait for tomorrow.
   if (!(await reserveDay(messages.length))) {
     await redisPipeline([["SADD", mailKey(job.id), ...emails]]);
+    await unsent(portion);
     return "retry";
   }
   // Then the store's thirty days: past them, the rest are not emailed.
@@ -731,6 +756,7 @@ async function mailStep(job: ImportJob, store: Store): Promise<"more" | "done" |
   if (sending.length < messages.length) await releaseDay(messages.length - sending.length);
   if (sending.length === 0) {
     job.counts.unmailed += messages.length;
+    await unsent(portion);
     return "more";
   }
   const sent = await sendBatch(sending, `nimbus-import:${job.id}:${emails.slice().sort()[0]}:${emails.length}`);
@@ -740,11 +766,19 @@ async function mailStep(job: ImportJob, store: Store): Promise<"more" | "done" |
       ["DECRBY", movedKey(job.sid), sending.length],
     ]);
     await releaseDay(sending.length);
+    await unsent(portion);
     return "retry";
   }
   job.counts.unmailed += messages.length - sending.length;
-  if (sent === "sent") job.counts.mailed += sending.length;
-  else job.counts.unmailed += sending.length;
+  if (sent === "sent") {
+    // What a bounce or a complaint is later measured against.
+    await noteSent(job.sid, sending.length);
+    await unsent(portion - sending.length);
+    job.counts.mailed += sending.length;
+  } else {
+    await unsent(portion);
+    job.counts.unmailed += sending.length;
+  }
   return "more";
 }
 
@@ -781,6 +815,15 @@ export async function runImport(id: string, deadline: number): Promise<ImportJob
       if (job.state === "running") {
         if (job.cursor.batch >= count) {
           job.state = job.options.email ? "mailing" : "done";
+          // Addresses brought in from elsewhere are of unknown age: the
+          // store's next emails to them go out in portions that double
+          // (lib/mail-health.ts). A file of contacts by how many it added;
+          // past buyers, when they are to be emailed, by how many those are.
+          if (job.kind === "contacts") await startRamp(job.sid, job.counts.added);
+          else if (job.options.email) {
+            const [toMail] = await redisPipeline([["SCARD", mailKey(job.id)]]);
+            await startRamp(job.sid, Number(toMail) || 0);
+          }
           await redisPipeline([saveJob(job)]);
           continue;
         }

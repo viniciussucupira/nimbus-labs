@@ -128,11 +128,12 @@ export class MemoryRedis {
         if (ends === undefined) return -1;
         return Math.max(0, Math.ceil((ends - this.now()) / 1000));
       }
-      case "INCRBY": {
+      case "INCRBY":
+      case "DECRBY": {
         // Returns the new total, which is how lib/delivery.ts knows the
         // exact delivery that took a store past its allowance.
         const held = this.data.get(key);
-        const by = Number(args[0]) || 0;
+        const by = (Number(args[0]) || 0) * (name === "DECRBY" ? -1 : 1);
         const next = (typeof held === "string" ? Number(held) || 0 : 0) + by;
         this.data.set(key, String(next));
         return next;

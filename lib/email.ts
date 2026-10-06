@@ -186,7 +186,21 @@ export type BatchMessage = {
   html: string;
   replyTo?: string;
   headers?: Record<string, string>;
+  /**
+   * Labels the sender keeps with the email and gives back when it tells us
+   * what became of it: which store's it was, so a bounce can be counted for
+   * that store (lib/mail-health.ts). Never shown to the reader.
+   */
+  tags?: Record<string, string>;
 };
+
+/** Tags as the sender takes them: ASCII letters, digits, "_" and "-" only, 256 at most; anything else is left out. */
+export function cleanTags(tags: Record<string, string> | undefined): { name: string; value: string }[] {
+  const ok = /^[A-Za-z0-9_-]{1,256}$/;
+  return Object.entries(tags ?? {})
+    .filter(([name, value]) => ok.test(name) && ok.test(value))
+    .map(([name, value]) => ({ name, value }));
+}
 
 /**
  * Sends up to a hundred emails in one request. The key makes a retry of the
@@ -219,6 +233,7 @@ export async function sendBatch(
           .map((m) => {
             const replyTo = oneAddress(m.replyTo);
             const headers = cleanHeaders(m.headers);
+            const tags = cleanTags(m.tags);
             return {
               from: fromLine(m.from),
               to: [oneAddress(m.to) as string],
@@ -227,6 +242,7 @@ export async function sendBatch(
               html: m.html,
               ...(replyTo ? { reply_to: replyTo } : {}),
               ...(headers ? { headers } : {}),
+              ...(tags.length ? { tags } : {}),
             };
           }),
       ),

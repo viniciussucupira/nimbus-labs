@@ -73,6 +73,16 @@ export function isInboundConfigured(): boolean {
 }
 
 /**
+ * Whether Resend's announcements can be believed at all: the one setting that
+ * signs them. Enough for the announcements that carry what they say in
+ * themselves — an email bounced, an email was marked as spam
+ * (lib/mail-health.ts) — which need nothing fetched and nothing sent on.
+ */
+export function canHearResend(): boolean {
+  return Boolean(env("RESEND_WEBHOOK_SECRET"));
+}
+
+/**
  * Whether an announcement is Resend's: signed under RESEND_WEBHOOK_SECRET,
  * no more than five minutes ago. The signature header may hold several
  * ("v1,<base64> v1,<base64>"); one that matches is enough.

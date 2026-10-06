@@ -15,6 +15,7 @@
 import { randomBytes, randomInt } from "node:crypto";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { WHO, type Who, audience } from "@/lib/contacts";
+import { PORTION_NOTE, pauseNote } from "@/lib/mail-health";
 import { BATCH_SIZE, MAX_MAIL_BODY, MAX_SUBJECT, SENDER_WAIT_NOTE, monthlyAllowance, sendTo, usedThisMonth } from "@/lib/mail";
 import type { Store } from "@/lib/store";
 import { hasProduct, idsOfKind } from "@/lib/catalog";
@@ -343,6 +344,18 @@ export async function advanceBroadcast(
         // Not this store's doing and not its month: the sender's own ceiling
         // (lib/mail.ts). It waits, and the scheduled job takes it up again.
         b = { ...b, status: "waiting", note: SENDER_WAIT_NOTE };
+        break;
+      }
+      if (result.stopped === "portion") {
+        // Addresses were brought into this list lately, so it goes out in
+        // portions that double (lib/mail-health.ts); the next one opens by itself.
+        b = { ...b, status: "waiting", note: PORTION_NOTE };
+        break;
+      }
+      if (result.stopped === "paused") {
+        // This store's own addresses (lib/mail-health.ts): it waits its week
+        // out, and the scheduled job takes it up again.
+        b = { ...b, status: "waiting", note: result.pause ? pauseNote(result.pause) : "Paused for now. The rest go out by themselves." };
         break;
       }
       if (result.stopped) {
