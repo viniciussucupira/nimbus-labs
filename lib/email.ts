@@ -2,11 +2,26 @@
  * The one place that sends email.
  *
  * Everything that needs to reach an inbox goes through here, so there is a
- * single answer to "is sending switched on?" and a single place to change if
- * the provider ever changes.
+ * single answer to "is sending switched on?" and a single place that knows
+ * who sends.
+ *
+ * There are two senders. Amazon SES is the cheaper by nine times (lib/ses.ts
+ * has the prices and the date they were read), and is used whenever Amazon
+ * says the account may write to the public. Resend is the one this site
+ * started on, and stays underneath as the floor: every email Amazon does not
+ * take — the account is still being looked at, is paused, has used its day,
+ * is not answering — goes through Resend in the same breath, so no email
+ * waits on Amazon and none is lost to it. With Amazon's settings absent,
+ * everything goes through Resend exactly as before.
+ *
+ * Nobody chooses between them by hand. Which one sends is decided here, for
+ * each email, from what Amazon last said.
  */
+import { createHash } from "node:crypto";
 import { RESEND_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { SUPPORT_EMAIL } from "@/lib/creator-research";
+import { countSesSent, isSesConfigured, notYetTaken, sesBatch, sesBulkRoom, sesConfig, sesDown, sesReady, sesSend } from "@/lib/ses";
 
 // Local tests may point this at a mock server on 127.0.0.1; nothing else is
 // accepted, so a test can never reach the real sender.
@@ -26,9 +41,10 @@ export const STORE_FROM =
   "Harbor Kitchen <onboarding@resend.dev>";
 
 /**
- * How many emails of every kind this deployment has handed to the sender in a
+ * How many emails of every kind this deployment has handed to Resend in a
  * calendar month (UTC): sign-in links, receipts and creators' list email
- * together, because the sender counts them together.
+ * together, because Resend counts them together. What Amazon took is counted
+ * apart, by the hour, as Amazon counts it (lib/ses.ts).
  *
  * It is counted here, in the one place everything is sent from, so that list
  * email can be held back before the sender's own ceiling is reached
@@ -63,7 +79,44 @@ function getKey(): string | null {
 }
 
 export function isSenderConfigured(): boolean {
+  return getKey() !== null || isSesConfigured();
+}
+
+/** Whether Resend is there to send what Amazon does not take. */
+export function hasResend(): boolean {
   return getKey() !== null;
+}
+
+/**
+ * Says so, once a day, to the site's own inbox when Amazon refuses to send
+ * for the account's own sake: nothing is lost by it, because Resend takes
+ * over at once, but each of those emails costs nine times as much, and what
+ * Amazon wants — a domain proved again, a review answered — is for the
+ * owner to do.
+ */
+async function tellAmazonIsDown(why: string): Promise<void> {
+  try {
+    const day = new Date().toISOString().slice(0, 10);
+    const [first] = await redisPipeline([["SET", `nl:ses:told:${day}`, "1", "NX", "EX", 2 * 86_400]]);
+    if (first === null || !hasResend()) return;
+    await viaResend({
+      from: NIMBUS_FROM,
+      to: SUPPORT_EMAIL,
+      subject: "Amazon SES is not sending: email is going out through Resend",
+      text: [
+        "Amazon SES refused to send an email, for a reason that is the account's and not the email's:",
+        "",
+        why || "(no reason given)",
+        "",
+        "Nothing was lost: that email, and every one since, went out through Resend instead, which costs about nine times as much for each.",
+        "Amazon is asked again every ten minutes, and sending moves back to it by itself as soon as it answers yes.",
+        "",
+        "What to look at: the Amazon SES console, under Account dashboard (is the account paused or under review?) and Identities (is the sending domain still verified?).",
+      ].join("\n"),
+    });
+  } catch (error) {
+    console.error("telling the inbox Amazon SES is down failed", error);
+  }
 }
 
 /**
@@ -101,7 +154,7 @@ function cleanHeaders(headers: Record<string, string> | undefined): Record<strin
   return out;
 }
 
-export async function sendEmail(message: {
+type OneMessage = {
   from: string;
   to: string;
   subject: string;
@@ -110,16 +163,79 @@ export async function sendEmail(message: {
   html?: string;
   /** Where replies go, when that is not the sender. */
   replyTo?: string;
-  /** Files to attach, their content in base64, as Resend's API takes them. */
+  /** Files to attach, their content in base64. */
   attachments?: { filename: string; content: string }[];
   /** Extra headers, such as the one that lets a mail app offer unsubscribe. */
   headers?: Record<string, string>;
   /**
-   * For a message that must go out once: the sender answers a repeat of the
-   * same key, within a day, without sending it again.
+   * For a message that must go out once: a repeat of the same key, within a
+   * day, is answered without sending it again.
    */
   idempotencyKey?: string;
-}): Promise<boolean> {
+};
+
+const onceKey = (key: string) => `nl:ses:once:${createHash("sha256").update(key).digest("hex").slice(0, 40)}`;
+
+/**
+ * One email through Amazon, when Amazon may be used. True when Amazon took
+ * it (or had already, under the same key); false for every reason it did
+ * not, and then the caller sends it through Resend.
+ */
+async function viaAmazon(message: OneMessage, to: string): Promise<boolean> {
+  const config = sesConfig();
+  if (!config || !(await sesReady())) return false;
+  // Amazon keeps no record of a key, so the once-only promise is kept here.
+  const once = message.idempotencyKey ? onceKey(message.idempotencyKey) : null;
+  if (once) {
+    try {
+      const [fresh] = await redisPipeline([["SET", once, "1", "NX", "EX", 86_400]]);
+      if (fresh === null) return true;
+    } catch {
+      return false;
+    }
+  }
+  const headers = cleanHeaders(message.headers);
+  let last = { outcome: "busy" as string, why: "" };
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    last = await sesSend(config, {
+      from: fromLine(message.from),
+      to,
+      subject: headerText(message.subject),
+      text: message.text,
+      html: message.html,
+      replyTo: oneAddress(message.replyTo),
+      headers,
+      attachments: message.attachments,
+    });
+    if (last.outcome === "sent") {
+      await countSesSent(1);
+      return true;
+    }
+    // Too many a second for a moment, with a newsletter going out: a
+    // sign-in link waits its turn rather than lose it.
+    if (last.outcome !== "busy") break;
+    if (attempt < 2) await pause(400 * (attempt + 1));
+  }
+  // Not taken. The key is let go of, so that Resend, or a later try, may send it.
+  if (once) await redisPipeline([["DEL", once]]).catch(() => {});
+  if (last.outcome === "account") {
+    await sesDown(last.why);
+    await tellAmazonIsDown(last.why);
+  } else if (last.outcome === "refused") {
+    console.error("Amazon SES refused an email; trying the other sender", last.why);
+  }
+  return false;
+}
+
+export async function sendEmail(message: OneMessage): Promise<boolean> {
+  const to = oneAddress(message.to);
+  if (!to) return false;
+  if (isSesConfigured() && (await viaAmazon(message, to))) return true;
+  return viaResend(message);
+}
+
+/** One email through Resend: the first sender, and the floor under the other. */
+async function viaResend(message: OneMessage): Promise<boolean> {
   const key = getKey();
   if (!key) return false;
   const to = oneAddress(message.to);
@@ -203,22 +319,76 @@ export function cleanTags(tags: Record<string, string> | undefined): { name: str
 }
 
 /**
- * Sends up to a hundred emails in one request. The key makes a retry of the
- * same batch a no-op at the provider, so nobody gets a message twice.
+ * Sends up to a hundred emails. The key makes a retry of the same batch
+ * write to nobody twice: Resend keeps it for a whole request, and for what
+ * Amazon took, one email at a time, it is kept here (lib/ses.ts).
  *
  * "retry" means nothing was sent and the same batch may be tried again later;
  * "refused" means the provider will not send it as it is.
  */
 export async function sendBatch(
   messages: BatchMessage[],
-  idempotencyKey: string,
+  batchKey: string,
 ): Promise<"sent" | "retry" | "refused"> {
-  const key = getKey();
-  if (!key) return "retry";
+  if (!isSenderConfigured()) return "retry";
   if (messages.length === 0) return "sent";
   // What actually goes: a message with no address that can be written to is
   // left out below, and is not counted as sent either.
-  const going = messages.slice(0, 100).filter((m) => oneAddress(m.to) !== null);
+  let going = messages.slice(0, 100).filter((m) => oneAddress(m.to) !== null);
+  let idempotencyKey = batchKey;
+  const config = sesConfig();
+  if (config && isSesConfigured()) {
+    const all = going.length;
+    // Whoever Amazon already took under this key, in a batch that was then
+    // cut short and is being tried again, is not written to twice.
+    going = await notYetTaken(batchKey, going);
+    // And a batch whose rest was once handed to Resend goes back to Resend,
+    // under the same key: if Resend took it and the answer was lost on the
+    // way, only Resend can tell, and Amazon would write to them all again.
+    const handed = `nl:ses:rest:${createHash("sha256").update(batchKey).digest("hex").slice(0, 40)}`;
+    let toResend = false;
+    try {
+      toResend = (await redisPipeline([["GET", handed]]))[0] !== null;
+    } catch {
+      toResend = true;
+    }
+    const state = going.length && !toResend ? await sesReady() : null;
+    // Many at a time use Amazon's day only up to a share of it; past that
+    // they go through Resend, and the rest of the day is kept for the
+    // emails that go one at a time (lib/ses.ts).
+    if (state && (await sesBulkRoom(state)) >= going.length) {
+      const result = await sesBatch(
+        config,
+        state,
+        going.map((m) => ({
+          ...m,
+          from: fromLine(m.from),
+          to: oneAddress(m.to) as string,
+          subject: headerText(m.subject),
+          replyTo: oneAddress(m.replyTo),
+          headers: cleanHeaders(m.headers),
+          tags: cleanTags(m.tags),
+          original: m,
+        })),
+        batchKey,
+      );
+      await countSesSent(result.taken.length);
+      if (result.down) {
+        await sesDown(result.down);
+        await tellAmazonIsDown(result.down);
+      }
+      going = result.left.map((m) => m.original);
+    }
+    if (going.length === 0) return "sent";
+    if (!toResend) await redisPipeline([["SET", handed, "1", "EX", 2 * 86_400]]).catch(() => {});
+    // Resend answers a key it has seen with what it answered then, so a
+    // different set of people must not go under the same key.
+    if (going.length !== all) {
+      idempotencyKey = `${batchKey}:${createHash("sha256").update(going.map((m) => m.to).sort().join(",")).digest("hex").slice(0, 16)}`;
+    }
+  }
+  const key = getKey();
+  if (!key) return "retry";
   try {
     // Given up after RESEND_TIMEOUT_MS: "retry", with the same key next time.
     const response = await timed(RESEND_TIMEOUT_MS, (signal) => fetch(`${BASE}/emails/batch`, {

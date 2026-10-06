@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
+import { isSesConfigured } from "@/lib/ses";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Marktmorgen",
@@ -9,6 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
+  // Named from the day its settings are there, which is the day email can
+  // first go through it (lib/email.ts), and not before.
+  const amazon = isSesConfigured();
   return (
     <LegalPage title="Privacy Policy" lastUpdated="October 6, 2026">
       <p>
@@ -307,7 +311,12 @@ export default function PrivacyPage() {
           when the creator is trying two, each sent to a part of the list
           chosen at random. The tag is the same for everyone who got that
           email or that subject line: it lets the store count visits and sales
-          by email, and says nothing about who you are. When you unsubscribe — one press, from the
+          by email, and says nothing about who you are. Our email provider
+          tells us when one of these emails could not be delivered to your
+          address for good, or when you report one as spam: we record that,
+          and when, for your address on that creator&apos;s list, you are not
+          written to by that creator again, and for ten days we keep a one-way
+          hash of your address so that it is counted once. When you unsubscribe — one press, from the
           link or your mail app&apos;s own button — we record it and when, and
           you are not written to by that creator again unless you check their
           box again yourself.
@@ -932,6 +941,16 @@ export default function PrivacyPage() {
             our own addresses, such as support@marktmorgen.com, and passes them
             on to the inbox where we read them;
           </li>
+          {amazon ? (
+            <li>
+              <strong className="text-black">Amazon Web Services</strong>,
+              whose email service (Amazon SES) delivers the same emails we
+              send, listed under Resend above; Resend delivers them whenever
+              Amazon does not. Amazon also tells us when one of those emails
+              could not be delivered or was reported as spam, so that the
+              address is not written to again;
+            </li>
+          ) : null}
           <li>
             <strong className="text-black">Google</strong>, in whose mail
             service (Gmail) we read and answer the emails you write to us;
@@ -974,7 +993,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          Our own service providers (Vercel, Upstash, Resend and Anthropic) may use the
+          Our own service providers (Vercel, Upstash, Resend{amazon ? ", Amazon Web Services" : ""} and Anthropic) may use the
           information only to provide their services to us or as required by
           law. Stripe, Google for the emails you write to us, the services a
           creator connects and the ad platforms a creator adds handle what they
