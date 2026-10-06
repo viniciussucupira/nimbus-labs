@@ -17,6 +17,8 @@ import {
   TRIAL_MONTHLY_EMAILS,
   type Tier,
   yearSaving,
+  SCALE_MONTHLY_EMAILS,
+  TIERS,
 } from "@/lib/plan";
 
 /*
@@ -677,11 +679,11 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
                 the switch says what it is for without doing the arithmetic of
                 two plans at once in six words. */}
             <span className="rounded-full bg-mint-soft px-2 py-0.5 text-[0.75rem] font-semibold text-mint-deep">
-              {`save up to $${yearSaving("pro") / 100}`}
+              {`save up to $${Math.max(...TIERS.map(yearSaving)) / 100}`}
             </span>
           </button>
         </div>
-        <p className="text-sm text-ink-mute">Both plans either way, and you can switch from your studio whenever you like.</p>
+        <p className="text-sm text-ink-mute">Every plan either way, and you can switch from your studio whenever you like.</p>
       </div>
       {/*
         Two cards of the same build.
@@ -713,7 +715,33 @@ export function Pricing({ domains = false }: { domains?: boolean }) {
         />
       </div>
       {/*
-        What is true of both plans, and belongs to neither card: the two
+        The plan above these two, as a line and not a third card.
+
+        Nobody choosing where to start is choosing this: it is the same
+        product as the card on the right with a larger number of emails, for a
+        list that has outgrown it. Drawn as a card it would turn "which of
+        these two is my business" into a table to study. So it is said once,
+        with its price, where somebody who already has a big list will find
+        it, and offered again inside the studio on the day a month runs out.
+      */}
+      <div className="card-flat mt-6 flex flex-col gap-5 p-6 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
+        <p className="flex gap-3 text-[0.9375rem] text-ink-soft">
+          <Icon name="ladder" size={18} className="mt-0.5 shrink-0 text-violet-deep" />
+          <span>
+            <strong className="block font-semibold text-ink">
+              {`For a bigger list: $${((yearly ? PLAN_PRICES.scale.year : PLAN_PRICES.scale.month) / 100).toLocaleString("en-US")} ${yearly ? "a year" : "a month"}`}
+            </strong>
+            <span className="mt-1 block">
+              {`Everything in ${PLAN_TITLES.pro}, with up to ${SCALE_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month instead of ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")}, and ${AI_MONTHLY.scale.toLocaleString("en-US")} AI drafts instead of ${AI_MONTHLY.pro}. Start on it, or move up from your studio the day you need it and back whenever you like. On your receipts it is called ${PLAN_NAMES.scale}.`}
+            </span>
+          </span>
+        </p>
+        <Link href={`/signin?plan=scale&billing=${yearly ? "year" : "month"}`} className="btn btn-secondary shrink-0">
+          Start with a big list
+        </Link>
+      </div>
+      {/*
+        What is true of every plan, and belongs to neither card: the two
         edges of the trial, and the limit we publish rather than bury.
       */}
       <div className="card-flat mt-6 grid gap-4 p-6 text-sm sm:grid-cols-3 sm:p-7">

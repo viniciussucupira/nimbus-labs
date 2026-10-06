@@ -517,7 +517,7 @@ export default function Home() {
         <section id="pricing" className="surface-sand section scroll-mt-20">
           <div className="container-page">
             <div className="reveal mx-auto mt-10 max-w-2xl text-center">
-              <h2 className="t-h2 balance">Two plans, and one question between them.</h2>
+              <h2 className="t-h2 balance">Two plans to start on, and one question between them.</h2>
               <p className="mt-5 text-ink-soft">
                 {`Do you sell from here, or sell and write to your own list from here? That is the whole difference: $${PRICE} a month for the store and everything that sells from it, $${PLAN_PRICES.pro.month / 100} if your list lives here too. Neither takes a cent of what you sell.`}
               </p>

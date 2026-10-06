@@ -21,7 +21,7 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { PLAN_PRICES, PRO_MONTHLY_EMAILS, type Tier } from "@/lib/plan";
+import { PLAN_PRICES, PRO_MONTHLY_EMAILS, SCALE_MONTHLY_EMAILS, TIERS, monthlyEmails, type Cycle, type Tier } from "@/lib/plan";
 import { FREE_PAUSE_ABOVE_BYTES } from "@/lib/delivery";
 import { STORAGE_BRAKE_BYTES } from "@/lib/storage-quota";
 import { AI_MONTHLY } from "@/lib/ai-rules";
@@ -38,25 +38,33 @@ const PER_EMAIL = 0.0009;
 /** A rough, deliberately high figure for one AI draft. */
 const PER_DRAFT = 0.015;
 /** Receipts, file delivery and login links, which nothing caps. Set high. */
-const TRANSACTIONAL = { creator: 2_000, pro: 5_000 };
+const TRANSACTIONAL: Record<Tier, number> = { creator: 2_000, pro: 5_000, scale: 10_000 };
 
-/** What reaches us from one monthly charge, after Stripe takes its cut. */
-function netOf(tier: Tier): number {
-  const gross = PLAN_PRICES[tier].month / 100;
-  return gross - (gross * 0.029 + 0.3);
+/**
+ * What reaches us for one month of a plan, after Stripe takes its cut: one
+ * monthly charge, or a twelfth of the yearly one.
+ */
+function netOf(tier: Tier, cycle: Cycle = "month"): number {
+  const gross = PLAN_PRICES[tier][cycle] / 100;
+  const kept = gross - (gross * 0.029 + 0.3);
+  return cycle === "year" ? kept / 12 : kept;
 }
 
 /** Everything one store on this plan can run up in a month, at every limit at once. */
 function worstCost(tier: Tier): number {
   const storage = (STORAGE_BRAKE_BYTES / GB) * STORAGE_PER_GB;
   const free = (FREE_PAUSE_ABOVE_BYTES / GB) * DELIVERY_PER_GB;
-  const email = (tier === "pro" ? PRO_MONTHLY_EMAILS : 0) * PER_EMAIL;
+  const email = monthlyEmails(tier) * PER_EMAIL;
   const drafts = AI_MONTHLY[tier] * PER_DRAFT;
   const receipts = TRANSACTIONAL[tier] * PER_EMAIL;
   return storage + free + email + drafts + receipts;
 }
 
-for (const tier of ["creator", "pro"] as const) {
+test("the email each plan may send is the number that is published", () => {
+  assert.deepEqual(TIERS.map(monthlyEmails), [0, PRO_MONTHLY_EMAILS, SCALE_MONTHLY_EMAILS]);
+});
+
+for (const tier of TIERS) {
   test(`${tier}: every brake at its limit at once still turns a profit`, () => {
     const cost = worstCost(tier);
     const net = netOf(tier);
@@ -83,7 +91,7 @@ for (const tier of ["creator", "pro"] as const) {
     const lines: [string, number][] = [
       ["storage", (STORAGE_BRAKE_BYTES / GB) * STORAGE_PER_GB],
       ["free downloads", (FREE_PAUSE_ABOVE_BYTES / GB) * DELIVERY_PER_GB],
-      ["email", (tier === "pro" ? PRO_MONTHLY_EMAILS : 0) * PER_EMAIL],
+      ["email", monthlyEmails(tier) * PER_EMAIL],
       ["AI drafts", AI_MONTHLY[tier] * PER_DRAFT],
     ];
     for (const [name, cost] of lines) {
@@ -95,6 +103,32 @@ for (const tier of ["creator", "pro"] as const) {
     }
   });
 }
+
+for (const tier of TIERS) {
+  test(`${tier}: paid by the year, the worst month still leaves a real margin`, () => {
+    // A year paid at once is a discount, so each of its months brings in
+    // less, against the same worst case. The floor is lower than the monthly
+    // one and still far from scraping by; the plans that were on sale before
+    // this was first added up sit at 44%, and none may go under 40%.
+    const cost = worstCost(tier);
+    const net = netOf(tier, "year");
+    const margin = (net - cost) / net;
+    assert.ok(
+      margin >= 0.4,
+      `${tier}, yearly: costs $${cost.toFixed(2)} in its worst month against $${net.toFixed(2)} a month, ` +
+        `which keeps ${(margin * 100).toFixed(0)}%.`,
+    );
+  });
+}
+
+test("Scale keeps more than Pro does in its own worst month, monthly and yearly", () => {
+  // The dearest plan is the one a heavy sender is on, so it is the last one
+  // that may be allowed to be the thinnest.
+  for (const cycle of ["month", "year"] as const) {
+    const kept = (tier: Tier) => (netOf(tier, cycle) - worstCost(tier)) / netOf(tier, cycle);
+    assert.ok(kept("scale") >= kept("pro"), `${cycle}: Scale keeps ${(kept("scale") * 100).toFixed(1)}% and Pro ${(kept("pro") * 100).toFixed(1)}%`);
+  }
+});
 
 test("the free-download brake is smaller than the allowance that is published", () => {
   // The published figure covers paid and free together. Free copies — which

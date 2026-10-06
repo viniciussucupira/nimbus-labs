@@ -10,12 +10,12 @@ export const metadata: Metadata = {
 
 export default function RefundsPage() {
   return (
-    <LegalPage title="Refund Policy" lastUpdated="October 3, 2026">
+    <LegalPage title="Refund Policy" lastUpdated="October 6, 2026">
       <p>
         This Refund Policy applies to what you pay Marktmorgen, a product of
         Solrenning, an independent software studio, for the creator store at
         marktmorgen.com: the monthly
-        or yearly subscription, on either plan, at the price shown at
+        or yearly subscription, on any plan, at the price shown at
         checkout.
       </p>
       <p>
@@ -49,7 +49,7 @@ export default function RefundsPage() {
         </p>
         <p>
           This applies to every charge, not only your first: the initial
-          subscription payment, later renewal charges on either plan, monthly
+          subscription payment, later renewal charges on any plan, monthly
           or yearly, and a charge made when you switch plans or switch between
           monthly and yearly billing. Each charge has its own {REFUND_DAYS}{" "}
           days, counted from the day that charge was made.

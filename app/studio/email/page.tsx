@@ -13,7 +13,7 @@ import { broadcastMoney, flowMoney, readMailRevenue, readMailVisits } from "@/li
 import { sellsSomething } from "@/lib/mail-starters";
 import { flowStats, readFlows } from "@/lib/flows";
 import { inTrial, monthlyAllowance, usedThisMonth } from "@/lib/mail";
-import { PRO_MONTHLY_EMAILS, TRIAL_DAYS, TRIAL_MONTHLY_EMAILS, priceWords, yearSaving } from "@/lib/plan";
+import { PRO_MONTHLY_EMAILS, PRO_ON_SALE, SCALE_MONTHLY_EMAILS, TRIAL_DAYS, TRIAL_MONTHLY_EMAILS, priceWords, yearSaving } from "@/lib/plan";
 import { EmailStudio } from "@/components/email-studio";
 import { listDrafts } from "@/lib/mail-drafts";
 import { can } from "@/lib/team-roles";
@@ -137,6 +137,19 @@ export default async function StudioEmailPage({ searchParams }: Params) {
             used={used}
             allowance={allowance}
             trial={trial}
+            // The way up for a list that has outgrown Pro, offered beside the
+            // month's count to whoever may change the plan (lib/plan.ts).
+            moveUp={
+              PRO_ON_SALE && store.tier === "pro" && store.subscriptionActive && can(role, "billing")
+                ? {
+                    action: `/api/billing/switch?store=${store.sid}`,
+                    cycle: store.cycle,
+                    price: priceWords("scale", store.cycle),
+                    emails: SCALE_MONTHLY_EMAILS,
+                    trial,
+                  }
+                : null
+            }
             products={[...listings].map(([id, title]) => ({ id, title }))}
             broadcasts={broadcasts.map((b) => ({
               id: b.id,

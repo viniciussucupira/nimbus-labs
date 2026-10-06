@@ -15,7 +15,7 @@
  */
 import { NIMBUS_FROM, type BatchMessage, sendBatch } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
-import { PRO_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS, canUse } from "@/lib/plan";
+import { TRIAL_MONTHLY_EMAILS, canUse, monthlyEmails } from "@/lib/plan";
 import { tokensFor } from "@/lib/contacts";
 import { SITE_URL } from "@/lib/site-url";
 import type { Store } from "@/lib/store";
@@ -57,10 +57,10 @@ export function canWrite(store: Store): boolean {
   return monthlyAllowance(store) > 0 && store.mail !== null && store.listId !== null;
 }
 
-/** What this store may send this month: 0 when it is not on Pro. */
+/** What this store may send this month: 0 when it is not on Pro or above it. */
 export function monthlyAllowance(store: Store, nowSeconds = Date.now() / 1000): number {
   if (!canUse(store, "email")) return 0;
-  return store.trialEnds > nowSeconds ? TRIAL_MONTHLY_EMAILS : PRO_MONTHLY_EMAILS;
+  return store.trialEnds > nowSeconds ? TRIAL_MONTHLY_EMAILS : monthlyEmails(store.tier);
 }
 
 /** Whether the store is still in its free trial, when the smaller allowance applies. */

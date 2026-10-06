@@ -167,6 +167,8 @@ export function EmailStudio(props: {
   broadcasts: BroadcastRow[];
   /** The store's currency, for what each email sold. */
   currency: string;
+  /** The plan above this one, when the store is on Pro and this person may change its plan. */
+  moveUp: { action: string; cycle: "month" | "year"; price: string; emails: number; trial: boolean } | null;
   /** Whether anything on the store is sold for money. */
   sells: boolean;
   flows: FlowRow[];
@@ -227,6 +229,24 @@ export function EmailStudio(props: {
               ? `emails sent. During the free trial a month holds ${TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")}; the full ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} opens with your first payment.`
               : "emails sent, one-off and sequences together. The count starts again on the first of the month."}
           </p>
+          {props.moveUp ? (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
+                {`Need more? ${n(props.moveUp.emails)} a month on Scale`}
+              </summary>
+              <p className="mt-3 text-sm text-ink-soft">
+                {`Scale is the plan you have with room for a bigger list: up to ${n(props.moveUp.emails)} emails a month, at ${props.moveUp.price}. `}
+                {props.moveUp.trial
+                  ? "Nothing is charged now. When the trial ends you pay the Scale price instead."
+                  : "Today you are charged only the difference for the rest of the period you already paid for. You can go back to Pro from your studio whenever you like."}
+              </p>
+              <form action={props.moveUp.action} method="post" className="mt-3">
+                <input type="hidden" name="tier" value="scale" />
+                <input type="hidden" name="cycle" value={props.moveUp.cycle} />
+                <button type="submit" className="btn btn-secondary btn-sm">Move up to Scale</button>
+              </form>
+            </details>
+          ) : null}
         </div>
         <ListCard counts={props.counts} canExport={props.canExport} canImport={props.canSend} />
         {ready && props.canSettings ? (

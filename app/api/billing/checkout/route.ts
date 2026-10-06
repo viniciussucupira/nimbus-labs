@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
   const cycle = parseCycle(fields?.get("cycle") ?? "month");
   const tier = parseTier(fields?.get("tier") ?? "creator");
   if (!cycle || !tier) return away(origin, studio("billing=error"));
-  if (tier === "pro" && !PRO_ON_SALE) return away(origin, studio("billing=pro-closed"));
+  if (tier !== "creator" && !PRO_ON_SALE) return away(origin, studio("billing=pro-closed"));
 
   // Stripe not answering the question does not stop a first payment: the
   // daily job still finds anything this misses.

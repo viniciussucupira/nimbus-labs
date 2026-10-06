@@ -7,7 +7,7 @@
  * that exists only in this file is a claim nobody can check, and search engines
  * treat that as a reason to distrust the rest of it.
  */
-import { PLAN_PRICES, PLAN_NAMES, TRIAL_DAYS } from "@/lib/plan";
+import { PLAN_PRICES, PLAN_NAMES, TIERS, TRIAL_DAYS, type Tier } from "@/lib/plan";
 import { SITE_URL } from "@/lib/site-url";
 import type { BlogPost } from "@/lib/blog";
 
@@ -62,13 +62,13 @@ export function SiteData() {
 }
 
 /**
- * The product and its two prices, and the questions answered on the cover.
+ * The product and its prices, and the questions answered on the cover.
  *
  * The prices are read from the same constants the pricing section prints, so
  * the two can never drift apart: changing a plan's price changes both.
  */
 export function HomeData({ questions }: { questions: { q: string; a: string }[] }) {
-  const offer = (tier: "creator" | "pro") => ({
+  const offer = (tier: Tier) => ({
     "@type": "Offer",
     name: `${PLAN_NAMES[tier]}, monthly`,
     price: (PLAN_PRICES[tier].month / 100).toFixed(2),
@@ -90,7 +90,7 @@ export function HomeData({ questions }: { questions: { q: string; a: string }[] 
             url: SITE_URL,
             publisher: { "@id": `${SITE_URL}/#organization` },
             description: `A store page for creators, with a ${TRIAL_DAYS}-day free trial. Sales are direct charges on the creator's own Stripe account; Marktmorgen takes 0% of them.`,
-            offers: [offer("creator"), offer("pro")],
+            offers: TIERS.map(offer),
           },
           {
             "@type": "FAQPage",

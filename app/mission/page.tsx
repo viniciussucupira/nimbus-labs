@@ -144,13 +144,13 @@ const ORDERS_LINE =
  * The line about our own income, which belongs to whether billing can reach
  * Stripe from this deployment rather than to whether we have written the code.
  */
-const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year, or $${PLAN_PRICES.pro.month / 100} and $${PLAN_PRICES.pro.year / 100} on Pro, free for the first ${TRIAL_DAYS} days, with an email a week before the first charge, canceled in two clicks from your studio`;
+const BILLING_LINE = `The subscription that pays us: $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year, or $${PLAN_PRICES.pro.month / 100} and $${PLAN_PRICES.pro.year / 100} on Pro, or $${PLAN_PRICES.scale.month / 100} and $${(PLAN_PRICES.scale.year / 100).toLocaleString("en-US")} on Scale for a bigger list, free for the first ${TRIAL_DAYS} days, with an email a week before the first charge, canceled in two clicks from your studio`;
 
 /**
  * The same line while plans are not on sale (lib/opening.ts): the code is
  * there and nobody can press it, which this page counts as not built.
  */
-const BILLING_CLOSED_LINE = `Starting a paid plan: the subscription is written, at $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year and $${PLAN_PRICES.pro.month / 100} or $${PLAN_PRICES.pro.year / 100} on Pro, and it is not on sale until Marktmorgen opens`;
+const BILLING_CLOSED_LINE = `Starting a paid plan: the subscription is written, at $${PRICE_CENTS / 100} a month or $${YEAR_PRICE_CENTS / 100} a year and $${PLAN_PRICES.pro.month / 100} or $${PLAN_PRICES.pro.year / 100} on Pro, and $${PLAN_PRICES.scale.month / 100} or $${(PLAN_PRICES.scale.year / 100).toLocaleString("en-US")} on Scale for a bigger list, and it is not on sale until Marktmorgen opens`;
 
 /** The store on its own domain: built, and live where this deployment can add domains. */
 const DOMAIN_LINE =

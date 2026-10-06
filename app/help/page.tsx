@@ -71,7 +71,7 @@ const SECTIONS: Section[] = [
         q: "What does it cost to start?",
         a: [
           "Nothing to sign up. Your store address, your page, the editor and connecting Stripe are free and stay free.",
-          `What the subscription switches on is your checkout: your page taking a card, and handing out what you give away for an email address. It is $29 a month, or $300 a year, which is $48 less than paying monthly. Pro, which adds email to your list${isDomainsConfigured() ? " and your own domain" : ""}, is $99 a month or $948 a year. The first 14 days are free on either plan, monthly or yearly. Stripe takes your card details when the trial starts and first charges the card when the 14 days end; we email you a week before that charge, and if you cancel before it, from your studio, it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.`,
+          `What the subscription switches on is your checkout: your page taking a card, and handing out what you give away for an email address. It is $29 a month, or $300 a year, which is $48 less than paying monthly. Pro, which adds email to your list${isDomainsConfigured() ? " and your own domain" : ""}, is $99 a month or $948 a year. Scale, which is Pro for a list that sends up to 75,000 emails a month instead of 25,000, is $249 a month or $2,388 a year. The first 14 days are free on any plan, monthly or yearly. Stripe takes your card details when the trial starts and first charges the card when the 14 days end; we email you a week before that charge, and if you cancel before it, from your studio, it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.`,
         ],
       },
       {
@@ -208,7 +208,7 @@ const SECTIONS: Section[] = [
       {
         q: "Do I get anything for inviting another creator?",
         a: [
-          `Yes: ${INVITE_SHARE_PERCENT}% of every payment they make to us, for as long as they pay, on either plan, monthly or yearly. Your invite link is in your studio, under Invite creators. It counts when they accept it and then make their first store, and not for an account that paid us before, or one of your own.`,
+          `Yes: ${INVITE_SHARE_PERCENT}% of every payment they make to us, for as long as they pay, on any plan, monthly or yearly. Your invite link is in your studio, under Invite creators. It counts when they accept it and then make their first store, and not for an account that paid us before, or one of your own.`,
           `It is credit on your own Marktmorgen plan, not cash. It is added ${INVITE_HOLD_DAYS} days after each of their payments, once its refund window has closed, and Stripe takes it off your next bills by itself; two creators on the same plan as yours pay for it, and anything left over stays on your account. If you have not started your plan yet, it waits until you do.`,
           `The creator you invite gets ${formatMoney(INVITE_BONUS_CENTS, "usd")} of credit on their own plan ${INVITE_HOLD_DAYS} days after their first payment. For comparison, Stan pays 20% of each payment in cash, only while you pay Stan too, and names no bonus for the creator invited, in its help center article 'What is Stan's Referral Program?', read on September 30, 2026.`,
         ],

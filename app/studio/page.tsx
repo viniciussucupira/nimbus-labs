@@ -81,7 +81,8 @@ import {
   trialOffered,
 } from "@/lib/billing";
 import { STORAGE_BRAKE_BYTES, storageWords } from "@/lib/storage-quota";
-import { canUse, PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, priceWords, yearSaving } from "@/lib/plan";
+import { AI_MONTHLY } from "@/lib/ai-rules";
+import { canUse, hasPro, PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, SCALE_MONTHLY_EMAILS, priceWords, yearSaving } from "@/lib/plan";
 import { PLANS_ON_SALE } from "@/lib/opening";
 import { studioPath, studioView } from "@/lib/studio-route";
 import { type Permission, type Role, ROLE_NAMES, ROLE_SUMMARIES, can } from "@/lib/team-roles";
@@ -283,7 +284,11 @@ const BILLING_NOTICES: Record<string, { title: string; body: string }> = {
   },
   "switched-tier-pro": {
     title: "You are on Pro",
-    body: "Email to your list is switched on. Open Email, below your products, to set it up and write your first one.",
+    body: `Email to your list is on, up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month. Open Email, below your products, to write one.`,
+  },
+  "switched-tier-scale": {
+    title: "You are on Scale",
+    body: `Your list can now be sent up to ${SCALE_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month, from today. Nothing else in your store changed.`,
   },
   "switched-tier-creator": {
     title: "You are back on the Marktmorgen plan",
@@ -543,7 +548,7 @@ export default async function StudioPage({
   // records read from Vercel only while it is not yet live.
   const domainsOn = isDomainsConfigured();
   const domainNow =
-    domainsOn && store?.domain && !store.domain.liveAt && paid && tier === "pro"
+    domainsOn && store?.domain && !store.domain.liveAt && paid && hasPro(tier)
       ? await domainStatus(store.domain.name, store).catch(() => null)
       : null;
   const billedNow =
@@ -1206,7 +1211,7 @@ export default async function StudioPage({
                   <p className="text-lg font-semibold tracking-[-0.02em] text-ink">Your own domain</p>
                   <span className="tag tag-brand">Pro</span>
                 </div>
-                {paid && tier === "pro" ? (
+                {paid && hasPro(tier) ? (
                   <DomainEditor
                     handle={store.handle}
                     domain={store.domain?.name ?? null}
@@ -1236,12 +1241,12 @@ export default async function StudioPage({
                   <span className="tag tag-brand">Pro</span>
                 </div>
                 <p className="mt-2 text-ink-soft">
-                  {paid && tier === "pro"
+                  {paid && hasPro(tier)
                     ? "Write to the people who agreed to hear from you: one-off emails, emails scheduled for later, and sequences that go out by themselves after someone joins or buys."
                     : `One-off emails, emails scheduled for later, and sequences that go out by themselves after someone joins or buys. Part of Pro, at ${priceWords("pro", "month")}.`}
                 </p>
                 <Link href={studioPath(store, "", "email")} className="btn btn-primary mt-5">
-                  {paid && tier === "pro" ? "Open Email" : "See what it does"}
+                  {paid && hasPro(tier) ? "Open Email" : "See what it does"}
                 </Link>
               </div>
             ) : null}
@@ -1598,8 +1603,8 @@ export default async function StudioPage({
                         </summary>
                         <p className="mt-3 text-sm text-ink-soft">
                           {trialing
-                            ? `Nothing is charged now. When the trial ends you pay $${PLAN_PRICES[tier].year / 100} for the year, instead of ${priceWords(tier, "month")} — $${yearSaving(tier) / 100} less over the year.`
-                            : `You are charged $${PLAN_PRICES[tier].year / 100} today, less what is left of the month you already paid for, and the year starts today. That is $${yearSaving(tier) / 100} less than twelve monthly payments. If your bank asks you to confirm, you are sent to confirm it, and nothing changes until it is paid.`}
+                            ? `Nothing is charged now. When the trial ends you pay $${(PLAN_PRICES[tier].year / 100).toLocaleString("en-US")} for the year, instead of ${priceWords(tier, "month")} — $${yearSaving(tier) / 100} less over the year.`
+                            : `You are charged $${(PLAN_PRICES[tier].year / 100).toLocaleString("en-US")} today, less what is left of the month you already paid for, and the year starts today. That is $${yearSaving(tier) / 100} less than twelve monthly payments. If your bank asks you to confirm, you are sent to confirm it, and nothing changes until it is paid.`}
                         </p>
                         <form action={`/api/billing/switch${pin}`} method="post" className="mt-3">
                           <input type="hidden" name="cycle" value="year" />
@@ -1625,6 +1630,51 @@ export default async function StudioPage({
                           <input type="hidden" name="cycle" value={billedYearly ? "year" : "month"} />
                           <button type="submit" className="btn btn-primary btn-sm">
                             Move up to Pro
+                          </button>
+                        </form>
+                      </details>
+                    ) : null}
+                    {/*
+                      The way up from Pro, for a list that has outgrown it.
+                      Shown where the plan is managed and beside the month's
+                      count on the Email page, and nowhere as a nag: a store
+                      that never reaches its emails is never asked.
+                    */}
+                    {!changePending && PRO_ON_SALE && tier === "pro" ? (
+                      <details className="mt-4">
+                        <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
+                          {`Move up to Scale: ${priceWords("scale", billedYearly ? "year" : "month")}`}
+                        </summary>
+                        <p className="mt-3 text-sm text-ink-soft">
+                          {`Scale is Pro with room for a bigger list: up to ${SCALE_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month instead of ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")}, and ${AI_MONTHLY.scale.toLocaleString("en-US")} AI drafts instead of ${AI_MONTHLY.pro}. Everything else is the same. `}
+                          {trialing
+                            ? "Nothing is charged now. When the trial ends you pay the Scale price instead."
+                            : "Today you are charged only the difference for the rest of the period you already paid for, and the Scale price from your next charge on. If your bank asks you to confirm, you are sent to confirm it, and nothing changes until it is paid."}
+                        </p>
+                        <form action={`/api/billing/switch${pin}`} method="post" className="mt-3">
+                          <input type="hidden" name="tier" value="scale" />
+                          <input type="hidden" name="cycle" value={billedYearly ? "year" : "month"} />
+                          <button type="submit" className="btn btn-primary btn-sm">
+                            Move up to Scale
+                          </button>
+                        </form>
+                      </details>
+                    ) : null}
+                    {!changePending && tier === "scale" ? (
+                      <details className="mt-4">
+                        <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
+                          {`Go back to Pro: ${priceWords("pro", billedYearly ? "year" : "month")}`}
+                        </summary>
+                        <p className="mt-3 text-sm text-ink-soft">
+                          {trialing
+                            ? `Nothing is charged now. Your list goes back to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month.`
+                            : `From today your list goes back to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month; an email already going out waits for next month if this one is used up. What is left of what you paid for Scale is kept as credit on your account and pays your next charges until it runs out.`}
+                        </p>
+                        <form action={`/api/billing/switch${pin}`} method="post" className="mt-3">
+                          <input type="hidden" name="tier" value="pro" />
+                          <input type="hidden" name="cycle" value={billedYearly ? "year" : "month"} />
+                          <button type="submit" className="btn btn-secondary btn-sm">
+                            Go back to Pro
                           </button>
                         </form>
                       </details>
@@ -1684,7 +1734,7 @@ export default async function StudioPage({
                     {/* Not open yet (lib/opening.ts): no button that the
                         checkout would refuse, and the reason in its place. */}
                     <p className="notice notice-info mt-5" data-plans-closed="">
-                      {`Plans are not on sale yet. Marktmorgen is still being built, and we take no card until it opens. Your store and everything you set up in it stay as they are. When plans open, they are ${priceWords("creator", "month")} or ${priceWords("creator", "year")}${PRO_ON_SALE ? `, and ${priceWords("pro", "month")} or ${priceWords("pro", "year")} with email to your list` : ""}.`}
+                      {`Plans are not on sale yet. Marktmorgen is still being built, and we take no card until it opens. Your store and everything you set up in it stay as they are. When plans open, they are ${priceWords("creator", "month")} or ${priceWords("creator", "year")}${PRO_ON_SALE ? `, and ${priceWords("pro", "month")} or ${priceWords("pro", "year")} with email to your list, and ${priceWords("scale", "month")} or ${priceWords("scale", "year")} for a list that sends up to ${SCALE_MONTHLY_EMAILS.toLocaleString("en-US")} a month` : ""}.`}
                     </p>
                   </>
                 ) : (
@@ -1759,6 +1809,28 @@ export default async function StudioPage({
                             {`Or Pro yearly: ${priceWords("pro", "year")}, $${yearSaving("pro") / 100} less`}
                           </button>
                         </form>
+                        {/* Said, not sold: almost nobody starts with a list this
+                            size, and whoever has one can start here or move up
+                            from Pro the day the month runs out. */}
+                        <details className="mt-4">
+                          <summary className="cursor-pointer text-sm font-bold text-ink underline underline-offset-2">
+                            {`Already have a big list? Scale: ${priceWords("scale", "month")}`}
+                          </summary>
+                          <p className="mt-3 text-sm text-ink-soft">
+                            {`Pro with room for a bigger list: up to ${SCALE_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month instead of ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")}, and ${AI_MONTHLY.scale.toLocaleString("en-US")} AI drafts instead of ${AI_MONTHLY.pro}. You can also start on Pro and move up from this page whenever you need it.${withTrial ? ` The same ${TRIAL_DAYS}-day trial.` : ""}`}
+                          </p>
+                          <form action={`/api/billing/checkout${pin}`} method="post" className="mt-3 flex flex-col items-start gap-3">
+                            <input type="hidden" name="tier" value="scale" />
+                            <button type="submit" name="cycle" value="month" className="btn btn-secondary btn-wrap">
+                              {withTrial
+                                ? `Start the trial on Scale \u2014 ${priceWords("scale", "month")} after that`
+                                : `Start Scale \u2014 ${priceWords("scale", "month")}, from today`}
+                            </button>
+                            <button type="submit" name="cycle" value="year" className="btn btn-secondary btn-wrap">
+                              {`Or Scale yearly: ${priceWords("scale", "year")}, $${yearSaving("scale") / 100} less`}
+                            </button>
+                          </form>
+                        </details>
                       </div>
                     ) : null}
                   </>
