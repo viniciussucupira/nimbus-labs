@@ -30,6 +30,7 @@ const SECRET = `whsec_${SECRET_BYTES.toString("base64")}`;
 const A = "4ef9a417-02e9-4d39-ad75-9611e0fcc33c";
 const B = "5ef9a417-02e9-4d39-ad75-9611e0fcc33c";
 const C = "6ef9a417-02e9-4d39-ad75-9611e0fcc33c";
+const D = "8ef9a417-02e9-4d39-ad75-9611e0fcc33c";
 
 type Sent = { from: string; to: string[]; subject: string; text: string; html?: string; reply_to?: string; attachments?: { filename: string; content: string }[]; headers?: Record<string, string> };
 const sent: { body: Sent; key: string | null; auth: string | null }[] = [];
@@ -67,6 +68,18 @@ const MAILS: Record<string, unknown> = {
     subject: "",
     text: null,
     html: "<div>Only a page<br>two lines &amp; a sign</div>",
+    headers: {},
+  },
+  // Written to another site that receives through the same Resend account.
+  [D]: {
+    object: "email",
+    id: D,
+    from: "Ana <ana@example.org>",
+    to: ["support@hazelsong.com"],
+    received_for: ["support@hazelsong.com"],
+    reply_to: [],
+    subject: "My wall",
+    text: "Where do I paste the code?",
     headers: {},
   },
 };
@@ -168,13 +181,20 @@ async function main(): Promise<void> {
   is("the page is read out as text", page?.text, "From: Sam <sam@example.org>\nTo: hello@marktmorgen.com\n\nOnly a page\ntwo lines & a sign");
   is("no files: none sent", page?.attachments, undefined);
 
+  part("A message written to another site of ours");
+  const elsewhere = await POST(announce(D));
+  const theirs = sent[2]?.body;
+  is("sent on to the same inbox", [(await elsewhere.json()).result, theirs?.to], ["sent", ["inbox@example.net"]]);
+  is("from this site's own address, naming the domain it was written to", theirs?.from, '"Ana via hazelsong.com" <support@marktmorgen.com>');
+  is("and the text says which address", theirs?.text, "From: Ana <ana@example.org>\nTo: support@hazelsong.com\n\nWhere do I paste the code?");
+
   part("When sending fails");
   failSending = true;
   const failed = await POST(announce(A, { id: "msg_retry" }));
   is("answered with a failure", failed.status, 500);
   failSending = false;
   const retried = await POST(announce(A, { id: "msg_retry" }));
-  is("and the retry is heard", [retried.status, (await retried.json()).result, sent.length], [200, "sent", 3]);
+  is("and the retry is heard", [retried.status, (await retried.json()).result, sent.length], [200, "sent", 4]);
 
   part("Names and addresses");
   is("a name and an address", parseSender('"Doe, Jane" <jane@example.com>'), { name: "Doe, Jane", address: "jane@example.com" });

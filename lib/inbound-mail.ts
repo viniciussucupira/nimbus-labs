@@ -32,6 +32,14 @@
  *
  * The message itself stays in Resend's dashboard (Emails, Receiving) whatever
  * happens here.
+ *
+ * Resend announces every message its account receives to the one address it
+ * was given, whichever domain the message was written to. So mail for another
+ * site of the same studio that receives through the same account — Hazelsong's
+ * support@hazelsong.com is one — arrives here too, and is sent on to the same
+ * inbox. It is sent from this site's own address, which is the one this
+ * deployment may send from, and it names the domain it was written to instead
+ * of this site, so the inbox can tell which product a message is about.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { RESEND_BASE, headerText, oneAddress, sendEmail } from "@/lib/email";
@@ -245,9 +253,13 @@ export async function forwardInbound(id: string): Promise<"sent" | "skipped" | "
     ...(attached.left.length ? [`Not attached (see Resend, Emails, Receiving): ${attached.left.join(", ")}`] : []),
   ];
   const shown = (sender.name || sender.address || "Someone").replace(/["\\<>]/g, "").slice(0, 60);
+  // Which site the message was written to: this one, or the domain of the
+  // address it came in on (see the note at the top of this file).
+  const writtenTo = ours.slice(ours.lastIndexOf("@") + 1).toLowerCase();
+  const site = writtenTo === platformDomain() || !/^[a-z0-9.-]{3,80}$/.test(writtenTo) ? "Marktmorgen" : writtenTo;
 
   const ok = await sendEmail({
-    from: `"${shown} via Marktmorgen" <support@${platformDomain()}>`,
+    from: `"${shown} via ${site}" <support@${platformDomain()}>`,
     to: target,
     subject,
     text: `${lines.join("\n")}\n\n${text}`,
