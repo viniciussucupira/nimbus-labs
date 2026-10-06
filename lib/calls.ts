@@ -41,7 +41,7 @@ import { saleHandles } from "@/lib/store";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
 import { HOLD_SECONDS, checkoutClosesAt, onAccount } from "@/lib/stripe-account";
-import { applyTax } from "@/lib/tax";
+import { applyTax, applyTaxDocuments, openKeepingTheSale } from "@/lib/tax";
 import { inTheCurrencyShown, isSettled, onlyInstantMethods } from "@/lib/instant-pay";
 import { refundedInFull } from "@/lib/refunds";
 import { type Answer, applyCheckoutFields, readAnswers } from "@/lib/checkout-fields";
@@ -574,6 +574,9 @@ export function callCheckoutBody(input: {
   // What the creator wants to know before the call, asked before paying.
   applyCheckoutFields(body, product.fields);
   applyTax(store, body);
+  // Not for a session from a package: nothing is paid, so there is nothing to
+  // invoice, and the package's own checkout already asked (lib/call-packages.ts).
+  if (!pkg) applyTaxDocuments(store, body, false);
   onlyInstantMethods(body);
   inTheCurrencyShown(body);
   // Stripe will not keep a checkout open for less than half an hour, counted
@@ -632,7 +635,8 @@ export async function holdAndCheckout(input: {
     // takes only at API version 2023-08-16 or later
     // (docs.stripe.com/payments/checkout/no-cost-orders). A creator's own
     // account may default to an older one, so that checkout names its version.
-    const session = await onAccount("POST", store.stripeAccountId, "/checkout/sessions", body, pkg ? NO_COST_VERSION : undefined);
+    const account = store.stripeAccountId;
+    const session = await openKeepingTheSale(body, () => onAccount("POST", account, "/checkout/sessions", body, pkg ? NO_COST_VERSION : undefined));
     if (typeof session.url !== "string" || !session.url || typeof session.id !== "string") {
       return { ok: false, reason: "error" };
     }
