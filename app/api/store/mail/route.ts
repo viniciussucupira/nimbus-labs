@@ -11,6 +11,7 @@ import { guardStoreWrite, text } from "@/lib/store-request";
 import { MAX_IMPORT, WHO, type Who, audience, importContacts, listCounts, readAddresses } from "@/lib/contacts";
 import { MAX_MAIL_BODY, MAX_SUBJECT, fromLine, monthlyAllowance, render, reserve, release } from "@/lib/mail";
 import { sendBatch } from "@/lib/email";
+import { healthId, startRamp } from "@/lib/mail-health";
 import { advanceBroadcast, cancelBroadcast, createBroadcast, whoOf } from "@/lib/broadcasts";
 import { removeFlow, saveFlow } from "@/lib/flows";
 import { removeDraft, saveDraft } from "@/lib/mail-drafts";
@@ -105,6 +106,9 @@ export async function POST(request: NextRequest) {
       if (emails.length > MAX_IMPORT) return fail("too_many");
       store = (await ensureListId(ref)) ?? store;
       const { added, already, full } = await importContacts(store.listId as string, emails);
+      // A hundred addresses or more, pasted in: of unknown age, so the next
+      // emails go out in portions that double (lib/mail-health.ts).
+      await startRamp(healthId(store), added);
       return Response.json({ ok: true, added, already, skipped, full, counts: await listCounts(store.listId) });
     }
 

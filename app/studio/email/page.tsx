@@ -13,6 +13,7 @@ import { broadcastMoney, flowMoney, readMailRevenue, readMailVisits } from "@/li
 import { sellsSomething } from "@/lib/mail-starters";
 import { flowStats, readFlows } from "@/lib/flows";
 import { inTrial, monthlyAllowance, usedThisMonth } from "@/lib/mail";
+import { healthId, pauseWords, pausedFor } from "@/lib/mail-health";
 import { PRO_MONTHLY_EMAILS, PRO_ON_SALE, SCALE_MONTHLY_EMAILS, TRIAL_DAYS, TRIAL_MONTHLY_EMAILS, priceWords, yearSaving } from "@/lib/plan";
 import { EmailStudio } from "@/components/email-studio";
 import { listDrafts } from "@/lib/mail-drafts";
@@ -39,7 +40,7 @@ export default async function StudioEmailPage({ searchParams }: Params) {
   const { store } = view;
 
   const allowance = monthlyAllowance(store);
-  const [counts, used, broadcasts, flows, listings, drafts] = await Promise.all([
+  const [counts, used, broadcasts, flows, listings, drafts, pause] = await Promise.all([
     listCounts(store.listId),
     usedThisMonth(store.listId),
     listBroadcasts(store.listId),
@@ -48,6 +49,9 @@ export default async function StudioEmailPage({ searchParams }: Params) {
     // command, where reading every card was one per product (lib/catalog.ts).
     readTitles(store),
     listDrafts(store.listId),
+    // Whether this store's list email is waiting out a week because too many
+    // of its addresses bounced or reported it (lib/mail-health.ts).
+    pausedFor(healthId(store)),
   ]);
   const role = view.role;
   // What each email sold, from the creator's own Stripe account, cached for
@@ -125,6 +129,18 @@ export default async function StudioEmailPage({ searchParams }: Params) {
             </p>
           </div>
         ) : (
+          <>
+          {pause ? (
+            <div role="status" className="mt-8 rounded-[var(--r-md)] border border-line bg-sand p-5 text-ink">
+              <p className="font-semibold">Email to your list is paused</p>
+              <p className="mt-2 text-sm text-ink-soft">{pauseWords(pause)}</p>
+              <p className="mt-2 text-sm text-ink-soft">
+                {pause.reason === "bounces"
+                  ? "This usually means a list brought in from somewhere else held old addresses. You do not need to do anything: you can keep writing and scheduling, and the rest of your store is not affected."
+                  : "This usually means people on the list did not expect to hear from you. You can keep writing and scheduling, and the rest of your store is not affected."}
+              </p>
+            </div>
+          ) : null}
           <EmailStudio
             email={view.email}
             canSend={can(role, "send")}
@@ -173,6 +189,7 @@ export default async function StudioEmailPage({ searchParams }: Params) {
             links={Object.fromEntries([...listings].map(([id]) => [id, productLink(store, id)]))}
             ai={isAiConfigured() && can(role, "draft") ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
           />
+          </>
         )}
       </main>
       </StudioStorePin>

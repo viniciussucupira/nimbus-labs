@@ -7,6 +7,7 @@
 import { isDomainsConfigured } from "@/lib/domains";
 import { PLAN_PRICES, PRO_MONTHLY_EMAILS, SCALE_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
 import { AI_MONTHLY } from "@/lib/ai-rules";
+import { healthRuleWords, rampRuleWords } from "@/lib/mail-health-rules";
 import { EXPECTATION, OPEN_COUNTRIES_WORDS, PITCHES_PER_DAY, REPITCH_DAYS } from "@/lib/outreach-rules";
 import type { TopicPage } from "@/lib/site-pages";
 
@@ -633,6 +634,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "user", title: "Your name, your replies", body: "Emails go out under your name, and replies come to you." },
           { icon: "ban", title: "One-click unsubscribe", body: "In every email, and in the header mail apps use. Whoever leaves is never written to again, whatever a later import says." },
           { icon: "pin", title: "Your postal address", body: "In every email, as US law (CAN-SPAM) requires of commercial email, with a line on why the reader is getting it." },
+          { icon: "shield", title: "Dead addresses taken off for you", body: "An address that cannot be delivered to, or whose owner reports an email as spam, is taken off your list by itself and never written to again. Mail apps judge a sender by exactly those two things." },
           { icon: "download", title: "Your list is yours", body: "Download it as a CSV any time, from any plan. Bring one in from a spreadsheet, up to 50,000 addresses a file, confirming each time that those people agreed.", href: "/platform/switching-to-marktmorgen" },
           { icon: "play", title: "Two sequences written for you", body: "A welcome for everyone who joins and a thank-you after a first purchase, written from your store's name, products and links in one press. They are left switched off: nothing is sent until you have read one and turned it on." },
           { icon: "chart", title: "What each email brought", body: "Links to your store in an email carry that email's tag, so the visits it brought and the sales made on the page a link opened are counted for it, the sales read from your own Stripe account. One tag per email, never one per reader: no tracking pixel, no open rate, and nothing kept about who clicked." },
@@ -662,6 +664,8 @@ export const FEATURE_PAGES: TopicPage[] = [
           "A test compares two subject lines, not two versions of the email itself, and only for a one-off email, not a sequence.",
           `During the free trial a store sends up to ${TRIAL_EMAILS} emails; the full ${PRO_EMAILS} opens with the first payment.`,
           "Up to ten sequences of up to ten emails each.",
+          `Every store sends from the same sender, so one bad list could cost everyone their inbox. ${healthRuleWords()} Nothing waiting is lost.`,
+          rampRuleWords(),
         ],
       },
       {

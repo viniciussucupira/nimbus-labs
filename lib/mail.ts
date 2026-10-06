@@ -21,6 +21,7 @@ import { SITE_URL } from "@/lib/site-url";
 import { SUPPORT_EMAIL } from "@/lib/creator-research";
 import type { Store } from "@/lib/store";
 import { type MailTag, taggedLink } from "@/lib/mail-links";
+import { type Pause, healthId, healthTags, noteSent, pausedFor, rampBack, rampRoom } from "@/lib/mail-health";
 
 export const MAX_SUBJECT = 150;
 export const MAX_MAIL_BODY = 20_000;
@@ -369,7 +370,9 @@ export type SendOutcome = {
   done: string[];
   /** Addresses not tried, because the send stopped before them. */
   rest: string[];
-  stopped: "allowance" | "day" | "sender" | "retry" | "refused" | null;
+  stopped: "allowance" | "day" | "sender" | "paused" | "portion" | "retry" | "refused" | null;
+  /** Why and until when, for a send stopped as "paused" (lib/mail-health.ts). */
+  pause?: Pause;
 };
 
 /** What a send that met the sender's ceiling says in the studio. */
@@ -391,26 +394,42 @@ export async function sendTo(
   tag?: MailTag,
 ): Promise<SendOutcome> {
   const done: string[] = [];
+  // A store whose addresses turned out to be bad ones waits its week out
+  // (lib/mail-health.ts). Nothing is taken from its month for it.
+  const watched = healthId(store);
+  const pause = await pausedFor(watched);
+  if (pause) return { done, rest: emails, stopped: "paused", pause };
+  const tags = healthTags(store, true);
   for (let i = 0; i < emails.length; ) {
     const room = await dailyRoom();
     if (room <= 0) return { done, rest: emails.slice(i), stopped: "day" };
-    const chunk = emails.slice(i, i + Math.min(BATCH_SIZE, room));
+    // A list with addresses lately brought in goes out in portions that
+    // double (lib/mail-health.ts); for any other store this is every one asked for.
+    const portion = await rampRoom(watched, Math.min(BATCH_SIZE, room, emails.length - i));
+    if (portion <= 0) return { done, rest: emails.slice(i), stopped: "portion" };
+    const chunk = emails.slice(i, i + portion);
     const reserved = await reserve(store, chunk.length);
-    if (reserved !== "ok") return { done, rest: emails.slice(i), stopped: reserved === "month" ? "allowance" : reserved };
+    if (reserved !== "ok") {
+      await rampBack(watched, chunk.length);
+      return { done, rest: emails.slice(i), stopped: reserved === "month" ? "allowance" : reserved };
+    }
     const tokens = await tokensFor(store.listId as string, chunk, store.handle);
     const messages: BatchMessage[] = chunk
       .filter((email) => tokens.has(email))
       .map((email) => {
         const r = render(store, subject, body, tokens.get(email)!, undefined, tag);
-        return { from: fromLine(store), to: email, subject: r.subject, text: r.text, html: r.html, replyTo: store.email, headers: r.headers };
+        return { from: fromLine(store), to: email, subject: r.subject, text: r.text, html: r.html, replyTo: store.email, headers: r.headers, tags };
       });
     if (messages.length) await paced();
     const outcome = await sendBatch(messages, `${keyBase}:${i}:${chunk.length}`);
     if (outcome !== "sent") {
       await release(store, chunk.length);
+      await rampBack(watched, chunk.length);
       return { done, rest: emails.slice(i), stopped: outcome };
     }
     if (messages.length < chunk.length) await release(store, chunk.length - messages.length);
+    // What a bounce or a complaint is later measured against.
+    await noteSent(watched, messages.length);
     for (const m of messages) done.push(m.to);
     i += chunk.length;
   }

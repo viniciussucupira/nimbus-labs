@@ -11,9 +11,15 @@
  *   - being imported by the creator, who confirms each time that the people
  *     on their file agreed to hear from them.
  *
- * One way off: the unsubscribe link in every email, which works in one press
- * and is kept for good. Nothing — an import, a later purchase without the box
- * — puts somebody back on who left, except that person ticking the box again.
+ * One way off of their own: the unsubscribe link in every email, which works
+ * in one press and is kept for good. Nothing — an import, a later purchase
+ * without the box — puts somebody back on who left, except that person
+ * ticking the box again.
+ *
+ * And one way off that is not theirs to press: an address the sender could
+ * not deliver to, for good, or whose owner marked an email as spam, is taken
+ * off the same way and for the same length of time (stopWriting, below, and
+ * lib/mail-health.ts for why).
  *
  *   nl:store:leads:<listId>          address -> Contact (JSON)
  *   nl:store:leads:<listId>:agreed   how many agreed, ever
@@ -46,9 +52,14 @@ export type Contact = {
   ids: string[];
   /** How they first agreed. */
   source: ContactSource | "";
-  /** Left through the unsubscribe link. Kept for good. */
+  /** Left through the unsubscribe link, or was taken off (see `gone`). Kept for good. */
   unsub: boolean;
   unsubAt: string;
+  /**
+   * Why, when it was not their own unsubscribe: the address bounced for
+   * good, or they marked an email as spam. Absent when they left themselves.
+   */
+  gone?: "bounced" | "complained";
   /** The token in their unsubscribe link, made the first time they are sent to. */
   t: string;
   /** Their name, when an import brought one (lib/imports.ts). "" when unknown. */
@@ -97,6 +108,7 @@ export function parseContact(raw: unknown): Contact | null {
       source: value.source === "free" || value.source === "buyer" || value.source === "import" ? value.source : "",
       unsub: value.unsub === true,
       unsubAt: typeof value.unsubAt === "string" ? value.unsubAt : "",
+      ...(value.unsub === true && (value.gone === "bounced" || value.gone === "complained") ? { gone: value.gone } : {}),
       t: typeof value.t === "string" && UNSUB_TOKEN.test(value.t) ? value.t : "",
       // Contacts written before imports kept names and labels have neither.
       name: typeof value.name === "string" ? value.name.slice(0, MAX_CONTACT_NAME) : "",
@@ -172,6 +184,8 @@ export async function upsertContact(
     source: before?.source || input.source,
     unsub: resubscribe ? false : Boolean(before?.unsub),
     unsubAt: resubscribe ? "" : before?.unsubAt ?? "",
+    // Their own yes, given since, clears why they were taken off as well.
+    ...(before?.gone && !resubscribe ? { gone: before.gone } : {}),
     t: before?.t ?? "",
     name: before?.name ?? "",
     tags: before?.tags ?? [],
@@ -488,6 +502,34 @@ export async function unsubscribe(token: string): Promise<{ listId: string; emai
   if (contact.agreed) commands.push(["INCR", unsubKey(listId)]);
   await redisPipeline(commands);
   return { listId, email };
+}
+
+/**
+ * Takes an address off a list because the sender said so: it bounced for
+ * good, or its owner marked an email as spam. Counted with those who left,
+ * and kept as firmly — an import never puts it back.
+ *
+ * True when this took somebody off who could be written to until now; false
+ * when the list does not hold the address, or it had already left.
+ */
+export async function stopWriting(listId: string, rawEmail: string, why: "bounced" | "complained"): Promise<boolean> {
+  if (!isRedisConfigured() || !listId) return false;
+  const email = normaliseEmail(rawEmail);
+  if (!email || email.length > MAX_EMAIL_LENGTH) return false;
+  const key = leadsKey(listId);
+  // Written only if the address still holds what was read: a purchase noted,
+  // or their own unsubscribe, in the same moment is not written over.
+  for (let round = 0; round < 3; round += 1) {
+    const [raw] = await redisPipeline([["HGET", key, email]]);
+    const contact = parseContact(raw);
+    if (!contact || contact.unsub || typeof raw !== "string") return false;
+    const next: Contact = { ...contact, unsub: true, unsubAt: new Date().toISOString(), gone: why };
+    const [written] = await casWrite(key, [{ email, value: JSON.stringify(next), was: sha1(raw) }]);
+    if (!written) continue;
+    if (contact.agreed) await redisPipeline([["INCR", unsubKey(listId)]]);
+    return contact.agreed;
+  }
+  return false;
 }
 
 export type ListCounts = { total: number; agreed: number; left: number; mailable: number; full: boolean };

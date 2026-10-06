@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { isDomainsConfigured } from "@/lib/domains";
 import { PRO_MONTHLY_EMAILS, REFUND_DAYS, TRIAL_MONTHLY_EMAILS, SCALE_MONTHLY_EMAILS } from "@/lib/plan";
+import { healthRuleWords, rampRuleWords } from "@/lib/mail-health-rules";
 import { HelpSearch } from "@/components/help-search";
 import { CopyLink } from "@/components/copy-link";
 import { formatMoney } from "@/lib/money";
@@ -398,6 +399,7 @@ const SECTIONS: Section[] = [
         a: [
           "Yes, on Pro. From your studio you write one-off emails to everyone who agreed to hear from you, or only to those who got one product, and send them now or at a time you choose. Sequences go out by themselves: a welcome when someone joins, a few emails in the days after someone buys. Each person goes through a sequence once.",
           "Only people who agreed are ever written to: those who checked the box when they got something free or bought from you, and those you import, where you confirm each time that they agreed. Every email carries a one-click unsubscribe, why the reader is getting it and your postal address, which US law requires; anyone who leaves is never written to again, whatever a later import says.",
+          `An address that cannot be delivered to, or whose owner reports an email as spam, is taken off your list by itself. ${healthRuleWords()} Nothing waiting is lost. ${rampRuleWords()}`,
           `Emails go out under your name, and replies come to you. Pro sends up to ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} a month, one-off emails, sequences and community announcements together; during the free trial a store sends up to ${TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")}, and the full ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")} opens with the first payment. Your list stays downloadable as a file at any time.`,
           "Someone on your team with the Editor role can write drafts, up to 20 per store; you or an Admin read them and send them. And, if you switch it on, one email asks each buyer for a review, 3 to 30 days after buying, counted in the same monthly emails.",
         ],

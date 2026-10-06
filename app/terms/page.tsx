@@ -4,6 +4,7 @@ import { LegalPage, LegalSection } from "@/components/legal-page";
 import { isDomainsConfigured } from "@/lib/domains";
 import { formatMoney } from "@/lib/money";
 import { PRO_MONTHLY_EMAILS, REFUND_DAYS, SCALE_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
+import { healthRuleWords } from "@/lib/mail-health-rules";
 import { DELIVERY_ALLOWANCE_BYTES, OVER_ALLOWANCE_CENTS_PER_GB, bytesWords } from "@/lib/delivery";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
@@ -211,7 +212,10 @@ export default function TermsPage() {
           are not misleading; and to follow the laws on commercial email that
           apply to you and to your readers, including the CAN-SPAM Act in the
           United States. Every email carries an unsubscribe link that we honor
-          permanently, and you may not ask anyone to do more than click it.
+          permanently, and you may not ask anyone to do more than click it. An
+          address that cannot be delivered to, or whose owner reports an email
+          as spam, is taken off your list automatically and is not written to
+          again. {healthRuleWords()}
         </p>
         <p>
           If you use Outreach to write to a business, you are the sender of
