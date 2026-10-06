@@ -4,8 +4,8 @@ import { usePathname } from "next/navigation";
 
 const products = [
   [
-    "Kudobox",
-    "https://getkudobox.com/",
+    "Hazelsong",
+    "https://hazelsong.com/",
     "Collect customer testimonials for your business."
   ],
   [

@@ -3,7 +3,7 @@ import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
 
 const title = "Our products — Solrenning";
-const description = "Meet NativeApply, NativeReply, Retone, Kudobox, and the Marktmorgen creator store. Find the right tool for your writing or business.";
+const description = "Meet NativeApply, NativeReply, Retone, Hazelsong, and the Marktmorgen creator store. Find the right tool for your writing or business.";
 export const metadata: Metadata = {
   title, description,
   alternates: { canonical: "/products" },
@@ -26,7 +26,7 @@ const groups = [
     description: "Sell what you create and share what your customers say.",
     products: [
       { name: "Marktmorgen", initials: "M", category: "Your creator store", href: "https://marktmorgen.com/", domain: "marktmorgen.com", color: "#643caf", background: "#f2edff", description: "Create a store for digital products, courses, calls, and memberships. Buyers pay into your own Stripe account.", action: "Explore the creator store" },
-      { name: "Kudobox", initials: "K", category: "Customer testimonials", href: "https://getkudobox.com/", domain: "getkudobox.com", color: "#486139", background: "#f0f5e9", description: "Collect testimonials with permission, review them, and display the ones you approve on your website.", action: "Explore Kudobox" },
+      { name: "Hazelsong", initials: "H", category: "Customer testimonials", href: "https://hazelsong.com/", domain: "hazelsong.com", color: "#486139", background: "#f0f5e9", description: "Collect testimonials with permission, review them, and display the ones you approve on your website.", action: "Explore Hazelsong" },
     ],
   },
 ];
