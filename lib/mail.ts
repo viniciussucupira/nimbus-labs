@@ -13,11 +13,12 @@
  * Only people who agreed are ever written to (lib/contacts.ts), and a month
  * has a published number of emails, counted before each batch goes out.
  */
-import { NIMBUS_FROM, type BatchMessage, sendBatch } from "@/lib/email";
+import { NIMBUS_FROM, type BatchMessage, sendBatch, sendEmail, sentThisMonth } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { TRIAL_MONTHLY_EMAILS, canUse, monthlyEmails } from "@/lib/plan";
 import { tokensFor } from "@/lib/contacts";
 import { SITE_URL } from "@/lib/site-url";
+import { SUPPORT_EMAIL } from "@/lib/creator-research";
 import type { Store } from "@/lib/store";
 import { type MailTag, taggedLink } from "@/lib/mail-links";
 
@@ -100,7 +101,84 @@ async function dailyRoom(): Promise<number> {
   return Math.max(0, cap - (Number(used) || 0));
 }
 
-export type Reserved = "ok" | "month" | "day";
+/**
+ * The sender's own ceiling, and the part of it list email may use.
+ *
+ * The sender sells a number of emails a month and lets an account run over
+ * it, charged by the thousand, up to five times that number. At five times
+ * it pauses the whole account (resend.com/docs/knowledge-base/
+ * account-quotas-and-limits, read October 6, 2026). The whole account is
+ * every email this site sends: a creator's newsletter, and also the link
+ * somebody logs in with and the email that hands a buyer their file. So a
+ * few stores with large lists could, with nobody doing anything wrong, stop
+ * every creator from logging in.
+ *
+ * List email is therefore held back at four fifths of that ceiling, counted
+ * across every kind of email sent this month (lib/email.ts), and the last
+ * fifth is left for the emails a store cannot run without. Held back, not
+ * dropped: a send that meets the limit waits and goes on by itself when the
+ * sender's plan is raised or the month turns.
+ *
+ * SENDER_MONTHLY_QUOTA is the number on the sender's plan, 50,000 on the one
+ * this was written under; it is set on the host when that plan changes.
+ */
+const SENDER_PLAN_EMAILS = 50_000;
+const SENDER_PAUSES_AT = 5;
+const LIST_SHARE = 0.8;
+
+export function senderQuota(): number {
+  const n = Number(process.env.SENDER_MONTHLY_QUOTA?.trim());
+  return Number.isFinite(n) && n >= 1_000 ? Math.floor(n) : SENDER_PLAN_EMAILS;
+}
+
+/** How many emails of every kind may have gone this month before list email waits. */
+export function listCeiling(): number {
+  return Math.floor(senderQuota() * SENDER_PAUSES_AT * LIST_SHARE);
+}
+
+/** How many more list emails the sender's ceiling leaves room for this month. */
+export async function senderRoom(): Promise<number> {
+  return Math.max(0, listCeiling() - (await sentThisMonth()));
+}
+
+const toldKey = (now = new Date()) => `nl:sender:${now.toISOString().slice(0, 7)}:told`;
+
+/**
+ * Says so, once a month, to the site's own inbox: raising the sender's plan
+ * is a payment, and nobody but the owner can make one. Everything else about
+ * the limit looks after itself.
+ */
+async function tellSenderIsFull(): Promise<void> {
+  try {
+    const [first] = await redisPipeline([["SET", toldKey(), "1", "NX", "EX", 40 * 86_400]]);
+    if (first === null) return;
+    const quota = senderQuota();
+    await sendEmail({
+      from: NIMBUS_FROM,
+      to: SUPPORT_EMAIL,
+      subject: "List email is waiting: the sender's monthly volume is nearly used",
+      text: [
+        `This month ${(await sentThisMonth()).toLocaleString("en-US")} emails have gone out, of every kind.`,
+        `The sender's plan is ${quota.toLocaleString("en-US")} a month and it pauses the whole account at ${(quota * SENDER_PAUSES_AT).toLocaleString("en-US")}, so creators' list email now waits at ${listCeiling().toLocaleString("en-US")}.`,
+        "",
+        "Sign-in links, receipts and deliveries are still going out: the rest of the volume is kept for them.",
+        "",
+        "To let list email continue before the month turns: move the sender to a larger plan, then set SENDER_MONTHLY_QUOTA on the host to that plan's number of emails. Waiting emails go out by themselves after that.",
+      ].join("\n"),
+    });
+  } catch (error) {
+    console.error("telling the inbox the sender is nearly full failed", error);
+  }
+}
+
+/** Whether `n` more list emails fit under the sender's ceiling; says so once when they do not. */
+async function senderTakes(n: number): Promise<boolean> {
+  if ((await senderRoom()) >= n) return true;
+  await tellSenderIsFull();
+  return false;
+}
+
+export type Reserved = "ok" | "month" | "day" | "sender";
 
 /**
  * Takes `n` from the company's day only (MARKETING_DAILY_CAP), for a bulk
@@ -109,8 +187,12 @@ export type Reserved = "ok" | "month" | "day";
  * (lib/imports.ts). False, and nothing taken, when it would pass the cap.
  */
 export async function reserveDay(n: number): Promise<boolean> {
+  if (n <= 0) return true;
+  // The sender's own ceiling comes first: nothing is taken from the day for
+  // a send that cannot go at all this month.
+  if (!(await senderTakes(n))) return false;
   const cap = dailyCap();
-  if (cap === 0 || n <= 0) return true;
+  if (cap === 0) return true;
   const day = dayKey();
   const [today] = await redisPipeline([
     ["INCRBY", day, n],
@@ -131,6 +213,9 @@ export async function releaseDay(n: number): Promise<void> {
 export async function reserve(store: Store, n: number): Promise<Reserved> {
   if (n <= 0) return "ok";
   if (!store.listId) return "month";
+  // Before anything is taken from the store's own month: the sender's
+  // ceiling, which is everybody's (above).
+  if (!(await senderTakes(n))) return "sender";
   const allowance = monthlyAllowance(store);
   const key = usedKey(store.listId);
   const cap = dailyCap();
@@ -284,8 +369,12 @@ export type SendOutcome = {
   done: string[];
   /** Addresses not tried, because the send stopped before them. */
   rest: string[];
-  stopped: "allowance" | "day" | "retry" | "refused" | null;
+  stopped: "allowance" | "day" | "sender" | "retry" | "refused" | null;
 };
+
+/** What a send that met the sender's ceiling says in the studio. */
+export const SENDER_WAIT_NOTE =
+  "Waiting on our side: the service that sends our email has reached its volume for the month. The rest go out by themselves as soon as that is raised, or when the month turns. Nothing is lost.";
 
 /**
  * Sends one email to each address, in batches. Stops at the first batch the
@@ -307,7 +396,7 @@ export async function sendTo(
     if (room <= 0) return { done, rest: emails.slice(i), stopped: "day" };
     const chunk = emails.slice(i, i + Math.min(BATCH_SIZE, room));
     const reserved = await reserve(store, chunk.length);
-    if (reserved !== "ok") return { done, rest: emails.slice(i), stopped: reserved === "month" ? "allowance" : "day" };
+    if (reserved !== "ok") return { done, rest: emails.slice(i), stopped: reserved === "month" ? "allowance" : reserved };
     const tokens = await tokensFor(store.listId as string, chunk, store.handle);
     const messages: BatchMessage[] = chunk
       .filter((email) => tokens.has(email))

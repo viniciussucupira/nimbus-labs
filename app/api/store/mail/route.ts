@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
       if (!subject) return fail("subject");
       if (!content) return fail("body");
       const reserved = await reserve(store, 1);
-      if (reserved !== "ok") return fail(reserved === "month" ? "allowance" : "day");
+      if (reserved !== "ok") return fail(reserved === "month" ? "allowance" : reserved === "sender" ? "sender" : "day");
       const r = render(store, `[Test] ${subject}`, content, null);
       const outcome = await sendBatch(
         // To whoever pressed it: the owner, or the person on their team who is

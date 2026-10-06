@@ -26,7 +26,7 @@
 import { randomBytes } from "node:crypto";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { type BatchMessage, sendBatch } from "@/lib/email";
-import { CHECKED_BATCH_SIZE, canWrite, fromLine, monthlyAllowance, release, render, reserve } from "@/lib/mail";
+import { CHECKED_BATCH_SIZE, SENDER_WAIT_NOTE, canWrite, fromLine, monthlyAllowance, release, render, reserve } from "@/lib/mail";
 import { SITE_URL } from "@/lib/site-url";
 import type { Store } from "@/lib/store";
 import {
@@ -215,7 +215,12 @@ export async function advanceAnnouncement(
           job = {
             ...job,
             status: "waiting",
-            note: reserved === "month" ? "This month's emails ran out. The rest go out when the month turns." : "Going out in daily portions: the rest continue tomorrow, by themselves.",
+            note:
+              reserved === "month"
+                ? "This month's emails ran out. The rest go out when the month turns."
+                : reserved === "sender"
+                  ? SENDER_WAIT_NOTE
+                  : "Going out in daily portions: the rest continue tomorrow, by themselves.",
           };
           break;
         }
