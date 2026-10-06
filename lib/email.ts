@@ -329,6 +329,12 @@ export function cleanTags(tags: Record<string, string> | undefined): { name: str
 export async function sendBatch(
   messages: BatchMessage[],
   batchKey: string,
+  /**
+   * One sender and no other, for the daily check that each of them brings a
+   * bounce back (lib/verify-mail.ts). Everything else leaves this out, and
+   * the choice is made here.
+   */
+  only?: "resend" | "amazon",
 ): Promise<"sent" | "retry" | "refused"> {
   if (!isSenderConfigured()) return "retry";
   if (messages.length === 0) return "sent";
@@ -337,7 +343,8 @@ export async function sendBatch(
   let going = messages.slice(0, 100).filter((m) => oneAddress(m.to) !== null);
   let idempotencyKey = batchKey;
   const config = sesConfig();
-  if (config && isSesConfigured()) {
+  if (only === "amazon" && !(config && isSesConfigured())) return "retry";
+  if (config && isSesConfigured() && only !== "resend") {
     const all = going.length;
     // Whoever Amazon already took under this key, in a batch that was then
     // cut short and is being tried again, is not written to twice.
@@ -380,6 +387,7 @@ export async function sendBatch(
       going = result.left.map((m) => m.original);
     }
     if (going.length === 0) return "sent";
+    if (only === "amazon") return "retry";
     if (!toResend) await redisPipeline([["SET", handed, "1", "EX", 2 * 86_400]]).catch(() => {});
     // Resend answers a key it has seen with what it answered then, so a
     // different set of people must not go under the same key.

@@ -116,6 +116,37 @@ function hostToken(): string | null {
   return token && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token) ? token : null;
 }
 
+/**
+ * What Amazon is told to trust (infra/amazon-ses.yml): a token from this
+ * issuer, for this audience, naming this project's production. A project or
+ * a team renamed changes what the host writes in the token, and Amazon would
+ * then lend nothing, so the daily check holds the token to these
+ * (lib/verify-mail.ts) and tests/ses-sender.test.ts holds the stack to them.
+ */
+export const TRUSTED_TOKEN = {
+  iss: "https://oidc.vercel.com/viniciussucupira",
+  aud: "https://vercel.com/viniciussucupira",
+  sub: "owner:viniciussucupira:project:nimbus-labs:environment:production",
+};
+
+/**
+ * What the host's token on this request says, unverified: who issued it, for
+ * whom, about which project, and when it ends. Amazon is the one that checks
+ * its signature; this is for saying, in a log, what Amazon will be shown.
+ * None of it is secret. Null when the request has no token.
+ */
+export function hostTokenClaims(): { iss: string; aud: string; sub: string; exp: number } | null {
+  const token = hostToken();
+  if (!token) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8")) as Record<string, unknown>;
+    const text = (v: unknown) => (typeof v === "string" ? v : Array.isArray(v) && typeof v[0] === "string" ? v[0] : "");
+    return { iss: text(claims.iss), aud: text(claims.aud), sub: text(claims.sub), exp: Number(claims.exp) || 0 };
+  } catch {
+    return null;
+  }
+}
+
 /** The key lent for the role, kept in this instance's memory only, until five minutes before Amazon ends it. */
 let lent: { role: string; key: AwsKey; until: number } | null = null;
 /** After Amazon refuses the exchange, it is not asked again for a minute. */

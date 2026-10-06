@@ -267,6 +267,18 @@ export async function rampBack(id: string, n: number): Promise<void> {
 /** What an email waiting for its next portion says in the studio. */
 export const PORTION_NOTE = `Going out in growing portions: addresses were brought into this list from elsewhere, so the first emails go to a few people at a time while dead addresses are found. The rest follow by themselves, every ${RAMP_GAP_MINUTES} minutes. Nothing is lost.`;
 
+/**
+ * Forgets everything kept about one id: its counts, the addresses counted,
+ * a pause, its portions. For the daily check (lib/verify-mail.ts), which
+ * makes up a store that is nobody's and takes it away again.
+ */
+export async function forgetHealth(id: string, emails: string[], now = Date.now()): Promise<void> {
+  if (!HEALTH_ID.test(id) || !isRedisConfigured()) return;
+  const keys = [pausedKey(id), fromKey(id), rampKey(id), ...emails.map((email) => seenKey(id, normaliseEmail(email)))];
+  for (let i = -1; i <= HEALTH_WINDOW_DAYS; i += 1) keys.push(dayKey(id, now - i * 86_400_000));
+  await redisPipeline([["DEL", ...keys]]);
+}
+
 export type Told = "counted" | "paused" | "ignored";
 
 /** What the sender said about one email, whichever sender it was (app/api/mail/inbound). */
