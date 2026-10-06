@@ -2,7 +2,7 @@
  * How long we wait on the services this app runs on before giving up.
  *
  * Every request to Upstash Redis, Stripe (our own account and the creators'
- * connected ones), Resend, Vercel's domain API and Vercel Blob goes through
+ * connected ones), Resend, Amazon SES, Vercel's domain API and Vercel Blob goes through
  * `timed`, with a limit of its own:
  *
  *   Redis    5 s    a pipeline answers in milliseconds; five seconds is a
@@ -10,6 +10,8 @@
  *   Stripe   20 s   a charge confirmed with the card's bank can take a few
  *                   seconds; twenty is well past any that succeed
  *   Resend   10 s   one message, or a batch of a hundred
+ *   Amazon   8 s    one message handed to Amazon SES, or one question
+ *                   about the account (lib/ses.ts)
  *   Domains  15 s   Vercel's domain API, from the studio only
  *   Blob     15 s   to the first byte of an answer (a download may take as
  *                   long as it takes after that); 45 s for writing a
@@ -34,6 +36,7 @@
 export const REDIS_TIMEOUT_MS = 5_000;
 export const STRIPE_TIMEOUT_MS = 20_000;
 export const RESEND_TIMEOUT_MS = 10_000;
+export const SES_TIMEOUT_MS = 8_000;
 export const DOMAINS_TIMEOUT_MS = 15_000;
 export const BLOB_TIMEOUT_MS = 15_000;
 export const BLOB_WRITE_TIMEOUT_MS = 45_000;

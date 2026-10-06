@@ -1,0 +1,406 @@
+/**
+ * Amazon SES: the cheaper of the two services that send this site's email.
+ *
+ * Read before it was built (October 6, 2026): Amazon charges $0.10 for a
+ * thousand emails (aws.amazon.com/ses/pricing), where the sender this site
+ * started on charges $0.90 for a thousand past its plan
+ * (resend.com/pricing). Nothing else that allows a creator's newsletter came
+ * close: Mailgun, Postmark and MailerSend charge from $0.90 to $1.80, and
+ * Cloudflare's service was reported at $0.35, in beta, and not for
+ * newsletters.
+ *
+ * What the low price asks for in return, and where each part is answered:
+ *
+ *   - Amazon looks at every new account before letting it write to the
+ *     public. Until then an account may send 200 emails a day, to addresses
+ *     it has proved are its own. So nothing here is switched on by a
+ *     setting: this file asks Amazon what the account may do (sesReady), and
+ *     email goes through Amazon only once Amazon says it may. Before that,
+ *     and whenever Amazon stops answering or pauses the account, everything
+ *     goes through the first sender as it always did (lib/email.ts).
+ *
+ *   - Amazon expects the sender to look after its own bounces and spam
+ *     reports, and reviews an account at 5% bounced or 0.1% reported
+ *     (docs.aws.amazon.com/ses/latest/dg/faqs-enforcement.html). That is
+ *     lib/mail-health.ts, which holds each store to 2% and 0.08%; Amazon
+ *     tells us about each one through app/api/mail/ses.
+ *
+ *   - An account has a number of emails it may send in any 24 hours, and a
+ *     number a second. Both are read from Amazon, never typed here, because
+ *     Amazon raises them by itself as an account proves itself.
+ *
+ * Five settings, and without all five Amazon is not used at all:
+ *
+ *   AWS_SES_ACCESS_KEY_ID        the key of a user that may only send email
+ *   AWS_SES_SECRET_ACCESS_KEY    and read the account's own limits
+ *   AWS_SES_REGION               where the account sends from: us-east-1
+ *   AWS_SES_CONFIGURATION_SET    the set whose events go to the topic below
+ *   AWS_SES_TOPIC_ARN            the one topic whose announcements are believed
+ *
+ *   nl:ses:state            what Amazon last said the account may do (JSON)
+ *   nl:ses:h:<YYYY-MM-DDTHH> emails Amazon took in that hour
+ *   nl:ses:did:<hash>       an email of a batch Amazon already took
+ */
+import { createHash } from "node:crypto";
+import { type AwsKey, signV4 } from "@/lib/aws-sign";
+import { SES_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+
+export type SesConfig = { key: AwsKey; region: string; configurationSet: string; topicArn: string };
+
+function env(name: string): string {
+  return process.env[name]?.trim() ?? "";
+}
+
+/** The five settings, or null when any is missing or does not look like what it should be. */
+export function sesConfig(): SesConfig | null {
+  const accessKeyId = env("AWS_SES_ACCESS_KEY_ID");
+  const secretAccessKey = env("AWS_SES_SECRET_ACCESS_KEY");
+  const region = env("AWS_SES_REGION");
+  const configurationSet = env("AWS_SES_CONFIGURATION_SET");
+  const topicArn = env("AWS_SES_TOPIC_ARN");
+  if (!/^[A-Z0-9]{16,128}$/.test(accessKeyId) || secretAccessKey.length < 16) return null;
+  if (!/^[a-z]{2}(-[a-z]+)+-\d$/.test(region)) return null;
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(configurationSet)) return null;
+  // The topic must be in the region email is sent from: its announcements
+  // are signed by that region's certificate (lib/sns.ts).
+  const arn = /^arn:aws:sns:([a-z0-9-]+):\d{12}:[A-Za-z0-9_-]{1,256}$/.exec(topicArn);
+  if (!arn || arn[1] !== region) return null;
+  return { key: { accessKeyId, secretAccessKey }, region, configurationSet, topicArn };
+}
+
+/** Whether Amazon could be used at all. It also needs Redis: what it may do, and what it took, are kept there. */
+export function isSesConfigured(): boolean {
+  return sesConfig() !== null && isRedisConfigured();
+}
+
+const base = (config: SesConfig) => `https://email.${config.region}.amazonaws.com`;
+
+async function call(config: SesConfig, method: "GET" | "POST", path: string, body?: string): Promise<Response> {
+  const url = `${base(config)}${path}`;
+  const headers = signV4({
+    method,
+    url,
+    headers: body === undefined ? {} : { "content-type": "application/json" },
+    body,
+    region: config.region,
+    service: "ses",
+    key: config.key,
+  });
+  // `host` is set by fetch itself, from the address; it was needed for the signature only.
+  const { host: _host, ...sent } = headers;
+  void _host;
+  return timed(SES_TIMEOUT_MS, (signal) => fetch(url, { method, headers: sent, body, cache: "no-store", signal }));
+}
+
+/* ------------------------------------------------------------------ */
+/* What the account may do                                             */
+/* ------------------------------------------------------------------ */
+
+export type SesState = {
+  /** Amazon lets this account write to the public, now. */
+  ready: boolean;
+  /** Why not, in a word, when it does not: "sandbox", "off", "shutdown", "unreachable", or what a send was refused with. */
+  why: string;
+  /** Emails a second, and in any 24 hours; 0 for no limit. */
+  rate: number;
+  max24: number;
+  /** When Amazon was last asked, and until when it is not asked again after a refusal (seconds). */
+  at: number;
+  hold: number;
+};
+
+const STATE_KEY = "nl:ses:state";
+/** How long an answer from Amazon is believed before it is asked again. */
+const BELIEVED_SECONDS = 300;
+/** How long Amazon is left alone after it refused a send for the account's own sake. */
+export const HOLD_SECONDS = 600;
+/** How long a state is kept at all: past this, with Amazon not answering, it is not used. */
+const KEPT_SECONDS = 3_600;
+
+function parseState(raw: unknown): SesState | null {
+  if (typeof raw !== "string") return null;
+  try {
+    const v = JSON.parse(raw) as Partial<SesState>;
+    if (typeof v.ready !== "boolean") return null;
+    return { ready: v.ready, why: typeof v.why === "string" ? v.why : "", rate: Number(v.rate) || 0, max24: Number(v.max24) || 0, at: Number(v.at) || 0, hold: Number(v.hold) || 0 };
+  } catch {
+    return null;
+  }
+}
+
+const saveState = (state: SesState) => redisPipeline([["SET", STATE_KEY, JSON.stringify(state), "EX", KEPT_SECONDS]]);
+
+/** Asks Amazon what the account may do. Null when it did not answer. */
+async function askAccount(config: SesConfig, now: number): Promise<SesState | null> {
+  try {
+    const response = await call(config, "GET", "/v2/email/account");
+    if (!response.ok) {
+      console.error("Amazon SES would not say what the account may do", response.status);
+      // A key that is wrong, or was taken away, is an answer: not usable.
+      return response.status === 403 || response.status === 401 ? { ready: false, why: "key", rate: 0, max24: 0, at: now, hold: 0 } : null;
+    }
+    const a = (await response.json()) as {
+      ProductionAccessEnabled?: unknown;
+      SendingEnabled?: unknown;
+      EnforcementStatus?: unknown;
+      SendQuota?: { Max24HourSend?: unknown; MaxSendRate?: unknown };
+    };
+    const why = a.ProductionAccessEnabled !== true ? "sandbox" : a.SendingEnabled !== true ? "off" : a.EnforcementStatus === "SHUTDOWN" ? "shutdown" : "";
+    const rate = Number(a.SendQuota?.MaxSendRate);
+    const max24 = Number(a.SendQuota?.Max24HourSend);
+    return { ready: why === "", why, rate: Number.isFinite(rate) && rate > 0 ? rate : 0, max24: Number.isFinite(max24) && max24 > 0 ? Math.floor(max24) : 0, at: now, hold: 0 };
+  } catch (error) {
+    console.error("Amazon SES could not be reached", error);
+    return null;
+  }
+}
+
+/**
+ * What Amazon last said, asked again when that is more than five minutes
+ * old. Null when the settings are not there; "not ready" for every reason
+ * Amazon cannot be used right now.
+ */
+export async function sesState(now = Date.now()): Promise<SesState | null> {
+  const config = sesConfig();
+  if (!config || !isRedisConfigured()) return null;
+  const seconds = Math.floor(now / 1000);
+  let known: SesState | null = null;
+  try {
+    known = parseState((await redisPipeline([["GET", STATE_KEY]]))[0]);
+  } catch {
+    return null;
+  }
+  if (known && (seconds < known.hold || seconds - known.at < BELIEVED_SECONDS)) return known;
+  const asked = await askAccount(config, seconds);
+  if (asked) {
+    await saveState(asked).catch(() => {});
+    return asked;
+  }
+  // Amazon did not answer. What it said within the hour stands, and it is
+  // asked again in a minute rather than on every email.
+  const stale: SesState = known ?? { ready: false, why: "unreachable", rate: 0, max24: 0, at: 0, hold: 0 };
+  await saveState({ ...stale, at: seconds - BELIEVED_SECONDS + 60 }).catch(() => {});
+  return stale;
+}
+
+/** The account's limits when Amazon may be used right now; null when it may not. */
+export async function sesReady(now = Date.now()): Promise<SesState | null> {
+  const state = await sesState(now);
+  return state?.ready ? state : null;
+}
+
+/**
+ * Amazon refused a send for a reason that is the account's, not the email's:
+ * it is left alone for ten minutes, and then asked what the account may do.
+ */
+export async function sesDown(why: string, seconds = HOLD_SECONDS, now = Date.now()): Promise<void> {
+  if (!isRedisConfigured()) return;
+  const at = Math.floor(now / 1000);
+  let known: SesState | null = null;
+  try {
+    known = parseState((await redisPipeline([["GET", STATE_KEY]]))[0]);
+  } catch {
+    known = null;
+  }
+  await saveState({ ready: false, why, rate: known?.rate ?? 0, max24: known?.max24 ?? 0, at, hold: at + seconds }).catch(() => {});
+}
+
+/* ------------------------------------------------------------------ */
+/* What Amazon took                                                    */
+/* ------------------------------------------------------------------ */
+
+const hourKey = (ms: number) => `nl:ses:h:${new Date(ms).toISOString().slice(0, 13)}`;
+
+export async function countSesSent(n: number, now = Date.now()): Promise<void> {
+  if (n <= 0 || !isRedisConfigured()) return;
+  const key = hourKey(now);
+  await redisPipeline([
+    ["INCRBY", key, n],
+    ["EXPIRE", key, 26 * 3_600],
+  ]).catch(() => {});
+}
+
+/** Emails Amazon took in the last 24 hours, this hour included. 0 when it cannot be read. */
+export async function sesSentLast24h(now = Date.now()): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+  try {
+    const keys = Array.from({ length: 24 }, (_, i) => hourKey(now - i * 3_600_000));
+    const rows = await redisPipeline(keys.map((key) => ["GET", key]));
+    return rows.reduce((sum: number, raw) => sum + (Number(raw) || 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * The share of Amazon's 24 hours that email sent many at a time may use. The
+ * rest is kept for what goes one at a time and cannot wait: a sign-in link,
+ * a receipt, the email that hands a buyer their file.
+ */
+export const SES_BULK_SHARE = 0.8;
+
+/** How many more emails sent many at a time Amazon's day has room for. Infinity for an account with no limit. */
+export async function sesBulkRoom(state: SesState, now = Date.now()): Promise<number> {
+  if (state.max24 <= 0) return Number.POSITIVE_INFINITY;
+  return Math.max(0, Math.floor(state.max24 * SES_BULK_SHARE) - (await sesSentLast24h(now)));
+}
+
+/* ------------------------------------------------------------------ */
+/* Sending                                                             */
+/* ------------------------------------------------------------------ */
+
+export type SesMessage = {
+  from: string;
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  replyTo?: string | null;
+  headers?: Record<string, string>;
+  attachments?: { filename: string; content: string }[];
+  tags?: { name: string; value: string }[];
+};
+
+/**
+ * What became of one email handed to Amazon:
+ *
+ *   "sent"     Amazon took it.
+ *   "busy"     Not taken, and it is nobody's fault: too many a second, an
+ *              error on Amazon's side, no answer in time.
+ *   "account"  Not taken, for a reason that is the account's: paused, shut,
+ *              a sending address not proved, a key that is not believed, the
+ *              day's emails used. Every other email would meet the same.
+ *   "refused"  Not taken, for a reason that is this email's own.
+ */
+export type SesOutcome = "sent" | "busy" | "account" | "refused";
+
+const ACCOUNT_ERRORS = /AccountSuspended|SendingPaused|MailFromDomainNotVerified|LimitExceeded|AccessDenied|InvalidClientTokenId|SignatureDoesNotMatch|UnrecognizedClient|ExpiredToken|NotFound/i;
+
+export async function sesSend(config: SesConfig, message: SesMessage): Promise<{ outcome: SesOutcome; why: string }> {
+  const payload = JSON.stringify({
+    FromEmailAddress: message.from,
+    Destination: { ToAddresses: [message.to] },
+    ...(message.replyTo ? { ReplyToAddresses: [message.replyTo] } : {}),
+    Content: {
+      Simple: {
+        Subject: { Data: message.subject, Charset: "UTF-8" },
+        Body: {
+          Text: { Data: message.text, Charset: "UTF-8" },
+          ...(message.html ? { Html: { Data: message.html, Charset: "UTF-8" } } : {}),
+        },
+        ...(message.headers && Object.keys(message.headers).length
+          ? { Headers: Object.entries(message.headers).map(([Name, Value]) => ({ Name, Value })) }
+          : {}),
+        ...(message.attachments?.length
+          ? { Attachments: message.attachments.map((a) => ({ FileName: a.filename, RawContent: a.content })) }
+          : {}),
+      },
+    },
+    ...(message.tags?.length ? { EmailTags: message.tags.map((t) => ({ Name: t.name, Value: t.value })) } : {}),
+    // Without the set, Amazon would not tell us when this email bounced.
+    ConfigurationSetName: config.configurationSet,
+  });
+  try {
+    const response = await call(config, "POST", "/v2/email/outbound-emails", payload);
+    if (response.ok) return { outcome: "sent", why: "" };
+    const type = response.headers.get("x-amzn-errortype") ?? "";
+    let said = "";
+    try {
+      const body = (await response.json()) as { message?: unknown; Message?: unknown; __type?: unknown };
+      said = `${typeof body.__type === "string" ? body.__type : ""} ${typeof body.message === "string" ? body.message : typeof body.Message === "string" ? body.Message : ""}`;
+    } catch {
+      said = "";
+    }
+    const why = `${response.status} ${type} ${said}`.replace(/\s+/g, " ").trim().slice(0, 300);
+    if (response.status === 429 && !/quota/i.test(why)) return { outcome: "busy", why };
+    if (response.status >= 500) return { outcome: "busy", why };
+    if (response.status === 401 || response.status === 403 || response.status === 404 || response.status === 429) return { outcome: "account", why };
+    // An address not proved, in an account still in its sandbox or sending
+    // from a domain it has not proved, comes back as the email's own fault.
+    if (ACCOUNT_ERRORS.test(why) || /not verified|sandbox|quota/i.test(why)) return { outcome: "account", why };
+    return { outcome: "refused", why };
+  } catch (error) {
+    return { outcome: "busy", why: error instanceof Error ? error.message.slice(0, 200) : "no answer" };
+  }
+}
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const didKey = (batchKey: string, to: string) => `nl:ses:did:${createHash("sha256").update(`${batchKey}\n${to}`).digest("hex").slice(0, 40)}`;
+const DID_SECONDS = 2 * 86_400;
+
+/**
+ * Those of a batch that Amazon has not already taken under this key. A batch
+ * tried again — after a timeout, after the rest of it failed — never writes
+ * to the same person twice.
+ */
+export async function notYetTaken<T extends { to: string }>(batchKey: string, messages: T[]): Promise<T[]> {
+  if (!messages.length) return messages;
+  try {
+    const found = await redisPipeline(messages.map((m) => ["GET", didKey(batchKey, m.to)]));
+    return messages.filter((_, i) => found[i] === null || found[i] === undefined);
+  } catch {
+    return messages;
+  }
+}
+
+/** The longest one batch may take here; what is left after it goes by the other sender. */
+const BATCH_MS = 9_000;
+
+/**
+ * Hands a batch to Amazon one email at a time, no faster than the account
+ * may send, and says which it took and which are left for the other sender:
+ * the ones not reached in time, and all of them from the moment Amazon
+ * refuses one for the account's own sake. One it refused for the email's own
+ * sake is in neither: it is not sent by anybody.
+ */
+export async function sesBatch<T extends SesMessage>(
+  config: SesConfig,
+  state: SesState,
+  messages: T[],
+  batchKey: string,
+): Promise<{ taken: T[]; left: T[]; down: string }> {
+  const taken: T[] = [];
+  const refused = new Set<T>();
+  const perSecond = Math.max(1, Math.floor(state.rate || 1));
+  const started = Date.now();
+  let down = "";
+  let queue = [...messages];
+  for (let round = 0; round < 2 && queue.length && !down; round += 1) {
+    const again: T[] = [];
+    for (let i = 0; i < queue.length && !down; i += perSecond) {
+      if (Date.now() - started > BATCH_MS) {
+        again.push(...queue.slice(i));
+        break;
+      }
+      const waveStarted = Date.now();
+      const wave = queue.slice(i, i + perSecond);
+      const results = await Promise.all(wave.map((m) => sesSend(config, m)));
+      const done: T[] = [];
+      results.forEach((result, j) => {
+        if (result.outcome === "sent") done.push(wave[j]);
+        else if (result.outcome === "refused") {
+          refused.add(wave[j]);
+          console.error("Amazon SES refused an email", result.why);
+        } else {
+          again.push(wave[j]);
+          if (result.outcome === "account" && !down) down = result.why || "account";
+        }
+      });
+      if (done.length) {
+        taken.push(...done);
+        // Written down at once, so a batch cut short here and tried again
+        // leaves these people out.
+        await redisPipeline(done.map((m) => ["SET", didKey(batchKey, m.to), "1", "EX", DID_SECONDS])).catch(() => {});
+      }
+      if (down) again.push(...queue.slice(i + perSecond));
+      else if (i + perSecond < queue.length) await pause(Math.max(0, 1_000 - (Date.now() - waveStarted)));
+    }
+    queue = again;
+    if (queue.length && !down && round === 0) {
+      if (Date.now() - started > BATCH_MS) break;
+      await pause(1_000);
+    }
+  }
+  return { taken, left: queue.filter((m) => !refused.has(m)), down };
+}

@@ -13,7 +13,8 @@
  * Only people who agreed are ever written to (lib/contacts.ts), and a month
  * has a published number of emails, counted before each batch goes out.
  */
-import { NIMBUS_FROM, type BatchMessage, sendBatch, sendEmail, sentThisMonth } from "@/lib/email";
+import { NIMBUS_FROM, type BatchMessage, hasResend, sendBatch, sendEmail, sentThisMonth } from "@/lib/email";
+import { SES_BULK_SHARE, isSesConfigured, sesBulkRoom, sesReady, sesSentLast24h } from "@/lib/ses";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { TRIAL_MONTHLY_EMAILS, canUse, monthlyEmails } from "@/lib/plan";
 import { tokensFor } from "@/lib/contacts";
@@ -137,9 +138,17 @@ export function listCeiling(): number {
   return Math.floor(senderQuota() * SENDER_PAUSES_AT * LIST_SHARE);
 }
 
-/** How many more list emails the sender's ceiling leaves room for this month. */
+/**
+ * How many more list emails there is room for, now, between the two senders
+ * (lib/email.ts): what is left of Resend's month under the ceiling above,
+ * and, when Amazon may be used, what is left of the share of Amazon's 24
+ * hours that email sent many at a time may take (lib/ses.ts). Amazon's own
+ * number is read from Amazon, and grows as the account proves itself.
+ */
 export async function senderRoom(): Promise<number> {
-  return Math.max(0, listCeiling() - (await sentThisMonth()));
+  const resend = hasResend() ? Math.max(0, listCeiling() - (await sentThisMonth())) : 0;
+  const amazon = isSesConfigured() ? await sesReady() : null;
+  return amazon ? resend + (await sesBulkRoom(amazon)) : resend;
 }
 
 const toldKey = (now = new Date()) => `nl:sender:${now.toISOString().slice(0, 7)}:told`;
@@ -154,12 +163,21 @@ async function tellSenderIsFull(): Promise<void> {
     const [first] = await redisPipeline([["SET", toldKey(), "1", "NX", "EX", 40 * 86_400]]);
     if (first === null) return;
     const quota = senderQuota();
+    const amazon = isSesConfigured() ? await sesReady() : null;
     await sendEmail({
       from: NIMBUS_FROM,
       to: SUPPORT_EMAIL,
       subject: "List email is waiting: the sender's monthly volume is nearly used",
       text: [
-        `This month ${(await sentThisMonth()).toLocaleString("en-US")} emails have gone out, of every kind.`,
+        ...(amazon
+          ? [
+              `In the last 24 hours ${(await sesSentLast24h()).toLocaleString("en-US")} emails went out through Amazon SES, which allows this account ${amazon.max24.toLocaleString("en-US")} in any 24 hours; creators' list email uses up to ${Math.floor(amazon.max24 * SES_BULK_SHARE).toLocaleString("en-US")} of them. Amazon raises that number by itself as the account proves itself, and a higher one can be asked for in the Amazon SES console, under Account dashboard.`,
+              "",
+              "Past Amazon's day, list email goes through Resend, and that is used up too:",
+              "",
+            ]
+          : []),
+        `This month ${(await sentThisMonth()).toLocaleString("en-US")} emails have gone out through Resend, of every kind.`,
         `The sender's plan is ${quota.toLocaleString("en-US")} a month and it pauses the whole account at ${(quota * SENDER_PAUSES_AT).toLocaleString("en-US")}, so creators' list email now waits at ${listCeiling().toLocaleString("en-US")}.`,
         "",
         "Sign-in links, receipts and deliveries are still going out: the rest of the volume is kept for them.",
@@ -377,7 +395,7 @@ export type SendOutcome = {
 
 /** What a send that met the sender's ceiling says in the studio. */
 export const SENDER_WAIT_NOTE =
-  "Waiting on our side: the service that sends our email has reached its volume for the month. The rest go out by themselves as soon as that is raised, or when the month turns. Nothing is lost.";
+  "Waiting on our side: the service that sends our email has reached the volume it allows us for now. The rest go out by themselves as soon as there is room again. Nothing is lost.";
 
 /**
  * Sends one email to each address, in batches. Stops at the first batch the
