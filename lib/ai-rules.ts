@@ -25,7 +25,7 @@
 export type AiKind = "product" | "outline" | "email";
 
 /** Writing jobs a store may ask for in a calendar month, by where it stands with its plan. */
-export const AI_MONTHLY = { trial: 20, creator: 100, pro: 400 } as const;
+export const AI_MONTHLY = { trial: 20, creator: 100, pro: 400, scale: 1_000 } as const;
 /** And in any one minute, so a stuck button cannot spend the month. */
 export const AI_PER_MINUTE = 6;
 

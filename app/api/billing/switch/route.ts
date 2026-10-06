@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   const cycle = parseCycle(fields?.get("cycle"));
   const tier = parseTier(fields?.get("tier") ?? store.tier);
   if (!cycle || !tier) return away(origin, studio("billing=switch-error"));
-  if (tier === "pro" && !PRO_ON_SALE) return away(origin, studio("billing=pro-closed"));
+  if (tier !== "creator" && !PRO_ON_SALE) return away(origin, studio("billing=pro-closed"));
 
   try {
     const result = await switchPlan(store.subscriptionId, { tier, cycle });

@@ -45,7 +45,8 @@ function day(seconds: number): string {
 }
 
 function money(cents: number): string {
-  return `$${cents % 100 ? (cents / 100).toFixed(2) : cents / 100}`;
+  // "$2,388": a yearly charge in the thousands is written the way it is said.
+  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 }
 
 /** The email itself. Plain text, so every word is exactly what arrives. */

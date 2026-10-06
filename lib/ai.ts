@@ -56,7 +56,7 @@ const monthKey = (store: Store, now: Date) => `nl:ai:${store.statsId}:${now.toIS
 /** Writing jobs this store may ask for this month. */
 export function aiAllowance(store: Store, now = Date.now()): number {
   if (inTrial(store, now / 1000)) return AI_MONTHLY.trial;
-  return store.tier === "pro" ? AI_MONTHLY.pro : AI_MONTHLY.creator;
+  return AI_MONTHLY[store.tier];
 }
 
 /** What is left of this month's writing jobs. */

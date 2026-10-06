@@ -129,10 +129,12 @@ export function onPlatformAt(
 const PRODUCT_IDS: Record<Tier, string> = {
   creator: "nimbus_labs_creator",
   pro: "nimbus_labs_pro",
+  scale: "nimbus_labs_scale",
 };
 const PRODUCT_DESCRIPTIONS: Record<Tier, string> = {
   creator: "One store, 0% of your sales.",
   pro: "Everything in Marktmorgen, and what costs us money to run for you.",
+  scale: "Everything in Marktmorgen Pro, with three times the email to your list.",
 };
 
 /** The name each price is found by, so there is never a second one. */
@@ -141,7 +143,7 @@ export function lookupKey(tier: Tier, cycle: Cycle): string {
 }
 
 function planFromLookupKey(key: unknown): { tier: Tier; cycle: Cycle } | null {
-  const match = typeof key === "string" ? /^nimbus_(creator|pro)_(month|year)$/.exec(key) : null;
+  const match = typeof key === "string" ? /^nimbus_(creator|pro|scale)_(month|year)$/.exec(key) : null;
   return match ? { tier: match[1] as Tier, cycle: match[2] as Cycle } : null;
 }
 
@@ -480,8 +482,11 @@ export function planOf(subscription: Record<string, unknown>): { tier: Tier; cyc
   if (named) return { ...named, amountCents };
   const cycle: Cycle = recurring?.interval === "year" ? "year" : "month";
   const meta = subscription.metadata as Record<string, string> | null | undefined;
+  // An unnamed price is read by what it charges: at or above a plan's price
+  // is that plan, the dearest first.
+  const paysFor = (plan: Tier) => amountCents > 0 && amountCents >= PLAN_PRICES[plan][cycle];
   const tier: Tier =
-    meta?.tier === "pro" || (amountCents > 0 && amountCents >= PLAN_PRICES.pro[cycle]) ? "pro" : "creator";
+    meta?.tier === "scale" || paysFor("scale") ? "scale" : meta?.tier === "pro" || paysFor("pro") ? "pro" : "creator";
   return { tier, cycle, amountCents };
 }
 

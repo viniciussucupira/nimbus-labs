@@ -5,7 +5,7 @@
 // changes the same day: the help centre and these pages are read against the
 // code, not against a plan.
 import { isDomainsConfigured } from "@/lib/domains";
-import { PRO_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
+import { PLAN_PRICES, PRO_MONTHLY_EMAILS, SCALE_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
 import { AI_MONTHLY } from "@/lib/ai-rules";
 import { EXPECTATION, OPEN_COUNTRIES_WORDS, PITCHES_PER_DAY, REPITCH_DAYS } from "@/lib/outreach-rules";
 import type { TopicPage } from "@/lib/site-pages";
@@ -425,6 +425,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "calendar", title: "Payment plans", body: "Two to twelve weekly or monthly payments. The buyer gets what they bought after the first payment, and the plan ends by itself after the last." },
           { icon: "list", title: "Limited quantity", body: "Sell fifty and stop. The count shown is the real one, and a unit being paid for is held so the last one is never sold twice." },
           { icon: "receipt", title: "Sales tax and VAT", body: "Stripe Tax works it out from each buyer's address, on your account, once your Stripe tax setup is complete." },
+          { icon: "scroll", title: "A VAT number box and invoices, for business buyers", body: "Two switches, off until you turn them on. A company can enter its VAT or tax number at checkout, saved on your Stripe account and printed on its invoice, and Stripe can draw up an invoice for every single payment, with you as the seller. Stripe charges you for those invoices, and filing the tax stays yours." },
           { icon: "tag", title: "Pay what you want", body: "Your price becomes the minimum, at least $1 or the smallest price your store's currency allows, with a suggested price already in the box. Stripe refuses anything under the minimum." },
           { icon: "card", title: "The ways to pay your Stripe has on", body: "Apple Pay, Google Pay, Link, Klarna, Afterpay, Affirm, iDEAL, Bancontact and others you switch on in your own Stripe account, in any of 15 currencies.", href: "/platform/currencies-and-ways-to-pay" },
           { icon: "type", title: "Questions at checkout", body: "Up to three, on Stripe's page before paying: a short answer, a number or a list to choose from. The answers are in your list of sales." },
@@ -657,7 +658,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do yet",
         items: [
           "Emails are written, not designed: text with links and lists, no images or templates.",
-          "No A/B tests and no open or click counts. What an email sold counts a purchase made on the page its link opened; somebody who comes back later by themselves is not counted for it.",
+          "No open counts, on purpose: nothing in an email reports back. A visit is a page of your store opened through one of the email's links, so a link to anywhere else is not counted, and a sale is one made on the page a link opened; somebody who comes back later by themselves is not counted for it.",
+          "A test compares two subject lines, not two versions of the email itself, and only for a one-off email, not a sequence.",
           `During the free trial a store sends up to ${TRIAL_EMAILS} emails; the full ${PRO_EMAILS} opens with the first payment.`,
           "Up to ten sequences of up to ten emails each.",
         ],
@@ -668,6 +670,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Why is email on Pro and not on the $29 plan?", a: "Because every email sent costs us money, and the $29 plan is priced to cover a store, not a mailing list. Stan puts email on its $99 plan as well — read on its pricing page on September 20, 2026." },
           { q: "Can I import the list I already have?", a: "Yes, on every plan, from a CSV file of up to 50,000 rows, as long as those people agreed to hear from you. You confirm that each time, a consent column in the file narrows it further, and anyone who unsubscribed here stays unsubscribed. Nobody is emailed because of the import." },
+          { q: `What if my list needs more than ${PRO_EMAILS} emails a month?`, a: `Move up to Scale from your studio: the same plan with up to ${SCALE_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month, at $${PLAN_PRICES.scale.month / 100} a month or $${(PLAN_PRICES.scale.year / 100).toLocaleString("en-US")} a year. You are charged the difference for the rest of the period you already paid for, and you can go back to Pro whenever you like. Without it, an email that passes the month's number waits and goes out by itself when the month turns.` },
           { q: "Can I email people on the $29 plan at all?", a: "Your list downloads as a CSV on every plan, and on the $29 plan your store can send the people who agree straight to your own Mailchimp, Kit, beehiiv or MailerLite. Writing to them from Marktmorgen is what Pro adds." },
         ],
       },

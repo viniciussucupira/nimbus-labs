@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
 import { isDomainsConfigured } from "@/lib/domains";
 import { formatMoney } from "@/lib/money";
-import { PRO_MONTHLY_EMAILS, REFUND_DAYS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
+import { PRO_MONTHLY_EMAILS, REFUND_DAYS, SCALE_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
 import { DELIVERY_ALLOWANCE_BYTES, OVER_ALLOWANCE_CENTS_PER_GB, bytesWords } from "@/lib/delivery";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   const domains = isDomainsConfigured();
   return (
-    <LegalPage title="Terms of Service" lastUpdated="October 5, 2026">
+    <LegalPage title="Terms of Service" lastUpdated="October 6, 2026">
       <p>
         These Terms of Service (“Terms”) govern your access to and use of the
         websites, products, and subscription services operated by Solrenning
@@ -316,7 +316,7 @@ export default function TermsPage() {
           price will not apply to a period you have already paid for.
         </p>
         <p>
-          There are two plans. Marktmorgen, at $29 a month or $300 a year,
+          There are three plans. Marktmorgen, at $29 a month or $300 a year,
           includes everything you need to sell. Marktmorgen Pro, at $99 a month or $948
           a year, adds email to your list{domains ? " and your store on a domain you own" : ""},
           with up to {PRO_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month,
@@ -326,7 +326,10 @@ export default function TermsPage() {
           trial a store may send up to {TRIAL_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month, and the full
           number opens with the first payment. Emails not sent in a month do
           not carry over, and emails beyond a month&apos;s allowance wait for
-          the next month.
+          the next month. Marktmorgen Scale, at $249 a month or $2,388 a year,
+          is Marktmorgen Pro with up to{" "}
+          {SCALE_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month, counted
+          the same way.
         </p>
         {domains ? (
           <p>
@@ -338,7 +341,7 @@ export default function TermsPage() {
         ) : null}
         <p>
           You may switch between monthly and yearly billing, and between the
-          two plans, from your studio.
+          plans, from your studio.
           A switch that costs more is charged when you make it, less the unused
           part of the period you already paid for. A switch that costs less
           leaves the unused part as credit on your account, applied to your

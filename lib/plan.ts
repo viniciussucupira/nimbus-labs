@@ -12,8 +12,13 @@
  * is the whole reason it is safe for a client component to import it.
  */
 
-/** The two plans. Pro adds what costs us money to run for you. */
-export type Tier = "creator" | "pro";
+/**
+ * The plans. Pro adds what costs us money to run for you, and Scale is Pro
+ * with room for a list that has outgrown it.
+ */
+export type Tier = "creator" | "pro" | "scale";
+/** Every plan, from the least to the most. */
+export const TIERS: readonly Tier[] = ["creator", "pro", "scale"];
 /** How often it is billed. */
 export type Cycle = "month" | "year";
 
@@ -21,6 +26,9 @@ export type Cycle = "month" | "year";
 export const PLAN_PRICES: Record<Tier, Record<Cycle, number>> = {
   creator: { month: 2900, year: 30000 },
   pro: { month: 9900, year: 94800 },
+  // What Kajabi charges for its middle plan, monthly and yearly, read from its
+  // pricing page on October 6, 2026. See SCALE_MONTHLY_EMAILS for why it exists.
+  scale: { month: 24900, year: 238800 },
 };
 
 /** The monthly subscription, in cents: the price the site leads with. */
@@ -36,7 +44,8 @@ export function yearSaving(tier: Tier): number {
 /** "$29 a month", "$300 a year". */
 export function priceWords(tier: Tier, cycle: Cycle): string {
   const cents = PLAN_PRICES[tier][cycle];
-  const dollars = cents % 100 ? (cents / 100).toFixed(2) : String(cents / 100);
+  // "$2,388 a year": a price in the thousands is written the way it is said.
+  const dollars = (cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 });
   return `$${dollars} a ${cycle}`;
 }
 
@@ -50,6 +59,7 @@ export function priceWords(tier: Tier, cycle: Cycle): string {
 export const PLAN_NAMES: Record<Tier, string> = {
   creator: "Marktmorgen",
   pro: "Marktmorgen Pro",
+  scale: "Marktmorgen Scale",
 };
 
 /**
@@ -69,6 +79,7 @@ export const PLAN_NAMES: Record<Tier, string> = {
 export const PLAN_TITLES: Record<Tier, string> = {
   creator: "Storefront",
   pro: "Storefront & Email",
+  scale: "Storefront & Email for a big list",
 };
 
 /**
@@ -107,6 +118,42 @@ export const PRO_MONTHLY_EMAILS = 25_000;
 export const TRIAL_MONTHLY_EMAILS = 1_000;
 
 /**
+ * Emails a store on Scale may send to its list in a calendar month.
+ *
+ * Scale is here because of what happened to the store this one was first
+ * measured against. Stan sold one $29 plan and then a $99 one, and a creator
+ * who went on to sell ten times as much still paid the same: Sacra put it at
+ * $35M of yearly revenue in 2025, growing 24% after 93% the year before, and
+ * named the cause as a flat price with nothing to move up to. A store whose
+ * list has outgrown Pro had the same wall here: the month's emails ran out
+ * and the only answer was to wait for the first of the next one.
+ *
+ * So this is Pro with three times the email, at the price Kajabi charges for
+ * the plan a business of that size is on. It is the same product with a
+ * larger number, said as that: nothing is held back from Pro to make it look
+ * better.
+ *
+ * Seventy-five thousand, set against the price like Pro's own number. At
+ * $0.0009 an email that is $67.50 at the top. With every other brake at its
+ * limit too the plan costs about $102 against the $241 a monthly charge
+ * leaves, and against $193 a month on the yearly price: 58% kept in the
+ * worst month on the one and 47% on the other, more than Pro keeps on
+ * either (tests/plan-margin.test.ts adds it up). A hundred thousand was the
+ * first figure, and left 36% on the yearly price.
+ */
+export const SCALE_MONTHLY_EMAILS = 75_000;
+
+/** Whether a plan has what Pro switches on: Pro itself, and Scale above it. */
+export function hasPro(tier: Tier): boolean {
+  return tier === "pro" || tier === "scale";
+}
+
+/** Emails to a list that a paid-up store on this plan may send in a month. */
+export function monthlyEmails(tier: Tier): number {
+  return tier === "scale" ? SCALE_MONTHLY_EMAILS : tier === "pro" ? PRO_MONTHLY_EMAILS : 0;
+}
+
+/**
  * What only Pro switches on. "email", "domain" and "branding" are the ones
  * built. "api" is a name kept for when it is, and "stores" one kept from
  * when several stores were planned for Pro: they are built and on every
@@ -129,11 +176,11 @@ export function canUse(
   feature: ProFeature,
 ): boolean {
   void feature;
-  return store.subscriptionActive && store.tier === "pro";
+  return store.subscriptionActive && hasPro(store.tier);
 }
 
 export function parseTier(raw: unknown): Tier | null {
-  return raw === "creator" || raw === "pro" ? raw : null;
+  return raw === "creator" || raw === "pro" || raw === "scale" ? raw : null;
 }
 
 export function parseCycle(raw: unknown): Cycle | null {
