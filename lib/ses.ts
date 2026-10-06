@@ -29,13 +29,25 @@
  *     number a second. Both are read from Amazon, never typed here, because
  *     Amazon raises them by itself as an account proves itself.
  *
- * Five settings, and without all five Amazon is not used at all:
+ * Four settings, none of them a secret, and without all four Amazon is not
+ * used at all:
  *
- *   AWS_SES_ACCESS_KEY_ID        the key of a user that may only send email
- *   AWS_SES_SECRET_ACCESS_KEY    and read the account's own limits
+ *   AWS_SES_ROLE_ARN             the role at Amazon that may only send email
+ *                                and read the account's own limits
  *   AWS_SES_REGION               where the account sends from: us-east-1
  *   AWS_SES_CONFIGURATION_SET    the set whose events go to the topic below
  *   AWS_SES_TOPIC_ARN            the one topic whose announcements are believed
+ *
+ * There is no key of Amazon's kept anywhere. The host gives every request
+ * here a short-lived token that says, signed, which project of which team is
+ * running (vercel.com/docs/oidc, read October 6, 2026). Amazon is told once
+ * to trust that token for this one project's production, and lends a key
+ * for an hour in exchange for it (sesCredentials, below). Nothing that could
+ * be copied out of a settings page and used from somewhere else exists.
+ *
+ * A long-lived key still works in the role's place, for a host that has no
+ * such token: AWS_SES_ACCESS_KEY_ID and AWS_SES_SECRET_ACCESS_KEY. The role
+ * is used when both are set.
  *
  *   nl:ses:state            what Amazon last said the account may do (JSON)
  *   nl:ses:h:<YYYY-MM-DDTHH> emails Amazon took in that hour
@@ -46,27 +58,143 @@ import { type AwsKey, signV4 } from "@/lib/aws-sign";
 import { SES_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 
-export type SesConfig = { key: AwsKey; region: string; configurationSet: string; topicArn: string };
+export type SesConfig = {
+  /** The role to borrow a key for; null when a long-lived key is used in its place. */
+  roleArn: string | null;
+  /** The long-lived key, when there is one. */
+  key: AwsKey | null;
+  region: string;
+  configurationSet: string;
+  topicArn: string;
+};
 
 function env(name: string): string {
   return process.env[name]?.trim() ?? "";
 }
 
-/** The five settings, or null when any is missing or does not look like what it should be. */
+/** The settings, or null when any is missing or does not look like what it should be. */
 export function sesConfig(): SesConfig | null {
+  const role = env("AWS_SES_ROLE_ARN");
   const accessKeyId = env("AWS_SES_ACCESS_KEY_ID");
   const secretAccessKey = env("AWS_SES_SECRET_ACCESS_KEY");
   const region = env("AWS_SES_REGION");
   const configurationSet = env("AWS_SES_CONFIGURATION_SET");
   const topicArn = env("AWS_SES_TOPIC_ARN");
-  if (!/^[A-Z0-9]{16,128}$/.test(accessKeyId) || secretAccessKey.length < 16) return null;
+  const roleArn = /^arn:aws:iam::\d{12}:role\/[A-Za-z0-9+=,.@_\/-]{1,128}$/.test(role) ? role : null;
+  const key = /^[A-Z0-9]{16,128}$/.test(accessKeyId) && secretAccessKey.length >= 16 ? { accessKeyId, secretAccessKey } : null;
+  if (!roleArn && !key) return null;
   if (!/^[a-z]{2}(-[a-z]+)+-\d$/.test(region)) return null;
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(configurationSet)) return null;
   // The topic must be in the region email is sent from: its announcements
   // are signed by that region's certificate (lib/sns.ts).
   const arn = /^arn:aws:sns:([a-z0-9-]+):\d{12}:[A-Za-z0-9_-]{1,256}$/.exec(topicArn);
   if (!arn || arn[1] !== region) return null;
-  return { key: { accessKeyId, secretAccessKey }, region, configurationSet, topicArn };
+  return { roleArn, key, region, configurationSet, topicArn };
+}
+
+/* ------------------------------------------------------------------ */
+/* A key for an hour, in exchange for the host's token                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The token the host gives the request being served, saying which project
+ * is running. Read the way the host's own helper reads it (@vercel/oidc
+ * 4.0.0, get-vercel-oidc-token-sync.js): from the request's context while a
+ * function runs, from the environment while a build or a local run does.
+ */
+function hostToken(): string | null {
+  const context = (globalThis as Record<symbol, { get?: () => { headers?: Record<string, string | undefined> } } | undefined>)[
+    Symbol.for("@vercel/request-context")
+  ];
+  let token: string | undefined;
+  try {
+    token = context?.get?.()?.headers?.["x-vercel-oidc-token"];
+  } catch {
+    token = undefined;
+  }
+  token = token || process.env.VERCEL_OIDC_TOKEN?.trim();
+  return token && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token) ? token : null;
+}
+
+/** The key lent for the role, kept in this instance's memory only, until five minutes before Amazon ends it. */
+let lent: { role: string; key: AwsKey; until: number } | null = null;
+/** After Amazon refuses the exchange, it is not asked again for a minute. */
+let refusedUntil = 0;
+
+const between = (text: string, tag: string) => new RegExp(`<${tag}>([^<]+)</${tag}>`).exec(text)?.[1] ?? "";
+
+/**
+ * The key to sign with: the long-lived one when that is what is set, or one
+ * Amazon lends for an hour in exchange for the host's token. Null when
+ * Amazon will not lend one — no token on this request, or a role that does
+ * not trust it — and then Amazon is simply not used.
+ */
+export async function sesCredentials(config: SesConfig, now = Date.now()): Promise<AwsKey | null> {
+  if (!config.roleArn) return config.key;
+  if (lent && lent.role === config.roleArn && now < lent.until) return lent.key;
+  if (now < refusedUntil) return null;
+  const token = hostToken();
+  if (!token) {
+    console.error("Amazon SES: no token from the host on this request, so no key can be borrowed");
+    refusedUntil = now + 60_000;
+    return null;
+  }
+  try {
+    const response = await timed(SES_TIMEOUT_MS, (signal) =>
+      fetch(`https://sts.${config.region}.amazonaws.com/`, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
+        body: new URLSearchParams({
+          Action: "AssumeRoleWithWebIdentity",
+          Version: "2011-06-15",
+          RoleArn: config.roleArn as string,
+          RoleSessionName: "marktmorgen-email",
+          WebIdentityToken: token,
+          DurationSeconds: "3600",
+        }).toString(),
+        cache: "no-store",
+        signal,
+      }),
+    );
+    const text = await response.text();
+    if (!response.ok) {
+      // What Amazon says here is the reason, and holds nothing secret: a
+      // role that does not trust this project, a token past its time.
+      console.error("Amazon would not lend a key for the role", response.status, text.replace(/\s+/g, " ").slice(0, 300));
+      refusedUntil = now + 60_000;
+      return null;
+    }
+    // Amazon answers in JSON when asked to, and in XML otherwise; either is read.
+    let accessKeyId = "";
+    let secretAccessKey = "";
+    let sessionToken = "";
+    let expires = 0;
+    try {
+      const c = (JSON.parse(text) as { AssumeRoleWithWebIdentityResponse?: { AssumeRoleWithWebIdentityResult?: { Credentials?: Record<string, unknown> } } })
+        .AssumeRoleWithWebIdentityResponse?.AssumeRoleWithWebIdentityResult?.Credentials;
+      accessKeyId = typeof c?.AccessKeyId === "string" ? c.AccessKeyId : "";
+      secretAccessKey = typeof c?.SecretAccessKey === "string" ? c.SecretAccessKey : "";
+      sessionToken = typeof c?.SessionToken === "string" ? c.SessionToken : "";
+      expires = typeof c?.Expiration === "number" ? c.Expiration * 1000 : Date.parse(String(c?.Expiration ?? ""));
+    } catch {
+      accessKeyId = between(text, "AccessKeyId");
+      secretAccessKey = between(text, "SecretAccessKey");
+      sessionToken = between(text, "SessionToken");
+      expires = Date.parse(between(text, "Expiration"));
+    }
+    if (!accessKeyId || !secretAccessKey || !sessionToken) {
+      console.error("Amazon's answer to the exchange held no key");
+      refusedUntil = now + 60_000;
+      return null;
+    }
+    const until = (Number.isFinite(expires) && expires > now ? expires : now + 3_600_000) - 300_000;
+    lent = { role: config.roleArn, key: { accessKeyId, secretAccessKey, sessionToken }, until };
+    return lent.key;
+  } catch (error) {
+    console.error("Amazon could not be asked for a key", error);
+    refusedUntil = now + 60_000;
+    return null;
+  }
 }
 
 /** Whether Amazon could be used at all. It also needs Redis: what it may do, and what it took, are kept there. */
@@ -78,6 +206,10 @@ const base = (config: SesConfig) => `https://email.${config.region}.amazonaws.co
 
 async function call(config: SesConfig, method: "GET" | "POST", path: string, body?: string): Promise<Response> {
   const url = `${base(config)}${path}`;
+  const key = await sesCredentials(config);
+  // No key to sign with is answered as Amazon answers a key it does not
+  // believe, so every caller treats the two alike: Amazon is not usable.
+  if (!key) return new Response(JSON.stringify({ message: "no key could be borrowed for the role" }), { status: 403, headers: { "x-amzn-errortype": "AccessDenied" } });
   const headers = signV4({
     method,
     url,
@@ -85,7 +217,7 @@ async function call(config: SesConfig, method: "GET" | "POST", path: string, bod
     body,
     region: config.region,
     service: "ses",
-    key: config.key,
+    key,
   });
   // `host` is set by fetch itself, from the address; it was needed for the signature only.
   const { host: _host, ...sent } = headers;
