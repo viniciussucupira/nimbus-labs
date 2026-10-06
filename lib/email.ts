@@ -389,21 +389,22 @@ export async function sendBatch(
   }
   const key = getKey();
   if (!key) return "retry";
-  try {
+  const tagged = going.some((m) => cleanTags(m.tags).length > 0);
+  const post = (withTags: boolean, under: string) =>
     // Given up after RESEND_TIMEOUT_MS: "retry", with the same key next time.
-    const response = await timed(RESEND_TIMEOUT_MS, (signal) => fetch(`${BASE}/emails/batch`, {
+    timed(RESEND_TIMEOUT_MS, (signal) => fetch(`${BASE}/emails/batch`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
-        "Idempotency-Key": idempotencyKey.slice(0, 256),
+        "Idempotency-Key": under.slice(0, 256),
       },
       body: JSON.stringify(
         going
           .map((m) => {
             const replyTo = oneAddress(m.replyTo);
             const headers = cleanHeaders(m.headers);
-            const tags = cleanTags(m.tags);
+            const tags = withTags ? cleanTags(m.tags) : [];
             return {
               from: fromLine(m.from),
               to: [oneAddress(m.to) as string],
@@ -419,6 +420,17 @@ export async function sendBatch(
       cache: "no-store",
       signal,
     }));
+  try {
+    let response = await post(true, idempotencyKey);
+    if (!response.ok && tagged && (response.status === 400 || response.status === 422)) {
+      // The tags are for us, not for the reader: they say whose email it was
+      // on the day one bounces (lib/mail-health.ts). If the sender will not
+      // take a batch that carries them, the email matters more than the
+      // label, so it goes once more without them, under a key of its own
+      // because it is no longer the same request.
+      console.error("batch refused with its tags; sending it without them", response.status);
+      response = await post(false, `${idempotencyKey}:plain`);
+    }
     if (response.ok) {
       await countSent(going.length);
       return "sent";
