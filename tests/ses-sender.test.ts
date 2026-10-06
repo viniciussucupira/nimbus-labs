@@ -40,6 +40,9 @@ let account: Record<string, unknown> | number = 0;
 /** What Amazon answers to a send, by recipient; anything not named is taken. */
 let amazonSays: (to: string, nth: number) => { status: number; type?: string; message?: string } = () => ({ status: 200 });
 const fetched: string[] = [];
+const exchanges: { role: string; token: string; action: string }[] = [];
+let stsRefuses = false;
+let stsAnswersXml = false;
 const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const CERT = publicKey.export({ type: "spki", format: "pem" }).toString();
 
@@ -69,6 +72,15 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
     const body = JSON.parse(String(init?.body)) as { to: string[]; subject: string } | { to: string[]; subject: string }[];
     for (const m of Array.isArray(body) ? body : [body]) resend.push({ to: m.to[0], subject: m.subject, key });
     return json({ id: "email_1" });
+  }
+  if (url.hostname === `sts.${REGION}.amazonaws.com`) {
+    const form = new URLSearchParams(String(init?.body));
+    exchanges.push({ role: form.get("RoleArn") ?? "", token: form.get("WebIdentityToken") ?? "", action: form.get("Action") ?? "" });
+    if (stsRefuses) return json({ Error: { Code: "AccessDenied", Message: "Not authorized to perform sts:AssumeRoleWithWebIdentity" } }, 403);
+    const credentials = { AccessKeyId: `ASIAEXAMPLELENT${exchanges.length}`, SecretAccessKey: "lent-for-an-hour-and-never-stored-0000000", SessionToken: `session-token-${exchanges.length}`, Expiration: Math.floor(Date.now() / 1000) + 3_600 };
+    return stsAnswersXml
+      ? new Response(`<AssumeRoleWithWebIdentityResponse><AssumeRoleWithWebIdentityResult><Credentials><AccessKeyId>${credentials.AccessKeyId}</AccessKeyId><SecretAccessKey>${credentials.SecretAccessKey}</SecretAccessKey><SessionToken>${credentials.SessionToken}</SessionToken><Expiration>${new Date(credentials.Expiration * 1000).toISOString()}</Expiration></Credentials></AssumeRoleWithWebIdentityResult></AssumeRoleWithWebIdentityResponse>`)
+      : json({ AssumeRoleWithWebIdentityResponse: { AssumeRoleWithWebIdentityResult: { Credentials: credentials } } });
   }
   fetched.push(url.href);
   if (url.hostname === `sns.${REGION}.amazonaws.com`) return new Response(url.pathname.endsWith(".pem") ? CERT : "<ok/>");
@@ -115,20 +127,20 @@ function announce(over: Partial<SnsMessage> & { event?: unknown }, opts: { sign?
 async function main(): Promise<void> {
   redis.clear();
   process.env.RESEND_API_KEY = "re_test_floor_only_a_stand_in";
-  for (const name of ["AWS_SES_ACCESS_KEY_ID", "AWS_SES_SECRET_ACCESS_KEY", "AWS_SES_REGION", "AWS_SES_CONFIGURATION_SET", "AWS_SES_TOPIC_ARN", "SENDER_MONTHLY_QUOTA"]) delete process.env[name];
+  for (const name of ["AWS_SES_ROLE_ARN", "AWS_SES_ACCESS_KEY_ID", "AWS_SES_SECRET_ACCESS_KEY", "AWS_SES_REGION", "AWS_SES_CONFIGURATION_SET", "AWS_SES_TOPIC_ARN", "SENDER_MONTHLY_QUOTA", "VERCEL_OIDC_TOKEN"]) delete process.env[name];
 
-  part("Not used until all five settings are there");
+  part("Not used until every setting is there");
   is("with none, Amazon is not there and Resend sends", [isSesConfigured(), isSenderConfigured(), hasResend()], [false, true, true]);
   is("and nothing is found at the address Amazon would post to", (await POST(announce({}))).status, 404);
   process.env.AWS_SES_ACCESS_KEY_ID = "AKIAEXAMPLEEXAMPLE00";
   process.env.AWS_SES_SECRET_ACCESS_KEY = "a-stand-in-secret-for-tests-only-0000000";
   process.env.AWS_SES_REGION = REGION;
   process.env.AWS_SES_CONFIGURATION_SET = "marktmorgen";
-  is("four are not five", isSesConfigured(), false);
+  is("without the topic, not yet", isSesConfigured(), false);
   process.env.AWS_SES_TOPIC_ARN = "arn:aws:sns:eu-west-1:123456789012:marktmorgen-email";
   is("a topic in another region than the one email leaves from is not believed", isSesConfigured(), false);
   process.env.AWS_SES_TOPIC_ARN = TOPIC;
-  is("all five", [isSesConfigured(), sesConfig()?.region], [true, REGION]);
+  is("all of them", [isSesConfigured(), sesConfig()?.region, sesConfig()?.roleArn], [true, REGION, null]);
 
   part("An account Amazon is still looking at");
   account = { ProductionAccessEnabled: false, SendingEnabled: true, EnforcementStatus: "HEALTHY", SendQuota: { Max24HourSend: 200, MaxSendRate: 1 } };
@@ -259,6 +271,60 @@ async function main(): Promise<void> {
   account = 403;
   askAgain();
   is("a key Amazon does not believe is an answer: not usable", [(await sesState())?.ready, (await sesState())?.why], [false, "key"]);
+
+  part("With a role, no key of Amazon's is kept anywhere");
+  redis.clear();
+  resendKeys.clear();
+  account = approved();
+  clear();
+  delete process.env.AWS_SES_ACCESS_KEY_ID;
+  delete process.env.AWS_SES_SECRET_ACCESS_KEY;
+  is("with neither a role nor a key, Amazon is not there", isSesConfigured(), false);
+  process.env.AWS_SES_ROLE_ARN = "arn:aws:iam::123456789012:role/marktmorgen-email";
+  is("the role alone is enough: nothing secret among the settings", [isSesConfigured(), sesConfig()?.roleArn, sesConfig()?.key], [true, "arn:aws:iam::123456789012:role/marktmorgen-email", null]);
+  is("a request the host gave no token is sent through Resend", [await sendEmail(letter("buyer@example.com")), amazon.length, resend.length, exchanges.length], [true, 0, 1, 0]);
+  is("and Amazon is marked as not usable for want of a key", (await sesState())?.why, "key");
+
+  // The host puts its token on each request it serves, where its own helper reads it.
+  const hostGives = (token: string) => {
+    (globalThis as Record<symbol, unknown>)[Symbol.for("@vercel/request-context")] = { get: () => ({ headers: { "x-vercel-oidc-token": token } }) };
+  };
+  hostGives("aGVhZGVy.cGF5bG9hZA.c2lnbmF0dXJl");
+  askAgain();
+  clear();
+  // The minute Amazon is left alone after a refusal has passed.
+  const realNow = Date.now;
+  let ahead = 61_000;
+  Date.now = () => realNow() + ahead;
+  is("with the host's token, the next one is sent", await sendEmail(letter("buyer@example.com", "Your login link")), true);
+  is("through Amazon", [amazon.length, resend.length], [1, 0]);
+  is("after one exchange: the token for the role, and nothing else", exchanges, [{ role: "arn:aws:iam::123456789012:role/marktmorgen-email", token: "aGVhZGVy.cGF5bG9hZA.c2lnbmF0dXJl", action: "AssumeRoleWithWebIdentity" }]);
+  const lentHeaders = amazon[0].headers;
+  is("signed with the key Amazon lent, and carrying its session", [/Credential=ASIAEXAMPLELENT1\//.test(lentHeaders.authorization), lentHeaders["x-amz-security-token"], /SignedHeaders=content-type;host;x-amz-date;x-amz-security-token,/.test(lentHeaders.authorization)], [true, "session-token-1", true]);
+  await sendBatch([letter("a@example.com"), letter("b@example.com"), letter("c@example.com")], "bc:role");
+  is("the same lent key serves the emails after it", [amazon.length, exchanges.length], [4, 1]);
+  ahead += 56 * 60_000;
+  stsAnswersXml = true;
+  await sendEmail(letter("later@example.com"));
+  is("near the end of its hour another is borrowed, read from either of Amazon's two answers", [amazon.length, exchanges.length, amazon[4].headers["x-amz-security-token"]], [5, 2, "session-token-2"]);
+  stsAnswersXml = false;
+
+  part("A role that does not trust this project");
+  process.env.AWS_SES_ROLE_ARN = "arn:aws:iam::123456789012:role/somebody-elses";
+  stsRefuses = true;
+  askAgain();
+  clear();
+  is("the email is sent all the same", await sendEmail(letter("buyer@example.com", "Your login link")), true);
+  is("through Resend, and Amazon is not asked for a key on every email", [amazon.length, resend.length, exchanges.length], [0, 1, 3]);
+  await sendEmail(letter("buyer2@example.com"));
+  is("nor asked again within the minute", exchanges.length, 3);
+  stsRefuses = false;
+  process.env.AWS_SES_ROLE_ARN = "arn:aws:iam::123456789012:role/marktmorgen-email";
+  Date.now = realNow;
+  delete (globalThis as Record<symbol, unknown>)[Symbol.for("@vercel/request-context")];
+  process.env.AWS_SES_ACCESS_KEY_ID = "AKIAEXAMPLEEXAMPLE00";
+  process.env.AWS_SES_SECRET_ACCESS_KEY = "a-stand-in-secret-for-tests-only-0000000";
+  delete process.env.AWS_SES_ROLE_ARN;
 
   part("Amazon tells us an email bounced");
   redis.clear();

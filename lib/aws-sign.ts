@@ -19,7 +19,12 @@
  */
 import { createHash, createHmac } from "node:crypto";
 
-export type AwsKey = { accessKeyId: string; secretAccessKey: string };
+/**
+ * A key Amazon believes. `sessionToken` is there on a key that was lent for
+ * an hour in exchange for a role (lib/ses.ts): Amazon wants it sent along,
+ * and signed with the rest.
+ */
+export type AwsKey = { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
 
 const sha256 = (data: string) => createHash("sha256").update(data, "utf8").digest("hex");
 const hmac = (key: Buffer | string, data: string) => createHmac("sha256", key).update(data, "utf8").digest();
@@ -80,6 +85,7 @@ export function signV4(input: {
   for (const [name, value] of Object.entries(input.headers ?? {})) headers[name.toLowerCase()] = value;
   headers.host = url.host;
   headers["x-amz-date"] = stamp;
+  if (input.key.sessionToken) headers["x-amz-security-token"] = input.key.sessionToken;
 
   const names = Object.keys(headers).sort();
   const canonicalHeaders = names.map((name) => `${name}:${headers[name].trim().replace(/\s+/g, " ")}\n`).join("");
