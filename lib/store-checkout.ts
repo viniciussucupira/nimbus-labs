@@ -399,9 +399,9 @@ export async function createCheckout(
   // Sales tax, when the creator has switched it on: worked out by Stripe Tax
   // from the buyer's address, on the creator's account, for every line.
   applyTax(store, body);
-  // And the two documents a business buyer needs: the box for their own tax
-  // number, and an invoice drawn up by Stripe on the creator's account
-  // (lib/tax.ts). Set before the closing time below, as recovery is.
+  // And the two documents a business buyer needs, where the creator switched
+  // them on: the box for their own tax number, and an invoice drawn up by
+  // Stripe on the creator's account (lib/tax.ts).
   applyTaxDocuments(store, body, recurring);
   onlyInstantMethods(body);
   inTheCurrencyShown(body);

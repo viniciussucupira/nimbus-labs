@@ -16,6 +16,10 @@
  *             accepted, the free one at $0, and the session's coupon is good
  *             for one use only
  *
+ *   documents a checkout that offers the tax number box and draws up an
+ *             invoice is accepted, with both switched on as Stripe reads them
+ *             (lib/tax.ts)
+ *
  * Completing the free checkout takes a browser, which a scheduled job has
  * not: that was done by hand on September 30, 2026, and Stripe read it as
  * paid, with nothing charged and the coupon then refused a second time.
@@ -184,4 +188,31 @@ export async function verifyPackages(origin: string): Promise<Check[]> {
     for (const id of opened) await onDemoAccount("POST", `/checkout/sessions/${encodeURIComponent(id)}/expire`, new URLSearchParams()).catch(() => null);
   }
   return out;
+}
+
+/**
+ * The tax number box and the invoice (lib/tax.ts), as a store with both
+ * switched on sends them. Stripe Tax itself stays off here: it needs a
+ * registration the test account does not have, and neither field depends on
+ * it.
+ */
+export async function verifyTaxDocuments(origin: string): Promise<Check[]> {
+  const s = { ...checkStore(), tax: { enabled: false, included: false, ids: true, invoices: true } } as unknown as Store;
+  const pkgListing = { id: "verify-call", title: "Verification call" } as unknown as Listing;
+  let opened = "";
+  try {
+    const made = await onDemoAccount("POST", "/checkout/sessions", packageCheckoutBody(s, pkgListing, { sessions: 5, priceCents: 50000, days: 90 }, origin));
+    if (made.status === 200) opened = str(made.data.id);
+    const ids = (made.data.tax_id_collection as { enabled?: unknown } | null)?.enabled === true;
+    const invoice = (made.data.invoice_creation as { enabled?: unknown } | null)?.enabled === true;
+    return [
+      {
+        check: "a checkout with the tax number box and an invoice is accepted, with both on",
+        ok: made.status === 200 && ids && invoice && str(made.data.customer_creation) === "always",
+        detail: made.status === 200 ? `tax number box ${ids ? "on" : "off"}, invoice ${invoice ? "on" : "off"}, customer ${str(made.data.customer_creation)}` : err(made),
+      },
+    ];
+  } finally {
+    if (opened) await onDemoAccount("POST", `/checkout/sessions/${encodeURIComponent(opened)}/expire`, new URLSearchParams()).catch(() => null);
+  }
 }

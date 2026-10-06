@@ -26,7 +26,7 @@ import { inTheCurrencyShown, isSettled, onlyInstantMethods } from "@/lib/instant
 import { purchaseRefunded } from "@/lib/refunds";
 import { sendEmail } from "@/lib/email";
 import { formatMoney } from "@/lib/money";
-import { applyTax } from "@/lib/tax";
+import { applyTax, applyTaxDocuments, openKeepingTheSale } from "@/lib/tax";
 import { withLock } from "@/lib/redis-lock";
 import { type CallPackage, packageLimitWords } from "@/lib/call-package-rules";
 import type { Listing, Store } from "@/lib/store";
@@ -123,6 +123,9 @@ export function packageCheckoutBody(store: Store, product: Listing, pkg: CallPac
   });
   if (store.hasDiscounts) body.set("allow_promotion_codes", "true");
   applyTax(store, body);
+  // A package is the dearest single payment a store takes, and so the one a
+  // business buyer most often needs a tax number on and an invoice for.
+  applyTaxDocuments(store, body, false);
   // Like every checkout here: only ways to pay that settle while the buyer is
   // on the page, in the currency the page showed (lib/instant-pay.ts).
   onlyInstantMethods(body);
@@ -133,7 +136,9 @@ export function packageCheckoutBody(store: Store, product: Listing, pkg: CallPac
 /** Opens the checkout that buys a package, on the creator's own account. */
 export async function packageCheckout(store: Store, product: Listing, pkg: CallPackage, origin: string): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
-  const made = await onAccount("POST", store.stripeAccountId, "/checkout/sessions", packageCheckoutBody(store, product, pkg, origin));
+  const account = store.stripeAccountId;
+  const body = packageCheckoutBody(store, product, pkg, origin);
+  const made = await openKeepingTheSale(body, () => onAccount("POST", account, "/checkout/sessions", body));
   if (typeof made.url !== "string" || typeof made.id !== "string") throw new Error("Stripe returned no checkout");
   return { url: made.url, id: made.id };
 }
