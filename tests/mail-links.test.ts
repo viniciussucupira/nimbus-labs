@@ -100,7 +100,11 @@ test("a sequence's figure is every one of its emails together, and nobody else's
 const read = (file: string) => readFileSync(join(process.cwd(), file), "utf8");
 
 test("both kinds of email are sent with their tag", () => {
-  assert.match(read("lib/broadcasts.ts"), /b\.tagged \? \{ medium: "broadcast", campaign: broadcastCampaign\(id\) \} : undefined/);
+  // The email's own tag, or one subject line's when two are being tried
+  // (lib/mail-test.ts); what actually goes out is checked in mail-test.test.ts.
+  const broadcasts = read("lib/broadcasts.ts");
+  assert.match(broadcasts, /const campaign = part === "rest" \? broadcastCampaign\(id\) : variantCampaign\(id, part\);/);
+  assert.match(broadcasts, /b\.tagged \? \{ medium: "broadcast", campaign \} : undefined/);
   assert.match(read("lib/flows.ts"), /\{ medium: "sequence", campaign: stepCampaign\(flow\.id, step\.id\) \}/);
 });
 

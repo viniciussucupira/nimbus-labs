@@ -19,7 +19,9 @@
  *
  *   - One per email, never one per reader. Everybody who gets the email gets
  *     the same link, so it says which email a sale came from and nothing
- *     about who bought. No pixel, no redirect through us, no profile.
+ *     about who bought. No pixel, no redirect through us, no profile. (An
+ *     email trying two subject lines has one per subject line instead, each
+ *     shared by everybody who got that line: lib/mail-test.ts.)
  *   - Only on links to the creator's own store, here or on their own domain.
  *     Somebody else's address is theirs and is left exactly as typed.
  *   - Never over the creator's own. A link that already carries a utm tag is
@@ -40,6 +42,15 @@ export type MailTag = { medium: "broadcast" | "sequence"; campaign: string };
 
 /** The campaign of a one-off email. Short enough to survive lib/came-from.ts's forty characters. */
 export const broadcastCampaign = (broadcastId: string) => `b-${broadcastId}`;
+/**
+ * The campaign of one subject line's share of a one-off email, when two are
+ * being tried (lib/mail-test.ts). One per subject line, shared by everybody
+ * who got it, so it still says nothing about who anybody is. Twenty-eight
+ * characters: inside the thirty a visit's tag is kept at (lib/stats.ts).
+ */
+export const variantCampaign = (broadcastId: string, variant: "a" | "b") => `b-${broadcastId}-${variant}`;
+/** Every campaign a one-off email's links may carry: its own, and each subject line's. */
+export const broadcastCampaigns = (broadcastId: string) => [broadcastCampaign(broadcastId), variantCampaign(broadcastId, "a"), variantCampaign(broadcastId, "b")];
 /** The campaign of one email of a sequence, and the start every email of that sequence shares. */
 export const stepCampaign = (flowId: string, stepId: string) => `s-${flowId}-${stepId}`;
 export const flowCampaignPrefix = (flowId: string) => `s-${flowId}-`;

@@ -35,6 +35,7 @@ function sent(over: Partial<Broadcast> = {}): Broadcast {
     failures: 0,
     listed: true,
     tagged: false,
+    test: null,
     ...over,
   };
 }

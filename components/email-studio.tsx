@@ -12,6 +12,7 @@ import type { MailSettings } from "@/lib/store";
 import { StoreField } from "@/components/studio-store-pin";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 import { formatMoney } from "@/lib/money";
+import { MIN_TEST_REACH, TEST_HOURS, TEST_SHARES, type SubjectTest, type TestBy } from "@/lib/mail-test";
 
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
@@ -25,6 +26,10 @@ const MESSAGES: Record<string, string> = {
   when: "Pick a time between now and a year from now.",
   product: "That product is not in your store anymore.",
   empty: "Nobody on your list matches, so there is nobody to send it to yet.",
+  test_subject: "Write a second subject line that is different from the first, or uncheck the test.",
+  test_small: `Trying two subject lines needs at least ${MIN_TEST_REACH} people, or each line reaches too few for the result to mean anything. Send it without the test, or to a bigger group.`,
+  test_links:
+    "Two subject lines are compared by the visits and sales the email's links bring, and this email has no link to your store. Add a link to your store or to a product, or send it without the test.",
   allowance: "This goes to more people than this month's emails have left. Send it to a smaller group, or next month.",
   day: "Today's sending is full. A test can go out again tomorrow.",
   setup: "Save the name and postal address your emails carry first, at the top of this page.",
@@ -84,6 +89,10 @@ type BroadcastRow = {
   tagged: boolean;
   /** What it sold, from the creator's own Stripe account; null when nothing is counted for it. */
   money: Money | null;
+  /** Pages of the store opened through its links; null when that could not be read. */
+  visits: number | null;
+  /** The second subject line it tried, and how that went (lib/mail-test.ts). */
+  test: SubjectTest | null;
 };
 type Money = { sales: number; cents: number };
 type FlowRow = Flow & { stats: { started: number; sent: number }; money: Money | null };
@@ -91,6 +100,23 @@ type FlowRow = Flow & { stats: { started: number; sent: number }; money: Money |
 /** "3 sales · $117.00 from its links in the last 90 days", in the store's own currency. */
 function soldWords(money: Money, currency: string): string {
   return `${n(money.sales)} ${money.sales === 1 ? "sale" : "sales"} · ${formatMoney(money.cents, currency)} from its links in the last 90 days`;
+}
+
+/**
+ * What a sent email brought: "42 visits · 3 sales · $117.00 from its links in
+ * the last 90 days". Visits are left out, never shown as none, when they
+ * could not be read.
+ */
+function broughtWords(visits: number | null, money: Money | null, currency: string): string {
+  const came = visits === null ? "" : `${n(visits)} ${visits === 1 ? "visit" : "visits"}`;
+  if (money) return `${came ? `${came} · ` : ""}${soldWords(money, currency)}`;
+  if (came && visits) return `${came} from its links in the last 90 days · no sale yet`;
+  return came ? "No visit or sale from its links yet" : "No sale from its links yet";
+}
+
+/** "a day", "4 hours": how long the rest of a list waits for a subject test. */
+function hoursWords(hours: number): string {
+  return hours === 24 ? "a day" : `${hours} hours`;
 }
 export type DraftRow = {
   id: string;
@@ -351,6 +377,12 @@ function Compose(props: {
   const [draftId, setDraftId] = useState(props.draft?.id ?? "");
   const [later, setLater] = useState(false);
   const [at, setAt] = useState("");
+  // A second subject line tried on part of the list (lib/mail-test.ts).
+  const [testing, setTesting] = useState(false);
+  const [subjectB, setSubjectB] = useState("");
+  const [share, setShare] = useState<number>(TEST_SHARES[0]);
+  const [hours, setHours] = useState<number>(TEST_HOURS[1]);
+  const [by, setBy] = useState<TestBy>("visits");
   const [reach, setReach] = useState<number>(props.counts.mailable);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -452,6 +484,70 @@ function Compose(props: {
           <span className="field-label">Subject</span>
           <input className="field mt-2" maxLength={150} value={subject} onChange={(e) => setSubject(e.target.value)} />
         </label>
+        {/*
+          A second subject line, tried against the first.
+
+          Decided by what the email's links bring to the store, never by
+          opens: nothing in an email here reports back (app/privacy), and an
+          open is the number a mail app inflates by itself anyway.
+        */}
+        {props.canSend ? (
+          <div>
+            <label className="flex items-start gap-3 text-sm font-semibold text-ink">
+              <input
+                type="checkbox"
+                checked={testing}
+                onChange={(e) => setTesting(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-violet-brand"
+              />
+              Try a second subject line
+            </label>
+            {testing ? (
+              <div className="mt-3 space-y-4 rounded-[var(--r-md)] bg-sand p-4">
+                <label className="block">
+                  <span className="field-label">Second subject</span>
+                  <input className="field mt-2" maxLength={150} value={subjectB} onChange={(e) => setSubjectB(e.target.value)} />
+                </label>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <label className="block">
+                    <span className="field-label">Share of the list</span>
+                    <select className="field mt-2" value={share} onChange={(e) => setShare(Number(e.target.value))}>
+                      {TEST_SHARES.map((value) => (
+                        <option key={value} value={value}>{`${value}%`}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="field-label">Decide after</span>
+                    <select className="field mt-2" value={hours} onChange={(e) => setHours(Number(e.target.value))}>
+                      {TEST_HOURS.map((value) => (
+                        <option key={value} value={value}>{hoursWords(value)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="field-label">Decided by</span>
+                    <select className="field mt-2" value={by} onChange={(e) => setBy(e.target.value as TestBy)}>
+                      <option value="visits">Visits</option>
+                      <option value="sales">Sales</option>
+                    </select>
+                  </label>
+                </div>
+                <p className="text-sm text-ink-soft">
+                  {`Half of that ${share}% gets each subject, chosen at random. ${hours === 24 ? "A day" : `${hours} hours`} after the last of them goes out, everyone else gets the one whose links brought more ${by === "sales" ? "sales" : "visits to your store"} for each email sent${by === "sales" ? ", with visits deciding when sales are level" : ""}. If neither did better, they get the first, and this page says so.`}
+                </p>
+                <p className="text-sm text-ink-soft">
+                  {`It needs at least ${MIN_TEST_REACH} people and a link to your store in the email. Emails here carry no tracking pixel, so opens are not counted, and a small difference on a small list is mostly chance.`}
+                </p>
+                {reach < MIN_TEST_REACH ? (
+                  <p className="notice notice-error" role="status">
+                    {`This goes to ${n(reach)} ${reach === 1 ? "person" : "people"}, which is too few to compare two subjects. Uncheck the box, or choose a bigger group.`}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <label className="block">
           <span className="field-label">Email</span>
           <textarea className="field mt-2 min-h-56" rows={12} maxLength={20000} value={body} onChange={(e) => setBody(e.target.value)} />
@@ -558,13 +654,25 @@ function Compose(props: {
                 onClick={async () => {
                   const sendAt = later && at ? new Date(at).getTime() : undefined;
                   const ok = await send(
-                    { action: "broadcast", subject, body, productId, notProductId, who, sendAt, draftId: draftId || undefined },
+                    {
+                      action: "broadcast",
+                      subject,
+                      body,
+                      productId,
+                      notProductId,
+                      who,
+                      sendAt,
+                      draftId: draftId || undefined,
+                      test: testing ? { subjectB, share, hours, by } : undefined,
+                    },
                     later ? "Your email is scheduled." : "Your email is on its way.",
                   );
                   if (ok) {
                     setSubject("");
                     setBody("");
                     setDraftId("");
+                    setTesting(false);
+                    setSubjectB("");
                     props.onDone();
                     router.refresh();
                   }
@@ -579,7 +687,7 @@ function Compose(props: {
           ) : (
             <button
               type="button"
-              disabled={busy || !subject.trim() || !body.trim() || reach === 0 || (later && !at)}
+              disabled={busy || !subject.trim() || !body.trim() || reach === 0 || (later && !at) || (testing && (!subjectB.trim() || reach < MIN_TEST_REACH))}
               className="btn btn-primary"
               onClick={() => setConfirming(true)}
             >
@@ -666,6 +774,40 @@ function Drafts({
   );
 }
 
+/** The second subject line an email tried: what is happening, or what happened and why. */
+function TestLine({ test, status }: { test: SubjectTest; status: string }) {
+  if (test.skipped) {
+    return (
+      <p className="mt-1 text-sm text-ink-soft">
+        {`The list was under ${MIN_TEST_REACH} people when this went out, so the second subject was not tried and everyone got the first.`}
+      </p>
+    );
+  }
+  if (test.winner) {
+    return (
+      <p className="mt-1 text-sm text-ink-soft">
+        <span className="font-semibold text-ink">{`Second subject: ${test.subjectB}. `}</span>
+        {test.why}
+      </p>
+    );
+  }
+  if (status === "cancelled" || status === "failed") return null;
+  return (
+    <p className="mt-1 text-sm text-ink-soft">
+      <span className="font-semibold text-ink">{`Second subject: ${test.subjectB}. `}</span>
+      {test.endsAt ? (
+        <>
+          {`${n(test.a)} got the first and ${n(test.b)} the second. The better one is chosen `}
+          <When seconds={test.endsAt} />
+          {", and the rest go out then."}
+        </>
+      ) : (
+        `Tried on ${test.share}% of the list, half each; the rest get the better one ${hoursWords(test.hours)} after.`
+      )}
+    </p>
+  );
+}
+
 const STATUS: Record<string, string> = {
   scheduled: "Scheduled",
   sending: "Going out",
@@ -733,6 +875,10 @@ function History({
   return (
     <section className="card mt-8 p-6 sm:p-8" aria-labelledby="history-title">
       <h2 id="history-title" className="text-lg font-semibold tracking-[-0.02em] text-ink">Sent and scheduled</h2>
+      <p className="mt-2 text-sm text-ink-soft">
+        A visit is a page of your store opened through one of an email&apos;s links, and a sale is one made on that page.
+        Nothing in an email reports back, so there is no open rate here, and nothing is kept about who visited.
+      </p>
       <ul className="mt-4 divide-y divide-line">
         {broadcasts.map((b) => (
           <li key={b.id} className="py-3">
@@ -760,12 +906,11 @@ function History({
               )}
             </p>
             {b.note ? <p className="mt-1 text-sm text-ink-soft">{b.note}</p> : null}
+            {b.test ? <TestLine test={b.test} status={b.status} /> : null}
             {/* Said only for an email whose links were tagged: for an older
                 one nothing could be counted, and "no sales" would be a guess. */}
             {b.status === "sent" && b.tagged ? (
-              <p className="mt-1 text-sm font-semibold text-ink">
-                {b.money ? soldWords(b.money, currency) : "No sale from its links yet"}
-              </p>
+              <p className="mt-1 text-sm font-semibold text-ink">{broughtWords(b.visits, b.money, currency)}</p>
             ) : null}
             {b.status === "scheduled" && canSend ? (
               <button

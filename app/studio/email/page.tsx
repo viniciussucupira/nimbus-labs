@@ -9,7 +9,7 @@ import { StudioHeader } from "@/components/studio-header";
 import { StudioStorePin } from "@/components/studio-store-pin";
 import { listCounts } from "@/lib/contacts";
 import { listBroadcasts } from "@/lib/broadcasts";
-import { broadcastMoney, flowMoney, readMailRevenue } from "@/lib/mail-revenue";
+import { broadcastMoney, flowMoney, readMailRevenue, readMailVisits } from "@/lib/mail-revenue";
 import { sellsSomething } from "@/lib/mail-starters";
 import { flowStats, readFlows } from "@/lib/flows";
 import { inTrial, monthlyAllowance, usedThisMonth } from "@/lib/mail";
@@ -52,9 +52,12 @@ export default async function StudioEmailPage({ searchParams }: Params) {
   const role = view.role;
   // What each email sold, from the creator's own Stripe account, cached for
   // ten minutes (lib/mail-revenue.ts). Asked only when something was sent.
-  const [stats, revenue] = await Promise.all([
+  const [stats, revenue, visits] = await Promise.all([
     flowStats(flows),
     broadcasts.length || flows.length ? readMailRevenue(store) : Promise.resolve(null),
+    // And how many times its links opened a page of the store, from the
+    // store's own count of visits by tag: nothing in the email reports back.
+    readMailVisits(store, broadcasts.filter((b) => b.status === "sent" && b.tagged).map((b) => b.id)),
   ]);
   const trial = allowance > 0 && inTrial(store);
 
@@ -148,6 +151,8 @@ export default async function StudioEmailPage({ searchParams }: Params) {
               who: b.who,
               tagged: b.tagged,
               money: broadcastMoney(revenue, b.id),
+              visits: visits?.[b.id] ?? null,
+              test: b.test,
             }))}
             currency={store.currency}
             sells={sellsSomething(store)}

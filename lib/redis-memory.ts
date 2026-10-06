@@ -170,6 +170,13 @@ export class MemoryRedis {
         list.push(...args);
         return list.length;
       }
+      case "LPUSH": {
+        // Each value goes to the front in turn, as Redis does it: the last
+        // one named ends up first.
+        const list = this.list(key);
+        for (const value of args) list.unshift(value);
+        return list.length;
+      }
       case "LTRIM": {
         const list = this.list(key);
         const [from, to] = [Number(args[0]), Number(args[1])];
