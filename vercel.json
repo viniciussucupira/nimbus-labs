@@ -30,6 +30,10 @@
       "schedule": "30 12 * * *"
     },
     {
+      "path": "/api/cron/mail-check",
+      "schedule": "40 12 * * *"
+    },
+    {
       "path": "/api/cron/usage",
       "schedule": "0 14 * * *"
     }
