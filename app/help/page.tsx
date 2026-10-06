@@ -5,7 +5,7 @@ import { RevealOnScroll } from "@/components/home-parts";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteNav } from "@/components/site-nav";
 import { isDomainsConfigured } from "@/lib/domains";
-import { PRO_MONTHLY_EMAILS, REFUND_DAYS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
+import { PRO_MONTHLY_EMAILS, REFUND_DAYS, TRIAL_MONTHLY_EMAILS, SCALE_MONTHLY_EMAILS } from "@/lib/plan";
 import { HelpSearch } from "@/components/help-search";
 import { CopyLink } from "@/components/copy-link";
 import { formatMoney } from "@/lib/money";
@@ -71,7 +71,7 @@ const SECTIONS: Section[] = [
         q: "What does it cost to start?",
         a: [
           "Nothing to sign up. Your store address, your page, the editor and connecting Stripe are free and stay free.",
-          `What the subscription switches on is your checkout: your page taking a card, and handing out what you give away for an email address. It is $29 a month, or $300 a year, which is $48 less than paying monthly. Pro, which adds email to your list${isDomainsConfigured() ? " and your own domain" : ""}, is $99 a month or $948 a year. Scale, which is Pro for a list that sends up to 75,000 emails a month instead of 25,000, is $249 a month or $2,388 a year. The first 14 days are free on any plan, monthly or yearly. Stripe takes your card details when the trial starts and first charges the card when the 14 days end; we email you a week before that charge, and if you cancel before it, from your studio, it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.`,
+          `What the subscription switches on is your checkout: your page taking a card, and handing out what you give away for an email address. It is $29 a month, or $300 a year, which is $48 less than paying monthly. Pro, which adds email to your list${isDomainsConfigured() ? " and your own domain" : ""}, is $99 a month or $948 a year. Scale, which is Pro for a list that sends up to ${SCALE_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month instead of ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")}, is $249 a month or $2,388 a year. The first 14 days are free on any plan, monthly or yearly. Stripe takes your card details when the trial starts and first charges the card when the 14 days end; we email you a week before that charge, and if you cancel before it, from your studio, it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.`,
         ],
       },
       {
