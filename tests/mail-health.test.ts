@@ -29,12 +29,17 @@ const SECRET_BYTES = Buffer.from("a-stand-in-secret-for-tests-only");
 type Message = { to: string[]; subject: string; tags?: { name: string; value: string }[] };
 const batches: Message[][] = [];
 const single: Message[] = [];
+let refuseTags = false;
 
 globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
   const url = new URL(String(input));
   if (url.hostname !== "api.resend.com") return new Response("{}", { status: 404 });
-  if (url.pathname === "/emails/batch") batches.push(JSON.parse(String(init?.body)) as Message[]);
-  else single.push(JSON.parse(String(init?.body)) as Message);
+  if (url.pathname === "/emails/batch") {
+    const batch = JSON.parse(String(init?.body)) as Message[];
+    // A sender that refuses a batch because of its tags, as one with other rules for them would.
+    if (refuseTags && batch.some((m) => m.tags)) return new Response(JSON.stringify({ name: "validation_error" }), { status: 422 });
+    batches.push(batch);
+  } else single.push(JSON.parse(String(init?.body)) as Message);
   return new Response(JSON.stringify({ id: "email_1" }));
 }) as typeof fetch;
 
@@ -88,6 +93,15 @@ async function main(): Promise<void> {
   is("it went", [first.stopped, first.done.length], [null, 2]);
   is("carrying the store and the list, as tags the reader never sees", batches[0][0].tags, [{ name: STORE_TAG, value: id }, { name: LIST_TAG, value: list }]);
   is("and what was sent is counted for the store", (await listHealth(id)).sent, 2);
+
+
+  part("A sender that will not take the tags still sends the email");
+  refuseTags = true;
+  batches.length = 0;
+  const plain = await sendTo(store, ["reader38@example.com"], "Hello", "It is ready.", "t:plain");
+  refuseTags = false;
+  is("it goes all the same", [plain.stopped, plain.done], [null, ["reader38@example.com"]]);
+  is("once, and without them", [batches.length, batches[0][0].tags === undefined], [1, true]);
 
   part("Only the sender is believed");
   const bounced = (to: string, extra: Record<string, unknown> = {}) => ({ email_id: "e1", to: [to], subject: "Hello", bounce: { type: "Permanent", subType: "General", message: "no such user" }, tags: { [STORE_TAG]: id, [LIST_TAG]: list }, ...extra });
