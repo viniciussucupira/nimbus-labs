@@ -405,10 +405,21 @@ export function StatsPanel({ data, canExport = true }: { data: StatsData; canExp
             </button>
           </form>
         </div>
+        {/*
+          The sales file is described only where its button is. Without Stripe
+          connected there is no button, and a sentence about a file nobody can
+          find sends the creator looking for it; they are told instead when it
+          will appear.
+        */}
         <p className="mt-3 text-xs text-ink-soft">
-          {canExport ? null : "Downloading sales, which carry buyers' addresses, is for the owner and Admins. "}
-          The sales file has one row per paid checkout or one-click extra, with the buyer&apos;s email and name, and reads up
-          to 5,000 of each from your Stripe account. Visits go back as far as they are kept, 400 days.
+          {data.sales === "none"
+            ? "A third file, your sales, appears here once your Stripe account is connected. "
+            : data.sales === "error"
+              ? "Your sales could not be read from Stripe just now, so their file is not offered; it comes back when they can be. "
+            : !canExport
+              ? "Downloading sales, which carry buyers' addresses, is for the owner and Admins. "
+              : "The sales file has one row per paid checkout or one-click extra, with the buyer's email and name, and reads up to 5,000 of each from your Stripe account. "}
+          Visits go back as far as they are kept, 400 days.
         </p>
       </div>
 
