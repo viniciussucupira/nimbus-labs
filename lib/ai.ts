@@ -329,3 +329,114 @@ export async function writePitch(
     return subject && body ? { subject, body } : null;
   });
 }
+
+// ------------------------------------------------------------------ the sales page
+
+/**
+ * A whole sales page, drafted from what the product already says.
+ *
+ * Measured before it was built (7 October 2026): Kajabi's assistant writes
+ * sales-page copy and generates landing pages from a prompt; SamCart says its
+ * AI writes an entire sales page; Teachable's Course Starter drafts one.
+ * Stan's product pages have no such thing. Here it fills every block a page
+ * needs at once — the hero, what the buyer gets, what is inside, questions,
+ * the buttons — from the product's own name, price, summary and description,
+ * plus anything the creator adds in the box.
+ *
+ * Two blocks are never written for the creator, because they would be words
+ * put in the creator's mouth about facts nobody gave it: "About you" (the
+ * creator's own story) and the guarantee, which is only drafted when the
+ * creator's own words state a refund promise. The reviews block is placed,
+ * empty of words, where real buyers' reviews will sit.
+ *
+ * The answer is turned into blocks here and read through lib/sales-page.ts's
+ * own parser by the caller, so nothing the model returns reaches a page
+ * without the same rules a page typed by hand is held to. Nothing is saved:
+ * the editor shows the draft and the creator presses Save, or does not.
+ */
+export type PageDraft = {
+  headline: string;
+  sub: string;
+  story: { heading: string; body: string } | null;
+  benefits: string[];
+  inside: { title: string; detail: string }[];
+  faq: { q: string; a: string }[];
+  guarantee: string;
+  cta: string;
+  seoTitle: string;
+  seoDescription: string;
+};
+
+export async function writePage(
+  store: Store,
+  input: { title: string; price: string; kind: ProductKind | "free"; summary: string; about: string; notes: string },
+  now = Date.now(),
+): Promise<AiResult<PageDraft>> {
+  const notes = block(input.notes, MAX_AI_NOTES);
+  const about = block(input.about, MAX_ABOUT_LENGTH);
+  const summary = line(input.summary, MAX_SUMMARY_LENGTH);
+  // Something has to be said about the product, by the creator, somewhere.
+  if (!notes && !about && !summary) return { ok: false, reason: "notes" };
+  return counted(store, now, async () => {
+    const free = input.kind === "free";
+    const system = [
+      free
+        ? "You write the landing page for something a creator gives away in exchange for an email address."
+        : "You write the sales page for one product on a creator's store.",
+      HONESTY,
+      "Only draft a guarantee if the creator's own words below state a refund promise; then restate exactly that promise and nothing more. Otherwise return an empty string for it.",
+      "Never write about the creator's life, credentials or story: you were not told them.",
+      "In the questions, answer only what the facts given answer. Good questions are about what is included, who it is for, the format, how it is delivered and how long access lasts. Do not answer questions about refunds unless a refund promise was given.",
+      [
+        `Return only a JSON object with these keys:`,
+        `"headline": at most 90 characters, what the buyer gets or becomes able to do, concrete, not a slogan.`,
+        `"sub": one or two sentences, at most 240 characters, who it is for and what is in it.`,
+        `"story": {"heading": at most 60 characters, "body": at most 1,200 characters, paragraphs separated by one blank line} — why this exists and what problem it solves for the buyer, from the facts given; or null if the facts are too thin.`,
+        `"benefits": 3 to 8 short points, each at most 120 characters, each a concrete thing the buyer gets.`,
+        `"inside": 0 to 10 parts, each {"title": at most 80 characters, "detail": at most 160 characters}, only if the facts list what is inside.`,
+        `"faq": 3 to 6 items, each {"q": at most 120 characters, "a": at most 400 characters}.`,
+        `"guarantee": a string, empty unless a refund promise was given.`,
+        `"cta": the button's words, at most 30 characters, like "${free ? "Send it to me" : "Get the recipe pack"}". Never mention a price.`,
+        `"seoTitle": at most 60 characters. "seoDescription": at most 150 characters.`,
+      ].join("\n"),
+    ].join("\n\n");
+    const prompt = [
+      `Store: ${line(store.name, 60)}`,
+      `Product: ${line(input.title, MAX_TITLE) || "(no name yet)"}`,
+      !free && input.price ? `Price: ${line(input.price, 40)}` : "",
+      `How it is delivered: ${free ? "It is free: the visitor leaves their email address and gets it by email." : DELIVERY[input.kind as ProductKind]}`,
+      summary ? `\nIts one-line summary:\n${summary}` : "",
+      about ? `\nIts description, as the creator wrote it:\n${about}` : "",
+      notes ? `\nWhat the creator adds for this page:\n${notes}` : "",
+    ]
+      .filter((l) => l !== "")
+      .join("\n");
+    const answer = await ask(system, prompt, 3_000);
+    const json = answer ? jsonIn(answer) : null;
+    if (!json) return null;
+    const list = (value: unknown) => (Array.isArray(value) ? value : []);
+    const pair = (value: unknown) => (value && typeof value === "object" ? (value as Record<string, unknown>) : {});
+    const story = pair(json.story);
+    const draft: PageDraft = {
+      headline: line(json.headline, 120),
+      sub: line(json.sub, 300),
+      story: block(story.body, 3_000) ? { heading: line(story.heading, 100), body: block(story.body, 3_000) } : null,
+      benefits: list(json.benefits).map((b) => line(b, 200)).filter(Boolean).slice(0, 12),
+      inside: list(json.inside)
+        .map((i) => ({ title: line(pair(i).title, 200), detail: line(pair(i).detail, 300) }))
+        .filter((i) => i.title)
+        .slice(0, 20),
+      faq: list(json.faq)
+        .map((f) => ({ q: line(pair(f).q, 200), a: block(pair(f).a, 1_500) }))
+        .filter((f) => f.q && f.a)
+        .slice(0, 15),
+      // Kept only when the creator's own words gave one to restate.
+      guarantee: /refund|money.?back|guarantee/i.test(`${notes}\n${about}`) ? block(json.guarantee, 1_000) : "",
+      // A button never states a price (lib/sales-page.ts): the terms are the checkout's.
+      cta: line(json.cta, 40).replace(/\s*\b(?:for|at|only)?\s*[$€£¥]\s*\d[\d.,]*/gi, "").trim(),
+      seoTitle: line(json.seoTitle, 70),
+      seoDescription: line(json.seoDescription, 160),
+    };
+    return draft.headline && draft.benefits.length ? draft : null;
+  });
+}

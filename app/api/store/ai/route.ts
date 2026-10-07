@@ -1,13 +1,17 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { writeEmail, writeOutline, writeProduct } from "@/lib/ai";
+import { writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { isFree } from "@/lib/store";
+import { readListing } from "@/lib/catalog";
+import { readAbout } from "@/lib/product-about";
+import { formatMoney } from "@/lib/money";
 import { AI_PER_MINUTE, EMAIL_GOALS, type EmailGoal, MAX_AI_NOTES, type ProductKind } from "@/lib/ai-rules";
 
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
 /**
- * The writing help (lib/ai.ts): `{ kind: "product" | "outline" | "email", … }`.
+ * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "outline" | "email", … }`.
  * It writes into the studio's own boxes and saves nothing: whatever comes back
  * is the creator's to read, change and keep, or not.
  *
@@ -31,6 +35,36 @@ export async function POST(request: NextRequest) {
   if (body.kind === "product") {
     const kind = KINDS.includes(body.productKind as ProductKind) ? (body.productKind as ProductKind) : "download";
     return answer(writeProduct(store, { title: text(body.title, 200), price: text(body.price, 40), kind, notes }));
+  }
+  if (body.kind === "page") {
+    // The product is read here, from the store's own record, rather than taken
+    // from the browser: what the page is drafted from is what the product is.
+    const product = await readListing(store, text(body.product, 40));
+    if (!product) return fail("unknown", 404);
+    const about = product.about ? await readAbout(store.statsId, product.id) : "";
+    const kind = isFree(product)
+      ? "free"
+      : product.course
+        ? "course"
+        : product.call
+          ? "call"
+          : product.recurring
+            ? "membership"
+            : product.bundle
+              ? "bundle"
+              : product.file
+                ? "download"
+                : "link";
+    return answer(
+      writePage(store, {
+        title: product.title,
+        price: isFree(product) ? "" : formatMoney(product.priceCents, store.currency),
+        kind,
+        summary: product.summary,
+        about,
+        notes,
+      }),
+    );
   }
   if (body.kind === "outline") {
     return answer(writeOutline(store, { title: text(body.title, 200), notes }));

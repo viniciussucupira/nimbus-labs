@@ -17,6 +17,8 @@ import { readPage } from "@/lib/sales-page-store";
 import { summaryOf, visibleReviews } from "@/lib/reviews";
 import { pageAction, pricePill, productPath } from "@/components/store-product";
 import { PageEditor } from "@/components/page-editor";
+import { AiOn } from "@/components/ai-assist";
+import { aiLeft, isAiConfigured } from "@/lib/ai";
 
 export const metadata: Metadata = {
   title: "Sales pages — Marktmorgen",
@@ -161,6 +163,7 @@ export default async function StudioPagesPage({ searchParams }: Params) {
               </ul>
             </nav>
 
+            <AiOn value={isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}>
             <PageEditor
               key={`${selected.id}:${version}`}
               product={{
@@ -185,6 +188,7 @@ export default async function StudioPagesPage({ searchParams }: Params) {
               summary={summary && summary.visible + summary.hidden > 0 ? summary : null}
               reviews={reviews}
             />
+            </AiOn>
           </div>
         )}
       </main>

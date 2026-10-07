@@ -33,6 +33,7 @@ export function AiAssist<T>({
   onResult,
   done,
   extra,
+  allowEmpty = false,
 }: {
   /** The line that opens it, like "Write the description for me". */
   title: string;
@@ -45,6 +46,11 @@ export function AiAssist<T>({
   done: string;
   /** Any choice the job needs, drawn above the box. */
   extra?: React.ReactNode;
+  /**
+   * The job has enough to go on without the box: a sales page is drafted
+   * from what the product already says, so the box only adds to it.
+   */
+  allowEmpty?: boolean;
 }) {
   const { on, left: startLeft } = useContext(AiOn);
   const [notes, setNotes] = useState("");
@@ -55,6 +61,11 @@ export function AiAssist<T>({
   if (!on) return null;
 
   async function run() {
+    // Said here, before a round trip that would only come back with the same.
+    if (!allowEmpty && !notes.trim()) {
+      setError(MESSAGES.notes);
+      return;
+    }
     setBusy(true);
     setError(null);
     setFilled(false);
