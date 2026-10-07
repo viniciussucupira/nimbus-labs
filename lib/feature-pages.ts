@@ -176,7 +176,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "Courses your students",
     highlight: "open without a password",
     intro:
-      "Modules and lessons with video, text and downloads, free preview lessons on your store, and modules that open on the day you choose. Students get in with the email they paid with.",
+      "Modules and lessons with video that plays in the size each student's connection can carry, text and downloads, free preview lessons on your store, and modules that open on the day you choose. Students get in with the email they paid with.",
     badge: WORKING,
     accent: "from-sky-brand to-violet-brand",
     visual: "course",
@@ -190,7 +190,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "From a product to a course",
         items: [
           { title: "Turn a product into a course", body: "Any paid product with no file, link or price options of its own can become a course from your studio. Add modules, then lessons inside them." },
-          { title: "Fill the lessons", body: "A video of up to 5 GB, your text, up to five downloads and a link on each. Mark any lesson as a free preview." },
+          { title: "Fill the lessons", body: "A video of up to 5 GB, your text, up to five downloads and a link on each. The video uploads in parts, so a dropped connection costs one part. Mark any lesson as a free preview." },
           { title: "Sell it your way", body: "Paid once, in a payment plan, in a bundle with your other products, or as a membership that stays open while the member pays." },
         ],
       },
@@ -198,7 +198,10 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "features",
         title: "What a course holds",
         items: [
-          { icon: "video", title: "Video that stays upright", body: "Up to 5 GB a lesson. A video filmed upright on a phone plays upright." },
+          { icon: "play", title: "Video that does not stop to load", body: "Each video is made into up to five sizes, from 240p to 1080p and never larger than the video itself. The player sends the size the student's connection can carry and changes it as the connection changes." },
+          { icon: "video", title: "A player students control", body: "Students can pick a size and a playback speed, watch full screen or in a small window, and the video goes on from where they stopped on that device." },
+          { icon: "phone", title: "Video that stays upright", body: "Up to 5 GB a lesson. A video filmed upright on a phone plays upright, in a frame of its own shape." },
+          { icon: "lock", title: "A video address that expires", body: "The player on a lesson page is signed for a few hours. Without that signature, the video and its files are refused." },
           { icon: "eye", title: "Free preview lessons", body: "Any lesson can be watched from your store before buying, so the buyer knows what they are paying for." },
           { icon: "calendar", title: "Modules that open over time", body: "A module can open a set number of days after each student joins, and the student gets an email the day it does." },
           { icon: "key", title: "No password to make", body: "The course opens right away in the browser that paid. On any other device, a link is emailed to the address they paid with." },
@@ -228,12 +231,16 @@ export const FEATURE_PAGES: TopicPage[] = [
           "Certificates are pages printed or saved as a PDF from the student's browser; no PDF file is made.",
           "No live lessons inside the course itself. Hold them as live events in your community, or put a link in a lesson to where you hold them.",
           "Videos watched count toward your store's 200 GB a month, the same as downloads. Going over never cuts a student off; your studio shows it, and your store keeps working as usual.",
+          "Video is kept up to 1080p: a 4K file plays at 1080p.",
+          "No captions or transcripts yet.",
+          "A signed address stops a link from being passed around. It does not stop a student from recording their own screen; nothing does.",
         ],
       },
       {
         kind: "faq",
         title: "Questions about courses",
         items: [
+          { q: "How long until a video I upload can be watched?", a: "It plays as soon as its first size is made, and the larger sizes follow by themselves. Your studio says when it is ready, and a student who opens the lesson before that is told the video is being prepared." },
           { q: "How does a student come back next week?", a: "On the device they paid on, the course simply opens. On any other, they ask for a link on the course page and it is emailed to the address they paid with. No account, no password." },
           { q: "Can I sell a course monthly?", a: "Yes. Sold as a membership, the course stays open while the member pays and closes when the membership ends." },
           { q: "Can students pay in installments?", a: "Yes. A course with one price can be offered in two to twelve weekly or monthly payments. The student gets in after the first." },
