@@ -38,6 +38,8 @@ import { isSettled } from "@/lib/instant-pay";
 import { isLive } from "@/lib/membership-access";
 import { purchaseRefunded } from "@/lib/refunds";
 import { recordDelivery } from "@/lib/delivery";
+import { playerFor } from "@/lib/stream";
+import { isStreamPath, viewingBytes } from "@/lib/stream-rules";
 import type { ProductFile } from "@/lib/product-file";
 import type { Listing, Store } from "@/lib/store";
 import { readKind, readListing } from "@/lib/catalog";
@@ -480,6 +482,47 @@ export async function signedMedia(file: ProductFile, seconds: number): Promise<s
     return presignedUrl;
   } catch (error) {
     console.error("signing a lesson video failed", error);
+    return null;
+  }
+}
+
+/**
+ * What a lesson page shows for the lesson's video.
+ *
+ *   file       the file as it was uploaded, from the private store
+ *   stream     the video service's player, in the video's own shape
+ *   preparing  the service has the file and no size of it is ready yet
+ *   failed     the service could make nothing of the file
+ */
+export type LessonVideo =
+  | { kind: "file"; src: string }
+  | { kind: "stream"; src: string; width: number; height: number }
+  | { kind: "preparing" }
+  | { kind: "failed" };
+
+/**
+ * The video of a lesson, for somebody who may watch it; null when it cannot
+ * be reached just now.
+ *
+ * One kept by the video service (lib/stream.ts) is framed with a token for
+ * a few hours, and counted in the month's delivery as one whole viewing at
+ * the largest size (lib/stream-rules.ts, viewingBytes). Any other is the
+ * signed link it has always been.
+ */
+export async function lessonVideo(file: ProductFile): Promise<LessonVideo | null> {
+  if (!isStreamPath(file.pathname)) {
+    const src = await signedMedia(file, VIDEO_URL_SECONDS);
+    return src ? { kind: "file", src } : null;
+  }
+  try {
+    const player = await playerFor(file.pathname);
+    if (!player) return null;
+    if (player.state === "failed") return { kind: "failed" };
+    if (!player.src) return { kind: "preparing" };
+    await recordDelivery(file.pathname, viewingBytes(player.record.seconds, player.height, file.bytes));
+    return { kind: "stream", src: player.src, width: player.width, height: player.height };
+  } catch (error) {
+    console.error("reading a lesson's video failed", error);
     return null;
   }
 }

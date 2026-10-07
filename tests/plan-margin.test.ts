@@ -18,6 +18,14 @@
  *                                             which is never cached)
  *   Resend                     $0.0009 / email
  *   Stripe                     2.9% + $0.30 on each subscription charge
+ *   Bunny Stream storage       $0.01  / GB / month   (lesson videos, when the
+ *   Bunny Stream delivery      $0.06  / GB at most    video service is set up,
+ *                                                     lib/stream.ts: $0.005 on
+ *                                                     its volume network, $0.01
+ *                                                     to $0.06 by region on its
+ *                                                     standard one; read from
+ *                                                     its price page on
+ *                                                     October 6, 2026)
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -35,6 +43,9 @@ const STORAGE_PER_GB = 0.023;
 /** The worst rate: a file too large to cache pays transfer and origin both. */
 const DELIVERY_PER_GB = 0.05 + 0.06;
 const PER_EMAIL = 0.0009;
+/** What the video service charges to keep a gigabyte, and the most it charges anywhere to send one. */
+const STREAM_STORAGE_PER_GB = 0.01;
+const STREAM_DELIVERY_PER_GB_AT_MOST = 0.06;
 /** A rough, deliberately high figure for one AI draft. */
 const PER_DRAFT = 0.015;
 /** Receipts, file delivery and login links, which nothing caps. Set high. */
@@ -128,6 +139,19 @@ test("Scale keeps more than Pro does in its own worst month, monthly and yearly"
     const kept = (tier: Tier) => (netOf(tier, cycle) - worstCost(tier)) / netOf(tier, cycle);
     assert.ok(kept("scale") >= kept("pro"), `${cycle}: Scale keeps ${(kept("scale") * 100).toFixed(1)}% and Pro ${(kept("pro") * 100).toFixed(1)}%`);
   }
+});
+
+test("a lesson video kept by the video service never costs more than the same bytes in the file store", () => {
+  // The storage brake and the delivery counter count a video at the service
+  // byte for byte with a file in the file store (lib/storage-quota.ts,
+  // lib/learn.ts), and every worst case above is worked out at the file
+  // store's rates. That stays the worst case only while the service is the
+  // cheaper of the two, to keep and to send, at its dearest.
+  assert.ok(STREAM_STORAGE_PER_GB < STORAGE_PER_GB, "keeping a video at the service must cost less than keeping it in the file store");
+  assert.ok(
+    STREAM_DELIVERY_PER_GB_AT_MOST < DELIVERY_PER_GB,
+    "sending a video from the service, to its dearest region, must cost less than a download from the file store",
+  );
 });
 
 test("the free-download brake is smaller than the allowance that is published", () => {

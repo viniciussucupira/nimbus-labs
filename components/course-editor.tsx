@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadPresigned } from "@vercel/blob/client";
 import { toast } from "@/components/toast";
@@ -28,6 +28,8 @@ import { LINK_PROBLEMS, type LinkProblem } from "@/lib/product-link";
 import { useStudioHref } from "@/components/studio-store-pin";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 import { AiAssist, AiOn } from "@/components/ai-assist";
+import { type StreamState, isStreamPath } from "@/lib/stream-rules";
+import { TusError, tusUpload } from "@/lib/tus-upload";
 
 type Outline = { modules: { title: string; lessons: string[] }[] };
 
@@ -47,10 +49,54 @@ const MESSAGES: Record<string, string> = {
   storage_full: "Your store is holding as much as one store can hold. Delete a file you no longer sell to make room — nothing already bought is affected.",
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
+  video_unavailable: "Videos cannot be taken in just now. Try again in a few minutes.",
+  slow_down: "That is a lot of videos in one hour. Try again a little later.",
+  upload_stopped: "The upload stopped before the end, and could not go on. Check your connection and upload the video again.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
-type Answer = { ok?: boolean; error?: string; reason?: string; course?: Course };
+type Answer = { ok?: boolean; error?: string; reason?: string; course?: Course; stream?: StreamState };
+
+/**
+ * Where each lesson video kept by the video service (lib/stream.ts) is on
+ * its way to being playable, by the path the lesson keeps for it: as the
+ * page was drawn, and as this browser has learned since.
+ */
+const Streams = createContext<{ states: Record<string, StreamState>; learned: (path: string, state: StreamState) => void }>({
+  states: {},
+  learned: () => {},
+});
+
+/** What a creator is told about a video the service keeps. */
+const STREAM_WORDS: Record<StreamState, string> = {
+  upload: "Being prepared in several sizes. It plays for students as soon as the first one is ready.",
+  working: "Being prepared in several sizes. It plays for students as soon as the first one is ready.",
+  ready: "Ready. It plays in the size each student's connection can carry.",
+  failed: "This file could not be made into a video. Upload it again, as an MP4 if you can.",
+};
+
+type Door = { endpoint: string; library: string; id: string; expires: number; signature: string; pathname: string };
+
+/**
+ * Asks for the door a lesson's video goes through to the video service
+ * (app/api/store/stream). "off" when the service is not set up, and the
+ * video then goes into the file store as it always has.
+ */
+async function openDoor(lessonId: string, file: File): Promise<{ door: Door } | { off: true } | { error: string }> {
+  try {
+    const response = await fetch("/api/store/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lessonId, name: file.name, bytes: file.size, type: file.type }),
+    });
+    const data = (await response.json().catch(() => ({ ok: false, error: "server_error" }))) as { ok?: boolean; error?: string; door?: Door };
+    if (data.ok && data.door) return { door: data.door };
+    if (data.error === "off") return { off: true };
+    return { error: data.error ?? "server_error" };
+  } catch {
+    return { error: "server_error" };
+  }
+}
 
 async function post(payload: Record<string, unknown>): Promise<Answer> {
   try {
@@ -79,10 +125,13 @@ export function CourseEditor({
   folder,
   title = "",
   ai = { on: false, left: 0 },
+  streams = {},
 }: {
   productId: string;
   initial: Course;
   folder: string;
+  /** Where each lesson video kept by the video service stood when the page was drawn. */
+  streams?: Record<string, StreamState>;
   /** The course's name, for the writing help. */
   title?: string;
   /** Whether the writing help is on, and what is left of the month (lib/ai.ts). */
@@ -97,6 +146,8 @@ export function CourseEditor({
   const [newModule, setNewModule] = useState("");
   // An outline the writing help proposed, waiting for the creator to add it or not.
   const [proposal, setProposal] = useState<Outline | null>(null);
+  const [streamStates, setStreamStates] = useState<Record<string, StreamState>>(streams);
+  const learned = (path: string, state: StreamState) => setStreamStates((known) => ({ ...known, [path]: state }));
 
   async function run(payload: Record<string, unknown>): Promise<Answer> {
     setBusy(true);
@@ -111,6 +162,7 @@ export function CourseEditor({
   const lessons = course.modules.reduce((n, m) => n + m.lessons.length, 0);
 
   return (
+    <Streams.Provider value={{ states: streamStates, learned }}>
     <div className="mt-8 space-y-6">
       {error ? (
         <p className="notice notice-error" role="alert">{error}</p>
@@ -228,6 +280,7 @@ export function CourseEditor({
         </div>
       ) : null}
     </div>
+    </Streams.Provider>
   );
 }
 
@@ -414,6 +467,7 @@ function LessonEditor({
   const [loadingText, setLoadingText] = useState(false);
   const [uploading, setUploading] = useState<{ kind: "video" | "file"; percent: number } | null>(null);
   const [removing, setRemoving] = useState(false);
+  const streams = useContext(Streams);
 
   async function loadText() {
     setLoadingText(true);
@@ -434,6 +488,37 @@ function LessonEditor({
     if (kind === "video" && !VIDEO_TYPES.includes(chosen.type)) return onError(MESSAGES.video_type);
     setUploading({ kind, percent: 0 });
     try {
+      if (kind === "video") {
+        // To the video service when it is set up (lib/stream.ts): the file
+        // goes there in pieces, and a dropped line costs only the piece that
+        // was on its way (lib/tus-upload.ts).
+        const opened = await openDoor(lesson.id, chosen);
+        if ("error" in opened) return onError(MESSAGES[opened.error] ?? MESSAGES.server_error);
+        if ("door" in opened) {
+          const { door } = opened;
+          await tusUpload(
+            chosen,
+            {
+              endpoint: door.endpoint,
+              headers: {
+                AuthorizationSignature: door.signature,
+                AuthorizationExpire: String(door.expires),
+                LibraryId: door.library,
+                VideoId: door.id,
+              },
+              metadata: { filetype: chosen.type, title: safeFileName(chosen.name) },
+            },
+            { onProgress: (percent) => setUploading({ kind, percent }) },
+          );
+          const answer = await run({ action: "media", lessonId: lesson.id, kind, pathname: door.pathname, name: chosen.name });
+          if (answer.ok && answer.course) {
+            onCourse(answer.course);
+            streams.learned(door.pathname, answer.stream ?? "working");
+            toast("Video uploaded.");
+          }
+          return;
+        }
+      }
       const pathname = fileFolder(folder, lesson.id) + safeFileName(chosen.name);
       const result = await uploadPresigned(pathname, chosen, {
         access: "private",
@@ -445,13 +530,15 @@ function LessonEditor({
       const answer = await run({ action: "media", lessonId: lesson.id, kind, pathname: result.pathname, name: chosen.name });
       if (answer.ok && answer.course) onCourse(answer.course);
     } catch (thrown) {
-      onError(thrown instanceof Error && /content type|not allowed/i.test(thrown.message) ? MESSAGES.wrong_type : MESSAGES.server_error);
+      if (thrown instanceof TusError) onError(thrown.reason === "refused" ? MESSAGES.invalid : MESSAGES.upload_stopped);
+      else onError(thrown instanceof Error && /content type|not allowed/i.test(thrown.message) ? MESSAGES.wrong_type : MESSAGES.server_error);
     } finally {
       setUploading(null);
     }
   }
 
   const prefix = `lesson-${lesson.id}`;
+  const streamed = lesson.video && isStreamPath(lesson.video.pathname) ? streams.states[lesson.video.pathname] ?? "working" : null;
   return (
     <div className="mt-4 space-y-5 border-t border-line pt-4">
       <form
@@ -495,6 +582,11 @@ function LessonEditor({
             >
               Remove video
             </button>
+            {streamed ? (
+              <p className={`w-full text-sm ${streamed === "failed" ? "font-semibold text-danger" : "text-ink-mute"}`} role="status">
+                {STREAM_WORDS[streamed]}
+              </p>
+            ) : null}
           </div>
         ) : (
           <p className="mt-1 text-sm text-ink-mute">{`MP4, MOV or WebM, up to ${maxFileLabel()}. Upright phone videos stay upright.`}</p>

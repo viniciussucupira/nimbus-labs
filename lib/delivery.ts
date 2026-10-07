@@ -15,6 +15,7 @@
  * conversation with the creator, not a door slammed on their customer.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { STREAM_PREFIX } from "@/lib/stream-rules";
 
 /**
  * What the monthly price covers, per store, per calendar month.
@@ -132,13 +133,16 @@ export function monthKey(now: Date = new Date()): string {
 /**
  * The store folder a file path belongs to.
  *
- * Every stored file lives at `stores/<folder>/<product>/<name>`, so the owner
+ * Every stored file lives at `stores/<folder>/<product>/<name>`, and a lesson
+ * video at the video service at `stream/<folder>/<lesson>/<id>`, so the owner
  * can be read from the path itself. That matters on the buyer's download,
  * which knows the file but has never seen the creator's address.
  */
 export function folderFromPathname(pathname: string): string | null {
   const parts = pathname.split("/");
-  if (parts.length < 4 || parts[0] !== "stores") return null;
+  // A lesson video kept by the video service is written down under the same
+  // folder, with its own first piece (lib/stream-rules.ts).
+  if (parts.length < 4 || (parts[0] !== "stores" && parts[0] !== STREAM_PREFIX)) return null;
   return parts[1] || null;
 }
 

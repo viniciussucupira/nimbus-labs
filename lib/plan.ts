@@ -89,8 +89,9 @@ export const PLAN_TITLES: Record<Tier, string> = {
  * back from us. Three things are built and in it today: email to their
  * list, their own domain, and taking our name off the foot of their page.
  * Nothing else is
- * part of it until it exists in the code — an API is not built, and is not
- * sold. Several stores per account are built, and are not a Pro feature: an
+ * part of it until it exists in the code. The API that reads a store
+ * (app/api/v1) is built and is on every plan, not only Pro; one that writes
+ * is not built, and is not sold. Several stores per account are built, and are not a Pro feature: an
  * account runs up to five (lib/store.ts, MAX_STORES_PER_ACCOUNT), each on a
  * plan of its own, Creator or Pro. Funnels and affiliates are built and are
  * on every plan, not only Pro. It went on sale with the first of
