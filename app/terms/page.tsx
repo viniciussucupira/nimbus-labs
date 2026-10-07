@@ -7,6 +7,8 @@ import { PRO_MONTHLY_EMAILS, REFUND_DAYS, SCALE_MONTHLY_EMAILS, TRIAL_MONTHLY_EM
 import { healthRuleWords } from "@/lib/mail-health-rules";
 import { DELIVERY_ALLOWANCE_BYTES, FREE_PAUSE_ABOVE_BYTES, bytesWords } from "@/lib/delivery";
 import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, centsWords } from "@/lib/watch-rules";
+import { SETUP_STORAGE_BYTES, SETUP_VIDEO_HOURS, TRIAL_STORAGE_BYTES } from "@/lib/plan-standing";
+import { STORAGE_BRAKE_BYTES, storageWords } from "@/lib/storage-quota";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
 export const metadata: Metadata = {
@@ -279,11 +281,12 @@ export default function TermsPage() {
           which you stay inside them costs nothing beyond your plan.
         </p>
         <p>
-          A store with no paid plan has nothing a charge can be added to. In
-          the free trial, and after a plan has ended, lesson videos play for
-          the same {VIDEO_HOURS_INCLUDED} hours a month and are paused past
-          them until the plan is paid or the month turns. Nothing is charged
-          for those hours, and everything else in a course stays open.
+          A store with no paid plan has nothing a charge can be added to, so
+          its lesson videos are paused past its hours until the plan is paid
+          or the month turns: {VIDEO_HOURS_INCLUDED} hours a month in the
+          free trial, and {SETUP_VIDEO_HOURS} hours a month before a plan is
+          started and after one has ended. Nothing is charged for those
+          hours, and everything else in a course stays open.
         </p>
         <p>
           What we ask in return is that the Services are used to sell your own
@@ -303,10 +306,16 @@ export default function TermsPage() {
           copies — files given away rather than bought — pause for the rest
           of the month once a store has sent out{" "}
           {bytesWords(FREE_PAUSE_ABOVE_BYTES)} in that month, and resume when
-          the month turns; anything anyone has bought is unaffected. And new uploads stop once a store is holding
-          far more than any storefront needs, which asks you to remove
+          the month turns; anything anyone has bought is unaffected. And new
+          uploads stop once a store holds as much as it may:{" "}
+          {storageWords(STORAGE_BRAKE_BYTES)} on a paid plan, which is far
+          more than a storefront needs,{" "}
+          {storageWords(TRIAL_STORAGE_BYTES)} in a plan&apos;s free trial, and{" "}
+          {storageWords(SETUP_STORAGE_BYTES)} for a store with no plan, before
+          one is started or after one has ended. That asks you to remove
           something before adding more and changes nothing about what is
-          already there or already sold.
+          already there or already sold; a store that holds more than its
+          figure when its plan ends keeps what it holds and cannot add to it.
         </p>
         <p>
           Beyond those, we may limit or suspend a store only if use far above

@@ -29,6 +29,7 @@
  * never on the person who bought one.
  */
 import { filesHeld } from "@/lib/file-store";
+import { SETUP_STORAGE_BYTES, type Standing, TRIAL_STORAGE_BYTES } from "@/lib/plan-standing";
 import { streamHeld } from "@/lib/stream";
 
 const GB = 1024 * 1024 * 1024;
@@ -76,8 +77,7 @@ export type StorageUse = { bytes: number; brake: number; left: number; full: boo
  * video, which is what is paid for. Read the same way and for the same
  * reason, and left out the same way when it cannot be read.
  */
-export async function storageUsed(folder: string): Promise<StorageUse> {
-  const brake = STORAGE_BRAKE_BYTES;
+export async function storageUsed(folder: string, brake: number = STORAGE_BRAKE_BYTES): Promise<StorageUse> {
   if (!folder) return { bytes: 0, brake, left: brake, full: false };
   let bytes = 0;
   try {
@@ -94,11 +94,36 @@ export async function storageUsed(folder: string): Promise<StorageUse> {
   return { bytes, brake, left: Math.max(0, brake - bytes), full: bytes >= brake };
 }
 
-/** "480 GB", "1.4 TB", "900 MB". */
+/**
+ * Where new uploads stop for a store, by where it stands with its plan
+ * (lib/plan-standing.ts). The brake above is every paid plan's; a store in
+ * its free trial, and one with no plan at all, have less room, because
+ * nothing is yet paying for what they keep.
+ */
+export function storageBrakeFor(standing: Standing): number {
+  return standing === "paid" ? STORAGE_BRAKE_BYTES : standing === "trial" ? TRIAL_STORAGE_BYTES : SETUP_STORAGE_BYTES;
+}
+
+/**
+ * Whether a file of `bytes` may be taken in.
+ *
+ * A store that pays is stopped once it is at the brake, as it always was:
+ * the brake is far above it, and the file that crosses it is let through. A
+ * store that does not pay is held to its figure, so the file has to fit in
+ * what is left. A count that could not be read is an empty store, and the
+ * file goes through: an upload is never stopped on a guess.
+ */
+export function fits(held: StorageUse, bytes: number, standing: Standing): boolean {
+  if (held.full) return false;
+  return standing === "paid" || bytes <= held.left;
+}
+
+/** "480 GB", "1.4 TB", "5 GB", "900 MB". */
 export function storageWords(bytes: number): string {
   const gb = bytes / GB;
   if (gb >= 1024) return `${(gb / 1024).toFixed(1)} TB`;
   if (gb >= 10) return `${Math.round(gb)} GB`;
-  if (gb >= 1) return `${gb.toFixed(1)} GB`;
+  // "5 GB", not "5.0 GB": a round figure is written as one.
+  if (gb >= 1) return `${Number(gb.toFixed(1))} GB`;
   return `${Math.max(1, Math.round(bytes / (1024 * 1024)))} MB`;
 }

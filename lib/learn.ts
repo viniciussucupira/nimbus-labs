@@ -41,7 +41,6 @@ import { folderFromPathname, recordDelivery } from "@/lib/delivery";
 import { playerFor } from "@/lib/stream";
 import { isStreamPath } from "@/lib/stream-rules";
 import { opened, watchedIn } from "@/lib/watch";
-import { VIDEO_SECONDS_INCLUDED } from "@/lib/watch-rules";
 import type { ProductFile } from "@/lib/product-file";
 import type { Listing, Store } from "@/lib/store";
 import { readKind, readListing } from "@/lib/catalog";
@@ -489,7 +488,7 @@ export async function signedMedia(file: ProductFile, seconds: number): Promise<s
  *   preparing  the service has the file and no size of it is ready yet
  *   failed     the service could make nothing of the file
  *   paused     the store has no plan an hour of video can be charged to, and
- *              has been watched for all the hours a plan covers this month
+ *              has been watched for all the hours it may be this month
  */
 export type LessonVideo =
   | { kind: "file"; src: string }
@@ -508,21 +507,23 @@ export type LessonVideo =
  * by the service's own count, and never how often a page was opened. Any
  * other is the signed link it has always been.
  *
- * `charged` is whether the store has a plan an hour of video can be added to
- * (lib/watch-rules.ts, canBeCharged). One that has not, in its free trial or
- * with its plan ended, plays for the hours a plan covers and is paused past
- * them, until the plan is paid or the month turns: there is nobody to send
- * the bill to, and the hours past it are the one thing here that costs us by
- * the hour. A store that pays is never paused, at any number.
+ * `limit` is the seconds of video the store may have watched this month
+ * before its video is paused, by where it stands with its plan
+ * (lib/plan-standing.ts, videoLimitFor); null for a store that pays, which
+ * is never paused, at any number: its hours past the plan are charged. A
+ * store with nobody to send that bill to, in its free trial, before a plan
+ * or after one, plays for its hours and is paused past them, until the plan
+ * is paid or the month turns. Those hours are the one thing here that costs
+ * us by the hour.
  */
-export async function lessonVideo(file: ProductFile, charged = true): Promise<LessonVideo | null> {
+export async function lessonVideo(file: ProductFile, limit: number | null = null): Promise<LessonVideo | null> {
   if (!isStreamPath(file.pathname)) {
     const src = await signedMedia(file, VIDEO_URL_SECONDS);
     return src ? { kind: "file", src } : null;
   }
   try {
     const folder = folderFromPathname(file.pathname);
-    if (!charged && folder && (await watchedIn(folder)) >= VIDEO_SECONDS_INCLUDED) return { kind: "paused" };
+    if (limit !== null && folder && (await watchedIn(folder)) >= limit) return { kind: "paused" };
     const player = await playerFor(file.pathname);
     if (!player) return null;
     if (player.state === "failed") return { kind: "failed" };

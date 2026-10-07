@@ -4,7 +4,8 @@ import { ITEM_ID_PATTERN, findLesson, readCourses } from "@/lib/course";
 import { rememberFolderOwner } from "@/lib/delivery";
 import { ALLOWED_CONTENT_TYPES, MAX_FILE_BYTES, safeFileName } from "@/lib/product-file";
 import { withinLimit } from "@/lib/request-guard";
-import { storageUsed } from "@/lib/storage-quota";
+import { storageRefusal, standingOf } from "@/lib/plan-standing";
+import { fits, storageBrakeFor, storageUsed } from "@/lib/storage-quota";
 import { ownsDeliveryId, storeFolder, storeForEmail } from "@/lib/store";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { abortVaultUpload, closeVaultUpload, isVaultConfigured, openVaultUpload, signPieces } from "@/lib/vault";
@@ -64,8 +65,10 @@ export async function POST(request: NextRequest) {
         if (![...courses.values()].some((course) => findLesson(course, ownerId) !== null)) return fail("unknown", 404);
       }
       if (!(await withinLimit("vault-open", folder, OPENS_PER_HOUR, 3600))) return fail("slow_down", 429);
-      const held = await storageUsed(folder);
-      if (held.full) return fail("storage_full");
+      // What a store may keep goes by where it stands with its plan (lib/plan-standing.ts).
+      const standing = standingOf(store);
+      const held = await storageUsed(folder, storageBrakeFor(standing));
+      if (!fits(held, bytes, standing)) return fail(storageRefusal(standing));
       await rememberFolderOwner(folder, ref);
 
       const opened = await openVaultUpload({ folder, ownerId, name: safeFileName(text(body.name, 200)), bytes, type });

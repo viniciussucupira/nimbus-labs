@@ -72,6 +72,7 @@ import { AI_MONTHLY } from "@/lib/ai-rules";
 import { DELIVERY_ALLOWANCE_BYTES } from "@/lib/delivery";
 import { TOP_HEIGHT, viewingBytes } from "@/lib/stream-rules";
 import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED } from "@/lib/watch-rules";
+import { SETUP_STORAGE_BYTES, SETUP_VIDEO_HOURS, TRIAL_STORAGE_BYTES } from "@/lib/plan-standing";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -216,14 +217,29 @@ test("an hour of video past what a plan covers brings in well over what it costs
   );
 });
 
-test("a store nobody can charge cannot watch past what a plan covers", () => {
+test("a store nobody can charge cannot watch past the hours it has", () => {
   // An hour past the plan is paid for by a line on an invoice. A store in
-  // its free trial, or with its plan ended, has no invoice, so the hours
-  // themselves are the limit there: its video is paused at them.
+  // its free trial has no invoice yet, and one with no plan has none at all,
+  // so the hours themselves are the limit there: its video is paused at
+  // them (lib/plan-standing.ts has the figures, tests/plan-standing.test.ts
+  // holds them).
   const learn = readFileSync(join(process.cwd(), "lib/learn.ts"), "utf8");
-  assert.match(learn, /!charged && folder && \(await watchedIn\(folder\)\) >= VIDEO_SECONDS_INCLUDED/, "the pause for a store with no plan to charge must stay");
+  assert.match(learn, /limit !== null && folder && \(await watchedIn\(folder\)\) >= limit/, "the pause for a store with no plan to charge must stay");
   const page = readFileSync(join(process.cwd(), "app/[handle]/course/[product]/[lesson]/page.tsx"), "utf8");
-  assert.match(page, /lessonVideo\(lesson\.video, canBeCharged\(store\)\)/, "and the lesson page must be the one that asks whether the store can be charged");
+  assert.match(page, /lessonVideo\(lesson\.video, videoLimitFor\(store\)\)/, "and the lesson page must be the one that asks what the store's hours are");
+});
+
+test("a store that pays nothing can cost next to nothing", () => {
+  // Not a plan, so not in the sums above; set against zero instead. What a
+  // store with no plan may keep, at the dearest rate a file is kept at, and
+  // the hours its video may be watched, at the most an hour can cost.
+  const kept = (SETUP_STORAGE_BYTES / GB) * STORAGE_PER_GB;
+  const watched = SETUP_VIDEO_HOURS * hourCost();
+  assert.ok(kept + watched < 0.3, `a store with no plan can cost $${(kept + watched).toFixed(2)} a month`);
+  // A free trial lasts two weeks with a card on file. All it may keep, and
+  // every hour it may play, in one month:
+  const trial = (TRIAL_STORAGE_BYTES / GB) * STORAGE_PER_GB + videoCost();
+  assert.ok(trial < 7, `a trial at every limit costs $${trial.toFixed(2)} in a month`);
 });
 
 test("the video a plan covers is said in hours a creator can check", () => {

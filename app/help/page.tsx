@@ -233,6 +233,13 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "How much can my store hold?",
+        a: [
+          "A store on a paid plan holds up to 200 GB of files and lesson videos. In a plan's free trial it holds 50 GB. A store with no plan, before one is started or after one has ended, holds 5 GB.",
+          "Past its figure a store is asked to delete something before adding more. Nothing already there stops working and nothing already sold is touched: a store that holds more than 5 GB when its plan ends keeps what it holds, and cannot add to it.",
+        ],
+      },
+      {
         q: "What can I sell?",
         a: [
           "Digital files, courses, memberships that charge on a schedule, paid calls, one-on-one or in groups of up to 50, live sessions on dates you set, and bundles of 2 to 20 of your products at one price. What is too big to upload, or is not a file at all, is sold as a link to where it already lives. And anything can be given away for free, in exchange for an email address.",
@@ -393,7 +400,7 @@ const SECTIONS: Section[] = [
           "Any lesson can end with a quiz: up to 20 questions, each with one right answer or several, a pass mark, a number of tries, and if you want, later lessons locked until it is passed. It is marked on our side, so the answers are not in the page. Switch certificates on and a student who finishes gets one in the name they type, with a page of its own on your store that anyone can open to check it; they print it or save it as a PDF from their browser.",
           "Under every lesson, students can ask questions and answer each other, under a name they choose; their email address is never shown, and only the course's students and you can read what they write. You answer as the creator from the lesson itself or from the course's page in your studio, the student gets an email with your answer, and your phone can tell you when a comment comes. You can hide or delete any comment, or switch comments off for the course without deleting them.",
           "The course can be sold once, in a payment plan, or as a membership that stays open while the member pays.",
-          "Lesson videos are covered for 400 hours watched a month across your store, counted by the player as your students watch. Past that it is $0.03 for each hour watched, on your next invoice, and a student is never cut off for it. In the free trial, or after a plan ends, lesson videos play for those 400 hours and pause past them until the plan is paid or the month turns.",
+          "Lesson videos are covered for 400 hours watched a month across your store, counted by the player as your students watch. Past that it is $0.03 for each hour watched, on your next invoice, and a student is never cut off for it. A store with no paid plan has nothing a charge can be added to, so its lesson videos pause past its hours until the plan is paid or the month turns: 400 hours a month in the free trial, and 10 hours a month before a plan starts and after one ends.",
         ],
       },
       {

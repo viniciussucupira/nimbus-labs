@@ -13,7 +13,8 @@ import {
   ownsPath,
 } from "@/lib/product-file";
 import { ITEM_ID_PATTERN, findLesson, readCourses } from "@/lib/course";
-import { storageUsed } from "@/lib/storage-quota";
+import { storageRefusal, standingOf } from "@/lib/plan-standing";
+import { storageBrakeFor, storageUsed } from "@/lib/storage-quota";
 import { rememberFolderOwner } from "@/lib/delivery";
 import { isVaultConfigured } from "@/lib/vault";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
@@ -104,8 +105,12 @@ export async function POST(request: NextRequest) {
           already sold is touched, and nothing that exists stops working.
           It sits far above any real store and is not a plan limit.
         */
-        const held = await storageUsed(folder);
-        if (held.full) throw new Error("storage_full");
+        // By where the store stands with its plan (lib/plan-standing.ts).
+        // This door is not told the file's size, so it stops a store that
+        // is at its figure and cannot hold one to what is left of it.
+        const standing = standingOf(store);
+        const held = await storageUsed(folder, storageBrakeFor(standing));
+        if (held.full) throw new Error(storageRefusal(standing));
 
         // The one moment this store's folder and its owner are both in hand.
         // Kept so the allowance notice can reach them without anybody
@@ -139,7 +144,7 @@ export async function POST(request: NextRequest) {
     return Response.json(answer);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "server_error";
-    const known = ["signed_out", "none", "unknown", "invalid", "forbidden", "gone", "storage_full", "files_unavailable"].includes(reason);
+    const known = ["signed_out", "none", "unknown", "invalid", "forbidden", "gone", "storage_full", "storage_trial", "storage_setup", "files_unavailable"].includes(reason);
     if (!known) console.error("signing an upload failed", error);
     return Response.json(
       { ok: false, error: known ? reason : "server_error" },

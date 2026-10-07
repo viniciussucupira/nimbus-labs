@@ -343,6 +343,12 @@ export type Store = {
   cycle: Cycle;
   /** When the free trial ends, in seconds; 0 when not in one. A snapshot too. */
   trialEnds: number;
+  /**
+   * When this store's plan was first seen to be over, as a date; empty while
+   * a plan runs, and for a store that never started one. What a store may
+   * keep and play goes by this (lib/plan-standing.ts).
+   */
+  planEndedAt: string;
   /** How the creator's emails to their list are signed. Null until set up. */
   mail: MailSettings | null;
   /** The creator's own domain for the store, when they added one. */
@@ -643,6 +649,8 @@ function parseStore(raw: unknown): Store | null {
       tier: parseTier(value.tier) ?? "creator",
       cycle: parseCycle(value.cycle) ?? "month",
       trialEnds: typeof value.trialEnds === "number" && value.trialEnds > 0 ? value.trialEnds : 0,
+      // Stores written before this was kept have none: read as never ended.
+      planEndedAt: typeof value.planEndedAt === "string" && !Number.isNaN(Date.parse(value.planEndedAt)) ? value.planEndedAt : "",
       mail: parseMail(value.mail),
       domain: parseDomain(value.domain),
       // A record from before products had records of their own still
@@ -825,6 +833,7 @@ async function freshStore(fields: {
     tier: "creator",
     cycle: "month",
     trialEnds: 0,
+    planEndedAt: "",
     mail: null,
     domain: null,
     // A new store starts in the layout of lib/catalog.ts: nothing to move.
@@ -1425,6 +1434,11 @@ export async function setSubscription(
       return null;
     }
 
+    // The day a plan is first seen to be over is written down once, and
+    // wiped when a plan runs again. A store that never started one has none.
+    const had = store.subscriptionActive || store.subscriptionId !== null || subscriptionId !== null;
+    const planEndedAt = fields.active ? "" : store.planEndedAt || (had ? new Date().toISOString() : "");
+
     return save({
       ...store,
       stripeCustomerId: customerId,
@@ -1434,6 +1448,7 @@ export async function setSubscription(
       tier: fields.tier ?? store.tier,
       cycle: fields.cycle ?? store.cycle,
       trialEnds: fields.trialEnds ?? store.trialEnds,
+      planEndedAt,
     });
   });
   return result ?? null;

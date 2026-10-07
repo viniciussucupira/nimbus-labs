@@ -13,8 +13,10 @@ import {
 import { SUPPORT_EMAIL } from "@/lib/creator-research";
 import { SITE_URL } from "@/lib/site-url";
 import { directoryReadiness } from "@/lib/directory-index";
+import { SETUP_VIDEO_SECONDS, standingOf, videoLimitFor } from "@/lib/plan-standing";
+import { watchedFolders, watchedIn } from "@/lib/watch";
 import { firstWord, settleAll, storeOf } from "@/lib/watch-billing";
-import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, canBeCharged, centsWords, hoursWords } from "@/lib/watch-rules";
+import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, VIDEO_SECONDS_INCLUDED, canBeCharged, centsWords, hoursWords, videoOwedCents } from "@/lib/watch-rules";
 
 /**
  * The daily run that writes to a creator who has gone past the allowance.
@@ -62,7 +64,6 @@ async function videoRun(): Promise<VideoRun> {
     console.error("settling video hours failed", error);
     return out;
   }
-  const thisMonth = monthKey();
   for (const row of settled) {
     out.stores += 1;
     if (row.added > 0) {
@@ -70,14 +71,33 @@ async function videoRun(): Promise<VideoRun> {
       out.cents += row.added;
     }
     if (row.state === "failed") out.failed += 1;
-    if (row.state === "no_plan") out.paused += 1;
-    // Written to about the month that is running, once.
-    if (row.month !== thisMonth || !isSenderConfigured()) continue;
+  }
+
+  // Each creator is written to once about the month that is running: the
+  // first time their hours pass what a plan covers, or, where there is no
+  // plan to charge, the first time their videos are paused. A store with no
+  // plan has far fewer hours than one in a trial (lib/plan-standing.ts), so
+  // every store watched for at least the smallest figure is looked at.
+  const month = monthKey();
+  let watchedStores: string[] = [];
+  try {
+    watchedStores = await watchedFolders(month);
+  } catch (error) {
+    console.error("could not read the stores whose video was watched", error);
+  }
+  for (const folder of watchedStores) {
     try {
-      const store = row.store ?? (await storeOf(row.folder));
-      if (!store || !(await firstWord(row.folder, row.month))) continue;
-      const charged = canBeCharged(store);
-      const watched = hoursWords(row.seconds);
+      const seconds = await watchedIn(folder, month);
+      if (seconds < SETUP_VIDEO_SECONDS) continue;
+      const store = await storeOf(folder);
+      if (!store) continue;
+      const limit = videoLimitFor(store);
+      const paused = limit !== null && seconds >= limit;
+      const charged = canBeCharged(store) && seconds > VIDEO_SECONDS_INCLUDED;
+      if (!paused && !charged) continue;
+      if (paused) out.paused += 1;
+      if (!isSenderConfigured() || !(await firstWord(folder, month))) continue;
+      const watched = hoursWords(seconds);
       const sent = await sendEmail({
         from: NIMBUS_FROM,
         to: store.email,
@@ -92,7 +112,7 @@ async function videoRun(): Promise<VideoRun> {
               "as much as they like.",
               "",
               `Past the ${VIDEO_HOURS_INCLUDED} hours, video is ${centsWords(VIDEO_CENTS_PER_HOUR_OVER)} for each hour watched, counted to the`,
-              `second. So far this month that comes to ${centsWords(row.owed)}. It is added to your next invoice,`,
+              `second. So far this month that comes to ${centsWords(videoOwedCents(seconds))}. It is added to your next invoice,`,
               "on the card you already pay with. There is nothing for you to do.",
               "",
               "Your studio shows the hours as they are watched, under your plan:",
@@ -102,7 +122,7 @@ async function videoRun(): Promise<VideoRun> {
             ]
           : [
               `Your lesson videos have been watched for ${watched} this month, which is past the`,
-              `${VIDEO_HOURS_INCLUDED} hours a plan covers in a month.`,
+              `${hoursWords(limit ?? 0)} ${standingOf(store) === "trial" ? "a plan's free trial covers" : "a store without a paid plan has"} in a month.`,
               "",
               "Your store has no paid plan to carry more, so your lesson videos are paused.",
               "Everything else in your courses is open as usual: the text, the downloads,",
@@ -124,9 +144,9 @@ async function videoRun(): Promise<VideoRun> {
     }
   }
   console.log(
-    out.stores === 0
-      ? "video-watch: every store inside the hours its plan covers"
-      : `video-watch: ${out.stores} past the hours, ${out.billed} billed ${centsWords(out.cents)}, ${out.paused} with no plan, ${out.failed} failed, ${out.told} written to`,
+    out.stores === 0 && out.paused === 0
+      ? "video-watch: every store inside its hours"
+      : `video-watch: ${out.stores} past a plan's hours, ${out.billed} billed ${centsWords(out.cents)}, ${out.paused} paused with no plan, ${out.failed} failed, ${out.told} written to`,
   );
   return out;
 }
