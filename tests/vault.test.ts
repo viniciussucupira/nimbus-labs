@@ -54,6 +54,12 @@ const asked: string[] = [];
 /** The store as a whole: there, or not answering. */
 let service: "up" | "down" = "up";
 let made = 0;
+/**
+ * Whether the store compresses a file of text on its way out, as the real
+ * one does: when the asker did not say to send it as it is kept ("asked"),
+ * or even then ("always"). A file it squeezes is answered with no length.
+ */
+let squeezes: "asked" | "always" = "asked";
 /** How many files a listing gives at a time, so paging is walked. */
 const PAGE = 2;
 
@@ -130,9 +136,20 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
     return new Response(null, { status: 204 });
   }
   if (!found) return method === "HEAD" ? new Response(null, { status: 404 }) : xml("<Error><Code>NoSuchKey</Code></Error>", 404);
-  const about = { "content-length": String(found.bytes.byteLength), "content-type": found.type };
+  // A part of a file: never squeezed, and the answer names the size of the whole.
+  const range = /^bytes=(\d+)-(\d+)$/.exec(headers.range ?? "");
+  if (range && method === "GET") {
+    if (Number(range[1]) >= found.bytes.byteLength) return new Response(null, { status: 416 });
+    const end = Math.min(Number(range[2]), found.bytes.byteLength - 1);
+    const slice = found.bytes.slice(Number(range[1]), end + 1);
+    return new Response(slice as BodyInit, { status: 206, headers: { "content-length": String(slice.byteLength), "content-range": `bytes ${range[1]}-${end}/${found.bytes.byteLength}`, "content-type": found.type } });
+  }
+  const squeezed = found.type.startsWith("text/") && (squeezes === "always" || headers["accept-encoding"] !== "identity");
+  // Squeezed, the file is sent with no length: what is sent is not what is kept.
+  // (The stand-in says so and sends the bytes as they are; nothing here reads them.)
+  const about: Record<string, string> = squeezed ? { "content-type": found.type, "content-encoding": "gzip" } : { "content-length": String(found.bytes.byteLength), "content-type": found.type };
   if (method === "HEAD") return new Response(null, { status: 200, headers: about });
-  return new Response(found.bytes as BodyInit, { status: 200, headers: about });
+  return new Response(found.bytes as BodyInit, { status: 200, headers: squeezed ? { "content-type": found.type } : about });
 }) as typeof fetch;
 
 /** The studio's browser, sending one piece to the address it was given. */
@@ -220,6 +237,27 @@ async function main() {
   is("signed with its size and with what it is", [new URL(whole.url).searchParams.get("X-Amz-SignedHeaders"), whole.type], ["content-length;content-type;host", "application/pdf"]);
   await send(whole.url, small, whole.type);
   is("closed, it is the file the store measured", await closeVaultUpload(one.upload.pathname, []), { ok: true, file: { pathname: one.upload.pathname, bytes: 5000, contentType: "application/pdf" } });
+
+  part("A file of text, which the store squeezes on its way out");
+  const notes = bytesOf(3000, 23);
+  const text = await openVaultUpload({ folder: FOLDER, ownerId: "82f9fc6354", name: "Notes.txt", bytes: notes.byteLength, type: "text/plain" });
+  if (!text.ok) return done();
+  const [plainAddress] = (await signPieces(text.upload.pathname, [1])) ?? [];
+  await send(plainAddress.url, notes, plainAddress.type);
+  const askedBefore = asked.length;
+  is("is measured as it is kept, because we ask for it as it is kept", await closeVaultUpload(text.upload.pathname, []), { ok: true, file: { pathname: text.upload.pathname, bytes: 3000, contentType: "text/plain" } });
+  is("in one question", asked.slice(askedBefore), [`HEAD /${BUCKET}/${text.upload.pathname}`]);
+  is("and is kept", objects.has(text.upload.pathname), true);
+  squeezes = "always";
+  const askedSqueezed = asked.length;
+  is("squeezed all the same, its size is read from its first byte", await headVault(text.upload.pathname), { bytes: 3000, contentType: "text/plain" });
+  is("which is asked for after the store stated no length", asked.slice(askedSqueezed), [`HEAD /${BUCKET}/${text.upload.pathname}`, `GET /${BUCKET}/${text.upload.pathname}`]);
+  is("a file that is not text is still measured in one question", [await headVault(one.upload.pathname), asked.length - askedSqueezed], [{ bytes: 5000, contentType: "application/pdf" }, 3]);
+  // An empty file of text: there is no first byte to give.
+  objects.set(`vault/${FOLDER}/82f9fc6354/00000000000000aa-empty.txt`, { bytes: new Uint8Array(), type: "text/plain" });
+  is("an empty one is empty, not out of reach", await headVault(`vault/${FOLDER}/82f9fc6354/00000000000000aa-empty.txt`), { bytes: 0, contentType: "text/plain" });
+  squeezes = "asked";
+  await deleteVault([text.upload.pathname, `vault/${FOLDER}/82f9fc6354/00000000000000aa-empty.txt`]);
 
   part("The studio says one size and sends another");
   const lying = await openVaultUpload({ folder: FOLDER, ownerId: "82f9fc6354", name: "Not what it said.zip", bytes: PIECE_BYTES + 10, type: "application/zip" });
