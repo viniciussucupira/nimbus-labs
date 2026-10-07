@@ -14,6 +14,14 @@ import { RatingLine } from "@/components/review-list";
 import type { Summary } from "@/lib/review-summary";
 import { MIN_BUNDLE_ITEMS, worthWords } from "@/lib/bundle-rules";
 import { payPalPrice, paypalReady } from "@/lib/paypal-sales";
+import { comparable, startingOption } from "@/lib/product-option";
+
+/**
+ * How many price options are drawn as cards before they become a list to pick
+ * from. Six: two rows of three on a wide screen, and on a phone still a
+ * scroll the buyer can take in, rather than fifty cards to swipe past.
+ */
+const LIST_ABOVE = 6;
 
 /**
  * Where a product's own page is, under the store's address.
@@ -414,24 +422,54 @@ export function BuyBox({
         the server, so the price cannot be sent from here. Plain radios also
         mean the choice works with JavaScript turned off.
       */}
-      {options.length > 0 ? (
+      {options.length > LIST_ABOVE ? (
+        /*
+          Past a handful, a list to pick from rather than a wall of cards: a
+          phone shows it as the system's own picker, and it still sends only
+          the id. Each line carries its price, so nothing is hidden by it.
+        */
+        <div className="mb-4">
+          <label htmlFor={`os-${product.id}`} className="st-label">{`Choose an option for ${product.title}`}</label>
+          <select id={`os-${product.id}`} name="option" defaultValue={startingOption(options)?.id} className="st-field mt-2">
+            {options.map((option) => (
+              <option key={option.id} value={option.id}>
+                {`${option.label} — ${formatMoney(option.priceCents, store.currency)}${every}${option.best ? " (recommended)" : ""}`}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : options.length > 0 ? (
         <fieldset className="mb-4">
           <legend className="sr-only">{`Choose an option for ${product.title}`}</legend>
-          <div className="space-y-2">
-            {options.map((option, index) => (
-              <label key={option.id} htmlFor={`o-${option.id}`} className="st-option">
+          {/*
+            With what each includes written down, the cards stand side by side
+            on a wide screen so the buyer can compare them; on a phone they
+            stack. The creator's pick opens chosen and says so, in the
+            creator's voice: "Recommended", never a claim about other buyers.
+          */}
+          <div className={comparable(options) ? `st-compare st-compare-${Math.min(options.length, 3)}` : "space-y-2"}>
+            {options.map((option) => (
+              <label key={option.id} htmlFor={`o-${option.id}`} className={comparable(options) ? "st-option st-option-card" : "st-option"}>
                 <span className="flex items-center gap-3">
                   <input
                     id={`o-${option.id}`}
                     type="radio"
                     name="option"
                     value={option.id}
-                    defaultChecked={index === 0}
+                    defaultChecked={option.id === startingOption(options)?.id}
                     className="h-4 w-4"
                   />
                   <span className="font-bold">{option.label}</span>
+                  {option.best ? <span className="st-pick">Recommended</span> : null}
                 </span>
                 <span className="font-semibold tabular-nums">{`${formatMoney(option.priceCents, store.currency)}${every}`}</span>
+                {option.details.length > 0 ? (
+                  <ul className="st-includes">
+                    {option.details.map((line, at) => (
+                      <li key={at}>{line}</li>
+                    ))}
+                  </ul>
+                ) : null}
               </label>
             ))}
           </div>

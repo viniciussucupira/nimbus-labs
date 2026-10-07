@@ -7,7 +7,7 @@ import {
   removeOption,
   type OptionResult,
 } from "@/lib/store";
-import { MAX_OPTION_LABEL_LENGTH } from "@/lib/product-option";
+import { MAX_OPTION_DETAILS, MAX_OPTION_DETAIL_LENGTH, MAX_OPTION_LABEL_LENGTH } from "@/lib/product-option";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { StoreFullError } from "@/lib/store";
 import { dropStamped } from "@/lib/pdf-stamp";
@@ -17,6 +17,7 @@ const ACTIONS = new Set(["add", "edit", "remove", "move"]);
 /** How firmly to answer when a change is refused. */
 const STATUS: Record<string, number> = {
   too_many: 409,
+  store_too_many: 409,
   unknown: 404,
 };
 
@@ -50,10 +51,17 @@ export async function POST(request: NextRequest) {
 
   try {
     let result: OptionResult;
+    // What the option includes arrives as one block of lines. Bounded here
+    // before it reaches the store, which bounds it again as it saves.
+    const details =
+      typeof body.details === "string"
+        ? body.details.slice(0, MAX_OPTION_DETAILS * (MAX_OPTION_DETAIL_LENGTH + 1))
+        : undefined;
+    const best = typeof body.best === "boolean" ? body.best : undefined;
     if (action === "add") {
-      result = await addOption(ref, id, label, price);
+      result = await addOption(ref, id, label, price, { details, best });
     } else if (action === "edit") {
-      result = await editOption(ref, id, label, price);
+      result = await editOption(ref, id, label, price, { details, best });
     } else if (action === "remove") {
       result = await removeOption(ref, id);
     } else {

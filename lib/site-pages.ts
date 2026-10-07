@@ -119,7 +119,7 @@ export const PAGES: TopicPage[] = [
           ["Where you see your money", "Their Income tab. A Stripe Custom account has no Stripe login", "stripe.com, like any other business of yours"],
           ["Phone app", "iPhone and iPad, for running your store. Not on Android", "No app-store app — they are ahead here. The studio installs from the browser and sends notifications of sales and bookings, on Android and on iPhone with iOS 16.4 or later. Each store installs to the home screen on both, as an app with its own name and icon"],
           ["Products on one store", "As many as you like", "Up to 2,000, and up to 100 links — they are ahead here"],
-          ["Several prices for one product", "Listed as a top feature request, not available", "Up to three, each with its own file or link"],
+          ["Several prices for one product", "Listed as a top feature request, not available", "Up to 50, compared side by side, each with its own file or link"],
           ["Pay what you want", "Not in their help center", "Yes: a minimum of at least $1 and a suggested price, on the $29 plan"],
           ["Free trial on a membership", "Not in their help center", "1 to 90 days, with the card taken at the start and nothing charged until it ends"],
           ["A line about you on the page", "A short profile bio, and no separate About Me page", "On every store, under your name"],

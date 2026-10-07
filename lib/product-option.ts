@@ -30,16 +30,49 @@ import { type ProductFile, parseProductFile } from "@/lib/product-file";
 import { MAX_LINK_LENGTH } from "@/lib/product-link";
 
 /**
- * How many prices one product may carry.
+ * How many prices one product may carry: fifty.
  *
- * Three, because a person choosing between more than three on a phone is
- * being given homework rather than a choice, and because good, better and
- * best is the shape this has taken everywhere it works.
+ * It was three, on the reasoning that good, better and best is the shape that
+ * works. That is a reason to show three well, not a reason to forbid a fourth:
+ * a template pack sold per seat count, a photo set by licence and size, a
+ * course with five cohorts. The creator was asked (7 October 2026) for as many
+ * as they want, and the number is set by what the records can honestly carry
+ * rather than by taste.
+ *
+ * It is a number, not the word "unlimited", for the same reason the product
+ * ceiling is (lib/catalog.ts, MAX_PRODUCTS): one product's two records may
+ * weigh 256 KB, and fifty options at their heaviest — a long link, a file and
+ * a full list of what each includes — come to about 60 KB of it. Past a
+ * handful the buyer's page stops drawing radio cards and shows a list to pick
+ * from (components/store-product.tsx), so fifty stays a choice rather than
+ * a wall.
  */
-export const MAX_OPTIONS = 3;
+export const MAX_OPTIONS = 50;
+
+/**
+ * How many price options a whole store may hold.
+ *
+ * Each option's id lives in the store's index, inside the one record that
+ * holds the whole store, so it is the total across the store that decides how
+ * heavy that record gets — not how many any one product has. Bounding the
+ * total is what lets one product carry fifty without the published ceiling of
+ * products (MAX_PRODUCTS) resting on a guess. tests/catalog-ceiling.test.ts
+ * does the arithmetic from this number on every run.
+ */
+export const MAX_STORE_OPTIONS = 4_000;
 
 /** Long enough for "5 weeks" or "Commercial licence". */
 export const MAX_OPTION_LABEL_LENGTH = 40;
+
+/**
+ * What an option includes, line by line: "Everything in 1 week", "Weekly
+ * shopping list", "Live Q&A every Friday". Eight lines of up to a hundred
+ * characters each, which is what fits a column of a comparison on a phone.
+ * The lines are the creator's words about their own offer and are shown as
+ * written; nothing here counts, ranks or invents them.
+ */
+export const MAX_OPTION_DETAILS = 8;
+export const MAX_OPTION_DETAIL_LENGTH = 100;
 
 /**
  * The shape an option id has to have, which is the shape every id here has
@@ -87,12 +120,40 @@ export type ProductOption = {
   /** What this option hands over. One or the other, never both. */
   file: ProductFile | null;
   link: string | null;
+  /**
+   * What this one includes, in the creator's words (MAX_OPTION_DETAILS). Empty
+   * on every option written before this existed, which is read as "nothing
+   * listed" and shows the option as a plain choice, as it always did.
+   */
+  details: string[];
+  /**
+   * The one the creator recommends: picked for the buyer when the page opens
+   * and labelled as the creator's pick. At most one per product, kept by
+   * parseOptions. It is the creator's recommendation, said as such — never
+   * "most popular", which would be a claim about other buyers that nothing
+   * here measures.
+   */
+  best: boolean;
 };
+
+/** Lines of what an option includes, trimmed, bounded and without blanks. */
+export function parseDetails(raw: unknown): string[] {
+  const lines = Array.isArray(raw) ? raw : typeof raw === "string" ? raw.split("\n") : [];
+  const out: string[] = [];
+  for (const line of lines) {
+    if (typeof line !== "string") continue;
+    const clean = line.replace(/\s+/g, " ").trim().slice(0, MAX_OPTION_DETAIL_LENGTH);
+    if (clean) out.push(clean);
+    if (out.length === MAX_OPTION_DETAILS) break;
+  }
+  return out;
+}
 
 /** Whatever came back from storage, made safe to use. */
 export function parseOptions(raw: unknown): ProductOption[] {
   if (!Array.isArray(raw)) return [];
   const options: ProductOption[] = [];
+  let picked = false;
   for (const entry of raw) {
     if (!entry || typeof entry !== "object") continue;
     const value = entry as Partial<ProductOption>;
@@ -111,15 +172,36 @@ export function parseOptions(raw: unknown): ProductOption[] {
         typeof value.link === "string" && value.link
           ? value.link.slice(0, MAX_LINK_LENGTH)
           : null,
+      details: parseDetails(value.details),
+      // Only the first one marked counts: a page with two picks has none.
+      best: value.best === true && !picked,
     });
+    if (value.best === true) picked = true;
     if (options.length >= MAX_OPTIONS) break;
   }
   return options;
 }
 
-/** Whether this option has something to hand over once it is paid for. */
-export function optionDelivers(option: ProductOption): boolean {
-  return option.file !== null || option.link !== null;
+/**
+ * Whether this option has something to hand over once it is paid for.
+ *
+ * `opens` is true for a product that is its own delivery — a course opens its
+ * lessons and a private podcast its feed to whoever bought any of its
+ * options — so there every option delivers, and a file or link on one is
+ * something extra that option includes.
+ */
+export function optionDelivers(option: ProductOption, opens = false): boolean {
+  return opens || option.file !== null || option.link !== null;
+}
+
+/** The option to have chosen when the page opens: the creator's pick, else the first. */
+export function startingOption(options: ProductOption[]): ProductOption | null {
+  return options.find((option) => option.best) ?? options[0] ?? null;
+}
+
+/** Whether a set of options has enough said about them to be compared side by side. */
+export function comparable(options: ProductOption[]): boolean {
+  return options.length >= 2 && options.some((option) => option.details.length > 0);
 }
 
 /** The cheapest of them, which is the figure a page leads with. */

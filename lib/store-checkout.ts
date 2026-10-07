@@ -84,7 +84,10 @@ export function canSell(store: Store): boolean {
  * is where it can be fixed; the buyer never meets it.
  */
 export function sellableOptions(product: Listing): ProductOption[] {
-  return product.options.filter(optionDelivers);
+  // A course or a private podcast is its own delivery: every option opens it,
+  // and a file or link on one is something extra that option includes.
+  const opens = Boolean(product.course || product.podcast);
+  return product.options.filter((option) => optionDelivers(option, opens));
 }
 
 /**
@@ -109,10 +112,11 @@ export function canSellProduct(store: Store, product: Listing): boolean {
   if (product.bundle) return product.options.length === 0 && product.recurring === null && product.bundle.length >= MIN_BUNDLE_ITEMS;
   // A call delivers a time, not a file: it is ready once it has hours set.
   if (product.call) return product.options.length === 0 && product.recurring === null;
-  // A course delivers its lessons: it is ready once it has one.
-  if (product.course) return product.options.length === 0 && product.course.lessons > 0;
+  // A course delivers its lessons: it is ready once it has one, at one price
+  // or at several (each option opens the same course).
+  if (product.course) return product.course.lessons > 0;
   // A private podcast delivers its episodes: it is ready once it has one.
-  if (product.podcast) return product.options.length === 0 && product.podcast.episodes > 0;
+  if (product.podcast) return product.podcast.episodes > 0;
   if (product.options.length > 0) return sellableOptions(product).length > 0;
   return product.file !== null || product.link !== null;
 }

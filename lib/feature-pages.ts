@@ -116,16 +116,16 @@ export const FEATURE_PAGES: TopicPage[] = [
     visual: "options",
     plan: "creator",
     group: "sell",
-    menu: { label: "Price options", description: "Up to three prices on one product. The buyer picks.", icon: "tag" },
+    menu: { label: "Price options", description: "Up to 50 prices on one product, compared side by side. The buyer picks.", icon: "tag" },
     related: ["checkout", "instant-delivery", "store-page", "courses"],
     blocks: [
       {
         kind: "how",
         title: "How it works",
         items: [
-          { title: "Add up to three options", body: "A name the buyer reads — “1 week,” “Commercial license” — and a price for each." },
-          { title: "Give each option its own delivery", body: "Its own file, up to 5 GB, or its own link. The buyer of the small size never receives the big one." },
-          { title: "The buyer picks on the card", body: "One product, one card, no extra page. What is charged is read from what you saved, never from the page." },
+          { title: "Add up to 50 options", body: "A name the buyer reads — “1 week,” “Commercial license” — a price for each, and, if you like, a few lines on what each one includes." },
+          { title: "Give each option its own delivery", body: "Its own file, up to 5 GB, or its own link. The buyer of the small size never receives the big one. On a course, every option opens the course, and a file or link on one is what that one adds." },
+          { title: "The buyer compares and picks", body: "With what each includes written down, the options stand side by side, and the one you recommend opens chosen. More than six become a list to pick from. What is charged is read from what you saved, never from the page." },
         ],
       },
       {
@@ -154,7 +154,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do yet",
         items: [
-          "Three options per product at most.",
+          "50 options per product at most, and 4,000 across a store.",
+          "A course or podcast sold as a membership has one price: what a member pays each time is what it costs.",
           "Payment plans are for products with one price, so a product with options is paid in full up front, or sold as a membership.",
           "A product with options has fixed prices: pay-what-you-want pricing is for products with one price.",
         ],
@@ -190,7 +191,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "how",
         title: "From a product to a course",
         items: [
-          { title: "Turn a product into a course", body: "Any paid product with no file, link or price options of its own can become a course from your studio. Add modules, then lessons inside them." },
+          { title: "Turn a product into a course", body: "Any paid product with no file, link or price options of its own can become a course from your studio. Add modules, then lessons inside them, and then, if you like, several prices: the course alone, or with a live Q&A." },
           { title: "Fill the lessons", body: "A video of up to 5 GB, your text, up to five downloads and a link on each. The video uploads in parts, so a dropped connection costs one part. Mark any lesson as a free preview." },
           { title: "Sell it your way", body: "Paid once, in a payment plan, in a bundle with your other products, or as a membership that stays open while the member pays." },
         ],

@@ -58,7 +58,7 @@ const VALUES = [
 const BUILT = [
   "A store page with your photo, up to 100 links and up to 2,000 products shown 24 at a time, in one of four themes and the color you choose, with search over your products in the studio",
   "A picture on each product, shown on its card in one of three styles, and a page of its own for each product with a long description and its own title and preview card for search engines and shared links",
-  "Price options on one product — one week, five weeks, the season — up to three, each handing over its own file or link",
+  "Price options on one product — one week, five weeks, the season — up to 50, compared side by side, each handing over its own file or link, and on a course each opening it",
   "A Stripe checkout that charges the creator's account directly, with nothing taken on top — running in test mode on the demo store",
   "The file delivered the second the payment clears, with a link that expires",
   "A buyer who loses that link gets everything they bought from the store again, by email, at any time — no account, no password",
