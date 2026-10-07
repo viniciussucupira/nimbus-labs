@@ -129,9 +129,26 @@ export type SalesPage = {
    * none. Nothing is charged or added for them; it is a link.
    */
   next: string | null;
+  /**
+   * A second headline and line under it, tested against the hero's own
+   * (lib/headline-test.ts). Null is no test. The id changes whenever the
+   * words of either version change, so a test is never scored on words it
+   * did not show.
+   */
+  test: HeadlineTest | null;
 };
 
-export const EMPTY_PAGE: SalesPage = { blocks: [], seoTitle: "", seoDescription: "", next: null };
+export type HeadlineTest = { id: string; headline: string; sub: string };
+
+export const EMPTY_PAGE: SalesPage = { blocks: [], seoTitle: "", seoDescription: "", next: null, test: null };
+
+/** The id of a test of these two versions: the same words, the same id. */
+export function testId(a: { headline: string; sub: string }, b: { headline: string; sub: string }): string {
+  const text = JSON.stringify([a.headline, a.sub, b.headline, b.sub]);
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 16777619) >>> 0;
+  return h.toString(36).padStart(7, "0").slice(0, 8);
+}
 
 export const BLOCK_ID_PATTERN = /^[a-z0-9]{4,12}$/;
 const PRODUCT_ID_PATTERN = /^[a-z0-9]{6,40}$/;
@@ -353,7 +370,22 @@ export function parsePage(raw: unknown): SalesPage {
     seoTitle: line(value.seoTitle, MAX_SEO_TITLE),
     seoDescription: line(value.seoDescription, MAX_SEO_DESCRIPTION),
     next: typeof value.next === "string" && PRODUCT_ID_PATTERN.test(value.next) ? value.next : null,
+    test: parseTest(value.test, blocks[0]?.kind === "hero" ? blocks[0] : null),
   };
+}
+
+/**
+ * A headline test as stored or sent: kept only on a page with a hero, only
+ * when the second headline is written and differs from the first, and always
+ * with the id its words give it.
+ */
+function parseTest(raw: unknown, hero: HeroBlock | null): HeadlineTest | null {
+  if (!hero || !raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const headline = line(value.headline, MAX_HEADLINE);
+  const sub = lines(value.sub, MAX_SUBHEADLINE);
+  if (!headline || (headline === hero.headline && sub === hero.sub)) return null;
+  return { id: testId(hero, { headline, sub }), headline, sub };
 }
 
 /** What is wrong with a page the studio sent, in a word the studio can explain; null when nothing. */
@@ -445,5 +477,5 @@ export function blocksFromDraft(draft: DraftCopy, picture: boolean): SalesPage {
   if (draft.guarantee) blocks.push({ id: newBlockId(), kind: "guarantee", heading: "Guarantee", body: draft.guarantee });
   if (draft.faq.length || draft.inside.length) blocks.push({ id: newBlockId(), kind: "cta", label: draft.cta, note: "" });
   blocks.push({ id: newBlockId(), kind: "reviews", heading: "Reviews" });
-  return parsePage({ blocks, seoTitle: draft.seoTitle, seoDescription: draft.seoDescription, next: null });
+  return parsePage({ blocks, seoTitle: draft.seoTitle, seoDescription: draft.seoDescription, next: null, test: null });
 }

@@ -423,6 +423,29 @@ export default function PrivacyPage() {
           the other platform. A store may send up to 20,000 of these in 30
           days, and for that we keep only a count.
         </p>
+        <p id="code-links">
+          <strong className="text-black">
+            Discount codes in a link.
+          </strong>{" "}
+          When someone opens a store&apos;s page through a link carrying a
+          discount code, a cookie named <code>nl_code_</code> followed by the
+          store&apos;s address holds that code for seven days, so it applies at
+          that store&apos;s checkout without being typed. It holds the code and
+          nothing else, and is sent to no other store.
+        </p>
+        <p id="headline-tests">
+          <strong className="text-black">
+            Headline tests on product pages.
+          </strong>{" "}
+          A visitor to a product&apos;s page gets a cookie named{" "}
+          <code>nl_ab</code> holding one random number from 0 to 999, for 90
+          days, so that when the creator tests two headlines the same visitor
+          keeps seeing the same one. For each test we count how many times each
+          headline was seen and how many checkouts were opened from it, and
+          nothing about who. Visitors in the European Economic Area, the United
+          Kingdom, Switzerland or Brazil, or whose country we cannot tell, get
+          no such cookie: they see the first headline and are not counted.
+        </p>
         <p id="affiliates">
           <strong className="text-black">
             A creator&apos;s affiliate program.
