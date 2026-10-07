@@ -281,12 +281,16 @@ export class MemoryRedis {
 
       case "ZADD": {
         const z = this.zset(key);
-        for (let i = 0; i + 1 < args.length; i += 2) {
-          const score = Number(args[i]);
-          const member = args[i + 1];
+        // "NX": a member already there keeps the score it has.
+        const onlyNew = args[0] === "NX";
+        const pairs = onlyNew ? args.slice(1) : args;
+        for (let i = 0; i + 1 < pairs.length; i += 2) {
+          const score = Number(pairs[i]);
+          const member = pairs[i + 1];
           const at = z.findIndex((e) => e.member === member);
-          if (at >= 0) z[at].score = score;
-          else z.push({ score, member });
+          if (at >= 0) {
+            if (!onlyNew) z[at].score = score;
+          } else z.push({ score, member });
         }
         z.sort((a, b) => a.score - b.score || a.member.localeCompare(b.member));
         return 1;

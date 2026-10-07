@@ -15,6 +15,7 @@ import {
 import { ITEM_ID_PATTERN, findLesson, readCourses } from "@/lib/course";
 import { storageUsed } from "@/lib/storage-quota";
 import { rememberFolderOwner } from "@/lib/delivery";
+import { isVaultConfigured } from "@/lib/vault";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
 
 /** How long the creator has to start the upload after asking for the door. */
@@ -60,6 +61,19 @@ export async function POST(request: NextRequest) {
         const access = await studioAccess(request, "products");
         if (!access.ok) throw new Error(access.reason === "no_store" ? "none" : access.reason);
         const { store, ref } = access.access;
+
+        /*
+          This door leads to the host's own file store, where every download
+          costs by the gigabyte. A file that is sold goes to the store that
+          charges nothing to send it (app/api/store/vault) wherever that one
+          is set up, and the studio only comes here when it is told it is
+          not. So this door is shut while that store is set up, whoever
+          asks; and on the site people pay for it is shut either way, because
+          every plan's worst case is worked out with downloads costing
+          nothing (tests/plan-margin.test.ts), and a setting gone missing
+          must stop an upload, loudly, not quietly bring the cost back.
+        */
+        if (isVaultConfigured() || process.env.VERCEL_ENV === "production") throw new Error("files_unavailable");
 
         let productId = "";
         try {
@@ -125,11 +139,11 @@ export async function POST(request: NextRequest) {
     return Response.json(answer);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "server_error";
-    const known = ["signed_out", "none", "unknown", "invalid", "forbidden", "gone", "storage_full"].includes(reason);
+    const known = ["signed_out", "none", "unknown", "invalid", "forbidden", "gone", "storage_full", "files_unavailable"].includes(reason);
     if (!known) console.error("signing an upload failed", error);
     return Response.json(
       { ok: false, error: known ? reason : "server_error" },
-      { status: reason === "signed_out" ? 401 : reason === "forbidden" || reason === "gone" ? 403 : known ? 400 : 500 },
+      { status: reason === "signed_out" ? 401 : reason === "forbidden" || reason === "gone" ? 403 : reason === "files_unavailable" ? 503 : known ? 400 : 500 },
     );
   }
 }

@@ -6,12 +6,15 @@ import {
   DELIVERY_ALLOWANCE_BYTES,
   FREE_PAUSE_ABOVE_BYTES,
   bytesWords,
+  monthKey,
   ownersOf,
   storesOverAllowance,
 } from "@/lib/delivery";
 import { SUPPORT_EMAIL } from "@/lib/creator-research";
 import { SITE_URL } from "@/lib/site-url";
 import { directoryReadiness } from "@/lib/directory-index";
+import { firstWord, settleAll, storeOf } from "@/lib/watch-billing";
+import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, canBeCharged, centsWords, hoursWords } from "@/lib/watch-rules";
 
 /**
  * The daily run that writes to a creator who has gone past the allowance.
@@ -33,12 +36,100 @@ import { directoryReadiness } from "@/lib/directory-index";
  * notice stops being read.
  *
  * Nothing in here blocks or limits anything. It writes.
+ *
+ * It is also the run that bills the one thing charged by use: lesson video
+ * watched past the hours a plan covers (lib/watch-billing.ts). Each store
+ * past them has the hours added to its next invoice, by itself, and its
+ * creator is written to the first time a month passes them: what they have
+ * come to, and that nobody is cut off. A store with no plan to charge is
+ * written to as well, because its videos are paused (lib/learn.ts).
  */
 export const maxDuration = 60;
 
 const TOLD = "nl:usage-watch:told";
 /** Set once, the first day the directory question is worth deciding. */
 const DIRECTORY_TOLD = "nl:dir:asked";
+
+type VideoRun = { stores: number; billed: number; cents: number; paused: number; failed: number; told: number };
+
+/** Bills video past the plan's hours, and writes to each creator the first time a month passes them. */
+async function videoRun(): Promise<VideoRun> {
+  const out: VideoRun = { stores: 0, billed: 0, cents: 0, paused: 0, failed: 0, told: 0 };
+  let settled: Awaited<ReturnType<typeof settleAll>> = [];
+  try {
+    settled = await settleAll();
+  } catch (error) {
+    console.error("settling video hours failed", error);
+    return out;
+  }
+  const thisMonth = monthKey();
+  for (const row of settled) {
+    out.stores += 1;
+    if (row.added > 0) {
+      out.billed += 1;
+      out.cents += row.added;
+    }
+    if (row.state === "failed") out.failed += 1;
+    if (row.state === "no_plan") out.paused += 1;
+    // Written to about the month that is running, once.
+    if (row.month !== thisMonth || !isSenderConfigured()) continue;
+    try {
+      const store = row.store ?? (await storeOf(row.folder));
+      if (!store || !(await firstWord(row.folder, row.month))) continue;
+      const charged = canBeCharged(store);
+      const watched = hoursWords(row.seconds);
+      const sent = await sendEmail({
+        from: NIMBUS_FROM,
+        to: store.email,
+        replyTo: SUPPORT_EMAIL,
+        subject: charged ? `Your students have watched ${watched} of video this month` : "Your lesson videos are paused",
+        text: (charged
+          ? [
+              `Your students have watched ${watched} of your lesson videos so far this month. Your`,
+              `plan covers ${VIDEO_HOURS_INCLUDED} hours a month, so you are past it.`,
+              "",
+              "Nobody has been cut off, and nobody will be. A student who paid you watches",
+              "as much as they like.",
+              "",
+              `Past the ${VIDEO_HOURS_INCLUDED} hours, video is ${centsWords(VIDEO_CENTS_PER_HOUR_OVER)} for each hour watched, counted to the`,
+              `second. So far this month that comes to ${centsWords(row.owed)}. It is added to your next invoice,`,
+              "on the card you already pay with. There is nothing for you to do.",
+              "",
+              "Your studio shows the hours as they are watched, under your plan:",
+              `${SITE_URL}/studio`,
+              "",
+              `If the figure surprises you, reply to this email or write to ${SUPPORT_EMAIL}.`,
+            ]
+          : [
+              `Your lesson videos have been watched for ${watched} this month, which is past the`,
+              `${VIDEO_HOURS_INCLUDED} hours a plan covers in a month.`,
+              "",
+              "Your store has no paid plan to carry more, so your lesson videos are paused.",
+              "Everything else in your courses is open as usual: the text, the downloads,",
+              "the quizzes.",
+              "",
+              "They play again as soon as your plan is paid, or when the month turns,",
+              "whichever comes first. Nothing has been charged for the hours watched.",
+              "",
+              `${SITE_URL}/studio`,
+            ]
+        ).join("\n"),
+      }).catch((error) => {
+        console.error("sending the video hours notice failed", error);
+        return false;
+      });
+      if (sent !== false) out.told += 1;
+    } catch (error) {
+      console.error("writing to a creator about video hours failed", error);
+    }
+  }
+  console.log(
+    out.stores === 0
+      ? "video-watch: every store inside the hours its plan covers"
+      : `video-watch: ${out.stores} past the hours, ${out.billed} billed ${centsWords(out.cents)}, ${out.paused} with no plan, ${out.failed} failed, ${out.told} written to`,
+  );
+  return out;
+}
 
 export async function GET(request: NextRequest) {
   if (!(await cronAllowed(request))) {
@@ -82,6 +173,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  const video = await videoRun();
+
   const over = await storesOverAllowance();
   const allowance = bytesWords(DELIVERY_ALLOWANCE_BYTES);
 
@@ -96,7 +189,7 @@ export async function GET(request: NextRequest) {
   const fresh = over.filter((s) => !seen.has(s.folder));
   if (fresh.length === 0) {
     return Response.json(
-      { ok: true, over: over.length, told: 0, directory: directory ? { listed: directory.listed, ready: directory.ready } : null },
+      { ok: true, over: over.length, told: 0, video, directory: directory ? { listed: directory.listed, ready: directory.ready } : null },
       { headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -177,7 +270,7 @@ export async function GET(request: NextRequest) {
   ]);
 
   return Response.json(
-    { ok: true, over: over.length, told, unknown: unknown.length },
+    { ok: true, over: over.length, told, unknown: unknown.length, video },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

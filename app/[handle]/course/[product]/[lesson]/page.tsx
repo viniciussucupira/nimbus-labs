@@ -16,6 +16,7 @@ import { readListing } from "@/lib/catalog";
 import { LessonComments } from "@/components/lesson-comments";
 import { commenterName, commentsOn, lessonComments } from "@/lib/lesson-comments";
 import { CREATOR_AUTHOR, SHOWN_THREADS, commentClock, threadsFor } from "@/lib/lesson-comments-rules";
+import { canBeCharged } from "@/lib/watch-rules";
 
 type Params = {
   params: Promise<{ handle: string; product: string; lesson: string }>;
@@ -62,7 +63,9 @@ export default async function LessonPage({ params, searchParams }: Params) {
   const query = await searchParams;
   const [body, video, quiz, attempt] = await Promise.all([
     lesson.hasBody ? readBody(course.id, lesson.id) : Promise.resolve(""),
-    lesson.video ? lessonVideo(lesson.video) : Promise.resolve(null),
+    // A store with no plan that can be charged plays video for the hours a
+    // plan covers, and is paused past them (lib/watch-rules.ts).
+    lesson.video ? lessonVideo(lesson.video, canBeCharged(store)) : Promise.resolve(null),
     lesson.quiz ? readQuizFor(course.id, lesson.id) : Promise.resolve(null),
     lesson.quiz && student ? attemptOf(course.id, lesson.id, who) : Promise.resolve<Attempt | null>(null),
   ]);
@@ -150,6 +153,10 @@ export default async function LessonPage({ params, searchParams }: Params) {
               ) : video?.kind === "preparing" ? (
                 <p className="st-note mt-6" role="status">
                   <strong>This lesson&apos;s video is being prepared.</strong> It plays here as soon as it is ready; refresh the page in a few minutes.
+                </p>
+              ) : video?.kind === "paused" ? (
+                <p className="st-note mt-6" role="status">
+                  <strong>This video is paused for now.</strong>{` ${store.name} has used the hours of video a plan covers this month and has no paid plan to carry more. It plays again as soon as the store's plan is paid, or when the month turns. The rest of the lesson is here as usual.`}
                 </p>
               ) : video?.kind === "failed" ? (
                 <p className="st-note mt-6">{`This lesson's video could not be prepared. ${store.name} has to upload it again.`}</p>

@@ -3,6 +3,7 @@ import { cronAllowed } from "@/lib/request-guard";
 import { withCutoff } from "@/lib/fetch-timeout";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { isStreamConfigured, sweep } from "@/lib/stream";
+import { measureDue } from "@/lib/watch";
 
 export const maxDuration = 60;
 
@@ -12,6 +13,8 @@ export const maxDuration = 60;
  * lesson video that is still being prepared, takes away the ones whose
  * upload was started and never finished, and tries again to delete the ones
  * a creator removed while the service could not be reached (lib/stream.ts).
+ * Then it reads, for each store whose lessons are being watched, how long
+ * its video has been watched, about once an hour a store (lib/watch.ts).
  *
  * Does nothing, and says so, until the service is set up.
  */
@@ -28,11 +31,13 @@ async function run(request: NextRequest): Promise<Response> {
   const [got] = await redisPipeline([["SET", "nl:stream:lock", "1", "NX", "EX", 90]]);
   if (got === null) return Response.json({ ok: true, busy: true });
   try {
-    const counts = await sweep(Date.now() + 50_000);
+    const counts = await sweep(Date.now() + 35_000);
     if (counts.looked || counts.deleted) {
       console.log(`stream: looked at ${counts.looked}, ${counts.ready} ready, ${counts.failed} failed, ${counts.deleted} deleted`);
     }
-    return Response.json({ ok: true, ...counts }, { headers: { "Cache-Control": "no-store" } });
+    const watched = await measureDue(Date.now() + 15_000);
+    if (watched.read) console.log(`watch: read ${watched.read} store(s), ${watched.seconds} second(s) of video watched since the reading before`);
+    return Response.json({ ok: true, ...counts, watched }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("the video job failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });

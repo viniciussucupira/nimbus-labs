@@ -5,7 +5,8 @@ import { isDomainsConfigured } from "@/lib/domains";
 import { formatMoney } from "@/lib/money";
 import { PRO_MONTHLY_EMAILS, REFUND_DAYS, SCALE_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
 import { healthRuleWords } from "@/lib/mail-health-rules";
-import { DELIVERY_ALLOWANCE_BYTES, OVER_ALLOWANCE_CENTS_PER_GB, bytesWords } from "@/lib/delivery";
+import { DELIVERY_ALLOWANCE_BYTES, FREE_PAUSE_ABOVE_BYTES, bytesWords } from "@/lib/delivery";
+import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, centsWords } from "@/lib/watch-rules";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
 export const metadata: Metadata = {
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   const domains = isDomainsConfigured();
   return (
-    <LegalPage title="Terms of Service" lastUpdated="October 6, 2026">
+    <LegalPage title="Terms of Service" lastUpdated="October 7, 2026">
       <p>
         These Terms of Service (“Terms”) govern your access to and use of the
         websites, products, and subscription services operated by Solrenning
@@ -241,9 +242,11 @@ export default function TermsPage() {
         <p>
           The published limits are the ones in your studio and on our pricing
           page: the number of products a store may list, the size of a single
-          file, how many emails a month a plan may send, and{" "}
+          file, how many emails a month a plan may send,{" "}
           {bytesWords(DELIVERY_ALLOWANCE_BYTES)} of downloads a month per
-          store. You can see every one of them while you use the Services.
+          store, and {VIDEO_HOURS_INCLUDED} hours of lesson video watched a
+          month per store. You can see every one of them while you use the
+          Services.
           None of them is hidden in this document and then discovered by being
           enforced against you.
         </p>
@@ -254,20 +257,33 @@ export default function TermsPage() {
           completing it. A paid download is never refused, at any number.
         </p>
         <p>
-          Past the allowance, delivery is charged rather than limited: $
-          {(OVER_ALLOWANCE_CENTS_PER_GB / 100).toFixed(2)} for each gigabyte
-          above {bytesWords(DELIVERY_ALLOWANCE_BYTES)} in a calendar month,
-          added to your next subscription invoice on the card you already pay
-          with. It is the only thing here that is billed by use, and it exists
-          so that a store selling a great deal is never stopped from selling.
+          Nothing is charged for downloads, inside that figure or past it.
         </p>
         <p>
-          You are emailed automatically the morning after a month&apos;s
-          deliveries pass the allowance, with your own figure in it, and the
-          same figure is in your studio at any time. Nothing is ever charged
-          to somebody who was not told first, and a month in which you stay
-          inside the allowance costs nothing beyond your plan — which is every
-          month, for every store we have ever had.
+          Lesson video is the one thing here that is billed by use. It is
+          measured by the time your students spend watching your lesson
+          videos, as the video player counts it, added up across your store
+          for each calendar month and read about once an hour. Your plan
+          covers {VIDEO_HOURS_INCLUDED} hours a month. Past that, video is
+          charged rather than limited: {centsWords(VIDEO_CENTS_PER_HOUR_OVER)}{" "}
+          for each hour watched above {VIDEO_HOURS_INCLUDED} in a calendar
+          month, counted to the second and rounded down to the cent, added to
+          your next subscription invoice on the card you already pay with. On
+          a plan paid by the year, those lines are invoiced monthly. A student
+          is never cut off because a store has passed its hours.
+        </p>
+        <p>
+          You are emailed automatically the first time a month&apos;s
+          watching passes the hours your plan covers, with your own figure in
+          it, and the same figure is in your studio at any time. A month in
+          which you stay inside them costs nothing beyond your plan.
+        </p>
+        <p>
+          A store with no paid plan has nothing a charge can be added to. In
+          the free trial, and after a plan has ended, lesson videos play for
+          the same {VIDEO_HOURS_INCLUDED} hours a month and are paused past
+          them until the plan is paid or the month turns. Nothing is charged
+          for those hours, and everything else in a course stays open.
         </p>
         <p>
           What we ask in return is that the Services are used to sell your own
@@ -285,9 +301,9 @@ export default function TermsPage() {
         <p>
           Two things happen on their own, and neither touches a buyer. Free
           copies — files given away rather than bought — pause for the rest
-          of the month once a store has given away several times the
-          allowance, and resume when the month turns; anything anyone has
-          bought is unaffected. And new uploads stop once a store is holding
+          of the month once a store has sent out{" "}
+          {bytesWords(FREE_PAUSE_ABOVE_BYTES)} in that month, and resume when
+          the month turns; anything anyone has bought is unaffected. And new uploads stop once a store is holding
           far more than any storefront needs, which asks you to remove
           something before adding more and changes nothing about what is
           already there or already sold.

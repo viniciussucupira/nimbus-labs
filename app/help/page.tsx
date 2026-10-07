@@ -79,6 +79,7 @@ const SECTIONS: Section[] = [
         q: "What will it cost?",
         a: [
           "One subscription — $29 a month, or $99 a month on Pro, less if you pay yearly — and 0% of your sales. The card fee your payment processor charges is paid to them, on your own account, and we never take a cut on top of it.",
+          "One thing is charged by use, and only if you reach it: lesson video watched past 400 hours in a month is $0.03 for each hour, added to your next invoice. Your studio shows the hours as they are watched. Downloads are never charged for.",
           "The price is published on the home page. If it ever changes, existing subscribers are told before it applies to them.",
         ],
       },
@@ -391,7 +392,8 @@ const SECTIONS: Section[] = [
           "A module can open a set number of days after each student joins, and the student gets an email the day it does. Students open the course right away in the browser they paid in, and on any other device with a link sent to the address they paid with, so nobody makes a password. Your studio shows who opened it and how many lessons each marked done, and you can take a student off the course.",
           "Any lesson can end with a quiz: up to 20 questions, each with one right answer or several, a pass mark, a number of tries, and if you want, later lessons locked until it is passed. It is marked on our side, so the answers are not in the page. Switch certificates on and a student who finishes gets one in the name they type, with a page of its own on your store that anyone can open to check it; they print it or save it as a PDF from their browser.",
           "Under every lesson, students can ask questions and answer each other, under a name they choose; their email address is never shown, and only the course's students and you can read what they write. You answer as the creator from the lesson itself or from the course's page in your studio, the student gets an email with your answer, and your phone can tell you when a comment comes. You can hide or delete any comment, or switch comments off for the course without deleting them.",
-          "The course can be sold once, in a payment plan, or as a membership that stays open while the member pays. Videos watched count toward your store's 200 GB a month, the same as downloads.",
+          "The course can be sold once, in a payment plan, or as a membership that stays open while the member pays.",
+          "Lesson videos are covered for 400 hours watched a month across your store, counted by the player as your students watch. Past that it is $0.03 for each hour watched, on your next invoice, and a student is never cut off for it. In the free trial, or after a plan ends, lesson videos play for those 400 hours and pause past them until the plan is paid or the month turns.",
         ],
       },
       {

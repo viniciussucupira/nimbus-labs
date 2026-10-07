@@ -71,7 +71,9 @@ import {
   isConnectInTestMode,
 } from "@/lib/stripe-connect";
 import { ORDERS_PAGE_SIZE, canSell, listSales } from "@/lib/store-checkout";
-import { DELIVERY_ALLOWANCE_BYTES, FREE_PAUSE_ABOVE_BYTES, OVER_ALLOWANCE_CENTS_PER_GB, bytesWords, deliveredThisMonth } from "@/lib/delivery";
+import { DELIVERY_ALLOWANCE_BYTES, FREE_PAUSE_ABOVE_BYTES, bytesWords, deliveredThisMonth } from "@/lib/delivery";
+import { watchedIn } from "@/lib/watch";
+import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, VIDEO_SECONDS_INCLUDED, canBeCharged, centsWords, hoursWords, videoOwedCents } from "@/lib/watch-rules";
 import { MAX_LEADS, listSize } from "@/lib/free";
 import { readableSize } from "@/lib/product-file";
 import {
@@ -574,9 +576,11 @@ export default async function StudioPage({
   const sold =
     current && current.stripeAccountId && may("orders") ? await listSales(current) : null;
 
-  // What this store has sent out this month, so the one cost that scales with
-  // use is visible to the creator before it is visible on our bill.
+  // What this store has sent out this month, and how long its lesson video
+  // was watched: the one thing here that is charged by use, visible to the
+  // creator before it is visible on an invoice (lib/watch-rules.ts).
   const delivery = store && may("settings") ? await deliveredThisMonth(folder) : null;
+  const watched = store && may("settings") ? await watchedIn(folder) : 0;
   // The list is shown once there is something that fills it, or once it holds
   // anybody — a creator who stops giving things away still owns what came in.
   const list = store && may("export") ? await listSize(store) : null;
@@ -1457,7 +1461,7 @@ export default async function StudioPage({
                 <p className="mt-2 text-ink-soft">
                   {`${readableSize(delivery.bytes)} of the ${readableSize(
                     delivery.allowance,
-                  )} your plan covers. Counted when a download or a lesson video starts, including the ones you open yourself to check.`}
+                  )} of downloads your plan covers. Counted when a download starts, including the ones you open yourself to check.`}
                 </p>
                 <div
                   className="mt-4 h-2 w-full overflow-hidden rounded-full bg-sand"
@@ -1521,9 +1525,9 @@ export default async function StudioPage({
                   <div>
                     <dt className="font-semibold text-ink">Past the allowance</dt>
                     <dd className="text-ink-soft">
-                      {`$${(OVER_ALLOWANCE_CENTS_PER_GB / 100).toFixed(2)} a gigabyte above ${bytesWords(DELIVERY_ALLOWANCE_BYTES)}, on your next invoice. `}
-                      Nothing is ever cut off: a buyer who paid always gets what they paid for, however much you send.
-                      We email you the morning after you pass it.
+                      {`Nothing is charged for downloads above ${bytesWords(DELIVERY_ALLOWANCE_BYTES)}, and nothing is ever cut off: `}
+                      a buyer who paid always gets what they paid for, however much you send. We email you the morning
+                      after you pass it.
                     </dd>
                   </div>
                   <div>
@@ -1535,6 +1539,64 @@ export default async function StudioPage({
                     </dd>
                   </div>
                 </dl>
+
+                {/*
+                  Lesson video: the one thing here that is charged by use
+                  (lib/watch-rules.ts). The figure, what it covers and what
+                  an hour past it costs are said here, before any of it is
+                  ever on an invoice, from the same numbers the invoice is
+                  made from.
+                */}
+                <div className="mt-6 border-t border-line pt-5">
+                  <p className="font-semibold text-ink">Video watched this month</p>
+                  <p className="mt-1 text-ink-soft">
+                    {`${hoursWords(watched)} of the ${VIDEO_HOURS_INCLUDED} hours your plan covers. This is the time your students spent watching your lesson videos, as the player counts it, read about once an hour.`}
+                  </p>
+                  <div
+                    className="mt-4 h-2 w-full overflow-hidden rounded-full bg-sand"
+                    role="progressbar"
+                    aria-valuenow={Math.min(100, Math.round((watched / VIDEO_SECONDS_INCLUDED) * 100))}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label="Video hours used this month"
+                  >
+                    <div
+                      className={`h-full rounded-full ${
+                        watched > VIDEO_SECONDS_INCLUDED ? "bg-amber-brand" : "bg-gradient-to-r from-violet-brand to-sky-brand"
+                      }`}
+                      style={{ width: `${Math.min(100, Math.max(1, Math.round((watched / VIDEO_SECONDS_INCLUDED) * 100)))}%` }}
+                    />
+                  </div>
+                  {watched > VIDEO_SECONDS_INCLUDED && canBeCharged(store) ? (
+                    <p className="mt-4 notice notice-warn">
+                      {`You are past the ${VIDEO_HOURS_INCLUDED} hours this month. `}
+                      <strong>Nobody has been cut off and nobody will be.</strong>
+                      {` The hours past it come to ${centsWords(videoOwedCents(watched))} so far, and go on your next invoice.`}
+                    </p>
+                  ) : null}
+                  {watched >= VIDEO_SECONDS_INCLUDED && !canBeCharged(store) ? (
+                    <p className="mt-4 notice notice-warn">
+                      <strong>Your lesson videos are paused.</strong>
+                      {` They have been watched for the ${VIDEO_HOURS_INCLUDED} hours a plan covers this month, and your store has no paid plan to carry more. They play again as soon as your plan is paid, or when the month turns. Everything else in your courses is open as usual.`}
+                    </p>
+                  ) : null}
+                  <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="font-semibold text-ink">{`Past the ${VIDEO_HOURS_INCLUDED} hours`}</dt>
+                      <dd className="text-ink-soft">
+                        {`${centsWords(VIDEO_CENTS_PER_HOUR_OVER)} for each hour watched above ${VIDEO_HOURS_INCLUDED}, counted to the second, on your next invoice. `}
+                        A student is never cut off for it. We email you the first time a month passes it.
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-semibold text-ink">Without a paid plan</dt>
+                      <dd className="text-ink-soft">
+                        {`In the free trial, or after a plan ends, lesson videos play for ${VIDEO_HOURS_INCLUDED} hours a month and pause past that, `}
+                        until the plan is paid or the month turns. Nothing is charged for them.
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
               </div>
             ) : null}
 
@@ -1544,10 +1606,11 @@ export default async function StudioPage({
                   What you pay us
                 </p>
                 <p className="mt-2 text-ink-soft">
-                  A plan, and nothing on top of it. We take 0% of what you
-                  sell, because what you sell never passes through us — the
-                  subscription is our whole income, and it is the same whether
-                  you sell three files or three thousand.
+                  A plan, and 0% of what you sell, because what you sell never
+                  passes through us. The subscription is the same whether you
+                  sell three files or three thousand. One thing is charged by
+                  use, and only if you reach it: lesson video watched past the
+                  hours your plan covers, shown above as it is watched.
                 </p>
 
                 {paid && cancelling ? (
