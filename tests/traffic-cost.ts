@@ -48,6 +48,18 @@
  * visit would cost a third more than is worked out here, which no plan's
  * price would fail to cover and every plan's margin would feel.
  *
+ * And one more setting these figures count on, in the same place: that
+ * Observability Plus stays switched off in the host's billing settings. It
+ * was on by default (teams made on or after April 3, 2026 have it so) and
+ * charged $1.20 for a million events, one for each call of a function and
+ * more for what a function asks of the database: in the cycle to October
+ * 7, 2026 it was 475,000 events against 137,000 calls. That is a tenth
+ * more on a visit and nearly half as much again on a look at the live
+ * room, in none of these sums. It was switched off that day; with it off
+ * the host keeps a day of logs and charges nothing for them. The site
+ * sends none of the host's Web Analytics or Speed Insights events, which
+ * are charged by the event too.
+ *
  * The same rates cost the two things a buyer's device does by itself: the
  * live room asking what is new (lib/chat-pace.ts), and a podcast app asking
  * for its feed (lib/podcast-access.ts). tests/room.test.ts and
