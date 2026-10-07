@@ -24,6 +24,7 @@ import { dropPage } from "@/lib/sales-page-store";
 import { dropReviews } from "@/lib/reviews";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { dropCourse, filesInCourse, readCourse } from "@/lib/course";
+import { dropStream } from "@/lib/stream";
 import { dropStamped } from "@/lib/pdf-stamp";
 import { idsOfKind, readAllListings, readListing, readProducts } from "@/lib/catalog";
 import { quietedBy } from "@/lib/extras-notes";
@@ -191,6 +192,8 @@ export async function POST(request: NextRequest) {
         await dropReviews(removed.store.statsId, id).catch(() => {});
         if (course) await dropCourse(course).catch((error: unknown) => console.error("could not drop a removed course", error));
         for (const file of had) {
+          // A lesson video the video service keeps is taken away there (lib/stream.ts).
+          if (await dropStream(file.pathname).catch(() => false)) continue;
           await del(file.pathname).catch((error: unknown) => {
             console.error("could not delete the file of a removed product", error);
           });

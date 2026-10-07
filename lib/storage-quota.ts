@@ -29,6 +29,7 @@
  * never on the person who bought one.
  */
 import { list } from "@/lib/blob";
+import { streamHeld } from "@/lib/stream";
 
 const GB = 1024 * 1024 * 1024;
 
@@ -69,6 +70,11 @@ export type StorageUse = { bytes: number; brake: number; left: number; full: boo
  * long walk while a creator waits to upload. Stopping early reports less
  * than the truth, which is the safe direction: it lets an upload through
  * rather than refusing one it should not have.
+ *
+ * Lesson videos kept by the video service are counted too, by the service's
+ * own count of the store's collection (lib/stream.ts): every size of every
+ * video, which is what is paid for. Read the same way and for the same
+ * reason, and left out the same way when it cannot be read.
  */
 export async function storageUsed(folder: string): Promise<StorageUse> {
   const brake = STORAGE_BRAKE_BYTES;
@@ -89,6 +95,7 @@ export async function storageUsed(folder: string): Promise<StorageUse> {
     console.error("could not read what a store is storing", error);
     return { bytes: 0, brake, left: brake, full: false };
   }
+  bytes += (await streamHeld(folder).catch(() => null)) ?? 0;
   return { bytes, brake, left: Math.max(0, brake - bytes), full: bytes >= brake };
 }
 

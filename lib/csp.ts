@@ -16,7 +16,11 @@
  *     video players a product's page may show (lib/sales-page.ts) are the
  *     only other addresses such a page may put in a frame, and only their
  *     embed hosts — YouTube's privacy-enhanced one, Vimeo's player and
- *     Loom's embed — never the sites themselves. Both lists are given to a
+ *     Loom's embed — never the sites themselves. A lesson's own video, when
+ *     the video service keeps it (lib/stream.ts), plays in that service's
+ *     player, which is the fourth, and the service's address is the one
+ *     place besides the file store the studio sends a file to. The lists
+ *     of pixels and players are given to a
  *     store's own pages only; the studio, signing in and unsubscribing get
  *     neither. One page more may frame one address more: a community live
  *     event's own page (/@<handle>/community/events/<event>) may show its
@@ -42,6 +46,7 @@
  */
 
 import { VIDEO_FRAME_ORIGINS } from "./sales-page";
+import { STREAM_API_ORIGIN, STREAM_PLAYER_ORIGIN } from "./stream-rules";
 
 /** Where the ad platforms' own scripts send what they measure. */
 const PIXEL_CONNECT = [
@@ -114,8 +119,11 @@ export function dynamicPolicy(nonce: string, options: { store?: boolean; room?: 
     // 'self', https: and 'unsafe-inline' are only for browsers too old to
     // know nonces; every current one ignores them when a nonce is present.
     "script-src": [`'nonce-${nonce}'`, "'strict-dynamic'", "'self'", "https:", "'unsafe-inline'", ...(dev() ? ["'unsafe-eval'"] : [])],
-    "connect-src": ["'self'", BLOB_API, BLOB_FILES, ...(store ? PIXEL_CONNECT : [])],
-    "frame-src": ["'self'", ...(store ? [...PIXEL_FRAMES, ...VIDEO_FRAME_ORIGINS] : []), ...(room ? [ROOM_FRAME_ORIGIN] : [])],
+    // The video service's own address is where the studio sends a lesson
+    // video's pieces, and its player the one a lesson page frames
+    // (lib/stream.ts); the player, like the other three, on a store's pages only.
+    "connect-src": ["'self'", BLOB_API, BLOB_FILES, STREAM_API_ORIGIN, ...(store ? PIXEL_CONNECT : [])],
+    "frame-src": ["'self'", ...(store ? [...PIXEL_FRAMES, ...VIDEO_FRAME_ORIGINS, STREAM_PLAYER_ORIGIN] : []), ...(room ? [ROOM_FRAME_ORIGIN] : [])],
   });
 }
 

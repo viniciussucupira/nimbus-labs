@@ -35,6 +35,8 @@ import { CERT_ID_PATTERN, withdrawCertificate } from "@/lib/certificate";
 import { readListing } from "@/lib/catalog";
 import { communityOf, courseChanged, unindexCourse } from "@/lib/community-index";
 import { LockBusyError, withLock } from "@/lib/redis-lock";
+import { claimUpload, dropStream } from "@/lib/stream";
+import { type StreamState, isStreamPath } from "@/lib/stream-rules";
 
 const OPS = new Set([
   "outline",
@@ -75,7 +77,8 @@ export async function GET(request: NextRequest) {
  * id }` turns an empty one back; `{ action: "edit", id, op, ... }` changes
  * the outline; `{ action: "body", id, lessonId, text }` saves a lesson's
  * text; `{ action: "media", id, lessonId, kind, pathname, name }` puts an
- * uploaded video or file on a lesson; `{ action: "block", id, email, blocked
+ * uploaded video or file on a lesson (a video's path is either one in the
+ * file store or one at the video service, lib/stream-rules.ts); `{ action: "block", id, email, blocked
  * }` takes a student off the course or lets them back; `{ action: "quiz", id,
  * lessonId, quiz }` saves a lesson's quiz and `quiz: null` takes it off;
  * `{ action: "cert", id, on }` switches certificates on or off; `{ action:
@@ -263,6 +266,8 @@ export async function POST(request: NextRequest) {
       }
 
       let edit: CourseEdit;
+      // Where a video just put on a lesson stands at the video service, for the studio to say.
+      let stream: StreamState | null = null;
       if (action === "media") {
         const lessonId = text(body.lessonId, 20);
         const pathname = text(body.pathname, 400);
@@ -271,15 +276,27 @@ export async function POST(request: NextRequest) {
         // The file has to sit in this account's folder for this very lesson,
         // and what it is is read from storage, not from the browser.
         const folder = await storeFolder(ref);
-        if (!ownsPath(pathname, folder, lessonId)) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
-        const found = await head(pathname);
-        const file: ProductFile = {
-          pathname,
-          name: safeFileName(text(body.name, 200) || found.pathname),
-          bytes: found.size,
-          contentType: found.contentType,
-          addedAt: new Date().toISOString(),
-        };
+        let file: ProductFile;
+        if (kind === "video" && isStreamPath(pathname)) {
+          // A video sent to the service that keeps it in several sizes
+          // (lib/stream.ts): it has to be the one whose door was opened for
+          // this store and this lesson, and what it is comes from what was
+          // written down then, not from the browser.
+          const record = await claimUpload(pathname, folder, lessonId);
+          if (!record) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
+          stream = record.state;
+          file = { pathname, name: record.name, bytes: record.bytes, contentType: record.type, addedAt: new Date().toISOString() };
+        } else {
+          if (!ownsPath(pathname, folder, lessonId)) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
+          const found = await head(pathname);
+          file = {
+            pathname,
+            name: safeFileName(text(body.name, 200) || found.pathname),
+            bytes: found.size,
+            contentType: found.contentType,
+            addedAt: new Date().toISOString(),
+          };
+        }
         edit = { op: "media", lessonId, kind, file };
       } else if (action === "edit") {
         const op = text(body.op, 20);
@@ -339,9 +356,11 @@ export async function POST(request: NextRequest) {
       // is written, the same order every other file here is handled in.
       for (const file of result.removed) {
         if (filesInCourse(result.course).some((f) => f.pathname === file.pathname)) continue;
+        // A video the video service keeps is taken away there; anything else, from the file store.
+        if (await dropStream(file.pathname).catch(() => false)) continue;
         await del(file.pathname).catch((error: unknown) => console.error("could not delete a lesson file", error));
       }
-      return Response.json({ ok: true, course: result.course, addedId: result.addedId });
+      return Response.json({ ok: true, course: result.course, addedId: result.addedId, ...(stream ? { stream } : {}) });
     });
   } catch (error) {
     if (error instanceof LockBusyError) return Response.json({ ok: false, error: "busy" }, { status: 409 });

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
 import { isSesConfigured } from "@/lib/ses";
+import { isStreamConfigured } from "@/lib/stream";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Marktmorgen",
@@ -13,6 +14,8 @@ export default function PrivacyPage() {
   // Named from the day its settings are there, which is the day email can
   // first go through it (lib/email.ts), and not before.
   const amazon = isSesConfigured();
+  // Named only while lesson videos are kept there (lib/stream.ts).
+  const bunny = isStreamConfigured();
   return (
     <LegalPage title="Privacy Policy" lastUpdated="October 6, 2026">
       <p>
@@ -951,6 +954,19 @@ export default function PrivacyPage() {
               address is not written to again;
             </li>
           ) : null}
+          {bunny ? (
+            <li>
+              <strong className="text-black">Bunny.net</strong>, whose video
+              service (Bunny Stream) keeps the videos a creator uploads to
+              their lessons, in the several sizes they are played in, and
+              plays them to that creator&apos;s students in its own player on
+              the lesson&apos;s page. When a lesson&apos;s video is played it
+              receives the student&apos;s network address and browser, as any
+              service that plays a video does, and its player keeps in that
+              browser where the student stopped, so the video goes on from
+              there;
+            </li>
+          ) : null}
           <li>
             <strong className="text-black">Google</strong>, in whose mail
             service (Gmail) we read and answer the emails you write to us;
@@ -993,7 +1009,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          Our own service providers (Vercel, Upstash, Resend{amazon ? ", Amazon Web Services" : ""} and Anthropic) may use the
+          Our own service providers (Vercel, Upstash, Resend{amazon ? ", Amazon Web Services" : ""}{bunny ? ", Bunny.net" : ""} and Anthropic) may use the
           information only to provide their services to us or as required by
           law. Stripe, Google for the emails you write to us, the services a
           creator connects and the ad platforms a creator adds handle what they

@@ -225,7 +225,6 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do yet",
         items: [
-          "No comments under a lesson. Conversation happens in your store's community, which a course can open.",
           "Certificates are pages printed or saved as a PDF from the student's browser; no PDF file is made.",
           "No live lessons inside the course itself. Hold them as live events in your community, or put a link in a lesson to where you hold them.",
           "Videos watched count toward your store's 200 GB a month, the same as downloads. Going over never cuts a student off; your studio shows it, and your store keeps working as usual.",

@@ -87,7 +87,9 @@ test("only an upload is ever refused by it, never a download", () => {
 
   assert.deepEqual(
     callers.map((f) => f.replace(process.cwd() + "/", "")),
-    ["app/api/store/file/route.ts"],
+    // The two doors an upload goes through: into the file store, and, for
+    // a lesson's video, to the video service (lib/stream.ts).
+    ["app/api/store/file/route.ts", "app/api/store/stream/route.ts"],
     "the brake belongs at upload authorization and nowhere else. A buyer who paid is never refused.",
   );
 });

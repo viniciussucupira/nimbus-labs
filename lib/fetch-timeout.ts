@@ -2,7 +2,7 @@
  * How long we wait on the services this app runs on before giving up.
  *
  * Every request to Upstash Redis, Stripe (our own account and the creators'
- * connected ones), Resend, Amazon SES, Vercel's domain API and Vercel Blob goes through
+ * connected ones), Resend, Amazon SES, Vercel's domain API, Vercel Blob and the video service goes through
  * `timed`, with a limit of its own:
  *
  *   Redis    5 s    a pipeline answers in milliseconds; five seconds is a
@@ -16,6 +16,8 @@
  *   Blob     15 s   to the first byte of an answer (a download may take as
  *                   long as it takes after that); 45 s for writing a
  *                   stamped PDF of up to 50 MB
+ *   Video    8 s    one question to the service that keeps lesson videos
+ *                   (lib/stream.ts); 3 s when a student's page is waiting
  *
  * Work with a hard end of its own — the five-minute jobs, which Vercel stops
  * at sixty seconds — runs inside `withCutoff`, and then every request made
@@ -40,6 +42,8 @@ export const SES_TIMEOUT_MS = 8_000;
 export const DOMAINS_TIMEOUT_MS = 15_000;
 export const BLOB_TIMEOUT_MS = 15_000;
 export const BLOB_WRITE_TIMEOUT_MS = 45_000;
+export const STREAM_TIMEOUT_MS = 8_000;
+export const STREAM_PEEK_TIMEOUT_MS = 3_000;
 
 /**
  * Where the cutoff of the work in progress is kept. Some studio components

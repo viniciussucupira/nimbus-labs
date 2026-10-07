@@ -7,7 +7,7 @@ import { lookStyle } from "@/lib/store-look";
 import { linkHost } from "@/lib/product-link";
 import { readableSize } from "@/lib/product-file";
 import { findLesson, isOpen, lessonsInOrder, readBody, readCourse } from "@/lib/course";
-import { VIDEO_URL_SECONDS, courseAccess, doneLessons, emailKey, signedMedia } from "@/lib/learn";
+import { courseAccess, doneLessons, emailKey, lessonVideo } from "@/lib/learn";
 import { type Attempt, attemptOf, heldBack, passedQuizzes, readQuizFor } from "@/lib/quiz";
 import { CourseOutline } from "@/components/course-outline";
 import { LessonText } from "@/components/lesson-text";
@@ -62,7 +62,7 @@ export default async function LessonPage({ params, searchParams }: Params) {
   const query = await searchParams;
   const [body, video, quiz, attempt] = await Promise.all([
     lesson.hasBody ? readBody(course.id, lesson.id) : Promise.resolve(""),
-    lesson.video ? signedMedia(lesson.video, VIDEO_URL_SECONDS) : Promise.resolve(null),
+    lesson.video ? lessonVideo(lesson.video) : Promise.resolve(null),
     lesson.quiz ? readQuizFor(course.id, lesson.id) : Promise.resolve(null),
     lesson.quiz && student ? attemptOf(course.id, lesson.id, who) : Promise.resolve<Attempt | null>(null),
   ]);
@@ -113,12 +113,33 @@ export default async function LessonPage({ params, searchParams }: Params) {
             ) : null}
 
             {lesson.video ? (
-              video ? (
+              video?.kind === "stream" ? (
+                <div className="mt-6 overflow-hidden rounded-2xl bg-black">
+                  {/* The video service's player (lib/stream.ts): it sends the
+                      size the line can carry, so the video does not stop to
+                      wait. The frame takes the video's own shape, so one
+                      filmed upright stays upright, and is never taller than
+                      three quarters of the screen. */}
+                  <iframe
+                    src={video.src}
+                    title={lesson.title}
+                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture; fullscreen"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    className="mx-auto block w-full"
+                    style={{
+                      aspectRatio: `${video.width} / ${video.height}`,
+                      maxWidth: `calc(75vh * ${video.width} / ${video.height})`,
+                      border: 0,
+                    }}
+                  />
+                </div>
+              ) : video?.kind === "file" ? (
                 <div className="mt-6 overflow-hidden rounded-2xl bg-black">
                   {/* Vertical videos stay vertical: the player takes the
                       shape of the video instead of forcing it wide. */}
                   <video
-                    src={video}
+                    src={video.src}
                     controls
                     playsInline
                     preload="metadata"
@@ -126,6 +147,12 @@ export default async function LessonPage({ params, searchParams }: Params) {
                     className="mx-auto block max-h-[75vh] w-full object-contain"
                   />
                 </div>
+              ) : video?.kind === "preparing" ? (
+                <p className="st-note mt-6" role="status">
+                  <strong>This lesson&apos;s video is being prepared.</strong> It plays here as soon as it is ready; refresh the page in a few minutes.
+                </p>
+              ) : video?.kind === "failed" ? (
+                <p className="st-note mt-6">{`This lesson's video could not be prepared. ${store.name} has to upload it again.`}</p>
               ) : (
                 <p className="st-note mt-6">The video could not be loaded just now. Refresh the page in a moment.</p>
               )
