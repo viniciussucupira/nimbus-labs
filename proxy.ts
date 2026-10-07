@@ -7,6 +7,7 @@ import { dynamicPolicy, isDynamicPage, isEventRoomPage, isStorePage, newNonce, r
 import { fromAnotherSite } from "@/lib/request-guard";
 import { isPlatformHost, requestHost } from "@/lib/request-origin";
 import { ZOOM_ARRIVAL_COOKIE, ZOOM_ARRIVAL_SECONDS, arrivedForZoom } from "@/lib/zoom-arrival";
+import { CODE_COOKIE_SECONDS, codeCookieName, readLinkCode } from "@/lib/code-link";
 
 /**
  * A creator's own domain, served as their store.
@@ -59,6 +60,26 @@ function withAffiliateClick(request: NextRequest, handle: string, response: Next
     value: viaCookieValue(request.cookies.get(name)?.value, code, Date.now() / 1000),
     path: "/",
     maxAge: VIA_COOKIE_SECONDS,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: request.nextUrl.protocol === "https:",
+  });
+  return response;
+}
+
+/**
+ * A discount code in the address (?code=SPRING) is kept for this store, so it
+ * applies at the checkout without being typed (lib/code-link.ts). Whether it
+ * is real, live and for this sale is Stripe's to say, at the checkout.
+ */
+function withCodeLink(request: NextRequest, handle: string, response: NextResponse): NextResponse {
+  const code = readLinkCode(request.nextUrl.searchParams.get("code"));
+  if (!handle || !code) return response;
+  response.cookies.set({
+    name: codeCookieName(handle),
+    value: code,
+    path: "/",
+    maxAge: CODE_COOKIE_SECONDS,
     httpOnly: true,
     sameSite: "lax",
     secure: request.nextUrl.protocol === "https:",
@@ -174,13 +195,14 @@ export async function proxy(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/api/")) return guardApi(request);
 
   if (isPlatformHost(host)) {
-    const store = request.nextUrl.searchParams.has("via") ? handleInPath(request.nextUrl.pathname) : "";
+    const params = request.nextUrl.searchParams;
+    const store = params.has("via") || params.has("code") ? handleInPath(request.nextUrl.pathname) : "";
     // The header is ours to set; one sent by a visitor is dropped.
     const headers = new Headers(request.headers);
     headers.delete(DOMAIN_HEADER);
     headers.delete(PATH_HEADER);
     const policy = withPolicy(request.nextUrl.pathname, headers);
-    return answer(withZoomArrival(request, withAffiliateClick(request, store, NextResponse.next({ request: { headers } }))), policy);
+    return answer(withZoomArrival(request, withCodeLink(request, store, withAffiliateClick(request, store, NextResponse.next({ request: { headers } })))), policy);
   }
 
   const { pathname, search } = request.nextUrl;
@@ -194,7 +216,7 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = path;
     const policy = withPolicy(path, headers);
-    return answer(withAffiliateClick(request, handle, NextResponse.rewrite(url, { request: { headers } })), policy);
+    return answer(withCodeLink(request, handle, withAffiliateClick(request, handle, NextResponse.rewrite(url, { request: { headers } }))), policy);
   };
 
   if (pathname === "/") return rewrite(`/@${handle}`);
@@ -207,7 +229,7 @@ export async function proxy(request: NextRequest) {
   const own = pathname.match(/^\/@([^/]+)(\/.*)?$/);
   if (own && decodeURIComponent(own[1]).toLowerCase() === handle) {
     const policy = withPolicy(pathname, headers);
-    return answer(withAffiliateClick(request, handle, NextResponse.next({ request: { headers } })), policy);
+    return answer(withCodeLink(request, handle, withAffiliateClick(request, handle, NextResponse.next({ request: { headers } }))), policy);
   }
   return NextResponse.redirect(`${SITE_URL}${pathname}${search}`, 308);
 }

@@ -298,3 +298,32 @@ export async function stopCode(
     return false;
   }
 }
+
+/**
+ * The id of the creator's live promotion code written this way, or null.
+ *
+ * Used when a code arrives in a link (lib/code-link.ts): the checkout applies
+ * it by id. Only a code that is active on the creator's own account comes
+ * back; whether it fits this particular sale (a minimum, a first order, a
+ * product it is limited to) is still Stripe's to decide when the checkout
+ * opens, and a refusal there falls back to the box (lib/store-checkout.ts).
+ * A failure to ask is a null, never an error: a code is a nicety, a checkout
+ * is the sale.
+ */
+export async function livePromotionId(account: string, code: string): Promise<string | null> {
+  if (!CODE_PATTERN.test(code)) return null;
+  try {
+    const page = await onAccount(
+      "GET",
+      account,
+      `/promotion_codes?limit=1&active=true&code=${encodeURIComponent(code)}`,
+      undefined,
+      API_VERSION,
+    );
+    const row = Array.isArray(page.data) ? (page.data[0] as Record<string, unknown> | undefined) : undefined;
+    return row && typeof row.id === "string" && row.active !== false ? row.id : null;
+  } catch (error) {
+    console.error("looking up a code from a link failed", error);
+    return null;
+  }
+}

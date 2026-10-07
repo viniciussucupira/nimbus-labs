@@ -175,6 +175,7 @@ const SECTIONS: Section[] = [
         a: [
           "Yes, and it is on the $29 plan. On Stan, discount codes are on the $99 Creator Pro plan, according to its help center, read on September 28, 2026.",
           "You pick the word, say whether it takes a percentage or an amount off, and cap how many times it can be used if you want to. The buyer types it at checkout and Stripe works out the new total.",
+          "Or share it as a link: add ?code= and the word to your store's address or any product's page, like marktmorgen.com/@yourname?code=SPRING. Whoever opens it has the code applied at checkout without typing it, for a week. If the code has ended, is used up or does not fit that order, the checkout opens with the box as usual.",
           "The code is a coupon on your own Stripe account, not a record of ours. So the count of how many times it has been used is Stripe's count, a code you switch off in your own dashboard is off here too, and if you ever leave, your codes leave with you.",
           "One limit, said plainly: a code comes off the payment it is typed into. On a membership that is the first charge, not every renewal forever.",
         ],

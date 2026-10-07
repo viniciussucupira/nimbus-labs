@@ -1,3 +1,4 @@
+import { StickyBuy } from "@/components/sticky-buy";
 import { paypalReady, takenBy } from "@/lib/paypal-sales";
 import { salePrice } from "@/lib/store-sale";
 import { isSoon } from "@/lib/waitlist";
@@ -368,15 +369,24 @@ export default async function ProductPage({ params, searchParams }: Params) {
     </div>
   );
 
+  // Where the buy box is and what its button says, for the page's own blocks
+  // and for the bar held at the bottom of a phone's screen (components/sticky-buy.tsx).
+  const { action, label } = pageAction(store, product, remaining, selling, related, soon);
+  const sticky =
+    action.kind === "none" ? null : (
+      <StickyBuy target={free ? "get" : "buy"} label={label} price={<PriceTag store={store} product={product} />} />
+    );
+
   const shell = (children: ReactNode, wide: boolean) => (
     <div
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
       <JsonLd data={productData(store, product, description, remaining === 0, summary, soon)} />
-      <main id="content" className={`relative mx-auto ${wide ? "max-w-3xl" : "max-w-2xl"} px-4 pb-16 pt-10 sm:pt-14`}>
+      <main id="content" className={`relative mx-auto ${wide ? "max-w-3xl" : "max-w-2xl"} px-4 pb-16 pt-10 sm:pt-14${sticky ? " st-has-sticky" : ""}`}>
         {children}
       </main>
+      {sticky}
     </div>
   );
 
@@ -415,7 +425,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
             {blocks.length > 0 ? <About blocks={blocks} /> : null}
             {bundleList}
 
-            <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--st-line)" }}>
+            <div id={free ? "get" : "buy"} className="mt-8 scroll-mt-6 border-t pt-6" style={{ borderColor: "var(--st-line)" }}>
               {buyTerms}
             </div>
           </div>
@@ -434,7 +444,6 @@ export default async function ProductPage({ params, searchParams }: Params) {
   // right under the hero, where an ad's visitor lands; something paid has
   // its buy box after the blocks, and the buttons in between lead to it or
   // straight to the checkout.
-  const { action, label } = pageAction(store, product, remaining, selling, related, soon);
   const ctx: BlockContext = {
     storeName: store.name,
     productTitle: product.title,

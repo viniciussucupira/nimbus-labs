@@ -20,6 +20,7 @@ import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/requ
 import { readListings, readProduct } from "@/lib/catalog";
 import { MIN_BUNDLE_ITEMS, deliverableItems } from "@/lib/bundle-rules";
 import { cameFrom } from "@/lib/came-from";
+import { codeCookieName, readLinkCode } from "@/lib/code-link";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -159,6 +160,9 @@ export async function POST(request: NextRequest) {
         // the button was pressed on (lib/came-from.ts). Nothing is stored and
         // nobody is identified: the tag rides to Stripe with the payment.
         cameFrom: cameFrom(request.headers.get("referer"), new URL(origin).hostname),
+        // A code that came in a link to this store (lib/code-link.ts), applied
+        // by Stripe only if it is one of the creator's live codes.
+        code: readLinkCode(request.cookies.get(codeCookieName(store.handle))?.value) || undefined,
       }),
     );
     if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);

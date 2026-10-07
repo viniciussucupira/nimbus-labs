@@ -1122,7 +1122,7 @@ export default async function StudioPage({
 
             {may("settings") ? (
               <>
-                <DiscountEditor selling={current ? canSell(current) : false} currency={store.currency} />
+                <DiscountEditor selling={current ? canSell(current) : false} currency={store.currency} address={`${SITE_URL}/@${store.handle}`} />
 
                 <SaleEditor
                   initial={store.sale}
