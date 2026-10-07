@@ -80,6 +80,24 @@ const objectUrl = (config: Config, pathname: string) => `${config.endpoint}/${co
 
 type Answer = { status: number; text: string; headers: Headers | null };
 
+/**
+ * Sent with every request of ours: the file as it is kept, not squeezed.
+ *
+ * Asked the ordinary way, the store compresses a file of text on its way out
+ * (a .txt, a .csv, a .json) and then states no length for it, because the
+ * length of what it sends is no longer the length of what it keeps. Found on
+ * the first day against the real store: a text file went up whole, and the
+ * store's own measure of it came back empty. So we ask for no squeezing.
+ * Not part of what is signed: the signature is of the request, and this is
+ * only how the answer is to travel.
+ */
+const AS_KEPT = { "accept-encoding": "identity" };
+
+/** A count of bytes as a header states it; null for anything that is not one. */
+function stated(value: string | null | undefined): number | null {
+  return typeof value === "string" && /^\d{1,15}$/.test(value.trim()) ? Number(value.trim()) : null;
+}
+
 /** One signed request of ours. A status of 0 is a store that could not be reached. */
 async function ask(
   config: Config,
@@ -99,7 +117,7 @@ async function ask(
   });
   try {
     return await timed(options.ms ?? VAULT_TIMEOUT_MS, async (signal) => {
-      const response = await fetch(url, { method, headers, body: options.body as BodyInit | undefined, signal, cache: "no-store" });
+      const response = await fetch(url, { method, headers: { ...headers, ...AS_KEPT }, body: options.body as BodyInit | undefined, signal, cache: "no-store" });
       return { status: response.status, text: method === "HEAD" ? "" : await response.text(), headers: response.headers };
     });
   } catch {
@@ -281,12 +299,25 @@ export async function abortVaultUpload(pathname: string): Promise<void> {
 export async function headVault(pathname: string): Promise<{ bytes: number; contentType: string } | null | "unreachable"> {
   const config = vaultConfig();
   if (!config || !isVaultPath(pathname)) return null;
-  const answer = await ask(config, "HEAD", objectUrl(config, pathname));
+  const url = objectUrl(config, pathname);
+  const answer = await ask(config, "HEAD", url);
   if (answer.status === 404) return null;
   if (answer.status !== 200 || !answer.headers) return "unreachable";
-  const bytes = Number(answer.headers.get("content-length") ?? "");
-  if (!Number.isFinite(bytes) || bytes < 0) return "unreachable";
-  return { bytes, contentType: (answer.headers.get("content-type") ?? "").split(";")[0].trim() };
+  const contentType = (answer.headers.get("content-type") ?? "").split(";")[0].trim();
+  const length = stated(answer.headers.get("content-length"));
+  // The length is the file's own only when the file is sent as it is kept.
+  if (length !== null && !answer.headers.get("content-encoding")) return { bytes: length, contentType };
+  // The store squeezed it all the same, or stated no length. One byte of the
+  // file is asked for instead: a part of a file is never squeezed, and the
+  // answer says how long the whole is. A size is never made up: a file whose
+  // size cannot be read is out of reach, not empty.
+  const first = await ask(config, "GET", url, { headers: { range: "bytes=0-0" } });
+  if (first.status === 404) return null;
+  // Nothing to give a first byte of: the file is there and empty.
+  if (first.status === 416) return { bytes: 0, contentType };
+  const whole = first.status === 206 ? /^bytes 0-0\/(\d{1,15})$/.exec((first.headers?.get("content-range") ?? "").trim()) : null;
+  if (!whole) return "unreachable";
+  return { bytes: Number(whole[1]), contentType };
 }
 
 /** Deletes these files. True when every one is gone, or was never there. */
@@ -328,7 +359,7 @@ export async function readVault(pathname: string, limit: number): Promise<Uint8A
   const headers = signV4({ method: "GET", url, headers: { "x-amz-content-sha256": EMPTY_HASH }, payloadHash: EMPTY_HASH, region: REGION, service: SERVICE, key: config.key });
   try {
     return await timed(VAULT_WRITE_TIMEOUT_MS, async (signal) => {
-      const response = await fetch(url, { headers, signal, cache: "no-store" });
+      const response = await fetch(url, { headers: { ...headers, ...AS_KEPT }, signal, cache: "no-store" });
       if (response.status !== 200 || !response.body) return null;
       if (Number(response.headers.get("content-length") ?? "0") > limit) {
         await response.body.cancel().catch(() => {});
