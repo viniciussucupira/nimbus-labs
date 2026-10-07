@@ -460,6 +460,11 @@ export type Store = {
    */
   reviewed: boolean;
   /**
+   * The free product offered once to a visitor about to leave (lib/exit-offer.ts),
+   * or null for none. Off on every store written before it existed.
+   */
+  exitOffer: string | null;
+  /**
    * Whether buyers who agree to hear from the creator are sent on to the
    * creator's own email platform (lib/email-sync.ts), and for which products.
    * Only this much is kept here, so a store page can offer the box without
@@ -699,6 +704,7 @@ function parseStore(raw: unknown): Store | null {
       reviewAsk: parseReviewAsk(value.reviewAsk),
       // Stores written before reviews existed have none.
       reviewed: value.reviewed === true,
+      exitOffer: typeof value.exitOffer === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(value.exitOffer) ? value.exitOffer : null,
       // Stores written before either existed send nothing anywhere.
       emailSync: parseEmailSyncRef(value.emailSync),
       phoneSales: value.phoneSales === true,
@@ -860,6 +866,7 @@ async function freshStore(fields: {
     currency: DEFAULT_CURRENCY,
     reviewAsk: parseReviewAsk(null),
     reviewed: false,
+    exitOffer: null,
     emailSync: null,
     phoneSales: false,
     pastBuyers: false,
@@ -3070,4 +3077,23 @@ export async function setPayPalSeller(email: string, merchant: string | null): P
   const seller = merchant ? parsePayPalSeller({ merchant, at: Date.now() }) : null;
   if (merchant && !seller) return null;
   return patchStore(email, () => ({ paypalSeller: seller }));
+}
+
+export type ExitOfferResult = { ok: true; store: Store } | { ok: false; reason: "none" | "unknown" | "not_free" };
+
+/**
+ * Chooses the free product offered to a visitor about to leave, or none
+ * (null). Only something the store can give away for an address: a paid
+ * product here would be an offer to pay on the way out, which is not what
+ * this is for (lib/exit-offer.ts).
+ */
+export async function setExitOffer(email: string, productId: string | null): Promise<ExitOfferResult> {
+  const result = await withStore<ExitOfferResult>(email, async (store, save) => {
+    if (productId === null) return { ok: true, store: store.exitOffer === null ? store : await save({ ...store, exitOffer: null }) };
+    const product = await readListing(store, productId);
+    if (!product) return { ok: false, reason: "unknown" };
+    if (!isFree(product) || product.hidden) return { ok: false, reason: "not_free" };
+    return { ok: true, store: await save({ ...store, exitOffer: product.id }) };
+  });
+  return result ?? { ok: false, reason: "none" };
 }

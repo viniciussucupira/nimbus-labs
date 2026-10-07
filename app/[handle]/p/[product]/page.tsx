@@ -1,5 +1,6 @@
 import { StickyBuy } from "@/components/sticky-buy";
 import { MoreFrom, moreFrom } from "@/components/more-from";
+import { ExitOfferSlot } from "@/components/exit-offer-slot";
 import { after } from "next/server";
 import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
 import { readAllTimeSales } from "@/lib/stats";
@@ -395,6 +396,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       style={lookStyle(store.look) as React.CSSProperties}
     >
       <JsonLd data={productData(store, product, description, remaining === 0, summary, soon)} />
+      <ExitOfferSlot store={store} except={product.id} />
       <main id="content" className={`relative mx-auto ${wide ? "max-w-3xl" : "max-w-2xl"} px-4 pb-16 pt-10 sm:pt-14${sticky ? " st-has-sticky" : ""}`}>
         {children}
       </main>

@@ -3517,3 +3517,36 @@ fieldset:disabled .cm-poll-row {
   color: var(--st-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* The free product offered once to a visitor about to leave (components/exit-offer.tsx). */
+.st-exit {
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--st-text);
+}
+.st-exit::backdrop {
+  background: rgb(11 17 25 / 0.45);
+}
+.st-exit-card {
+  position: relative;
+}
+.st-exit-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--st-muted);
+}
+.st-exit-close:hover {
+  color: var(--st-text);
+}
