@@ -86,7 +86,7 @@ import {
 } from "@/lib/billing";
 import { STORAGE_BRAKE_BYTES, storageBrakeFor, storageUsed, storageWords } from "@/lib/storage-quota";
 import { visitsIn } from "@/lib/traffic";
-import { SETUP_VISITS, VISIT_CENTS_PER_THOUSAND_OVER, countWords, visitLimitFor, visitsIncluded, visitsOwedCents, visitsWords } from "@/lib/traffic-rules";
+import { SETUP_VISITS, TRIAL_VISITS, VISIT_CENTS_PER_THOUSAND_OVER, countWords, visitLimitFor, visitsIncluded, visitsOwedCents, visitsWords } from "@/lib/traffic-rules";
 import { AI_MONTHLY } from "@/lib/ai-rules";
 import { canUse, hasPro, PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, SCALE_MONTHLY_EMAILS, priceWords, yearSaving } from "@/lib/plan";
 import { PLANS_ON_SALE } from "@/lib/opening";
@@ -1665,7 +1665,7 @@ export default async function StudioPage({
                   <p className="font-semibold text-ink">Visits this month</p>
                   <p className="mt-1 text-ink-soft">
                     {`${visitsWords(visited)} of the ${countWords(visitRoom)} ${
-                      standing === "paid" || standing === "trial" ? "your plan covers" : "a store without a paid plan has"
+                      standing === "paid" ? "your plan covers" : standing === "trial" ? "a free trial has" : "a store without a paid plan has"
                     }. A visit is one person opening your store on one day, however many of its pages they look at. You are never counted.`}
                   </p>
                   <div
@@ -1694,8 +1694,10 @@ export default async function StudioPage({
                     <p className="mt-4 notice notice-warn">
                       <strong>Your store&rsquo;s pages are resting.</strong>
                       {` It has had the ${countWords(visitLimit)} visits ${
-                        standing === "trial" ? "a plan covers" : "a store without a paid plan has"
-                      } this month, and has no paid plan to carry more. Its pages open again as soon as your plan is paid, or when the month turns. Everything your buyers already have is open as usual.`}
+                        standing === "trial" ? "a free trial has" : "a store without a paid plan has"
+                      } this month, and has no paid plan to carry more. Its pages open again ${
+                        PLANS_ON_SALE || standing === "trial" ? "as soon as your plan is paid, or when the month turns" : "when the month turns; plans are not on sale yet"
+                      }. Everything your buyers already have is open as usual.`}
                     </p>
                   ) : null}
                   <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
@@ -1709,7 +1711,7 @@ export default async function StudioPage({
                     <div>
                       <dt className="font-semibold text-ink">Without a paid plan</dt>
                       <dd className="text-ink-soft">
-                        {`In the free trial a store has the visits its plan covers; before a plan starts and after one ends, ${countWords(SETUP_VISITS)} a month. Past that its pages rest `}
+                        {`In the free trial a store has ${countWords(TRIAL_VISITS)} visits a month; before a plan starts and after one ends, ${countWords(SETUP_VISITS)}. Past that its pages rest `}
                         until the plan is paid or the month turns. Nothing is charged for those visits, and what a buyer already has stays open.
                       </dd>
                     </div>
@@ -1912,6 +1914,7 @@ export default async function StudioPage({
                       are free and stay free. What a plan switches on is your
                       checkout: taking a card for what you sell, and handing
                       out what you give away for an email address.
+                      {` Without a plan, your page is shown for ${countWords(SETUP_VISITS)} visits a month.`}
                     </p>
                     {/* Not open yet (lib/opening.ts): no button that the
                         checkout would refuse, and the reason in its place. */}
@@ -1926,6 +1929,7 @@ export default async function StudioPage({
                       are free and stay free. What the subscription switches on
                       is your checkout: taking a card for what you sell, and handing
                       out what you give away for an email address.
+                      {` Without a plan, your page is shown for ${countWords(SETUP_VISITS)} visits a month.`}
                     </p>
                     <form action={`/api/billing/checkout${pin}`} method="post" className="mt-5 flex flex-col items-start gap-3">
                       <button

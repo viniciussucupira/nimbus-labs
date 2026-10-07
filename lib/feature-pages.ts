@@ -94,9 +94,10 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "Questions about the store page",
         items: [
           { q: "Can I change my store address later?", a: "Yes, from your studio, whenever you want. The addresses your store holds keep working and send people to the current one, up to ten at once. An address you let go of stops working, and after 30 days anyone may take it." },
-          { q: "Is the page up before I connect Stripe?", a: "Yes. The page, the editor and your address are free and stay free. Taking a card needs two things: Stripe has cleared your account, and your plan or its 14-day trial is running. Until then the page says plainly that it cannot take a payment." },
+          { q: "Is the page up before I connect Stripe?", a: "Yes. The page, the editor and your address are free and stay free; without a plan, the page is shown for 500 visits a month. Taking a card needs two things: Stripe has cleared your account, and your plan or its 14-day trial is running. Until then the page says plainly that it cannot take a payment." },
           { q: "Can I use my own domain?", a: DOMAINS ? "Yes, on the $99 Pro plan. You add one record where you bought the domain, and the certificate is made for you. Your marktmorgen.com address keeps working as well." : "Not yet. It is planned for the Pro plan, and this page will say so on the day it works." },
           { q: "How do I see what the page looks like before I save?", a: "The studio shows the page with your photo, theme and color as you change them, before anything is saved." },
+          { q: "Is there a limit on how many people can visit?", a: "Your plan covers a number of visits a month: 3,000 on the $29 plan, 10,000 on the $99 plan and 50,000 on the $249 plan. A visit is one person opening your store on one day, however many pages they look at, and you are never counted. Past your plan's figure it is $0.50 for each thousand visits, on your next invoice, and your store is never taken down for being busy. Your studio shows the count as it grows." },
           { q: "Can one account run more than one store?", a: "Yes, up to five, each with its own address, products, Stripe account and plan. You switch between them at the top of your studio." }
         ],
       },

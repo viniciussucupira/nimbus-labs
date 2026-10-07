@@ -12,8 +12,9 @@
  * reduced to a few letters made from the day, the store and the address
  * they came from (visitorAddress), and put in the day's set. The set
  * answers whether they were already in it; only somebody new to the day
- * adds a visit to the month. The letters cannot be turned back into an
- * address, and the set is gone two days later: what is kept is a count.
+ * adds a visit to the month. The letters are made with a key of our own and
+ * cannot be turned back into an address, and the set is gone two days
+ * later: what is kept is a count.
  *
  * Counted exactly, by a set and not by an estimate, because a bill is made
  * from it.
@@ -24,9 +25,10 @@
  * (lib/visit.ts). Every one of those is in the creator's favor, which is
  * the way round a figure that is billed from has to err.
  */
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { monthKey, rememberFolderOwner } from "@/lib/delivery";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { deriveKey } from "@/lib/secret-box";
 import { type Store, storeFolder, storeRef } from "@/lib/store";
 import { visitLimitFor, visitorAddress } from "@/lib/traffic-rules";
 
@@ -42,6 +44,17 @@ const KEEP_SECONDS = 400 * 24 * 60 * 60;
 const FOLDER_PATTERN = /^[0-9a-f]{32}$/;
 
 /**
+ * The few letters a visitor is kept as for a day. Made with a key only this
+ * deployment has (lib/secret-box.ts), so that somebody who read the set
+ * could not find an address in it by trying every address there is.
+ */
+function fingerprint(of: string): string {
+  const key = deriveKey("traffic-visitor");
+  const made = key ? createHmac("sha256", key).update(of) : createHash("sha256").update(of);
+  return made.digest("hex").slice(0, 16);
+}
+
+/**
  * Somebody opened a page of this store. Adds a visit to the month if they
  * are new to today; answers whether they were.
  *
@@ -53,7 +66,7 @@ export async function recordVisit(store: Store, ip: string, now = Date.now()): P
   try {
     const folder = await storeFolder(storeRef(store));
     const day = new Date(now).toISOString().slice(0, 10);
-    const who = createHash("sha256").update(`${day}|${folder}|${visitorAddress(ip)}`).digest("hex").slice(0, 16);
+    const who = fingerprint(`${day}|${folder}|${visitorAddress(ip)}`);
     const [fresh] = await redisPipeline([["SADD", dayKey(folder, day), who]]);
     if (Number(fresh) !== 1) return false;
     const month = monthKey(new Date(now));

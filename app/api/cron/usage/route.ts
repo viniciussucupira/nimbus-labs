@@ -11,6 +11,7 @@ import {
   storesOverAllowance,
 } from "@/lib/delivery";
 import { SUPPORT_EMAIL } from "@/lib/creator-research";
+import { PLANS_ON_SALE } from "@/lib/opening";
 import { SITE_URL } from "@/lib/site-url";
 import { directoryReadiness } from "@/lib/directory-index";
 import { SETUP_VIDEO_SECONDS, standingOf, videoLimitFor } from "@/lib/plan-standing";
@@ -229,15 +230,16 @@ async function visitsRun(): Promise<VisitsRun> {
             ]
           : [
               `Your store has had ${visitsWords(visits)} this month, which is the ${countWords(limit ?? 0)}`,
-              `${standingOf(store) === "trial" ? "a plan's free trial covers" : "a store without a paid plan has"} in a month.`,
+              `${standingOf(store) === "trial" ? "a free trial has" : "a store without a paid plan has"} in a month.`,
               "",
               "Your store has no paid plan to carry more, so its pages are resting: a",
               "visitor is told the page will be open again soon. Everything your buyers",
               "already have is open as usual: their orders, their downloads, their",
               "lessons, their memberships.",
               "",
-              "Your pages open again as soon as your plan is paid, or when the month",
-              "turns, whichever comes first. Nothing has been charged for the visits.",
+              ...(PLANS_ON_SALE || standingOf(store) === "trial"
+                ? ["Your pages open again as soon as your plan is paid, or when the month", "turns, whichever comes first. Nothing has been charged for the visits."]
+                : ["Your pages open again when the month turns. Plans are not on sale yet, and", "nothing has been charged for the visits."]),
               "",
               `${SITE_URL}/studio`,
             ]

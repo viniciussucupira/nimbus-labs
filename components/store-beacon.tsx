@@ -54,6 +54,6 @@ export function StoreBeacon({ handle, front = true }: { handle: string; front?: 
       document.removeEventListener("click", onClick);
       document.removeEventListener("auxclick", onClick);
     };
-  }, [handle]);
+  }, [handle, front]);
   return null;
 }

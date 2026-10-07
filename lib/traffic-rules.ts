@@ -8,8 +8,17 @@
  * went unnoticed: every other cost here had a brake, the sum of the brakes
  * was checked against what each plan brings in (tests/plan-margin.test.ts),
  * and visits were in neither. A hundred thousand of them in a month cost
- * about what a $29 plan has left after everything else, and a store with no
+ * more than a $29 plan has left after everything else, and a store with no
  * plan at all could be sent any number of them for nothing.
+ *
+ * Why these figures. A visitor who opens a store, lets every picture on its
+ * page load and looks at two more pages costs a little over two hundredths
+ * of a cent (tests/traffic-cost.ts has the sum, from what was measured on
+ * the live site on October 7, 2026, at the host's and the database's
+ * published rates). What each plan covers is what fits inside the plan with
+ * every other brake at its limit and the plan's margin whole, paid by the
+ * month or by the year; fifty cents a thousand is a little over twice what
+ * a thousand cost.
  *
  * So visits are covered and priced the way lesson video is
  * (lib/watch-rules.ts), by the one measure of them a third party cannot run
@@ -26,8 +35,8 @@
  *     (lib/usage-billing.ts). A store that pays is never taken down for it
  *     and nothing is asked of its creator.
  *   - A store with no plan that can be charged has nothing to add a visit
- *     to. Its pages are shown for the visits it has (a plan's in the free
- *     trial, SETUP_VISITS before a plan and after one) and rest there until
+ *     to. Its pages are shown for the visits it has (TRIAL_VISITS in the
+ *     free trial, SETUP_VISITS before a plan and after one) and rest there until
  *     the plan is paid or the month turns. What a buyer already has is never
  *     part of that: orders, downloads, lessons and memberships stay open.
  *
@@ -47,16 +56,23 @@ import { type PlanFields, standingOf } from "@/lib/plan-standing";
 
 /** Visits every plan covers, per store, per calendar month. */
 export const VISITS_INCLUDED: Record<Tier, number> = {
-  creator: 5_000,
-  pro: 30_000,
-  scale: 100_000,
+  creator: 3_000,
+  pro: 10_000,
+  scale: 50_000,
 };
 
 /** What a thousand visits past that cost the creator, in cents. */
-export const VISIT_CENTS_PER_THOUSAND_OVER = 60;
+export const VISIT_CENTS_PER_THOUSAND_OVER = 50;
 
 /** Visits a store with no plan has in a month, before one is started and after one has ended. */
-export const SETUP_VISITS = 1_000;
+export const SETUP_VISITS = 500;
+
+/**
+ * Visits a store has in a month of its free trial, whichever plan the trial
+ * is of: what the smallest plan covers. A trial has paid nothing yet, and a
+ * larger figure would be handed out for a card number alone.
+ */
+export const TRIAL_VISITS = VISITS_INCLUDED.creator;
 
 /** The visits a store's plan covers in a month. */
 export function visitsIncluded(tier: Tier): number {
@@ -79,10 +95,10 @@ export function visitsOwedCents(visits: number, tier: Tier): number {
  * store that pays, which is never rested: its visits past the plan are
  * charged instead.
  */
-export function visitLimitFor(store: PlanFields & { tier: Tier }, nowSeconds = Date.now() / 1000): number | null {
+export function visitLimitFor(store: PlanFields, nowSeconds = Date.now() / 1000): number | null {
   const standing = standingOf(store, nowSeconds);
   if (standing === "paid") return null;
-  return standing === "trial" ? visitsIncluded(store.tier) : SETUP_VISITS;
+  return standing === "trial" ? TRIAL_VISITS : SETUP_VISITS;
 }
 
 /** "4,812 visits", "1 visit": a count, for a page or an email. */
