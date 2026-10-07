@@ -230,19 +230,24 @@ async function main(): Promise<void> {
   const before = await POST(announce(E, { id: "msg_before" }));
   is("with no domain set apart for creators, it is mail like any other", [(await before.json()).result, sent[4]?.body.to], ["sent", ["inbox@example.net"]]);
   process.env.MARKETING_FROM_DOMAIN = "mail.marktmorgen.com";
+  const stillTheSites = await POST(announce(E, { id: "msg_nokey" }));
+  is("nor with a domain and no key of Resend's for it", [(await stillTheSites.json()).result, sent[5]?.body.to], ["sent", ["inbox@example.net"]]);
+  process.env.RESEND_CREATORS_API_KEY = "re_test_creators_domain_only";
   const answer = await POST(announce(E, { id: "msg_creator" }));
   // The same message has been sent on once already under its own key; this
   // stand-in for Resend does not hold keys, so the second send is seen here.
-  const theirsNow = sent[5]?.body;
+  const theirsNow = sent[6]?.body;
   is("it goes to the creator, and to nobody else", [(await answer.json()).result, theirsNow?.to], ["sent", ["ana@example.org"]]);
   is("from the store's own address, in the writer's name", theirsNow?.from, '"Lee via Harbor Kitchen" <harborkitchen@mail.marktmorgen.com>');
   is("a reply goes to the writer", theirsNow?.reply_to, "lee@example.org");
+  is("sent with the key that may send from that domain, and not the site's own", sent[6]?.auth, "Bearer re_test_creators_domain_only");
   is("and the text says who wrote, and to which address", theirsNow?.text, "From: Lee <lee@example.org>\nTo: harborkitchen@mail.marktmorgen.com\n\nIs the pie still on?");
   const nobody = await POST(announce(F));
-  is("mail to a name that is no store's is dropped", [(await nobody.json()).result, sent.length], ["skipped", 6]);
+  is("mail to a name that is no store's is dropped", [(await nobody.json()).result, sent.length], ["skipped", 7]);
   for (let i = 0; i < CREATOR_HOURLY; i += 1) await POST(announce(E, { id: `msg_flood_${i}` }));
-  is("and one store is sent on only so many an hour", sent.length, 6 + CREATOR_HOURLY - 1);
+  is("and one store is sent on only so many an hour", sent.length, 7 + CREATOR_HOURLY - 1);
   delete process.env.MARKETING_FROM_DOMAIN;
+  delete process.env.RESEND_CREATORS_API_KEY;
 
   part("Names and addresses");
   is("a name and an address", parseSender('"Doe, Jane" <jane@example.com>'), { name: "Doe, Jane", address: "jane@example.com" });
