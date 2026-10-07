@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { uploadPresigned } from "@vercel/blob/client";
+import { uploadReason, uploadSoldFile } from "@/lib/sold-file-upload";
 import { toast } from "@/components/toast";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
-import { MAX_FILE_BYTES, MULTIPART_ABOVE_BYTES, fileFolder, maxFileLabel, readableSize, safeFileName } from "@/lib/product-file";
+import { MAX_FILE_BYTES, maxFileLabel, readableSize } from "@/lib/product-file";
 import { EPISODE_ACCEPT, EPISODE_TYPES, type Episode, MAX_EPISODES, MAX_EPISODE_NOTES, MAX_EPISODE_TITLE, type Podcast } from "@/lib/podcast-rules";
 
 const MESSAGES: Record<string, string> = {
@@ -64,21 +64,15 @@ export function PodcastEditor({ productId, folder, initial }: { productId: strin
     setPercent(0);
     setError(null);
     try {
-      const pathname = fileFolder(folder, productId) + safeFileName(file.name);
-      const result = await uploadPresigned(pathname, file, {
-        access: "private",
-        handleUploadUrl: "/api/store/file",
-        clientPayload: JSON.stringify({ productId }),
-        multipart: file.size > MULTIPART_ABOVE_BYTES,
-        onUploadProgress: (progress) => setPercent(progress.percentage),
-      });
-      if (await run({ action: "add", pathname: result.pathname, title, notes }, "Episode out. It reaches every listener's app the next time it checks.")) {
+      const pathname = await uploadSoldFile(file, { folder, ownerId: productId }, setPercent);
+      if (await run({ action: "add", pathname, title, notes }, "Episode out. It reaches every listener's app the next time it checks.")) {
         setTitle("");
         setNotes("");
         setFile(null);
       }
     } catch (thrown) {
-      setError(thrown instanceof Error && /content type|not allowed/i.test(thrown.message) ? MESSAGES.type : MESSAGES.server_error ?? "Something went wrong.");
+      const reason = uploadReason(thrown);
+      setError(reason === "wrong_type" ? MESSAGES.type : MESSAGES[reason] ?? MESSAGES.server_error ?? "Something went wrong.");
     } finally {
       setPercent(null);
     }

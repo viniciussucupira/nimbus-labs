@@ -4,7 +4,7 @@ import { COMMENT_ID_PATTERN, CREATOR_AUTHOR } from "@/lib/lesson-comments-rules"
 import { tellStudent } from "@/lib/lesson-comment-notify";
 import type { NextRequest } from "next/server";
 import { MAX_AI_LESSONS, MAX_AI_MODULES } from "@/lib/ai-rules";
-import { del, head } from "@/lib/blob";
+import { deleteFile as del, headFile as head } from "@/lib/file-store";
 import { setCourseLessons, setProductCourse, storeForEmail, storeFolder } from "@/lib/store";
 import { jsonAccess } from "@/lib/studio-route";
 import { guardStoreWrite, text } from "@/lib/store-request";

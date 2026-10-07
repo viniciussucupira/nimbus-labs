@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
 import { isSesConfigured } from "@/lib/ses";
 import { isStreamConfigured } from "@/lib/stream";
+import { isVaultConfigured } from "@/lib/vault";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Marktmorgen",
@@ -16,6 +17,8 @@ export default function PrivacyPage() {
   const amazon = isSesConfigured();
   // Named only while lesson videos are kept there (lib/stream.ts).
   const bunny = isStreamConfigured();
+  // Named only while the files creators sell are kept there (lib/vault.ts).
+  const cloudflare = isVaultConfigured();
   return (
     <LegalPage title="Privacy Policy" lastUpdated="October 6, 2026">
       <p>
@@ -954,6 +957,15 @@ export default function PrivacyPage() {
               address is not written to again;
             </li>
           ) : null}
+          {cloudflare ? (
+            <li>
+              <strong className="text-black">Cloudflare</strong>, whose file
+              store (Cloudflare R2) keeps the files a creator sells and
+              hands each one to the buyer who is given its address. When a
+              file is downloaded it receives the buyer&apos;s network address
+              and browser, as any service that sends a file does;
+            </li>
+          ) : null}
           {bunny ? (
             <li>
               <strong className="text-black">Bunny.net</strong>, whose video
@@ -1009,7 +1021,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          Our own service providers (Vercel, Upstash, Resend{amazon ? ", Amazon Web Services" : ""}{bunny ? ", Bunny.net" : ""} and Anthropic) may use the
+          Our own service providers (Vercel, Upstash, Resend{amazon ? ", Amazon Web Services" : ""}{bunny ? ", Bunny.net" : ""}{cloudflare ? ", Cloudflare" : ""} and Anthropic) may use the
           information only to provide their services to us or as required by
           law. Stripe, Google for the emails you write to us, the services a
           creator connects and the ad platforms a creator adds handle what they

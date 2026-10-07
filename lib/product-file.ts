@@ -10,6 +10,8 @@
  * who shares it has given the product away.
  */
 
+import { ownsVaultPath } from "./vault-rules";
+
 /**
  * The biggest file a store may hold, and why this number.
  *
@@ -152,13 +154,17 @@ export function fileFolder(storeFolder: string, productId: string): string {
   return `stores/${storeFolder}/${productId}/`;
 }
 
-/** Whether a pathname really is this store's and this product's. */
+/**
+ * Whether a pathname really is this store's and this product's, in either of
+ * the two stores a sold file may be kept in (lib/file-store.ts).
+ */
 export function ownsPath(
   pathname: string,
   storeFolder: string,
   productId: string,
 ): boolean {
   if (typeof pathname !== "string") return false;
+  if (ownsVaultPath(pathname, storeFolder, productId)) return true;
   if (pathname.includes("..") || pathname.includes("//")) return false;
   const prefix = fileFolder(storeFolder, productId);
   if (!pathname.startsWith(prefix)) return false;

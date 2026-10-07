@@ -72,6 +72,14 @@ export function signV4(input: {
   url: string;
   headers?: Record<string, string>;
   body?: string;
+  /**
+   * What stands for the body in the signature, when it is not the body's own
+   * hash: a file store is told "UNSIGNED-PAYLOAD" for a body that is a
+   * stream, or handed the hash worked out elsewhere. The file store also
+   * wants the same value in an `x-amz-content-sha256` header, which the
+   * caller adds.
+   */
+  payloadHash?: string;
   region: string;
   service: string;
   key: AwsKey;
@@ -96,7 +104,7 @@ export function signV4(input: {
     canonicalQuery(url.searchParams),
     canonicalHeaders,
     signedHeaders,
-    sha256(input.body ?? ""),
+    input.payloadHash ?? sha256(input.body ?? ""),
   ].join("\n");
 
   const scope = `${day}/${input.region}/${input.service}/aws4_request`;
@@ -108,4 +116,75 @@ export function signV4(input: {
     ...headers,
     authorization: `AWS4-HMAC-SHA256 Credential=${input.key.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
   };
+}
+
+/** The hash of nothing, which is what a request with no body carries. */
+export const EMPTY_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
+/** The hash of a body, as the signature and the file store's header want it. */
+export function hashOf(body: string | Uint8Array): string {
+  return createHash("sha256").update(body).digest("hex");
+}
+
+/**
+ * An address that carries its own signature, for somebody who holds no key.
+ *
+ * A browser cannot be handed the account's secret, so for the one request it
+ * is allowed — fetch this file, or send this piece of that upload — it is
+ * handed the address with the signature in the query. Whoever holds it can
+ * make exactly that request until `expires` seconds have passed, and no
+ * other: the method, the path, every query value and every header named in
+ * `headers` are in what was signed. A header signed here has to arrive with
+ * the same value, which is how a piece of an upload is held to its size (the
+ * browser states the length of what it sends, and a longer piece no longer
+ * matches).
+ *
+ * The body is not signed ("UNSIGNED-PAYLOAD"): it does not exist yet when
+ * the address is made. Amazon's own steps, in its order
+ * (docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html);
+ * tests/aws-sign.test.ts holds them to its published example.
+ */
+export function presignV4(input: {
+  method: string;
+  url: string;
+  /** Headers the request must carry with exactly these values. `host` is always one. */
+  headers?: Record<string, string>;
+  expires: number;
+  region: string;
+  service: string;
+  key: AwsKey;
+  now?: Date;
+}): string {
+  const url = new URL(input.url);
+  const stamp = amzDate(input.now ?? new Date());
+  const day = stamp.slice(0, 8);
+  const scope = `${day}/${input.region}/${input.service}/aws4_request`;
+
+  const headers: Record<string, string> = { host: url.host };
+  for (const [name, value] of Object.entries(input.headers ?? {})) headers[name.toLowerCase()] = value;
+  const names = Object.keys(headers).sort();
+  const signedHeaders = names.join(";");
+
+  url.searchParams.set("X-Amz-Algorithm", "AWS4-HMAC-SHA256");
+  url.searchParams.set("X-Amz-Credential", `${input.key.accessKeyId}/${scope}`);
+  url.searchParams.set("X-Amz-Date", stamp);
+  url.searchParams.set("X-Amz-Expires", String(Math.max(1, Math.floor(input.expires))));
+  url.searchParams.set("X-Amz-SignedHeaders", signedHeaders);
+  if (input.key.sessionToken) url.searchParams.set("X-Amz-Security-Token", input.key.sessionToken);
+
+  const canonicalRequest = [
+    input.method.toUpperCase(),
+    canonicalPath(url.pathname),
+    canonicalQuery(url.searchParams),
+    names.map((name) => `${name}:${headers[name].trim().replace(/\s+/g, " ")}\n`).join(""),
+    signedHeaders,
+    "UNSIGNED-PAYLOAD",
+  ].join("\n");
+  const toSign = ["AWS4-HMAC-SHA256", stamp, scope, sha256(canonicalRequest)].join("\n");
+  const signingKey = hmac(hmac(hmac(hmac(`AWS4${input.key.secretAccessKey}`, day), input.region), input.service), "aws4_request");
+  const signature = createHmac("sha256", signingKey).update(toSign, "utf8").digest("hex");
+
+  // Written out by hand, in Amazon's own escaping: the address a browser is
+  // given has to be the one that was signed, character for character.
+  return `${url.origin}${canonicalPath(url.pathname)}?${canonicalQuery(url.searchParams)}&X-Amz-Signature=${signature}`;
 }

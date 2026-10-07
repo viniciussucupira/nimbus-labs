@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { del, head } from "@/lib/blob";
+import { deleteFile as del, headFile as head } from "@/lib/file-store";
 import { setPodcastEpisodes, setProductPodcast, storeFolder, storeForEmail } from "@/lib/store";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { ownsPath } from "@/lib/product-file";

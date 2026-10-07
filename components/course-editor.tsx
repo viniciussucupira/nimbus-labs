@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
-import { uploadPresigned } from "@vercel/blob/client";
+import { uploadReason, uploadSoldFile } from "@/lib/sold-file-upload";
 import { toast } from "@/components/toast";
 import { QuizEditor } from "@/components/quiz-editor";
 import {
@@ -18,8 +18,6 @@ import {
 import {
   ACCEPT_ATTRIBUTE,
   MAX_FILE_BYTES,
-  MULTIPART_ABOVE_BYTES,
-  fileFolder,
   maxFileLabel,
   readableSize,
   safeFileName,
@@ -540,19 +538,12 @@ function LessonEditor({
           return;
         }
       }
-      const pathname = fileFolder(folder, lesson.id) + safeFileName(chosen.name);
-      const result = await uploadPresigned(pathname, chosen, {
-        access: "private",
-        handleUploadUrl: "/api/store/file",
-        clientPayload: JSON.stringify({ productId: lesson.id }),
-        multipart: chosen.size > MULTIPART_ABOVE_BYTES,
-        onUploadProgress: (progress) => setUploading({ kind, percent: progress.percentage }),
-      });
-      const answer = await run({ action: "media", lessonId: lesson.id, kind, pathname: result.pathname, name: chosen.name });
+      const pathname = await uploadSoldFile(chosen, { folder, ownerId: lesson.id }, (percent) => setUploading({ kind, percent }));
+      const answer = await run({ action: "media", lessonId: lesson.id, kind, pathname, name: chosen.name });
       if (answer.ok && answer.course) onCourse(answer.course);
     } catch (thrown) {
       if (thrown instanceof TusError) onError(thrown.reason === "refused" ? MESSAGES.invalid : MESSAGES.upload_stopped);
-      else onError(thrown instanceof Error && /content type|not allowed/i.test(thrown.message) ? MESSAGES.wrong_type : MESSAGES.server_error);
+      else onError(MESSAGES[uploadReason(thrown)] ?? MESSAGES.server_error);
     } finally {
       setUploading(null);
     }
