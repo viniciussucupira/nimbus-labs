@@ -21,6 +21,7 @@ import { createHash } from "node:crypto";
 import { RESEND_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { SUPPORT_EMAIL } from "@/lib/creator-research";
+import { creatorDomain, domainOf } from "@/lib/mail-from";
 import { countSesSent, isSesConfigured, notYetTaken, sesBatch, sesBulkRoom, sesConfig, sesDown, sesReady, sesSend } from "@/lib/ses";
 
 // Local tests may point this at a mock server on 127.0.0.1; nothing else is
@@ -76,6 +77,18 @@ export async function sentThisMonth(): Promise<number> {
 function getKey(): string | null {
   const key = process.env.RESEND_API_KEY?.trim();
   return key ? key : null;
+}
+
+/**
+ * The key an email goes to Resend with: the one for the creators' domain
+ * when the email is from an address on it (lib/mail-from.ts), and the
+ * site's own otherwise. Each is held to its own domain at Resend, so a key
+ * that leaked could not be used to write as the other.
+ */
+function keyFor(from: string): string | null {
+  const creators = creatorDomain(NIMBUS_FROM);
+  if (creators && domainOf(from) === creators) return process.env.RESEND_CREATORS_API_KEY?.trim() || null;
+  return getKey();
 }
 
 export function isSenderConfigured(): boolean {
@@ -236,7 +249,7 @@ export async function sendEmail(message: OneMessage): Promise<boolean> {
 
 /** One email through Resend: the first sender, and the floor under the other. */
 async function viaResend(message: OneMessage): Promise<boolean> {
-  const key = getKey();
+  const key = keyFor(message.from);
   if (!key) return false;
   const to = oneAddress(message.to);
   if (!to) return false;
@@ -395,7 +408,8 @@ export async function sendBatch(
       idempotencyKey = `${batchKey}:${createHash("sha256").update(going.map((m) => m.to).sort().join(",")).digest("hex").slice(0, 16)}`;
     }
   }
-  const key = getKey();
+  // A batch is one store's, so one address it is all from.
+  const key = going.length ? keyFor(going[0].from) : getKey();
   if (!key) return "retry";
   const tagged = going.some((m) => cleanTags(m.tags).length > 0);
   const post = (withTags: boolean, under: string) =>
