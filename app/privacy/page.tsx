@@ -446,6 +446,15 @@ export default function PrivacyPage() {
           Kingdom, Switzerland or Brazil, or whose country we cannot tell, get
           no such cookie: they see the first headline and are not counted.
         </p>
+        <p id="page-depth">
+          <strong className="text-black">
+            How far a sales page is read.
+          </strong>{" "}
+          When a visitor leaves a product&apos;s sales page, the page sends the
+          id of the furthest of its sections they saw, and we add one to that
+          section&apos;s count. No cookie is set and nothing about the visitor
+          is sent or kept.
+        </p>
         <p id="affiliates">
           <strong className="text-black">
             A creator&apos;s affiliate program.

@@ -74,6 +74,9 @@ const KIND_ICONS: Record<BlockKind, IconName> = {
   video: "play",
 };
 
+/** Below this many visitors a share would say more about chance than about the page. */
+const MIN_DEPTH_VISITORS = 30;
+
 const kindLabel = (kind: BlockKind) => BLOCK_KINDS.find((k) => k.kind === kind)?.label ?? kind;
 
 export type EditorProduct = {
@@ -138,6 +141,20 @@ export function PageEditor({
   const [seoTitle, setSeoTitle] = useState(initial.seoTitle);
   const [seoDescription, setSeoDescription] = useState(initial.seoDescription);
   const [next, setNext] = useState(initial.next ?? "");
+  // How far down the saved page visitors read (lib/page-depth.ts), shown on each block.
+  const [reach, setReach] = useState<{ shares: Record<string, number>; visitors: number } | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/store/depth?id=${encodeURIComponent(product.id)}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: { ok?: boolean; shares?: Record<string, number>; visitors?: number }) => {
+        if (live && data.ok && data.shares) setReach({ shares: data.shares, visitors: data.visitors ?? 0 });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [product.id]);
   // A second headline, tested against the hero's (lib/headline-test.ts).
   const [testing, setTesting] = useState(initial.test !== null);
   const [testHeadline, setTestHeadline] = useState(initial.test?.headline ?? "");
@@ -725,7 +742,12 @@ export function PageEditor({
                       className="flex min-h-[44px] min-w-0 flex-1 flex-col items-start justify-center text-left"
                     >
                       <span className="text-sm font-semibold text-ink">{`${index + 1}. ${kindLabel(block.kind)}`}</span>
-                      <span className="w-full truncate text-xs text-ink-soft">{summaryLine(block)}</span>
+                      <span className="w-full truncate text-xs text-ink-soft">
+                        {summaryLine(block)}
+                        {reach && reach.visitors >= MIN_DEPTH_VISITORS && reach.shares[block.id] !== undefined
+                          ? ` · ${reach.shares[block.id]}% of visitors reach it`
+                          : ""}
+                      </span>
                     </button>
                     <div className="flex shrink-0 items-center">
                       <button

@@ -1,6 +1,7 @@
 import { StickyBuy } from "@/components/sticky-buy";
 import { MoreFrom, moreFrom } from "@/components/more-from";
 import { ExitOfferSlot } from "@/components/exit-offer-slot";
+import { PageDepth } from "@/components/page-depth";
 import { previewable } from "@/lib/pdf-preview";
 import { after } from "next/server";
 import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
@@ -520,7 +521,9 @@ export default async function ProductPage({ params, searchParams }: Params) {
       {storeChip}
       <div className="mt-8">
         {hero ? (
-          <HeroView block={hero} ctx={ctx} pill={pill} rating={rating} />
+          <div data-block={hero.id}>
+            <HeroView block={hero} ctx={ctx} pill={pill} rating={rating} />
+          </div>
         ) : (
           <header>
             <div className="flex flex-wrap items-center gap-2">
@@ -536,8 +539,12 @@ export default async function ProductPage({ params, searchParams }: Params) {
       </div>
       {free ? buySection : null}
       {rest.map((block) => (
-        <BlockView key={block.id} block={block} ctx={ctx} reviews={block.kind === "reviews" ? reviewsPart(block.heading) : null} />
+        // Marked so the page can say how far down it was read (components/page-depth.tsx).
+        <div key={block.id} data-block={block.id}>
+          <BlockView block={block} ctx={ctx} reviews={block.kind === "reviews" ? reviewsPart(block.heading) : null} />
+        </div>
       ))}
+      <PageDepth handle={store.handle} product={product.id} />
       {free ? null : buySection}
       {payments}
       {!placed && anyReviews ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}
