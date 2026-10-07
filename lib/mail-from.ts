@@ -28,32 +28,24 @@
  *                           (its own DKIM record, and the records for the
  *                           address bounces come back to)
  *
- * And one that is a secret, wherever Resend sends:
+ * Without it, or with a value that is not a domain or is the very domain
+ * the site's own email comes from, everything is sent as before: a setting
+ * left out or mistyped must never stop an email.
  *
- *   RESEND_CREATORS_API_KEY   a key of Resend's that may send from that
- *                             domain and from no other. The key the site's
- *                             own email goes out with (RESEND_API_KEY) is
- *                             held to the site's own domain at Resend, on
- *                             purpose, and is refused for any other.
- *
- * Without the domain, with a value that is not a domain or is the very
- * domain the site's own email comes from, or with Resend in use and no key
- * for the domain, everything is sent as before: a setting left out or
- * mistyped must never stop an email.
+ * At Resend a key may be held to one domain. The key this site sends with
+ * (RESEND_API_KEY) may send from every domain of its account, the creators'
+ * included; a second key held to the creators' domain alone can be given as
+ * RESEND_CREATORS_API_KEY and is used for it when it is there. And if
+ * Resend ever refuses the creators' domain for the key it is given (a key
+ * narrowed again, a domain taken off the account), the same email goes at
+ * once from the site's own address instead (lib/email.ts): late to its
+ * right address is better than not sent.
  *
  * Replies never go to this address: every one of these emails carries
  * Reply-To with the creator's own.
  */
 
 const DOMAIN = /^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/;
-
-/** Whether Resend is in use at all, and whether it has a key for the creators' domain. */
-type Keys = { site: boolean; creators: boolean };
-
-const keysNow = (): Keys => ({
-  site: Boolean(process.env.RESEND_API_KEY?.trim()),
-  creators: Boolean(process.env.RESEND_CREATORS_API_KEY?.trim()),
-});
 
 /** The domain of an address, or of a "Name <address>" line; "" when there is none. */
 export function domainOf(line: string): string {
@@ -67,11 +59,9 @@ export function domainOf(line: string): string {
  * The domain creators write from, or null when none is set apart.
  * `siteFrom` is the line the site's own email is sent from.
  */
-export function creatorDomain(siteFrom: string, raw = process.env.MARKETING_FROM_DOMAIN, keys: Keys = keysNow()): string | null {
+export function creatorDomain(siteFrom: string, raw = process.env.MARKETING_FROM_DOMAIN): string | null {
   const domain = (raw ?? "").trim().toLowerCase().replace(/\.$/, "");
   if (!DOMAIN.test(domain)) return null;
-  // Resend would refuse the domain under the site's own key.
-  if (keys.site && !keys.creators) return null;
   // On the site's own domain a store called "hello" would be the address
   // login links come from.
   if (domain === domainOf(siteFrom)) return null;
@@ -82,11 +72,23 @@ export function creatorDomain(siteFrom: string, raw = process.env.MARKETING_FROM
  * A store's own address on that domain, or null when there is no domain or
  * the handle cannot be the first half of an address.
  */
-export function creatorAddress(handle: string, siteFrom: string, raw = process.env.MARKETING_FROM_DOMAIN, keys: Keys = keysNow()): string | null {
-  const domain = creatorDomain(siteFrom, raw, keys);
+export function creatorAddress(handle: string, siteFrom: string, raw = process.env.MARKETING_FROM_DOMAIN): string | null {
+  const domain = creatorDomain(siteFrom, raw);
   if (!domain) return null;
   // A handle may hold two full stops in a row, which an address may not.
   const name = handle.trim().toLowerCase().replace(/\.{2,}/g, ".");
   if (!/^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/.test(name)) return null;
   return `${name}@${domain}`;
+}
+
+/**
+ * The same From line with the site's own address in place of the creator's:
+ * what an email is sent again as when the sender refuses the creators'
+ * domain. The name in front stays the creator's.
+ */
+export function atSiteAddress(from: string, siteFrom: string): string {
+  const site = siteFrom.match(/<([^>]+)>/);
+  const address = (site ? site[1] : siteFrom).trim();
+  const named = from.match(/^\s*("?[^"<]*"?)\s*<[^>]+>\s*$/);
+  return named && named[1].trim() ? `${named[1].trim()} <${address}>` : address;
 }

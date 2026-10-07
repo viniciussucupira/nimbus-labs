@@ -42,6 +42,7 @@ type Sent = { from: string; to: string[]; subject: string; text: string; html?: 
 const sent: { body: Sent; key: string | null; auth: string | null }[] = [];
 const reads: string[] = [];
 let failSending = false;
+let refuseCreators = false;
 
 const MAILS: Record<string, unknown> = {
   [A]: {
@@ -118,6 +119,8 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
   const headers = new Headers(init?.headers);
   if (url.hostname === "api.resend.com" && (init?.method ?? "GET") === "POST" && url.pathname === "/emails") {
     if (failSending) return new Response("{}", { status: 500 });
+    // A key that may not send from the creators' domain.
+    if (refuseCreators && /@mail\.marktmorgen\.com/.test(String((JSON.parse(String(init?.body)) as Sent).from))) return new Response("{}", { status: 403 });
     sent.push({ body: JSON.parse(String(init?.body)) as Sent, key: headers.get("Idempotency-Key"), auth: headers.get("Authorization") });
     return new Response(JSON.stringify({ id: "e" }));
   }
@@ -230,24 +233,28 @@ async function main(): Promise<void> {
   const before = await POST(announce(E, { id: "msg_before" }));
   is("with no domain set apart for creators, it is mail like any other", [(await before.json()).result, sent[4]?.body.to], ["sent", ["inbox@example.net"]]);
   process.env.MARKETING_FROM_DOMAIN = "mail.marktmorgen.com";
-  const stillTheSites = await POST(announce(E, { id: "msg_nokey" }));
-  is("nor with a domain and no key of Resend's for it", [(await stillTheSites.json()).result, sent[5]?.body.to], ["sent", ["inbox@example.net"]]);
-  process.env.RESEND_CREATORS_API_KEY = "re_test_creators_domain_only";
   const answer = await POST(announce(E, { id: "msg_creator" }));
   // The same message has been sent on once already under its own key; this
   // stand-in for Resend does not hold keys, so the second send is seen here.
-  const theirsNow = sent[6]?.body;
+  const theirsNow = sent[5]?.body;
   is("it goes to the creator, and to nobody else", [(await answer.json()).result, theirsNow?.to], ["sent", ["ana@example.org"]]);
   is("from the store's own address, in the writer's name", theirsNow?.from, '"Lee via Harbor Kitchen" <harborkitchen@mail.marktmorgen.com>');
   is("a reply goes to the writer", theirsNow?.reply_to, "lee@example.org");
-  is("sent with the key that may send from that domain, and not the site's own", sent[6]?.auth, "Bearer re_test_creators_domain_only");
   is("and the text says who wrote, and to which address", theirsNow?.text, "From: Lee <lee@example.org>\nTo: harborkitchen@mail.marktmorgen.com\n\nIs the pie still on?");
-  const nobody = await POST(announce(F));
-  is("mail to a name that is no store's is dropped", [(await nobody.json()).result, sent.length], ["skipped", 7]);
-  for (let i = 0; i < CREATOR_HOURLY; i += 1) await POST(announce(E, { id: `msg_flood_${i}` }));
-  is("and one store is sent on only so many an hour", sent.length, 7 + CREATOR_HOURLY - 1);
-  delete process.env.MARKETING_FROM_DOMAIN;
+  is("sent with the site's key, which may send from every domain of the account", sent[5]?.auth, "Bearer re_test_sending_only");
+  process.env.RESEND_CREATORS_API_KEY = "re_test_creators_domain_only";
+  await POST(announce(E, { id: "msg_own_key" }));
+  is("or with a key held to that domain alone, when one is given", [sent[6]?.auth, sent[6]?.body.from], ["Bearer re_test_creators_domain_only", '"Lee via Harbor Kitchen" <harborkitchen@mail.marktmorgen.com>']);
   delete process.env.RESEND_CREATORS_API_KEY;
+  refuseCreators = true;
+  const narrowed = await POST(announce(E, { id: "msg_narrowed" }));
+  refuseCreators = false;
+  is("if Resend refuses the creators' domain, the same email goes from the site's own address at once", [(await narrowed.json()).result, sent[7]?.body.from, sent[7]?.body.to, sent[7]?.key], ["sent", '"Lee via Harbor Kitchen" <onboarding@resend.dev>', ["ana@example.org"], `inbound-${E}:site`]);
+  const nobody = await POST(announce(F));
+  is("mail to a name that is no store's is dropped", [(await nobody.json()).result, sent.length], ["skipped", 8]);
+  for (let i = 0; i < CREATOR_HOURLY; i += 1) await POST(announce(E, { id: `msg_flood_${i}` }));
+  is("and one store is sent on only so many an hour", sent.length, 8 + CREATOR_HOURLY - 3);
+  delete process.env.MARKETING_FROM_DOMAIN;
 
   part("Names and addresses");
   is("a name and an address", parseSender('"Doe, Jane" <jane@example.com>'), { name: "Doe, Jane", address: "jane@example.com" });
