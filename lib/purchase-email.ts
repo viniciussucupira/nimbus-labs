@@ -47,6 +47,7 @@ import { canManage } from "@/lib/membership-manage";
 import { everyLabel } from "@/lib/product-recurring";
 import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-account";
 import { SITE_URL } from "@/lib/site-url";
+import { creatorAddress } from "@/lib/mail-from";
 import type { Listing, Store } from "@/lib/store";
 import { listingsNamed, readListing, recordListings } from "@/lib/catalog";
 import { recordEnrollment } from "@/lib/learn";
@@ -105,6 +106,16 @@ function senderAddress(): string {
 /** The From line of an email a store sends its buyers: the store's own name. */
 export function fromStore(store: Store): string {
   return `"${senderName(store.name)}" <${senderAddress()}>`;
+}
+
+/**
+ * The From line of an email in which a store asks for a sale (a checkout
+ * left open): the store's own name, at the creator's own address where one
+ * is set apart (lib/mail-from.ts), and at the site's otherwise. A receipt,
+ * a file or a failed payment is never sent from it: those are fromStore.
+ */
+export function fromCreator(store: Store): string {
+  return `"${senderName(store.name)}" <${creatorAddress(store.handle, NIMBUS_FROM) ?? senderAddress()}>`;
 }
 
 /**

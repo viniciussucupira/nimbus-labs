@@ -48,7 +48,7 @@ import { isSettled } from "@/lib/instant-pay";
 import { leadsKey, parseContact } from "@/lib/contacts";
 import { canSellProduct, fromPriceCents } from "@/lib/store-checkout";
 import { stockLeft } from "@/lib/stock";
-import { type SessionRecord, fromStore, storeBase } from "@/lib/purchase-email";
+import { type SessionRecord, fromCreator, storeBase } from "@/lib/purchase-email";
 import { membershipPrice } from "@/lib/product-recurring";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { SITE_URL } from "@/lib/site-url";
@@ -280,7 +280,9 @@ async function deliver(
   let ok = false;
   try {
     ok = await sendEmail({
-      from: fromStore(store),
+      // An email that asks for a sale is the creator's, like their list's:
+      // from their own address where there is one (lib/mail-from.ts).
+      from: fromCreator(store),
       to: email,
       subject: `You left ${product.title} at checkout`.slice(0, 200),
       text,

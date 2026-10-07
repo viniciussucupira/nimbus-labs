@@ -21,6 +21,7 @@ import { tokensFor } from "@/lib/contacts";
 import { SITE_URL } from "@/lib/site-url";
 import { SUPPORT_EMAIL } from "@/lib/creator-research";
 import type { Store } from "@/lib/store";
+import { creatorAddress } from "@/lib/mail-from";
 import { type MailTag, taggedLink } from "@/lib/mail-links";
 import { type Pause, healthId, healthTags, noteSent, pausedFor, rampBack, rampRoom } from "@/lib/mail-health";
 
@@ -366,8 +367,15 @@ ${address ? `<p style="margin:0 0 8px">${escape(fromName)} · ${escape(address)}
   return { subject: subject.slice(0, MAX_SUBJECT), html, text, headers };
 }
 
+/**
+ * Who a creator's email is from: their own name, and their own address on
+ * the domain set apart for creators' email when there is one
+ * (lib/mail-from.ts), so that what a reader thinks of it is never held
+ * against the address login links and receipts come from.
+ */
 export function fromLine(store: Store): string {
-  return `"${displayName(store.mail?.fromName || store.name)}" <${marketingAddress()}>`;
+  const address = creatorAddress(store.handle, NIMBUS_FROM) ?? marketingAddress();
+  return `"${displayName(store.mail?.fromName || store.name)}" <${address}>`;
 }
 
 /**
