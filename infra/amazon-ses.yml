@@ -15,6 +15,26 @@ Description: >-
 #                  Amazon's is stored anywhere because of this.
 #   Domain         Proves to Amazon that the domain is ours. Its three DKIM
 #                  records (the stack's outputs) go into the domain's DNS.
+#                  The site's own email is sent from it: login links,
+#                  receipts, files, notices.
+#   CreatorsDomain The domain creators' email to people is sent from
+#                  (lib/mail-from.ts, MARKETING_FROM_DOMAIN), proved apart
+#                  and signed with a key of its own, so that what inboxes
+#                  come to think of one creator's newsletter is not held
+#                  against the domain a login link comes from. Its three
+#                  DKIM records are outputs too.
+#
+#   Both domains also name the address a bounce comes back to (MAIL FROM)
+#   as one of their own, so that SPF passes for the domain a reader sees
+#   and not only for Amazon's. Each needs two records in the DNS, which are
+#   the same two Resend asks for and so are already there for a domain
+#   Resend sends from:
+#
+#     send.<domain>   MX    10 feedback-smtp.<region>.amazonses.com
+#     send.<domain>   TXT   v=spf1 include:amazonses.com ~all
+#
+#   Until they are there Amazon uses its own address instead, and nothing
+#   stops.
 #   Events         The configuration set every email is sent under. It is
 #                  what makes Amazon tell us what became of an email.
 #   Topic          Where Amazon announces a bounce or a spam report.
@@ -40,6 +60,10 @@ Parameters:
     Type: String
     Default: marktmorgen.com
     Description: The domain email is sent from.
+  CreatorsDomainName:
+    Type: String
+    Default: mail.marktmorgen.com
+    Description: The domain creators' email is sent from. The value of MARKETING_FROM_DOMAIN.
   SiteEndpoint:
     Type: String
     Default: https://marktmorgen.com/api/mail/ses
@@ -81,6 +105,7 @@ Resources:
                 Action: ses:SendEmail
                 Resource:
                   - !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${DomainName}
+                  - !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${CreatorsDomainName}
                   - !Sub arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:configuration-set/${Events}
               - Sid: ReadWhatTheAccountMayDo
                 Effect: Allow
@@ -110,6 +135,23 @@ Resources:
         NextSigningKeyLength: RSA_2048_BIT
       ConfigurationSetAttributes:
         ConfigurationSetName: !Ref Events
+      MailFromAttributes:
+        MailFromDomain: !Sub send.${DomainName}
+        BehaviorOnMxFailure: USE_DEFAULT_VALUE
+
+  CreatorsDomain:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref CreatorsDomainName
+      DkimAttributes:
+        SigningEnabled: true
+      DkimSigningAttributes:
+        NextSigningKeyLength: RSA_2048_BIT
+      ConfigurationSetAttributes:
+        ConfigurationSetName: !Ref Events
+      MailFromAttributes:
+        MailFromDomain: !Sub send.${CreatorsDomainName}
+        BehaviorOnMxFailure: USE_DEFAULT_VALUE
 
   Topic:
     Type: AWS::SNS::Topic
@@ -175,3 +217,12 @@ Outputs:
   DkimRecord3:
     Description: A CNAME record for the domain's DNS, as "name -> value".
     Value: !Sub "${Domain.DkimDNSTokenName3} -> ${Domain.DkimDNSTokenValue3}"
+  CreatorsDkimRecord1:
+    Description: A CNAME record for the DNS of the domain creators write from, as "name -> value".
+    Value: !Sub "${CreatorsDomain.DkimDNSTokenName1} -> ${CreatorsDomain.DkimDNSTokenValue1}"
+  CreatorsDkimRecord2:
+    Description: A CNAME record for the DNS of the domain creators write from, as "name -> value".
+    Value: !Sub "${CreatorsDomain.DkimDNSTokenName2} -> ${CreatorsDomain.DkimDNSTokenValue2}"
+  CreatorsDkimRecord3:
+    Description: A CNAME record for the DNS of the domain creators write from, as "name -> value".
+    Value: !Sub "${CreatorsDomain.DkimDNSTokenName3} -> ${CreatorsDomain.DkimDNSTokenValue3}"
