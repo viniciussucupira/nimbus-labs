@@ -4,7 +4,8 @@ import { ITEM_ID_PATTERN, VIDEO_TYPES, findLesson, readCourses } from "@/lib/cou
 import { rememberFolderOwner } from "@/lib/delivery";
 import { MAX_FILE_BYTES, safeFileName } from "@/lib/product-file";
 import { withinLimit } from "@/lib/request-guard";
-import { storageUsed } from "@/lib/storage-quota";
+import { storageRefusal, standingOf } from "@/lib/plan-standing";
+import { fits, storageBrakeFor, storageUsed } from "@/lib/storage-quota";
 import { storeFolder, storeForEmail } from "@/lib/store";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { isStreamConfigured, openUpload } from "@/lib/stream";
@@ -57,8 +58,10 @@ export async function POST(request: NextRequest) {
     if (!(await withinLimit("stream-door", folder, DOORS_PER_HOUR, 3600))) {
       return Response.json({ ok: false, error: "slow_down" }, { status: 429 });
     }
-    const held = await storageUsed(folder);
-    if (held.full) return Response.json({ ok: false, error: "storage_full" }, { status: 400 });
+    // What a store may keep goes by where it stands with its plan (lib/plan-standing.ts).
+    const standing = standingOf(store);
+    const held = await storageUsed(folder, storageBrakeFor(standing));
+    if (!fits(held, bytes, standing)) return Response.json({ ok: false, error: storageRefusal(standing) }, { status: 400 });
     await rememberFolderOwner(folder, ref);
 
     const opened = await openUpload({ folder, lessonId, name: safeFileName(text(body.name, 200)), bytes, type });

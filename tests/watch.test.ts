@@ -314,11 +314,11 @@ async function main(): Promise<void> {
   const file = { pathname: lessonPath, name: "lesson.mp4", bytes: 1000, contentType: "video/mp4", addedAt: new Date(0).toISOString() };
   const thisMonth = monthKey();
   await watched(dee.folder, thisMonth, VIDEO_SECONDS_INCLUDED - 1);
-  is("inside the hours its video plays", (await lessonVideo(file, false))?.kind, "stream");
+  is("inside the hours its video plays", (await lessonVideo(file, VIDEO_SECONDS_INCLUDED))?.kind, "stream");
   is("and the store is put in line to be read", typeof (await redis.pipeline([["ZSCORE", "nl:watch:due", dee.folder]]))[0], "string");
   await watched(dee.folder, thisMonth, VIDEO_SECONDS_INCLUDED);
-  is("at the hours it is paused", await lessonVideo(file, false), { kind: "paused" });
-  is("a store that pays is never paused, at any number", [(await watched(dee.folder, thisMonth, VIDEO_SECONDS_INCLUDED * 50), await lessonVideo(file, true))?.kind], ["stream"]);
+  is("at the hours it is paused", await lessonVideo(file, VIDEO_SECONDS_INCLUDED), { kind: "paused" });
+  is("a store that pays is never paused, at any number", [(await watched(dee.folder, thisMonth, VIDEO_SECONDS_INCLUDED * 50), await lessonVideo(file, null))?.kind], ["stream"]);
 
   part("The daily run");
   lines.length = 0;
@@ -344,7 +344,7 @@ async function main(): Promise<void> {
   const price = centsWords(VIDEO_CENTS_PER_HOUR_OVER);
   const terms = read("app/terms/page.tsx");
   is("the Terms read the hours and the price from where the bill is made", [/VIDEO_HOURS_INCLUDED/.test(terms), /centsWords\(VIDEO_CENTS_PER_HOUR_OVER\)/.test(terms)], [true, true]);
-  is("and say a student is never cut off, and what happens with no paid plan", [/A student\s+is never cut off because a store has passed its hours/.test(terms), /paused past\s+them until the plan is paid or the month turns/.test(terms)], [true, true]);
+  is("and say a student is never cut off, and what happens with no paid plan", [/A student\s+is never cut off because a store has passed its hours/.test(terms), /paused past its hours until the plan is paid\s+or the month turns/.test(terms)], [true, true]);
   is("and no longer say a download is charged for", [/Nothing is charged for downloads/.test(terms), /OVER_ALLOWANCE/.test(terms)], [true, false]);
   const studio = read("app/studio/page.tsx");
   is("the studio shows the hours, the price and what it has come to", [/VIDEO_HOURS_INCLUDED/.test(studio), /centsWords\(VIDEO_CENTS_PER_HOUR_OVER\)/.test(studio), /videoOwedCents\(watched\)/.test(studio)], [true, true, true]);

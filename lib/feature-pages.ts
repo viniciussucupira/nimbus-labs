@@ -232,7 +232,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           "Certificates are pages printed or saved as a PDF from the student's browser; no PDF file is made.",
           "No live lessons inside the course itself. Hold them as live events in your community, or put a link in a lesson to where you hold them.",
           "Video is covered for 400 hours watched a month across your store, counted by the player as your students watch. Past that it is $0.03 for each hour watched, on your next invoice; a student is never cut off, and your studio shows the hours as they are watched.",
-          "In the free trial, or after a plan ends, lesson videos play for those 400 hours a month and pause past them until the plan is paid or the month turns.",
+          "Without a paid plan, lesson videos pause past the store's hours until the plan is paid or the month turns: 400 hours a month in the free trial, and 10 hours a month before a plan starts and after one ends.",
           "Video is kept up to 1080p: a 4K file plays at 1080p.",
           "Captions are not written for you: no speech is listened to. You upload a .vtt or .srt file for each language, up to 1 MB each. There are no transcripts.",
           "A signed address stops a link from being passed around. It does not stop a student from recording their own screen; nothing does.",

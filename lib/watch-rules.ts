@@ -18,9 +18,10 @@
  *     added to the creator's next invoice by the daily job
  *     (lib/watch-billing.ts). Nobody is cut off and nothing is asked of the
  *     creator.
- *   - A store with no plan that can be charged, in its free trial or with
- *     its plan ended, has nothing to add an hour to. Its video plays up to
- *     what a plan covers and pauses there until the plan is paid or the
+ *   - A store with no plan that can be charged has nothing to add an hour
+ *     to. Its video plays for the hours it has, by where it stands
+ *     (lib/plan-standing.ts: a plan's hours in the free trial, a few before
+ *     a plan and after one), and pauses there until the plan is paid or the
  *     month turns (lib/learn.ts).
  *
  * Why these figures. An hour watched at the largest size kept is at most
