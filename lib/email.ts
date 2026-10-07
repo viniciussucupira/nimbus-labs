@@ -21,7 +21,7 @@ import { createHash } from "node:crypto";
 import { RESEND_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { SUPPORT_EMAIL } from "@/lib/creator-research";
-import { creatorDomain, domainOf } from "@/lib/mail-from";
+import { atSiteAddress, creatorDomain, domainOf } from "@/lib/mail-from";
 import { countSesSent, isSesConfigured, notYetTaken, sesBatch, sesBulkRoom, sesConfig, sesDown, sesReady, sesSend } from "@/lib/ses";
 
 // Local tests may point this at a mock server on 127.0.0.1; nothing else is
@@ -79,17 +79,23 @@ function getKey(): string | null {
   return key ? key : null;
 }
 
+/** Whether an email is from an address on the creators' domain (lib/mail-from.ts). */
+function isCreators(from: string): boolean {
+  const creators = creatorDomain(NIMBUS_FROM);
+  return creators !== null && domainOf(from) === creators;
+}
+
 /**
- * The key an email goes to Resend with: the one for the creators' domain
- * when the email is from an address on it (lib/mail-from.ts), and the
- * site's own otherwise. Each is held to its own domain at Resend, so a key
- * that leaked could not be used to write as the other.
+ * The key an email goes to Resend with: a key held to the creators' domain
+ * when the email is from an address on it and such a key was given, and the
+ * site's own otherwise, which may send from every domain of the account.
  */
 function keyFor(from: string): string | null {
-  const creators = creatorDomain(NIMBUS_FROM);
-  if (creators && domainOf(from) === creators) return process.env.RESEND_CREATORS_API_KEY?.trim() || null;
-  return getKey();
+  return (isCreators(from) && process.env.RESEND_CREATORS_API_KEY?.trim()) || getKey();
 }
+
+/** Resend's answer when a key may not send from the domain an email is from. */
+const notThisDomain = (status: number) => status === 401 || status === 403;
 
 export function isSenderConfigured(): boolean {
   return getKey() !== null || isSesConfigured();
@@ -256,8 +262,12 @@ async function viaResend(message: OneMessage): Promise<boolean> {
   const replyTo = oneAddress(message.replyTo);
   const headers = cleanHeaders(message.headers);
 
-  const payload = JSON.stringify({
-    from: fromLine(message.from),
+  // Sent again from the site's own address if Resend will not take the
+  // creators' domain: see lib/mail-from.ts.
+  let from = message.from;
+  let under = message.idempotencyKey;
+  const body = () => JSON.stringify({
+    from: fromLine(from),
     to: [to],
     subject: headerText(message.subject),
     text: message.text,
@@ -266,6 +276,7 @@ async function viaResend(message: OneMessage): Promise<boolean> {
     ...(replyTo ? { reply_to: replyTo } : {}),
     ...(headers ? { headers } : {}),
   });
+  let auth = key;
   // A sign-in link or a receipt must not be lost because the sender was busy
   // with a creator's newsletter a second earlier: asked to slow down, it
   // waits a moment and tries again.
@@ -278,11 +289,11 @@ async function viaResend(message: OneMessage): Promise<boolean> {
         fetch(API, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${key}`,
+            Authorization: `Bearer ${auth}`,
             "Content-Type": "application/json",
-            ...(message.idempotencyKey ? { "Idempotency-Key": message.idempotencyKey.slice(0, 256) } : {}),
+            ...(under ? { "Idempotency-Key": under.slice(0, 256) } : {}),
           },
-          body: payload,
+          body: body(),
           cache: "no-store",
           signal,
         }),
@@ -293,6 +304,15 @@ async function viaResend(message: OneMessage): Promise<boolean> {
       }
       if (response.status === 429 && attempt < 2) {
         await pause(1_000 + attempt * 1_000);
+        continue;
+      }
+      const site = getKey();
+      if (notThisDomain(response.status) && isCreators(from) && site && attempt < 2) {
+        console.error("Resend refused the creators' domain; sending from the site's own address", response.status);
+        from = atSiteAddress(from, NIMBUS_FROM);
+        auth = site;
+        // No longer the same request, so not under the same key.
+        under = under ? `${under}:site` : under;
         continue;
       }
       console.error("email rejected", response.status);
@@ -412,12 +432,12 @@ export async function sendBatch(
   const key = going.length ? keyFor(going[0].from) : getKey();
   if (!key) return "retry";
   const tagged = going.some((m) => cleanTags(m.tags).length > 0);
-  const post = (withTags: boolean, under: string) =>
+  const post = (withTags: boolean, under: string, auth: string = key, fromSite = false) =>
     // Given up after RESEND_TIMEOUT_MS: "retry", with the same key next time.
     timed(RESEND_TIMEOUT_MS, (signal) => fetch(`${BASE}/emails/batch`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${key}`,
+        Authorization: `Bearer ${auth}`,
         "Content-Type": "application/json",
         "Idempotency-Key": under.slice(0, 256),
       },
@@ -428,7 +448,7 @@ export async function sendBatch(
             const headers = cleanHeaders(m.headers);
             const tags = withTags ? cleanTags(m.tags) : [];
             return {
-              from: fromLine(m.from),
+              from: fromLine(fromSite ? atSiteAddress(m.from, NIMBUS_FROM) : m.from),
               to: [oneAddress(m.to) as string],
               subject: headerText(m.subject),
               text: m.text,
@@ -452,6 +472,14 @@ export async function sendBatch(
       // because it is no longer the same request.
       console.error("batch refused with its tags; sending it without them", response.status);
       response = await post(false, `${idempotencyKey}:plain`);
+    }
+    const site = getKey();
+    if (!response.ok && notThisDomain(response.status) && site && going.some((m) => isCreators(m.from))) {
+      // Resend will not take the creators' domain for the key it was given:
+      // the same emails go from the site's own address (lib/mail-from.ts),
+      // under a key of their own because it is no longer the same request.
+      console.error("Resend refused the creators' domain for a batch; sending it from the site's own address", response.status);
+      response = await post(true, `${idempotencyKey}:site`, site, true);
     }
     if (response.ok) {
       await countSent(going.length);
