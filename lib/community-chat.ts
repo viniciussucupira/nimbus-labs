@@ -29,8 +29,9 @@
  * every look, a few times a minute, to everybody in it.
  *
  * On what "live" means here, said plainly because the word is usually a lie:
- * the page asks for what is new every few seconds, and stops asking while the
- * tab is in the background. There is no socket held open. For a room of people
+ * the page asks whether anything is new every few seconds while people are
+ * talking, less often as the room goes quiet (lib/chat-pace.ts), and stops
+ * asking while the tab is in the background. There is no socket held open. For a room of people
  * typing, the difference is not something a person can perceive; what it is
  * not is a claim that a message arrives the instant it is sent.
  */
@@ -166,6 +167,17 @@ export async function room(id: string, since = 0): Promise<ChatPage> {
   const rows = (Array.isArray(raw) ? raw : []).map(parse).filter((m): m is ChatMessage => m !== null);
   const messages = since > 0 ? rows : rows.reverse();
   return { messages, cursor: messages.length ? messages[messages.length - 1].i : since };
+}
+
+/**
+ * The room's last message, by its number and when it was said (seconds); 0
+ * and 0 for an empty room. One read, and all an open page needs to know
+ * whether to ask for anything (lib/chat-pace.ts).
+ */
+export async function tip(id: string): Promise<{ n: number; at: number }> {
+  const [raw] = await redisPipeline([["ZREVRANGE", roomKey(id), 0, 0]]);
+  const last = parse(Array.isArray(raw) ? raw[0] : null);
+  return last ? { n: last.i, at: last.at } : { n: 0, at: 0 };
 }
 
 /** Takes one message out of the room: the creator's, on anything in it. */
