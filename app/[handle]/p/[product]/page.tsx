@@ -1,4 +1,5 @@
 import { StickyBuy } from "@/components/sticky-buy";
+import { MoreFrom, moreFrom } from "@/components/more-from";
 import { after } from "next/server";
 import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
 import { readAllTimeSales } from "@/lib/stats";
@@ -368,6 +369,9 @@ export default async function ProductPage({ params, searchParams }: Params) {
     </Link>
   );
 
+  // The creator's other products, from what the store record already holds.
+  const more = <MoreFrom store={store} products={moreFrom(store, product.id, soldCounts?.byProduct ?? null)} />;
+
   const footer = (
     <div className="mt-10 text-center">
       <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
@@ -442,6 +446,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
 
         {payments}
         {anyReviews ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}
+        {more}
         {footer}
       </>,
       false,
@@ -511,6 +516,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       {free ? null : buySection}
       {payments}
       {!placed && anyReviews ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}
+      {more}
       {footer}
     </div>,
     true,
