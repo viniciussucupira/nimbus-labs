@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons";
 import { toast } from "@/components/toast";
 import { AiAssist } from "@/components/ai-assist";
+import { MIN_VIEWS, type Counts, rate, winner } from "@/lib/headline-test-rules";
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { type StoreLook, lookStyle } from "@/lib/store-look";
@@ -73,6 +74,9 @@ const KIND_ICONS: Record<BlockKind, IconName> = {
   video: "play",
 };
 
+/** Below this many visitors a share would say more about chance than about the page. */
+const MIN_DEPTH_VISITORS = 30;
+
 const kindLabel = (kind: BlockKind) => BLOCK_KINDS.find((k) => k.kind === kind)?.label ?? kind;
 
 export type EditorProduct = {
@@ -137,6 +141,24 @@ export function PageEditor({
   const [seoTitle, setSeoTitle] = useState(initial.seoTitle);
   const [seoDescription, setSeoDescription] = useState(initial.seoDescription);
   const [next, setNext] = useState(initial.next ?? "");
+  // How far down the saved page visitors read (lib/page-depth.ts), shown on each block.
+  const [reach, setReach] = useState<{ shares: Record<string, number>; visitors: number } | null>(null);
+  useEffect(() => {
+    let live = true;
+    fetch(`/api/store/depth?id=${encodeURIComponent(product.id)}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: { ok?: boolean; shares?: Record<string, number>; visitors?: number }) => {
+        if (live && data.ok && data.shares) setReach({ shares: data.shares, visitors: data.visitors ?? 0 });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [product.id]);
+  // A second headline, tested against the hero's (lib/headline-test.ts).
+  const [testing, setTesting] = useState(initial.test !== null);
+  const [testHeadline, setTestHeadline] = useState(initial.test?.headline ?? "");
+  const [testSub, setTestSub] = useState(initial.test?.sub ?? "");
   const [open, setOpen] = useState<string | null>(null);
   const [view, setView] = useState<"build" | "preview">("build");
   const [wide, setWide] = useState(false);
@@ -145,8 +167,8 @@ export function PageEditor({
   const [error, setError] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
-  const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "" });
-  const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next }) !== saved;
+  const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "", ab: initial.test ? [initial.test.headline, initial.test.sub] : null });
+  const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next, ab: testing ? [testHeadline.trim(), testSub.trim()] : null }) !== saved;
   const hasHero = drafts[0]?.block.kind === "hero";
   const hasReviews = drafts.some((d) => d.block.kind === "reviews");
   const addable = BLOCK_KINDS.filter((k) => (k.kind === "hero" ? !hasHero : k.kind === "reviews" ? !hasReviews : true));
@@ -204,6 +226,8 @@ export function PageEditor({
       seoTitle: seoTitle.trim(),
       seoDescription: seoDescription.trim(),
       next: product.free && next ? next : null,
+      // The id is the server's to give (lib/sales-page.ts, parseTest).
+      test: testing && testHeadline.trim() ? { id: "", headline: testHeadline.trim(), sub: testSub.trim() } : null,
     };
   }
 
@@ -360,6 +384,37 @@ export function PageEditor({
                 </p>
               </div>
             ) : null}
+            {/*
+              A second headline, tested against this one (lib/headline-test.ts).
+              Only words: the price and what is sold are the same for everyone.
+            */}
+            <div className="rounded-2xl bg-paper p-4 ring-1 ring-line">
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
+                <input type="checkbox" checked={testing} onChange={(e) => setTesting(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-violet-brand" />
+                <span>
+                  Test a second headline
+                  <span className="block font-normal text-ink-soft">
+                    {`Half your visitors see this one, half see the second. Once each has been seen ${MIN_VIEWS} times and one brings clearly more people to the checkout, your page shows that one to everybody by itself. Only the words change: never the price.`}
+                  </span>
+                </span>
+              </label>
+              {testing ? (
+                <div className="mt-3 space-y-3">
+                  {field(
+                    `${base}-th`,
+                    "Second headline",
+                    <input id={`${base}-th`} className="field" maxLength={MAX_HEADLINE} value={testHeadline} placeholder="Another way to say what they get" onChange={(e) => setTestHeadline(e.target.value)} />,
+                    counter(testHeadline, MAX_HEADLINE),
+                  )}
+                  {field(
+                    `${base}-ts`,
+                    "Its line under it (optional)",
+                    <textarea id={`${base}-ts`} className="field" rows={2} maxLength={MAX_SUBHEADLINE} value={testSub} onChange={(e) => setTestSub(e.target.value)} />,
+                  )}
+                  <TestResults productId={product.id} running={initial.test !== null} />
+                </div>
+              ) : null}
+            </div>
           </div>
         );
       }
@@ -687,7 +742,12 @@ export function PageEditor({
                       className="flex min-h-[44px] min-w-0 flex-1 flex-col items-start justify-center text-left"
                     >
                       <span className="text-sm font-semibold text-ink">{`${index + 1}. ${kindLabel(block.kind)}`}</span>
-                      <span className="w-full truncate text-xs text-ink-soft">{summaryLine(block)}</span>
+                      <span className="w-full truncate text-xs text-ink-soft">
+                        {summaryLine(block)}
+                        {reach && reach.visitors >= MIN_DEPTH_VISITORS && reach.shares[block.id] !== undefined
+                          ? ` · ${reach.shares[block.id]}% of visitors reach it`
+                          : ""}
+                      </span>
                     </button>
                     <div className="flex shrink-0 items-center">
                       <button
@@ -948,6 +1008,44 @@ function PairEditor({
       {incomplete ? (
         <p className="text-xs text-ink-soft">{needsBoth ? "A question without an answer, or an answer without a question, is left out when you save." : "A part without a name is left out when you save."}</p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * How the saved headline test is going, read from the counts (lib/headline-test.ts).
+ * Shown only once a test is saved: a test being typed has nothing to show yet.
+ */
+function TestResults({ productId, running }: { productId: string; running: boolean }) {
+  const [counts, setCounts] = useState<Counts | null>(null);
+  useEffect(() => {
+    if (!running) return;
+    let live = true;
+    fetch(`/api/store/ab?id=${encodeURIComponent(productId)}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: { ok?: boolean; counts?: Counts }) => {
+        if (live && data.ok && data.counts) setCounts(data.counts);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [productId, running]);
+  if (!running) return <p className="text-xs text-ink-soft">Save the page and the test starts with the next visitor.</p>;
+  if (!counts) return null;
+  const won = winner(counts);
+  return (
+    <div className="text-sm text-ink">
+      <p>{`First headline: seen ${counts.va.toLocaleString("en-US")} times, ${counts.ca.toLocaleString("en-US")} checkouts (${rate(counts.ca, counts.va)}%).`}</p>
+      <p>{`Second headline: seen ${counts.vb.toLocaleString("en-US")} times, ${counts.cb.toLocaleString("en-US")} checkouts (${rate(counts.cb, counts.vb)}%).`}</p>
+      <p className="mt-1 font-semibold">
+        {won === "b"
+          ? "The second headline wins. Your page now shows it to everybody. Make it the hero's own headline and switch the test off to keep it."
+          : won === "a"
+            ? "The first headline wins. Your page now shows it to everybody. Switch the test off, or try another second headline."
+            : `Still running: no clear winner yet. Each needs at least ${MIN_VIEWS} views and a real difference.`}
+      </p>
+      <p className="mt-1 text-xs text-ink-soft">Visitors asked for consent before a cookie, as in the EU and UK, see the first headline and are not counted.</p>
     </div>
   );
 }

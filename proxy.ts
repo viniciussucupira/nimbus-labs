@@ -8,6 +8,7 @@ import { fromAnotherSite } from "@/lib/request-guard";
 import { isPlatformHost, requestHost } from "@/lib/request-origin";
 import { ZOOM_ARRIVAL_COOKIE, ZOOM_ARRIVAL_SECONDS, arrivedForZoom } from "@/lib/zoom-arrival";
 import { CODE_COOKIE_SECONDS, codeCookieName, readLinkCode } from "@/lib/code-link";
+import { AB_COOKIE, AB_COOKIE_SECONDS, readBucket } from "@/lib/headline-test-rules";
 
 /**
  * A creator's own domain, served as their store.
@@ -80,6 +81,29 @@ function withCodeLink(request: NextRequest, handle: string, response: NextRespon
     value: code,
     path: "/",
     maxAge: CODE_COOKIE_SECONDS,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: request.nextUrl.protocol === "https:",
+  });
+  return response;
+}
+
+/**
+ * A visitor to a product's page is given one random group number, 0 to 999,
+ * for the headline tests creators run (lib/headline-test.ts), and keeps it.
+ * Not where the law asks for consent before such a cookie: those visitors
+ * see each page's first headline and are not counted.
+ */
+function withTestGroup(request: NextRequest, productPage: boolean, response: NextResponse): NextResponse {
+  if (!productPage || readBucket(request.cookies.get(AB_COOKIE)?.value) !== null) return response;
+  if (needsConsent(request.headers.get("x-vercel-ip-country"))) return response;
+  const bytes = new Uint16Array(1);
+  crypto.getRandomValues(bytes);
+  response.cookies.set({
+    name: AB_COOKIE,
+    value: String(bytes[0] % 1000),
+    path: "/",
+    maxAge: AB_COOKIE_SECONDS,
     httpOnly: true,
     sameSite: "lax",
     secure: request.nextUrl.protocol === "https:",
@@ -202,7 +226,8 @@ export async function proxy(request: NextRequest) {
     headers.delete(DOMAIN_HEADER);
     headers.delete(PATH_HEADER);
     const policy = withPolicy(request.nextUrl.pathname, headers);
-    return answer(withZoomArrival(request, withCodeLink(request, store, withAffiliateClick(request, store, NextResponse.next({ request: { headers } })))), policy);
+    const productPage = /^\/(?:@|%40)[^/]+\/p\/[^/]+\/?$/i.test(request.nextUrl.pathname);
+    return answer(withTestGroup(request, productPage, withZoomArrival(request, withCodeLink(request, store, withAffiliateClick(request, store, NextResponse.next({ request: { headers } }))))), policy);
   }
 
   const { pathname, search } = request.nextUrl;
@@ -216,7 +241,7 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = path;
     const policy = withPolicy(path, headers);
-    return answer(withCodeLink(request, handle, withAffiliateClick(request, handle, NextResponse.rewrite(url, { request: { headers } }))), policy);
+    return answer(withTestGroup(request, /^\/@[^/]+\/p\/[^/]+\/?$/i.test(path), withCodeLink(request, handle, withAffiliateClick(request, handle, NextResponse.rewrite(url, { request: { headers } })))), policy);
   };
 
   if (pathname === "/") return rewrite(`/@${handle}`);

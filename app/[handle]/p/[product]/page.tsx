@@ -1,6 +1,7 @@
 import { StickyBuy } from "@/components/sticky-buy";
 import { MoreFrom, moreFrom } from "@/components/more-from";
 import { ExitOfferSlot } from "@/components/exit-offer-slot";
+import { PageDepth } from "@/components/page-depth";
 import { previewable } from "@/lib/pdf-preview";
 import { after } from "next/server";
 import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
@@ -12,7 +13,8 @@ import { canGift } from "@/lib/gift-rules";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { AB_COOKIE, count as countTest, readBucket, readCounts, versionFor, winner } from "@/lib/headline-test";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { cache } from "react";
 import { type Listing, type Store, isFree, normaliseHandle, storeForPage } from "@/lib/store";
@@ -480,7 +482,20 @@ export default async function ProductPage({ params, searchParams }: Params) {
     defaultLabel: label,
   };
   const [first, ...others] = page.blocks;
-  const hero = first?.kind === "hero" ? first : null;
+  const firstHero = first?.kind === "hero" ? first : null;
+  // A headline test (lib/headline-test.ts): the winner for everybody once
+  // there is one; until then each visitor with a group sees their version,
+  // and the view is counted after the page is sent.
+  let hero = firstHero;
+  if (firstHero && page.test) {
+    const test = page.test;
+    const counts = await readCounts(store.statsId, product.id, test.id).catch(() => null);
+    const won = counts ? winner(counts) : null;
+    const bucket = readBucket((await cookies()).get(AB_COOKIE)?.value);
+    const version = won ?? (bucket !== null ? versionFor(bucket, test.id) : "a");
+    if (version === "b") hero = { ...firstHero, headline: test.headline, sub: test.sub };
+    if (!won && bucket !== null) after(() => countTest(store.statsId, product.id, test.id, "v", version));
+  }
   const rest = hero ? others : page.blocks;
   const placed = page.blocks.find((block) => block.kind === "reviews");
   const pill = <p className="st-price text-sm"><PriceTag store={store} product={product} /></p>;
@@ -506,7 +521,9 @@ export default async function ProductPage({ params, searchParams }: Params) {
       {storeChip}
       <div className="mt-8">
         {hero ? (
-          <HeroView block={hero} ctx={ctx} pill={pill} rating={rating} />
+          <div data-block={hero.id}>
+            <HeroView block={hero} ctx={ctx} pill={pill} rating={rating} />
+          </div>
         ) : (
           <header>
             <div className="flex flex-wrap items-center gap-2">
@@ -522,8 +539,12 @@ export default async function ProductPage({ params, searchParams }: Params) {
       </div>
       {free ? buySection : null}
       {rest.map((block) => (
-        <BlockView key={block.id} block={block} ctx={ctx} reviews={block.kind === "reviews" ? reviewsPart(block.heading) : null} />
+        // Marked so the page can say how far down it was read (components/page-depth.tsx).
+        <div key={block.id} data-block={block.id}>
+          <BlockView block={block} ctx={ctx} reviews={block.kind === "reviews" ? reviewsPart(block.heading) : null} />
+        </div>
       ))}
+      <PageDepth handle={store.handle} product={product.id} />
       {free ? null : buySection}
       {payments}
       {!placed && anyReviews ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}

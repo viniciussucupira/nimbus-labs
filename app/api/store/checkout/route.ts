@@ -21,6 +21,8 @@ import { readListings, readProduct } from "@/lib/catalog";
 import { MIN_BUNDLE_ITEMS, deliverableItems } from "@/lib/bundle-rules";
 import { cameFrom } from "@/lib/came-from";
 import { codeCookieName, readLinkCode } from "@/lib/code-link";
+import { AB_COOKIE, count as countTest, readBucket, readCounts, versionFor, winner } from "@/lib/headline-test";
+import { readPage } from "@/lib/sales-page-store";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -173,6 +175,19 @@ export async function POST(request: NextRequest) {
     if (ends && store.stripeAccountId) await rememberPlan(store.stripeAccountId, held.value.id);
     // Counted once the buyer is on their way, so the count never slows them.
     after(() => countHit(request, store, { kind: "checkout", id: product.id }));
+    // A checkout opened from a page running a headline test counts for the
+    // version this visitor was shown (lib/headline-test.ts). Read only for a
+    // product with a page, and only for a visitor with a group.
+    const bucket = readBucket(request.cookies.get(AB_COOKIE)?.value);
+    if (product.page && bucket !== null) {
+      after(async () => {
+        const page = await readPage(store.statsId, product.id);
+        if (!page.test) return;
+        const counts = await readCounts(store.statsId, product.id, page.test.id);
+        if (winner(counts)) return;
+        await countTest(store.statsId, product.id, page.test.id, "c", versionFor(bucket, page.test.id));
+      });
+    }
     const headers = new Headers({ Location: held.value.url, "Cache-Control": "no-store" });
     const secure = origin.startsWith("https://") ? "; Secure" : "";
     if (product.stock !== null) {
