@@ -672,6 +672,7 @@ export function ProductCard({
   rating = null,
   bundleItems = null,
   soon = false,
+  sold = null,
 }: {
   store: Store;
   product: Listing;
@@ -695,6 +696,8 @@ export function ProductCard({
   rating?: Summary | null;
   /** For a bundle: what it hands over now (lib/bundles.ts, offeredItems). */
   bundleItems?: Listing[] | null;
+  /** "Bought N times", from the creator's own Stripe account, when they chose to show it (lib/sold-count.ts). */
+  sold?: string | null;
 }) {
   const href = productPath(store, product);
   const image = product.image;
@@ -739,6 +742,7 @@ export function ProductCard({
   const body = (
     <>
       {stars}
+      {sold ? <p className="st-sold mt-1 text-sm font-semibold">{sold}</p> : null}
       <ProductFacts store={store} product={product} bundleItems={bundleItems} />
       {summary}
       {product.about || product.page ? (

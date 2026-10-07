@@ -1,4 +1,7 @@
 import { StickyBuy } from "@/components/sticky-buy";
+import { after } from "next/server";
+import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
+import { readAllTimeSales } from "@/lib/stats";
 import { paypalReady, takenBy } from "@/lib/paypal-sales";
 import { salePrice } from "@/lib/store-sale";
 import { isSoon } from "@/lib/waitlist";
@@ -236,7 +239,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const giftProblem = typeof query.gift === "string" ? query.gift : "";
   // Asked of the store, as on the store page (lib/house-store.ts).
   const rehearsal = selling && sellsInTestMode(store);
-  const [about, stock, noKeys, page, summary, related, inside] = await Promise.all([
+  const [about, stock, noKeys, page, summary, related, inside, soldCounts] = await Promise.all([
     product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""),
     stockLeft(store, product).catch(() => null),
     outOfKeys(store, product).catch(() => false),
@@ -246,7 +249,12 @@ export default async function ProductPage({ params, searchParams }: Params) {
     product.bump ? readListings(store, [product.bump.productId]) : Promise.resolve([]),
     // What a bundle holds now, each product as it is today (lib/bundles.ts).
     product.bundle ? offeredItems(store, [product]).then((m) => m.get(product.id) ?? []).catch(() => []) : Promise.resolve(null),
+    // How many times it was bought, when the creator chose to say so (lib/sold-count.ts).
+    readSoldCounts(store).catch(() => null),
   ]);
+  if (store.look.sold && stale(soldCounts)) after(() => refreshSoldCounts(store, readAllTimeSales).then(() => undefined));
+  const sold = soldWords(soldCounts?.byProduct[product.id]);
+  const soldLine = sold ? <p className="st-sold mt-2 text-sm font-semibold">{sold}</p> : null;
   const bundleReady = !product.bundle || (inside?.length ?? 0) >= MIN_BUNDLE_ITEMS;
   const worth = inside && product.bundle ? worthWords(inside, product.priceCents, store.currency) : null;
   // What a bundle holds, each with what it costs on its own and its own page
@@ -420,6 +428,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
               <p className="st-price text-base"><PriceTag store={store} product={product} /></p>
             </div>
             {summary ? <RatingLine summary={summary} href="#reviews" className="mt-2" /> : null}
+            {soldLine}
             <ProductFacts store={store} product={product} bundleItems={inside} linkCourse={false} />
             {product.summary ? <p className="st-muted mt-4 text-lg leading-relaxed">{product.summary}</p> : null}
             {blocks.length > 0 ? <About blocks={blocks} /> : null}
@@ -469,6 +478,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
         </h2>
         <p className="st-price text-base"><PriceTag store={store} product={product} /></p>
       </div>
+      {soldLine}
       <ProductFacts store={store} product={product} linkCourse={false} bundleItems={inside} />
       {bundleList}
       <div className="mt-4">{buyTerms}</div>

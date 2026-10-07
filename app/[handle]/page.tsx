@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { sellsThroughPayPal, takenBy } from "@/lib/paypal-sales";
 import { endsWords, saleClock, saleRunning } from "@/lib/store-sale";
 import { soonProducts } from "@/lib/waitlist";
@@ -26,6 +27,8 @@ import { canWrite } from "@/lib/mail";
 import { canUseDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
 import { summaries } from "@/lib/reviews";
+import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
+import { readAllTimeSales } from "@/lib/stats";
 import { isResting } from "@/lib/traffic";
 import { StoreResting } from "@/components/store-resting";
 
@@ -163,6 +166,11 @@ export default async function StorePage({ params, searchParams }: Params) {
   // page's own reads — and only for a store that has ever had a review
   // (lib/store.ts, reviewed), so any other store makes no extra request.
   const ratings = store.reviewed ? summaries(store.statsId).catch(() => new Map()) : Promise.resolve(new Map());
+  // How many times each product was bought, for a store that chose to say so
+  // (lib/sold-count.ts): one read when it is on, none when it is off, and a
+  // fresh count from Stripe after the page is sent once the kept one is old.
+  const soldCounts = await readSoldCounts(store).catch(() => null);
+  if (store.look.sold && stale(soldCounts)) after(() => refreshSoldCounts(store, readAllTimeSales).then(() => undefined));
   const { listings, related, page, pages } = await readPage(store, asking);
   const known = [...listings, ...related];
   // What the store lists: drafts are left off (lib/catalog.ts).
@@ -278,6 +286,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                     rating={rated.get(product.id) ?? null}
                     bundleItems={bundleItems.get(product.id) ?? null}
                     soon={soon.has(product.id)}
+                    sold={soldWords(soldCounts?.byProduct[product.id])}
                   />
                 ))}
               </ul>

@@ -3511,3 +3511,9 @@ fieldset:disabled .cm-poll-row {
     transition: none;
   }
 }
+
+/* "Bought N times", read from the creator's own Stripe account (lib/sold-count.ts). */
+.st-sold {
+  color: var(--st-muted);
+  font-variant-numeric: tabular-nums;
+}
