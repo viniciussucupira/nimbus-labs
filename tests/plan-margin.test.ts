@@ -18,13 +18,19 @@
  *                                             which is never cached)
  *   Resend                     $0.0009 / email
  *   Stripe                     2.9% + $0.30 on each subscription charge
- *   Bunny Stream storage       $0.01  / GB / month   (lesson videos, when the
+ *   Bunny Stream storage       $0.02  / GB / month   (lesson videos, when the
  *   Bunny Stream delivery      $0.06  / GB at most    video service is set up,
- *                                                     lib/stream.ts: $0.005 on
- *                                                     its volume network, $0.01
- *                                                     to $0.06 by region on its
- *                                                     standard one; read from
- *                                                     its price page on
+ *                                                     lib/stream.ts. Storage is
+ *                                                     $0.01 in each of the two
+ *                                                     regions the library keeps
+ *                                                     its files in, Frankfurt
+ *                                                     and New York. Delivery is
+ *                                                     $0.005 on the volume
+ *                                                     network the library uses,
+ *                                                     and $0.01 to $0.06 by
+ *                                                     region on the standard
+ *                                                     one; read from the
+ *                                                     library's own pages on
  *                                                     October 6, 2026)
  */
 import { test } from "node:test";
@@ -44,7 +50,7 @@ const STORAGE_PER_GB = 0.023;
 const DELIVERY_PER_GB = 0.05 + 0.06;
 const PER_EMAIL = 0.0009;
 /** What the video service charges to keep a gigabyte, and the most it charges anywhere to send one. */
-const STREAM_STORAGE_PER_GB = 0.01;
+const STREAM_STORAGE_PER_GB = 0.02;
 const STREAM_DELIVERY_PER_GB_AT_MOST = 0.06;
 /** A rough, deliberately high figure for one AI draft. */
 const PER_DRAFT = 0.015;
