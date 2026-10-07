@@ -29,6 +29,14 @@
  * those is in the creator's favor, which is the way round a figure that is
  * billed from has to err.
  *
+ * So does the player's own count, as it was seen on the live library on
+ * October 7, 2026. A lesson played once from start to end, 24 seconds, was
+ * counted as 24 seconds, and this file read the service's total to the
+ * second. A sitting that began where the viewer had stopped the time
+ * before, a second from the end, and then played the video three times
+ * over, was counted as 10: the player stops counting once a video has
+ * reached its end. What it counts is watching, never more than there was.
+ *
  * A reading belongs to the month it is made in, so the last hour of a month
  * can land in the next. It is still counted once.
  */
