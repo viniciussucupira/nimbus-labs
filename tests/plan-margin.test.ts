@@ -12,26 +12,44 @@
  * So the sum is the thing that is checked. These are the real published
  * rates, and they move only when the vendors' do:
  *
- *   Vercel Blob storage        $0.023 / GB / month
- *   Vercel Blob data transfer  $0.05  / GB
- *   Fast Origin Transfer       $0.06  / GB   (added for a file over 512 MB,
- *                                             which is never cached)
+ *   Cloudflare R2 storage      $0.015 / GB / month   (files that are sold,
+ *   Cloudflare R2 delivery     $0                     lib/vault.ts: sending a
+ *                                                     file costs nothing; a
+ *                                                     million downloads are
+ *                                                     $0.36 in requests)
+ *   Bunny Stream storage       $0.02  / GB / month   (lesson videos,
+ *   Bunny Stream delivery      $0.005 / GB            lib/stream.ts: $0.01 in
+ *                                                     each of the two regions
+ *                                                     the library keeps its
+ *                                                     files in, and the
+ *                                                     volume network it sends
+ *                                                     them over; read from
+ *                                                     the library's own pages
+ *                                                     on October 6, 2026)
+ *   Vercel Blob storage        $0.023 / GB / month   (the host's own store,
+ *   Vercel Blob data transfer  $0.05 to $0.11 / GB    where sold files were
+ *                                                     kept until October 7,
+ *                                                     2026)
  *   Resend                     $0.0009 / email
  *   Stripe                     2.9% + $0.30 on each subscription charge
- *   Bunny Stream storage       $0.02  / GB / month   (lesson videos, when the
- *   Bunny Stream delivery      $0.06  / GB at most    video service is set up,
- *                                                     lib/stream.ts. Storage is
- *                                                     $0.01 in each of the two
- *                                                     regions the library keeps
- *                                                     its files in, Frankfurt
- *                                                     and New York. Delivery is
- *                                                     $0.005 on the volume
- *                                                     network the library uses,
- *                                                     and $0.01 to $0.06 by
- *                                                     region on the standard
- *                                                     one; read from the
- *                                                     library's own pages on
- *                                                     October 6, 2026)
+ *
+ * What changed on October 7, 2026, and what these figures now count on.
+ *
+ * A download used to cost five to eleven cents a gigabyte, and the brake on
+ * free copies was the dearest line a $29 store had. A sold file now goes to
+ * the store that charges nothing to send it, and the door to the dearer one
+ * is shut wherever that store is set up and on the paid site always
+ * (app/api/store/file), so a missing setting stops an upload instead of
+ * bringing the cost back. No plan had been sold before that day, so no
+ * paying store has a file in the dearer one. Keeping a file is still worked
+ * out at the dearest of the three rates.
+ *
+ * Which left lesson video as the one thing that costs by use, and it is
+ * covered and priced by the hour watched (lib/watch-rules.ts). Its worst
+ * case is here twice: the hours a plan covers have to fit inside the plan
+ * with every other brake at its limit, and an hour past them has to bring in
+ * well over what it costs. An hour is costed at the largest size kept, with
+ * a quarter added for what a player fetches ahead of what is watched.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -40,18 +58,23 @@ import { FREE_PAUSE_ABOVE_BYTES } from "@/lib/delivery";
 import { STORAGE_BRAKE_BYTES } from "@/lib/storage-quota";
 import { AI_MONTHLY } from "@/lib/ai-rules";
 import { DELIVERY_ALLOWANCE_BYTES } from "@/lib/delivery";
+import { TOP_HEIGHT, viewingBytes } from "@/lib/stream-rules";
+import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED } from "@/lib/watch-rules";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const GB = 1024 * 1024 * 1024;
 
+/** Keeping a file, at the dearest of the three stores one may be in. */
 const STORAGE_PER_GB = 0.023;
-/** The worst rate: a file too large to cache pays transfer and origin both. */
-const DELIVERY_PER_GB = 0.05 + 0.06;
-const PER_EMAIL = 0.0009;
-/** What the video service charges to keep a gigabyte, and the most it charges anywhere to send one. */
+/** Sending a file that is sold: nothing, from the store they are kept in. */
+const FILE_DELIVERY_PER_GB = 0;
+/** What the video service charges to keep a gigabyte, and to send one. */
 const STREAM_STORAGE_PER_GB = 0.02;
-const STREAM_DELIVERY_PER_GB_AT_MOST = 0.06;
+const STREAM_DELIVERY_PER_GB = 0.005;
+/** What a player fetches beyond what is watched: the next seconds, and a size it then leaves. */
+const FETCHED_AHEAD = 1.25;
+const PER_EMAIL = 0.0009;
 /** A rough, deliberately high figure for one AI draft. */
 const PER_DRAFT = 0.015;
 /** Receipts, file delivery and login links, which nothing caps. Set high. */
@@ -67,14 +90,26 @@ function netOf(tier: Tier, cycle: Cycle = "month"): number {
   return cycle === "year" ? kept / 12 : kept;
 }
 
+/** What an hour of video watched costs us at most: the largest size kept, and what is fetched ahead of it. */
+function hourCost(): number {
+  const gigabytes = (viewingBytes(3600, TOP_HEIGHT, Number.POSITIVE_INFINITY) / GB) * FETCHED_AHEAD;
+  return gigabytes * STREAM_DELIVERY_PER_GB;
+}
+
+/** The hours of video a plan covers, all of them watched. */
+function videoCost(): number {
+  return VIDEO_HOURS_INCLUDED * hourCost();
+}
+
 /** Everything one store on this plan can run up in a month, at every limit at once. */
 function worstCost(tier: Tier): number {
   const storage = (STORAGE_BRAKE_BYTES / GB) * STORAGE_PER_GB;
-  const free = (FREE_PAUSE_ABOVE_BYTES / GB) * DELIVERY_PER_GB;
+  const free = (FREE_PAUSE_ABOVE_BYTES / GB) * FILE_DELIVERY_PER_GB;
+  const video = videoCost();
   const email = monthlyEmails(tier) * PER_EMAIL;
   const drafts = AI_MONTHLY[tier] * PER_DRAFT;
   const receipts = TRANSACTIONAL[tier] * PER_EMAIL;
-  return storage + free + email + drafts + receipts;
+  return storage + free + video + email + drafts + receipts;
 }
 
 test("the email each plan may send is the number that is published", () => {
@@ -107,7 +142,8 @@ for (const tier of TIERS) {
     const net = netOf(tier);
     const lines: [string, number][] = [
       ["storage", (STORAGE_BRAKE_BYTES / GB) * STORAGE_PER_GB],
-      ["free downloads", (FREE_PAUSE_ABOVE_BYTES / GB) * DELIVERY_PER_GB],
+      ["free downloads", (FREE_PAUSE_ABOVE_BYTES / GB) * FILE_DELIVERY_PER_GB],
+      ["video", videoCost()],
       ["email", monthlyEmails(tier) * PER_EMAIL],
       ["AI drafts", AI_MONTHLY[tier] * PER_DRAFT],
     ];
@@ -115,7 +151,7 @@ for (const tier of TIERS) {
       assert.ok(
         cost <= net / 2,
         `${tier}: ${name} alone is $${cost.toFixed(2)} of $${net.toFixed(2)}. One line taking half ` +
-          "the plan leaves nothing for the other three.",
+          "the plan leaves nothing for the others.",
       );
     }
   });
@@ -147,17 +183,43 @@ test("Scale keeps more than Pro does in its own worst month, monthly and yearly"
   }
 });
 
-test("a lesson video kept by the video service never costs more than the same bytes in the file store", () => {
-  // The storage brake and the delivery counter count a video at the service
-  // byte for byte with a file in the file store (lib/storage-quota.ts,
-  // lib/learn.ts), and every worst case above is worked out at the file
-  // store's rates. That stays the worst case only while the service is the
-  // cheaper of the two, to keep and to send, at its dearest.
-  assert.ok(STREAM_STORAGE_PER_GB < STORAGE_PER_GB, "keeping a video at the service must cost less than keeping it in the file store");
+test("a lesson video kept by the video service never costs more to keep than the storage brake allows for", () => {
+  // The storage brake counts a video at the service byte for byte with a
+  // file in the file store (lib/storage-quota.ts), and the worst case above
+  // is worked out at the dearest rate a file is kept at.
+  assert.ok(STREAM_STORAGE_PER_GB <= STORAGE_PER_GB, "keeping a video at the service must not cost more than the rate storage is worked out at");
+});
+
+test("an hour of video past what a plan covers brings in well over what it costs", () => {
+  // The one thing charged by use. What reaches us for an hour is the price
+  // less the card fee's percentage (its thirty cents is on the invoice the
+  // hour is added to, and is paid with the plan either way).
+  const kept = (VIDEO_CENTS_PER_HOUR_OVER / 100) * (1 - 0.029);
+  const cost = hourCost();
+  const margin = (kept - cost) / kept;
   assert.ok(
-    STREAM_DELIVERY_PER_GB_AT_MOST < DELIVERY_PER_GB,
-    "sending a video from the service, to its dearest region, must cost less than a download from the file store",
+    margin >= 0.45,
+    `an hour past the plan brings in $${kept.toFixed(4)} and costs $${cost.toFixed(4)}, which keeps ${(margin * 100).toFixed(0)}%. ` +
+      "A price near what the hour costs is a slower loss.",
   );
+});
+
+test("a store nobody can charge cannot watch past what a plan covers", () => {
+  // An hour past the plan is paid for by a line on an invoice. A store in
+  // its free trial, or with its plan ended, has no invoice, so the hours
+  // themselves are the limit there: its video is paused at them.
+  const learn = readFileSync(join(process.cwd(), "lib/learn.ts"), "utf8");
+  assert.match(learn, /!charged && folder && \(await watchedIn\(folder\)\) >= VIDEO_SECONDS_INCLUDED/, "the pause for a store with no plan to charge must stay");
+  const page = readFileSync(join(process.cwd(), "app/[handle]/course/[product]/[lesson]/page.tsx"), "utf8");
+  assert.match(page, /lessonVideo\(lesson\.video, canBeCharged\(store\)\)/, "and the lesson page must be the one that asks whether the store can be charged");
+});
+
+test("the video a plan covers is said in hours a creator can check", () => {
+  // Published in the studio, the Terms and the price list (tests/watch.test.ts
+  // holds the pages to these two numbers). Stated here so the figure cannot
+  // be raised without this file's sums being run against it.
+  assert.equal(VIDEO_HOURS_INCLUDED, 400);
+  assert.equal(VIDEO_CENTS_PER_HOUR_OVER, 3);
 });
 
 test("the free-download brake is smaller than the allowance that is published", () => {
@@ -171,8 +233,9 @@ test("the free-download brake is smaller than the allowance that is published", 
 
 test("a buyer's download is bounded by nothing, and that is on purpose", () => {
   // Stated here so that nobody ever "fixes" it. Somebody paid the creator for
-  // that file. The ceiling on what a runaway store can cost us in paid
-  // delivery is the spend cap at the host, not a door shut on a customer.
+  // that file. It is also why a sold file is kept where sending it costs
+  // nothing: the one delivery that may never be refused is the one that must
+  // not be able to run up a bill.
   const delivery = readFileSync(join(process.cwd(), "lib/delivery.ts"), "utf8");
   assert.match(
     delivery,

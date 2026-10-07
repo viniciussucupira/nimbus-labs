@@ -7,6 +7,7 @@ import { Icon } from "@/components/icons";
 import { listSizeWords } from "@/lib/contact-rules";
 import { HOME_QUESTIONS } from "@/lib/home-faq";
 import { PLANS_ON_SALE } from "@/lib/opening";
+import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, centsWords } from "@/lib/watch-rules";
 import {
   PLAN_NAMES,
   PLAN_PRICES,
@@ -409,6 +410,7 @@ const INCLUDED = [
   "An affiliate program with a page for each affiliate, paid from your own PayPal in one press or on payday by itself",
   "Your own numbers counted without cookies, as CSV files too, and ad pixels for Meta, Google, TikTok and Pinterest — those are the platforms' own, and visitors are asked first where the law requires it",
   "License keys, stamped PDFs, course quizzes and certificates",
+  `Lesson videos that play in the size each connection can carry, with ${VIDEO_HOURS_INCLUDED} hours watched a month covered; past that, ${centsWords(VIDEO_CENTS_PER_HOUR_OVER)} for each hour watched, and a student is never cut off`,
   "A private video room for each booking if you want one, and calendar sync for your calls",
   "Mailchimp, Kit, beehiiv or MailerLite built in, and webhooks for Zapier or Make",
   "A team of you plus up to five people per store, each with a role, and notifications of sales on your phone",

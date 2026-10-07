@@ -805,6 +805,78 @@ export async function endLapsed(ids: string[]): Promise<void> {
 }
 
 /**
+ * Adds a line to what a store's subscription is billed next.
+ *
+ * The one thing here that is charged by use: video watched past what a plan
+ * covers (lib/watch-rules.ts). It is not an invoice of its own. Stripe keeps
+ * the line with the subscription and puts it on the next invoice that
+ * subscription makes, charged to the card the plan is already paid with,
+ * which is what the Terms say will happen and nothing more.
+ *
+ * `mark` is written on the line so it can be found again (findInvoiceLine):
+ * a request that timed out may still have gone through, and a second line
+ * for the same hours would be charging twice.
+ */
+export async function addToNextInvoice(input: {
+  customerId: string;
+  subscriptionId: string;
+  cents: number;
+  description: string;
+  mark: string;
+  idempotencyKey: string;
+}): Promise<string> {
+  if (!CUSTOMER_PATTERN.test(input.customerId) || !SUBSCRIPTION_PATTERN.test(input.subscriptionId)) throw new Error("not a subscription of ours");
+  if (!Number.isInteger(input.cents) || input.cents <= 0) throw new Error("nothing to add");
+  const made = await onPlatform(
+    "POST",
+    "/invoiceitems",
+    new URLSearchParams({
+      customer: input.customerId,
+      subscription: input.subscriptionId,
+      amount: String(input.cents),
+      currency: "usd",
+      description: input.description.slice(0, 350),
+      "metadata[mark]": input.mark,
+    }),
+    { idempotencyKey: input.idempotencyKey },
+  );
+  if (typeof made.id !== "string") throw new Error("Stripe did not return the line");
+  return made.id;
+}
+
+/** Whether a line with this mark was added to this customer since `sinceSeconds`, billed yet or not. */
+export async function findInvoiceLine(customerId: string, mark: string, sinceSeconds: number): Promise<boolean> {
+  if (!CUSTOMER_PATTERN.test(customerId)) return false;
+  let after = "";
+  // A customer has a handful of these a month at most; three pages is far more than any has.
+  for (let page = 0; page < 3; page += 1) {
+    const query = new URLSearchParams({ customer: customerId, limit: "100", "created[gte]": String(Math.max(0, Math.floor(sinceSeconds))) });
+    if (after) query.set("starting_after", after);
+    const listed = await onPlatform("GET", `/invoiceitems?${query}`);
+    const rows = Array.isArray(listed.data) ? (listed.data as Record<string, unknown>[]) : [];
+    if (rows.some((row) => (row.metadata as Record<string, string> | null | undefined)?.mark === mark)) return true;
+    const lastId = rows[rows.length - 1]?.id;
+    if (listed.has_more !== true || typeof lastId !== "string") return false;
+    after = lastId;
+  }
+  return false;
+}
+
+/**
+ * Has a subscription bill what was added to it once a month, whatever its
+ * own cycle. A plan paid by the year makes one invoice a year, and a line
+ * added in February would otherwise wait for it until the next January.
+ */
+export async function billAddedLinesMonthly(subscriptionId: string): Promise<void> {
+  if (!SUBSCRIPTION_PATTERN.test(subscriptionId)) return;
+  await onPlatform(
+    "POST",
+    `/subscriptions/${encodeURIComponent(subscriptionId)}`,
+    new URLSearchParams({ "pending_invoice_item_interval[interval]": "month", "pending_invoice_item_interval[interval_count]": "1" }),
+  );
+}
+
+/**
  * Whether this store is paid up, read from what we wrote down.
  *
  * The snapshot is what the public store page uses, because a buyer's page load

@@ -19,7 +19,8 @@
  * A course is watched by the hour. A thousand minutes of video at the
  * tallest size kept here is about forty gigabytes: forty cents sent by the
  * first, a dollar by either of the others. What decides whether a $29 store
- * pays for itself is that line (lib/delivery.ts), so it was the one compared.
+ * pays for itself is that line, so it was the one compared; what a plan
+ * covers of it, and what is charged past that, is in lib/watch-rules.ts.
  *
  * How a video gets there, and what is kept here about it:
  *
@@ -77,6 +78,9 @@
  *   nl:stream:gone        videos to delete there that could not be reached
  *   nl:stream:peek:<id>   a student's page asked about this one just now
  *   nl:stream:cap:<id>    the languages a video has captions in
+ *
+ * How long a store's videos have been watched is read from the service too
+ * (streamWatched), and what is done with it is in lib/watch.ts.
  */
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { STREAM_PEEK_TIMEOUT_MS, STREAM_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
@@ -269,6 +273,41 @@ export async function streamHeld(folder: string): Promise<number | null> {
   if (answer.status === 404) return 0;
   const size = field(answer.data, "totalSize");
   return answer.status === 200 && typeof size === "number" && Number.isFinite(size) && size >= 0 ? size : null;
+}
+
+/** How many pages of a store's videos are read: a thousand to a page. */
+const WATCH_PAGES = 20;
+
+/**
+ * How long each of a store's videos has been watched, in seconds, since it
+ * was put there: the service's own count, kept by its player. Null when it
+ * cannot be read, which is not the same as nothing watched.
+ *
+ * Read a store at a time, from the list of its collection, so a store with
+ * three hundred lessons is one question and not three hundred. What a plan
+ * covers and what is charged past it are worked out from this
+ * (lib/watch.ts): time watched, which no page view of ours can inflate.
+ */
+export async function streamWatched(folder: string): Promise<{ id: string; seconds: number }[] | null> {
+  const config = streamConfig();
+  if (!config || !isRedisConfigured()) return [];
+  const [known] = await redisPipeline([["GET", collectionKey(folder)]]);
+  if (typeof known !== "string" || !STREAM_ID_PATTERN.test(known)) return [];
+  const out: { id: string; seconds: number }[] = [];
+  for (let page = 1; page <= WATCH_PAGES; page += 1) {
+    const answer = await ask(config, "GET", `/videos?collection=${known}&page=${page}&itemsPerPage=1000&orderBy=date`);
+    const items = field(answer.data, "items");
+    if (answer.status !== 200 || !Array.isArray(items)) return null;
+    for (const item of items) {
+      const id = field(item, "guid");
+      const seconds = field(item, "totalWatchTime");
+      if (typeof id !== "string" || !STREAM_ID_PATTERN.test(id.toLowerCase())) continue;
+      out.push({ id: id.toLowerCase(), seconds: typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0 });
+    }
+    const total = field(answer.data, "totalItems");
+    if (items.length < 1000 || (typeof total === "number" && out.length >= total)) break;
+  }
+  return out;
 }
 
 export type UploadDoor = {

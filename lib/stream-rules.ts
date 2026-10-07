@@ -94,8 +94,8 @@ export const TOP_HEIGHT = 1080;
 
 /**
  * The most a second of video weighs at each height, in bits, sound included.
- * Set high on purpose: the figure this feeds is a warning (lib/delivery.ts),
- * and a warning that errs low is no warning.
+ * Set high on purpose: the figure this feeds is what an hour watched can
+ * cost us (tests/plan-margin.test.ts), and a cost that errs low is no guard.
  */
 const BITS_PER_SECOND: [height: number, bits: number][] = [
   [240, 700_000],
@@ -106,11 +106,14 @@ const BITS_PER_SECOND: [height: number, bits: number][] = [
 ];
 
 /**
- * What one viewing of a video is counted as, in bytes: the whole of it at
- * the largest size it is kept in. A student who watches two minutes is
- * counted as one who watched it all, as a download is counted when it starts
- * and not when it finishes. Never more than `ceiling`, the file as it was
- * uploaded, which is what a viewing was counted as before.
+ * What `seconds` of a video weigh, in bytes, at the largest size it is kept
+ * in. Never more than `ceiling`, the file as it was uploaded.
+ *
+ * A viewing used to be counted with this, whole, each time a lesson page
+ * opened. What a plan covers of video is now the time it was watched, by
+ * the video service's own count (lib/watch.ts), which a page view cannot
+ * inflate; this is kept for what it still answers, the most an hour of
+ * watching can weigh.
  */
 export function viewingBytes(seconds: number, height: number, ceiling: number): number {
   const cap = Number.isFinite(ceiling) && ceiling > 0 ? ceiling : Number.POSITIVE_INFINITY;

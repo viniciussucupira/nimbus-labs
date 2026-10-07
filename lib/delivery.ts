@@ -1,32 +1,37 @@
 /**
- * How much a store has sent out this month.
+ * How much a store has sent out this month, in files.
  *
- * Storage is cheap and delivery is not: a gigabyte sitting still costs about
- * two cents a month, and the same gigabyte leaving costs about five cents
- * every time somebody downloads it. So the number that decides whether a $29
- * store pays for itself is not how big the files are — it is how many of them
- * go out. This counts that, publishes it, and says something when it is past
- * what the price covers.
+ * This was written when a download cost about five cents a gigabyte every
+ * time it happened, and the number that decided whether a $29 store paid for
+ * itself was how many files went out. The files that are sold are now kept
+ * where sending one costs nothing (lib/vault.ts), so the money has gone out
+ * of this figure. What is left of it is what a storefront is for: a plan
+ * covers selling one's own work, not hosting files for the internet, and a
+ * store far past the published figure is told so. It is counted, published
+ * and said out loud, and it is never charged for.
  *
  * What it deliberately does NOT do is stop a delivery. Somebody paid the
- * creator for that file. Cutting the buyer off to protect our margin would be
- * taking money for a sale and then not completing it, which is the thing this
- * whole company is supposed to be the opposite of. Going over is a
- * conversation with the creator, not a door slammed on their customer.
+ * creator for that file. Cutting the buyer off would be taking money for a
+ * sale and then not completing it, which is the thing this whole company is
+ * supposed to be the opposite of. Going over is a conversation with the
+ * creator, not a door slammed on their customer.
+ *
+ * A lesson's video is not counted here. It is the one thing that does cost
+ * by use, it is measured by the time it was watched and not by the
+ * gigabyte, and it has rules of its own (lib/watch-rules.ts).
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { STREAM_PREFIX } from "@/lib/stream-rules";
 import { VAULT_PREFIX } from "@/lib/vault-rules";
 
 /**
- * What the monthly price covers, per store, per calendar month.
+ * The downloads a plan covers, per store, per calendar month.
  *
- * Two hundred gigabytes costs us about $9.50 at published rates, out of the
- * roughly $27.86 a $29 subscription leaves after the card fee. To reach it a
- * creator has to send two hundred copies of a one-gigabyte file in a month,
- * which is a store doing very well. The number is published rather than kept
- * in a drawer, because a limit a creator cannot see is a limit they can only
- * discover by being punished for it.
+ * To reach it a creator has to send two hundred copies of a one-gigabyte
+ * file in a month, which is a store doing very well. The number is published
+ * rather than kept in a drawer, because a limit a creator cannot see is a
+ * limit they can only discover by being told off for it. Nothing is charged
+ * past it and nothing is stopped: the creator is written to.
  */
 export const DELIVERY_ALLOWANCE_BYTES = 200 * 1024 * 1024 * 1024;
 
@@ -37,49 +42,27 @@ export const DELIVERY_ALLOWANCE_BYTES = 200 * 1024 * 1024 * 1024;
  * buyer paid for that file. But the delivery that can run away without
  * anybody having paid for anything is the free one — a lead magnet that
  * finds an audience, or is posted somewhere it was not meant to go, and is
- * pulled fifty thousand times. At the published rate that is thousands of
- * dollars against a $29 subscription, and no sale anywhere in it.
+ * pulled fifty thousand times.
  *
  * So free copies pause at fifty gigabytes a month, by themselves, and start
  * again when the month turns. Nobody is cut off from something they bought,
  * because nobody bought it, and the creator is told the same day.
  *
- * Fifty, and not more, because the figure has to be set against what the
- * plan brings in rather than against what feels generous. At $0.11 a
- * gigabyte — the rate for a file too large to cache, which is the worst
- * case — fifty gigabytes is $5.50 against the $27.86 a $29 subscription
- * leaves after the card fee. This was twice the published allowance, 400 GB,
- * until the totals were added up: at that figure one store giving things
- * away could cost $44 a month on its own, and the plan lost money in its own
- * worst case. A brake set above the revenue it protects is not a brake.
+ * Fifty was set against money: at the eleven cents a gigabyte the host's own
+ * file store charges for a file too large to cache, it is $5.50 against the
+ * $27.86 a $29 subscription leaves after the card fee, and the figure it
+ * replaced, 400 GB, could cost $44 a month on its own. A brake set above the
+ * revenue it protects is not a brake. A file that is sold is now kept where
+ * sending it costs nothing (lib/vault.ts), and the host's store is shut to
+ * new ones (app/api/store/file), so the brake no longer guards a bill. It
+ * stays where it was, because what it stops was never only a bill: a plan
+ * is for a storefront, not for handing a file to the whole internet.
  *
  * And it is not tight for giving things away. Fifty gigabytes is a ten
- * megabyte lead magnet downloaded five thousand times in a month, or a
- * hundred megabyte video five hundred times. A store past it is not running
- * a storefront any more.
+ * megabyte lead magnet downloaded five thousand times in a month. A store
+ * past it is not running a storefront any more.
  */
 export const FREE_PAUSE_ABOVE_BYTES = 50 * 1024 * 1024 * 1024;
-
-/**
- * What a gigabyte past the allowance costs, in cents.
- *
- * A paid download is never refused, at any number — the buyer paid for that
- * file. Which leaves one cost in the whole system with no ceiling, and only
- * two ways to put one on it: cut off a buyer, or stop a creator selling.
- * Both destroy the thing being protected.
- *
- * So it is priced instead of limited. Delivery costs us $0.05 a gigabyte,
- * and $0.11 for a file too large to cache; fifteen cents covers the worse of
- * those with room, and a store reaching it is a store selling enough that
- * the figure is small against what it is making.
- *
- * Published here, in the Terms and in the studio before it ever applies,
- * because a charge the contract does not mention is the surprise this whole
- * system exists to prevent. The creator is emailed automatically the morning
- * after they pass the allowance, so nothing is ever charged to somebody who
- * was not told first.
- */
-export const OVER_ALLOWANCE_CENTS_PER_GB = 15;
 
 /** Counters are dropped a while after the month they describe. */
 const KEEP_SECONDS = 70 * 24 * 60 * 60;
@@ -275,6 +258,22 @@ export async function freeDeliveryPaused(folder: string): Promise<boolean> {
   } catch (error) {
     console.error("could not read this month's deliveries", error);
     return false;
+  }
+}
+
+/**
+ * The key each of these folders' stores is kept under (lib/store.ts): the
+ * owner's address for an account's first store, "#" and the store's id for
+ * its others. Null for a folder nobody uploaded to through the studio.
+ */
+export async function storeKeysOf(folders: string[]): Promise<(string | null)[]> {
+  if (!isRedisConfigured() || folders.length === 0) return folders.map(() => null);
+  try {
+    const raw = await redisPipeline(folders.map((f) => ["GET", ownerKey(f)]));
+    return raw.map((v) => (typeof v === "string" && v ? v : null));
+  } catch (error) {
+    console.error("could not read which store a folder belongs to", error);
+    return folders.map(() => null);
   }
 }
 

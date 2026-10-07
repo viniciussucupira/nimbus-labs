@@ -13,6 +13,12 @@
  *
  * These hold the part that closes it: a store is written down the moment it
  * crosses, exactly once, and the number we read back is the real one.
+ *
+ * Since October 7, 2026 a file that is sold is kept where sending it costs
+ * nothing (lib/vault.ts), so a download is no longer the cost with no
+ * ceiling: lesson video is, and tests/watch.test.ts holds what is set
+ * against that. What is left here is the knowing, which a storefront still
+ * needs: a store far past what a plan covers in downloads is told so.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -115,7 +121,9 @@ test("the watch reads nothing when there is nothing written", async () => {
 
 test("the promise in the Terms is one the machine can keep alone", () => {
   const terms = readFileSync(join(process.cwd(), "app/terms/page.tsx"), "utf8");
-  const section = terms.slice(terms.indexOf('id="fair-use"'), terms.indexOf('id="fair-use"') + 4000);
+  // The whole of section 5, to where it closes, however long it has grown.
+  const from = terms.indexOf('id="fair-use"');
+  const section = terms.slice(from, terms.indexOf("</LegalSection>", from));
 
   // The clause may not promise a letter that only a person could send.
   assert.doesNotMatch(
@@ -139,33 +147,39 @@ test("the promise in the Terms is one the machine can keep alone", () => {
   assert.match(vercel, /\/api\/cron\/usage/, "and be scheduled, or it never runs");
 });
 
-test("the right to charge for delivery exists before anything is charged", async () => {
-  const { OVER_ALLOWANCE_CENTS_PER_GB, DELIVERY_ALLOWANCE_BYTES } = await import("@/lib/delivery");
+test("a download is counted and published, and never charged for", async () => {
+  const { DELIVERY_ALLOWANCE_BYTES } = await import("@/lib/delivery");
   const GB = 1024 * 1024 * 1024;
 
-  // It has to cover the worst real rate — $0.11 a gigabyte for a file too
-  // large to cache — or charging for the overage still loses money.
-  assert.ok(
-    OVER_ALLOWANCE_CENTS_PER_GB / 100 > 0.11,
-    "a price under what delivery costs is not a price, it is a slower loss",
-  );
+  // This used to hold a price for delivery past the allowance, fifteen cents
+  // a gigabyte, which had to sit above what a download cost us. A file that
+  // is sold is now kept where sending it costs nothing (lib/vault.ts), so
+  // there is nothing left for a price to cover, and none is published. What
+  // is charged by use is lesson video, by the hour watched, and it has its
+  // own rules and its own tests (lib/watch-rules.ts, tests/watch.test.ts).
+  const delivery = readFileSync(join(process.cwd(), "lib/delivery.ts"), "utf8");
+  assert.doesNotMatch(delivery, /OVER_ALLOWANCE_CENTS_PER_GB/, "no price for a download is kept anywhere");
 
   const terms = readFileSync(join(process.cwd(), "app/terms/page.tsx"), "utf8");
-  assert.match(
-    terms,
-    /OVER_ALLOWANCE_CENTS_PER_GB/,
-    "the rate must be in the Terms: a charge the contract does not mention is the surprise this all exists to prevent",
-  );
+  assert.match(terms, /Nothing is charged for downloads, inside that figure or past it/, "the Terms say so in as many words");
   assert.match(
     terms,
     /A paid download is never refused, at any number/,
-    "and the promise it is priced instead of limited has to stay next to it",
+    "and the promise that a buyer is never cut off has to stay next to it",
   );
 
   const studio = readFileSync(join(process.cwd(), "app/studio/page.tsx"), "utf8");
-  assert.match(studio, /OVER_ALLOWANCE_CENTS_PER_GB/, "and the creator sees the rate before they ever meet it");
+  assert.match(studio, /Nothing is charged for downloads above/, "and the creator reads the same thing where the figure is shown");
 
-  // A month inside the allowance must cost nothing extra, which is every
-  // month for an ordinary store.
-  assert.ok(DELIVERY_ALLOWANCE_BYTES >= 200 * GB, "the free allowance stays generous enough that this never fires");
+  // The figure a plan covers stays what was published.
+  assert.ok(DELIVERY_ALLOWANCE_BYTES >= 200 * GB, "the allowance is not quietly made smaller");
+
+  // The door to the host's own file store, where a download does cost, is
+  // shut wherever the other store is set up, and on the paid site always.
+  const door = readFileSync(join(process.cwd(), "app/api/store/file/route.ts"), "utf8");
+  assert.match(
+    door,
+    /isVaultConfigured\(\) \|\| process\.env\.VERCEL_ENV === "production"/,
+    "a sold file must not be able to land where sending it costs by the gigabyte",
+  );
 });
