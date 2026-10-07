@@ -2269,6 +2269,7 @@ export async function addProduct(
       about: false,
       keys: null,
       stamp: false,
+      preview: 0,
       page: false,
       bundle: null,
       hidden: false,
@@ -2951,6 +2952,12 @@ export async function setProductStamp(email: string, id: string, on: boolean): P
   return changeProduct(email, id, (product) => ({ ...product, stamp: on }));
 }
 
+/** How many first pages of a product's PDF anyone may read before buying (lib/pdf-preview.ts); 0 switches it off. */
+export async function setProductPreview(email: string, id: string, pages: number): Promise<ProductPartResult> {
+  const kept = Number.isInteger(pages) && pages > 0 ? Math.min(pages, 10) : 0;
+  return changeProduct(email, id, (product) => ({ ...product, preview: kept }));
+}
+
 
 // ---- Bundles and drafts -------------------------------------------------------
 
@@ -3048,6 +3055,7 @@ export async function addDraftProducts(email: string, drafts: DraftProduct[]): P
         about: draft.about === true,
         keys: null,
         stamp: false,
+      preview: 0,
         page: false,
         bundle: null,
         hidden: true,

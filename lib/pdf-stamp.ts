@@ -128,8 +128,12 @@ async function readWhole(pathname: string, limit: number): Promise<Uint8Array | 
   return readFileWhole(pathname, limit);
 }
 
-/** Where a file's stamped copies live: one folder per original, one per sale. */
-function copyFolder(file: Pick<ProductFile, "pathname">): string {
+/**
+ * Where a file's stamped copies live: one folder per original, one per sale.
+ * Its preview (lib/pdf-preview.ts) is kept in the same folder, so deleting
+ * the original deletes both (dropStamped).
+ */
+export function copyFolder(file: Pick<ProductFile, "pathname">): string {
   const folder = folderFromPathname(file.pathname) ?? "unknown";
   // A copy is kept in the store its original is in, so handing it to the
   // buyer costs what handing over the original would.

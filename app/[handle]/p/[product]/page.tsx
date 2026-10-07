@@ -1,6 +1,7 @@
 import { StickyBuy } from "@/components/sticky-buy";
 import { MoreFrom, moreFrom } from "@/components/more-from";
 import { ExitOfferSlot } from "@/components/exit-offer-slot";
+import { previewable } from "@/lib/pdf-preview";
 import { after } from "next/server";
 import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
 import { readAllTimeSales } from "@/lib/stats";
@@ -342,6 +343,14 @@ export default async function ProductPage({ params, searchParams }: Params) {
       {remaining !== null ? (
         <p className="mt-1 text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>
           {remaining === 0 ? "Sold out" : `${remaining.toLocaleString("en-US")} left`}
+        </p>
+      ) : null}
+      {product.preview > 0 && product.file && previewable(product.file) ? (
+        /* The first pages only, as a file of their own (lib/pdf-preview.ts). */
+        <p className="mb-4 text-sm font-semibold">
+          <a href={`/api/store/preview?handle=${encodeURIComponent(store.handle)}&product=${encodeURIComponent(product.id)}`} rel="nofollow" className="underline underline-offset-4" style={{ color: "var(--st-text)" }}>
+            {`Read the first ${product.preview === 1 ? "page" : `${product.preview} pages`} free (PDF)`}
+          </a>
         </p>
       ) : null}
       <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} />

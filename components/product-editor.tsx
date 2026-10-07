@@ -16,6 +16,7 @@ import { CheckoutFieldsEditor } from "@/components/checkout-fields-editor";
 import { ProductImageEditor } from "@/components/product-image-editor";
 import { LicenceKeyEditor } from "@/components/licence-key-editor";
 import { PdfStampToggle } from "@/components/pdf-stamp-toggle";
+import { PdfPreviewToggle } from "@/components/pdf-preview-toggle";
 import { toast } from "@/components/toast";
 import { uploadReason, uploadSoldFile } from "@/lib/sold-file-upload";
 import {
@@ -1959,6 +1960,7 @@ export function ProductEditor({
                 />
                 )}
                 <PdfStampToggle product={product} />
+                <PdfPreviewToggle product={product} />
                 <LicenceKeyEditor product={product} handle={handle} />
                 </>
                 )}
