@@ -49,7 +49,19 @@
  * case is here twice: the hours a plan covers have to fit inside the plan
  * with every other brake at its limit, and an hour past them has to bring in
  * well over what it costs. An hour is costed at the largest size kept, with
- * a quarter added for what a player fetches ahead of what is watched.
+ * a quarter added for what a player fetches ahead of what is watched: 6.9
+ * megabits for every second counted.
+ *
+ * Against that, the one clean measure there is. On the live library, on
+ * October 7, 2026, a 1080p lesson played once through was counted as 24
+ * seconds and took 12.3 megabytes from the video service: a little over 4
+ * megabits a second, so the figure above has more than half again over it.
+ * The player was also seen to count less than it sent, in a sitting that
+ * replayed a video after it had ended (lib/watch.ts); that headroom is what
+ * has to carry
+ * such sittings, and an hour past the plan goes on paying for itself up to
+ * 13.9 megabits for every second counted. These are the two numbers to
+ * hold against the video service's own bill once real stores are watching.
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";

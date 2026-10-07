@@ -21,8 +21,12 @@
  * lines monthly. The charge itself is to be seen on a real invoice, the
  * first time a real store passes its hours.
  *
- * The video service's count is read against the live library once this is
- * deployed, with a real lesson watched for a known time.
+ * The video service's count was read against the live library the same
+ * day: a lesson played once through, 24 seconds, came back as 24 seconds
+ * more, and the five-minute job added exactly the service's total to the
+ * store's month. The same reading showed where its player counts less than
+ * was played (lib/watch.ts): replays in one sitting, after a video has
+ * reached its end.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
