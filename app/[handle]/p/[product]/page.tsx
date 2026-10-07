@@ -1,4 +1,7 @@
 import { StickyBuy } from "@/components/sticky-buy";
+import { MoreFrom, moreFrom } from "@/components/more-from";
+import { ExitOfferSlot } from "@/components/exit-offer-slot";
+import { previewable } from "@/lib/pdf-preview";
 import { after } from "next/server";
 import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
 import { readAllTimeSales } from "@/lib/stats";
@@ -342,6 +345,14 @@ export default async function ProductPage({ params, searchParams }: Params) {
           {remaining === 0 ? "Sold out" : `${remaining.toLocaleString("en-US")} left`}
         </p>
       ) : null}
+      {product.preview > 0 && product.file && previewable(product.file) ? (
+        /* The first pages only, as a file of their own (lib/pdf-preview.ts). */
+        <p className="mb-4 text-sm font-semibold">
+          <a href={`/api/store/preview?handle=${encodeURIComponent(store.handle)}&product=${encodeURIComponent(product.id)}`} rel="nofollow" className="underline underline-offset-4" style={{ color: "var(--st-text)" }}>
+            {`Read the first ${product.preview === 1 ? "page" : `${product.preview} pages`} free (PDF)`}
+          </a>
+        </p>
+      ) : null}
       <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} />
       {giftable ? <GiftBox store={store} product={product} problem={giftProblem} /> : null}
       {product.recurring && canManage(store) ? (
@@ -368,6 +379,9 @@ export default async function ProductPage({ params, searchParams }: Params) {
     </Link>
   );
 
+  // The creator's other products, from what the store record already holds.
+  const more = <MoreFrom store={store} products={moreFrom(store, product.id, soldCounts?.byProduct ?? null)} />;
+
   const footer = (
     <div className="mt-10 text-center">
       <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
@@ -391,6 +405,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       style={lookStyle(store.look) as React.CSSProperties}
     >
       <JsonLd data={productData(store, product, description, remaining === 0, summary, soon)} />
+      <ExitOfferSlot store={store} except={product.id} />
       <main id="content" className={`relative mx-auto ${wide ? "max-w-3xl" : "max-w-2xl"} px-4 pb-16 pt-10 sm:pt-14${sticky ? " st-has-sticky" : ""}`}>
         {children}
       </main>
@@ -442,6 +457,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
 
         {payments}
         {anyReviews ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}
+        {more}
         {footer}
       </>,
       false,
@@ -511,6 +527,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       {free ? null : buySection}
       {payments}
       {!placed && anyReviews ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}
+      {more}
       {footer}
     </div>,
     true,

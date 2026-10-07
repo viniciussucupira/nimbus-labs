@@ -302,6 +302,7 @@ export function BuyBox({
   related,
   ready = true,
   soon = false,
+  place = "",
 }: {
   store: Store;
   product: Listing;
@@ -317,6 +318,12 @@ export function BuyBox({
   ready?: boolean;
   /** Coming soon: a waitlist instead of a way to pay (lib/waitlist.ts). */
   soon?: boolean;
+  /**
+   * Set when the same box is drawn twice on one page — the offer to a leaving
+   * visitor (components/exit-offer-slot.tsx) beside the product's own card —
+   * so the two forms' fields keep ids of their own.
+   */
+  place?: string;
 }) {
   if (soon && !isFree(product)) return <WaitlistForm store={store} product={product} />;
   const options = sellableOptions(product);
@@ -345,11 +352,11 @@ export function BuyBox({
             <input type="text" name="website" tabIndex={-1} autoComplete="off" />
           </label>
         </div>
-        <label htmlFor={`e-${product.id}`} className="st-label">
+        <label htmlFor={`e-${place}${product.id}`} className="st-label">
           Your email
         </label>
         <input
-          id={`e-${product.id}`}
+          id={`e-${place}${product.id}`}
           type="email"
           name="email"
           required
@@ -358,8 +365,8 @@ export function BuyBox({
           placeholder="you@example.com"
           className="st-field"
         />
-        <label htmlFor={`c-${product.id}`} className="st-muted flex cursor-pointer items-start gap-3 text-sm">
-          <input id={`c-${product.id}`} type="checkbox" name="consent" value="yes" className="mt-0.5 h-4 w-4 shrink-0" />
+        <label htmlFor={`c-${place}${product.id}`} className="st-muted flex cursor-pointer items-start gap-3 text-sm">
+          <input id={`c-${place}${product.id}`} type="checkbox" name="consent" value="yes" className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{`Also send me emails from ${store.name}. I can unsubscribe whenever I like.`}</span>
         </label>
         <button type="submit" className="btn st-btn btn-block">

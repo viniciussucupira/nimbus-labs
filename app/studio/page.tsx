@@ -43,6 +43,8 @@ import { slotMeetings } from "@/lib/meet-links";
 import type { MeetRecord } from "@/lib/meet-records";
 import { keepHandle, webhooksView } from "@/lib/webhooks";
 import { PixelEditor } from "@/components/pixel-editor";
+import { ExitOfferEditor } from "@/components/exit-offer-editor";
+import { readCards } from "@/lib/catalog";
 import { TaxEditor } from "@/components/tax-editor";
 import { RecoveryEditor } from "@/components/recovery-editor";
 import { ApiKeyEditor } from "@/components/api-key-editor";
@@ -1144,6 +1146,16 @@ export default async function StudioPage({
                 })()}
 
                 <PixelEditor pixels={store.pixels} />
+
+                {await (async () => {
+                  // The free, published products, by name: what can be offered to a leaving visitor.
+                  const cards = await readCards(store).catch(() => new Map());
+                  const free = store.catalog.items
+                    .filter((item) => (item.kind & KIND.free) !== 0 && (item.kind & KIND.hidden) === 0)
+                    .map((item) => ({ id: item.id, title: cards.get(item.id)?.title ?? "" }))
+                    .filter((p) => p.title);
+                  return <ExitOfferEditor current={store.exitOffer} free={free} />;
+                })()}
 
                 <TaxEditor tax={store.tax} status={tax ? tax.state : "unknown"} connected={Boolean(current?.stripeAccountId)} />
 

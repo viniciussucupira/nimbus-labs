@@ -51,11 +51,13 @@ export const MAX_GUARANTEE = 1_000;
 export const MAX_CTA_LABEL = 40;
 export const MAX_CTA_NOTE = 120;
 export const MAX_SEO_TITLE = 70;
+/** The line under a video block's player. */
+export const MAX_CAPTION = 300;
 export const MAX_SEO_DESCRIPTION = 160;
 /** The most a page's record may weigh, in bytes: well past thirty full blocks. */
 export const MAX_PAGE_BYTES = 120_000;
 
-export type BlockKind = "hero" | "text" | "benefits" | "inside" | "bio" | "faq" | "guarantee" | "cta" | "reviews";
+export type BlockKind = "hero" | "text" | "benefits" | "inside" | "bio" | "faq" | "guarantee" | "cta" | "reviews" | "video";
 
 export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "hero", label: "Hero", hint: "The big headline at the top, with the product's picture or a video." },
@@ -67,6 +69,7 @@ export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "guarantee", label: "Guarantee", hint: "Your refund promise, in your own words." },
   { kind: "cta", label: "Button", hint: "A button that goes to the checkout (or the sign-up form)." },
   { kind: "reviews", label: "Reviews", hint: "Where buyers' verified reviews sit on the page." },
+  { kind: "video", label: "Video", hint: "A video anywhere on the page — a lesson to try, a walkthrough, a result — with a heading and a line under it." },
 ];
 
 export type VideoProvider = "youtube" | "vimeo" | "loom";
@@ -93,6 +96,14 @@ export type FaqBlock = { id: string; kind: "faq"; heading: string; items: FaqIte
 export type GuaranteeBlock = { id: string; kind: "guarantee"; heading: string; body: string };
 export type CtaBlock = { id: string; kind: "cta"; label: string; note: string };
 export type ReviewsBlock = { id: string; kind: "reviews"; heading: string };
+/**
+ * A video of its own, anywhere below the hero (added 7 October 2026). The
+ * hero carries one video; a sales page that sells a course or a skill often
+ * wants more — a sample lesson, a walkthrough, the thing being made — and a
+ * page may now have as many as it has blocks. Each is the same lazy player
+ * the hero uses: nothing loads from YouTube, Vimeo or Loom until play.
+ */
+export type VideoBlock = { id: string; kind: "video"; heading: string; video: Video | null; caption: string };
 
 export type PageBlock =
   | HeroBlock
@@ -103,7 +114,8 @@ export type PageBlock =
   | FaqBlock
   | GuaranteeBlock
   | CtaBlock
-  | ReviewsBlock;
+  | ReviewsBlock
+  | VideoBlock;
 
 export type SalesPage = {
   blocks: PageBlock[];
@@ -303,6 +315,8 @@ function parseBlock(raw: unknown): PageBlock | null {
       return { id, kind: "cta", label: line(value.label, MAX_CTA_LABEL), note: line(value.note, MAX_CTA_NOTE) };
     case "reviews":
       return { id, kind: "reviews", heading };
+    case "video":
+      return { id, kind: "video", heading, video: parseVideo(value.video), caption: lines(value.caption, MAX_CAPTION) };
     default:
       return null;
   }
@@ -358,6 +372,7 @@ export function pageProblem(raw: { blocks?: unknown }, parsed: SalesPage): PageP
   for (const block of sent) {
     const value = block && typeof block === "object" ? (block as Record<string, unknown>) : {};
     if (value.kind === "hero" && value.media === "video" && !parseVideo(value.video)) return "video";
+    if (value.kind === "video" && !parseVideo(value.video)) return "video";
   }
   if (parsed.blocks.length !== sent.length) return "shape";
   if (JSON.stringify(parsed).length > MAX_PAGE_BYTES) return "too_big";
@@ -385,6 +400,8 @@ export function emptyBlock(kind: BlockKind, id = newBlockId()): PageBlock {
       return { id, kind, label: "", note: "" };
     case "reviews":
       return { id, kind, heading: "Reviews" };
+    case "video":
+      return { id, kind, heading: "", video: null, caption: "" };
   }
 }
 

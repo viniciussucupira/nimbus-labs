@@ -191,6 +191,11 @@ export type Product = {
    */
   stamp: boolean;
   /**
+   * How many first pages of its PDF anyone may read before buying
+   * (lib/pdf-preview.ts); 0 is none. Off on every product written before it.
+   */
+  preview: number;
+  /**
    * Whether its own page is built from blocks (lib/sales-page.ts), kept in a
    * record of its own. False is the page it has always had.
    */
@@ -345,6 +350,7 @@ export function parseProduct(entry: unknown): Product | null {
     // Products written before keys and stamping existed have neither.
     keys: parseKeySetup(value.keys),
     stamp: value.stamp === true,
+    preview: typeof value.preview === "number" && Number.isInteger(value.preview) && value.preview > 0 && value.preview <= 10 ? value.preview : 0,
     // Products written before pages of blocks existed have the plain page.
     page: value.page === true,
     // Products written before bundles and drafts existed are neither.
@@ -387,6 +393,7 @@ export function listingOf(product: Listing): Listing {
     about: product.about,
     keys: product.keys,
     stamp: product.stamp,
+    preview: product.preview,
     page: product.page,
     bundle: product.bundle,
     hidden: product.hidden,

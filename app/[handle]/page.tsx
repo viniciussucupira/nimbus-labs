@@ -20,6 +20,7 @@ import { photoUrl } from "@/lib/photo-limits";
 import { canManage } from "@/lib/membership-manage";
 import { canRecover, sellsDeliverables } from "@/lib/buyer-orders";
 import { StoreTracking } from "@/components/store-tracking";
+import { ExitOfferSlot } from "@/components/exit-offer-slot";
 import { stockLeft } from "@/lib/stock";
 import { outOfKeys } from "@/lib/licence-keys";
 import { ProductCard } from "@/components/store-product";
@@ -432,6 +433,7 @@ export default async function StorePage({ params, searchParams }: Params) {
               </Link>
             ) : null}
             <StoreTracking store={store} countVisit />
+            <ExitOfferSlot store={store} />
           </div>
         </div>
       </main>

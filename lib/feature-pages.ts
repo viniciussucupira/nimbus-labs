@@ -581,6 +581,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "refresh", title: "Sent again from your studio", body: "A buyer who cannot find it? Send the purchase email again from your list of sales. It goes only to the address they paid with." },
           { icon: "key", title: "A license key with each sale", body: "One key per buyer, never given twice, on the thank-you page, in the email and in their list of purchases.", href: "/platform/license-keys" },
           { icon: "file", title: "The buyer's email on their PDF", body: "Switch on stamping and every page of the PDF they download carries their email, the date and their order.", href: "/platform/pdf-stamping" },
+          { icon: "file", title: "The first pages, free to read", body: "Let anyone read the first 1 to 10 pages of a PDF before buying. They get a separate PDF holding only those pages; the rest of the file never leaves your store." },
         ],
       },
       {
@@ -1466,7 +1467,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What a page is built from",
         items: [
           { icon: "type", title: "Hero", body: "A headline of up to 120 characters and a line under it, beside the product's picture or a video." },
-          { icon: "play", title: "Video that waits", body: "From YouTube, Vimeo or Loom. Nothing from them loads until the visitor presses play, and YouTube plays from its privacy-enhanced address." },
+          { icon: "play", title: "Video that waits", body: "One beside the headline and as many more as the page needs, each in a block of its own with a heading and a line under it. From YouTube, Vimeo or Loom. Nothing from them loads until the visitor presses play, and YouTube plays from its privacy-enhanced address." },
           { icon: "list", title: "Benefits and what is inside", body: "Up to 12 points with a check mark, and up to 20 numbered parts, each with a line about it." },
           { icon: "user", title: "Text, and about you", body: "A heading and paragraphs in your own words, and who made it, with your store photo." },
           { icon: "chat", title: "Questions", body: "Up to 15 questions and answers that open and close." },
