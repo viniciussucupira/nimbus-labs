@@ -53,7 +53,7 @@ const SECTIONS: Section[] = [
         q: "Can I put my own products on my store?",
         a: [
           "Yes. In your studio you write the name of the store, the line under it, and each thing you sell with what the buyer gets and the price. It is on your page the moment you save it, and you can reorder or remove any of it.",
-          "A store holds up to 2,000 products and up to 100 links. Products are priced in your store's currency — one of 15, US dollars unless you choose another — with one price each, up to three if you want the buyer to choose, or a price the buyer chooses, at or above your minimum. You can also put the file itself on each one, and open it again to check it is the right one. A long store shows 24 products a page, and your studio finds any product by name.",
+          "A store holds up to 2,000 products and up to 100 links. Products are priced in your store's currency — one of 15, US dollars unless you choose another — with one price each, up to 50 if you want the buyer to choose, or a price the buyer chooses, at or above your minimum. You can also put the file itself on each one, and open it again to check it is the right one. A long store shows 24 products a page, and your studio finds any product by name.",
           "Each product can have a picture, shown on its card in one of three ways, and a page of its own at your store address followed by /p/ and the product, with a long description of up to 5,000 characters. That page has its own title and preview card, so a link to one product shared anywhere unfolds into that product. You can also build it as a sales page, from blocks.",
           "Your page can take a card as soon as two things are true: Stripe has cleared your connected account, and your subscription is running — the trial counts. Until then the page says so plainly, to you and to anyone who opens it.",
         ],
@@ -175,6 +175,7 @@ const SECTIONS: Section[] = [
         a: [
           "Yes, and it is on the $29 plan. On Stan, discount codes are on the $99 Creator Pro plan, according to its help center, read on September 28, 2026.",
           "You pick the word, say whether it takes a percentage or an amount off, and cap how many times it can be used if you want to. The buyer types it at checkout and Stripe works out the new total.",
+          "Or share it as a link: add ?code= and the word to your store's address or any product's page, like marktmorgen.com/@yourname?code=SPRING. Whoever opens it has the code applied at checkout without typing it, for a week. If the code has ended, is used up or does not fit that order, the checkout opens with the box as usual.",
           "The code is a coupon on your own Stripe account, not a record of ours. So the count of how many times it has been used is Stripe's count, a code you switch off in your own dashboard is off here too, and if you ever leave, your codes leave with you.",
           "One limit, said plainly: a code comes off the payment it is typed into. On a membership that is the first charge, not every renewal forever.",
         ],
@@ -261,7 +262,7 @@ const SECTIONS: Section[] = [
         q: "What can I sell?",
         a: [
           "Digital files, courses, memberships that charge on a schedule, paid calls, one-on-one or in groups of up to 50, live sessions on dates you set, and bundles of 2 to 20 of your products at one price. What is too big to upload, or is not a file at all, is sold as a link to where it already lives. And anything can be given away for free, in exchange for an email address.",
-          "One product can carry up to three prices — one week and five weeks, personal and commercial — and each one hands over its own file or its own link. The buyer picks on the card, and what they are charged is read from what you saved rather than from the page they are looking at.",
+          "One product can carry up to 50 prices — one week and five weeks, personal and commercial — and each one hands over its own file or its own link. A course or private podcast can have several prices too, unless it is sold as a membership: every price opens it, and a file or link on one is what that one adds. Write a few lines on what each price includes and the buyer sees them side by side; mark one as recommended and it opens chosen. The buyer picks on the card, and what they are charged is read from what you saved rather than from the page they are looking at.",
           "Your page also holds links that are not for sale, with no price and no checkout on them: the channel, the podcast, the profile, the booking page you already pay someone else for.",
         ],
       },

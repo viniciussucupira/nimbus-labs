@@ -1,4 +1,5 @@
 import { paypalSalesConfigured } from "@/lib/paypal-sales";
+import { lowestPriceCents } from "@/lib/product-option";
 import { SaleEditor } from "@/components/sale-editor";
 import { TierEditor } from "@/components/tier-editor";
 import { canTier } from "@/lib/tier-rules";
@@ -927,6 +928,12 @@ export default async function StudioPage({
                   handle={store.handle}
                   currency={store.currency}
                   canHideBadge={canUse(store, "branding")}
+                  sample={(() => {
+                    // The first product a visitor sees, as the preview shows it (lib/catalog.ts, head).
+                    const first = store.catalog.head.find((p) => !p.hidden);
+                    return first ? { title: first.title, priceCents: lowestPriceCents(first.options, first.priceCents), free: isFree(first) } : null;
+                  })()}
+                  linkTitle={store.links[0]?.title ?? null}
                 />
               </div>
             ) : null}
@@ -1122,7 +1129,7 @@ export default async function StudioPage({
 
             {may("settings") ? (
               <>
-                <DiscountEditor selling={current ? canSell(current) : false} currency={store.currency} />
+                <DiscountEditor selling={current ? canSell(current) : false} currency={store.currency} address={`${SITE_URL}/@${store.handle}`} />
 
                 <SaleEditor
                   initial={store.sale}

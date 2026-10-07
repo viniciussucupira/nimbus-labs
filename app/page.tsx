@@ -70,7 +70,7 @@ const REASONS: {
   {
     icon: "tag",
     title: "Several prices for one product",
-    body: "One week for $27, five weeks for $39. Up to three options on any product, and each option delivers its own file.",
+    body: "One week for $27, five weeks for $39. Up to 50 options on any product, compared side by side, and each option delivers its own file.",
     example:
       "A week at one price, five weeks at another, the season at a third. The buyer picks; each one hands over its own file.",
     visual: "options",

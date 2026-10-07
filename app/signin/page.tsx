@@ -100,6 +100,11 @@ export default async function SignInPage({
   const params = await searchParams;
   const status = typeof params.status === "string" ? params.status : "";
   const notice = NOTICES[status];
+  // Somebody who pressed Log in has a store already, or believes so: the page
+  // greets them that way, rather than with "Start your store", which reads as
+  // if they had pressed the wrong thing. The form, the link and what it opens
+  // are the same either way.
+  const returning = params.to === "login";
   const confirmation = Object.hasOwn(TOASTS, status) ? TOASTS[status] : null;
 
   /*
@@ -159,10 +164,11 @@ export default async function SignInPage({
         </Link>
 
         <div className="mx-auto w-full max-w-md flex-1 pt-12 lg:flex-none lg:pt-0">
-          <h1 className="t-h1">Start your store</h1>
+          <h1 className="t-h1">{returning ? "Log in to your store" : "Start your store"}</h1>
           <p className="mt-4 text-ink-soft">
-            Type your email and we&apos;ll send you a link. It opens your store if you already have one, and starts one if you do
-            not. There is no password here, on purpose, and nothing to pay to begin.
+            {returning
+              ? "Type the email your store is under and we'll send you a link that opens it. No password here, on purpose. New here? The same link starts a store."
+              : "Type your email and we'll send you a link. It opens your store if you already have one, and starts one if you do not. There is no password here, on purpose, and nothing to pay to begin."}
           </p>
 
           {picked ? (

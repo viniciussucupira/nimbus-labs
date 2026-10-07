@@ -633,7 +633,8 @@ async function purchasesStep(job: ImportJob, store: Store, rows: string[][]): Pr
       problems.push({ line, column: "product", problem: "A call is booked for a time and cannot be given this way", value: rawProduct });
       continue;
     }
-    if (product.options.length > 0) {
+    // A course or podcast at several prices still opens one thing: itself.
+    if (product.options.length > 0 && !product.course && !product.podcast) {
       problems.push({ line, column: "product", problem: "It has several prices, so there is no one thing to give", value: rawProduct });
       continue;
     }

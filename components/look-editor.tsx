@@ -95,6 +95,8 @@ export function LookEditor({
   handle,
   currency = "usd",
   canHideBadge = false,
+  sample = null,
+  linkTitle = null,
 }: {
   look: StoreLook;
   photoId: string | null;
@@ -104,16 +106,24 @@ export function LookEditor({
   currency?: string;
   /** Whether this store's plan lets it take our name off the page. */
   canHideBadge?: boolean;
+  /**
+   * The store's own first product and first link, so the preview shows the
+   * creator's page rather than a stand-in. Null when there is none yet, and
+   * then the preview says it is an example.
+   */
+  sample?: { title: string; priceCents: number; free: boolean } | null;
+  linkTitle?: string | null;
 }) {
   const router = useRouter();
   const [theme, setTheme] = useState<ThemeId>(look.theme);
   const [accent, setAccent] = useState(look.accent);
   const [badge, setBadge] = useState(look.badge);
+  const [sold, setSold] = useState(look.sold);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const fileRef = useRef<HTMLInputElement>(null);
 
   const preset = ACCENTS.some((option) => option.hex === accent);
-  const changed = theme !== look.theme || accent !== look.accent || badge !== look.badge;
+  const changed = theme !== look.theme || accent !== look.accent || badge !== look.badge || sold !== look.sold;
   const colours = useMemo(() => lookColours({ theme, accent }), [theme, accent]);
   // Said out loud when the page will not paint exactly what was picked, so the
   // creator is never left wondering why their button is darker than their logo.
@@ -132,7 +142,7 @@ export function LookEditor({
     if (status.kind === "working") return;
     setStatus({ kind: "working", what: "look" });
     try {
-      const data = await post("/api/store/look", { theme, accent, badge });
+      const data = await post("/api/store/look", { theme, accent, badge, sold });
       if (data.ok) {
         setStatus({ kind: "idle" });
         toast("Look saved.");
@@ -331,9 +341,11 @@ export function LookEditor({
               </label>
             </div>
             <p className="field-hint mt-2">
-              {adjusted
-                ? "Your color is darkened or lightened a little on buttons so that the words on them can be read. The preview shows exactly what your page will show."
-                : "The preview shows exactly what your page will show."}
+              {`${adjusted ? "Your color is darkened or lightened a little on buttons so that the words on them can be read. " : ""}${
+                sample
+                  ? "The preview shows your page's theme and color with your first product and link."
+                  : "The preview shows your page's theme and color, with an example product until you add one."
+              }`}
             </p>
           </fieldset>
 
@@ -369,6 +381,31 @@ export function LookEditor({
             </label>
           </fieldset>
 
+          {/*
+            How many times each product was bought, on its card and its page
+            (lib/sold-count.ts): read from the creator's own Stripe account,
+            never typed, and only said from ten sales up.
+          */}
+          <fieldset className="mt-2">
+            <legend className="field-label">How many times each product was bought</legend>
+            <label className="mt-2 flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={sold}
+                onChange={(event) => setSold(event.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 accent-[var(--violet)]"
+              />
+              <span>
+                <span className="block text-[0.9375rem] font-medium text-ink">
+                  Show &ldquo;Bought 120 times&rdquo; on products that have sold at least ten times
+                </span>
+                <span className="field-hint mt-1 block">
+                  Counted from the sales on your own Stripe account, read again every few hours. Nothing can be typed in or rounded up, and a product with fewer than ten sales shows nothing.
+                </span>
+              </span>
+            </label>
+          </fieldset>
+
           {status.kind === "error" ? (
             <p className="notice notice-error" role="alert">{status.message}</p>
           ) : null}
@@ -389,6 +426,7 @@ export function LookEditor({
                   setTheme(look.theme);
                   setAccent(look.accent);
                   setBadge(look.badge);
+                  setSold(look.sold);
                   setStatus({ kind: "idle" });
                 }}
                 className="btn btn-ghost"
@@ -426,12 +464,16 @@ export function LookEditor({
             <div className="space-y-2.5 px-3 pb-4 pt-4">
               <div className="st-card p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-semibold">Your product</span>
-                  <span className="st-price text-xs">{formatMoney(2700, currency)}</span>
+                  <span className="min-w-0 truncate text-sm font-semibold">{sample ? sample.title : "Your product"}</span>
+                  <span className="st-price text-xs">{sample?.free ? "Free" : formatMoney(sample ? sample.priceCents : 2700, currency)}</span>
                 </div>
-                <span className="btn st-btn btn-block btn-sm mt-3 text-sm">{`Buy for ${formatMoney(2700, currency)}`}</span>
+                <span className="btn st-btn btn-block btn-sm mt-3 text-sm">
+                  {sample?.free ? "Get it free" : `Buy for ${formatMoney(sample ? sample.priceCents : 2700, currency)}`}
+                </span>
               </div>
-              <div className="st-card px-3 py-2.5 text-center text-sm font-semibold">A link of yours</div>
+              {linkTitle || !sample ? (
+                <div className="st-card truncate px-3 py-2.5 text-center text-sm font-semibold">{linkTitle ?? "A link of yours"}</div>
+              ) : null}
             </div>
           </div>
         </div>

@@ -58,7 +58,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "gift", title: "Buy it as a gift", body: "Under the buy button on a product's page, a buyer can give it instead: the recipient's email, their own name and a message. They pay on Stripe's page; the recipient gets one email and opens it on their own address — its download, its course, the community it opens — and a full refund takes it back. For products bought once that hand over a file, a link, a course or a bundle." },
           { icon: "clock", title: "Coming soon, with a waitlist", body: "Mark a paid product coming soon and its card and page take email addresses instead of payments, each confirmed from the inbox. When you put it on sale, everyone who confirmed gets one email with its link and price, and a note from you if you write one. The box to hear more from you starts empty." },
           { icon: "eye", title: "A page for each product", body: "At /@you/p/<product>: the picture, a long description of up to 5,000 characters, and a title and preview card of its own for search engines and shared links. Or a sales page you build from blocks.", href: "/platform/sales-pages" },
-          { icon: "sparkle", title: "A description written with AI", body: "Type a few words about a product and a draft of its short and long description is written into the boxes, in American English, from only what you typed: no invented reviews, numbers, results or deadlines. Nothing is saved until you press Save. 20 drafts a month on the free trial, 100 on Creator, 400 on Pro, shared with outlines and emails." },
+          { icon: "sparkle", title: "A description written with AI", body: "Type a few words about a product and a draft of its short and long description is written into the boxes, in American English, from only what you typed: no invented reviews, numbers, results or deadlines. Nothing is saved until you press Save. 20 drafts a month on the free trial, 100 on Creator, 400 on Pro, shared with sales pages, outlines and emails." },
           { icon: "star", title: "Stars from real buyers", body: "Reviews only people who paid can write, with the average on the product's card and page.", href: "/platform/reviews" },
           { icon: "gift", title: "Free things, for an email", body: "Set a price of zero and it is handed out for a confirmed email address that joins your list." },
           { icon: "link", title: "Links with no price", body: "Your channel, your podcast, your booking page — with the site each one leads to printed under it." },
@@ -116,16 +116,16 @@ export const FEATURE_PAGES: TopicPage[] = [
     visual: "options",
     plan: "creator",
     group: "sell",
-    menu: { label: "Price options", description: "Up to three prices on one product. The buyer picks.", icon: "tag" },
+    menu: { label: "Price options", description: "Up to 50 prices on one product, compared side by side. The buyer picks.", icon: "tag" },
     related: ["checkout", "instant-delivery", "store-page", "courses"],
     blocks: [
       {
         kind: "how",
         title: "How it works",
         items: [
-          { title: "Add up to three options", body: "A name the buyer reads — “1 week,” “Commercial license” — and a price for each." },
-          { title: "Give each option its own delivery", body: "Its own file, up to 5 GB, or its own link. The buyer of the small size never receives the big one." },
-          { title: "The buyer picks on the card", body: "One product, one card, no extra page. What is charged is read from what you saved, never from the page." },
+          { title: "Add up to 50 options", body: "A name the buyer reads — “1 week,” “Commercial license” — a price for each, and, if you like, a few lines on what each one includes." },
+          { title: "Give each option its own delivery", body: "Its own file, up to 5 GB, or its own link. The buyer of the small size never receives the big one. On a course, every option opens the course, and a file or link on one is what that one adds." },
+          { title: "The buyer compares and picks", body: "With what each includes written down, the options stand side by side, and the one you recommend opens chosen. More than six become a list to pick from. What is charged is read from what you saved, never from the page." },
         ],
       },
       {
@@ -154,7 +154,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do yet",
         items: [
-          "Three options per product at most.",
+          "50 options per product at most, and 4,000 across a store.",
+          "A course or podcast sold as a membership has one price: what a member pays each time is what it costs.",
           "Payment plans are for products with one price, so a product with options is paid in full up front, or sold as a membership.",
           "A product with options has fixed prices: pay-what-you-want pricing is for products with one price.",
         ],
@@ -190,7 +191,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "how",
         title: "From a product to a course",
         items: [
-          { title: "Turn a product into a course", body: "Any paid product with no file, link or price options of its own can become a course from your studio. Add modules, then lessons inside them." },
+          { title: "Turn a product into a course", body: "Any paid product with no file, link or price options of its own can become a course from your studio. Add modules, then lessons inside them, and then, if you like, several prices: the course alone, or with a live Q&A." },
           { title: "Fill the lessons", body: "A video of up to 5 GB, your text, up to five downloads and a link on each. The video uploads in parts, so a dropped connection costs one part. Mark any lesson as a free preview." },
           { title: "Sell it your way", body: "Paid once, in a payment plan, in a bundle with your other products, or as a membership that stays open while the member pays." },
         ],
@@ -429,7 +430,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         intro: "Stan's pricing page, read on September 20, 2026, puts discount codes, order bumps, upsells and payment plans on its $99 plan.",
         items: [
           { icon: "clock", title: "A sale with a real end", body: "Pick a percentage and when it starts and ends, for every product or only some. While it runs the old price is crossed out on your store and on each product's page, with when it ends, and Stripe takes it off with no code to type. At the end it stops by itself, and the discount stops working at Stripe too." },
-          { icon: "percent", title: "Discount codes", body: "A word you choose, a percentage or an amount off, and a cap on uses if you want one. Up to twenty codes, kept as coupons on your own Stripe." },
+          { icon: "percent", title: "Discount codes", body: "A word you choose, a percentage or an amount off, and a cap on uses if you want one. Up to twenty codes, kept as coupons on your own Stripe. Shared as a link (?code=SPRING), a code applies itself at checkout." },
           { icon: "plus", title: "Add it at checkout", body: "A box above the buy button offers another of your products at a price of your own. Never pre-checked for the buyer." },
           { icon: "bolt", title: "One click after paying", body: "The thank-you page offers one more product, or up to five in a row as a funnel, charged to the card just used. Only in that browser, for an hour, and only after a card, Apple Pay or Google Pay payment.", href: "/platform/funnels" },
           { icon: "calendar", title: "Payment plans", body: "Two to twelve weekly or monthly payments. The buyer gets what they bought after the first payment, and the plan ends by itself after the last." },
@@ -1456,7 +1457,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "From a product to a page",
         items: [
           { title: "Open the product's page", body: "In your studio, under Sales pages. A product without blocks keeps the plain page it always had." },
-          { title: "Stack the blocks", body: "Up to 30, in the order you want, with a preview beside them before anything is saved." },
+          { title: "Stack the blocks, or have AI draft them", body: "Up to 30, in the order you want, with a preview beside them before anything is saved. Or press Write the whole page with AI: a full draft — headline, what the buyer gets, what is inside, questions and buttons — from the product's own description, for you to read and change." },
           { title: "Share one link", body: "Your store address, /p/ and the product. The buy button on the page opens the same checkout the store page does." },
         ],
       },
@@ -1472,6 +1473,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "shield", title: "Your guarantee", body: "Your refund promise, in your own words." },
           { icon: "bolt", title: "Buttons", body: "Anywhere on the page, each leading to the checkout, or to the sign-up form on a free product." },
           { icon: "star", title: "Reviews", body: "Where your buyers' verified reviews sit on the page.", href: "/platform/reviews" },
+          { icon: "sparkle", title: "A whole page drafted with AI", body: "From the product's name, price and description, plus anything you add. It never writes your story or a guarantee you did not give, never invents reviews, numbers, results or deadlines, and never puts a price on a button. Nothing is saved until you press Save. It counts as one of your monthly drafts." },
           { icon: "globe", title: "Search and sharing", body: "A title of up to 70 characters and a description of up to 160 for search engines, and a share picture drawn for you from the product's picture, name, price and stars." },
         ],
       },

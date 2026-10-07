@@ -387,3 +387,46 @@ export function emptyBlock(kind: BlockKind, id = newBlockId()): PageBlock {
       return { id, kind, heading: "Reviews" };
   }
 }
+
+/**
+ * What the writing help drafts for a page (lib/ai.ts, writePage), in the
+ * shape the browser receives it. Kept here, with the blocks, so the editor
+ * can lay it out without importing anything that only the server loads.
+ */
+export type DraftCopy = {
+  headline: string;
+  sub: string;
+  story: { heading: string; body: string } | null;
+  benefits: string[];
+  inside: { title: string; detail: string }[];
+  faq: { q: string; a: string }[];
+  guarantee: string;
+  cta: string;
+  seoTitle: string;
+  seoDescription: string;
+};
+
+/**
+ * A draft laid out as a page, in the order that sells: what it is, what the
+ * buyer gets, why it exists, what is inside, a first button, the questions a
+ * buyer still has, the creator's own refund promise when they gave one, a
+ * last button, and the place for real buyers' reviews.
+ *
+ * Read back through parsePage, so a draft is held to every rule a page typed
+ * by hand is. The hero keeps the product's picture when it has one: a page
+ * drafted in words should not lose the picture the creator already chose.
+ */
+export function blocksFromDraft(draft: DraftCopy, picture: boolean): SalesPage {
+  const blocks: Record<string, unknown>[] = [
+    { id: newBlockId(), kind: "hero", headline: draft.headline, sub: draft.sub, media: picture ? "picture" : "none", video: null },
+  ];
+  if (draft.benefits.length) blocks.push({ id: newBlockId(), kind: "benefits", heading: "What you get", items: draft.benefits });
+  if (draft.story) blocks.push({ id: newBlockId(), kind: "text", heading: draft.story.heading, body: draft.story.body });
+  if (draft.inside.length) blocks.push({ id: newBlockId(), kind: "inside", heading: "What's inside", items: draft.inside });
+  blocks.push({ id: newBlockId(), kind: "cta", label: draft.cta, note: "" });
+  if (draft.faq.length) blocks.push({ id: newBlockId(), kind: "faq", heading: "Questions", items: draft.faq });
+  if (draft.guarantee) blocks.push({ id: newBlockId(), kind: "guarantee", heading: "Guarantee", body: draft.guarantee });
+  if (draft.faq.length || draft.inside.length) blocks.push({ id: newBlockId(), kind: "cta", label: draft.cta, note: "" });
+  blocks.push({ id: newBlockId(), kind: "reviews", heading: "Reviews" });
+  return parsePage({ blocks, seoTitle: draft.seoTitle, seoDescription: draft.seoDescription, next: null });
+}

@@ -42,6 +42,8 @@ import { type ProductFile } from "@/lib/product-file";
 import {
   MAX_OPTIONS,
   MAX_OPTION_LABEL_LENGTH,
+  MAX_STORE_OPTIONS,
+  parseDetails,
   type ProductOption,
 } from "@/lib/product-option";
 import { type Recurring } from "@/lib/product-recurring";
@@ -2641,7 +2643,7 @@ export type OptionResult =
   | { ok: true; store: Store; removed: ProductFile[] }
   | {
       ok: false;
-      reason: "none" | "label" | "price" | "free" | "too_many" | "unknown" | "call" | "course" | "pwyw" | "bundle";
+      reason: "none" | "label" | "price" | "free" | "too_many" | "store_too_many" | "unknown" | "call" | "course" | "pwyw" | "bundle";
       limit?: number;
     };
 
@@ -2665,6 +2667,7 @@ export async function addOption(
   productId: string,
   rawLabel: string,
   rawPrice: string,
+  more: { details?: unknown; best?: boolean } = {},
 ): Promise<OptionResult> {
   const result = await withStore<OptionResult>(email, async (store, save) => {
     const fields = readOption(rawLabel, rawPrice, store.currency);
@@ -2674,7 +2677,11 @@ export async function addOption(
     // Several prices on something given away would put a price on it.
     if (isFree(product)) return { ok: false, reason: "free" };
     if (product.call) return { ok: false, reason: "call" };
-    if (product.course || product.podcast) return { ok: false, reason: "course" };
+    // A course or a private podcast may be sold at several prices (7 October
+    // 2026): each option opens the same lessons or feed, and a file or link
+    // on one is what that one adds. A membership course stays at one price,
+    // because what a member pays each month is what the course is.
+    if ((product.course || product.podcast) && product.recurring) return { ok: false, reason: "course" };
     // A bundle has one price for everything in it.
     if (isBundle(product)) return { ok: false, reason: "bundle" };
     // The buyer would be choosing a price twice.
@@ -2682,14 +2689,24 @@ export async function addOption(
     if (product.options.length >= MAX_OPTIONS) {
       return { ok: false, reason: "too_many", limit: MAX_OPTIONS };
     }
+    // Counted across the store, because that is what the index weighs
+    // (lib/product-option.ts, MAX_STORE_OPTIONS).
+    const held = store.catalog.items.reduce((sum, item) => sum + item.options.length, 0);
+    if (held >= MAX_STORE_OPTIONS) {
+      return { ok: false, reason: "store_too_many", limit: MAX_STORE_OPTIONS };
+    }
     const option: ProductOption = {
       id: freshId(store),
       label: fields.label,
       priceCents: fields.priceCents,
       file: null,
       link: null,
+      details: parseDetails(more.details),
+      best: more.best === true,
     };
-    const next = await save(store, { put: [{ ...product, options: [...product.options, option] }] });
+    // One pick per product: a new pick un-picks the one before it.
+    const kept = option.best ? product.options.map((entry) => (entry.best ? { ...entry, best: false } : entry)) : product.options;
+    const next = await save(store, { put: [{ ...product, options: [...kept, option] }] });
     return { ok: true, store: next, removed: [] };
   });
   return result ?? { ok: false, reason: "none" };
@@ -2715,19 +2732,39 @@ async function onOption(
   return result ?? { ok: false, reason: "none" };
 }
 
-/** Changes an option's label or price, keeping its place and its delivery. */
+/**
+ * Changes an option's label, price, what it includes and whether it is the
+ * creator's pick, keeping its place and its delivery.
+ *
+ * `details` and `best` are left as they are when not sent, so an older
+ * screen that only knows label and price cannot wipe them by saving.
+ */
 export async function editOption(
   email: string,
   id: string,
   rawLabel: string,
   rawPrice: string,
+  more: { details?: unknown; best?: boolean } = {},
 ): Promise<OptionResult> {
   return onOption(email, id, (product, at, store) => {
     // Read in the store's own currency, as the store is under the lock.
     const fields = readOption(rawLabel, rawPrice, store.currency);
     if (typeof fields === "string") return { ok: false, reason: fields };
-    const options = [...product.options];
-    options[at] = { ...options[at], label: fields.label, priceCents: fields.priceCents };
+    const best = more.best ?? product.options[at].best;
+    const options = product.options.map((option, index) =>
+      index === at
+        ? {
+            ...option,
+            label: fields.label,
+            priceCents: fields.priceCents,
+            details: more.details === undefined ? option.details : parseDetails(more.details),
+            best,
+          }
+        : // One pick per product: choosing this one un-picks the other.
+          best && option.best
+          ? { ...option, best: false }
+          : option,
+    );
     return { product: { ...product, options }, removed: [] };
   });
 }

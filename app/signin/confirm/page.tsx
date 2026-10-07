@@ -1,3 +1,4 @@
+import { PendingSubmit } from "@/components/pending-submit";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import type { Metadata } from "next";
@@ -45,12 +46,7 @@ export default async function ConfirmPage({
         <div className="card mt-8 p-6 sm:p-8">
           <form method="post" action="/api/auth/callback">
             <input type="hidden" name="token" value={token} />
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg btn-block"
-            >
-              Log me in
-            </button>
+            <PendingSubmit label="Log me in" pending="Logging you in…" className="btn btn-primary btn-lg btn-block" />
           </form>
           <p className="mt-4 text-sm text-ink-soft">
             We ask for this tap because mail filters open the links in a message

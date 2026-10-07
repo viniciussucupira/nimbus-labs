@@ -70,7 +70,7 @@ const whenLabel = (seconds: number) =>
  * not ours: asking on the server would make the whole studio wait on a call to
  * Stripe just to draw a page that is mostly about something else.
  */
-export function DiscountEditor({ selling, currency = "usd" }: { selling: boolean; currency?: Currency }) {
+export function DiscountEditor({ selling, currency = "usd", address = "" }: { selling: boolean; currency?: Currency; address?: string }) {
   const [codes, setCodes] = useState<DiscountCode[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -171,6 +171,20 @@ export function DiscountEditor({ selling, currency = "usd" }: { selling: boolean
                       : ""}
                     .
                   </p>
+                  {address ? (
+                    /*
+                      The code as a link (lib/code-link.ts): whoever opens it
+                      has the code applied at checkout without typing it, on
+                      the store and on any product's page, for a week.
+                    */
+                    <p className="mt-2 text-sm text-ink-soft">
+                      Share it as a link and it applies itself at checkout:{" "}
+                      <span className="break-all font-mono text-ink">{`${address}?code=${entry.code}`}</span>
+                      {". Add "}
+                      <span className="font-mono text-ink">{`?code=${entry.code}`}</span>
+                      {" to any of your product links, too."}
+                    </p>
+                  ) : null}
                   <button
                     type="button"
                     aria-busy={busy} disabled={busy}

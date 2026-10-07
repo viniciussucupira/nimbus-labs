@@ -63,9 +63,19 @@ export const ACCENTS = [
  * that leaves Pro gets the badge back the same day rather than keeping an
  * entitlement it no longer pays for.
  */
-export type StoreLook = { theme: ThemeId; accent: string; badge: boolean };
+export type StoreLook = {
+  theme: ThemeId;
+  accent: string;
+  badge: boolean;
+  /**
+   * Whether each product's card and page say how many times it was bought
+   * (lib/sold-count.ts). Off unless the creator turns it on: the number is
+   * real, read from their own Stripe account, and theirs to show or not.
+   */
+  sold: boolean;
+};
 
-export const DEFAULT_LOOK: StoreLook = { theme: "light", accent: "#5a36ee", badge: true };
+export const DEFAULT_LOOK: StoreLook = { theme: "light", accent: "#5a36ee", badge: true, sold: false };
 
 /** Exactly six hex digits after a hash, lower case. Nothing else is a colour here. */
 export const HEX_PATTERN = /^#[0-9a-f]{6}$/;
@@ -95,6 +105,8 @@ export function parseLook(raw: unknown): StoreLook {
     // Anything that is not an explicit false leaves the badge on, so a store
     // saved before this field existed keeps showing it.
     badge: value.badge !== false,
+    // Only an explicit true: every store saved before this existed keeps it off.
+    sold: value.sold === true,
   };
 }
 

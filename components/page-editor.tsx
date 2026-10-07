@@ -4,11 +4,14 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons";
 import { toast } from "@/components/toast";
+import { AiAssist } from "@/components/ai-assist";
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { type StoreLook, lookStyle } from "@/lib/store-look";
 import type { Review, Summary } from "@/lib/review-summary";
 import {
+  blocksFromDraft,
+  type DraftCopy,
   BLOCK_KINDS,
   type BlockKind,
   MAX_ANSWER,
@@ -600,6 +603,30 @@ export function PageEditor({
               </button>
             </div>
           ) : null}
+
+          {/*
+            The whole page drafted at once (lib/ai.ts, writePage), from what the
+            product already says and anything written in the box. It replaces
+            the blocks in this editor only: nothing is saved until Save, and
+            leaving without saving keeps the page as it was.
+          */}
+          <div className="mt-6">
+            <AiAssist<DraftCopy>
+              title="Write the whole page with AI"
+              hint={`A full draft — headline, what the buyer gets, what is inside, questions and buttons — from ${product.title}'s name, price and description. Add anything else it should know below, or leave the box empty. It replaces the blocks here; nothing is saved until you press Save.`}
+              placeholder="Who it is for, what makes it different, what buyers ask you most. Your refund promise, if you have one."
+              allowEmpty
+              payload={() => ({ kind: "page", product: product.id })}
+              onResult={(draft) => {
+                const page = blocksFromDraft(draft, Boolean(product.picture));
+                setDrafts(toDrafts(page));
+                if (page.seoTitle) setSeoTitle(page.seoTitle);
+                if (page.seoDescription) setSeoDescription(page.seoDescription);
+                setOpen(page.blocks[0]?.id ?? null);
+              }}
+              done="Drafted. Read each block, change what is not yours, then press Save."
+            />
+          </div>
 
           <ol className="mt-6 space-y-3">
             {drafts.map((draft, index) => {

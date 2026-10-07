@@ -21,6 +21,7 @@ import {
   optionDelivers,
 } from "@/lib/product-option";
 import { isPaidUp } from "@/lib/billing";
+import { livePromotionId } from "@/lib/discount";
 import { StripeError, checkoutClosesAt, onAccount, platformKey } from "@/lib/stripe-account";
 import { activeBump, activePlan, planWords } from "@/lib/product-extras";
 import { type CameFrom, hasSource } from "@/lib/came-from";
@@ -84,7 +85,10 @@ export function canSell(store: Store): boolean {
  * is where it can be fixed; the buyer never meets it.
  */
 export function sellableOptions(product: Listing): ProductOption[] {
-  return product.options.filter(optionDelivers);
+  // A course or a private podcast is its own delivery: every option opens it,
+  // and a file or link on one is something extra that option includes.
+  const opens = Boolean(product.course || product.podcast);
+  return product.options.filter((option) => optionDelivers(option, opens));
 }
 
 /**
@@ -109,10 +113,11 @@ export function canSellProduct(store: Store, product: Listing): boolean {
   if (product.bundle) return product.options.length === 0 && product.recurring === null && product.bundle.length >= MIN_BUNDLE_ITEMS;
   // A call delivers a time, not a file: it is ready once it has hours set.
   if (product.call) return product.options.length === 0 && product.recurring === null;
-  // A course delivers its lessons: it is ready once it has one.
-  if (product.course) return product.options.length === 0 && product.course.lessons > 0;
+  // A course delivers its lessons: it is ready once it has one, at one price
+  // or at several (each option opens the same course).
+  if (product.course) return product.course.lessons > 0;
   // A private podcast delivers its episodes: it is ready once it has one.
-  if (product.podcast) return product.options.length === 0 && product.podcast.episodes > 0;
+  if (product.podcast) return product.podcast.episodes > 0;
   if (product.options.length > 0) return sellableOptions(product).length > 0;
   return product.file !== null || product.link !== null;
 }
@@ -182,6 +187,12 @@ export async function createCheckout(
      * added at checkout and no offer after it, and handed to the recipient.
      */
     gift?: string;
+    /**
+     * A discount code that came in a link (lib/code-link.ts). Applied only as
+     * the creator's own live promotion code, by Stripe; otherwise the box to
+     * type one is shown as it always is.
+     */
+    code?: string;
   } = {},
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
@@ -311,7 +322,15 @@ export async function createCheckout(
     body.set("discounts[0][coupon]", store.sale.coupon);
     body.set("metadata[sale]", String(saleOffNow));
   } else if (store.hasDiscounts && !pwyw) {
-    body.set("allow_promotion_codes", "true");
+    // A code from a link goes on by itself; Stripe takes either an applied
+    // discount or the box, never both, so it is one or the other.
+    const promotion = extras.code ? await livePromotionId(store.stripeAccountId, extras.code) : null;
+    if (promotion) {
+      body.set("discounts[0][promotion_code]", promotion);
+      body.set("metadata[code]", extras.code as string);
+    } else {
+      body.set("allow_promotion_codes", "true");
+    }
   }
   if (extras.email) body.set("customer_email", extras.email);
 
@@ -461,6 +480,16 @@ export async function createCheckout(
         console.error("Stripe refused the demo checkout's display name; opening it without", error);
         body.delete(DISPLAY_NAME);
         named = false;
+        continue;
+      }
+      if (body.has("discounts[0][promotion_code]") && error instanceof StripeError && error.status === 400 && /promotion|coupon|discount/i.test(error.message)) {
+        // The code from the link is real but not for this sale — a minimum,
+        // a first order only, another product. The buyer is not turned away
+        // for it: the checkout opens with the box, as it would have.
+        console.error("a code from a link did not fit this checkout; opened with the box instead", error);
+        body.delete("discounts[0][promotion_code]");
+        body.delete("metadata[code]");
+        body.set("allow_promotion_codes", "true");
         continue;
       }
       if (asking && refusedRecovery(error)) {

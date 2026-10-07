@@ -9,8 +9,9 @@
  * $399 plans), Teachable (Course Starter, drafts the sales page), Thinkific
  * (outline, landing page and email copy) and Beacons all write for a
  * creator. Stan's Stanley answers questions about Stan. Here it is on the
- * $29 plan, for the three things a creator most often stares at a blank box
- * over: a product's description, a course's outline, and an email.
+ * $29 plan, for the things a creator most often stares at a blank box over:
+ * a product's description, its whole sales page (added 7 October 2026), a
+ * course's outline, and an email.
  *
  * What it never does, because a page written for somebody else to sell with
  * has to be something they can stand behind:
@@ -22,7 +23,7 @@
  *     and changes them, and nothing is saved until they press Save.
  */
 
-export type AiKind = "product" | "outline" | "email";
+export type AiKind = "product" | "page" | "outline" | "email";
 
 /** Writing jobs a store may ask for in a calendar month, by where it stands with its plan. */
 export const AI_MONTHLY = { trial: 20, creator: 100, pro: 400, scale: 1_000 } as const;

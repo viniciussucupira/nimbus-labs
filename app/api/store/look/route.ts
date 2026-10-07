@@ -4,7 +4,7 @@ import { isTheme, normaliseHex } from "@/lib/store-look";
 import { canUse } from "@/lib/plan";
 import { guardStoreWrite } from "@/lib/store-request";
 
-/** Changes the theme, the colour and the footer badge of the creator's public page. */
+/** Changes the theme, the colour, the footer badge and the bought count of the creator's public page. */
 export async function POST(request: NextRequest) {
   const guarded = await guardStoreWrite(request, "page");
   if (!guarded.ok) return guarded.response;
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await updateLook(guarded.ref, { theme, accent, badge });
+    const result = await updateLook(guarded.ref, { theme, accent, badge, sold: guarded.body.sold === true });
     if (!result.ok) {
       return Response.json({ ok: false, error: result.reason }, { status: 400 });
     }

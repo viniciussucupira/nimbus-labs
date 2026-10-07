@@ -330,7 +330,7 @@ export function SiteNav() {
 
           <div className="flex items-center gap-1 sm:gap-2">
             <Link
-              href="/signin"
+              href="/signin?to=login"
               className="hidden h-10 items-center rounded-[10px] px-3.5 text-[0.9375rem] font-medium text-ink-soft transition-colors hover:bg-sand hover:text-ink sm:flex"
             >
               Log in
@@ -506,7 +506,7 @@ export function SiteNav() {
           <Link href="/signin" onClick={closeAll} className="btn btn-primary btn-lg btn-block">
             Start your store
           </Link>
-          <Link href="/signin" onClick={closeAll} className="btn btn-ghost btn-block">
+          <Link href="/signin?to=login" onClick={closeAll} className="btn btn-ghost btn-block">
             Log in
           </Link>
         </div>

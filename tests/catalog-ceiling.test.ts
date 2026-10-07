@@ -14,15 +14,17 @@
  * 44px tap target that renders at 18, or a heading class whose size never
  * applied. It was worth measuring rather than assuming.
  *
- * It measures fine, with room: the worst entry a product can produce is 115
- * bytes, so a store at the published ceiling spends about 230 KB of the record
- * on its index and keeps some 400 KB for everything else. The layout holds
+ * It measures fine, with room. A product's own entry is at most 33 bytes, and
+ * price options are bounded across the whole store (MAX_STORE_OPTIONS), not
+ * per product, so the worst index is 2,000 entries plus 4,000 option ids:
+ * about 175 KB, less than the 230 KB it was when each product could carry
+ * three and nothing bounded the store as a whole. The layout holds
  * around 5,400 products at worst and 37,000 at the size a real product's entry
  * actually is.
  *
  * The point of this file is that nobody has to take any of that on trust. Each
  * bound is read from the code that enforces it, so raising either number — or
- * widening an id, or allowing a fourth price option — without redoing the
+ * widening an id, or raising how many price options a store holds — without redoing the
  * arithmetic fails the build rather than quietly shrinking what a creator can
  * really have.
  */
@@ -32,7 +34,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { HEAD_BYTES, MAX_PRODUCTS } from "@/lib/catalog";
 import { MAX_STORE_BYTES } from "@/lib/store";
-import { MAX_OPTIONS, OPTION_ID } from "@/lib/product-option";
+import { MAX_STORE_OPTIONS, OPTION_ID } from "@/lib/product-option";
 
 /** The longest string the pattern guarding option ids will let through. */
 function longestAllowedId(): number {
@@ -48,17 +50,30 @@ function longestAllowedId(): number {
  *
  * Every part of it has to be bounded for the ceiling below to mean anything,
  * and each bound is read from the code that enforces it rather than assumed:
- * the option ids from OPTION_ID, how many of them from MAX_OPTIONS, and the
- * kind bits from the widest value those flags can make. The product's own id
- * is ten characters out of a uuid (lib/store.ts, freshId); it is given the
- * option bound here too, because that is the bound an id read back out of an
- * old record is checked against.
+ * the ids from OPTION_ID and the kind bits from the widest value those flags
+ * can make. The product's own id is ten characters out of a uuid (lib/store.ts,
+ * freshId); it is given the option bound here too, because that is the bound
+ * an id read back out of an old record is checked against.
+ *
+ * Price options are counted apart (optionBytes): since a product may carry
+ * fifty, what bounds the index is how many a whole store may hold
+ * (MAX_STORE_OPTIONS), not how many sit on one product.
  */
 function worstEntryBytes(): number {
   const id = "a".repeat(longestAllowedId());
-  const entry = JSON.stringify([id, 4095, ...Array.from({ length: MAX_OPTIONS }, () => id)]);
+  const entry = JSON.stringify([id, 4095]);
   // Plus the comma that separates it from the next entry in the array.
   return new TextEncoder().encode(entry).length + 1;
+}
+
+/** What one price option adds to its product's entry: its id, quoted, and a comma. */
+function optionBytes(): number {
+  return longestAllowedId() + 3;
+}
+
+/** The heaviest the whole index can be: every product, and every option the store may hold. */
+function worstIndexBytes(): number {
+  return MAX_PRODUCTS * worstEntryBytes() + MAX_STORE_OPTIONS * optionBytes();
 }
 
 /** What a real product costs: a ten-character id, no price options. */
@@ -81,13 +96,13 @@ test("an index entry is bounded at all, which is what makes a ceiling possible",
   assert.ok(longestAllowedId() > 10, "the bound has to leave room for the ids the code actually makes");
   assert.ok(
     worstEntryBytes() <= 200,
-    `one product costs up to ${worstEntryBytes()} bytes of the store record. If an id bound, the kind ` +
-      "bits or the number of price options grew, every ceiling below was computed against the old number.",
+    `one product costs up to ${worstEntryBytes()} bytes of the store record. If an id bound or the kind ` +
+      "bits grew, every ceiling below was computed against the old number.",
   );
 });
 
 test("the published ceiling fits in the record, with the head and everything else", () => {
-  const index = MAX_PRODUCTS * worstEntryBytes();
+  const index = worstIndexBytes();
   const total = index + HEAD_BYTES + EVERYTHING_ELSE_BYTES;
   assert.ok(
     total < MAX_STORE_BYTES,
@@ -101,7 +116,7 @@ test("the published ceiling fits in the record, with the head and everything els
 test("there is real headroom, not a number that only just fits", () => {
   // A ceiling that fits with nothing to spare is one that breaks the first
   // time anything else about a store gets bigger.
-  const index = MAX_PRODUCTS * worstEntryBytes();
+  const index = worstIndexBytes();
   const spare = MAX_STORE_BYTES - index - HEAD_BYTES - EVERYTHING_ELSE_BYTES;
   assert.ok(
     spare > MAX_STORE_BYTES / 4,
@@ -115,7 +130,7 @@ test("what the record could actually hold, written down so nobody has to guess a
   // real ceiling of this layout is a thing you can read rather than rederive.
   // The honest answer to "could it be a hundred thousand?" is this number.
   const room = MAX_STORE_BYTES - HEAD_BYTES - EVERYTHING_ELSE_BYTES;
-  const worstCase = Math.floor(room / worstEntryBytes());
+  const worstCase = Math.floor((room - MAX_STORE_OPTIONS * optionBytes()) / worstEntryBytes());
   const typical = Math.floor(room / typicalEntryBytes());
   assert.ok(
     worstCase > MAX_PRODUCTS,
@@ -137,5 +152,6 @@ test("the ceiling is enforced where a product is added, not only published", () 
   // A number on a page that nothing checks is not a limit, it is a hope.
   const src = readFileSync(join(process.cwd(), "lib/store.ts"), "utf8");
   assert.match(src, /MAX_PRODUCTS/, "lib/store.ts has to know the ceiling to refuse past it");
+  assert.match(src, /MAX_STORE_OPTIONS/, "and the store-wide count of price options, which is what bounds their share of the index");
   assert.match(src, /StoreFullError/, "and the record's own weight has to be able to refuse a write too");
 });

@@ -96,7 +96,7 @@ part("A checkout box, and why it is not being shown");
   is("the offered product charged monthly", why([front, item("addon", 9_700, { recurring: { interval: "month", trialDays: 0, payments: 0 } })], front), "targetRecurring");
   is("the offered product given away", why([front, item("addon", 0)], front), "targetFree");
   is("the offered product turned into a booking", why([front, item("addon", 9_700, { call: {} as unknown as Product["call"] })], front), "targetCall");
-  is("the offered product with several prices", why([front, item("addon", 9_700, { options: [{ id: "a", label: "A", priceCents: 9_700, file: null, link: null }] })], front), "targetOptions");
+  is("the offered product with several prices", why([front, item("addon", 9_700, { options: [{ id: "a", label: "A", priceCents: 9_700, file: null, link: null, details: [], best: false }] })], front), "targetOptions");
   is("buyers name the price on the offered product", why([front, item("addon", 9_700, { pwyw: { suggestedCents: 9_700 } })], front), "targetPwyw");
   is("a limited number of the offered product", why([front, item("addon", 9_700, { stock: 20 })], front), "targetLimited");
   is("nothing behind the offered product", why([front, item("addon", 9_700, { file: null })], front), "targetEmpty");
@@ -140,7 +140,7 @@ part("A payment plan, and why it is not being offered");
     "3 payments of $110 come to $330, less than the $400 price. Raise each payment, add one, or lower the price.",
   );
 
-  is("several prices", (planState(item("front", 33_000, { plan, options: [{ id: "a", label: "A", priceCents: 1, file: null, link: null }] })) as { paused: PlanPause }).paused, "options");
+  is("several prices", (planState(item("front", 33_000, { plan, options: [{ id: "a", label: "A", priceCents: 1, file: null, link: null, details: [], best: false }] })) as { paused: PlanPause }).paused, "options");
   is("buyers name the price", (planState(item("front", 33_000, { plan, pwyw: { suggestedCents: 1 } })) as { paused: PlanPause }).paused, "pwyw");
   is("charged monthly", (planState(item("front", 33_000, { plan, recurring: { interval: "month", trialDays: 0, payments: 0 } })) as { paused: PlanPause }).paused, "kind");
   is("no plan set up at all", planState(item("front", 33_000)), null);

@@ -37,7 +37,10 @@ import {
 } from "@/lib/product-file";
 import {
   MAX_OPTIONS,
+  MAX_OPTION_DETAILS,
+  MAX_OPTION_DETAIL_LENGTH,
   MAX_OPTION_LABEL_LENGTH,
+  MAX_STORE_OPTIONS,
 } from "@/lib/product-option";
 import { LINK_PROBLEMS, type LinkProblem, linkHost } from "@/lib/product-link";
 import {
@@ -74,7 +77,8 @@ const OPTION_MESSAGES: Record<string, string> = {
   signed_out: "Your session ended. Log in again.",
   unavailable: "Stores are not switched on yet, so nothing was saved.",
   call: "This is a paid call, so it has one price. Stop selling it as a call first to add others.",
-  course: "A course is sold at one price, so it cannot have several.",
+  course: "A course or podcast sold as a membership charges one amount each time, so it cannot have several prices.",
+  store_too_many: `Your store holds ${MAX_STORE_OPTIONS.toLocaleString("en-US")} prices across all its products, which is the most it can. Remove a price you no longer use to add this one.`,
   bundle: "A bundle has one price for everything in it, so it cannot have several.",
   store_full: "Your store has reached the most it can hold. Remove something, or shorten a long list of choices, to make room.",
 };
@@ -602,7 +606,12 @@ function OptionsBlock({
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [price, setPrice] = useState("");
+  const [details, setDetails] = useState("");
+  const [best, setBest] = useState(false);
   const [busy, setBusy] = useState(false);
+  // A course or private podcast is its own delivery: every price opens it,
+  // and a file or link on one is something extra that price includes.
+  const opens = Boolean(product.course || product.podcast);
   const [error, setError] = useState<string | null>(null);
 
   async function run(payload: Record<string, unknown>, done: () => void, confirmation?: string) {
@@ -689,6 +698,40 @@ function OptionsBlock({
         </div>
       </div>
 
+      <div>
+        <label htmlFor={`option-details-${product.id}`} className="field-label">
+          What this one includes <span className="font-normal text-ink-soft">(optional, one per line)</span>
+        </label>
+        <textarea
+          id={`option-details-${product.id}`}
+          rows={4}
+          maxLength={MAX_OPTION_DETAILS * (MAX_OPTION_DETAIL_LENGTH + 1)}
+          value={details}
+          onChange={(event) => setDetails(event.target.value)}
+          placeholder={"Everything in 1 week\nA shopping list for each week\nSwap any recipe you dislike"}
+          className="field mt-1"
+        />
+        <p className="mt-1 text-sm text-ink-soft">
+          {`Up to ${MAX_OPTION_DETAILS} lines. When any price has some, your page shows the prices side by side, so the buyer sees what each one adds.`}
+        </p>
+      </div>
+
+      <label htmlFor={`option-best-${product.id}`} className="flex min-h-11 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
+        <input
+          id={`option-best-${product.id}`}
+          type="checkbox"
+          checked={best}
+          onChange={(event) => setBest(event.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-violet-brand"
+        />
+        <span>
+          Recommend this one
+          <span className="block font-normal text-ink-soft">
+            Chosen when the page opens and marked “Recommended.” One per product: picking it here unpicks any other.
+          </span>
+        </span>
+      </label>
+
       {error ? (
         <p
           role="alert"
@@ -734,9 +777,9 @@ function OptionsBlock({
 
       {product.options.length === 0 ? (
         <p className="mt-1 text-sm text-ink-soft">
-          Right now this sells at the one price above. Add a second and the
-          buyer picks — one week or five, personal or commercial — and each one
-          hands over its own file.
+          {opens
+            ? "Right now this sells at the one price above. Add a second and the buyer picks — the course alone, or with a live Q&A — and every price opens it. A file or link on a price is what that one adds."
+            : "Right now this sells at the one price above. Add a second and the buyer picks — one week or five, personal or commercial — and each one hands over its own file."}
         </p>
       ) : (
         <p className="mt-1 text-sm text-ink-soft">
@@ -753,7 +796,7 @@ function OptionsBlock({
                 "Save",
                 () =>
                   run(
-                    { action: "edit", id: option.id, label, price },
+                    { action: "edit", id: option.id, label, price, details, best },
                     () => setEditingId(null),
                     "Price saved.",
                   ),
@@ -765,13 +808,26 @@ function OptionsBlock({
             ) : (
               <>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-bold text-ink">{option.label}</p>
+                  <p className="font-bold text-ink">
+                    {option.label}
+                    {option.best ? (
+                      <span className="ml-2 rounded-full bg-lilac px-2 py-0.5 text-xs font-bold text-violet-deep">Recommended</span>
+                    ) : null}
+                  </p>
                   <p className="font-semibold tabular-nums text-ink">
                     {formatMoney(option.priceCents, currency)}
                   </p>
                 </div>
 
-                {!option.file && !option.link ? (
+                {option.details.length > 0 ? (
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-ink-soft">
+                    {option.details.map((line, at) => (
+                      <li key={at}>{line}</li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                {!opens && !option.file && !option.link ? (
                   /*
                     Said here rather than discovered by a buyer. An option with
                     nothing behind it is left off the store page entirely, and
@@ -789,6 +845,8 @@ function OptionsBlock({
                     onClick={() => {
                       setLabel(option.label);
                       setPrice(moneyField(option.priceCents, currency));
+                      setDetails(option.details.join("\n"));
+                      setBest(option.best);
                       setError(null);
                       setAdding(false);
                       setEditingId(option.id);
@@ -894,7 +952,7 @@ function OptionsBlock({
             "Add this price",
             () =>
               run(
-                { action: "add", id: product.id, label, price },
+                { action: "add", id: product.id, label, price, details, best },
                 () => setAdding(false),
                 "Price added.",
               ),
@@ -911,6 +969,8 @@ function OptionsBlock({
               onClick={() => {
                 setLabel("");
                 setPrice("");
+                setDetails("");
+                setBest(false);
                 setError(null);
                 setEditingId(null);
                 setAdding(true);
@@ -1902,6 +1962,24 @@ export function ProductEditor({
                 <LicenceKeyEditor product={product} handle={handle} />
                 </>
                 )}
+
+                {/*
+                  A course or private podcast at several prices: each opens it,
+                  and a file or link on one is what that one adds. Not for one
+                  sold as a membership, which charges one amount each time.
+                */}
+                {(product.course || product.podcast) && !product.recurring && !isFree(product) && !product.pwyw ? (
+                  <OptionsBlock
+                    product={product}
+                    fileBusyId={fileBusyId}
+                    percent={percent}
+                    fileError={fileError}
+                    onPick={upload}
+                    onDetach={detach}
+                    onLink={linkTo}
+                    onUnlink={unlink}
+                  />
+                ) : null}
 
                 <CheckoutExtras product={product} choices={offerable} named={named} notes={notes[product.id]} />
                 <div className="mt-2">

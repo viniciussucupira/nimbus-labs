@@ -767,6 +767,37 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   reply to your order confirmation email and it reaches them.
                 </p>
               )}
+              {/* A course or podcast bought at one of several prices: the price
+                  chosen may include something more, a file or a link, handed over
+                  here beside the way in. */}
+              {(order.product.course || order.product.podcast) && order.option && (order.file || order.link) ? (
+                <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
+                  <p className="st-label">{`Also in ${order.option.label}`}</p>
+                  {order.link ? (
+                    <>
+                      <a href={order.link} rel="noopener noreferrer nofollow" target="_blank" className="link mt-1 inline-block font-semibold">
+                        Open it
+                      </a>
+                      <p className="st-muted mt-1 text-sm">
+                        {`Kept on ${linkHost(order.link)} by ${store.name}. Save the address: `}
+                        <span className="break-all font-semibold" style={{ color: "var(--st-text)" }}>{order.link}</span>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <a
+                        href={`/api/store/download?handle=${encodeURIComponent(store.handle)}&session_id=${encodeURIComponent(sessionId ?? "")}`}
+                        className="link mt-1 inline-block font-semibold"
+                      >
+                        Download it
+                      </a>
+                      <p className="st-muted mt-1 text-sm">
+                        {`This link works for about ${hours} more ${hours === 1 ? "hour" : "hours"}; the ${order.product.course ? "course" : "podcast"} keeps working.`}
+                      </p>
+                    </>
+                  )}
+                </div>
+              ) : null}
               {/* What is theirs first — the product, what was ticked at checkout and
                   what was added after paying, each with its key — then the way into
                   the community, and only then the next offer. */}
