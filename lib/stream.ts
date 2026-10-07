@@ -136,6 +136,12 @@ export type StreamRecord = {
   seconds: number;
   width: number;
   height: number;
+  /**
+   * Nothing more is to be learned about it. A video is ready from its first
+   * size, which the service may have before it has measured the file or made
+   * the rest; it is settled when the service says it has finished.
+   */
+  settled: boolean;
 };
 
 const recordKey = (id: string) => `nl:stream:v:${id}`;
@@ -164,6 +170,7 @@ function parseRecord(raw: unknown): StreamRecord | null {
       seconds: number(value.seconds),
       width: number(value.width),
       height: number(value.height),
+      settled: value.settled === true,
     };
   } catch {
     return null;
@@ -308,6 +315,7 @@ export async function openUpload(
     seconds: 0,
     width: 0,
     height: 0,
+    settled: false,
   };
   await redisPipeline([
     ["SET", recordKey(id), JSON.stringify(record)],
@@ -332,6 +340,15 @@ export async function openUpload(
  * to tell the lesson, and a video nobody can reach is not one to keep. Two
  * days after its door was opened it is taken away. Once a lesson has it, it
  * is never taken away from here: it works, is ready, or has failed.
+ *
+ * Ready is not the end of it. The service says a video can be played as soon
+ * as its smallest size is made, and that may be before it has written down
+ * the file's length and shape, and is before the larger sizes exist. So a
+ * ready video is asked about until the service says it has finished, and
+ * only then left alone; until then its length, its shape and what it weighs
+ * are filled in as they come. One that plays is never un-readied by a later
+ * word about the sizes still being made: only its being gone from the
+ * service, or its growing past what may be kept, takes it away.
  */
 export async function lookAt(id: string, now = Date.now(), ms = STREAM_TIMEOUT_MS, claim = false): Promise<StreamRecord | null> {
   const config = streamConfig();
@@ -342,10 +359,11 @@ export async function lookAt(id: string, now = Date.now(), ms = STREAM_TIMEOUT_M
     await redisPipeline([["ZREM", DUE, id]]);
     return null;
   }
-  if (record.state === "ready" || record.state === "failed") {
+  if (record.state === "failed" || (record.state === "ready" && record.settled)) {
     await redisPipeline([["ZREM", DUE, id]]);
     return record;
   }
+  const played = record.state === "ready";
   const age = now - record.at;
   const unclaimed = record.state === "upload" && !claim;
   if (unclaimed && age <= ABANDONED_AFTER_MS) {
@@ -362,9 +380,10 @@ export async function lookAt(id: string, now = Date.now(), ms = STREAM_TIMEOUT_M
   if (answer.status !== 200 && answer.status !== 404) {
     // Not reached, or busy: nothing is learned. A lesson being told its
     // video still has it written down as its own, to be asked about later.
-    const kept: StreamRecord = claim ? { ...record, state: "working" } : record;
+    const taken = claim && !played;
+    const kept: StreamRecord = taken ? { ...record, state: "working" } : record;
     await redisPipeline([
-      ...(claim ? [["SET", recordKey(id), JSON.stringify(kept)]] : []),
+      ...(taken ? [["SET", recordKey(id), JSON.stringify(kept)]] : []),
       ["ZADD", DUE, now + nextLook(age), id],
     ]);
     return kept;
@@ -379,9 +398,14 @@ export async function lookAt(id: string, now = Date.now(), ms = STREAM_TIMEOUT_M
   // The service still waiting for the file, of a video a lesson has: the
   // last piece is in and it has not caught up, or it never will. Time tells.
   let state: StreamState = said === "upload" ? "working" : said;
+  if (played && answer.status === 200) state = "ready";
   if (state === "working" && age > GIVE_UP_AFTER_MS) state = "failed";
   const kept = field(answer.data, "storageSize");
   if (typeof kept === "number" && kept > MOST_KEPT_BYTES) state = "failed";
+  // Finished by the service's own word; or it played and the service now
+  // says something else of it, or has said nothing new for a week: there is
+  // nothing more to wait for.
+  const settled = state === "ready" && (status === 4 || (played && said !== "ready") || age > GIVE_UP_AFTER_MS);
 
   const number = (name: string) => {
     const value = field(answer.data, name);
@@ -392,6 +416,7 @@ export async function lookAt(id: string, now = Date.now(), ms = STREAM_TIMEOUT_M
   const next: StreamRecord = {
     ...record,
     state,
+    settled,
     seconds: number("length") || record.seconds,
     width: number("width") ? shape.width : record.width,
     height: number("height") ? shape.height : record.height,
@@ -403,7 +428,7 @@ export async function lookAt(id: string, now = Date.now(), ms = STREAM_TIMEOUT_M
   }
   await redisPipeline([
     ["SET", recordKey(id), JSON.stringify(next)],
-    state === "ready" || state === "failed" ? ["ZREM", DUE, id] : ["ZADD", DUE, now + nextLook(age), id],
+    state === "failed" || settled ? ["ZREM", DUE, id] : ["ZADD", DUE, now + nextLook(age), id],
   ]);
   return next;
 }
@@ -468,14 +493,17 @@ export type Player = {
  *
  * A video still being prepared is asked about on the way, at most once in
  * thirty seconds whoever is waiting, so the first student to open a lesson
- * is not the one who has to wait for the five-minute job.
+ * is not the one who has to wait for the five-minute job. So is one that
+ * plays and has not been measured yet, so it is not shown in a shape that is
+ * not its own for longer than that.
  */
 export async function playerFor(pathname: string, now = Date.now()): Promise<Player | null> {
   const config = streamConfig();
   if (!config) return null;
   let record = await streamRecord(pathname);
   if (!record) return null;
-  if (record.state === "working") {
+  const unmeasured = record.state === "ready" && !record.settled && !(record.width > 0 && record.height > 0);
+  if (record.state === "working" || unmeasured) {
     const [first] = await redisPipeline([["SET", peekKey(record.id), "1", "NX", "EX", 30]]);
     if (first !== null) record = (await lookAt(record.id, now, STREAM_PEEK_TIMEOUT_MS)) ?? record;
   }

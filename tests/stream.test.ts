@@ -236,7 +236,9 @@ async function main() {
   is("a second student seconds later does not ask the service again", asked.length, before);
 
   part("The service says a size is ready");
-  Object.assign(videos.get(door.id)!, { status: 3, availableResolutions: "360p", length: 600, width: 1920, height: 1080, rotation: 90, storageSize: 90_000_000 });
+  // Its smallest size, made before the service has written down the file's
+  // length and shape: what a real library did with the first real video.
+  Object.assign(videos.get(door.id)!, { status: 3, availableResolutions: "360p", storageSize: 30_000_000 });
   const announcement = JSON.stringify({ VideoLibraryId: Number(LIBRARY), VideoGuid: door.id, Status: 4 });
   is("an announcement signed with another key is not believed", (await announce(announcement, "somebody-elses-key")).status, 401);
   is("nor one whose body was changed after it was signed", believed(`${announcement} `, { version: "v1", algorithm: "hmac-sha256", signature: createHmac("sha256", READ_KEY).update(announcement).digest("hex") }, READ_KEY), false);
@@ -244,11 +246,38 @@ async function main() {
   is("the video is still being prepared, as far as anybody is told", (await streamRecord(door.pathname))?.state, "working");
   const heardIt = await announce(announcement);
   is("the service's own is taken", [heardIt.status, await heardIt.json()], [200, { ok: true, result: "looked" }]);
-  const ready = await streamRecord(door.pathname);
-  is("and the video is ready, with its length", [ready?.state, ready?.seconds], ["ready", 600]);
-  is("in its own shape: filmed upright, it is upright", [ready?.width, ready?.height], [1080, 1920]);
+  let ready = await streamRecord(door.pathname);
+  is("and the video is ready: there is a size to play", ready?.state, "ready");
+  is("its length and shape are not known yet, and nobody pretends they are", [ready?.seconds, ready?.width, ready?.height, ready?.settled], [0, 0, 0, false]);
   is("an announcement about a video that is not ours is let go", await heard({ VideoLibraryId: Number(LIBRARY), VideoGuid: "00000000-0000-4000-8000-00000000eeee", Status: 3 }), "ignored");
   is("and one from another library", await heard({ VideoLibraryId: 1, VideoGuid: door.id, Status: 3 }), "ignored");
+
+  part("A video that plays before the service has finished with it");
+  advance(31_000);
+  player = await playerFor(door.pathname, NOW + 5 * MINUTE);
+  is("it plays meanwhile, in the usual shape", [player?.state, typeof player?.src, player?.width, player?.height], ["ready", "string", 16, 9]);
+  is("and a viewing is counted as the whole file, at the tallest size, not at a shape that is only a guess", viewingBytes(player?.record.seconds ?? -1, player?.record.height ?? -1, 800_000_000), 800_000_000);
+  Object.assign(videos.get(door.id)!, { availableResolutions: "360p,720p", length: 600, width: 1920, height: 1080, rotation: 90, storageSize: 60_000_000 });
+  const askedBefore = asked.length;
+  player = await playerFor(door.pathname, NOW + 5 * MINUTE + 5_000);
+  is("a student seconds later does not ask the service again", [asked.length, player?.width], [askedBefore, 16]);
+  advance(31_000);
+  player = await playerFor(door.pathname, NOW + 6 * MINUTE);
+  is("the next one, once the service has measured it, sees it in its own shape: filmed upright, it is upright", [player?.width, player?.height], [1080, 1920]);
+  ready = await streamRecord(door.pathname);
+  is("its length is written down, and it is still being asked about: the larger sizes are coming", [ready?.seconds, ready?.settled], [600, false]);
+  advance(31_000);
+  const askedMeasured = asked.length;
+  await playerFor(door.pathname, NOW + 7 * MINUTE);
+  is("a student's page no longer asks: what it needed, it has", asked.length, askedMeasured);
+  let later = await sweep(Date.now() + 5_000, NOW + 6 * MINUTE + nextLook(6 * MINUTE) + 1);
+  is("the five-minute job does, and the video goes on playing", [later.looked, later.ready, (await streamRecord(door.pathname))?.settled], [1, 1, false]);
+  Object.assign(videos.get(door.id)!, { status: 4, availableResolutions: "360p,720p,1080p", storageSize: 90_000_000 });
+  const finished = await lookAt(door.id, NOW + 30 * MINUTE);
+  is("when the service says it has finished, what it weighs is the whole of it", [finished?.state, finished?.bytes, finished?.settled], ["ready", 90_000_000, true]);
+  const askedSettled = asked.length;
+  later = await sweep(Date.now() + 5_000, NOW + 3 * 60 * MINUTE);
+  is("and it is not asked about again", [later.looked, asked.length], [0, askedSettled]);
 
   part("The player a student is shown");
   player = await playerFor(door.pathname, NOW + 10 * MINUTE);
@@ -317,6 +346,35 @@ async function main() {
   Object.assign(videos.get(huge.door.id)!, { status: 4, availableResolutions: "1080p", storageSize: MOST_KEPT_BYTES + 1 });
   const refused = await claimUpload(huge.door.pathname, FOLDER, LESSON, NOW + MINUTE);
   is("is not kept, whatever the service made of it", [refused?.state, videos.has(huge.door.id)], ["failed", false]);
+
+  part("A video that plays, and what the service says of it afterward");
+  const playing = async (name: string) => {
+    const one = await openUpload({ ...input, name }, NOW);
+    if (!one.ok) throw new Error("no door");
+    Object.assign(videos.get(one.door.id)!, { status: 3, availableResolutions: "240p", length: 60, width: 1280, height: 720, storageSize: 5_000_000 });
+    const record = await claimUpload(one.door.pathname, FOLDER, LESSON, NOW + MINUTE);
+    is(`${name}: told to the lesson with one size made, it plays`, [record?.state, record?.settled], ["ready", false]);
+    return one.door;
+  };
+  const sixth = await playing("Lesson six.mp4");
+  // A later size could not be made. The ones that play are still there.
+  videos.get(sixth.id)!.status = 5;
+  const worried = await lookAt(sixth.id, NOW + 20 * MINUTE);
+  is("a later size that could not be made does not take away a video that plays", [worried?.state, videos.has(sixth.id)], ["ready", true]);
+  is("and it is left alone from then on", worried?.settled, true);
+  const seventh = await playing("Lesson seven.mp4");
+  service = "down";
+  is("the service not answering changes nothing about it", (await claimUpload(seventh.pathname, FOLDER, LESSON, NOW + 2 * MINUTE))?.state, "ready");
+  service = "up";
+  videos.delete(seventh.id);
+  is("one that is no longer at the service is said to have failed, not shown as a player with nothing in it", (await lookAt(seventh.id, NOW + 20 * MINUTE))?.state, "failed");
+  const eighth = await playing("Lesson eight.mp4");
+  videos.get(eighth.id)!.storageSize = MOST_KEPT_BYTES + 1;
+  const grown = await lookAt(eighth.id, NOW + 20 * MINUTE);
+  is("one that grows past what may be kept, as its larger sizes are made, is not kept either", [grown?.state, videos.has(eighth.id)], ["failed", false]);
+  const ninth = await playing("Lesson nine.mp4");
+  const waited = await lookAt(ninth.id, NOW + GIVE_UP_AFTER_MS + MINUTE);
+  is("one the service never says it has finished is asked about for a week, and then left as it is: playing", [waited?.state, waited?.settled], ["ready", true]);
 
   part("A creator removes the video");
   is("a file in the file store is not this file's to delete", await dropStream(`stores/${FOLDER}/${LESSON}/lesson.mp4`), false);

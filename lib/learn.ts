@@ -519,7 +519,9 @@ export async function lessonVideo(file: ProductFile): Promise<LessonVideo | null
     if (!player) return null;
     if (player.state === "failed") return { kind: "failed" };
     if (!player.src) return { kind: "preparing" };
-    await recordDelivery(file.pathname, viewingBytes(player.record.seconds, player.height, file.bytes));
+    // The height the service measured, not the shape the player is drawn in:
+    // one not measured yet is drawn 16 by 9, and counted at the tallest size.
+    await recordDelivery(file.pathname, viewingBytes(player.record.seconds, player.record.height, file.bytes));
     return { kind: "stream", src: player.src, width: player.width, height: player.height };
   } catch (error) {
     console.error("reading a lesson's video failed", error);
