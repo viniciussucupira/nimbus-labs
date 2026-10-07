@@ -28,7 +28,7 @@
  * more, which is pressure on the person who chose to store the files and
  * never on the person who bought one.
  */
-import { list } from "@/lib/blob";
+import { filesHeld } from "@/lib/file-store";
 import { streamHeld } from "@/lib/stream";
 
 const GB = 1024 * 1024 * 1024;
@@ -80,14 +80,9 @@ export async function storageUsed(folder: string): Promise<StorageUse> {
   const brake = STORAGE_BRAKE_BYTES;
   if (!folder) return { bytes: 0, brake, left: brake, full: false };
   let bytes = 0;
-  let cursor: string | undefined;
   try {
-    for (let page = 0; page < 20; page += 1) {
-      const answer = await list({ prefix: `stores/${folder}/`, limit: 1000, cursor });
-      for (const blob of answer.blobs) bytes += typeof blob.size === "number" ? blob.size : 0;
-      if (!answer.hasMore || !answer.cursor) break;
-      cursor = answer.cursor;
-    }
+    // Both file stores a sold file may be kept in, together (lib/file-store.ts).
+    bytes = await filesHeld(folder);
   } catch (error) {
     // Storage could not be read. A creator must not be stopped from adding a
     // product because of that, so this reports an empty store and the upload

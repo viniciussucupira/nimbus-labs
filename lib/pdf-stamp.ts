@@ -26,7 +26,8 @@
  */
 import { createHash } from "node:crypto";
 import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
-import { del, get, list, put } from "@/lib/blob";
+import { deleteFile, listFiles, readFileWhole, writeFileWhole } from "@/lib/file-store";
+import { VAULT_PREFIX, isVaultPath, keyName } from "@/lib/vault-rules";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { MAX_STAMP_BYTES, type ProductFile, isPdf } from "@/lib/product-file";
 import { folderFromPathname } from "@/lib/delivery";
@@ -124,34 +125,16 @@ export async function stampProblems(files: ProductFile[]): Promise<Map<string, S
 
 /** Reads a private file whole, refusing to hold more than `limit` bytes. */
 async function readWhole(pathname: string, limit: number): Promise<Uint8Array | null> {
-  const result = await get(pathname, { access: "private" });
-  if (!result || result.statusCode !== 200 || !result.stream) return null;
-  const reader = result.stream.getReader();
-  const parts: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > limit) {
-      await reader.cancel().catch(() => {});
-      return null;
-    }
-    parts.push(value);
-  }
-  const whole = new Uint8Array(total);
-  let at = 0;
-  for (const part of parts) {
-    whole.set(part, at);
-    at += part.byteLength;
-  }
-  return whole;
+  return readFileWhole(pathname, limit);
 }
 
 /** Where a file's stamped copies live: one folder per original, one per sale. */
 function copyFolder(file: Pick<ProductFile, "pathname">): string {
   const folder = folderFromPathname(file.pathname) ?? "unknown";
-  return `stores/${folder}/stamped/${sha(file.pathname).slice(0, 24)}/`;
+  // A copy is kept in the store its original is in, so handing it to the
+  // buyer costs what handing over the original would.
+  const root = isVaultPath(file.pathname) ? VAULT_PREFIX : "stores";
+  return `${root}/${folder}/stamped/${sha(file.pathname).slice(0, 24)}/`;
 }
 
 /**
@@ -192,13 +175,12 @@ export async function stampedCopy(
       await noteProblem(file.pathname, "unreadable");
       return null;
     }
-    const pathname = `${copyFolder(file)}${sha(`${sale.reference}|${file.addedAt}`).slice(0, 24)}/${file.name}`;
-    await put(pathname, Buffer.from(stamped), {
-      access: "private",
-      contentType: "application/pdf",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-    });
+    // In the store that charges nothing to send, a path is plain characters
+    // only (lib/vault-rules.ts); the name the buyer saves it under is kept
+    // beside the path, as it is for the original.
+    const last = isVaultPath(file.pathname) ? keyName(file.name) : file.name;
+    const pathname = `${copyFolder(file)}${sha(`${sale.reference}|${file.addedAt}`).slice(0, 24)}/${last}`;
+    await writeFileWhole(pathname, stamped, "application/pdf");
     const copy: ProductFile = {
       pathname,
       name: file.name,
@@ -223,12 +205,8 @@ export async function stampedCopy(
 export async function dropStamped(file: Pick<ProductFile, "pathname" | "name" | "contentType">): Promise<void> {
   if (!isPdf(file)) return;
   try {
-    let cursor: string | undefined;
-    do {
-      const page = await list({ prefix: copyFolder(file), cursor, limit: 1000 });
-      if (page.blobs.length) await del(page.blobs.map((blob) => blob.pathname));
-      cursor = page.hasMore ? page.cursor : undefined;
-    } while (cursor);
+    const copies = await listFiles(copyFolder(file));
+    for (let i = 0; i < copies.length; i += 1000) await deleteFile(copies.slice(i, i + 1000));
   } catch (error) {
     console.error("could not delete stamped copies", error);
   }

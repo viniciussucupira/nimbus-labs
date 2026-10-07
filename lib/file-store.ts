@@ -1,0 +1,133 @@
+/**
+ * One file, whichever store keeps it.
+ *
+ * A file that is sold lives in one of two stores: the one that charges
+ * nothing for a download (lib/vault.ts), where every new one goes once that
+ * store is set up, or the host's own (lib/blob.ts), where files uploaded
+ * before then stay and go on working. Which one is read from the file's
+ * path (lib/vault-rules.ts), so nothing that carries a file has to know.
+ *
+ * Every server file that measures, deletes, reads or hands out a sold file
+ * does it through here. A caller that went to one store directly would be
+ * right for the files of that store and silently wrong for the rest.
+ */
+import * as blob from "@/lib/blob";
+import { deleteVault, headVault, listVault, readVault, vaultHeld, vaultUrl, writeVault } from "@/lib/vault";
+import { VAULT_PREFIX, isVaultPath } from "@/lib/vault-rules";
+
+export type Measured = { pathname: string; size: number; contentType: string };
+
+/** How big a file is and what it is, by its store's own measure. Throws when it is not there or cannot be asked about. */
+export async function headFile(pathname: string): Promise<Measured> {
+  if (isVaultPath(pathname)) {
+    const found = await headVault(pathname);
+    if (!found || found === "unreachable") throw new Error(found ? "the file store could not be reached" : "the file is not there");
+    return { pathname, size: found.bytes, contentType: found.contentType };
+  }
+  const found = await blob.head(pathname);
+  return { pathname: found.pathname, size: found.size, contentType: found.contentType };
+}
+
+/** Deletes files, each from the store that keeps it. Throws when one could not be. */
+export async function deleteFile(pathnames: string | string[]): Promise<void> {
+  const all = Array.isArray(pathnames) ? pathnames : [pathnames];
+  const here = all.filter((pathname) => isVaultPath(pathname));
+  const there = all.filter((pathname) => !isVaultPath(pathname));
+  if (here.length && !(await deleteVault(here))) throw new Error("a file could not be deleted");
+  if (there.length) await blob.del(there);
+}
+
+/**
+ * An address a browser can fetch the file from for `seconds`, straight from
+ * its store. `saveAs` is honored by the store that can (lib/vault.ts): the
+ * host's own signs a plain link and no more. Null when it could not be made.
+ */
+export async function fileUrl(pathname: string, seconds: number, saveAs?: string): Promise<string | null> {
+  if (isVaultPath(pathname)) return vaultUrl(pathname, seconds, saveAs);
+  try {
+    const token = await blob.issueSignedToken({ pathname, operations: ["get"], validUntil: Date.now() + seconds * 1000 });
+    const { presignedUrl } = await blob.presignUrl(token, { operation: "get", pathname, access: "private" });
+    return presignedUrl;
+  } catch (error) {
+    console.error("signing a file's address failed", error);
+    return null;
+  }
+}
+
+/** Reads a small file whole, refusing to hold more than `limit` bytes. Null when it is missing or too big. */
+export async function readFileWhole(pathname: string, limit: number): Promise<Uint8Array | null> {
+  if (isVaultPath(pathname)) return readVault(pathname, limit);
+  const result = await blob.get(pathname, { access: "private" });
+  if (!result || result.statusCode !== 200 || !result.stream) return null;
+  const reader = result.stream.getReader();
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    parts.push(value);
+  }
+  const whole = new Uint8Array(total);
+  let at = 0;
+  for (const part of parts) {
+    whole.set(part, at);
+    at += part.byteLength;
+  }
+  return whole;
+}
+
+/** Writes a small file whole, private, in place of whatever was at that path. Throws when it could not be. */
+export async function writeFileWhole(pathname: string, bytes: Uint8Array, contentType: string): Promise<void> {
+  if (isVaultPath(pathname)) {
+    if (!(await writeVault(pathname, bytes, contentType))) throw new Error("a file could not be written");
+    return;
+  }
+  await blob.put(pathname, Buffer.from(bytes), { access: "private", contentType, addRandomSuffix: false, allowOverwrite: true });
+}
+
+/** Every path kept under a prefix, in the store the prefix belongs to. Throws when it cannot be read. */
+export async function listFiles(prefix: string): Promise<string[]> {
+  const out: string[] = [];
+  if (prefix.startsWith(`${VAULT_PREFIX}/`)) {
+    let cursor: string | undefined;
+    do {
+      const page = await listVault(prefix, cursor);
+      if (!page) throw new Error("the file store could not be listed");
+      out.push(...page.files.map((file) => file.pathname));
+      cursor = page.cursor ?? undefined;
+    } while (cursor);
+    return out;
+  }
+  let cursor: string | undefined;
+  do {
+    const page = await blob.list({ prefix, cursor, limit: 1000 });
+    out.push(...page.blobs.map((entry) => entry.pathname));
+    cursor = page.hasMore ? page.cursor : undefined;
+  } while (cursor);
+  return out;
+}
+
+/**
+ * How many bytes a store keeps in both file stores together. Stops after a
+ * sane number of pages, which reports less than the truth: the safe
+ * direction, for a figure that can only ever stop an upload. Throws when the
+ * host's store cannot be read; a count from the other that cannot be read is
+ * left out, as the video service's is (lib/storage-quota.ts).
+ */
+export async function filesHeld(folder: string): Promise<number> {
+  let bytes = 0;
+  let cursor: string | undefined;
+  for (let page = 0; page < 20; page += 1) {
+    const answer = await blob.list({ prefix: `stores/${folder}/`, limit: 1000, cursor });
+    for (const entry of answer.blobs) bytes += typeof entry.size === "number" ? entry.size : 0;
+    if (!answer.hasMore || !answer.cursor) break;
+    cursor = answer.cursor;
+  }
+  bytes += (await vaultHeld(folder).catch(() => null)) ?? 0;
+  return bytes;
+}

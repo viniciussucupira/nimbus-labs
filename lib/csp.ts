@@ -47,6 +47,7 @@
 
 import { VIDEO_FRAME_ORIGINS } from "./sales-page";
 import { STREAM_API_ORIGIN, STREAM_PLAYER_ORIGIN } from "./stream-rules";
+import { VAULT_FILES } from "./vault-rules";
 
 /** Where the ad platforms' own scripts send what they measure. */
 const PIXEL_CONNECT = [
@@ -92,7 +93,7 @@ const shared = (): Record<string, string[]> => ({
   "style-src": ["'self'", "'unsafe-inline'"],
   "img-src": ["'self'", "data:", "blob:", "https:"],
   "font-src": ["'self'", "data:"],
-  "media-src": ["'self'", "blob:", BLOB_FILES],
+  "media-src": ["'self'", "blob:", BLOB_FILES, VAULT_FILES],
   "worker-src": ["'self'"],
   "manifest-src": ["'self'"],
   "object-src": ["'none'"],
@@ -122,7 +123,7 @@ export function dynamicPolicy(nonce: string, options: { store?: boolean; room?: 
     // The video service's own address is where the studio sends a lesson
     // video's pieces, and its player the one a lesson page frames
     // (lib/stream.ts); the player, like the other three, on a store's pages only.
-    "connect-src": ["'self'", BLOB_API, BLOB_FILES, STREAM_API_ORIGIN, ...(store ? PIXEL_CONNECT : [])],
+    "connect-src": ["'self'", BLOB_API, BLOB_FILES, VAULT_FILES, STREAM_API_ORIGIN, ...(store ? PIXEL_CONNECT : [])],
     "frame-src": ["'self'", ...(store ? [...PIXEL_FRAMES, ...VIDEO_FRAME_ORIGINS, STREAM_PLAYER_ORIGIN] : []), ...(room ? [ROOM_FRAME_ORIGIN] : [])],
   });
 }

@@ -16,6 +16,7 @@
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { STREAM_PREFIX } from "@/lib/stream-rules";
+import { VAULT_PREFIX } from "@/lib/vault-rules";
 
 /**
  * What the monthly price covers, per store, per calendar month.
@@ -142,7 +143,9 @@ export function folderFromPathname(pathname: string): string | null {
   const parts = pathname.split("/");
   // A lesson video kept by the video service is written down under the same
   // folder, with its own first piece (lib/stream-rules.ts).
-  if (parts.length < 4 || (parts[0] !== "stores" && parts[0] !== STREAM_PREFIX)) return null;
+  // And so is a file in the store that charges nothing for a download
+  // (lib/vault-rules.ts).
+  if (parts.length < 4 || (parts[0] !== "stores" && parts[0] !== STREAM_PREFIX && parts[0] !== VAULT_PREFIX)) return null;
   return parts[1] || null;
 }
 

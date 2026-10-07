@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { del } from "@/lib/blob";
+import { deleteFile as del } from "@/lib/file-store";
 import {
   addOption,
   editOption,

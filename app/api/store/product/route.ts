@@ -1,6 +1,6 @@
 import { imagePaths } from "@/lib/product-image";
 import type { NextRequest } from "next/server";
-import { del } from "@/lib/blob";
+import { deleteFile as del } from "@/lib/file-store";
 import {
   MAX_SUMMARY_LENGTH,
   MAX_TITLE_LENGTH,

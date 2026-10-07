@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
-import { get, issueSignedToken, presignUrl } from "@/lib/blob";
+import { get } from "@/lib/blob";
+import { fileUrl } from "@/lib/file-store";
+import { isVaultPath } from "@/lib/vault-rules";
 import { studioAccess } from "@/lib/studio-route";
 import { productFile } from "@/lib/store";
 import {
@@ -29,23 +31,8 @@ import { fileHeaders } from "@/lib/request-guard";
  * slow line would otherwise hit. The URL expires in minutes and is signed for
  * one pathname, so forwarding it buys very little.
  */
-async function signedDownload(pathname: string): Promise<string | null> {
-  try {
-    const token = await issueSignedToken({
-      pathname,
-      operations: ["get"],
-      validUntil: Date.now() + DOWNLOAD_URL_SECONDS * 1000,
-    });
-    const { presignedUrl } = await presignUrl(token, {
-      operation: "get",
-      pathname,
-      access: "private",
-    });
-    return presignedUrl;
-  } catch (error) {
-    console.error("signing a download failed", error);
-    return null;
-  }
+async function signedDownload(pathname: string, name: string): Promise<string | null> {
+  return fileUrl(pathname, DOWNLOAD_URL_SECONDS, name);
 }
 
 export async function GET(request: NextRequest) {
@@ -72,8 +59,8 @@ export async function GET(request: NextRequest) {
   const found = await productFile(ref, id);
   if (!found) return new Response("No file on that product.", { status: 404 });
 
-  if (found.file.bytes > REDIRECT_ABOVE_BYTES) {
-    const url = await signedDownload(found.file.pathname);
+  if (found.file.bytes > REDIRECT_ABOVE_BYTES || isVaultPath(found.file.pathname)) {
+    const url = await signedDownload(found.file.pathname, found.file.name);
     if (!url) {
       return new Response("We could not fetch the file right now.", {
         status: 502,

@@ -17,7 +17,7 @@ import { ProductImageEditor } from "@/components/product-image-editor";
 import { LicenceKeyEditor } from "@/components/licence-key-editor";
 import { PdfStampToggle } from "@/components/pdf-stamp-toggle";
 import { toast } from "@/components/toast";
-import { uploadPresigned } from "@vercel/blob/client";
+import { uploadReason, uploadSoldFile } from "@/lib/sold-file-upload";
 import {
   MAX_PRODUCTS,
   MAX_SUMMARY_LENGTH,
@@ -31,11 +31,8 @@ import { AiAssist, AiOn } from "@/components/ai-assist";
 import {
   ACCEPT_ATTRIBUTE,
   MAX_FILE_BYTES,
-  MULTIPART_ABOVE_BYTES,
   maxFileLabel,
-  fileFolder,
   readableSize,
-  safeFileName,
   type ProductFile,
 } from "@/lib/product-file";
 import {
@@ -1440,20 +1437,13 @@ export function ProductEditor({
     setFileBusyId(id);
     setPercent(0);
     try {
-      const pathname = fileFolder(folder, id) + safeFileName(chosen.name);
-      const result = await uploadPresigned(pathname, chosen, {
-        access: "private",
-        handleUploadUrl: "/api/store/file",
-        clientPayload: JSON.stringify({ productId: id }),
-        // In parts once it is worth it, so a dropped connection costs one
-        // part rather than the whole upload.
-        multipart: chosen.size > MULTIPART_ABOVE_BYTES,
-        onUploadProgress: (progress) => setPercent(progress.percentage),
-      });
+      // To the file store that takes new files (lib/sold-file-upload.ts), in
+      // parts, so a dropped connection costs one part and not the upload.
+      const pathname = await uploadSoldFile(chosen, { folder, ownerId: id }, setPercent);
 
       const problem = await attach({
         id,
-        pathname: result.pathname,
+        pathname,
         name: chosen.name,
       });
       if (problem) {
@@ -1462,11 +1452,7 @@ export function ProductEditor({
       }
       router.refresh();
     } catch (thrown) {
-      const message =
-        thrown instanceof Error && /content type|not allowed/i.test(thrown.message)
-          ? MESSAGES.wrong_type
-          : MESSAGES.server_error;
-      setFileError({ id, message });
+      setFileError({ id, message: MESSAGES[uploadReason(thrown)] ?? MESSAGES.server_error });
     } finally {
       setFileBusyId(null);
       setPercent(0);

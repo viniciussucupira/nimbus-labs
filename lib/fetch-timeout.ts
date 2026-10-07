@@ -44,6 +44,8 @@ export const BLOB_TIMEOUT_MS = 15_000;
 export const BLOB_WRITE_TIMEOUT_MS = 45_000;
 export const STREAM_TIMEOUT_MS = 8_000;
 export const STREAM_PEEK_TIMEOUT_MS = 3_000;
+export const VAULT_TIMEOUT_MS = 10_000;
+export const VAULT_WRITE_TIMEOUT_MS = 45_000;
 
 /**
  * Where the cutoff of the work in progress is kept. Some studio components

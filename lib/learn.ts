@@ -28,7 +28,7 @@
 import { currentMeta } from "@/lib/tier-rules";
 import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
-import { issueSignedToken, presignUrl } from "@/lib/blob";
+import { fileUrl } from "@/lib/file-store";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, SESSION_COOKIE, emailForSession, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -468,18 +468,11 @@ export async function setBlocked(store: Store, courseId: string, email: string, 
 /** A link the browser can play or fetch straight from storage, for a while. */
 export async function signedMedia(file: ProductFile, seconds: number): Promise<string | null> {
   try {
-    const token = await issueSignedToken({
-      pathname: file.pathname,
-      operations: ["get"],
-      validUntil: Date.now() + seconds * 1000,
-    });
-    const { presignedUrl } = await presignUrl(token, {
-      operation: "get",
-      pathname: file.pathname,
-      access: "private",
-    });
+    // Played in the page, so not saved under a name: whichever store keeps it.
+    const url = await fileUrl(file.pathname, seconds);
+    if (!url) return null;
     await recordDelivery(file.pathname, file.bytes);
-    return presignedUrl;
+    return url;
   } catch (error) {
     console.error("signing a lesson video failed", error);
     return null;

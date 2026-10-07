@@ -7,7 +7,9 @@
  * one place: a door that serves files its own way is a door that one day
  * serves them differently.
  */
-import { get, issueSignedToken, presignUrl } from "@/lib/blob";
+import { get } from "@/lib/blob";
+import { fileUrl } from "@/lib/file-store";
+import { isVaultPath } from "@/lib/vault-rules";
 import {
   DOWNLOAD_URL_SECONDS,
   REDIRECT_ABOVE_BYTES,
@@ -36,23 +38,8 @@ export function plain(status: number, message: string): Response {
  * slow line would otherwise hit. The URL expires in minutes and is signed for
  * one pathname, so forwarding it buys very little.
  */
-async function signedDownload(pathname: string): Promise<string | null> {
-  try {
-    const token = await issueSignedToken({
-      pathname,
-      operations: ["get"],
-      validUntil: Date.now() + DOWNLOAD_URL_SECONDS * 1000,
-    });
-    const { presignedUrl } = await presignUrl(token, {
-      operation: "get",
-      pathname,
-      access: "private",
-    });
-    return presignedUrl;
-  } catch (error) {
-    console.error("signing a download failed", error);
-    return null;
-  }
+async function signedDownload(file: ProductFile): Promise<string | null> {
+  return fileUrl(file.pathname, DOWNLOAD_URL_SECONDS, file.name);
 }
 
 /**
@@ -91,8 +78,11 @@ export async function serveFile(
     }
   }
 
-  if (file.bytes > REDIRECT_ABOVE_BYTES) {
-    const url = await signedDownload(file.pathname);
+  // A file in the store that charges nothing to send goes straight from it
+  // whatever its size: that store saves it under the creator's own name by
+  // itself, and a byte that never passes through here costs nothing twice.
+  if (file.bytes > REDIRECT_ABOVE_BYTES || isVaultPath(file.pathname)) {
+    const url = await signedDownload(file);
     if (!url) return plain(502, "We could not fetch the file right now.");
     await recordDelivery(file.pathname, file.bytes);
     return new Response(null, {
