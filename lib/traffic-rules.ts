@@ -48,9 +48,27 @@
  * looks at more pages and more pictures than visitors do
  * (tests/plan-margin.test.ts has the sum).
  *
+ * What comes back counts too. A visit was first counted on a store's public
+ * pages only, and three things a buyer does after buying were in no sum at
+ * all: opening a course or a community, a live room left open, and a
+ * podcast app asking for its feed every hour. They are charged for by the
+ * host exactly as a page is, so each is now a visit or a part of one:
+ *
+ *   - A student or a member who opens a course or the community on a day is
+ *     that day's visit, like anybody else. Once, whatever they open.
+ *   - A subscriber to a private podcast is one visit on each day their app
+ *     asks for the feed, however often it asks (lib/podcast-access.ts).
+ *   - The live room asks whether anything is new for as long as it is open
+ *     in front of somebody (lib/chat-pace.ts). It is counted by the ten
+ *     minutes, in hundredths of a visit (ROOM_LIVE_PARTS while people are
+ *     talking, ROOM_IDLE_PARTS while the room is quiet), for each member it
+ *     is open for. tests/traffic-cost.ts holds each figure over what the
+ *     ten minutes cost.
+ *
  * Nothing here touches the network or a secret: the pages that publish
  * these figures read the same ones the bill is made from.
  */
+import { ROOM_GRANT_MINUTES } from "@/lib/chat-pace";
 import type { Tier } from "@/lib/plan";
 import { type PlanFields, standingOf } from "@/lib/plan-standing";
 
@@ -63,6 +81,28 @@ export const VISITS_INCLUDED: Record<Tier, number> = {
 
 /** What a thousand visits past that cost the creator, in cents. */
 export const VISIT_CENTS_PER_THOUSAND_OVER = 50;
+
+/** The live room is counted in hundredths of a visit. */
+export const PARTS_PER_VISIT = 100;
+
+/**
+ * What those minutes of the room count as, in hundredths of a visit: with
+ * people talking, when it asks every few seconds, and with the room quiet,
+ * when it asks twice a minute.
+ */
+export const ROOM_LIVE_PARTS = 260;
+export const ROOM_IDLE_PARTS = 60;
+
+/** "2.6", "0.6": hundredths of a visit as a figure a page can print. */
+export function partsWords(parts: number): string {
+  return String(Number((Math.max(0, parts) / PARTS_PER_VISIT).toFixed(2)));
+}
+
+/** An hour of the room for one member, in visits: "16" while people talk, "3.6" while it is quiet. */
+export function roomHourWords(parts: number): string {
+  const visits = (Math.max(0, parts) * (60 / ROOM_GRANT_MINUTES)) / PARTS_PER_VISIT;
+  return String(Number(visits.toFixed(visits >= 10 ? 0 : 1)));
+}
 
 /** Visits a store with no plan has in a month, before one is started and after one has ended. */
 export const SETUP_VISITS = 500;

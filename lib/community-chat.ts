@@ -30,8 +30,9 @@
  *
  * On what "live" means here, said plainly because the word is usually a lie:
  * the page asks whether anything is new every few seconds while people are
- * talking, less often as the room goes quiet (lib/chat-pace.ts), and stops
- * asking while the tab is in the background. There is no socket held open. For a room of people
+ * talking, twice a minute while the room is quiet (lib/chat-pace.ts), and
+ * stops asking while the tab is in the background or nobody has touched the
+ * page for a while. There is no socket held open. For a room of people
  * typing, the difference is not something a person can perceive; what it is
  * not is a claim that a message arrives the instant it is sent.
  */
@@ -59,6 +60,12 @@ export type ChatMessage = {
   a: string;
   text: string;
   at: number;
+  /**
+   * The name it was said under, kept with the message so that reading what
+   * is new needs nothing looked up (lib/chat-pace.ts). Absent on messages
+   * from before October 7, 2026, whose names are read from the members.
+   */
+  n?: string;
 };
 
 export type ChatSetting = {
@@ -95,7 +102,7 @@ function parse(raw: unknown): ChatMessage | null {
   try {
     const v = JSON.parse(raw) as Partial<ChatMessage>;
     if (typeof v.a !== "string" || typeof v.text !== "string" || typeof v.i !== "number") return null;
-    return { i: v.i, a: v.a, text: v.text, at: typeof v.at === "number" ? v.at : 0 };
+    return { i: v.i, a: v.a, text: v.text, at: typeof v.at === "number" ? v.at : 0, ...(typeof v.n === "string" && v.n ? { n: v.n.slice(0, 80) } : {}) };
   } catch {
     return null;
   }
@@ -117,6 +124,8 @@ export async function say(
   who: string,
   owner: boolean,
   raw: unknown,
+  /** The name it is said under: the store's for the creator, the member's own otherwise. */
+  name = "",
 ): Promise<SaidResult> {
   if (!setting.on) return { ok: false, reason: "off" };
   if (setting.creatorOnly && !owner) return { ok: false, reason: "creatorOnly" };
@@ -136,7 +145,8 @@ export async function say(
   }
 
   const [n] = await redisPipeline([["INCR", countKey(id)]]);
-  const message: ChatMessage = { i: Number(n), a: who, text, at: now() };
+  const said = cleanText(name, 80);
+  const message: ChatMessage = { i: Number(n), a: who, text, at: now(), ...(said ? { n: said } : {}) };
   await redisPipeline([
     ["ZADD", roomKey(id), message.i, JSON.stringify(message)],
     // The room keeps its last MAX_CHAT_KEPT and forgets the rest.
@@ -169,15 +179,18 @@ export async function room(id: string, since = 0): Promise<ChatPage> {
   return { messages, cursor: messages.length ? messages[messages.length - 1].i : since };
 }
 
+/** Seconds since a moment the room was spoken in (a message's `at`); -1 for a room nobody has spoken in. */
+export function quietFor(at: number): number {
+  return at > 0 ? Math.max(0, now() - at) : -1;
+}
+
 /**
- * The room's last message, by its number and when it was said (seconds); 0
- * and 0 for an empty room. One read, and all an open page needs to know
- * whether to ask for anything (lib/chat-pace.ts).
+ * When the room was last spoken in, in seconds; 0 for an empty room. One
+ * read: what handing out a leave to ask needs to know (lib/chat-grant.ts).
  */
-export async function tip(id: string): Promise<{ n: number; at: number }> {
+export async function lastSaid(id: string): Promise<number> {
   const [raw] = await redisPipeline([["ZREVRANGE", roomKey(id), 0, 0]]);
-  const last = parse(Array.isArray(raw) ? raw[0] : null);
-  return last ? { n: last.i, at: last.at } : { n: 0, at: 0 };
+  return parse(Array.isArray(raw) ? raw[0] : null)?.at ?? 0;
 }
 
 /** Takes one message out of the room: the creator's, on anything in it. */

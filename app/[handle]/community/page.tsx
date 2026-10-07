@@ -5,7 +5,8 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { feed, postNumbers, readMembers, readPosts } from "@/lib/community";
-import { accessProducts, communityViewer, visibleSpaces } from "@/lib/community-access";
+import { accessProducts, visibleSpaces } from "@/lib/community-access";
+import { communityVisitor } from "@/lib/community-page";
 import { requestCount } from "@/lib/community-dm";
 import { unreadCount } from "@/lib/community-notify";
 import { pollViews } from "@/lib/community-polls";
@@ -40,7 +41,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
   if (!decoded.startsWith("@")) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const viewer = await communityViewer(store, await cookies());
+  const viewer = await communityVisitor(store, await cookies());
   if (viewer.state === "off" || !store.community) redirect(`/@${store.handle}`);
   const id = store.community.id;
   const query = await searchParams;

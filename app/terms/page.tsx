@@ -9,7 +9,8 @@ import { DELIVERY_ALLOWANCE_BYTES, FREE_PAUSE_ABOVE_BYTES, bytesWords } from "@/
 import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, centsWords } from "@/lib/watch-rules";
 import { SETUP_STORAGE_BYTES, SETUP_VIDEO_HOURS, TRIAL_STORAGE_BYTES } from "@/lib/plan-standing";
 import { CLOSING_DAYS, WARN_MONTH_DAYS, WARN_WEEK_DAYS } from "@/lib/plan-closing-rules";
-import { SETUP_VISITS, TRIAL_VISITS, VISITS_INCLUDED, VISIT_CENTS_PER_THOUSAND_OVER, countWords } from "@/lib/traffic-rules";
+import { ROOM_IDLE_PARTS, ROOM_LIVE_PARTS, SETUP_VISITS, TRIAL_VISITS, VISITS_INCLUDED, VISIT_CENTS_PER_THOUSAND_OVER, countWords, partsWords } from "@/lib/traffic-rules";
+import { ROOM_GRANT_MINUTES } from "@/lib/chat-pace";
 import { STORAGE_BRAKE_BYTES, storageWords } from "@/lib/storage-quota";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
@@ -316,6 +317,22 @@ export default function TermsPage() {
           own figure in it.
         </p>
         <p>
+          A buyer who comes back is a visit like anybody else: a student or
+          a member who opens a course or your community on a day is that
+          day&apos;s visit, once. Two things a buyer&apos;s device does by
+          itself are counted for what they cost. A subscriber to a private
+          podcast is one visit on each day their podcast app checks for
+          episodes, however often it checks. And your community&apos;s live
+          room, which checks for new messages for as long as it is open in
+          front of a member, counts for each member by the{" "}
+          {ROOM_GRANT_MINUTES} minutes it is open: {partsWords(ROOM_LIVE_PARTS)}{" "}
+          visits while people are talking, when it checks every few seconds,
+          and {partsWords(ROOM_IDLE_PARTS)} of a visit while the room is
+          quiet. A room in a background tab, or one nobody has touched for a
+          while, checks nothing and counts nothing, and you are never
+          counted in your own room.
+        </p>
+        <p>
           A store with no paid plan has nothing a charge can be added to, so
           its public pages rest past its visits until the plan is paid or the
           month turns: {countWords(TRIAL_VISITS)} visits a month in the free
@@ -323,7 +340,9 @@ export default function TermsPage() {
           started and after one has ended. A visitor to a resting store is
           told the page will be open again soon. Nothing is charged for those
           visits, and what a buyer already has is never part of the rest:
-          orders, downloads, lessons and memberships stay open.
+          orders, downloads, lessons, podcasts and memberships stay open. The
+          live room of such a store stops checking by itself and shows new
+          messages when a member asks for them.
         </p>
         <p>
           What we ask in return is that the Services are used to sell your own

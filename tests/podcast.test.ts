@@ -17,7 +17,11 @@ import { readListing } from "@/lib/catalog";
 import { canSellProduct } from "@/lib/store-checkout";
 import { editPodcast } from "@/lib/podcast";
 import { appLinks, feedXml, type Podcast } from "@/lib/podcast-rules";
-import { feedToken, mayListen, readFeedToken } from "@/lib/podcast-access";
+import { FEED_READS_A_DAY, FEED_SHARED_SECONDS, feedToken, mayListen, readFeedToken } from "@/lib/podcast-access";
+import { GET as feed } from "@/app/api/store/podcast/feed/[token]/route";
+import { storeFolder } from "@/lib/store";
+import { visitsIn } from "@/lib/traffic";
+import { COMMANDS, feedDayCost, visitCost } from "./traffic-cost";
 import { grantImported } from "@/lib/imported-purchases";
 import { setPastBuyers } from "@/lib/store";
 import { store as redis } from "./redis-stub";
@@ -90,6 +94,48 @@ async function main(): Promise<void> {
   await setPastBuyers("owner@example.com");
   store = (await storeForEmail("owner@example.com"))!;
   is("somebody given it", await mayListen(store, show.product.id, "hal@example.com"), true);
+
+  part("What a feed costs, and what it is counted as");
+  let commands = 0;
+  const real = redis.pipeline.bind(redis);
+  (redis as unknown as { pipeline: typeof redis.pipeline }).pipeline = ((list: (string | number)[][]) => {
+    commands += list.length;
+    return real(list);
+  }) as typeof redis.pipeline;
+  const ask = (t: string) => feed(new Request(`https://marktmorgen.com/api/store/podcast/feed/${t}.xml`) as never, { params: Promise.resolve({ token: `${t}.xml` }) });
+  const folder = await storeFolder("owner@example.com");
+  const hal = (await feedToken(store, show.product.id, "hal@example.com"))!;
+  const first = await ask(hal);
+  is("a subscriber's feed is answered", [first.status, first.headers.get("content-type")], [200, "application/rss+xml; charset=utf-8"]);
+  is("and the CDN may keep it, under its own secret address, for a few hours", first.headers.get("cache-control"), `public, max-age=0, s-maxage=${FEED_SHARED_SECONDS}`);
+  is("the subscriber is that day's visit to the store", await visitsIn(folder), 1);
+  await ask(hal);
+  is("once, however often the app asks", await visitsIn(folder), 1);
+  const ivy = "ivy@example.com";
+  await grantImported(store.statsId!, "gift:gft_y", [{ email: ivy, productId: show.product.id, items: null }]);
+  const ivys = (await feedToken(store, show.product.id, ivy))!;
+  // Measured on a subscriber's first feed of a day, which also writes the
+  // day's visit, and not on the month's first visit to the store, which
+  // writes a little more once (lib/traffic.ts, markMonth).
+  commands = 0;
+  await ask(ivys);
+  const built = commands;
+  commands = 0;
+  await ask(ivys);
+  const again = commands;
+  is("another subscriber is another", await visitsIn(folder), 2);
+  is("putting a feed together stays inside what it is costed at, the day's first time and after", [built <= COMMANDS.feedFirst, again <= COMMANDS.feed, again > 0], [true, true, true]);
+  await ask((await feedToken(store, show.product.id, "owner@example.com"))!);
+  is("the creator's own feed is never counted", await visitsIn(folder), 2);
+  const stranger = await ask((await feedToken(store, show.product.id, "dana@example.com"))!);
+  is("an address that does not hold it gets an empty list, and is no visit", [stranger.status, /<item>/.test(await stranger.text()), await visitsIn(folder)], [200, false, 2]);
+  const asked: number[] = [];
+  for (let i = 0; i < FEED_READS_A_DAY; i += 1) asked.push((await ask(hal)).status);
+  is("a feed is put together only so often in a day", [asked.filter((code) => code === 200).length, asked[asked.length - 1]], [FEED_READS_A_DAY - 2, 429]);
+  is("which is what a day's visit pays for", feedDayCost(FEED_READS_A_DAY) <= visitCost(), true);
+  is("and the CDN asks less often than that", (24 * 3600) / FEED_SHARED_SECONDS < FEED_READS_A_DAY, true);
+  is("a feed that is not one is not found", (await ask("0".repeat(48))).status, 404);
+  console.log(`      (a feed took ${built} commands the day's first time and ${again} after)`);
 
   done();
 }

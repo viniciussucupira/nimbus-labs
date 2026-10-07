@@ -342,6 +342,9 @@ async function main(): Promise<void> {
     await countHit(asking(ip), store, { kind: "view", source: "instagram", medium: "", campaign: "" });
     await countVisit(asking(ip), store);
   };
+  // Somebody before them this month: what a month's first visit writes
+  // beside the count is written once in a hundred visits, not by each.
+  await countFront("192.0.2.49");
   const firstView = await counted(() => countFront("192.0.2.50"));
   const secondView = await counted(() => countFront("192.0.2.50"));
   is("counting it a second time that day is inside the model", secondView <= COMMANDS.frontCount, true);
@@ -402,7 +405,7 @@ async function main(): Promise<void> {
   const privacy = read("app/privacy/page.tsx");
   is("the privacy policy says what is kept of a visitor for the count, and for how long", [/keep its first sixteen\s+characters/.test(privacy), /deleted two days later/.test(privacy), /made with a secret key of our own/.test(privacy)], [true, true, true]);
   const studio = read("app/studio/page.tsx");
-  is("the studio shows a store its visits, what its plan covers and what they come to", [/Visits this month/.test(studio), /visitsIn\(folder\)/.test(studio), /visitLimitFor\(store\)/.test(studio), /visitsOwedCents\(visited, store\.tier\)/.test(studio)], [true, true, true, true]);
+  is("the studio shows a store its visits, what its plan covers and what they come to", [/Visits this month/.test(studio), /trafficIn\(folder\)/.test(studio), /visitLimitFor\(store\)/.test(studio), /visitsOwedCents\(visited, store\.tier\)/.test(studio)], [true, true, true, true]);
   is("a plan's price is far more than its visits cost us", (VISITS_INCLUDED.creator * visitCost()) / (PLAN_PRICES.creator.month / 100) < 0.05, true);
 
   done();

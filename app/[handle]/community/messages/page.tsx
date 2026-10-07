@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { CREATOR, readMembers } from "@/lib/community";
-import { communityViewer } from "@/lib/community-access";
+import { communityVisitor } from "@/lib/community-page";
 import { whenWords } from "@/lib/community-text";
 import { type Conversation, inbox } from "@/lib/community-dm";
 import { CommunityBar, Face, NOTICES, authorName } from "@/components/community-parts";
@@ -35,7 +35,7 @@ export default async function MessagesPage({ params, searchParams }: Params) {
   if (!decoded.startsWith("@")) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const viewer = await communityViewer(store, await cookies());
+  const viewer = await communityVisitor(store, await cookies());
   if (viewer.state === "off" || !store.community) redirect(`/@${store.handle}`);
   const home = `/@${store.handle}/community`;
   if (viewer.state !== "in") redirect(home);

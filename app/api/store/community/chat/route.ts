@@ -3,15 +3,19 @@ import { fromAnotherSite } from "@/lib/studio-route";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { CREATOR, readMembers, within } from "@/lib/community";
 import { communityViewer } from "@/lib/community-access";
-import { MAX_CHAT_TEXT, clearRoom, room, say, unsay } from "@/lib/community-chat";
+import { MAX_CHAT_TEXT, clearRoom, lastSaid, room, say, unsay } from "@/lib/community-chat";
+import { grantRoom } from "@/lib/chat-grant";
+import { isTalking } from "@/lib/chat-pace";
 
 /**
  * The room: reading what is new, and saying something.
  *
- * JSON both ways, because this is the one part of a community a page has to
- * ask about again and again. A GET with `since` brings only what came after
- * that number, which is what makes asking every few seconds cheap enough to
- * do at all.
+ * JSON both ways. This is the route that knows who is asking, and so it is
+ * not the one a page asks every few seconds: that is the shared one beside
+ * it (new/route.ts), opened by a pass. A page comes here for the pass, ten
+ * minutes at a time (`grant=live` or `grant=idle`, lib/chat-grant.ts), and
+ * is brought what came after `since` while it is here. A room whose store
+ * has no leave to give is read from here too, when its reader asks.
  *
  * Every rule is decided here and not on the page: whether the room exists,
  * whether this person may write in it, the cooldown between messages, and
@@ -33,13 +37,24 @@ export async function GET(request: NextRequest) {
   const page = await room(id, since);
   // The names, so the page never has to ask separately and never sees an
   // address. A member who chose no name is "A member", as everywhere else.
-  const members = await readMembers(id, page.messages.map((m) => m.a).filter((a) => a !== CREATOR));
+  // Messages said since October 7, 2026 carry theirs and need nothing read.
+  const unnamed = page.messages.filter((m) => !m.n && m.a !== CREATOR).map((m) => m.a);
+  const members = unnamed.length ? await readMembers(id, unnamed) : new Map<string, { n?: string }>();
   const names: Record<string, string> = {};
   for (const message of page.messages) {
-    names[message.a] = message.a === CREATOR ? store.name : members.get(message.a)?.n || "A member";
+    names[message.a] = message.a === CREATOR ? store.name : message.n || members.get(message.a)?.n || "A member";
+  }
+  // Leave to ask the shared route for the next ten minutes, when asked for.
+  const want = url.searchParams.get("grant");
+  let given: Awaited<ReturnType<typeof grantRoom>> = null;
+  if (want === "live" || want === "idle") {
+    // The pace of a talking room is given only while the room is talking.
+    const newest = page.messages.length ? page.messages[page.messages.length - 1].at : want === "live" ? await lastSaid(id) : 0;
+    const talking = newest > 0 && isTalking(Date.now() - newest * 1000);
+    given = await grantRoom(store, id, { key: viewer.key, owner: viewer.owner }, want === "live", talking);
   }
   return Response.json(
-    { ok: true, messages: page.messages, cursor: page.cursor, names },
+    { ok: true, messages: page.messages, cursor: page.cursor, names, grant: given === "resting" ? null : given, resting: given === "resting" },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
@@ -76,11 +91,11 @@ export async function POST(request: NextRequest) {
       // room used to tell.
       return Response.json({ ok: false, error: "hourly" }, { status: 429 });
     }
-    const said = await say(id, config.chat, key, owner, text(body.text, MAX_CHAT_TEXT));
+    const name = owner ? store.name : viewer.member?.n || "A member";
+    const said = await say(id, config.chat, key, owner, text(body.text, MAX_CHAT_TEXT), name);
     if (!said.ok) {
       return Response.json({ ok: false, error: said.reason, wait: said.wait }, { status: said.reason === "slow" ? 429 : 400 });
     }
-    const name = owner ? store.name : viewer.member?.n || "A member";
     return Response.json({ ok: true, message: said.message, name });
   }
 

@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { readMembers } from "@/lib/community";
-import { communityViewer } from "@/lib/community-access";
+import { communityVisitor } from "@/lib/community-page";
 import { LEVELS, type Period, board, levelOf, pointsOf, readRewards, toNextLevel } from "@/lib/community-points";
 import { readListings } from "@/lib/catalog";
 import { CommunityBar, Face, LevelBadge } from "@/components/community-parts";
@@ -34,7 +34,7 @@ export default async function CommunityLeaderboardPage({ params, searchParams }:
   if (!decoded.startsWith("@")) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const viewer = await communityViewer(store, await cookies());
+  const viewer = await communityVisitor(store, await cookies());
   if (viewer.state === "off" || !store.community) redirect(`/@${store.handle}`);
   const home = `/@${store.handle}/community`;
   if (viewer.state !== "in") redirect(home);

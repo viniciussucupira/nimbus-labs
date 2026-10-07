@@ -5,8 +5,10 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { CREATOR, readMembers } from "@/lib/community";
-import { communityViewer } from "@/lib/community-access";
-import { room } from "@/lib/community-chat";
+import { communityVisitor } from "@/lib/community-page";
+import { quietFor, room } from "@/lib/community-chat";
+import { grantRoom } from "@/lib/chat-grant";
+import { isTalking } from "@/lib/chat-pace";
 import { requestCount } from "@/lib/community-dm";
 import { unreadCount } from "@/lib/community-notify";
 import { CommunityBar } from "@/components/community-parts";
@@ -32,7 +34,7 @@ export default async function CommunityChatPage({ params }: Params) {
   if (!decoded.startsWith("@")) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const viewer = await communityViewer(store, await cookies());
+  const viewer = await communityVisitor(store, await cookies());
   if (viewer.state === "off" || !store.community) redirect(`/@${store.handle}`);
   const home = `/@${store.handle}/community`;
   if (viewer.state !== "in") redirect(home);
@@ -44,8 +46,15 @@ export default async function CommunityChatPage({ params }: Params) {
   const members = await readMembers(id, page.messages.map((m) => m.a).filter((a) => a !== CREATOR));
   const names: Record<string, string> = {};
   for (const message of page.messages) {
-    names[message.a] = message.a === CREATOR ? store.name : members.get(message.a)?.n || "A member";
+    names[message.a] = message.a === CREATOR ? store.name : members.get(message.a)?.n || message.n || "A member";
   }
+  // Leave for this page to ask what is new for the next ten minutes, counted
+  // toward the store's visits (lib/chat-grant.ts): at the pace of a talking
+  // room only when this one is.
+  const newest = page.messages.length ? page.messages[page.messages.length - 1].at : 0;
+  const quiet = quietFor(newest);
+  const talking = quiet >= 0 && isTalking(quiet * 1000);
+  const given = await grantRoom(store, id, { key, owner }, talking, talking);
   const [waiting, news] = await Promise.all([
     config.dm.on ? requestCount(id, key) : Promise.resolve(0),
     unreadCount(id, key),
@@ -65,6 +74,12 @@ export default async function CommunityChatPage({ params }: Params) {
 
         <CommunityRoom
           handle={store.handle}
+          room={id}
+          creator={CREATOR}
+          creatorName={store.name}
+          leave={given === "resting" ? null : given}
+          resting={given === "resting"}
+          quiet={quiet}
           first={page.messages}
           names={names}
           cursor={page.cursor}

@@ -6,6 +6,7 @@
  *
  *   nl:traffic:day:<folder>:<day>    who came that day, each once
  *   nl:traffic:n:<folder>:<month>    visits, added up, that month
+ *   nl:traffic:x:<folder>:<month>    the live room, in hundredths of a visit
  *   nl:traffic:folders:<month>       the stores that had any, that month
  *
  * A page of a store says it was opened (app/api/store/hit). The visitor is
@@ -30,10 +31,11 @@ import { monthKey, rememberFolderOwner } from "@/lib/delivery";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { deriveKey } from "@/lib/secret-box";
 import { type Store, storeFolder, storeRef } from "@/lib/store";
-import { visitLimitFor, visitorAddress } from "@/lib/traffic-rules";
+import { PARTS_PER_VISIT, visitLimitFor, visitorAddress } from "@/lib/traffic-rules";
 
 const dayKey = (folder: string, day: string) => `nl:traffic:day:${folder}:${day}`;
 const countKey = (folder: string, month: string) => `nl:traffic:n:${folder}:${month}`;
+const partsKey = (folder: string, month: string) => `nl:traffic:x:${folder}:${month}`;
 const foldersKey = (month: string) => `nl:traffic:folders:${month}`;
 
 /** A day's set is kept until the day after it is over, and a little longer. */
@@ -55,6 +57,41 @@ function fingerprint(of: string): string {
 }
 
 /**
+ * What is written beside a month's count: how long it is kept, and that the
+ * store had visits that month, which is what the daily job reads to bill
+ * (lib/usage-billing.ts). Written with the month's first visit, and again at
+ * every hundredth, so that one write lost to a bad moment mends itself long
+ * before a bill could be made from the count: no plan covers fewer than a
+ * hundred visits.
+ */
+async function markMonth(folder: string, month: string, owner: string | null): Promise<void> {
+  await redisPipeline([
+    ["EXPIRE", countKey(folder, month), KEEP_SECONDS],
+    ["EXPIRE", partsKey(folder, month), KEEP_SECONDS],
+    ["SADD", foldersKey(month), folder],
+    ["EXPIRE", foldersKey(month), KEEP_SECONDS],
+  ]);
+  // Whose folder this is, for the daily job that bills and writes
+  // (lib/usage-billing.ts, storeOf).
+  if (owner) await rememberFolderOwner(folder, owner);
+}
+
+/** One person, on one day, for one store: adds a visit to the month if they are new to today. */
+async function countOnce(folder: string, owner: string | null, who: string, now: number): Promise<boolean> {
+  const day = new Date(now).toISOString().slice(0, 10);
+  const [fresh] = await redisPipeline([["SADD", dayKey(folder, day), fingerprint(`${day}|${folder}|${who}`)]]);
+  if (Number(fresh) !== 1) return false;
+  const month = monthKey(new Date(now));
+  const [count] = await redisPipeline([
+    ["INCR", countKey(folder, month)],
+    ["EXPIRE", dayKey(folder, day), DAY_KEEP_SECONDS],
+  ]);
+  const n = Number(count);
+  if (n === 1 || n % 100 === 0) await markMonth(folder, month, owner);
+  return true;
+}
+
+/**
  * Somebody opened a page of this store. Adds a visit to the month if they
  * are new to today; answers whether they were.
  *
@@ -64,40 +101,75 @@ function fingerprint(of: string): string {
 export async function recordVisit(store: Store, ip: string, now = Date.now()): Promise<boolean> {
   if (!isRedisConfigured()) return false;
   try {
-    const folder = await storeFolder(storeRef(store));
-    const day = new Date(now).toISOString().slice(0, 10);
-    const who = fingerprint(`${day}|${folder}|${visitorAddress(ip)}`);
-    const [fresh] = await redisPipeline([["SADD", dayKey(folder, day), who]]);
-    if (Number(fresh) !== 1) return false;
-    const month = monthKey(new Date(now));
-    const [count] = await redisPipeline([
-      ["INCR", countKey(folder, month)],
-      ["EXPIRE", countKey(folder, month), KEEP_SECONDS],
-      ["EXPIRE", dayKey(folder, day), DAY_KEEP_SECONDS],
-      ["SADD", foldersKey(month), folder],
-      ["EXPIRE", foldersKey(month), KEEP_SECONDS],
-    ]);
-    // Whose folder this is, for the daily job that bills and writes
-    // (lib/usage-billing.ts, storeOf): written with a month's first visit.
-    if (Number(count) === 1) await rememberFolderOwner(folder, storeRef(store));
-    return true;
+    return await countOnce(await storeFolder(storeRef(store)), storeRef(store), visitorAddress(ip), now);
   } catch (error) {
     console.error("could not count a visit to a store", error);
     return false;
   }
 }
 
-/** The visits a store had in a month ("2026-10"); this month by default. */
-export async function visitsIn(folder: string, month = monthKey()): Promise<number> {
-  if (!isRedisConfigured() || !folder) return 0;
+/**
+ * A subscriber's podcast app asked for its feed (lib/podcast-access.ts): one
+ * visit for that subscriber that day, however often the app asks. Told
+ * apart by the feed and not by an address, because many apps ask from their
+ * maker's servers and a thousand subscribers would be one address.
+ */
+export async function recordListener(store: Store, feed: string, now = Date.now()): Promise<boolean> {
+  if (!isRedisConfigured() || !feed) return false;
   try {
-    const [raw] = await redisPipeline([["GET", countKey(folder, month)]]);
-    const visits = Number(raw);
-    return Number.isFinite(visits) && visits > 0 ? Math.floor(visits) : 0;
+    return await countOnce(await storeFolder(storeRef(store)), storeRef(store), `feed:${feed}`, now);
+  } catch (error) {
+    console.error("could not count a podcast subscriber's day", error);
+    return false;
+  }
+}
+
+/**
+ * Adds hundredths of a visit to a store's month: the live room, by the ten
+ * minutes it is open for one member (lib/chat-grant.ts). Answers the
+ * month's hundredths after it, or null when it could not be written.
+ */
+export async function recordParts(folder: string, owner: string | null, parts: number, now = Date.now()): Promise<number | null> {
+  if (!isRedisConfigured() || !FOLDER_PATTERN.test(folder) || !Number.isInteger(parts) || parts <= 0) return null;
+  try {
+    const month = monthKey(new Date(now));
+    const [total] = await redisPipeline([["INCRBY", partsKey(folder, month), parts]]);
+    const held = Number(total);
+    // The same mending as a visit's: with the first, and each time a
+    // hundred visits' worth has been added.
+    const step = 100 * PARTS_PER_VISIT;
+    if (held === parts || Math.floor(held / step) !== Math.floor((held - parts) / step)) await markMonth(folder, month, owner);
+    return held;
+  } catch (error) {
+    console.error("could not count the live room toward a store's visits", error);
+    return null;
+  }
+}
+
+/** A month of a store, taken apart: people who came, and the live room in hundredths of a visit. */
+export type Traffic = { people: number; parts: number; visits: number };
+
+export async function trafficIn(folder: string, month = monthKey()): Promise<Traffic> {
+  if (!isRedisConfigured() || !folder) return { people: 0, parts: 0, visits: 0 };
+  try {
+    const [raw] = await redisPipeline([["MGET", countKey(folder, month), partsKey(folder, month)]]);
+    const [n, x] = Array.isArray(raw) ? raw : [];
+    const whole = (value: unknown) => (Number.isFinite(Number(value)) && Number(value) > 0 ? Math.floor(Number(value)) : 0);
+    const people = whole(n);
+    const parts = whole(x);
+    return { people, parts, visits: people + Math.floor(parts / PARTS_PER_VISIT) };
   } catch (error) {
     console.error("could not read a store's visits", error);
-    return 0;
+    return { people: 0, parts: 0, visits: 0 };
   }
+}
+
+/**
+ * The visits a store had in a month ("2026-10"); this month by default.
+ * People who came, and the live room's hundredths made into whole visits.
+ */
+export async function visitsIn(folder: string, month = monthKey()): Promise<number> {
+  return (await trafficIn(folder, month)).visits;
 }
 
 /** The stores that had any visit in a month. */

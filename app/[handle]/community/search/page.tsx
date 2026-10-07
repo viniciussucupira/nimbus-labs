@@ -9,7 +9,8 @@ import { SEARCH_CONVERSATIONS, SEARCH_MESSAGES, mayMessage, pairOf, requestCount
 import { CREATOR } from "@/lib/community";
 import { searchRoom } from "@/lib/community-chat";
 import { unreadCount } from "@/lib/community-notify";
-import { communityViewer, visibleSpaces } from "@/lib/community-access";
+import { visibleSpaces } from "@/lib/community-access";
+import { communityVisitor } from "@/lib/community-page";
 import { type SearchKind, MAX_QUERY_LENGTH, queryWords, search, searchEverything } from "@/lib/community-search";
 import { walkCommunity } from "@/lib/community-walk";
 import { eventsFound, lessonsFound, membersFound } from "@/lib/community-found";
@@ -82,7 +83,7 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
   if (!decoded.startsWith("@")) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const viewer = await communityViewer(store, await cookies());
+  const viewer = await communityVisitor(store, await cookies());
   if (viewer.state === "off" || !store.community) redirect(`/@${store.handle}`);
   const home = `/@${store.handle}/community`;
   if (viewer.state !== "in") redirect(home);
