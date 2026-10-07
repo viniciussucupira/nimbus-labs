@@ -17,14 +17,17 @@ import { dynamicPolicy } from "@/lib/csp";
 import { folderFromPathname } from "@/lib/delivery";
 import {
   PLAYER_SECONDS,
+  addCaption,
   believed,
   claimUpload,
+  dropCaption,
   dropStream,
   heard,
   isStreamConfigured,
   lookAt,
   openUpload,
   playerFor,
+  streamCaptions,
   streamHeld,
   streamRecord,
   streamStates,
@@ -45,6 +48,7 @@ import {
   streamPath,
   viewingBytes,
 } from "@/lib/stream-rules";
+import { MAX_CAPTION_BYTES, MAX_CAPTION_TRACKS, CAPTION_LANGUAGES } from "@/lib/captions";
 import { advance, store as redis } from "./redis-stub";
 import { done, is, part } from "./check";
 
@@ -69,6 +73,8 @@ type Video = {
   storageSize: number;
 };
 const videos = new Map<string, Video>();
+/** The captions the service holds, by video and language: the label, and the file as it was sent. */
+const captions = new Map<string, { label: string; file: string }>();
 const collections = new Map<string, string>();
 const asked: string[] = [];
 /** The service as a whole: there, busy, or not answering. */
@@ -109,6 +115,21 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
     const video: Video = { guid: guid(), title: body.title, collectionId: body.collectionId, status: 0, availableResolutions: "", length: 0, width: 0, height: 0, rotation: null, storageSize: 0 };
     videos.set(video.guid, video);
     return json(video);
+  }
+  const caption = path.match(/^\/videos\/([0-9a-f-]+)\/captions\/([a-z-]+)$/);
+  if (caption) {
+    if (!videos.has(caption[1])) return json({}, 404);
+    const key = `${caption[1]}/${caption[2]}`;
+    if (method === "DELETE") {
+      captions.delete(key);
+      return json({ success: true });
+    }
+    const sent = JSON.parse(String(init?.body)) as { label: string; captionsFile: string };
+    const file = Buffer.from(sent.captionsFile, "base64").toString("utf8");
+    // The service reads the file too, and says no to one it cannot.
+    if (!file.startsWith("WEBVTT")) return json({ valid: false, errorList: ["not WebVTT"] }, 400);
+    captions.set(key, { label: sent.label, file });
+    return json({ valid: true, errorList: [] });
   }
   const one = path.match(/^\/videos\/([0-9a-f-]+)$/);
   if (one) {
@@ -376,11 +397,41 @@ async function main() {
   const waited = await lookAt(ninth.id, NOW + GIVE_UP_AFTER_MS + MINUTE);
   is("one the service never says it has finished is asked about for a week, and then left as it is: playing", [waited?.state, waited?.settled], ["ready", true]);
 
+  part("Captions a creator uploads");
+  const SRT = "1\n00:00:01,000 --> 00:00:03,500\nWelcome to the course.\n\n2\n00:00:04,000 --> 00:00:06,000\nLet us begin.\n";
+  let said = await addCaption(door.pathname, "en", SRT);
+  is("a subtitle file is taken, and the video has captions in that language", said, { ok: true, captions: [{ lang: "en", label: "English" }] });
+  is("what the service was sent is WebVTT made here, not the file as it came", captions.get(`${door.id}/en`), {
+    label: "English",
+    file: "WEBVTT\n\n00:00:01.000 --> 00:00:03.500\nWelcome to the course.\n\n00:00:04.000 --> 00:00:06.000\nLet us begin.\n",
+  });
+  said = await addCaption(door.pathname, "pt", "WEBVTT\n\n00:01.000 --> 00:03.000\nBem-vindo ao curso.\n");
+  is("a second language sits beside the first, in the order the names are read in", said, { ok: true, captions: [{ lang: "en", label: "English" }, { lang: "pt", label: "Português" }] });
+  await addCaption(door.pathname, "en", "WEBVTT\n\n00:01.000 --> 00:02.000\nWelcome, again.\n");
+  is("a second file in a language takes the place of the first", [captions.get(`${door.id}/en`)?.file.includes("again"), (await streamCaptions([door.pathname]))[door.pathname]?.length], [true, 2]);
+  is("the studio is told which videos have captions, and only those", Object.keys(await streamCaptions([door.pathname, sixth.pathname, `stores/${FOLDER}/${LESSON}/a.mp4`])), [door.pathname]);
+  is("a file that is not captions is refused, and nothing is sent", [await addCaption(door.pathname, "fr", "Just some notes about the lesson."), captions.has(`${door.id}/fr`)], [{ ok: false, reason: "format" }, false]);
+  is("so is one over the size a captions file may be", await addCaption(door.pathname, "fr", `WEBVTT\n\n00:01.000 --> 00:02.000\n${"a".repeat(MAX_CAPTION_BYTES)}\n`), { ok: false, reason: "too_big" });
+  is("and a language that is not on the list", await addCaption(door.pathname, "xx", SRT), { ok: false, reason: "language" });
+  is("a video that could not be made has none", await addCaption(third.door.pathname, "en", SRT), { ok: false, reason: "not_ready" });
+  is("nor has a path nothing is known about", await addCaption(streamPath(FOLDER, LESSON, "00000000-0000-4000-8000-00000000ffff"), "en", SRT), { ok: false, reason: "unknown" });
+  service = "down";
+  is("with the service not there, the language is not listed: the player would not offer it", [await addCaption(door.pathname, "de", SRT), (await streamCaptions([door.pathname]))[door.pathname]?.length], [{ ok: false, reason: "unavailable" }, 2]);
+  is("and one that cannot be taken away there stays listed here", [await dropCaption(door.pathname, "pt"), (await streamCaptions([door.pathname]))[door.pathname]?.length], [{ ok: false, reason: "unavailable" }, 2]);
+  service = "up";
+  for (const language of CAPTION_LANGUAGES.slice(0, MAX_CAPTION_TRACKS + 1)) await addCaption(door.pathname, language.code, SRT);
+  const many = (await streamCaptions([door.pathname]))[door.pathname] ?? [];
+  is(`a video holds captions in ${MAX_CAPTION_TRACKS} languages and no more`, [many.length, await addCaption(door.pathname, "zh", SRT)], [MAX_CAPTION_TRACKS, { ok: false, reason: "many" }]);
+  is("though one of those it has can still be replaced", (await addCaption(door.pathname, "en", SRT)).ok, true);
+  said = await dropCaption(door.pathname, "pt");
+  is("taken away, a language is gone from the service and from the list", [captions.has(`${door.id}/pt`), said.ok && said.captions.some((track) => track.lang === "pt")], [false, false]);
+
   part("A creator removes the video");
   is("a file in the file store is not this file's to delete", await dropStream(`stores/${FOLDER}/${LESSON}/lesson.mp4`), false);
   is("the video is taken away", await dropStream(door.pathname), true);
   is("at the service", videos.has(door.id), false);
   is("and here", await streamRecord(door.pathname), null);
+  is("with the list of its captions", await streamCaptions([door.pathname]), {});
   is("a student who still has the page is shown nothing", await playerFor(door.pathname, NOW), null);
   const fifth = await openUpload(input, NOW);
   if (!fifth.ok) return done();

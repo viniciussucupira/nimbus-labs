@@ -76,10 +76,12 @@
  *   nl:stream:col:<folder> the store's collection at the service
  *   nl:stream:gone        videos to delete there that could not be reached
  *   nl:stream:peek:<id>   a student's page asked about this one just now
+ *   nl:stream:cap:<id>    the languages a video has captions in
  */
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { STREAM_PEEK_TIMEOUT_MS, STREAM_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { type CaptionProblem, type CaptionTrack, MAX_CAPTION_TRACKS, captionLabel, toVtt } from "@/lib/captions";
 import {
   ABANDONED_AFTER_MS,
   GIVE_UP_AFTER_MS,
@@ -147,6 +149,7 @@ export type StreamRecord = {
 const recordKey = (id: string) => `nl:stream:v:${id}`;
 const collectionKey = (folder: string) => `nl:stream:col:${folder}`;
 const peekKey = (id: string) => `nl:stream:peek:${id}`;
+const captionsKey = (id: string) => `nl:stream:cap:${id}`;
 const DUE = "nl:stream:due";
 const GONE = "nl:stream:gone";
 
@@ -372,7 +375,7 @@ export async function lookAt(id: string, now = Date.now(), ms = STREAM_TIMEOUT_M
   }
   if (unclaimed) {
     await ask(config, "DELETE", `/videos/${id}`, undefined, ms);
-    await redisPipeline([["DEL", recordKey(id)], ["ZREM", DUE, id]]);
+    await redisPipeline([["DEL", recordKey(id), captionsKey(id)], ["ZREM", DUE, id]]);
     return null;
   }
 
@@ -536,11 +539,104 @@ export async function dropStream(pathname: string): Promise<boolean> {
   const parts = readStreamPath(pathname);
   if (!parts) return false;
   if (!isRedisConfigured()) return true;
-  await redisPipeline([["DEL", recordKey(parts.id)], ["ZREM", DUE, parts.id]]);
+  await redisPipeline([["DEL", recordKey(parts.id), captionsKey(parts.id)], ["ZREM", DUE, parts.id]]);
   const config = streamConfig();
   const answer = config ? await ask(config, "DELETE", `/videos/${parts.id}`) : { status: 0, data: null };
   if (answer.status !== 200 && answer.status !== 404) await redisPipeline([["SADD", GONE, parts.id]]);
   return true;
+}
+
+function tracksFrom(flat: unknown): CaptionTrack[] {
+  const out: CaptionTrack[] = [];
+  if (!Array.isArray(flat)) return out;
+  for (let i = 0; i + 1 < flat.length; i += 2) {
+    const lang = flat[i];
+    const label = typeof lang === "string" ? captionLabel(lang) : null;
+    if (typeof lang === "string" && label) out.push({ lang, label });
+  }
+  // In the order the languages are offered in, so the list does not jump about.
+  return out.sort((a, b) => a.label.localeCompare(b.label, "en"));
+}
+
+/** The languages each of these videos has captions in, by its path. Videos with none are left out. */
+export async function streamCaptions(pathnames: string[]): Promise<Record<string, CaptionTrack[]>> {
+  const wanted = pathnames.flatMap((path) => {
+    const parts = readStreamPath(path);
+    return parts ? [{ path, id: parts.id }] : [];
+  });
+  if (!wanted.length || !isRedisConfigured()) return {};
+  const rows = await redisPipeline(wanted.map(({ id }) => ["HGETALL", captionsKey(id)]));
+  const out: Record<string, CaptionTrack[]> = {};
+  wanted.forEach(({ path }, i) => {
+    const tracks = tracksFrom(rows[i]);
+    if (tracks.length) out[path] = tracks;
+  });
+  return out;
+}
+
+export type CaptionAnswer =
+  | { ok: true; captions: CaptionTrack[] }
+  | { ok: false; reason: CaptionProblem | "off" | "unknown" | "language" | "many" | "not_ready" | "unavailable" };
+
+/**
+ * Gives a lesson's video captions in one language, from a file the creator
+ * wrote or had written (lib/captions.ts). A second file in the same
+ * language takes the place of the first.
+ *
+ * What goes to the service is the WebVTT made here from the file, never the
+ * file itself. The language is written down only once the service has said
+ * it took the captions, so the studio never lists a language the player
+ * does not offer.
+ */
+export async function addCaption(pathname: string, lang: string, file: unknown): Promise<CaptionAnswer> {
+  const config = streamConfig();
+  if (!config || !isRedisConfigured()) return { ok: false, reason: "off" };
+  const label = captionLabel(lang);
+  if (!label) return { ok: false, reason: "language" };
+  const record = await streamRecord(pathname);
+  if (!record) return { ok: false, reason: "unknown" };
+  // The service has no video to put captions on until the file is there.
+  if (record.state !== "ready" && record.state !== "working") return { ok: false, reason: "not_ready" };
+  const read = toVtt(file);
+  if (!read.ok) return { ok: false, reason: read.reason };
+
+  const [has, count] = await redisPipeline([
+    ["HEXISTS", captionsKey(record.id), lang],
+    ["HLEN", captionsKey(record.id)],
+  ]);
+  if (Number(has) !== 1 && Number(count) >= MAX_CAPTION_TRACKS) return { ok: false, reason: "many" };
+
+  const answer = await ask(config, "POST", `/videos/${record.id}/captions/${lang}`, {
+    srclang: lang,
+    label,
+    captionsFile: Buffer.from(read.vtt, "utf8").toString("base64"),
+  });
+  if (answer.status === 400) return { ok: false, reason: "format" };
+  if (answer.status === 404) return { ok: false, reason: "not_ready" };
+  if (answer.status !== 200) return { ok: false, reason: "unavailable" };
+  const [, flat] = await redisPipeline([
+    ["HSET", captionsKey(record.id), lang, label],
+    ["HGETALL", captionsKey(record.id)],
+  ]);
+  return { ok: true, captions: tracksFrom(flat) };
+}
+
+/** Takes a video's captions in one language away, at the service and here. */
+export async function dropCaption(pathname: string, lang: string): Promise<CaptionAnswer> {
+  const config = streamConfig();
+  if (!config || !isRedisConfigured()) return { ok: false, reason: "off" };
+  if (!captionLabel(lang)) return { ok: false, reason: "language" };
+  const record = await streamRecord(pathname);
+  if (!record) return { ok: false, reason: "unknown" };
+  const answer = await ask(config, "DELETE", `/videos/${record.id}/captions/${lang}`);
+  // Gone there already is gone: anything else, and the language stays listed
+  // here, because the player still offers it.
+  if (answer.status !== 200 && answer.status !== 404) return { ok: false, reason: "unavailable" };
+  const [, flat] = await redisPipeline([
+    ["HDEL", captionsKey(record.id), lang],
+    ["HGETALL", captionsKey(record.id)],
+  ]);
+  return { ok: true, captions: tracksFrom(flat) };
 }
 
 /**

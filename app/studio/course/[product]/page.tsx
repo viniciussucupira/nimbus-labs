@@ -23,7 +23,7 @@ import {
   WithdrawCertificate,
 } from "@/components/course-editor";
 import { readListing } from "@/lib/catalog";
-import { streamStates } from "@/lib/stream";
+import { streamCaptions, streamStates } from "@/lib/stream";
 
 export const metadata: Metadata = {
   title: "Your course — Marktmorgen",
@@ -59,7 +59,10 @@ export default async function StudioCoursePage({
   if (!course) redirect(studioPath(store));
   const folder = await storeFolder(view.ref);
   // Where each lesson video kept by the video service stands (lib/stream.ts).
-  const streams = await streamStates(lessonsInOrder(course).flatMap(({ lesson }) => (lesson.video ? [lesson.video.pathname] : []))).catch(() => ({}));
+  const videoPaths = lessonsInOrder(course).flatMap(({ lesson }) => (lesson.video ? [lesson.video.pathname] : []));
+  const streams = await streamStates(videoPaths).catch(() => ({}));
+  // And the languages each one has captions in.
+  const captions = await streamCaptions(videoPaths).catch(() => ({}));
   const { students, total } = await studentsOf(course, 500);
   const lessons = lessonCount(course);
   const finished = students.filter((s) => lessons > 0 && s.done >= lessons).length;
@@ -133,6 +136,7 @@ export default async function StudioCoursePage({
           initial={course}
           folder={folder}
           streams={streams}
+          captions={captions}
           title={product.title}
           ai={isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
         />

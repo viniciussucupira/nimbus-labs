@@ -29,6 +29,7 @@ import { useStudioHref } from "@/components/studio-store-pin";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 import { AiAssist, AiOn } from "@/components/ai-assist";
 import { type StreamState, isStreamPath } from "@/lib/stream-rules";
+import { CAPTION_LANGUAGES, type CaptionTrack, MAX_CAPTION_BYTES, MAX_CAPTION_TRACKS } from "@/lib/captions";
 import { TusError, tusUpload } from "@/lib/tus-upload";
 
 type Outline = { modules: { title: string; lessons: string[] }[] };
@@ -52,6 +53,13 @@ const MESSAGES: Record<string, string> = {
   video_unavailable: "Videos cannot be taken in just now. Try again in a few minutes.",
   slow_down: "That is a lot of videos in one hour. Try again a little later.",
   upload_stopped: "The upload stopped before the end, and could not go on. Check your connection and upload the video again.",
+  caption_format: "That file could not be read as captions. Upload a .vtt or .srt file with a time on every caption.",
+  caption_empty: "That file is empty.",
+  caption_too_big: "That captions file is over 1 MB, which is the most one can be.",
+  caption_many: `A video holds captions in up to ${MAX_CAPTION_TRACKS} languages. Remove one first.`,
+  caption_not_ready: "The video has to finish uploading before captions can be added.",
+  caption_language: "Choose a language from the list.",
+  caption_unknown: "That video is not there anymore. Reload the page.",
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
@@ -62,9 +70,17 @@ type Answer = { ok?: boolean; error?: string; reason?: string; course?: Course; 
  * its way to being playable, by the path the lesson keeps for it: as the
  * page was drawn, and as this browser has learned since.
  */
-const Streams = createContext<{ states: Record<string, StreamState>; learned: (path: string, state: StreamState) => void }>({
+const Streams = createContext<{
+  states: Record<string, StreamState>;
+  learned: (path: string, state: StreamState) => void;
+  /** The languages each of those videos has captions in. */
+  captions: Record<string, CaptionTrack[]>;
+  captioned: (path: string, tracks: CaptionTrack[]) => void;
+}>({
   states: {},
   learned: () => {},
+  captions: {},
+  captioned: () => {},
 });
 
 /** What a creator is told about a video the service keeps. */
@@ -126,12 +142,15 @@ export function CourseEditor({
   title = "",
   ai = { on: false, left: 0 },
   streams = {},
+  captions = {},
 }: {
   productId: string;
   initial: Course;
   folder: string;
   /** Where each lesson video kept by the video service stood when the page was drawn. */
   streams?: Record<string, StreamState>;
+  /** The languages each of those videos had captions in when the page was drawn. */
+  captions?: Record<string, CaptionTrack[]>;
   /** The course's name, for the writing help. */
   title?: string;
   /** Whether the writing help is on, and what is left of the month (lib/ai.ts). */
@@ -148,6 +167,8 @@ export function CourseEditor({
   const [proposal, setProposal] = useState<Outline | null>(null);
   const [streamStates, setStreamStates] = useState<Record<string, StreamState>>(streams);
   const learned = (path: string, state: StreamState) => setStreamStates((known) => ({ ...known, [path]: state }));
+  const [captionTracks, setCaptionTracks] = useState<Record<string, CaptionTrack[]>>(captions);
+  const captioned = (path: string, tracks: CaptionTrack[]) => setCaptionTracks((known) => ({ ...known, [path]: tracks }));
 
   async function run(payload: Record<string, unknown>): Promise<Answer> {
     setBusy(true);
@@ -162,7 +183,7 @@ export function CourseEditor({
   const lessons = course.modules.reduce((n, m) => n + m.lessons.length, 0);
 
   return (
-    <Streams.Provider value={{ states: streamStates, learned }}>
+    <Streams.Provider value={{ states: streamStates, learned, captions: captionTracks, captioned }}>
     <div className="mt-8 space-y-6">
       {error ? (
         <p className="notice notice-error" role="alert">{error}</p>
@@ -587,6 +608,9 @@ function LessonEditor({
                 {STREAM_WORDS[streamed]}
               </p>
             ) : null}
+            {streamed === "ready" || streamed === "working" ? (
+              <Captions lessonId={lesson.id} pathname={lesson.video.pathname} busy={busy || uploading !== null} onError={onError} />
+            ) : null}
           </div>
         ) : (
           <p className="mt-1 text-sm text-ink-mute">{`MP4, MOV or WebM, up to ${maxFileLabel()}. Upright phone videos stay upright.`}</p>
@@ -722,6 +746,113 @@ function LessonEditor({
 }
 
 /** Taking one student off the course, or letting them back on. */
+/**
+ * Captions for a lesson's video kept by the video service: the languages it
+ * has them in, and a way to add or take away one (app/api/store/stream/captions).
+ *
+ * The file is read here, as text, and the same rules that the server holds
+ * it to are met before it is sent (lib/captions.ts), so a file that is not
+ * captions is refused without a wait.
+ */
+function Captions({
+  lessonId,
+  pathname,
+  busy,
+  onError,
+}: {
+  lessonId: string;
+  pathname: string;
+  busy: boolean;
+  onError: (message: string | null) => void;
+}) {
+  const streams = useContext(Streams);
+  const tracks = streams.captions[pathname] ?? [];
+  const [lang, setLang] = useState("en");
+  const [working, setWorking] = useState(false);
+
+  async function send(payload: Record<string, unknown>, done: string) {
+    onError(null);
+    setWorking(true);
+    try {
+      const response = await fetch("/api/store/stream/captions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lessonId, ...payload }),
+      });
+      const data = (await response.json().catch(() => ({ ok: false, error: "server_error" }))) as { ok?: boolean; error?: string; captions?: CaptionTrack[] };
+      if (data.ok && data.captions) {
+        streams.captioned(pathname, data.captions);
+        toast(done);
+      } else {
+        onError(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
+      }
+    } catch {
+      onError(MESSAGES.server_error);
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function add(chosen: File) {
+    if (chosen.size > MAX_CAPTION_BYTES) return onError(MESSAGES.caption_too_big);
+    const words = await chosen.text().catch(() => "");
+    await send({ action: "add", lang, text: words }, "Captions added.");
+  }
+
+  const selectId = `captions-${lessonId}`;
+  return (
+    <div className="w-full">
+      <p className="field-label">Captions</p>
+      {tracks.length ? (
+        <ul className="mt-2 space-y-1 text-sm">
+          {tracks.map((track) => (
+            <li key={track.lang} className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span className="text-ink">{track.label}</span>
+              <button
+                type="button"
+                className={`${small} font-bold`}
+                disabled={busy || working}
+                aria-label={`Remove the ${track.label} captions`}
+                onClick={() => send({ action: "remove", lang: track.lang }, "Captions removed.")}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1 text-sm text-ink-mute">
+          None yet. Upload a .vtt or .srt file and the player shows a captions button. Captions are not written for you.
+        </p>
+      )}
+      <div className="mt-2 flex flex-wrap items-end gap-3">
+        <label htmlFor={selectId} className="block">
+          <span className="sr-only">Captions language</span>
+          <select id={selectId} className="field" value={lang} disabled={busy || working} onChange={(e) => setLang(e.target.value)}>
+            {CAPTION_LANGUAGES.map((language) => (
+              <option key={language.code} value={language.code}>{language.label}</option>
+            ))}
+          </select>
+        </label>
+        <label className="btn btn-secondary btn-sm cursor-pointer" aria-busy={working}>
+          {tracks.some((track) => track.lang === lang) ? "Replace these captions" : "Add captions"}
+          <input
+            type="file"
+            accept=".vtt,.srt,text/vtt"
+            className="sr-only"
+            disabled={busy || working}
+            onChange={(e) => {
+              const chosen = e.target.files?.[0];
+              e.target.value = "";
+              if (chosen) add(chosen);
+            }}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
 export function StudentAccess({ productId, email, blocked }: { productId: string; email: string; blocked: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
