@@ -348,8 +348,10 @@ export class MemoryRedis {
             (from.open ? e.score > from.value : e.score >= from.value) &&
             (to.open ? e.score < to.value : e.score <= to.value),
         );
-        const at = args.map((a) => a.toUpperCase()).indexOf("LIMIT");
+        const flags = args.map((a) => a.toUpperCase());
+        const at = flags.indexOf("LIMIT");
         const limited = at >= 0 ? page.slice(Number(args[at + 1]), Number(args[at + 1]) + Number(args[at + 2])) : page;
+        if (flags.includes("WITHSCORES")) return limited.flatMap((e) => [e.member, String(e.score)]);
         return limited.map((e) => e.member);
       }
       case "ZREVRANGEBYSCORE": {

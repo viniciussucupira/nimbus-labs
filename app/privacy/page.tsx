@@ -1116,6 +1116,14 @@ export default function PrivacyPage() {
           record.
         </p>
         <p>
+          The files a creator sells, their lessons&apos; videos and their
+          podcast&apos;s episodes are kept until the creator removes them.
+          Where a store&apos;s plan has ended and the store keeps more than a
+          store with no plan may, they are deleted 60 days after the plan
+          ended, after three emails to the store&apos;s owner (Terms of
+          Service, section 8).
+        </p>
+        <p>
           A creator&apos;s list is kept for as long as their store exists, or
           until the creator, or the person on it, asks us to remove an address.
           A request for a free copy whose link is never used is deleted after

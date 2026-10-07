@@ -81,6 +81,14 @@ export function videoLimitFor(store: PlanFields, nowSeconds = Date.now() / 1000)
   return standing === "trial" ? VIDEO_SECONDS_INCLUDED : SETUP_VIDEO_SECONDS;
 }
 
+/**
+ * Where the stores whose plan has ended are kept in line, by the day it
+ * ended: the store's key, scored with that day in milliseconds. Written by
+ * the one place a store's plan is written down (lib/store.ts,
+ * setSubscription) and read by the daily job (lib/plan-closing.ts).
+ */
+export const ENDED_INDEX = "nl:plan:ended";
+
 /** The word an upload is refused with when it would not fit, by standing (lib/studio-messages.ts has the sentences). */
 export function storageRefusal(standing: Standing): "storage_full" | "storage_trial" | "storage_setup" {
   return standing === "paid" ? "storage_full" : standing === "trial" ? "storage_trial" : "storage_setup";

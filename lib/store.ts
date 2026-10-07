@@ -55,6 +55,7 @@ import { type SaveOffer, NO_SAVE, parseSaveOffer } from "@/lib/save-offer";
 import { type WinBack, NO_WINBACK, parseWinBack } from "@/lib/winback";
 import { type StoreSale, NO_SALE, parseSale } from "@/lib/store-sale";
 import { parseTiers } from "@/lib/tier-rules";
+import { ENDED_INDEX } from "@/lib/plan-standing";
 import { type Cycle, type Tier, parseCycle, parseTier } from "@/lib/plan";
 import { COMMUNITY_ID } from "@/lib/community-text";
 import { type Bump, type Plan, canBeBumped, isOneOff } from "@/lib/product-extras";
@@ -1296,6 +1297,7 @@ export async function deleteStore(email: string): Promise<DeleteResult> {
       ["DEL", await ownerKey(storeRef(store))],
       ["DEL", storeIdKey(store.sid)],
       ["SREM", await accountKey(store.email), store.sid],
+      ["ZREM", ENDED_INDEX, storeRef(store)],
     ]);
     return { ok: true, store };
   });
@@ -1439,7 +1441,7 @@ export async function setSubscription(
     const had = store.subscriptionActive || store.subscriptionId !== null || subscriptionId !== null;
     const planEndedAt = fields.active ? "" : store.planEndedAt || (had ? new Date().toISOString() : "");
 
-    return save({
+    const saved = await save({
       ...store,
       stripeCustomerId: customerId,
       subscriptionId,
@@ -1450,6 +1452,16 @@ export async function setSubscription(
       trialEnds: fields.trialEnds ?? store.trialEnds,
       planEndedAt,
     });
+    // Kept in line by the day its plan ended, for the daily job that looks
+    // at what such a store still keeps (lib/plan-closing.ts), and taken out
+    // of line the moment a plan runs again. Only when it changes: this is
+    // written every time a studio is opened.
+    if (planEndedAt !== store.planEndedAt) {
+      await redisPipeline([
+        planEndedAt ? ["ZADD", ENDED_INDEX, Date.parse(planEndedAt), storeRef(saved)] : ["ZREM", ENDED_INDEX, storeRef(saved)],
+      ]).catch((error) => console.error("could not keep the line of ended plans", error));
+    }
+    return saved;
   });
   return result ?? null;
 }

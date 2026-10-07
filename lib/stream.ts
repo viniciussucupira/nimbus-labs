@@ -310,6 +310,33 @@ export async function streamWatched(folder: string): Promise<{ id: string; secon
   return out;
 }
 
+/**
+ * Takes away every video a store has at the service, the ones no lesson
+ * names any more among them, and forgets them here. Answers how many went;
+ * null when the service could not be read, and then nothing was touched.
+ *
+ * For a store whose plan ended long enough ago that what it keeps is
+ * removed (lib/plan-closing.ts). One the service could not delete just now
+ * is kept in line, as a single video is (dropStream). Past `until` it stops
+ * and answers null as well: a store with hundreds of videos is more than
+ * one run can take away.
+ */
+export async function dropAllStreams(folder: string, until = Number.POSITIVE_INFINITY): Promise<number | null> {
+  const config = streamConfig();
+  if (!config || !isRedisConfigured()) return 0;
+  const videos = await streamWatched(folder);
+  if (videos === null) return null;
+  for (const { id } of videos) {
+    // Out of time: not seen through, and said so. The rest is there to be
+    // listed the next time.
+    if (Date.now() > until) return null;
+    await redisPipeline([["DEL", recordKey(id), captionsKey(id)], ["ZREM", DUE, id]]);
+    const answer = await ask(config, "DELETE", `/videos/${id}`);
+    if (answer.status !== 200 && answer.status !== 404) await redisPipeline([["SADD", GONE, id]]);
+  }
+  return videos.length;
+}
+
 export type UploadDoor = {
   /** Where the pieces go, and the four values the service wants with each of them. */
   endpoint: string;

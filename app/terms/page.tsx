@@ -8,6 +8,7 @@ import { healthRuleWords } from "@/lib/mail-health-rules";
 import { DELIVERY_ALLOWANCE_BYTES, FREE_PAUSE_ABOVE_BYTES, bytesWords } from "@/lib/delivery";
 import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, centsWords } from "@/lib/watch-rules";
 import { SETUP_STORAGE_BYTES, SETUP_VIDEO_HOURS, TRIAL_STORAGE_BYTES } from "@/lib/plan-standing";
+import { CLOSING_DAYS, WARN_MONTH_DAYS, WARN_WEEK_DAYS } from "@/lib/plan-closing-rules";
 import { STORAGE_BRAKE_BYTES, storageWords } from "@/lib/storage-quota";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
@@ -314,8 +315,9 @@ export default function TermsPage() {
           {storageWords(SETUP_STORAGE_BYTES)} for a store with no plan, before
           one is started or after one has ended. That asks you to remove
           something before adding more and changes nothing about what is
-          already there or already sold; a store that holds more than its
-          figure when its plan ends keeps what it holds and cannot add to it.
+          already there or already sold. A store that holds more than its
+          figure when its plan ends cannot add to it, and section 8 says how
+          long it keeps what it holds.
         </p>
         <p>
           Beyond those, we may limit or suspend a store only if use far above
@@ -412,6 +414,28 @@ export default function TermsPage() {
           you cancel, you will not be charged for future billing periods. You
           will retain access until the end of the period you have already paid
           for, unless a refund applies under our Refund Policy.
+        </p>
+        <p>
+          When a plan ends, the store stays: its page, its products and their
+          prices, its lessons&rsquo; text and quizzes, its contacts and its
+          orders are kept, and buyers go on downloading what they bought. A
+          store that keeps {storageWords(SETUP_STORAGE_BYTES)} or less of
+          files and lesson videos, the room a store with no plan has (section
+          5), is not affected in any other way.
+        </p>
+        <p>
+          A store that keeps more than that when its plan ends has a date.{" "}
+          {CLOSING_DAYS} days after the plan ended, what the store keeps is
+          removed: the files its products hand over, its lessons&rsquo; videos and downloads, and its
+          podcast&rsquo;s episodes. From that day, buyers can no longer download those files or watch those videos,
+          so a creator who has sold them should start a plan again or give
+          buyers another way to what they bought before then. We email the
+          store&rsquo;s owner when the plan ends, {WARN_MONTH_DAYS} days before that day and {WARN_WEEK_DAYS} days before it,
+          each time with the date, and what a store keeps is never removed sooner than a week after the last of those emails.
+          Starting a plan again, or deleting enough for the store to keep{" "}
+          {storageWords(SETUP_STORAGE_BYTES)} or less, before that day stops
+          it. Nothing else is removed, and a file can be put back on a product
+          and a video on a lesson once a plan is started again.
         </p>
       </LegalSection>
 
