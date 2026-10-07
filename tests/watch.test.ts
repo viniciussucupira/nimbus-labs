@@ -11,10 +11,18 @@
  * slow to the point of not answering, and Stripe can do the worse thing:
  * carry a request out and never say so.
  *
- * What no test here can hold is either service itself. The video service's
- * count was read against a real library on October 7, 2026; Stripe's part is
- * its documented behavior, and is to be seen on a real invoice the first
- * time a real store passes its hours.
+ * What no test here can hold is either service itself.
+ *
+ * Stripe's part was tried by hand in its sandbox on October 7, 2026, with
+ * the very fields lib/billing.ts sends: the line was taken and tied to the
+ * subscription, was found again by customer and date with its mark on it,
+ * and stood on the preview of that subscription's next invoice beside the
+ * plan; a subscription billed by the year took the setting that bills added
+ * lines monthly. The charge itself is to be seen on a real invoice, the
+ * first time a real store passes its hours.
+ *
+ * The video service's count is read against the live library once this is
+ * deployed, with a real lesson watched for a known time.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
