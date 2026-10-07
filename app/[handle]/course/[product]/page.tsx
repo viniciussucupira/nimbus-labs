@@ -1,3 +1,4 @@
+import { countDay } from "@/lib/day-visit";
 import { paypalReady } from "@/lib/paypal-sales";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -78,6 +79,8 @@ export default async function CoursePage({ params, searchParams }: Params) {
   if (open && !access.learner.owner) {
     const { email } = access.learner;
     after(() => touchStudent(course.id, email, access.start));
+    // A student's day in a course is a visit to the store (lib/day-visit.ts).
+    await countDay(store);
   }
   // Lessons a quiz that has to be passed still holds shut, for this student.
   const held = studying ? heldBack(course, passed) : new Map<string, string>();

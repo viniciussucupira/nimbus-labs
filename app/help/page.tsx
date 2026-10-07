@@ -236,8 +236,9 @@ const SECTIONS: Section[] = [
         q: "How many visits does my plan cover?",
         a: [
           "Storefront covers 3,000 visits a month, Storefront & Email 10,000, and Storefront & Email for a big list 50,000. A visit is one person opening your store on one day, however many of its pages they look at. You are never counted when you are signed in, and neither is a robot that says it is one.",
+          "A buyer who comes back counts the same way: a student or a member who opens a course or your community on a day is that day's visit, once. A subscriber to a private podcast is one visit on each day their app checks for episodes. Your community's live room checks for new messages for as long as it is open in front of a member, so it counts by the 10 minutes it is open, for each member: 2.6 visits while people are talking, when it checks every 5 seconds, and 0.6 of a visit while the room is quiet. A room in a background tab, or one nobody has touched for 20 minutes, checks nothing and counts nothing.",
           "Past your plan's figure, visits are $0.50 for each thousand, counted to the visit and added to your next invoice. Your store is never taken down for it. We email you the first time a month passes it, and your studio shows the count as it grows.",
-          "A store with no paid plan has nothing a charge can be added to, so its public pages rest past its visits until the plan is paid or the month turns: 3,000 visits a month in the free trial, and 500 a month before a plan starts and after one ends. A visitor is told the page will be open again soon. What your buyers already have stays open: their orders, downloads, lessons and memberships.",
+          "A store with no paid plan has nothing a charge can be added to, so its public pages rest past its visits until the plan is paid or the month turns: 3,000 visits a month in the free trial, and 500 a month before a plan starts and after one ends. A visitor is told the page will be open again soon. What your buyers already have stays open: their orders, downloads, lessons, podcasts and memberships. The live room of such a store stops checking by itself, and shows new messages when a member presses a button.",
         ],
       },
       {
@@ -284,7 +285,8 @@ const SECTIONS: Section[] = [
         q: "Can I sell a private podcast?",
         a: [
           "Yes, on the $29 plan. Under a paid product in your studio, choose \u201cSell this as a private podcast,\u201d then put out episodes as MP3 or M4A files. It can be sold once or as a membership, and goes on sale with its first episode.",
-          "Each buyer gets a feed of their own, from the thanks page, their confirmation email or their list of purchases, and adds it to Apple Podcasts, Overcast, Pocket Casts or most other apps in one tap; new episodes arrive there like any show's. Spotify does not take private feeds. Every time the app reads the feed or fetches an episode, we check that the buyer still has it, so a refund or a membership that ends empties their feed within minutes. Podcast directories and search engines are told to keep out.",
+          "Each buyer gets a feed of their own, from the thanks page, their confirmation email or their list of purchases, and adds it to Apple Podcasts, Overcast, Pocket Casts or most other apps in one tap; new episodes arrive there like any show's, within about four hours of going out. Spotify does not take private feeds. Every time an episode is fetched, we check that the buyer still has the podcast, so a refund or a membership that ends stops every episode from playing within minutes; the list of episodes in their app empties within about four hours. Podcast directories and search engines are told to keep out.",
+          "A podcast app checks its feed about once an hour whether or not anybody is listening, so each subscriber counts as one visit to your store on a day their app checks, however often it does.",
         ],
       },
       {

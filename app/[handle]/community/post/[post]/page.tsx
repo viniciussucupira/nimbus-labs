@@ -8,7 +8,8 @@ import { CREATOR, type Comment, type Member, commentNumbers, postNumbers, readCo
 import { levelOf, pointsOf } from "@/lib/community-points";
 import { requestCount } from "@/lib/community-dm";
 import { unreadCount } from "@/lib/community-notify";
-import { communityViewer, maySeeSpace } from "@/lib/community-access";
+import { maySeeSpace } from "@/lib/community-access";
+import { communityVisitor } from "@/lib/community-page";
 import { pollViews } from "@/lib/community-polls";
 import { mentionsIn, whoIs } from "@/lib/community-mentions";
 import { ITEM_ID, MAX_COMMENT_TEXT, MAX_POST_TEXT, MAX_POST_TITLE, whenWords } from "@/lib/community-text";
@@ -160,7 +161,7 @@ export default async function CommunityPostPage({ params, searchParams }: Params
   if (!decoded.startsWith("@")) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const viewer = await communityViewer(store, await cookies());
+  const viewer = await communityVisitor(store, await cookies());
   if (viewer.state === "off" || !store.community) redirect(`/@${store.handle}`);
   const home = `/@${store.handle}/community`;
   if (viewer.state !== "in") redirect(home);

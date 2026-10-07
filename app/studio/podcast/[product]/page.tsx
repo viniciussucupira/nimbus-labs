@@ -54,8 +54,10 @@ export default async function StudioPodcastPage({
           <h1 className="t-h2 mt-3 break-words">{product.title}</h1>
           <p className="mt-3 max-w-2xl text-ink-soft">
             Each buyer gets a feed of their own for their own podcast app: Apple Podcasts, Overcast, Pocket Casts and most others.
-            A new episode reaches every listener&apos;s app the next time it checks. A refund, or a membership that ends, empties
-            that listener&apos;s feed within minutes. Podcast directories and search engines are told to keep out.
+            A new episode reaches every listener&apos;s app within about four hours of going out. A refund, or a membership that
+            ends, stops every episode from playing for that listener within minutes, and empties the list in their app within
+            about four hours. Podcast directories and search engines are told to keep out. Each subscriber counts as one visit
+            to your store on a day their app checks for episodes.
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-4 text-sm font-bold">
             {view.role === "owner" ? (

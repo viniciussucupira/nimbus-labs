@@ -85,7 +85,7 @@ import {
   trialOffered,
 } from "@/lib/billing";
 import { STORAGE_BRAKE_BYTES, storageBrakeFor, storageUsed, storageWords } from "@/lib/storage-quota";
-import { visitsIn } from "@/lib/traffic";
+import { trafficIn } from "@/lib/traffic";
 import { SETUP_VISITS, TRIAL_VISITS, VISIT_CENTS_PER_THOUSAND_OVER, countWords, visitLimitFor, visitsIncluded, visitsOwedCents, visitsWords } from "@/lib/traffic-rules";
 import { AI_MONTHLY } from "@/lib/ai-rules";
 import { canUse, hasPro, PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, SCALE_MONTHLY_EMAILS, priceWords, yearSaving } from "@/lib/plan";
@@ -593,7 +593,10 @@ export default async function StudioPage({
   // The visits the store has had this month, the other thing charged by use
   // (lib/traffic-rules.ts): what the plan covers, and where the pages of a
   // store with no plan to charge rest.
-  const visited = store && may("settings") ? await visitsIn(folder) : 0;
+  const traffic = store && may("settings") ? await trafficIn(folder) : { people: 0, parts: 0, visits: 0 };
+  const visited = traffic.visits;
+  // The part of the count that is the live room (lib/traffic-rules.ts), in whole visits.
+  const roomVisits = traffic.visits - traffic.people;
   const visitLimit = store ? visitLimitFor(store) : null;
   const visitRoom = visitLimit ?? (store ? visitsIncluded(store.tier) : 0);
   // A store whose plan has ended and that keeps more than a store with no
@@ -1666,7 +1669,8 @@ export default async function StudioPage({
                   <p className="mt-1 text-ink-soft">
                     {`${visitsWords(visited)} of the ${countWords(visitRoom)} ${
                       standing === "paid" ? "your plan covers" : standing === "trial" ? "a free trial has" : "a store without a paid plan has"
-                    }. A visit is one person opening your store on one day, however many of its pages they look at. You are never counted.`}
+                    }. A visit is one person opening your store on one day, however many of its pages they look at, a buyer coming back to a course, the community or a podcast included. You are never counted.`}
+                    {roomVisits > 0 ? ` ${visitsWords(roomVisits)} of them ${roomVisits === 1 ? "is" : "are"} your community's live room, which counts by the time it is open in front of a member.` : ""}
                   </p>
                   <div
                     className="mt-4 h-2 w-full overflow-hidden rounded-full bg-sand"

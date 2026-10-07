@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { readListings } from "@/lib/catalog";
-import { communityViewer } from "@/lib/community-access";
+import { communityVisitor } from "@/lib/community-page";
 import { ITEM_ID } from "@/lib/community-text";
 import { VIDEO_ROOM_NOTE, isVideoRoom, roomKind } from "@/lib/call-rooms";
 import { MEET_NAMES } from "@/lib/call-setup";
@@ -56,7 +56,7 @@ export default async function CommunityEventPage({ params, searchParams }: Param
   if (!decoded.startsWith("@") || !ITEM_ID.test(eventId)) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const viewer = await communityViewer(store, await cookies());
+  const viewer = await communityVisitor(store, await cookies());
   if (viewer.state === "off" || !store.community) redirect(`/@${store.handle}`);
   const home = `/@${store.handle}/community`;
   if (viewer.state !== "in") redirect(home);

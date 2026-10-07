@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type ChatRefusal, MAX_CHAT_TEXT, refusalWords } from "@/lib/community-chat";
+import { AWAY_AFTER_MS, IDLE_MS, LIVE_MS, type Pace, askEvery, paceFor } from "@/lib/chat-pace";
 
-type Message = { i: number; a: string; text: string; at: number };
+type Message = { i: number; a: string; text: string; at: number; n?: string };
+/** Leave to ask the shared route, as the server hands it (lib/chat-grant.ts). */
+type Leave = { pass: string; ms: number; live: boolean };
 
 const REFUSALS = new Set<string>([
   "off", "empty", "links", "slow", "hourly", "creatorOnly", "muted", "full", "name", "out", "unknown",
@@ -13,11 +16,17 @@ const isRefusal = (value: unknown): value is ChatRefusal => typeof value === "st
 /**
  * The room, as it is read and written.
  *
- * It asks for what is new every few seconds and stops asking while the tab is
- * in the background — a room nobody is looking at costs nothing, which is the
- * only reason asking this often is reasonable at all. There is no socket held
- * open, and the page says as much rather than claiming a word it has not
- * earned.
+ * It asks what is new every few seconds while people are talking, twice a
+ * minute while the room is quiet, and not at all while the tab is in the
+ * background or the page has not been touched for a while
+ * (lib/chat-pace.ts). There is no socket held open, and the page says as
+ * much rather than claiming a word it has not earned.
+ *
+ * What it asks every few seconds is not the route that knows who it is. It
+ * holds leave to ask a small shared one for ten minutes at a time
+ * (lib/chat-grant.ts), and goes back to the route that knows it only for
+ * the next ten minutes, or for the faster pace when a quiet room starts
+ * talking. A store with no leave to give has a button instead.
  *
  * Three things it does that matter more than they look:
  *
@@ -32,33 +41,53 @@ const isRefusal = (value: unknown): value is ChatRefusal => typeof value === "st
  */
 export function CommunityRoom({
   handle,
+  room,
   first,
   names: firstNames,
   cursor: firstCursor,
   me,
+  creator,
+  creatorName,
   canWrite,
   owner,
   creatorOnly,
   slow,
   links,
+  leave,
+  resting: firstResting,
+  quiet,
 }: {
   handle: string;
+  /** The community's id: what the shared route is asked about. */
+  room: string;
   first: Message[];
   names: Record<string, string>;
   cursor: number;
   /** This reader's own key, so their messages sit on their side. */
   me: string;
+  /** The key the creator's messages are under, and the name they are shown with. */
+  creator: string;
+  creatorName: string;
   canWrite: boolean;
   owner: boolean;
   creatorOnly: boolean;
   slow: number;
   links: boolean;
+  /** Leave to ask for the next ten minutes, or null when there is none. */
+  leave: Leave | null;
+  /** The store has no leave to give: the room is read by asking for it. */
+  resting: boolean;
+  /** Seconds since the room was last spoken in when the page was drawn; -1 for a room nobody has spoken in. */
+  quiet: number;
 }) {
   const [messages, setMessages] = useState<Message[]>(first);
   const [names, setNames] = useState<Record<string, string>>(firstNames);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [resting, setResting] = useState(firstResting);
+  const [away, setAway] = useState(false);
+  const [checking, setChecking] = useState(false);
   // Emptying the room asks twice rather than opening a browser dialog: a
   // dialog stops everything on the page until it is answered, and this is a
   // thing done in a hurry.
@@ -66,50 +95,174 @@ export function CommunityRoom({
   const cursor = useRef(firstCursor);
   const list = useRef<HTMLUListElement>(null);
   const atBottom = useRef(true);
+  // What the pace is worked out from, kept by this page's own clock: when
+  // the room was last spoken in, when the reader last touched the page, and
+  // the leave held. Set when the page starts, never while it is drawn.
+  const said = useRef(0);
+  const touched = useRef(0);
+  const held = useRef<{ pass: string; until: number; live: boolean } | null>(null);
+  const restingNow = useRef(firstResting);
+  // A faster pace that was asked for and not given is not asked for again
+  // until something more has been said.
+  const refusedAt = useRef(-1);
+  // Asks now instead of at the next turn: what sending a message does, so
+  // that an answer to it is not waited on at a quiet room's pace.
+  const kick = useRef<() => void>(() => {});
 
-  const look = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/store/community/chat?handle=${encodeURIComponent(handle)}&since=${cursor.current}`, {
-        credentials: "same-origin",
+  const take = useCallback(
+    (found: Message[], given?: Record<string, string>) => {
+      if (!found.length) return;
+      cursor.current = Math.max(cursor.current, found[found.length - 1].i);
+      said.current = Date.now();
+      const named: Record<string, string> = { ...given };
+      for (const m of found) {
+        if (named[m.a]) continue;
+        if (m.a === creator) named[m.a] = creatorName;
+        else if (m.n) named[m.a] = m.n;
+      }
+      setNames((kept) => ({ ...kept, ...named }));
+      setMessages((kept) => {
+        const known = new Set(kept.map((m) => m.i));
+        const added = found.filter((m) => !known.has(m.i));
+        return added.length ? [...kept, ...added].slice(-500) : kept;
       });
-      const data = (await response.json().catch(() => ({}))) as {
-        ok?: boolean;
-        messages?: Message[];
-        cursor?: number;
-        names?: Record<string, string>;
-      };
-      if (!data.ok || !data.messages?.length) return;
-      cursor.current = data.cursor ?? cursor.current;
-      setNames((held) => ({ ...held, ...data.names }));
-      setMessages((held) => {
-        const known = new Set(held.map((m) => m.i));
-        const added = data.messages!.filter((m) => !known.has(m.i));
-        return added.length ? [...held, ...added].slice(-500) : held;
-      });
-    } catch {
-      // A look that failed is a look; the next one is a few seconds away and
-      // there is nothing useful to say about one dropped request.
-    }
-  }, [handle]);
+    },
+    [creator, creatorName],
+  );
+
+  /**
+   * Asks the route that knows who this is: for what is new, and, when
+   * `want` is given, for leave to ask the shared one at that pace.
+   */
+  const look = useCallback(
+    async (want?: "live" | "idle") => {
+      try {
+        const response = await fetch(
+          `/api/store/community/chat?handle=${encodeURIComponent(handle)}&since=${cursor.current}${want ? `&grant=${want}` : ""}`,
+          { credentials: "same-origin" },
+        );
+        const data = (await response.json().catch(() => ({}))) as {
+          ok?: boolean;
+          messages?: Message[];
+          names?: Record<string, string>;
+          grant?: Leave | null;
+          resting?: boolean;
+        };
+        if (!data.ok) return;
+        take(data.messages ?? [], data.names);
+        if (want) {
+          held.current = data.grant ? { pass: data.grant.pass, until: Date.now() + data.grant.ms, live: data.grant.live } : null;
+          restingNow.current = data.resting === true;
+          setResting(restingNow.current);
+          if (want === "live" && !data.grant?.live) refusedAt.current = cursor.current;
+        }
+      } catch {
+        // A look that failed is a look; the next one is a few seconds away and
+        // there is nothing useful to say about one dropped request.
+      }
+    },
+    [handle, take],
+  );
+
+  /** Asks the shared route what came after the last message held. False when the pass no longer opens it. */
+  const news = useCallback(
+    async (pass: string, idle: boolean): Promise<boolean> => {
+      try {
+        const response = await fetch(`/api/store/community/chat/new?c=${room}&p=${pass}&s=${cursor.current}${idle ? "&i=1" : ""}`, {
+          credentials: "omit",
+        });
+        if (response.status === 403) return false;
+        const data = (await response.json().catch(() => ({}))) as { ok?: boolean; messages?: Message[] };
+        if (data.ok) take(data.messages ?? []);
+      } catch {
+        // As above: the next look is not far off.
+      }
+      return true;
+    },
+    [room, take],
+  );
 
   useEffect(() => {
+    const started = Date.now();
+    said.current = quiet >= 0 ? started - quiet * 1000 : 0;
+    touched.current = started;
+    held.current = leave ? { pass: leave.pass, until: started + leave.ms, live: leave.live } : null;
     let timer: number | undefined;
-    const tick = () => {
-      // Nothing is asked for while nobody is looking.
-      if (!document.hidden) void look();
-      timer = window.setTimeout(tick, document.hidden ? 30_000 : 4_000);
+    let busy = false;
+    let over = false;
+
+    const paceNow = (): Pace => {
+      const now = Date.now();
+      return paceFor(said.current ? now - said.current : Number.POSITIVE_INFINITY, now - touched.current);
     };
-    timer = window.setTimeout(tick, 4_000);
-    // Coming back to the tab asks right away rather than waiting.
+
+    const once = async (): Promise<number> => {
+      // Nothing is asked for while nobody is looking, or after the reader
+      // has walked away from the page.
+      if (document.hidden) return IDLE_MS;
+      const pace = paceNow();
+      setAway(pace === "stopped");
+      if (pace === "stopped" || restingNow.current) return IDLE_MS;
+      const want = pace === "live" ? "live" : "idle";
+      const leaveNow = held.current;
+      if (!leaveNow) {
+        // No leave could be made on this deployment: asked by name, at the new pace.
+        await look();
+        return askEvery(pace);
+      }
+      if (Date.now() >= leaveNow.until - 3_000) await look(want);
+      else if (want === "live" && !leaveNow.live && refusedAt.current !== cursor.current) await look("live");
+      else if (!(await news(leaveNow.pass, !(want === "live" && leaveNow.live)))) await look(want);
+      return paceNow() === "live" && held.current?.live ? LIVE_MS : IDLE_MS;
+    };
+
+    const tick = async () => {
+      if (over || busy) return;
+      busy = true;
+      let wait = IDLE_MS;
+      try {
+        wait = await once();
+      } finally {
+        busy = false;
+      }
+      if (over) return;
+      if (timer) window.clearTimeout(timer);
+      timer = window.setTimeout(() => void tick(), wait);
+    };
+
+    kick.current = () => void tick();
+    timer = window.setTimeout(() => void tick(), leave?.live ? LIVE_MS : IDLE_MS);
+    // Coming back, to the tab or to the page, asks right away rather than waiting.
     const onShow = () => {
-      if (!document.hidden) void look();
+      if (!document.hidden) void tick();
+    };
+    const onTouch = () => {
+      const was = Date.now() - touched.current;
+      touched.current = Date.now();
+      if (was >= AWAY_AFTER_MS) void tick();
     };
     document.addEventListener("visibilitychange", onShow);
+    const touches = ["pointerdown", "keydown", "touchstart", "wheel"] as const;
+    for (const name of touches) window.addEventListener(name, onTouch, { passive: true });
     return () => {
+      over = true;
+      kick.current = () => {};
       if (timer) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", onShow);
+      for (const name of touches) window.removeEventListener(name, onTouch);
     };
-  }, [look]);
+  }, [look, news, leave, quiet]);
+
+  /** The button of a room that is not asking by itself: asks once, and for leave again in case there is some now. */
+  async function check() {
+    if (checking) return;
+    setChecking(true);
+    try {
+      await look("idle");
+    } finally {
+      setChecking(false);
+    }
+  }
 
   useEffect(() => {
     const box = list.current;
@@ -146,9 +299,14 @@ export function CommunityRoom({
         setError(refusalWords(isRefusal(data.error) ? data.error : "unknown", slow, data.wait));
         return;
       }
-      cursor.current = Math.max(cursor.current, data.message.i);
-      if (data.name) setNames((held) => ({ ...held, [data.message!.a]: data.name! }));
-      setMessages((held) => (held.some((m) => m.i === data.message!.i) ? held : [...held, data.message!]));
+      // Not the cursor: somebody else may have spoken just before, and their
+      // message is still to be fetched. take() skips this one when it comes.
+      said.current = Date.now();
+      touched.current = Date.now();
+      refusedAt.current = -1;
+      kick.current();
+      if (data.name) setNames((kept) => ({ ...kept, [data.message!.a]: data.name! }));
+      setMessages((kept) => (kept.some((m) => m.i === data.message!.i) ? kept : [...kept, data.message!]));
       atBottom.current = true;
     } catch {
       setText(words);
@@ -287,9 +445,24 @@ export function CommunityRoom({
         </p>
       ) : null}
 
+      {resting ? (
+        <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <button type="button" className="cm-pill" onClick={() => void check()} disabled={checking}>
+            {checking ? "Checking…" : "Check for new messages"}
+          </button>
+          <span className="st-muted">This room is not checking by itself for now.</span>
+        </p>
+      ) : away ? (
+        <p className="st-muted mt-3 text-sm" role="status">
+          Paused while you were away. It starts again as soon as you touch the page.
+        </p>
+      ) : null}
+
       <p className="st-muted mt-3 text-xs">
         {[
-          "This page checks for new messages every few seconds, and stops while it is in the background.",
+          resting
+            ? "New messages are shown when you press the button, or send one."
+            : `This page checks for new messages every ${LIVE_MS / 1000} seconds while people are talking and every ${IDLE_MS / 1000} while the room is quiet. It stops while it is in the background or has not been touched for ${AWAY_AFTER_MS / 60_000} minutes.`,
           slow > 0 ? `One message every ${slow} seconds.` : "",
           links ? "" : "Web addresses are not written here.",
           `The last ${500} messages are kept.`,

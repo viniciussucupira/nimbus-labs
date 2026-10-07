@@ -1,3 +1,4 @@
+import { countDay } from "@/lib/day-visit";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
@@ -52,6 +53,8 @@ export default async function LessonPage({ params, searchParams }: Params) {
   const start = access.state === "open" ? access.start : null;
   const student = access.state === "open" && !access.learner.owner ? access.learner : null;
   const who = student ? emailKey(student.email) : "";
+  // A student's day in a course is a visit to the store (lib/day-visit.ts).
+  if (student) await countDay(store);
   const [done, passed] = student
     ? await Promise.all([doneLessons(course.id, student.email), passedQuizzes(course.id, who)])
     : [new Set<string>(), new Set<string>()];

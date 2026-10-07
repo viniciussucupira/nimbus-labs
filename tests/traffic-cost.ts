@@ -37,6 +37,21 @@
  * Rate CDN stays switched on in the host's billing settings. Without it the
  * bytes of every picture are charged by the gigabyte, and a visit can cost
  * thirty times this.
+ *
+ * One more rate, which Flat Rate CDN does not cover: what a function sends
+ * the CDN ("Fast Origin Transfer", $0.06 a gigabyte in the region this runs
+ * in). A page of a store is 44 KB as it travels, compressed, and 460 KB
+ * before, measured on October 7, 2026; the host said on July 15, 2024 that
+ * what travels between a function and the CDN is compressed, and the page is
+ * costed as it travels, a little over. This is the figure to hold against
+ * the host's own bill once real stores are visited: charged uncompressed, a
+ * visit would cost a third more than is worked out here, which no plan's
+ * price would fail to cover and every plan's margin would feel.
+ *
+ * The same rates cost the two things a buyer's device does by itself: the
+ * live room asking what is new (lib/chat-pace.ts), and a podcast app asking
+ * for its feed (lib/podcast-access.ts). tests/room.test.ts and
+ * tests/podcast.test.ts hold what each is counted as over what it costs.
  */
 import { STORE_PAGE_SIZE } from "@/lib/catalog";
 
@@ -45,6 +60,10 @@ export const COMMAND = 2.0 / 1_000_000;
 const CALL = 0.6 / 1_000_000;
 const CPU_PER_SECOND = 0.128 / 3600;
 const MEMORY_PER_SECOND = (0.0106 * 2) / 3600;
+/** What a function sends the CDN, by the byte. */
+const ORIGIN_PER_BYTE = 0.06 / 1_000_000_000;
+/** A page of a store as it leaves the function: 44 KB measured, costed at 48. */
+export const PAGE_BYTES = 48_000;
 
 /** Files of script and type a first visit fetches, as counted on the live page. */
 export const STATIC_FILES = 13;
@@ -62,11 +81,32 @@ export const COMMANDS = {
   frontPage: 4,
   /** Counting it: the store's stats and the visit. */
   frontCount: 14,
-  /** What a visitor new to the day adds, once. */
-  firstOfDay: 7,
+  /**
+   * What a visitor new to the day adds, once: the visit, how long the day
+   * is kept, and the store's all-time visitors. A month's first visit, and
+   * each hundredth after, writes five more (lib/traffic.ts, markMonth):
+   * a twentieth of a command to the visit, inside what is rounded up here.
+   */
+  firstOfDay: 3,
   /** Drawing another page of the store, and saying it was opened. */
   laterPage: 10,
   laterCount: 6,
+  /**
+   * Handing a member's page ten minutes' leave to ask the room, at the
+   * route that knows who is asking: the store, the community's settings,
+   * who this is and whether they are still in it, what is new, when the
+   * room was last spoken in, and the leave and its count. Counted by
+   * reading the code, with room over it: no test holds a member's whole way
+   * in.
+   */
+  roomLeave: 20,
+  /**
+   * Putting a subscriber's feed together (tests/podcast.test.ts holds the
+   * code under both): the day's first time, which also writes the day's
+   * visit and starts the day's count of it, and each time after.
+   */
+  feedFirst: 13,
+  feed: 9,
 };
 
 /** Answering one page and its count: two calls, a tenth of a second of work, and memory held while the database is waited on. */
@@ -77,5 +117,44 @@ export function visitCost(): number {
   const later = PAGES_PER_VISIT - 1;
   const requests = 1 + STATIC_FILES + 1 + 1 + STORE_PAGE_SIZE + later * (1 + 1 + PICTURES_ON_A_LATER_PAGE);
   const commands = COMMANDS.frontPage + COMMANDS.frontCount + COMMANDS.firstOfDay + later * (COMMANDS.laterPage + COMMANDS.laterCount);
-  return requests * CDN_PER_REQUEST + commands * COMMAND + PAGES_PER_VISIT * PAGE_AND_COUNT;
+  return requests * CDN_PER_REQUEST + commands * COMMAND + PAGES_PER_VISIT * (PAGE_AND_COUNT + PAGE_BYTES * ORIGIN_PER_BYTE);
+}
+
+/**
+ * One look at what is new in a room, with the CDN holding no answer for it:
+ * the request, the call, one read of the room, a few thousandths of a
+ * second of work, memory held while the read is waited on, and an answer of
+ * a couple of kilobytes. Every look is costed this way, though readers of
+ * one room share most of theirs: a room with one reader in it shares none.
+ */
+export function roomLookCost(): number {
+  return CDN_PER_REQUEST + CALL + COMMAND + 0.005 * CPU_PER_SECOND + 0.04 * MEMORY_PER_SECOND + 2_000 * ORIGIN_PER_BYTE;
+}
+
+/** Being handed ten minutes' leave to look: once, at the route that knows who is asking. */
+export function roomLeaveCost(): number {
+  return CDN_PER_REQUEST + CALL + COMMANDS.roomLeave * COMMAND + 0.03 * CPU_PER_SECOND + 0.3 * MEMORY_PER_SECOND + 4_000 * ORIGIN_PER_BYTE;
+}
+
+/** Ten minutes of the room for one member, at a number of looks. */
+export function roomMinutesCost(looks: number): number {
+  return looks * roomLookCost() + roomLeaveCost();
+}
+
+/** A feed as it leaves the function: a long show's, compressed. */
+const FEED_BYTES = 40_000;
+
+/**
+ * Putting one subscriber's feed together: the request, the call, the reads
+ * and the day's visit, a twentieth of a second of work, and memory held for
+ * as long as it can take to ask the creator's payment account whether the
+ * subscriber still pays.
+ */
+function feedCost(commands: number): number {
+  return CDN_PER_REQUEST + CALL + commands * COMMAND + 0.05 * CPU_PER_SECOND + 0.5 * MEMORY_PER_SECOND + FEED_BYTES * ORIGIN_PER_BYTE;
+}
+
+/** A subscriber's day, with their feed put together a number of times. */
+export function feedDayCost(times: number): number {
+  return times <= 0 ? 0 : feedCost(COMMANDS.feedFirst) + (times - 1) * feedCost(COMMANDS.feed);
 }

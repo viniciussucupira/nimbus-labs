@@ -149,6 +149,14 @@ export class MemoryRedis {
         const held = this.data.get(key);
         return typeof held === "string" ? held : null;
       }
+      case "MGET": {
+        // Several keys read at once, each as GET would answer it.
+        return rest.map(String).map((name) => {
+          this.live(name);
+          const held = this.data.get(name);
+          return typeof held === "string" ? held : null;
+        });
+      }
       case "GETDEL": {
         // Read once and gone: what a consent's state is taken with.
         const held = this.data.get(key);

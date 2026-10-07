@@ -4,12 +4,31 @@
  *   nl:pod:t:<sha(token)>              the feed a token opens: store, product, address
  *   nl:pod:by:<store>:<product>:<key>  the token an address already has, so it keeps one feed
  *   nl:pod:ok:<store>:<product>:<key>  whether that address holds the product, for a few minutes
+ *   nl:pod:n:<sha(token)>:<day>        how often a feed was put together that day
  *
  * A feed address is a secret: whoever has it can listen. So every read of it
  * and every episode fetched asks whether its address still holds the product
  * (lib/community-access.ts holdsProducts, the same answer a community's door
  * gives), and a feed that is fetched far more than any one person's apps do
  * is slowed down.
+ *
+ * What a feed costs, and why it is answered the way it is. A podcast app
+ * asks for its feed about once an hour, day and night, whether or not
+ * anybody is listening, and each time it was answered by putting the feed
+ * together again: the store, the product, whether the address still holds
+ * it, the episodes. A subscriber cost about three visits a day that way and
+ * was counted as none. Two things now hold it:
+ *
+ *   - The feed is answered once and then kept by the CDN for
+ *     FEED_SHARED_SECONDS, so an app's hourly question is answered without
+ *     anything being put together. A new episode reaches an app within that
+ *     time of being published. An address whose access has ended keeps its
+ *     list of episodes that long too, and no longer: each episode itself is
+ *     asked about every time it is fetched, and is refused at once.
+ *   - A subscriber is one visit to the store on each day their app asks
+ *     (lib/traffic.ts, recordListener), which is what the day costs at the
+ *     most: the feed can be put together FEED_READS_A_DAY times a day for
+ *     one address and no more.
  */
 import { createHash, randomBytes } from "node:crypto";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
@@ -64,9 +83,41 @@ export async function mayListen(store: Store, productId: string, email: string):
   return holdsProducts(store, [productId], email, okKey(store.statsId, productId, email), "1");
 }
 
-/** A feed read or an episode fetched: counted, and refused past what any one listener's apps ask. */
+/** An episode fetched: counted, and refused past what any one listener's apps ask. */
 export async function feedAllowed(token: string): Promise<boolean> {
   return withinLimit("podcast-feed", sha(token).slice(0, 32), 600, 3_600);
+}
+
+/** How long the CDN keeps a feed it was given, in seconds. */
+export const FEED_SHARED_SECONDS = 4 * 60 * 60;
+/**
+ * How often a day one address's feed is put together again, at the most.
+ * The CDN asks six times a day; the rest is for an app that moves between
+ * parts of the world, each of which keeps its own copy.
+ */
+export const FEED_READS_A_DAY = 8;
+
+/**
+ * A feed about to be put together: counted, and refused past
+ * FEED_READS_A_DAY in a day. One command, and a second with a day's first,
+ * because this runs every time a feed is put together and is part of what
+ * that costs. A count that cannot be kept lets the feed through.
+ */
+export async function feedReadAllowed(token: string, now = Date.now()): Promise<boolean> {
+  if (!isRedisConfigured()) return true;
+  try {
+    const key = `nl:pod:n:${sha(token).slice(0, 32)}:${new Date(now).toISOString().slice(0, 10)}`;
+    const [count] = await redisPipeline([["INCR", key]]);
+    if (Number(count) === 1) await redisPipeline([["EXPIRE", key, 2 * 86_400]]);
+    return Number(count) <= FEED_READS_A_DAY;
+  } catch {
+    return true;
+  }
+}
+
+/** What a feed's subscriber is told apart by for the day's visit: never the feed's address itself. */
+export function listenerOf(token: string): string {
+  return sha(`nimbus-listener:${token}`).slice(0, 32);
 }
 
 export type LinkResult = "sent" | "email" | "limited" | "error";
