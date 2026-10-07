@@ -30,6 +30,7 @@ import {
   startedFrom,
   stateOf,
 } from "@/lib/billing";
+import { ENDED_INDEX } from "@/lib/plan-standing";
 import { type Store, setSubscription, storeForHandle, storeRef, storesAfter } from "@/lib/store";
 
 const MAX_PAGES = 50;
@@ -141,6 +142,15 @@ async function syncStores(deadline: number, seen: Set<string>, counts: SyncCount
   for (let step = 0; step < MAX_SCAN_STEPS; step += 1) {
     if (Date.now() > deadline) break;
     const { stores, next } = await storesAfter(cursor);
+    // Every store whose plan has ended is in the line the daily job for
+    // such stores walks (lib/plan-closing.ts). It is put there the moment
+    // its plan ends (lib/store.ts); this puts back one that write missed.
+    const ended = stores.filter((store) => !store.subscriptionActive && Number.isFinite(Date.parse(store.planEndedAt)));
+    if (ended.length) {
+      await redisPipeline(ended.map((store) => ["ZADD", ENDED_INDEX, "NX", Date.parse(store.planEndedAt), storeRef(store)])).catch((error) =>
+        console.error("could not keep the line of ended plans", error),
+      );
+    }
     for (const store of stores) {
       if (!store.subscriptionActive || !store.subscriptionId || seen.has(store.subscriptionId)) continue;
       counts.checked += 1;

@@ -74,7 +74,8 @@ import { ORDERS_PAGE_SIZE, canSell, listSales } from "@/lib/store-checkout";
 import { DELIVERY_ALLOWANCE_BYTES, FREE_PAUSE_ABOVE_BYTES, bytesWords, deliveredThisMonth } from "@/lib/delivery";
 import { watchedIn } from "@/lib/watch";
 import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, VIDEO_SECONDS_INCLUDED, centsWords, hoursWords, videoOwedCents } from "@/lib/watch-rules";
-import { SETUP_VIDEO_HOURS, standingOf, videoLimitFor } from "@/lib/plan-standing";
+import { SETUP_STORAGE_BYTES, SETUP_VIDEO_HOURS, standingOf, videoLimitFor } from "@/lib/plan-standing";
+import { CLOSING_DAYS, WARN_MONTH_DAYS, WARN_WEEK_DAYS, closingOf } from "@/lib/plan-closing";
 import { MAX_LEADS, listSize } from "@/lib/free";
 import { readableSize } from "@/lib/product-file";
 import {
@@ -83,7 +84,7 @@ import {
   readSubscription,
   trialOffered,
 } from "@/lib/billing";
-import { STORAGE_BRAKE_BYTES, storageBrakeFor, storageWords } from "@/lib/storage-quota";
+import { STORAGE_BRAKE_BYTES, storageBrakeFor, storageUsed, storageWords } from "@/lib/storage-quota";
 import { AI_MONTHLY } from "@/lib/ai-rules";
 import { canUse, hasPro, PLAN_PRICES, PRO_MONTHLY_EMAILS, PRO_ON_SALE, SCALE_MONTHLY_EMAILS, priceWords, yearSaving } from "@/lib/plan";
 import { PLANS_ON_SALE } from "@/lib/opening";
@@ -587,6 +588,13 @@ export default async function StudioPage({
   const standing = store ? standingOf(store) : "none";
   const videoLimit = store ? videoLimitFor(store) : null;
   const videoRoom = videoLimit ?? VIDEO_SECONDS_INCLUDED;
+  // A store whose plan has ended and that keeps more than a store with no
+  // plan may: the day what it keeps is removed, counted the way the daily
+  // job counts it (lib/plan-closing.ts). Measured only for such a store.
+  const closingAt = store && standing === "ended" && may("settings") ? await closingOf(store).catch(() => null) : null;
+  const keptNow = closingAt ? (await storageUsed(folder, SETUP_STORAGE_BYTES)).bytes : 0;
+  const closing = closingAt && keptNow > SETUP_STORAGE_BYTES ? { ...closingAt, bytes: keptNow } : null;
+  const dayWords = (ms: number) => new Date(ms).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
   // The list is shown once there is something that fills it, or once it holds
   // anybody — a creator who stops giving things away still owns what came in.
   const list = store && may("export") ? await listSize(store) : null;
@@ -1459,6 +1467,31 @@ export default async function StudioPage({
               />
             ) : null}
 
+            {closing ? (
+              <div id="closing" className="card mt-8 scroll-mt-32 p-6 sm:p-8">
+                <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
+                  Your plan has ended, and what your store keeps has a date
+                </p>
+                <p className="mt-4 notice notice-warn">
+                  {`Your plan ended on ${dayWords(closing.endedAt)}. Your store keeps ${
+                    storageWords(closing.bytes) === storageWords(SETUP_STORAGE_BYTES) ? `a little over ${storageWords(SETUP_STORAGE_BYTES)}` : storageWords(closing.bytes)
+                  } of files and lesson videos, and a store with no plan may keep ${storageWords(SETUP_STORAGE_BYTES)}. `}
+                  <strong>{`On ${dayWords(closing.day)}, what it keeps will be removed`}</strong>
+                  : the files your products hand over, your lessons&rsquo; videos and downloads, and your
+                  podcast&rsquo;s episodes. From that day your buyers can no longer download those files or watch
+                  those videos.
+                </p>
+                <p className="mt-4 text-ink-soft">
+                  {`Two things stop it, either one: start a plan again, or delete files or lessons you no longer need until your store keeps ${storageWords(SETUP_STORAGE_BYTES)} or less. `}
+                  Your store and its page, your products and their prices, your lessons&rsquo; text and quizzes, your
+                  contacts and your orders stay either way.
+                </p>
+                <p className="mt-3 text-sm text-ink-soft">
+                  {`We email you ${WARN_MONTH_DAYS} days before that day and ${WARN_WEEK_DAYS} days before it, and nothing is removed sooner than a week after the last of those emails.`}
+                </p>
+              </div>
+            ) : null}
+
             {delivery ? (
               <div className="card mt-8 p-6 sm:p-8">
                 <p className="text-lg font-semibold tracking-[-0.02em] text-ink">
@@ -1546,8 +1579,9 @@ export default async function StudioPage({
                             ? ` during the free trial, and ${storageWords(STORAGE_BRAKE_BYTES)} from your first payment`
                             : `, and ${storageWords(storageBrakeFor("trial"))} once a plan's free trial starts`
                       }. `}
-                      Past that you are asked to delete something before adding more. Nothing already there stops
-                      working, and nothing already sold is touched.
+                      {standing === "ended"
+                        ? `Past that you are asked to delete something before adding more. A store that keeps more than ${storageWords(SETUP_STORAGE_BYTES)} after its plan has ended has ${CLOSING_DAYS} days from the end of the plan, and three emails, before what it keeps is removed.`
+                        : "Past that you are asked to delete something before adding more. Nothing already there stops working, and nothing already sold is touched."}
                     </dd>
                   </div>
                 </dl>

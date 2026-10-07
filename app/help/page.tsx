@@ -236,7 +236,16 @@ const SECTIONS: Section[] = [
         q: "How much can my store hold?",
         a: [
           "A store on a paid plan holds up to 200 GB of files and lesson videos. In a plan's free trial it holds 50 GB. A store with no plan, before one is started or after one has ended, holds 5 GB.",
-          "Past its figure a store is asked to delete something before adding more. Nothing already there stops working and nothing already sold is touched: a store that holds more than 5 GB when its plan ends keeps what it holds, and cannot add to it.",
+          "Past its figure a store is asked to delete something before adding more. While a plan runs, nothing already there stops working and nothing already sold is touched.",
+        ],
+      },
+      {
+        q: "What happens to my files if my plan ends?",
+        a: [
+          "Your store stays: its page, your products and their prices, your lessons' text and quizzes, your contacts and your orders. Your buyers go on downloading what they bought. A store that keeps 5 GB or less of files and lesson videos is not touched at all, and cannot add past that until a plan is started again.",
+          "A store that keeps more than 5 GB has a date. 60 days after your plan ended, what it keeps is removed: the files your products hand over, your lessons' videos and downloads, and your podcast's episodes. From that day your buyers can no longer download those files or watch those videos.",
+          "We email you when the plan ends, 30 days before that day and 7 days before it, each time with the date, and nothing is removed sooner than a week after the last of those emails. Your studio shows the date too.",
+          "Two things stop it, either one: start a plan again, or delete enough for your store to keep 5 GB or less. If the day passes, you can put a file back on each product and a video back on each lesson once a plan is started again.",
         ],
       },
       {

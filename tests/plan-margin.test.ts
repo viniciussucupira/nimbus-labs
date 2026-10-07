@@ -73,6 +73,7 @@ import { DELIVERY_ALLOWANCE_BYTES } from "@/lib/delivery";
 import { TOP_HEIGHT, viewingBytes } from "@/lib/stream-rules";
 import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED } from "@/lib/watch-rules";
 import { SETUP_STORAGE_BYTES, SETUP_VIDEO_HOURS, TRIAL_STORAGE_BYTES } from "@/lib/plan-standing";
+import { CLOSING_DAYS, WARN_WEEK_DAYS } from "@/lib/plan-closing-rules";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -240,6 +241,37 @@ test("a store that pays nothing can cost next to nothing", () => {
   // every hour it may play, in one month:
   const trial = (TRIAL_STORAGE_BYTES / GB) * STORAGE_PER_GB + videoCost();
   assert.ok(trial < 7, `a trial at every limit costs $${trial.toFixed(2)} in a month`);
+});
+
+test("a store whose plan ended stops costing more than a store with no plan, on a day that is set", () => {
+  // What a store keeps goes on costing after its plan ends, and until
+  // lib/plan-closing.ts that had no end. Now what it keeps past the room of
+  // a store with no plan is removed CLOSING_DAYS after the plan ended, and
+  // never later than a week past that for a last notice that went out late
+  // (tests/plan-closing.test.ts holds the days and what is done on them).
+  const months = (CLOSING_DAYS + WARN_WEEK_DAYS) / 30;
+  // The dearest store there can be: it pays for one month, runs every limit
+  // of its plan in it, cancels, and leaves all a paid plan may keep here
+  // until its day. That one month has to have paid for all of it.
+  const kept = (STORAGE_BRAKE_BYTES / GB) * STORAGE_PER_GB * months;
+  for (const tier of TIERS) {
+    const cost = worstCost(tier) + kept;
+    const net = netOf(tier);
+    assert.ok(
+      cost < net,
+      `${tier}: one month at every limit, and then everything kept to its day, costs $${cost.toFixed(2)} against the $${net.toFixed(2)} that month brought in. ` +
+        "The days a store has after its plan ends are paid for by its last month, or by nobody.",
+    );
+  }
+  // A free trial that filled all a trial may keep, and never paid: a card
+  // was on file, and this is the whole of what it can leave behind.
+  const trial = (TRIAL_STORAGE_BYTES / GB) * STORAGE_PER_GB * months;
+  assert.ok(trial < 3, `keeping an unpaid trial's files to its day costs $${trial.toFixed(2)} once`);
+  // After the day, either is a store with no plan: the test above.
+  const closing = readFileSync(join(process.cwd(), "lib/plan-closing.ts"), "utf8");
+  assert.match(closing, /if \(held <= SETUP_STORAGE_BYTES\)/, "the room a closing store is held to must be the room of a store with no plan");
+  const job = JSON.parse(readFileSync(join(process.cwd(), "vercel.json"), "utf8")) as { crons: { path: string }[] };
+  assert.ok(job.crons.some((cron) => cron.path === "/api/cron/closing"), "and the job that does it must be scheduled, or the day never comes");
 });
 
 test("the video a plan covers is said in hours a creator can check", () => {
