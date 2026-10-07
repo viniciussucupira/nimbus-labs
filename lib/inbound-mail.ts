@@ -40,9 +40,23 @@
  * inbox. It is sent from this site's own address, which is the one this
  * deployment may send from, and it names the domain it was written to instead
  * of this site, so the inbox can tell which product a message is about.
+ *
+ * One kind of message does not go to that inbox at all. A creator's email
+ * to people is sent from the store's own address on a domain set apart for
+ * it (lib/mail-from.ts), and carries Reply-To with the creator's real
+ * address, so an answer goes straight to them. A mail app that ignores
+ * Reply-To answers the store's address instead, and that answer is the
+ * creator's and nobody else's to read: it is sent on to the address the
+ * store's account is under, from the store's own address, with Reply-To
+ * whoever wrote. Mail to a name on that domain that is no store's is
+ * dropped, and a store is sent on no more than CREATOR_HOURLY an hour, so
+ * that the address cannot be used to pour mail on a creator through us.
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { RESEND_BASE, headerText, oneAddress, sendEmail } from "@/lib/email";
+import { NIMBUS_FROM, RESEND_BASE, headerText, oneAddress, sendEmail } from "@/lib/email";
+import { creatorDomain } from "@/lib/mail-from";
+import { withinLimit } from "@/lib/request-guard";
+import { HANDLE_PATTERN, storeForHandle } from "@/lib/store";
 import { RESEND_TIMEOUT_MS, timed } from "@/lib/fetch-timeout";
 import { SITE_URL } from "@/lib/site-url";
 
@@ -52,6 +66,8 @@ export const FORWARD_HEADER = "X-Marktmorgen-Forwarded";
 const MAX_FILES_BYTES = 15_000_000;
 /** A message's own text or page, each, sent on. */
 const MAX_BODY_CHARS = 400_000;
+/** Messages sent on to one store in an hour, at the most. */
+export const CREATOR_HOURLY = 40;
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const platformDomain = () => new URL(SITE_URL).hostname;
@@ -242,8 +258,32 @@ export async function forwardInbound(id: string): Promise<"sent" | "skipped" | "
   const from = typeof mail.from === "string" ? headerText(mail.from, 320) : "";
   const sender = parseSender(typeof headers.from === "string" && parseSender(headers.from).address ? headers.from : from);
   const replyTo = list(mail.reply_to).map((a) => parseSender(a).address).find(Boolean) ?? sender.address ?? undefined;
-  const written = [...new Set([...list(mail.received_for), ...list(mail.to)].map((a) => parseSender(a).address).filter((a): a is string => Boolean(a)))];
+  // Each address once, however it was capitalised.
+  const written: string[] = [];
+  for (const one of [...list(mail.received_for), ...list(mail.to)]) {
+    const address = parseSender(one).address;
+    if (address && !written.some((held) => held.toLowerCase() === address.toLowerCase())) written.push(address);
+  }
   const ours = written.find((a) => a.toLowerCase().endsWith(`@${platformDomain()}`)) ?? written[0] ?? `support@${platformDomain()}`;
+  // Written to a store's own address: the creator's to read, not the site's.
+  const creators = creatorDomain(NIMBUS_FROM);
+  const toStore = creators ? written.find((a) => a.toLowerCase().endsWith(`@${creators}`)) : undefined;
+  let creator: { name: string; email: string; address: string } | null = null;
+  if (toStore) {
+    const handle = toStore.slice(0, toStore.lastIndexOf("@")).toLowerCase();
+    if (!HANDLE_PATTERN.test(handle)) return "skipped";
+    let found: Awaited<ReturnType<typeof storeForHandle>>;
+    try {
+      found = await storeForHandle(handle);
+    } catch (error) {
+      console.error("the store an inbound message was written to could not be read", error);
+      return "retry";
+    }
+    const email = found ? oneAddress(found.email) : null;
+    if (!found || !email) return "skipped";
+    if (!(await withinLimit("creator-inbound", handle, CREATOR_HOURLY, 3_600))) return "skipped";
+    creator = { name: headerText(found.name, 60).replace(/["\\<>]/g, "") || handle, email, address: `${handle}@${creators}` };
+  }
   const subject = typeof mail.subject === "string" && mail.subject.trim() ? mail.subject : "(no subject)";
   const html = typeof mail.html === "string" ? mail.html.slice(0, MAX_BODY_CHARS) : "";
   const text = (typeof mail.text === "string" && mail.text.trim() ? mail.text : pageToText(html)).slice(0, MAX_BODY_CHARS);
@@ -260,7 +300,8 @@ export async function forwardInbound(id: string): Promise<"sent" | "skipped" | "
   const lines = [
     `From: ${who}`,
     `To: ${written.join(", ") || ours}`,
-    ...(attached.left.length ? [`Not attached (see Resend, Emails, Receiving): ${attached.left.join(", ")}`] : []),
+    // A creator has no way into the sender's dashboard, so is not pointed at it.
+    ...(attached.left.length ? [`${creator ? "Not attached, too large to send on" : "Not attached (see Resend, Emails, Receiving)"}: ${attached.left.join(", ")}`] : []),
   ];
   const shown = (sender.name || sender.address || "Someone").replace(/["\\<>]/g, "").slice(0, 60);
   // Which site the message was written to: this one, or the domain of the
@@ -269,8 +310,8 @@ export async function forwardInbound(id: string): Promise<"sent" | "skipped" | "
   const site = writtenTo === platformDomain() || !/^[a-z0-9.-]{3,80}$/.test(writtenTo) ? "Marktmorgen" : writtenTo;
 
   const ok = await sendEmail({
-    from: `"${shown} via ${site}" <support@${platformDomain()}>`,
-    to: target,
+    from: creator ? `"${shown} via ${creator.name}" <${creator.address}>` : `"${shown} via ${site}" <support@${platformDomain()}>`,
+    to: creator ? creator.email : target,
     subject,
     text: `${lines.join("\n")}\n\n${text}`,
     ...(html
