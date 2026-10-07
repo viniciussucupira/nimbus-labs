@@ -16,12 +16,16 @@
  *   - a file that is not on Resend's hosts, or that would pass the ceiling,
  *     is left out and named;
  *   - a message this file sent on itself is not sent on again;
- *   - when sending fails, the answer is a failure and the retry is heard.
+ *   - when sending fails, the answer is a failure and the retry is heard;
+ *   - an answer written to a store's own address on the creators' domain
+ *     goes to that creator and nobody else, mail to a name that is no
+ *     store's is dropped, and a store is sent on only so many an hour.
  */
 import { createHmac } from "node:crypto";
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/mail/inbound/route";
-import { forwardTarget, inboundSigned, isInboundConfigured, parseSender } from "@/lib/inbound-mail";
+import { CREATOR_HOURLY, forwardTarget, inboundSigned, isInboundConfigured, parseSender } from "@/lib/inbound-mail";
+import { claimHandle } from "@/lib/store";
 import { store as redis } from "./redis-stub";
 import { done, is, part } from "./check";
 
@@ -31,6 +35,8 @@ const A = "4ef9a417-02e9-4d39-ad75-9611e0fcc33c";
 const B = "5ef9a417-02e9-4d39-ad75-9611e0fcc33c";
 const C = "6ef9a417-02e9-4d39-ad75-9611e0fcc33c";
 const D = "8ef9a417-02e9-4d39-ad75-9611e0fcc33c";
+const E = "9ef9a417-02e9-4d39-ad75-9611e0fcc33c";
+const F = "aef9a417-02e9-4d39-ad75-9611e0fcc33c";
 
 type Sent = { from: string; to: string[]; subject: string; text: string; html?: string; reply_to?: string; attachments?: { filename: string; content: string }[]; headers?: Record<string, string> };
 const sent: { body: Sent; key: string | null; auth: string | null }[] = [];
@@ -80,6 +86,29 @@ const MAILS: Record<string, unknown> = {
     reply_to: [],
     subject: "My wall",
     text: "Where do I paste the code?",
+    headers: {},
+  },
+  // An answer to a creator's email, from a mail app that ignored Reply-To.
+  [E]: {
+    object: "email",
+    id: E,
+    from: "Lee <lee@example.org>",
+    to: ["HarborKitchen@mail.marktmorgen.com"],
+    received_for: ["harborkitchen@mail.marktmorgen.com"],
+    reply_to: [],
+    subject: "Re: The autumn menu",
+    text: "Is the pie still on?",
+    headers: {},
+  },
+  // And one to a name on that domain that is no store's.
+  [F]: {
+    object: "email",
+    id: F,
+    from: "Spam <spam@example.org>",
+    to: ["nobody-here@mail.marktmorgen.com"],
+    received_for: ["nobody-here@mail.marktmorgen.com"],
+    subject: "Buy now",
+    text: "x",
     headers: {},
   },
 };
@@ -195,6 +224,25 @@ async function main(): Promise<void> {
   failSending = false;
   const retried = await POST(announce(A, { id: "msg_retry" }));
   is("and the retry is heard", [retried.status, (await retried.json()).result, sent.length], [200, "sent", 4]);
+
+  part("An answer written to a store's own address");
+  await claimHandle("ana@example.org", "harborkitchen", "Harbor Kitchen", "");
+  const before = await POST(announce(E, { id: "msg_before" }));
+  is("with no domain set apart for creators, it is mail like any other", [(await before.json()).result, sent[4]?.body.to], ["sent", ["inbox@example.net"]]);
+  process.env.MARKETING_FROM_DOMAIN = "mail.marktmorgen.com";
+  const answer = await POST(announce(E, { id: "msg_creator" }));
+  // The same message has been sent on once already under its own key; this
+  // stand-in for Resend does not hold keys, so the second send is seen here.
+  const theirsNow = sent[5]?.body;
+  is("it goes to the creator, and to nobody else", [(await answer.json()).result, theirsNow?.to], ["sent", ["ana@example.org"]]);
+  is("from the store's own address, in the writer's name", theirsNow?.from, '"Lee via Harbor Kitchen" <harborkitchen@mail.marktmorgen.com>');
+  is("a reply goes to the writer", theirsNow?.reply_to, "lee@example.org");
+  is("and the text says who wrote, and to which address", theirsNow?.text, "From: Lee <lee@example.org>\nTo: harborkitchen@mail.marktmorgen.com\n\nIs the pie still on?");
+  const nobody = await POST(announce(F));
+  is("mail to a name that is no store's is dropped", [(await nobody.json()).result, sent.length], ["skipped", 6]);
+  for (let i = 0; i < CREATOR_HOURLY; i += 1) await POST(announce(E, { id: `msg_flood_${i}` }));
+  is("and one store is sent on only so many an hour", sent.length, 6 + CREATOR_HOURLY - 1);
+  delete process.env.MARKETING_FROM_DOMAIN;
 
   part("Names and addresses");
   is("a name and an address", parseSender('"Doe, Jane" <jane@example.com>'), { name: "Doe, Jane", address: "jane@example.com" });
