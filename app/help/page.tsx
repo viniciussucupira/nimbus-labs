@@ -71,7 +71,7 @@ const SECTIONS: Section[] = [
       {
         q: "What does it cost to start?",
         a: [
-          "Nothing to sign up. Your store address, your page, the editor and connecting Stripe are free and stay free.",
+          "Nothing to sign up. Your store address, your page, the editor and connecting Stripe are free and stay free. Without a plan, your page is shown for 500 visits a month.",
           `What the subscription switches on is your checkout: your page taking a card, and handing out what you give away for an email address. It is $29 a month, or $300 a year, which is $48 less than paying monthly. Pro, which adds email to your list${isDomainsConfigured() ? " and your own domain" : ""}, is $99 a month or $948 a year. Scale, which is Pro for a list that sends up to ${SCALE_MONTHLY_EMAILS.toLocaleString("en-US")} emails a month instead of ${PRO_MONTHLY_EMAILS.toLocaleString("en-US")}, is $249 a month or $2,388 a year. The first 14 days are free on any plan, monthly or yearly. Stripe takes your card details when the trial starts and first charges the card when the 14 days end; we email you a week before that charge, and if you cancel before it, from your studio, it is never charged. So you can put a product up and make a sale before you decide whether it is worth paying for.`,
         ],
       },
@@ -79,7 +79,7 @@ const SECTIONS: Section[] = [
         q: "What will it cost?",
         a: [
           "One subscription — $29 a month, or $99 a month on Pro, less if you pay yearly — and 0% of your sales. The card fee your payment processor charges is paid to them, on your own account, and we never take a cut on top of it.",
-          "One thing is charged by use, and only if you reach it: lesson video watched past 400 hours in a month is $0.03 for each hour, added to your next invoice. Your studio shows the hours as they are watched. Downloads are never charged for.",
+          "Two things are charged by use, and only if you reach them, both added to your next invoice. Lesson video watched past 400 hours in a month is $0.03 for each hour. Visits to your store past what your plan covers are $0.50 for each thousand. Your studio shows both as they are counted, and neither ever takes your store down or cuts a student off. Downloads are never charged for.",
           "The price is published on the home page. If it ever changes, existing subscribers are told before it applies to them.",
         ],
       },
@@ -230,6 +230,14 @@ const SECTIONS: Section[] = [
           "Your plan covers 200 GB of downloads a month for your store. Your studio shows what you have sent out so far, counted from the moment each download starts.",
           "If you go past it, nothing is cut off. Somebody paid you for that file and they get it — we are not going to take a sale and then break it to protect our own bill. Your studio marks the month as past what your plan covers, and your store keeps selling as usual.",
           "For a sense of scale: 200 GB is two hundred copies of a one-gigabyte course, or forty thousand copies of a five-megabyte guide, in a single month.",
+        ],
+      },
+      {
+        q: "How many visits does my plan cover?",
+        a: [
+          "Storefront covers 3,000 visits a month, Storefront & Email 10,000, and Storefront & Email for a big list 50,000. A visit is one person opening your store on one day, however many of its pages they look at. You are never counted when you are signed in, and neither is a robot that says it is one.",
+          "Past your plan's figure, visits are $0.50 for each thousand, counted to the visit and added to your next invoice. Your store is never taken down for it. We email you the first time a month passes it, and your studio shows the count as it grows.",
+          "A store with no paid plan has nothing a charge can be added to, so its public pages rest past its visits until the plan is paid or the month turns: 3,000 visits a month in the free trial, and 500 a month before a plan starts and after one ends. A visitor is told the page will be open again soon. What your buyers already have stays open: their orders, downloads, lessons and memberships.",
         ],
       },
       {

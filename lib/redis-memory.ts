@@ -256,6 +256,20 @@ export class MemoryRedis {
         for (const one of args) if (!set.has(one)) { set.add(one); added += 1; }
         return added;
       }
+      // A count of distinct things, kept by the real one as an estimate in a
+      // few kilobytes. Here it is a plain set, so it is exact: what matters
+      // to the code that uses it is that something new answers 1.
+      case "PFADD": {
+        const set = this.set(key);
+        let changed = 0;
+        for (const one of args) if (!set.has(one)) { set.add(one); changed = 1; }
+        return changed;
+      }
+      case "PFCOUNT": {
+        const seen = new Set<string>(this.set(key));
+        for (const other of args) for (const one of this.set(other)) seen.add(one);
+        return seen.size;
+      }
       case "SREM": {
         const set = this.set(key);
         let gone = 0;

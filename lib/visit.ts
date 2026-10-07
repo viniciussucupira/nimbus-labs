@@ -7,6 +7,7 @@ import { SESSION_COOKIE, emailForSession } from "@/lib/auth";
 import { type HitKind, isBot, recordHit } from "@/lib/stats";
 import type { Store } from "@/lib/store";
 import { affiliateCookieName, recordClick } from "@/lib/affiliates";
+import { recordVisit } from "@/lib/traffic";
 
 export function clientIp(request: NextRequest): string {
   return (
@@ -41,6 +42,21 @@ export async function countHit(
     });
   } catch (error) {
     console.error("counting a visit failed", error);
+  }
+}
+
+/**
+ * Counts a visit to the store toward the visits its plan covers
+ * (lib/traffic.ts): one for each person each day, whichever of its pages
+ * they open. Never the owner's own, and never a robot's that says it is
+ * one. Never throws, like countHit.
+ */
+export async function countVisit(request: NextRequest, store: Store): Promise<void> {
+  try {
+    if (isBot(request.headers.get("user-agent") ?? "") || (await isOwner(request, store))) return;
+    await recordVisit(store, clientIp(request));
+  } catch (error) {
+    console.error("counting a visit toward the plan failed", error);
   }
 }
 

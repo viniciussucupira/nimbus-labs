@@ -163,6 +163,19 @@ export default function PrivacyPage() {
           counts for as long as the store exists. The creator sees totals,
           never a person.
         </p>
+        <p>
+          A creator&apos;s plan covers a number of visits a month, so visits
+          are also counted for that, on any page of a store that is opened:
+          one for each visitor each day. For this we make a second one-way
+          fingerprint, of the day, the store and the visitor&apos;s network
+          address (for the newer kind of address, the network it belongs to),
+          made with a secret key of our own, and keep its first sixteen
+          characters in a list for that store and that day, so that the same
+          visitor is not counted twice. The list cannot be turned back into
+          addresses, holds nothing else, and is deleted two days later; what
+          remains is the store&apos;s count for the month. The address itself
+          is not stored, and no cookie is set.
+        </p>
         <p id="ads">
           <strong className="text-black">
             Ad measurement a creator switches on.

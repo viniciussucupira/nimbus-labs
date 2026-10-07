@@ -44,7 +44,19 @@
  * paying store has a file in the dearer one. Keeping a file is still worked
  * out at the dearest of the three rates.
  *
- * Which left lesson video as the one thing that costs by use, and it is
+ * Which left two things that cost by use. One is visits: every page of a
+ * store that is opened is charged for by the host, by the file, by the
+ * call and by the command sent to the database, and that was in none of
+ * these sums until October 7, 2026, when a hundred thousand visits in a
+ * month were found to cost more than the smallest plan had left. A visit is
+ * now counted, covered up to a figure by each plan and priced past it
+ * (lib/traffic-rules.ts), and what one costs is worked out in
+ * tests/traffic-cost.ts from what the live site was measured to do. It
+ * counts on one setting nothing here can see: Flat Rate CDN, in the host's
+ * billing, which puts the bytes sent inside a fixed tier. It was on when
+ * this was written.
+ *
+ * The other is lesson video, and it is
  * covered and priced by the hour watched (lib/watch-rules.ts). Its worst
  * case is here twice: the hours a plan covers have to fit inside the plan
  * with every other brake at its limit, and an hour past them has to bring in
@@ -74,6 +86,8 @@ import { TOP_HEIGHT, viewingBytes } from "@/lib/stream-rules";
 import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED } from "@/lib/watch-rules";
 import { SETUP_STORAGE_BYTES, SETUP_VIDEO_HOURS, TRIAL_STORAGE_BYTES } from "@/lib/plan-standing";
 import { CLOSING_DAYS, WARN_WEEK_DAYS } from "@/lib/plan-closing-rules";
+import { SETUP_VISITS, TRIAL_VISITS, VISITS_INCLUDED, VISIT_CENTS_PER_THOUSAND_OVER } from "@/lib/traffic-rules";
+import { visitCost } from "./traffic-cost";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -115,6 +129,11 @@ function videoCost(): number {
   return VIDEO_HOURS_INCLUDED * hourCost();
 }
 
+/** The visits a plan covers, all of them made, each by the heavy visitor a visit is costed as. */
+function visitsCost(tier: Tier): number {
+  return VISITS_INCLUDED[tier] * visitCost();
+}
+
 /** Everything one store on this plan can run up in a month, at every limit at once. */
 function worstCost(tier: Tier): number {
   const storage = (STORAGE_BRAKE_BYTES / GB) * STORAGE_PER_GB;
@@ -123,7 +142,7 @@ function worstCost(tier: Tier): number {
   const email = monthlyEmails(tier) * PER_EMAIL;
   const drafts = AI_MONTHLY[tier] * PER_DRAFT;
   const receipts = TRANSACTIONAL[tier] * PER_EMAIL;
-  return storage + free + video + email + drafts + receipts;
+  return storage + free + video + visitsCost(tier) + email + drafts + receipts;
 }
 
 test("the email each plan may send is the number that is published", () => {
@@ -158,6 +177,7 @@ for (const tier of TIERS) {
       ["storage", (STORAGE_BRAKE_BYTES / GB) * STORAGE_PER_GB],
       ["free downloads", (FREE_PAUSE_ABOVE_BYTES / GB) * FILE_DELIVERY_PER_GB],
       ["video", videoCost()],
+      ["visits", visitsCost(tier)],
       ["email", monthlyEmails(tier) * PER_EMAIL],
       ["AI drafts", AI_MONTHLY[tier] * PER_DRAFT],
     ];
@@ -218,6 +238,31 @@ test("an hour of video past what a plan covers brings in well over what it costs
   );
 });
 
+test("a thousand visits past what a plan covers bring in well over what they cost", () => {
+  // The other thing charged by use, held to the same floor as an hour of
+  // video: what reaches us for a thousand visits, against a thousand of the
+  // heavy visitor a visit is costed as.
+  const kept = (VISIT_CENTS_PER_THOUSAND_OVER / 100) * (1 - 0.029);
+  const cost = 1000 * visitCost();
+  const margin = (kept - cost) / kept;
+  assert.ok(
+    margin >= 0.45,
+    `a thousand visits past the plan bring in $${kept.toFixed(4)} and cost $${cost.toFixed(4)}, which keeps ${(margin * 100).toFixed(0)}%. ` +
+      "A price near what the visits cost is a slower loss.",
+  );
+});
+
+test("a store nobody can charge cannot be visited past the visits it has", () => {
+  // A visit past the plan is paid for by a line on an invoice. A store in
+  // its free trial has no invoice yet, and one with no plan has none at
+  // all, so the visits themselves are the limit there: its pages rest at
+  // them (lib/traffic.ts; tests/traffic.test.ts holds where and for whom).
+  for (const page of ["app/[handle]/page.tsx", "app/[handle]/p/[product]/page.tsx"]) {
+    assert.match(readFileSync(join(process.cwd(), page), "utf8"), /if \(await isResting\(store\)\) return <StoreResting store=\{store\} \/>;/, `${page} must rest with its store`);
+  }
+  assert.equal(TRIAL_VISITS, VISITS_INCLUDED.creator, "a trial of any plan has the smallest plan's visits: it has paid for none");
+});
+
 test("a store nobody can charge cannot watch past the hours it has", () => {
   // An hour past the plan is paid for by a line on an invoice. A store in
   // its free trial has no invoice yet, and one with no plan has none at all,
@@ -236,11 +281,13 @@ test("a store that pays nothing can cost next to nothing", () => {
   // the hours its video may be watched, at the most an hour can cost.
   const kept = (SETUP_STORAGE_BYTES / GB) * STORAGE_PER_GB;
   const watched = SETUP_VIDEO_HOURS * hourCost();
-  assert.ok(kept + watched < 0.3, `a store with no plan can cost $${(kept + watched).toFixed(2)} a month`);
-  // A free trial lasts two weeks with a card on file. All it may keep, and
-  // every hour it may play, in one month:
-  const trial = (TRIAL_STORAGE_BYTES / GB) * STORAGE_PER_GB + videoCost();
-  assert.ok(trial < 7, `a trial at every limit costs $${trial.toFixed(2)} in a month`);
+  // And the visits its pages are shown for before they rest.
+  const visited = SETUP_VISITS * visitCost();
+  assert.ok(kept + watched + visited < 0.4, `a store with no plan can cost $${(kept + watched + visited).toFixed(2)} a month`);
+  // A free trial lasts two weeks with a card on file. All it may keep,
+  // every hour it may play and every visit it may have, in one month:
+  const trial = (TRIAL_STORAGE_BYTES / GB) * STORAGE_PER_GB + videoCost() + TRIAL_VISITS * visitCost();
+  assert.ok(trial < 8, `a trial at every limit costs $${trial.toFixed(2)} in a month`);
 });
 
 test("a store whose plan ended stops costing more than a store with no plan, on a day that is set", () => {

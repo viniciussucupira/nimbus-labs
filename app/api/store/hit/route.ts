@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { classifySource, cleanTag } from "@/lib/stats";
-import { countAffiliateClick, countHit } from "@/lib/visit";
+import { countAffiliateClick, countHit, countVisit } from "@/lib/visit";
 import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 
 const MAX_BODY_BYTES = 1_500;
@@ -51,6 +51,12 @@ export async function POST(request: NextRequest) {
       ownHost: (host ?? "").split(":")[0].toLowerCase(),
     });
     await countHit(request, store, { kind: "view", source, medium: cleanTag(read("m", 60)), campaign: cleanTag(read("g", 60)) });
+    // And toward the visits the store's plan covers (lib/traffic.ts).
+    await countVisit(request, store);
+  } else if (kind === "p") {
+    // Another page of the store was opened: no figure in the store's own
+    // stats, which count its front page, but a visit all the same.
+    await countVisit(request, store);
   } else if (kind === "l") {
     const id = read("id", 40);
     if (store.links.some((link) => link.id === id)) await countHit(request, store, { kind: "link", id });

@@ -232,7 +232,7 @@ function Shell({ store, children }: { store: Store; children: React.ReactNode })
           <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
             {`Back to ${store.name}`}
           </Link>
-          <StoreTracking store={store} />
+          <StoreTracking store={store} presence />
         </div>
       </main>
     </div>

@@ -3,12 +3,13 @@ import Link from "next/link";
 import { LegalPage, LegalSection } from "@/components/legal-page";
 import { isDomainsConfigured } from "@/lib/domains";
 import { formatMoney } from "@/lib/money";
-import { PRO_MONTHLY_EMAILS, REFUND_DAYS, SCALE_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
+import { PRO_MONTHLY_EMAILS, REFUND_DAYS, SCALE_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS, PLAN_TITLES } from "@/lib/plan";
 import { healthRuleWords } from "@/lib/mail-health-rules";
 import { DELIVERY_ALLOWANCE_BYTES, FREE_PAUSE_ABOVE_BYTES, bytesWords } from "@/lib/delivery";
 import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, centsWords } from "@/lib/watch-rules";
 import { SETUP_STORAGE_BYTES, SETUP_VIDEO_HOURS, TRIAL_STORAGE_BYTES } from "@/lib/plan-standing";
 import { CLOSING_DAYS, WARN_MONTH_DAYS, WARN_WEEK_DAYS } from "@/lib/plan-closing-rules";
+import { SETUP_VISITS, TRIAL_VISITS, VISITS_INCLUDED, VISIT_CENTS_PER_THOUSAND_OVER, countWords } from "@/lib/traffic-rules";
 import { STORAGE_BRAKE_BYTES, storageWords } from "@/lib/storage-quota";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS, INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 
@@ -247,8 +248,9 @@ export default function TermsPage() {
           page: the number of products a store may list, the size of a single
           file, how many emails a month a plan may send,{" "}
           {bytesWords(DELIVERY_ALLOWANCE_BYTES)} of downloads a month per
-          store, and {VIDEO_HOURS_INCLUDED} hours of lesson video watched a
-          month per store. You can see every one of them while you use the
+          store, {VIDEO_HOURS_INCLUDED} hours of lesson video watched a
+          month per store, and the visits to your store a month that your
+          plan covers. You can see every one of them while you use the
           Services.
           None of them is hidden in this document and then discovered by being
           enforced against you.
@@ -263,7 +265,13 @@ export default function TermsPage() {
           Nothing is charged for downloads, inside that figure or past it.
         </p>
         <p>
-          Lesson video is the one thing here that is billed by use. It is
+          Two things here are billed by use: lesson video, and visits to
+          your store. Each is covered up to a published figure and charged
+          past it, rather than limited, so that nobody you sold to is cut off
+          and your store is never taken down for being busy.
+        </p>
+        <p>
+          Lesson video is
           measured by the time your students spend watching your lesson
           videos, as the video player counts it, added up across your store
           for each calendar month and read about once an hour. Your plan
@@ -288,6 +296,34 @@ export default function TermsPage() {
           free trial, and {SETUP_VIDEO_HOURS} hours a month before a plan is
           started and after one has ended. Nothing is charged for those
           hours, and everything else in a course stays open.
+        </p>
+        <p>
+          A visit is one person opening your store on one day, however many
+          of its pages they look at. People are told apart by the network
+          address they come from, and by nothing kept in their browser. You
+          are never counted when you are signed in, and neither is a robot
+          that says it is one. Your plan covers a number of visits in each
+          calendar month: {countWords(VISITS_INCLUDED.creator)} on{" "}
+          {PLAN_TITLES.creator}, {countWords(VISITS_INCLUDED.pro)} on{" "}
+          {PLAN_TITLES.pro}, and {countWords(VISITS_INCLUDED.scale)} on{" "}
+          {PLAN_TITLES.scale}. Past that, visits are charged rather than
+          limited: {centsWords(VISIT_CENTS_PER_THOUSAND_OVER)} for each
+          thousand visits above your plan&apos;s figure in a calendar month,
+          counted to the visit and rounded down to the cent, added to your
+          next subscription invoice the same way video is. A store that pays
+          is never taken down because it has passed its visits, and you are
+          emailed automatically the first time a month passes them, with your
+          own figure in it.
+        </p>
+        <p>
+          A store with no paid plan has nothing a charge can be added to, so
+          its public pages rest past its visits until the plan is paid or the
+          month turns: {countWords(TRIAL_VISITS)} visits a month in the free
+          trial, and {countWords(SETUP_VISITS)} a month before a plan is
+          started and after one has ended. A visitor to a resting store is
+          told the page will be open again soon. Nothing is charged for those
+          visits, and what a buyer already has is never part of the rest:
+          orders, downloads, lessons and memberships stay open.
         </p>
         <p>
           What we ask in return is that the Services are used to sell your own

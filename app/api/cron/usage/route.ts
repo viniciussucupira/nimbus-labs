@@ -11,12 +11,16 @@ import {
   storesOverAllowance,
 } from "@/lib/delivery";
 import { SUPPORT_EMAIL } from "@/lib/creator-research";
+import { PLANS_ON_SALE } from "@/lib/opening";
 import { SITE_URL } from "@/lib/site-url";
 import { directoryReadiness } from "@/lib/directory-index";
 import { SETUP_VIDEO_SECONDS, standingOf, videoLimitFor } from "@/lib/plan-standing";
 import { watchedFolders, watchedIn } from "@/lib/watch";
 import { firstWord, settleAll, storeOf } from "@/lib/watch-billing";
 import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, VIDEO_SECONDS_INCLUDED, canBeCharged, centsWords, hoursWords, videoOwedCents } from "@/lib/watch-rules";
+import { visitedFolders, visitsIn } from "@/lib/traffic";
+import { firstWordOnVisits, settleAllVisits } from "@/lib/traffic-billing";
+import { SETUP_VISITS, VISIT_CENTS_PER_THOUSAND_OVER, countWords, visitLimitFor, visitsIncluded, visitsOwedCents, visitsWords } from "@/lib/traffic-rules";
 
 /**
  * The daily run that writes to a creator who has gone past the allowance.
@@ -45,6 +49,11 @@ import { VIDEO_CENTS_PER_HOUR_OVER, VIDEO_HOURS_INCLUDED, VIDEO_SECONDS_INCLUDED
  * creator is written to the first time a month passes them: what they have
  * come to, and that nobody is cut off. A store with no plan to charge is
  * written to as well, because its videos are paused (lib/learn.ts).
+ *
+ * And the other: visits to a store past the visits its plan covers
+ * (lib/traffic-billing.ts), billed and written about the same way. A store
+ * with no plan to charge is written to because its pages are resting
+ * (lib/traffic.ts).
  */
 export const maxDuration = 60;
 
@@ -151,6 +160,107 @@ async function videoRun(): Promise<VideoRun> {
   return out;
 }
 
+type VisitsRun = { stores: number; billed: number; cents: number; resting: number; failed: number; told: number };
+
+/** Bills visits past the plan's, and writes to each creator the first time a month passes them. */
+async function visitsRun(): Promise<VisitsRun> {
+  const out: VisitsRun = { stores: 0, billed: 0, cents: 0, resting: 0, failed: 0, told: 0 };
+  let settled: Awaited<ReturnType<typeof settleAllVisits>> = [];
+  try {
+    settled = await settleAllVisits();
+  } catch (error) {
+    console.error("settling visits failed", error);
+    return out;
+  }
+  for (const row of settled) {
+    if (row.owed > 0) out.stores += 1;
+    if (row.added > 0) {
+      out.billed += 1;
+      out.cents += row.added;
+    }
+    if (row.state === "failed") out.failed += 1;
+  }
+
+  // Each creator is written to once about the month that is running: the
+  // first time their visits pass what their plan covers, or, where there is
+  // no plan to charge, the first time their pages rest.
+  const month = monthKey();
+  let visited: string[] = [];
+  try {
+    visited = await visitedFolders(month);
+  } catch (error) {
+    console.error("could not read the stores that were visited", error);
+  }
+  for (const folder of visited) {
+    try {
+      const visits = await visitsIn(folder, month);
+      if (visits < SETUP_VISITS) continue;
+      const store = await storeOf(folder);
+      if (!store) continue;
+      const limit = visitLimitFor(store);
+      const resting = limit !== null && visits >= limit;
+      const included = visitsIncluded(store.tier);
+      const charged = canBeCharged(store) && visits > included;
+      if (!resting && !charged) continue;
+      if (resting) out.resting += 1;
+      if (!isSenderConfigured() || !(await firstWordOnVisits(folder, month))) continue;
+      const price = centsWords(VISIT_CENTS_PER_THOUSAND_OVER);
+      const sent = await sendEmail({
+        from: NIMBUS_FROM,
+        to: store.email,
+        replyTo: SUPPORT_EMAIL,
+        subject: charged ? `Your store has had ${visitsWords(visits)} this month` : "Your store's pages are resting",
+        text: (charged
+          ? [
+              `Your store has had ${visitsWords(visits)} so far this month. Your plan covers`,
+              `${countWords(included)} a month, so you are past it.`,
+              "",
+              "Your store is open, and it stays open. Nothing is taken down for this.",
+              "",
+              `Past the ${countWords(included)}, visits are ${price} for each thousand, counted to the visit.`,
+              `So far this month that comes to ${centsWords(visitsOwedCents(visits, store.tier))}. It is added to your next invoice, on`,
+              "the card you already pay with. There is nothing for you to do.",
+              "",
+              "A visit is one person opening your store on one day, however many of its",
+              "pages they look at. You are never counted, and neither is a robot that",
+              "says it is one. Your studio shows the count as it grows, under your plan:",
+              `${SITE_URL}/studio`,
+              "",
+              `If the figure surprises you, reply to this email or write to ${SUPPORT_EMAIL}.`,
+            ]
+          : [
+              `Your store has had ${visitsWords(visits)} this month, which is the ${countWords(limit ?? 0)}`,
+              `${standingOf(store) === "trial" ? "a free trial has" : "a store without a paid plan has"} in a month.`,
+              "",
+              "Your store has no paid plan to carry more, so its pages are resting: a",
+              "visitor is told the page will be open again soon. Everything your buyers",
+              "already have is open as usual: their orders, their downloads, their",
+              "lessons, their memberships.",
+              "",
+              ...(PLANS_ON_SALE || standingOf(store) === "trial"
+                ? ["Your pages open again as soon as your plan is paid, or when the month", "turns, whichever comes first. Nothing has been charged for the visits."]
+                : ["Your pages open again when the month turns. Plans are not on sale yet, and", "nothing has been charged for the visits."]),
+              "",
+              `${SITE_URL}/studio`,
+            ]
+        ).join("\n"),
+      }).catch((error) => {
+        console.error("sending the visits notice failed", error);
+        return false;
+      });
+      if (sent !== false) out.told += 1;
+    } catch (error) {
+      console.error("writing to a creator about visits failed", error);
+    }
+  }
+  console.log(
+    out.stores === 0 && out.resting === 0
+      ? "visits-watch: every store inside its visits"
+      : `visits-watch: ${out.stores} past a plan's visits, ${out.billed} billed ${centsWords(out.cents)}, ${out.resting} resting with no plan, ${out.failed} failed, ${out.told} written to`,
+  );
+  return out;
+}
+
 export async function GET(request: NextRequest) {
   if (!(await cronAllowed(request))) {
     return new Response("Unauthorized", { status: 401, headers: { "Cache-Control": "no-store" } });
@@ -194,6 +304,7 @@ export async function GET(request: NextRequest) {
   }
 
   const video = await videoRun();
+  const visits = await visitsRun();
 
   const over = await storesOverAllowance();
   const allowance = bytesWords(DELIVERY_ALLOWANCE_BYTES);
@@ -209,7 +320,7 @@ export async function GET(request: NextRequest) {
   const fresh = over.filter((s) => !seen.has(s.folder));
   if (fresh.length === 0) {
     return Response.json(
-      { ok: true, over: over.length, told: 0, video, directory: directory ? { listed: directory.listed, ready: directory.ready } : null },
+      { ok: true, over: over.length, told: 0, video, visits, directory: directory ? { listed: directory.listed, ready: directory.ready } : null },
       { headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -290,7 +401,7 @@ export async function GET(request: NextRequest) {
   ]);
 
   return Response.json(
-    { ok: true, over: over.length, told, unknown: unknown.length, video },
+    { ok: true, over: over.length, told, unknown: unknown.length, video, visits },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

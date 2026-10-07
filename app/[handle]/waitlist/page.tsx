@@ -155,7 +155,7 @@ export default async function WaitlistPage({ params, searchParams }: Params) {
             <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
               {`Back to ${store.name}`}
             </Link>
-            <StoreTracking store={store} event={status === "sent" && product ? { type: "lead", productId: product.id } : null} />
+            <StoreTracking store={store} presence event={status === "sent" && product ? { type: "lead", productId: product.id } : null} />
           </div>
         </div>
       </main>
