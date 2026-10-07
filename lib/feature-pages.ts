@@ -1466,7 +1466,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What a page is built from",
         items: [
           { icon: "type", title: "Hero", body: "A headline of up to 120 characters and a line under it, beside the product's picture or a video." },
-          { icon: "play", title: "Video that waits", body: "From YouTube, Vimeo or Loom. Nothing from them loads until the visitor presses play, and YouTube plays from its privacy-enhanced address." },
+          { icon: "play", title: "Video that waits", body: "One beside the headline and as many more as the page needs, each in a block of its own with a heading and a line under it. From YouTube, Vimeo or Loom. Nothing from them loads until the visitor presses play, and YouTube plays from its privacy-enhanced address." },
           { icon: "list", title: "Benefits and what is inside", body: "Up to 12 points with a check mark, and up to 20 numbered parts, each with a line about it." },
           { icon: "user", title: "Text, and about you", body: "A heading and paragraphs in your own words, and who made it, with your store photo." },
           { icon: "chat", title: "Questions", body: "Up to 15 questions and answers that open and close." },

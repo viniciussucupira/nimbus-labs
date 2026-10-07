@@ -288,5 +288,16 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
       );
     case "reviews":
       return reviews ? <section className="sp-section">{reviews}</section> : null;
+    case "video":
+      if (!block.video) return null;
+      return (
+        <section className="sp-section">
+          <Heading text={block.heading} />
+          <div className={block.heading ? "mt-5" : ""}>
+            <VideoEmbed video={block.video} title={block.heading || ctx.productTitle} poster={null} inert={ctx.preview} />
+          </div>
+          {block.caption ? <PlainText text={block.caption} preview={ctx.preview} className="st-muted mt-3" /> : null}
+        </section>
+      );
   }
 }

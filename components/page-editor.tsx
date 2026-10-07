@@ -32,6 +32,7 @@ import {
   MAX_SEO_TITLE,
   MAX_SUBHEADLINE,
   MAX_TEXT,
+  MAX_CAPTION,
   PROVIDER_NAMES,
   type PageBlock,
   type SalesPage,
@@ -69,6 +70,7 @@ const KIND_ICONS: Record<BlockKind, IconName> = {
   guarantee: "shield",
   cta: "arrow-right",
   reviews: "star",
+  video: "play",
 };
 
 const kindLabel = (kind: BlockKind) => BLOCK_KINDS.find((k) => k.kind === kind)?.label ?? kind;
@@ -91,7 +93,7 @@ type Draft = { block: PageBlock; video: string };
 function toDrafts(page: SalesPage): Draft[] {
   return page.blocks.map((block) => ({
     block,
-    video: block.kind === "hero" && block.video ? videoAddress(block.video) : "",
+    video: (block.kind === "hero" || block.kind === "video") && block.video ? videoAddress(block.video) : "",
   }));
 }
 
@@ -157,7 +159,7 @@ export function PageEditor({
   function setVideo(index: number, typed: string) {
     const video = readVideo(typed);
     setDrafts((all) =>
-      all.map((d, i) => (i === index && d.block.kind === "hero" ? { video: typed, block: { ...d.block, video } } : d)),
+      all.map((d, i) => (i === index && (d.block.kind === "hero" || d.block.kind === "video") ? { video: typed, block: { ...d.block, video } } : d)),
     );
   }
 
@@ -208,7 +210,7 @@ export function PageEditor({
   async function send(page: SalesPage | null, confirmation: string) {
     setBusy(true);
     setError(null);
-    const badVideo = page?.blocks.find((b) => b.kind === "hero" && b.media === "video" && !b.video);
+    const badVideo = page?.blocks.find((b) => (b.kind === "hero" && b.media === "video" && !b.video) || (b.kind === "video" && !b.video));
     if (badVideo) {
       setError(MESSAGES.video);
       setBusy(false);
@@ -469,6 +471,42 @@ export function PageEditor({
             <p className="text-xs text-ink-soft">{product.leadsTo}</p>
           </div>
         );
+      case "video": {
+        const recognised = readVideo(draft.video);
+        return (
+          <div className="space-y-4">
+            {field(`${base}-h`, "Heading (optional)", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} placeholder="Watch the first lesson" onChange={(e) => change(index, { heading: e.target.value })} />)}
+            <div>
+              {field(
+                `${base}-v`,
+                "Video address",
+                <input
+                  id={`${base}-v`}
+                  className="field"
+                  inputMode="url"
+                  value={draft.video}
+                  placeholder="https://www.youtube.com/watch?v=…"
+                  aria-describedby={`${base}-vh`}
+                  onChange={(e) => setVideo(index, e.target.value)}
+                />,
+              )}
+              <p id={`${base}-vh`} className={`mt-1 text-xs ${draft.video && !recognised ? "font-semibold text-danger" : "text-ink-soft"}`}>
+                {recognised
+                  ? `${PROVIDER_NAMES[recognised.provider]} video recognized. It loads only when a visitor presses play.`
+                  : draft.video
+                    ? "Not a video we can play. Paste a link from YouTube, Vimeo or Loom."
+                    : "A link from YouTube, Vimeo or Loom. Add as many video blocks as the page needs."}
+              </p>
+            </div>
+            {field(
+              `${base}-c`,
+              "A line under it (optional)",
+              <textarea id={`${base}-c`} className="field" rows={2} maxLength={MAX_CAPTION} value={block.caption} placeholder="What the visitor is about to see." onChange={(e) => change(index, { caption: e.target.value })} />,
+              counter(block.caption, MAX_CAPTION),
+            )}
+          </div>
+        );
+      }
       case "reviews":
         return (
           <div className="space-y-4">
@@ -498,6 +536,8 @@ export function PageEditor({
         return block.label || product.defaultLabel;
       case "reviews":
         return block.heading || "Reviews";
+      case "video":
+        return block.heading || (block.video ? `${PROVIDER_NAMES[block.video.provider]} video` : "No video yet");
     }
   };
 
