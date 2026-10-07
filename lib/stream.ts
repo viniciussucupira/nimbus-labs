@@ -7,9 +7,10 @@
  * from each one's own price page that day:
  *
  *   Bunny Stream       turning a file into its sizes is free; keeping them
- *                      is $0.01 a gigabyte a month; sending them is $0.005
- *                      a gigabyte on its volume network, $0.01 on its
- *                      standard one in Europe and North America
+ *                      is $0.01 a gigabyte a month in each region they are
+ *                      kept in; sending them is $0.005 a gigabyte on its
+ *                      volume network, $0.01 on its standard one in Europe
+ *                      and North America
  *   Cloudflare Stream  $5 a month for each 1,000 minutes kept, $1 for each
  *                      1,000 minutes watched
  *   Mux                $0.0024 a minute a month kept, $0.0008 to $0.001 a
@@ -40,6 +41,21 @@
  *      made here for that video, good for a few hours. Without one the
  *      player shows nothing, so the address of a lesson's video is worth
  *      nothing to somebody who did not buy the course.
+ *
+ * The library, as it was set up on October 6, 2026, and what this file
+ * counts on it being:
+ *
+ *   - files kept in two regions, Frankfurt and New York ($0.02 a gigabyte a
+ *     month together), sent over the volume network ($0.005 a gigabyte);
+ *   - sizes from 240p to 1080p, made by the free encoder, which finishes
+ *     when it finishes: until the first size is done the lesson page says
+ *     the video is being prepared;
+ *   - "direct play" off, and both token authentications on, the player's
+ *     and the files': a video plays only in a player given a token made
+ *     here. The service's own encryption of the files ("MediaCage Basic")
+ *     cannot be on at the same time as token authentication, by the
+ *     service's rule, and the token is the one that says who bought.
+ *   - the player goes on from where a viewer stopped.
  *
  * Nothing here runs until the four settings are there:
  *
