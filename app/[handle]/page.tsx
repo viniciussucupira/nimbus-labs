@@ -26,6 +26,8 @@ import { canWrite } from "@/lib/mail";
 import { canUseDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
 import { summaries } from "@/lib/reviews";
+import { isResting } from "@/lib/traffic";
+import { StoreResting } from "@/components/store-resting";
 
 type Params = {
   params: Promise<{ handle: string }>;
@@ -137,6 +139,12 @@ export default async function StorePage({ params, searchParams }: Params) {
   // On the store's own domain the address in the bar is the domain, so there
   // is nothing to correct.
   if (asked !== store.handle && !reachedOn) permanentRedirect(`/@${store.handle}`);
+
+  // A store with no plan a visit can be charged to, which has had the visits
+  // such a store has this month, rests until the month turns or its plan is
+  // paid (lib/traffic.ts). Asked only of such a store, before anything else
+  // is read for it; a store that pays is never rested.
+  if (await isResting(store)) return <StoreResting store={store} />;
 
   const selling = canSell(store);
   // Sold through the creator's own PayPal as well, or instead (lib/paypal-sales.ts).

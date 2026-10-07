@@ -34,6 +34,8 @@ import { BuyBox, GiftBox, PriceTag, ProductFacts, offNow, pageAction, productPat
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { StoreTracking } from "@/components/store-tracking";
+import { isResting } from "@/lib/traffic";
+import { StoreResting } from "@/components/store-resting";
 import { JsonLd } from "@/components/structured-data";
 import { offeredItems } from "@/lib/bundles";
 import { MIN_BUNDLE_ITEMS, worthWords } from "@/lib/bundle-rules";
@@ -222,6 +224,10 @@ export default async function ProductPage({ params, searchParams }: Params) {
   }
   if (asked !== store.handle && !reachedOn) permanentRedirect(productPath(store, product));
 
+  // As the store page does: a store with no plan a visit can be charged to
+  // rests once it has had its month's visits (lib/traffic.ts).
+  if (await isResting(store)) return <StoreResting store={store} />;
+
   const selling = canSell(store);
   // Coming soon: a waitlist where the buy box would be (lib/waitlist.ts).
   const soon = await isSoon(store, product.id).catch(() => false);
@@ -358,7 +364,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
         {`Everything from ${store.name}`}
       </Link>
-      <StoreTracking store={store} />
+      <StoreTracking store={store} presence />
     </div>
   );
 

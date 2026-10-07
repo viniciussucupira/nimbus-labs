@@ -206,6 +206,7 @@ export default async function FreePage({ params, searchParams }: Params) {
             </Link>
             <StoreTracking
               store={store}
+              presence
               event={status === "sent" && asked ? { type: "lead", productId: asked.id } : null}
             />
           </div>
