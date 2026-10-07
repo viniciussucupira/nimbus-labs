@@ -306,6 +306,14 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can a company buy one of my products for its whole team?",
+        a: [
+          "Yes, and you do nothing. Under the buy button on a product's page there is \u201cBuy it for a team\u201d: the buyer types how many people, from 2 to 200, and pays once on Stripe's page, your price times that many, on your own Stripe account. A sale or a discount code comes off the same way as on any purchase, and if you switched on tax numbers and invoices, the company gets those too.",
+          "Right after paying, the buyer gets one link, on the page and in their receipt, to pass on. Each person opens it and types their own email address; a link arrives in their inbox, and opening it puts the product on that address as if they had bought it: the download, the course with its modules opening from the day they took their place, the community it opens. A mistyped address takes no place, the page shows how many places are left, and it never hands out one more than was paid for. The buyer takes a place the same way.",
+          "In your sales the order reads \u201c(for 5 people)\u201d. A full refund takes every place back within minutes; a partial refund takes none. It is offered wherever a gift is, except on products with a limited quantity or a private podcast.",
+        ],
+      },
+      {
         q: "Can I take a waitlist before something goes on sale?",
         a: [
           "Yes, on any paid product. In your studio, check \u201cComing soon, with a waitlist\u201d under the product: its card and its page then take an email address instead of a payment, and no checkout opens. Each address is confirmed from its own inbox before it counts, and the box to hear more from you starts empty.",

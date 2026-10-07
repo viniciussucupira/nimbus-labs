@@ -126,6 +126,8 @@ export async function GET(request: NextRequest) {
   if (order.membership === "ended") return toRenew(request, store, order.product);
   // A gift is its recipient's, opened from their own email (lib/gifts.ts).
   if (order.gift) return plain(403, "This was a gift: it opens from the email sent to the person it is for.");
+  // Bought for several: each person opens it from their own place (lib/group-buy.ts).
+  if (order.group) return plain(403, "This was bought for several people: each one opens it from the link in the receipt.");
   const sale = { reference: order.reference, email: order.email, paidAt: order.created };
   const pid = request.nextUrl.searchParams.get("pid") ?? "";
 

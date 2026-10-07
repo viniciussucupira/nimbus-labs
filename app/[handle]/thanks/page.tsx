@@ -1,5 +1,8 @@
 import { recordPackage } from "@/lib/call-packages";
 import { readGift } from "@/lib/gifts";
+import { groupLink, readGroup } from "@/lib/group-buy";
+import { peopleWords } from "@/lib/group-rules";
+import { GroupLinkBox } from "@/components/group-link-box";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -234,6 +237,80 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 : "It goes to the address you gave, with a link to open it."}
             </p>
             {order.email ? <p className="st-muted mt-4 text-sm">{`Your receipt goes to ${order.email}.`}</p> : null}
+            <div className="mt-8">
+              <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
+                {`Back to ${store.name}`}
+              </Link>
+              <StoreTracking
+                store={store}
+                event={{
+                  type: "purchase",
+                  id: sessionId,
+                  value: toMajor(order.amount, order.currency),
+                  currency: order.currency,
+                  productId: order.product.id,
+                  title: order.product.title,
+                }}
+              />
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Bought for several people: nothing is handed over here either. The sale
+  // is counted as any other, and this page shows the one link that hands out
+  // the places (lib/group-buy.ts). It is marked as paid before the link is
+  // shown, so the link works the moment it is passed on.
+  if (order.state === "paid" && order.group && sessionId) {
+    const record = order.record as SaleRecord;
+    after(() => noteSale(store, record).catch((error) => console.error("telling about a sale failed", error)));
+    if (order.record.metadata) {
+      await noteSession(store, order.record as Parameters<typeof noteSession>[1]).catch((error) =>
+        console.error("noting an affiliate sale failed", error),
+      );
+    }
+    if (order.news && order.email && store.listId) {
+      await upsertContact(store.listId, order.email, {
+        agreed: true,
+        explicit: true,
+        at: new Date(order.created * 1000).toISOString(),
+        source: "buyer",
+      }).catch((error) => console.error("adding a buyer to a list failed", error));
+    }
+    if (canConfirm(store)) {
+      await confirmPurchase(store, sessionId).catch((error) => console.error("opening the places of a purchase failed", error));
+    }
+    const group = await readGroup(order.group).catch(() => null);
+    const ready = Boolean(group?.paid && !group.revoked);
+    return (
+      <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+        <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
+          <div className="st-card p-7 sm:p-10">
+            <p className="st-price text-sm">Paid</p>
+            <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
+              {group ? `Your ${group.people} places are ready` : "Your places are ready"}
+            </h1>
+            <p className="st-muted mt-4 text-lg">
+              {"You bought "}
+              <strong style={{ color: "var(--st-text)" }}>{order.product.title}</strong>
+              {` from ${store.name}${group ? ` for ${peopleWords(group.people)}` : ""}, for ${formatMoney(order.amount, order.currency)}.`}
+            </p>
+            {group && ready ? (
+              <>
+                <GroupLinkBox link={groupLink(storeBase(store), group.id)} />
+                <p className="st-muted mt-5">
+                  {`Send it to the people it is for. Each one opens it and types their own email address; a link arrives in their inbox, and opening it puts ${order.product.title} on that address, as if they had bought it.`}
+                </p>
+                <p className="st-muted mt-3">
+                  {`Take a place yourself the same way: you paid for ${group.people}, and you are one of them only if you take one.`}
+                </p>
+              </>
+            ) : (
+              <p className="st-note mt-6 text-sm">We could not get your link just now. Refresh this page in a moment; it is also on its way to your email.</p>
+            )}
+            {order.email ? <p className="st-muted mt-5 text-sm">{`The same link is in the receipt sent to ${order.email}: keep it, it is how the places are handed out.`}</p> : null}
             <div className="mt-8">
               <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
                 {`Back to ${store.name}`}

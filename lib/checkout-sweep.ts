@@ -35,6 +35,7 @@
  * second email.
  */
 import { revokeRefundedGifts } from "@/lib/gifts";
+import { revokeRefundedGroups } from "@/lib/group-buy";
 import { sweepPayPal } from "@/lib/paypal-delivery";
 import { dropEnrollment } from "@/lib/learn";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -92,6 +93,12 @@ async function sweepStore(store: Store, counts: SweepCounts, deadline: number, r
     counts.revoked += await revokeRefundedGifts(store, deadline, (email, productId) => dropEnrollment(store, email, productId));
   } catch (error) {
     console.error("reading a store's refunds for gifts failed", store.handle, error);
+  }
+  // And so is every place of a purchase for several people (lib/group-buy.ts).
+  try {
+    counts.revoked += await revokeRefundedGroups(store, deadline, (email, productId) => dropEnrollment(store, email, productId));
+  } catch (error) {
+    console.error("reading a store's refunds for places failed", store.handle, error);
   }
   // Sold through the creator's PayPal (lib/paypal-sales.ts): a payment PayPal
   // held as pending is handed over once it completes, and a full refund takes

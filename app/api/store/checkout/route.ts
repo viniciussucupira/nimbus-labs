@@ -1,4 +1,5 @@
 import { startGift } from "@/lib/gifts";
+import { startGroup } from "@/lib/group-buy";
 import { isSoon } from "@/lib/waitlist";
 import { type NextRequest, after } from "next/server";
 import { linkOrigin, originFrom } from "@/lib/request-origin";
@@ -59,6 +60,8 @@ export async function POST(request: NextRequest) {
   let giftTo = "";
   let giftFrom = "";
   let giftMessage = "";
+  // Bought for several people at once (lib/group-buy.ts): how many.
+  let people = "";
   try {
     const form = await (await limited(request, 8_000)).formData();
     const h = form.get("handle");
@@ -82,6 +85,7 @@ export async function POST(request: NextRequest) {
     giftTo = read("gift_to", 300);
     giftFrom = read("gift_from", 200);
     giftMessage = read("gift_message", 2_000);
+    people = read("people", 12);
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -127,6 +131,17 @@ export async function POST(request: NextRequest) {
     gift = started.gift.id;
   }
 
+  // For several people: written down before its checkout opens, like a gift.
+  // The number typed is checked here and never corrected: a buyer who typed
+  // one that cannot be sold is told on the page, not charged for another.
+  let group: { id: string; people: number } | undefined;
+  if (!gift && people.trim()) {
+    const started = await startGroup(store, product, people).catch(() => null);
+    if (!started) return away(`/@${store.handle}?status=error`);
+    if (!started.ok) return away(`/@${store.handle}/p/${product.id}?group=${started.reason}#group`);
+    group = { id: started.group.id, people: started.group.people };
+  }
+
   try {
     // A buyer who went back from Stripe's page hands back the unit they held
     // before holding another.
@@ -135,8 +150,8 @@ export async function POST(request: NextRequest) {
 
     // When offers follow the payment, this browser gets a secret, and only
     // its fingerprint travels with the charge.
-    const inPlan = !gift && plan && activePlan(product) !== null;
-    const upsell = !gift && !inPlan && !store.tax.enabled && activeFunnel(await readListings(store, funnelProductIds(product.funnel)), product) ? newUpsellKey() : null;
+    const inPlan = !gift && !group && plan && activePlan(product) !== null;
+    const upsell = !gift && !group && !inPlan && !store.tax.enabled && activeFunnel(await readListings(store, funnelProductIds(product.funnel)), product) ? newUpsellKey() : null;
     // Sent by an affiliate within the store's window: credited to them. A
     // lookup that fails never stops the sale; it is only not credited.
     const via = await attributionFor(store, product.id, {
@@ -145,7 +160,7 @@ export async function POST(request: NextRequest) {
     }).catch(() => null);
     // A course opens right away in the browser that paid for it.
     // So does a course in a bundle.
-    const buyer = !gift && (product.course || product.bundle) ? newBuyerKey() : null;
+    const buyer = !gift && !group && (product.course || product.bundle) ? newBuyerKey() : null;
     const held = await withStockHold(store, product, (holding) =>
       createCheckout(store, product, linkOrigin(request, store), optionId, {
         bump,
@@ -158,6 +173,7 @@ export async function POST(request: NextRequest) {
         news: news && (canWrite(store) || syncTakesBuyer(store, product.id)),
         via,
         gift,
+        group,
         // Which of the creator's links this sale came from, read off the page
         // the button was pressed on (lib/came-from.ts). Nothing is stored and
         // nobody is identified: the tag rides to Stripe with the payment.

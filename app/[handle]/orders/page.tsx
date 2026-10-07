@@ -329,6 +329,8 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                             purchase.kind === "upsell" ? "Added after paying" : null,
                             purchase.kind === "imported" && purchase.giftFrom
                               ? `A gift from ${purchase.giftFrom}${purchase.paidAt ? `, on ${DATE.format(new Date(purchase.paidAt * 1000))}` : ""}`
+                              : purchase.place
+                              ? `A place somebody bought for you${purchase.paidAt ? `, taken on ${DATE.format(new Date(purchase.paidAt * 1000))}` : ""}`
                               : purchase.paidWith === "paypal"
                               ? `Bought on ${DATE.format(new Date(purchase.paidAt * 1000))}, paid with PayPal`
                               : purchase.kind === "imported"
@@ -377,7 +379,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                             <DeliveryButton handle={store.handle} token={token} purchase={purchase} delivery={purchase.bump} item="bump" />
                           ) : null}
                         </div>
-                        {purchase.kind === "imported" && !purchase.giftFrom && !purchase.paidWith ? (
+                        {purchase.kind === "imported" && !purchase.giftFrom && !purchase.paidWith && !purchase.place ? (
                           <p className="st-muted mt-3 text-xs leading-relaxed">
                             {`${store.name} moved this here from the platform you bought it on. Nothing was charged here and there is no receipt from this store for it.`}
                           </p>

@@ -1,0 +1,201 @@
+/**
+ * One product bought for several people (lib/group-buy.ts): the buyer pays
+ * once, and one link hands out the places.
+ *
+ * Measured before it was built (7 October 2026): Kajabi's checkout can charge
+ * for several, and only the buyer is given access; the creator grants the
+ * rest by hand from a list. What is checked:
+ *
+ *   - what can be bought this way, and how the number typed is read: never
+ *     rounded, never clamped;
+ *   - the checkout is one payment of the price times the people, marked, with
+ *     nothing added and no offer after it;
+ *   - the buyer's own checkout opens nothing (deliveredIds);
+ *   - once paid, the buyer's receipt carries the link, once;
+ *   - typing an address takes nothing: the place is taken when the emailed
+ *     link is opened, on that address, with a course dated from that day;
+ *   - never one place more than was paid for, even for a link sent while a
+ *     place was still open;
+ *   - an address that already has the product uses no place;
+ *   - the list of purchases says what it is, and a full refund takes back
+ *     what this purchase gave and nothing else.
+ */
+import { addProduct, claimHandle, ensureStatsId, setProductLink, setStripeAccount, setSubscription, storeForEmail, type Listing } from "@/lib/store";
+import { readListing, readProduct } from "@/lib/catalog";
+import { MAX_PEOPLE, canGroup, payable, placesWords, readPeople } from "@/lib/group-rules";
+import { askPlace, groupJob, openGroup, placesTaken, readGroup, revokeRefundedGroups, settleGroup, startGroup, takePlace } from "@/lib/group-buy";
+import { deliveredIds } from "@/lib/bundle-rules";
+import { grantImported, importedFor } from "@/lib/imported-purchases";
+import { purchasesFor } from "@/lib/buyer-orders";
+import { createCheckout } from "@/lib/store-checkout";
+import { store as redis } from "./redis-stub";
+import { done, is, part } from "./check";
+
+type Sent = { to: string[]; subject: string; text: string };
+const emails: Sent[] = [];
+const checkouts: URLSearchParams[] = [];
+let refunds: Record<string, unknown>[] = [];
+globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+  const url = new URL(String(input));
+  if (url.hostname === "api.resend.com") {
+    emails.push(JSON.parse(String(init?.body)) as Sent);
+    return new Response(JSON.stringify({ id: "email_1" }));
+  }
+  const path = url.pathname.replace(/^\/v1/, "");
+  const method = init?.method ?? "GET";
+  const answer = (body: unknown) => new Response(JSON.stringify(body));
+  if (path === "/checkout/sessions" && method === "POST") {
+    checkouts.push(new URLSearchParams(String(init?.body)));
+    return answer({ id: `cs_test_${"t".repeat(24)}`, url: "https://checkout.stripe.com/c/pay/test" });
+  }
+  if (path === "/refunds") return answer({ object: "list", data: refunds, has_more: false });
+  return new Response(JSON.stringify({ error: { message: `no stand-in for ${method} ${path}` } }), { status: 404 });
+}) as typeof fetch;
+
+const base = (over: Partial<Listing>): Listing =>
+  ({ id: "x", priceCents: 2900, recurring: null, call: null, pwyw: null, keys: null, options: [], file: null, link: "https://example.com", course: null, bundle: null, stock: null, ...over }) as Listing;
+
+const BASE = "https://marktmorgen.com/@harbor";
+const FROM = '"Harbor Kitchen" <hello@marktmorgen.com>';
+
+async function main(): Promise<void> {
+  redis.clear();
+  process.env.STRIPE_SECRET_KEY = "sk_test_groups_only_a_stand_in";
+  process.env.RESEND_API_KEY = "re_test_groups_only";
+
+  part("What can be bought for several");
+  is("a paid download", canGroup(base({})), true);
+  is("not what cannot be given", [canGroup(base({ priceCents: 0 })), canGroup(base({ options: [{}] as Listing["options"] })), canGroup(base({ recurring: { interval: "month" } as Listing["recurring"] }))], [false, false, false]);
+  is("not a limited quantity", canGroup(base({ stock: 50 })), false);
+  is("not a private podcast", canGroup(base({ podcast: {} as Listing["podcast"] })), false);
+
+  part("How many people");
+  is("a whole number in range", [readPeople("5"), readPeople(" 12 "), readPeople(String(MAX_PEOPLE))], [5, 12, MAX_PEOPLE]);
+  is("one is an ordinary purchase", readPeople("1"), null);
+  is("never clamped, rounded or guessed", [readPeople(String(MAX_PEOPLE + 1)), readPeople("2.5"), readPeople("-3"), readPeople("five"), readPeople(""), readPeople(null)], [null, null, null, null, null, null]);
+  is("a payment Stripe can take", [payable(2900, 200), payable(900_000, 200), payable(0, 5)], [true, false, false]);
+  is("what the page says is left", [placesWords(5, 2), placesWords(5, 4), placesWords(5, 5)], ["3 of 5 places are still open.", "1 of 5 places is still open.", "All 5 places have been taken."]);
+
+  await claimHandle("owner@example.com", "harbor", "Harbor Kitchen", "");
+  await ensureStatsId("owner@example.com");
+  await setStripeAccount("owner@example.com", "acct_1TestHarbor0001", true);
+  await setSubscription("owner@example.com", { customerId: "cus_Owner00001", subscriptionId: "sub_Owner00001", active: true });
+  const made = await addProduct("owner@example.com", "Sourdough Course", "", "49", null);
+  if (!made.ok) throw new Error("no product");
+  await setProductLink("owner@example.com", made.product.id, "https://example.com/course");
+  let store = (await storeForEmail("owner@example.com"))!;
+  const product = (await readListing(store, made.product.id))!;
+
+  part("Before the checkout");
+  const bad = await startGroup(store, product, "1");
+  is("a number that is not one", bad.ok ? "started" : bad.reason, "people");
+  const started = await startGroup(store, product, "2");
+  if (!started.ok) throw new Error("no purchase for several");
+  const id = started.group.id;
+  is("written down with its number", started.group.people, 2);
+  is("not open before it is paid", await openGroup(store, id), null);
+
+  part("Its checkout");
+  const full = (await readProduct(store, product.id))!;
+  await createCheckout(store, full, "https://marktmorgen.com", "", { group: { id, people: 2 }, bump: true, plan: true, upsellKey: "f".repeat(40), buyerKey: "b".repeat(40) });
+  const sent = checkouts[0];
+  is("the price, that many times, on one line", [sent.get("line_items[0][quantity]"), sent.get("line_items[0][price_data][unit_amount]")], ["2", "4900"]);
+  is("marked", [sent.get("metadata[group]"), sent.get("metadata[people]"), sent.get("payment_intent_data[metadata][group]")], [id, "2", id]);
+  is("named for what it is", sent.get("metadata[title]"), "Sourdough Course (for 2 people)");
+  is("one payment, nothing added, no offer after, nothing opened for the buyer", [sent.get("mode"), sent.get("line_items[1][quantity]"), sent.get("metadata[upsell_key]"), sent.get("metadata[buyer_key]")], ["payment", null, null, null]);
+  let refused = "";
+  await createCheckout(store, { ...full, stock: 10 }, "https://marktmorgen.com", "", { group: { id, people: 2 } }).catch((error: Error) => (refused = error.message));
+  is("refused where the charge is built, too", refused, "This cannot be bought for several people");
+  await createCheckout(store, full, "https://marktmorgen.com", "");
+  is("an ordinary checkout is still for one", [checkouts.at(-1)!.get("line_items[0][quantity]"), checkouts.at(-1)!.get("metadata[group]")], ["1", null]);
+
+  part("The buyer's own checkout");
+  const meta = { store: "harbor", product: product.id, group: id, people: "2" };
+  is("opens nothing for whoever paid", deliveredIds(meta), []);
+
+  part("Once paid");
+  const session = {
+    id: "cs_test_" + "t".repeat(24),
+    created: 1_900_000_000,
+    amount_total: 9800,
+    currency: "usd",
+    payment_intent: "pi_Group000001",
+    metadata: meta,
+    customer_details: { email: "buyer@example.com" },
+  };
+  const settle = () => settleGroup({ store, session, product, base: BASE, from: FROM });
+  is("settled", await settle(), "settled");
+  is("twice is once", await settle(), "already");
+  const receipt = emails.find((e) => e.to[0] === "buyer@example.com");
+  is("the receipt: how many, what was paid, the link", Boolean(receipt?.text.includes("for 2 people") && receipt.text.includes("$98") && receipt.text.includes(`${BASE}/group/${id}`)), true);
+  is("one email so far", emails.length, 1);
+  is("open now, with its payment", (await openGroup(store, id))?.pi, "pi_Group000001");
+
+  part("Asking for a place");
+  const starts: string[] = [];
+  const ask = (email: unknown) => askPlace({ store, id, email, product, base: BASE, from: FROM, ordersLink: async (address) => `${BASE}/orders?token=${"a".repeat(64)}&for=${address}` });
+  const take = (token: string) => takePlace({ store, token, recordStart: async (email, productId, start) => void starts.push(`${email}|${productId}|${start > 0}`) });
+  const tokenFor = (address: string) => emails.filter((e) => e.to[0] === address).at(-1)?.text.match(/\?take=([0-9a-f]{64})/)?.[1] ?? "";
+  is("an address that is not one", await ask("nope"), "email");
+  is("a link is sent", await ask("Ana@Example.com"), "sent");
+  is("to the address as one, with the way to take it", tokenFor("ana@example.com").length, 64);
+  is("and nothing is taken by typing", await placesTaken(id), 0);
+  // Two more ask while both places are still open.
+  await ask("ben@example.com");
+  await ask("cy@example.com");
+
+  part("Taking it");
+  const first = await take(tokenFor("ana@example.com"));
+  is("taken, on that address", [first.outcome, "email" in first ? first.email : ""], ["taken", "ana@example.com"]);
+  store = (await storeForEmail("owner@example.com"))!;
+  is("it is theirs", (await importedFor(store, "ana@example.com")).map((p) => [p.productId, p.job]), [[product.id, groupJob(id)]]);
+  is("a course would be dated from that day", starts, [`ana@example.com|${product.id}|true`]);
+  is("opening the link again takes nothing more", [(await take(tokenFor("ana@example.com"))).outcome, await placesTaken(id)], ["already", 1]);
+  is("a link nobody was sent", (await take("0".repeat(64))).outcome, "gone");
+  is("the second place", (await take(tokenFor("ben@example.com"))).outcome, "taken");
+  is("never one more than was paid for", [(await take(tokenFor("cy@example.com"))).outcome, await placesTaken(id)], ["full", 2]);
+  is("and nothing was handed to the third", (await importedFor(store, "cy@example.com")).length, 0);
+  is("a new address is told so", await ask("dee@example.com"), "full");
+  const before = emails.length;
+  is("someone with a place is sent the way in again", [await ask("ana@example.com"), emails.length - before, emails.at(-1)?.text.includes("/orders?token=")], ["sent", 1, true]);
+
+  part("On the list of purchases");
+  const listed = await purchasesFor({ ...store, stripeAccountId: null }, "ana@example.com");
+  is("a place, not something brought over or a gift", listed.map((p) => [p.title, p.place, p.giftFrom]), [["Sourdough Course", true, null]]);
+
+  part("An address that already has it");
+  const other = await startGroup(store, product, "3");
+  if (!other.ok) throw new Error("no second purchase");
+  const otherMeta = { ...meta, group: other.group.id, people: "3" };
+  await settleGroup({ store, session: { ...session, id: "cs_test_" + "u".repeat(24), payment_intent: "pi_Group000002", metadata: otherMeta }, product, base: BASE, from: FROM });
+  const askOther = (email: string) => askPlace({ store, id: other.group.id, email, product, base: BASE, from: FROM, ordersLink: async () => null });
+  await askOther("ana@example.com");
+  is("uses no place", [(await take(tokenFor("ana@example.com"))).outcome, await placesTaken(other.group.id)], ["has", 0]);
+  await askOther("eve@example.com");
+  is("someone new takes one", (await take(tokenFor("eve@example.com"))).outcome, "taken");
+
+  part("A link cannot be used to fill inboxes");
+  let answers: string[] = [];
+  for (let i = 0; i < 25; i += 1) answers.push(await askOther(`flood${i}@example.com`));
+  is("it stops sending after a generous number a day", [answers.filter((a) => a === "sent").length < 25, answers.at(-1)], [true, "slow"]);
+
+  part("A refund");
+  const dropped: string[] = [];
+  // Somebody else has the product from the creator's own import: that stays.
+  await grantImported(store.statsId!, "import_1", [{ email: "zed@example.com", productId: product.id, items: null }]);
+  refunds = [{ id: "re_1", created: Math.floor(Date.now() / 1000), status: "succeeded", payment_intent: "pi_Group000001", charge: { refunded: true } }];
+  is("a full refund takes every place back", await revokeRefundedGroups(store, Date.now() + 10_000, async (email, productId) => void dropped.push(`${email}|${productId}`)), 2);
+  is("from each address", [(await importedFor(store, "ana@example.com")).length, (await importedFor(store, "ben@example.com")).length], [0, 0]);
+  is("and their courses", dropped.sort(), [`ana@example.com|${product.id}`, `ben@example.com|${product.id}`]);
+  is("the other purchase's place is untouched", (await importedFor(store, "eve@example.com")).length, 1);
+  is("and so is what an import gave", (await importedFor(store, "zed@example.com")).length, 1);
+  is("closed for good", [await openGroup(store, id), Boolean((await readGroup(id))?.revoked)], [null, true]);
+  is("read once", await revokeRefundedGroups(store, Date.now() + 10_000, async () => {}), 0);
+
+  done();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
