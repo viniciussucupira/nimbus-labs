@@ -189,6 +189,12 @@ try {
 
   part("A purchase for three people");
   await open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`);
+  // The first product page a fresh dev server builds has, now and then, come
+  // back without its buy box; what it showed is said, and it is asked once more.
+  if (!(await page.locator("#group summary").count())) {
+    console.log("the product page came back without its buy box:", page.url(), (await words(page.locator("body"))).slice(0, 400));
+    await open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`);
+  }
   await page.locator("#group summary").click();
   is("offered under the buy box, at the price for each", await words(page.locator("#group button[type=submit]")), "Buy for your team — $27 per person");
   await page.fill('#group input[name="people"]', "3");

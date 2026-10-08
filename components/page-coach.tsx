@@ -49,6 +49,7 @@ export function PageCoach({
   onFit,
   onQuestions,
   traffic = null,
+  asked = [],
 }: {
   productId: string;
   productTitle: string;
@@ -65,6 +66,8 @@ export function PageCoach({
   onQuestions: (items: { q: string; a: string }[]) => void;
   /** The last 30 days of the product's page: times it was opened, and checkouts started (lib/stats.ts). */
   traffic?: { views: number; checkouts: number } | null;
+  /** Questions visitors asked the page's answer box that the page could not answer (lib/answers.ts). */
+  asked?: string[];
 }) {
   const ai = useContext(AiOn);
   const [open, setOpen] = useState(false);
@@ -174,6 +177,34 @@ export function PageCoach({
               <summary className="cursor-pointer py-2 text-sm font-semibold text-ink-soft">{`Done (${checks.filter((c) => c.done).length})`}</summary>
               <ul className="divide-y divide-line">{checks.filter((c) => c.done).map(checkRow)}</ul>
             </details>
+          ) : null}
+
+          {asked.length ? (
+            <div className="mt-4 rounded-2xl border border-line bg-paper p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <Icon name="chat" size={16} />
+                {`Visitors asked ${asked.length === 1 ? "this" : `these ${asked.length}`}, and your page could not answer`}
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
+                {asked.map((q, i) => (
+                  <li key={i}>{q}</li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm mt-3"
+                disabled={used.has("asked")}
+                onClick={() => {
+                  onQuestions(asked.map((q) => ({ q, a: "" })));
+                  mark("asked");
+                }}
+              >
+                {used.has("asked") ? "Added: write the answers, then save" : "Add them to my questions"}
+              </button>
+              <p className="mt-2 text-xs text-ink-soft">
+                Real questions, from the answer box on this page, with nothing about who asked. Answered on the page, the next visitor reads the answer before having to ask.
+              </p>
+            </div>
           ) : null}
 
           {ai.on ? (

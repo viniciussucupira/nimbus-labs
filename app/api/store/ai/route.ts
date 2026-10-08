@@ -3,7 +3,7 @@ import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
 import { reviewPage, rewriteBlock, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
 import { isRewriteStyle } from "@/lib/block-rewrite-rules";
-import { factsFor } from "@/lib/answers";
+import { factsFor, missedQuestions } from "@/lib/answers";
 import { parsePage } from "@/lib/sales-page";
 import { coachChecks, steepestDrop } from "@/lib/page-coach";
 import { readPageFacts } from "@/lib/page-facts-read";
@@ -94,6 +94,12 @@ export async function POST(request: NextRequest) {
     const stats = await readStats(store).catch(() => null);
     const views = stats?.windows.d30.viewsByProduct[product.id] ?? 0;
     const started = stats?.windows.d30.checkoutsByProduct[product.id] ?? 0;
+    const asked = (await missedQuestions(store, 100).catch(() => []))
+      .filter((row) => row.productId === product.id)
+      .map((row) => row.question)
+      .filter((q, i, all) => all.indexOf(q) === i)
+      .slice(0, 8);
+    if (asked.length) missing.push(`Answers to what visitors asked this page and it could not answer: ${asked.map((q) => `"${q}"`).join("; ")}`);
     const traffic = views >= 30 ? ` In the last 30 days, this page was opened ${views} times and ${started} checkouts were started.` : "";
     return answer(
       reviewPage(store, {
