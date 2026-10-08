@@ -6,7 +6,7 @@ import { wordsIn } from "@/lib/buyer-words";
 import { DEFAULT_LANGUAGE, LANGUAGES, type LanguageCode } from "@/lib/store-language";
 import { imageUrl } from "@/lib/product-image";
 import { type Piece, aboutBlocks } from "@/lib/product-about";
-import { CELL_NO, CELL_YES, type CtaBlock, type HeroBlock, type PageBlock, type PageStyle, onBand } from "@/lib/sales-page";
+import { CELL_NO, CELL_YES, type CtaBlock, type HeroBlock, type PageBlock, type PageStyle, bandsOf } from "@/lib/sales-page";
 import { blockWords } from "@/lib/buyer-words/blocks";
 import type { PageFacts } from "@/lib/page-facts";
 
@@ -573,13 +573,22 @@ export function PageSections({
     const view = BlockView({ block, ctx, reviews: block.kind === "reviews" ? reviewsFor(block.heading) : null });
     if (view !== null) shown.push({ block, view });
   }
+  const bands = bandsOf(style, shown.map(({ block }) => block));
   return (
     <>
-      {shown.map(({ block, view }, index) => (
-        <div key={block.id} data-block={block.id} className={onBand(style, index) ? "sp-block sp-band" : "sp-block"}>
-          {view}
-        </div>
-      ))}
+      {shown.map(({ block, view }, index) => {
+        const classes = [
+          "sp-block",
+          bands[index].phone ? "sp-band-phone" : "",
+          bands[index].computer ? "sp-band-computer" : "",
+          block.screens ? `sp-only-${block.screens}` : "",
+        ];
+        return (
+          <div key={block.id} data-block={block.id} className={classes.filter(Boolean).join(" ")}>
+            {view}
+          </div>
+        );
+      })}
     </>
   );
 }
