@@ -12,11 +12,13 @@
  *     dated from the payment, and one email; the buyer gets a receipt; twice
  *     is still once;
  *   - the recipient's list of purchases says who it was from;
- *   - a full refund takes it back.
+ *   - a full refund takes it back;
+ *   - a product with price options is given at the one the buyer picked: its
+ *     price is charged, and its link is what the recipient opens.
  */
-import { addProduct, claimHandle, ensureStatsId, setProductLink, setStripeAccount, setSubscription, storeForEmail, type Listing } from "@/lib/store";
+import { addOption, addProduct, claimHandle, ensureStatsId, setProductLink, setStripeAccount, setSubscription, storeForEmail, type Listing } from "@/lib/store";
 import { readListing, readProduct } from "@/lib/catalog";
-import { canGift } from "@/lib/gift-rules";
+import { canGift, givableOptions } from "@/lib/gift-rules";
 import { deliverGift, readGift, revokeRefundedGifts, startGift } from "@/lib/gifts";
 import { deliveredIds } from "@/lib/bundle-rules";
 import { importedFor } from "@/lib/imported-purchases";
@@ -59,7 +61,10 @@ async function main(): Promise<void> {
   is("not something free", canGift(base({ priceCents: 0 })), false);
   is("not a membership", canGift(base({ recurring: { interval: "month" } as Listing["recurring"] })), false);
   is("not a call", canGift(base({ call: {} as Listing["call"] })), false);
-  is("not with price options", canGift(base({ options: [{}] as Listing["options"] })), false);
+  is("not with price options that hand nothing over", canGift(base({ options: [{ id: "a", priceCents: 900, file: null, link: null }] as Listing["options"] })), false);
+  const withOptions = base({ link: null, options: [{ id: "a", priceCents: 900, file: null, link: "https://example.com/a" }, { id: "b", priceCents: 0, file: null, link: "https://example.com/b" }, { id: "c", priceCents: 500, file: null, link: null }] as Listing["options"] });
+  is("with price options, at one that is paid and hands something over", [canGift(withOptions), givableOptions(withOptions).map((o) => o.id)], [true, ["a"]]);
+  is("a course at several prices: every paid one", givableOptions(base({ link: null, course: {} as Listing["course"], options: [{ id: "a", priceCents: 900, file: null, link: null }] as Listing["options"] })).length, 1);
   is("not with licence keys", canGift(base({ keys: {} as Listing["keys"] })), false);
   is("not something that hands over nothing", canGift(base({ link: null })), false);
 
@@ -133,6 +138,41 @@ async function main(): Promise<void> {
   is("from the recipient's purchases", (await importedFor(store, "friend@example.com")).length, 0);
   is("and their course", dropped, [`friend@example.com|${product.id}`]);
   is("read once", await revokeRefundedGifts(store, Date.now() + 10_000, async () => {}), 0);
+
+  part("At one of several prices");
+  const pack = await addProduct("owner@example.com", "Meal Planner", "", "27", null);
+  if (!pack.ok) throw new Error("no second product");
+  const one = await addOption("owner@example.com", pack.product.id, "1 week", "27");
+  const five = await addOption("owner@example.com", pack.product.id, "5 weeks", "39");
+  if (!one.ok || !five.ok) throw new Error("no options");
+  store = (await storeForEmail("owner@example.com"))!;
+  let planner = (await readProduct(store, pack.product.id))!;
+  const [first, second] = planner.options;
+  await setProductLink("owner@example.com", first.id, "https://example.com/one-week");
+  await setProductLink("owner@example.com", second.id, "https://example.com/five-weeks");
+  store = (await storeForEmail("owner@example.com"))!;
+  planner = (await readProduct(store, pack.product.id))!;
+  const none = await startGift(store, planner, { to: "pal@example.com", from: "Ana", message: "" });
+  is("no option named: refused, never guessed", none.ok ? "started" : none.reason, "option");
+  const picked = await startGift(store, planner, { to: "pal@example.com", from: "Ana", message: "" }, second.id);
+  if (!picked.ok) throw new Error("no gift at an option");
+  is("the option is kept with the gift", picked.gift.o, second.id);
+  await createCheckout(store, planner, "https://marktmorgen.com", second.id, { gift: picked.gift.id });
+  const optioned = checkouts.at(-1)!;
+  is("its price is what is charged", [optioned.get("line_items[0][price_data][unit_amount]"), optioned.get("metadata[option]"), optioned.get("metadata[gift]")], ["3900", second.id, picked.gift.id]);
+  emails.length = 0;
+  await deliverGift({
+    store,
+    session: { ...session, id: "cs_test_" + "o".repeat(24), payment_intent: "pi_Gift0000002", amount_total: 3900, metadata: { store: "harbor", product: planner.id, option: second.id, gift: picked.gift.id } },
+    product: planner,
+    base: "https://marktmorgen.com/@harbor",
+    from: '"Harbor Kitchen" <hello@marktmorgen.com>',
+    recordStart: async () => {},
+    ordersLink: async () => null,
+  });
+  is("both emails name it", emails.map((e) => e.subject).sort(), ["Ana sent you a gift: Meal Planner (5 weeks)", "Your gift is on its way: Meal Planner (5 weeks)"]);
+  const theirs = await purchasesFor({ ...store, stripeAccountId: null }, "pal@example.com");
+  is("the recipient opens that option, and no other", theirs.map((p) => [p.title, p.option, p.main?.link]), [["Meal Planner", "5 weeks", "https://example.com/five-weeks"]]);
 
   done();
 }

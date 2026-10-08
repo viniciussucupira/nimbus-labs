@@ -18,12 +18,14 @@
  *     place was still open;
  *   - an address that already has the product uses no place;
  *   - the list of purchases says what it is, and a full refund takes back
- *     what this purchase gave and nothing else.
+ *     what this purchase gave and nothing else;
+ *   - a product with price options is bought for everybody at the one the
+ *     buyer picked: that price times the people, and that option's link.
  */
-import { addProduct, claimHandle, ensureStatsId, setProductLink, setStripeAccount, setSubscription, storeForEmail, type Listing } from "@/lib/store";
+import { addOption, addProduct, claimHandle, ensureStatsId, setProductLink, setStripeAccount, setSubscription, storeForEmail, type Listing } from "@/lib/store";
 import { readListing, readProduct } from "@/lib/catalog";
 import { MAX_PEOPLE, canGroup, payable, placesWords, readPeople } from "@/lib/group-rules";
-import { askPlace, groupJob, openGroup, placesTaken, readGroup, revokeRefundedGroups, settleGroup, startGroup, takePlace } from "@/lib/group-buy";
+import { askPlace, groupJob, groupTitle, openGroup, placesTaken, readGroup, revokeRefundedGroups, settleGroup, startGroup, takePlace } from "@/lib/group-buy";
 import { deliveredIds } from "@/lib/bundle-rules";
 import { grantImported, importedFor } from "@/lib/imported-purchases";
 import { purchasesFor } from "@/lib/buyer-orders";
@@ -191,6 +193,38 @@ async function main(): Promise<void> {
   is("and so is what an import gave", (await importedFor(store, "zed@example.com")).length, 1);
   is("closed for good", [await openGroup(store, id), Boolean((await readGroup(id))?.revoked)], [null, true]);
   is("read once", await revokeRefundedGroups(store, Date.now() + 10_000, async () => {}), 0);
+
+  part("At one of several prices");
+  const pack = await addProduct("owner@example.com", "Meal Planner", "", "27", null);
+  if (!pack.ok) throw new Error("no second product");
+  const one = await addOption("owner@example.com", pack.product.id, "1 week", "27");
+  const five = await addOption("owner@example.com", pack.product.id, "5 weeks", "39");
+  if (!one.ok || !five.ok) throw new Error("no options");
+  store = (await storeForEmail("owner@example.com"))!;
+  let planner = (await readProduct(store, pack.product.id))!;
+  const [week, weeks] = planner.options;
+  await setProductLink("owner@example.com", week.id, "https://example.com/one-week");
+  await setProductLink("owner@example.com", weeks.id, "https://example.com/five-weeks");
+  store = (await storeForEmail("owner@example.com"))!;
+  planner = (await readProduct(store, pack.product.id))!;
+  is("it can be bought for several", canGroup(planner), true);
+  const unnamed = await startGroup(store, planner, "3");
+  is("no option named: refused, never guessed", unnamed.ok ? "started" : unnamed.reason, "option");
+  const picked = await startGroup(store, planner, "3", weeks.id);
+  if (!picked.ok) throw new Error("no purchase at an option");
+  is("the option is kept with it, and named", [picked.group.o, groupTitle(planner, picked.group)], [weeks.id, "Meal Planner (5 weeks)"]);
+  await createCheckout(store, planner, "https://marktmorgen.com", weeks.id, { group: { id: picked.group.id, people: 3 } });
+  const optioned = checkouts.at(-1)!;
+  is("that option's price, times the people", [optioned.get("line_items[0][price_data][unit_amount]"), optioned.get("line_items[0][quantity]"), optioned.get("metadata[option]")], ["3900", "3", weeks.id]);
+  is("named for all of it", optioned.get("metadata[title]"), "Meal Planner (5 weeks) (for 3 people)");
+  const optionMeta = { store: "harbor", product: planner.id, option: weeks.id, group: picked.group.id, people: "3" };
+  emails.length = 0;
+  await settleGroup({ store, session: { ...session, id: "cs_test_" + "v".repeat(24), payment_intent: "pi_Group000003", amount_total: 11_700, metadata: optionMeta }, product: planner, base: BASE, from: FROM });
+  is("the receipt names it", emails.at(-1)?.subject, "Your 3 places: Meal Planner (5 weeks)");
+  await askPlace({ store, id: picked.group.id, email: "gil@example.com", product: planner, base: BASE, from: FROM, ordersLink: async () => null });
+  is("someone takes a place", (await take(tokenFor("gil@example.com"))).outcome, "taken");
+  const theirs = await purchasesFor({ ...store, stripeAccountId: null }, "gil@example.com");
+  is("and opens that option, and no other", theirs.map((p) => [p.title, p.option, p.place, p.main?.link]), [["Meal Planner", "5 weeks", true, "https://example.com/five-weeks"]]);
 
   done();
 }

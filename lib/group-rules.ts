@@ -26,7 +26,9 @@
  *     takes every place back.
  *
  * What can be bought this way: what can be given as a gift, and not a product
- * with limited stock (one checkout holds one unit) or a private podcast.
+ * with limited stock (one checkout holds one unit) or a private podcast. On a
+ * product with price options the buyer picks one, and everybody gets that one
+ * (lib/gift-rules.ts givableOptions).
  */
 import type { Listing } from "@/lib/catalog";
 import { canGift } from "@/lib/gift-rules";

@@ -5,7 +5,7 @@ import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { readListing } from "@/lib/catalog";
 import { GROUP_ID, PLACE_TOKEN, placesWords } from "@/lib/group-rules";
-import { type Taken, placesTaken, readGroup, takePlace } from "@/lib/group-buy";
+import { type Taken, groupTitle, placesTaken, readGroup, takePlace } from "@/lib/group-buy";
 import { ordersLinkFor } from "@/lib/buyer-orders";
 import { recordEnrollment } from "@/lib/learn";
 import { storeBase } from "@/lib/purchase-email";
@@ -62,6 +62,9 @@ export default async function GroupPage({ params, searchParams }: Params) {
   const product = await readListing(store, group.p);
   if (!product) notFound();
 
+  // Bought at one of the product's prices: named with it everywhere here.
+  const title = groupTitle(product, group);
+
   const query = await searchParams;
   const read = (name: string) => (typeof query[name] === "string" ? (query[name] as string) : "");
   const status = read("status");
@@ -86,7 +89,7 @@ export default async function GroupPage({ params, searchParams }: Params) {
     return shell(
       <>
         <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">This purchase was refunded</h1>
-        <p className="st-muted mt-4 text-lg">{`${product.title} was bought for ${group.people} people and the payment was later refunded in full, so its places are closed.`}</p>
+        <p className="st-muted mt-4 text-lg">{`${title} was bought for ${group.people} people and the payment was later refunded in full, so its places are closed.`}</p>
       </>,
     );
   }
@@ -114,7 +117,7 @@ export default async function GroupPage({ params, searchParams }: Params) {
             {taken.outcome === "has" ? "This address already has it" : "The place is yours"}
           </h1>
           <p className="st-muted mt-4 text-lg">
-            <strong style={{ color: "var(--st-text)" }}>{product.title}</strong>
+            <strong style={{ color: "var(--st-text)" }}>{title}</strong>
             {taken.outcome === "has"
               ? ` was already on ${taken.email}, so no place was used.`
               : ` is now on ${taken.email}, as if you had bought it. Nothing was charged to you.`}
@@ -146,7 +149,7 @@ export default async function GroupPage({ params, searchParams }: Params) {
         </div>
       ) : null}
       <p className="st-price text-sm">Paid for you</p>
-      <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{product.title}</h1>
+      <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{title}</h1>
       <p className="st-muted mt-4 text-lg">
         {`Somebody bought this from ${store.name} for ${group.people} people and passed this link on. ${placesWords(group.people, count)}`}
       </p>
@@ -167,7 +170,7 @@ export default async function GroupPage({ params, searchParams }: Params) {
           <input id="place-email" type="email" name="email" required maxLength={254} autoComplete="email" placeholder="you@example.com" className="st-field" />
           <button type="submit" className="btn st-btn btn-block">Send me the link to my place</button>
           <p className="st-muted text-xs">
-            {`A link goes to that address, and opening it takes one place and puts ${product.title} on it. Nothing is charged to you. Your address is used to hand this over and to open it again later, and it is not added to any list.`}
+            {`A link goes to that address, and opening it takes one place and puts ${title} on it. Nothing is charged to you. Your address is used to hand this over and to open it again later, and it is not added to any list.`}
           </p>
         </form>
       ) : null}

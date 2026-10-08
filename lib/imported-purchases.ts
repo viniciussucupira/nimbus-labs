@@ -42,6 +42,12 @@ export type ImportedPurchase = {
   job: string;
   /** For a bundle: the products it held when it was brought over. */
   items: string[] | null;
+  /**
+   * For a product with price options, given as a gift or as a place in a
+   * purchase for several: the option that was paid for, which decides what
+   * is handed over. Null otherwise.
+   */
+  option: string | null;
 };
 
 /** How imported purchases are named on the list of purchases: never a Stripe id. */
@@ -73,6 +79,7 @@ function parse(productId: string, raw: unknown): ImportedPurchase | null {
       at: typeof value.at === "number" ? value.at : 0,
       job: typeof value.job === "string" ? value.job : "",
       items: items.length ? items : null,
+      option: typeof value.option === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value.option) ? value.option : null,
     };
   } catch {
     return null;
@@ -118,7 +125,7 @@ export async function importedFor(store: Store, email: string): Promise<Imported
 export async function grantImported(
   statsId: string,
   job: string,
-  grants: { email: string; productId: string; items: string[] | null }[],
+  grants: { email: string; productId: string; items: string[] | null; option?: string | null }[],
   atSeconds = Math.floor(Date.now() / 1000),
 ): Promise<boolean[]> {
   if (!grants.length || !isRedisConfigured()) return grants.map(() => false);
@@ -127,7 +134,7 @@ export async function grantImported(
       "HSETNX",
       importedKey(statsId, g.email),
       g.productId,
-      JSON.stringify({ at: atSeconds, job, items: g.items }),
+      JSON.stringify({ at: atSeconds, job, items: g.items, ...(g.option ? { option: g.option } : {}) }),
     ]),
   );
   return answers.map((a) => Number(a) === 1);

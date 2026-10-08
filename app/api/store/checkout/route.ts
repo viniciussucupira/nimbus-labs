@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
   // plain payment with nothing added and no offer after it.
   let gift: string | undefined;
   if (giftTo.trim()) {
-    const started = await startGift(store, product, { to: giftTo, from: giftFrom, message: giftMessage }).catch(() => null);
+    const started = await startGift(store, product, { to: giftTo, from: giftFrom, message: giftMessage }, optionId).catch(() => null);
     if (!started) return away(`/@${store.handle}?status=error`);
     if (!started.ok) return away(`/@${store.handle}/p/${product.id}?gift=${started.reason}#gift`);
     gift = started.gift.id;
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
   // one that cannot be sold is told on the page, not charged for another.
   let group: { id: string; people: number } | undefined;
   if (!gift && people.trim()) {
-    const started = await startGroup(store, product, people).catch(() => null);
+    const started = await startGroup(store, product, people, optionId).catch(() => null);
     if (!started) return away(`/@${store.handle}?status=error`);
     if (!started.ok) return away(`/@${store.handle}/p/${product.id}?group=${started.reason}#group`);
     group = { id: started.group.id, people: started.group.people };

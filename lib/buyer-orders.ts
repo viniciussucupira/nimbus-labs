@@ -356,7 +356,11 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         bumpId: (bump || bumpItems) && added ? added.id : null,
         courseProduct,
         podcastProduct,
-        main: courseProduct ? null : delivery,
+        // A course is its own way in. Bought at one of several prices, the
+        // price chosen may include a file or a link of its own: handed over
+        // here too, for as long as the course is (it used to be on the page
+        // after paying only, which closes after three days).
+        main: courseProduct && product.options.length === 0 ? null : delivery,
         bump,
         items,
         bumpItems,
@@ -406,7 +410,8 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       const product = await find(given.productId);
       if (!product) continue;
       const reference = importedReference(store.statsId, email, product.id);
-      const { delivery } = deliveryOf(product, undefined);
+      // Given at one of the product's prices: that option is what is theirs.
+      const { delivery, option } = deliveryOf(product, given.option ?? undefined);
       const items = given.items?.length ? await linesOf(find, given.items) : null;
       const courseProduct = product.course ? product.id : null;
       const podcastProduct = product.podcast ? product.id : null;
@@ -419,14 +424,14 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         ...(given.job.startsWith("paypal:") ? { paidWith: "paypal" as const } : {}),
         podcastProduct,
         title: product.title,
-        option: null,
+        option,
         paidAt: given.at,
         member: false,
         ended: false,
         productId: product.id,
         bumpId: null,
         courseProduct,
-        main: courseProduct ? null : delivery,
+        main: courseProduct && product.options.length === 0 ? null : delivery,
         bump: null,
         items,
         bumpItems: null,

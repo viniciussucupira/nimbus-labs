@@ -372,6 +372,10 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                               Add the podcast to your app
                             </Link>
                           ) : null}
+                          {/* A course or podcast bought at one of several prices: what that price includes besides the way in. */}
+                          {purchase.main && purchase.option && (purchase.courseProduct || purchase.podcastProduct) ? (
+                            <p className="st-label">{`Also in ${purchase.option}`}</p>
+                          ) : null}
                           {purchase.main ? (
                             <DeliveryButton handle={store.handle} token={token} purchase={purchase} delivery={purchase.main} item="main" />
                           ) : null}

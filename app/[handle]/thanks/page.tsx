@@ -228,7 +228,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
             <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">Your gift is on its way</h1>
             <p className="st-muted mt-4 text-lg">
               {"You bought "}
-              <strong style={{ color: "var(--st-text)" }}>{order.product.title}</strong>
+              <strong style={{ color: "var(--st-text)" }}>{order.option ? `${order.product.title} (${order.option.label})` : order.product.title}</strong>
               {` from ${store.name} for ${formatMoney(order.amount, order.currency)}, as a gift${gift ? ` for ${gift.to}` : ""}.`}
             </p>
             <p className="st-muted mt-4">
@@ -294,7 +294,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
             </h1>
             <p className="st-muted mt-4 text-lg">
               {"You bought "}
-              <strong style={{ color: "var(--st-text)" }}>{order.product.title}</strong>
+              <strong style={{ color: "var(--st-text)" }}>{order.option ? `${order.product.title} (${order.option.label})` : order.product.title}</strong>
               {` from ${store.name}${group ? ` for ${peopleWords(group.people)}` : ""}, for ${formatMoney(order.amount, order.currency)}.`}
             </p>
             {group && ready ? (
