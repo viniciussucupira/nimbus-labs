@@ -9,6 +9,7 @@ import { Icon, type IconName } from "@/components/icons";
 import { toast } from "@/components/toast";
 import { AiAssist } from "@/components/ai-assist";
 import { PageCoach } from "@/components/page-coach";
+import { BlockRewrite } from "@/components/block-rewrite";
 import { MIN_VIEWS, type Counts, rate, winner } from "@/lib/headline-test-rules";
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
@@ -1174,6 +1175,13 @@ export function PageEditor({
                   {isOpen ? (
                     <div id={`panel-${block.id}`} className="border-t border-line p-4 sm:p-5">
                       {blockFields(draft, index)}
+                      <BlockRewrite
+                        key={block.id}
+                        productId={product.id}
+                        block={block}
+                        page={pageToSend}
+                        onChange={(next) => setDrafts((all) => all.map((d, i) => (i === index ? { ...d, block: next } : d)))}
+                      />
                     </div>
                   ) : null}
                 </li>

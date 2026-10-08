@@ -28,6 +28,9 @@ import {
   type ProductKind,
 } from "@/lib/ai-rules";
 
+import { type PageBlock, parsePage } from "@/lib/sales-page";
+import { REWRITABLE, REWRITE_STYLES, type RewriteStyle, addsNumbers, blockText } from "@/lib/block-rewrite-rules";
+
 const API = /^http:\/\/127\.0\.0\.1:\d+$/.test(process.env.ANTHROPIC_API_BASE ?? "")
   ? `${process.env.ANTHROPIC_API_BASE}/v1/messages`
   : "https://api.anthropic.com/v1/messages";
@@ -540,4 +543,84 @@ export async function reviewPage(
     };
     return review.verdict && (review.fixes.length || review.headlines.length) ? review : null;
   });
+}
+
+/**
+ * One block of a sales page, rewritten in one of four ways (lib/block-rewrite-rules.ts).
+ * The block comes back in the same shape, with the same number of points or
+ * fewer, and its non-word parts untouched; it is read back through the
+ * page's own rules by the caller, and thrown away if it brings a new number.
+ */
+export async function rewriteBlock(
+  store: Store,
+  input: { block: PageBlock; style: RewriteStyle; facts: string; language: string },
+  now = Date.now(),
+): Promise<AiResult<PageBlock>> {
+  if (!REWRITABLE.includes(input.block.kind)) return { ok: false, reason: "notes" };
+  const before = input.block;
+  const words = wordsOf(before);
+  if (!blockText(before).trim()) return { ok: false, reason: "notes" };
+  return counted(store, now, async () => {
+    const style = REWRITE_STYLES.find((s) => s.id === input.style)!;
+    const system = [
+      "You rewrite one section of a creator's sales page. You change how it is said, never what is said.",
+      HONESTY,
+      `Write in ${input.language}, the language the page is written in.`,
+      style.ask,
+      "Keep every fact the section states and add none: no number, amount, duration, quantity, result, bonus, deadline or promise that is not already in the section or in the page given. Keep the creator's names for things.",
+      "A refund promise is restated exactly as strong as it is, never stronger. A button's words never mention a price.",
+      "Return only a JSON object with exactly the same keys as the section given, the same number of list items or fewer, in the same order.",
+    ].join("\n\n");
+    const prompt = [`The page, for context:\n${input.facts}`, `\nThe section to rewrite (${before.kind}):\n${JSON.stringify(words)}`].join("\n");
+    const answer = await ask(system, prompt, 2_000);
+    const json = answer ? jsonIn(answer) : null;
+    if (!json) return null;
+    const merged = parsePage({ blocks: [{ ...before, ...pickWords(before, json), id: before.id, kind: before.kind }] }).blocks[0];
+    if (!merged || merged.kind !== before.kind || !blockText(merged).trim()) return null;
+    if (addsNumbers(before, merged, input.facts)) return null;
+    if (merged.kind === "cta") merged.label = merged.label.replace(/\s*\b(?:for|at|only)?\s*[$€£¥]\s*\d[\d.,]*/gi, "").trim();
+    return merged;
+  });
+}
+
+/** The parts of a block that are words, as the model is shown them. */
+function wordsOf(block: PageBlock): Record<string, unknown> {
+  switch (block.kind) {
+    case "hero":
+      return { headline: block.headline, sub: block.sub };
+    case "text":
+    case "guarantee":
+    case "bio":
+      return { heading: block.heading, body: block.body };
+    case "benefits":
+      return { heading: block.heading, items: block.items };
+    case "inside":
+    case "steps":
+    case "bonuses":
+      return { heading: block.heading, items: block.items };
+    case "fit":
+      return { heading: block.heading, yesLabel: block.yesLabel, noLabel: block.noLabel, yes: block.yes, no: block.no };
+    case "faq":
+      return { heading: block.heading, items: block.items };
+    case "cta":
+      return { label: block.label, note: block.note };
+    default:
+      return {};
+  }
+}
+
+/** Only the word keys of what came back, each list no longer than it was. */
+function pickWords(block: PageBlock, json: Record<string, unknown>): Record<string, unknown> {
+  const shown = wordsOf(block);
+  const out: Record<string, unknown> = {};
+  for (const [key, was] of Object.entries(shown)) {
+    const now = json[key];
+    if (Array.isArray(was)) {
+      out[key] = Array.isArray(now) && now.length ? now.slice(0, was.length) : was;
+    } else if (typeof was === "string") {
+      // A field left empty stays as it was, rather than wiping what the creator wrote.
+      out[key] = typeof now === "string" && (now.trim() || !was) ? now : was;
+    }
+  }
+  return out;
 }

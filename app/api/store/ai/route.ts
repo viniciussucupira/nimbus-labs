@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { reviewPage, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { reviewPage, rewriteBlock, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { isRewriteStyle } from "@/lib/block-rewrite-rules";
 import { factsFor } from "@/lib/answers";
 import { parsePage } from "@/lib/sales-page";
 import { coachChecks, steepestDrop } from "@/lib/page-coach";
@@ -18,7 +19,7 @@ import { AI_PER_MINUTE, EMAIL_GOALS, type EmailGoal, MAX_AI_NOTES, type ProductK
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
 /**
- * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "outline" | "email", … }`.
+ * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "outline" | "email", … }`.
  * It writes into the studio's own boxes and saves nothing: whatever comes back
  * is the creator's to read, change and keep, or not.
  *
@@ -103,6 +104,20 @@ export async function POST(request: NextRequest) {
         free: isFree(product),
         notes,
       }),
+    );
+  }
+  if (body.kind === "block") {
+    // One block, as it stands in the editor, rewritten in the store's language
+    // with the rest of the page as context; nothing is saved here.
+    const product = await readListing(store, text(body.product, 40));
+    if (!product) return fail("unknown", 404);
+    if (!isRewriteStyle(body.style)) return fail("invalid");
+    const page = parsePage(body.page);
+    const block = parsePage({ blocks: [body.block] }).blocks[0];
+    if (!block) return fail("invalid");
+    const about = product.about ? await readAbout(store.statsId, product.id) : "";
+    return answer(
+      rewriteBlock(store, { block, style: body.style, facts: factsFor(store, product, about, page), language: LANGUAGES[store.language].english }),
     );
   }
   if (body.kind === "outline") {
