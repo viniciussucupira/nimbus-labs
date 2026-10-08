@@ -29,7 +29,9 @@ import { withStockHold } from "@/lib/stock";
 import { fromLine, render } from "@/lib/mail";
 import { tokensFor } from "@/lib/contacts";
 import { storeBase } from "@/lib/purchase-email";
-import { OFFER_DAYS, ONCE_PER_DAYS, canWinBack, winbackOn, winbackWords } from "@/lib/winback";
+import { OFFER_DAYS, ONCE_PER_DAYS, canWinBack, winbackOn } from "@/lib/winback";
+import { affiliatesWords } from "@/lib/buyer-words/affiliates";
+import { LANGUAGES, parseLanguage } from "@/lib/store-language";
 
 const CURSOR_KEY = "nl:wb:cursor";
 const SUB_PATTERN = /^sub_[A-Za-z0-9]{6,64}$/;
@@ -44,10 +46,15 @@ const onceKey = (statsId: string, email: string, product: string) =>
 const linkKey = (token: string) => `nl:wb:link:${token}`;
 const countKey = (statsId: string) => `nl:wb:n:${statsId}`;
 
-const day = (seconds: number) =>
-  new Date(seconds * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+/** A day as the store's language writes it: "October 8, 2026", "8 de octubre de 2026". */
+const day = (seconds: number, language: unknown) =>
+  new Date(seconds * 1000).toLocaleDateString(LANGUAGES[parseLanguage(language)].locale, { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 
-/** The email, and nothing else: pure, so it can be read before it is sent. */
+/**
+ * The email, and nothing else: pure, so it can be read before it is sent. In
+ * the store's language (lib/buyer-words/affiliates.ts), English when none is
+ * given; `endedOn`, `offer` and `until` arrive already written in it.
+ */
 export function winbackEmail(input: {
   storeName: string;
   title: string;
@@ -55,17 +62,19 @@ export function winbackEmail(input: {
   offer: string;
   link: string;
   until: string;
+  language?: unknown;
 }): { subject: string; body: string } {
+  const a = affiliatesWords(input.language);
   return {
-    subject: `Come back to ${input.title}: ${input.offer}`.slice(0, 200),
+    subject: a.winbackSubject(input.title, input.offer).slice(0, 200),
     body: [
-      "Hi,",
+      a.hi,
       "",
-      `Your membership for ${input.title} ended on ${input.endedOn}. If you'd like to come back, it's ${input.offer}, until ${input.until}:`,
+      a.winbackBody(input.title, input.endedOn, input.offer, input.until),
       "",
       input.link,
       "",
-      "The link is for this email address only, and nothing is charged until you check out.",
+      a.winbackLinkNote,
       "",
       `— ${input.storeName}`,
     ].join("\n"),
@@ -139,10 +148,11 @@ async function sweepStore(store: Store, deadline: number, now: number): Promise<
       const mail = winbackEmail({
         storeName: store.name,
         title: product.title,
-        endedOn: day(ended),
-        offer: winbackWords(store.winback),
+        endedOn: day(ended, store.language),
+        offer: affiliatesWords(store.language).winbackOffer(store.winback.percent, store.winback.months),
         link: `${storeBase(store)}/renew/${encodeURIComponent(product.id)}?back=${token}`,
-        until: day(nowSeconds + OFFER_DAYS * 86_400),
+        until: day(nowSeconds + OFFER_DAYS * 86_400, store.language),
+        language: store.language,
       });
       // The list email's own footer: why they get it, the one-click way off
       // the list, and the creator's postal address.

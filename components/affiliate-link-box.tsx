@@ -3,13 +3,18 @@
 import { useState } from "react";
 import { Icon } from "@/components/icons";
 
+/** What the box says, in the store's language (lib/buyer-words/affiliates.ts). */
+export type LinkBoxWords = { label: string; copy: string; copied: string };
+
+const ENGLISH: LinkBoxWords = { label: "Your link", copy: "Copy", copied: "Copied" };
+
 /** An affiliate's own link, in a box that selects it all, with a copy button. */
-export function AffiliateLinkBox({ link }: { link: string }) {
+export function AffiliateLinkBox({ link, words = ENGLISH }: { link: string; words?: LinkBoxWords }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="mt-3 flex flex-col gap-2 sm:flex-row">
       <label htmlFor="affiliate-link" className="sr-only">
-        Your link
+        {words.label}
       </label>
       <input
         id="affiliate-link"
@@ -32,7 +37,7 @@ export function AffiliateLinkBox({ link }: { link: string }) {
         }}
       >
         <Icon name={copied ? "check" : "link"} size={16} />
-        <span aria-live="polite">{copied ? "Copied" : "Copy"}</span>
+        <span aria-live="polite">{copied ? words.copied : words.copy}</span>
       </button>
     </div>
   );
