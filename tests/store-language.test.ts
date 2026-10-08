@@ -13,8 +13,14 @@
  *   - Stripe's payment page is opened in the store's language.
  */
 import { LANGUAGES, LANGUAGE_CODES, parseLanguage, timeLeft } from "@/lib/store-language";
-import { type BuyerWords, endsLine, planLine, speechFor, wordsIn } from "@/lib/buyer-words";
+import { endsLine, planLine, speechFor, wordsIn } from "@/lib/buyer-words";
 import { en } from "@/lib/buyer-words/en";
+import { ORDERS_WORDS } from "@/lib/buyer-words/orders";
+import { BOOKING_WORDS } from "@/lib/buyer-words/booking";
+import { COURSES_WORDS } from "@/lib/buyer-words/courses";
+import { MEMBERSHIP_WORDS } from "@/lib/buyer-words/membership";
+import { GIVING_WORDS } from "@/lib/buyer-words/giving";
+import { AFFILIATES_WORDS } from "@/lib/buyer-words/affiliates";
 import { addProduct, claimHandle, ensureStatsId, setLanguage, setProductLink, setStripeAccount, setSubscription, storeForEmail } from "@/lib/store";
 import { readProduct } from "@/lib/catalog";
 import { createCheckout } from "@/lib/store-checkout";
@@ -36,27 +42,51 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
 }) as typeof fetch;
 
 /** Words that are the same in a language as in English, on purpose. */
-const SAME: Record<string, string[]> = {
-  es: ["namePlaceholder", "fromCapital"],
-  fr: ["namePlaceholder", "perPerson", "recommended"],
-  de: ["namePlaceholder", "guarantee"],
-  it: ["namePlaceholder"],
-  nl: ["namePlaceholder", "guarantee"],
-  pt: ["namePlaceholder"],
+const SAME: Record<string, Record<string, string[]>> = {
+  "store and product pages": {
+    es: ["namePlaceholder", "fromCapital"],
+    fr: ["namePlaceholder", "perPerson", "recommended"],
+    de: ["namePlaceholder", "guarantee"],
+    it: ["namePlaceholder"],
+    nl: ["namePlaceholder", "guarantee"],
+    pt: ["namePlaceholder"],
+  },
+  // "Label: key", "Store: link", and "via" where the language says "via" too.
+  orders: {
+    es: ["keyIssued", "storeAt"],
+    fr: ["ordersFrom"],
+    de: ["keyIssued", "storeAt"],
+    it: ["keyIssued", "storeAt"],
+    nl: ["ordersFrom", "startTitleAt", "keyIssued", "storeAt"],
+    pt: ["ordersFrom", "keyIssued", "storeAt"],
+  },
+  // Words the languages share with English: video, quiz, module, downloads, bytes.
+  courses: {
+    es: ["video", "bytes"],
+    fr: ["module", "quiz"],
+    de: ["quiz", "downloads"],
+    it: ["video", "quiz"],
+    nl: ["module", "video", "quiz", "crumb", "openSite", "downloads", "bytes"],
+    pt: ["bytes"],
+  },
+  membership: { fr: ["fromName"], nl: ["fromName"], pt: ["fromName"] },
+  // "Label: link".
+  affiliates: { es: ["doorText"], de: ["doorText"], it: ["doorText"], nl: ["doorText"], pt: ["doorText"] },
 };
 
-const NUMBERS = new Set(["count", "n", "dates", "minutes", "seats", "episodes", "lessons", "sessions", "days", "trialDays", "payments", "page", "pages", "stars", "boxes", "least", "most", "percent", "more"]);
+const NUMBERS = new Set(["count", "n", "dates", "minutes", "seats", "episodes", "lessons", "sessions", "days", "trialDays", "payments", "page", "pages", "stars", "boxes", "least", "most", "percent", "more", "hours", "people", "left", "total", "done", "places", "weeks", "months"]);
 const BOOLEANS = new Set(["plan", "alone", "untilCancel", "stripe", "paypal"]);
+const isBoolean = (p: string) => BOOLEANS.has(p) || /^(is|has|with)[A-Z]/.test(p);
 
 /** Calls a word with arguments it can be told apart by: names in «», numbers, booleans both ways. */
-function sayAll(words: BuyerWords): { key: string; text: string; names: string[] }[] {
+function sayAll(words: Record<string, unknown>, english: Record<string, unknown> = en): { key: string; text: string; names: string[] }[] {
   const out: { key: string; text: string; names: string[] }[] = [];
   for (const [key, value] of Object.entries(words) as [string, unknown][]) {
     if (typeof value === "string") out.push({ key, text: value, names: [] });
     else if (typeof value === "function") {
       const fn = value as (...args: unknown[]) => unknown;
       // Each argument by the name the English word gives it.
-      const params = (en as Record<string, unknown>)[key]!.toString().match(/^\(([^)]*)\)/)?.[1] ?? "";
+      const params = english[key]!.toString().match(/^\(([^)]*)\)/)?.[1] ?? "";
       const names: string[] = [];
       const args = params
         .split(",")
@@ -64,7 +94,7 @@ function sayAll(words: BuyerWords): { key: string; text: string; names: string[]
         .filter(Boolean)
         .map((p, i) => {
           if (NUMBERS.has(p)) return key === "buyAllFor" ? 2 : 7;
-          if (BOOLEANS.has(p)) return true;
+          if (isBoolean(p)) return true;
           if (p === "interval") return "month";
           if (p === "unit") return "hour";
           const name = `\u00ab${key}${i}\u00bb`;
@@ -94,29 +124,42 @@ async function main(): Promise<void> {
   is("anything else stored is read as English", [parseLanguage(undefined), parseLanguage("xx"), parseLanguage("EN"), parseLanguage("de")], ["en", "en", "en", "de"]);
   is("seven languages, each with its own Stripe page", LANGUAGE_CODES.map((c) => LANGUAGES[c].stripe), ["en", "es", "fr", "de", "it", "nl", "pt"]);
 
-  const english = sayAll(en);
-  for (const code of LANGUAGE_CODES) {
-    const said = sayAll(wordsIn(code));
-    part(`${LANGUAGES[code].english}: every sentence`);
-    is("as many sentences as English", said.length, english.length);
-    const empty = said.filter((s) => !s.text.trim() && !["continued", "now", "was"].includes(s.key)).map((s) => s.key);
-    is("none is empty", empty, []);
-    const dropped = said.filter((s) => s.names.some((n) => !s.text.includes(n))).map((s) => s.key);
-    is("every name and amount it is given is in it", dropped, []);
-    const leftovers = said.filter((s) => /\$\{|undefined|NaN|\[object/.test(s.text)).map((s) => s.key);
-    is("nothing left as a placeholder", leftovers, []);
-    if (code !== "en") {
-      const same = said
-        .filter((s, i) => s.text === english[i]?.text && s.text.length > 3 && !(SAME[code] ?? []).includes(s.key.split(".")[0]))
-        .filter((s) => !/^[«\u00ab][^»]*[»\u00bb]( — [«\u00ab][^»]*[»\u00bb])?$/.test(s.text))
-        .map((s) => s.key);
-      is("nothing left in English", same, []);
-    }
-    const breakable = said.filter((s) => / %/.test(s.text)).map((s) => s.key);
-    is("a percentage never starts a line", breakable, []);
-    if (code === "fr") {
-      const spaced = said.filter((s) => /[^\u00a0\s][:?!;](\s|$)/.test(s.text.replace(/https?:\/\/\S+/g, "")) && !/\d:\d/.test(s.text)).map((s) => s.key);
-      is("French spaces its : ? ! ; from the word before", spaced, []);
+  const AREAS: [string, (code: (typeof LANGUAGE_CODES)[number]) => Record<string, unknown>][] = [
+    ["store and product pages", (code) => wordsIn(code)],
+    ["orders", (code) => ORDERS_WORDS[code]],
+    ["booking", (code) => BOOKING_WORDS[code]],
+    ["courses", (code) => COURSES_WORDS[code]],
+    ["membership", (code) => MEMBERSHIP_WORDS[code]],
+    ["giving", (code) => GIVING_WORDS[code]],
+    ["affiliates", (code) => AFFILIATES_WORDS[code]],
+  ];
+  for (const [area, wordsOf] of AREAS) {
+    const englishWords = wordsOf("en");
+    const english = sayAll(englishWords, englishWords);
+    for (const code of LANGUAGE_CODES) {
+      const said = sayAll(wordsOf(code), englishWords);
+      part(`${LANGUAGES[code].english}, ${area}: every sentence`);
+      is("as many sentences as English", said.length, english.length);
+      const empty = said.filter((s) => !s.text.trim() && !["continued", "now", "was"].includes(s.key)).map((s) => s.key);
+      is("none is empty", empty, []);
+      const dropped = said.filter((s) => s.names.some((n) => !s.text.includes(n))).map((s) => s.key);
+      is("every name and amount it is given is in it", dropped, []);
+      const leftovers = said.filter((s) => /\$\{|undefined|NaN|\[object/.test(s.text)).map((s) => s.key);
+      is("nothing left as a placeholder", leftovers, []);
+      if (code !== "en") {
+        const allowed = SAME[area]?.[code] ?? [];
+        const same = said
+          .filter((s, i) => s.text === english[i]?.text && s.text.length > 3 && !allowed.includes(s.key.split(".")[0]) && !allowed.includes(s.key))
+          .filter((s) => !/^[«\u00ab][^»]*[»\u00bb]( — [«\u00ab][^»]*[»\u00bb])?$/.test(s.text))
+          .map((s) => s.key);
+        is("nothing left in English", same, []);
+      }
+      const breakable = said.filter((s) => / %/.test(s.text)).map((s) => s.key);
+      is("a percentage never starts a line", breakable, []);
+      if (code === "fr") {
+        const spaced = said.filter((s) => /[^\u00a0\s][:?!;](\s|$)/.test(s.text.replace(/https?:\/\/\S+/g, "")) && !/\d:\d/.test(s.text)).map((s) => s.key);
+        is("French spaces its : ? ! ; from the word before", spaced, []);
+      }
     }
   }
 
