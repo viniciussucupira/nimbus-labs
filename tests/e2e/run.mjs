@@ -515,6 +515,20 @@ try {
     if (process.env.E2E_SHOTS) await page.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "new-blocks.png") });
   }
 
+  part("The page coach in the studio");
+  {
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
+    const title = studio.locator("#coach-title");
+    const said = await words(title);
+    const score = Number(said.match(/(\d+) out of 100/)?.[1] ?? -1);
+    is("a score out of 100, for the page as it stands", score > 0 && score < 100, true);
+    await studio.getByRole("button", { name: "See what to improve" }).click();
+    const before = await studio.locator("ol > li").count();
+    await studio.getByRole("button", { name: "Add benefits" }).click();
+    is("a missing part is added with one press", await studio.locator("ol > li").count(), before + 1);
+    if (process.env.E2E_SHOTS) await studio.locator("#coach-title").locator("xpath=ancestor::section[1]").screenshot({ path: join(process.env.E2E_SHOTS, "page-coach.png") });
+  }
+
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);
   is("and no page's own policy refused anything on it", [...new Set(policyRefusals)], []);

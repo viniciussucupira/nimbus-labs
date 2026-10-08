@@ -23,7 +23,7 @@
  *     and changes them, and nothing is saved until they press Save.
  */
 
-export type AiKind = "product" | "page" | "outline" | "email";
+export type AiKind = "product" | "page" | "outline" | "email" | "review";
 
 /** Writing jobs a store may ask for in a calendar month, by where it stands with its plan. */
 export const AI_MONTHLY = { trial: 20, creator: 100, pro: 400, scale: 1_000 } as const;

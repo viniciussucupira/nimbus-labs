@@ -1,7 +1,13 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { reviewPage, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { factsFor } from "@/lib/answers";
+import { parsePage } from "@/lib/sales-page";
+import { coachChecks, steepestDrop } from "@/lib/page-coach";
+import { readPageFacts } from "@/lib/page-facts-read";
+import { readDepth, reachShares } from "@/lib/page-depth";
+import { LANGUAGES } from "@/lib/store-language";
 import { isFree } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
 import { readAbout } from "@/lib/product-about";
@@ -11,7 +17,7 @@ import { AI_PER_MINUTE, EMAIL_GOALS, type EmailGoal, MAX_AI_NOTES, type ProductK
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
 /**
- * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "outline" | "email", … }`.
+ * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "outline" | "email", … }`.
  * It writes into the studio's own boxes and saves nothing: whatever comes back
  * is the creator's to read, change and keep, or not.
  *
@@ -19,7 +25,8 @@ const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call"
  * products permission, an email the one to write drafts (lib/team-roles.ts).
  */
 export async function POST(request: NextRequest) {
-  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : "products"), 8_000);
+  // A review sends the page being edited, which may be long (lib/sales-page.ts, MAX_PAGE_BYTES).
+  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : "products"), 140_000);
   if (!guarded.ok) return guarded.response;
   const { body, store } = guarded;
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
@@ -62,6 +69,33 @@ export async function POST(request: NextRequest) {
         kind,
         summary: product.summary,
         about,
+        notes,
+      }),
+    );
+  }
+  if (body.kind === "review") {
+    // The page as it stands in the editor, saved or not, held to the same
+    // rules as a saved one; the product itself is read from the store.
+    const product = await readListing(store, text(body.product, 40));
+    if (!product) return fail("unknown", 404);
+    const page = parsePage(body.page);
+    const [about, facts, depth] = await Promise.all([
+      product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""),
+      readPageFacts(store, product),
+      readDepth(store.statsId, product.id).catch(() => ({ visitors: 0, stopped: {} })),
+    ]);
+    const missing = coachChecks({ page, productTitle: product.title, free: isFree(product), picture: Boolean(product.image), facts })
+      .filter((c) => !c.done)
+      .map((c) => c.label);
+    const reach = reachShares(page.blocks.map((b) => b.id), depth.stopped, depth.visitors);
+    const drop = steepestDrop(page.blocks, reach);
+    return answer(
+      reviewPage(store, {
+        facts: factsFor(store, product, about, page),
+        missing,
+        drop: drop ? `${drop.lost} of every 100 readers stop before the "${drop.kind}" section, out of ${depth.visitors} counted.` : "",
+        language: LANGUAGES[store.language].english,
+        free: isFree(product),
         notes,
       }),
     );

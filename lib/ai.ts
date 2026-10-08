@@ -456,3 +456,84 @@ export async function writePage(
     return draft.headline && draft.benefits.length ? draft : null;
   });
 }
+
+/**
+ * A second opinion on a sales page (added 8 October 2026): what it would
+ * change first, three headlines to try, who it is for and not for, and the
+ * questions buyers of such a product ask that the page leaves open. The page
+ * is read as the public reads it (lib/answers.ts, factsFor), with what the
+ * coach found missing (lib/page-coach.ts) and where readers stop.
+ *
+ * Every rule a draft is held to holds here too: the headlines and lists come
+ * from what the page and the creator say, never from what is usual for such
+ * products, and an answer is written only where the page's own facts give
+ * it. A question the page cannot answer comes back with an empty answer, for
+ * the creator to write.
+ */
+export type PageReview = {
+  verdict: string;
+  fixes: { title: string; detail: string }[];
+  headlines: { headline: string; sub: string }[];
+  fit: { yes: string[]; no: string[] } | null;
+  questions: { q: string; a: string }[];
+};
+
+export async function reviewPage(
+  store: Store,
+  input: { facts: string; missing: string[]; drop: string; language: string; free: boolean; notes: string },
+  now = Date.now(),
+): Promise<AiResult<PageReview>> {
+  const notes = block(input.notes, MAX_AI_NOTES);
+  return counted(store, now, async () => {
+    const system = [
+      `You are a sales page coach. You review one ${input.free ? "landing page for something given away for an email address" : "sales page for one product"} on a creator's store, and say what to change so more of the right visitors ${input.free ? "sign up" : "buy"} — and the wrong ones do not.`,
+      HONESTY,
+      `The headlines, the two lists and the questions and answers go on the page itself, so write them in ${input.language}. The verdict and the fixes are for the creator: write those in American English.`,
+      "Base every suggestion on what this page says and lacks. Name the section you mean. Prefer the change that would matter most to a buyer over a small one.",
+      "Headlines: concrete, about what the buyer gets or becomes able to do, from the facts given. Never a number, a result or a deadline that is not in the facts.",
+      "Who it is for and not for: only from the facts given. If the facts do not say, return null rather than guess.",
+      "Questions: those a buyer of exactly this product would ask before paying that the page does not answer. Give the answer only when the facts given answer it; otherwise return an empty answer for the creator to write. Never answer about refunds unless the facts state a refund promise.",
+      [
+        "Return only a JSON object with these keys:",
+        `"verdict": two sentences at most, 280 characters, what the page does well and the one thing to change first.`,
+        `"fixes": 2 to 5 items, each {"title": at most 70 characters, an action, "detail": at most 240 characters, why and how}.`,
+        `"headlines": 3 items, each {"headline": at most 90 characters, "sub": at most 200 characters}.`,
+        `"fit": {"yes": 2 to 5 points, "no": 1 to 3 points, each at most 110 characters} or null.`,
+        `"questions": 0 to 5 items, each {"q": at most 120 characters, "a": at most 400 characters or ""}.`,
+      ].join("\n"),
+    ].join("\n\n");
+    const prompt = [
+      `The page, as visitors read it:\n${input.facts}`,
+      input.missing.length ? `\nWhat a checklist of selling pages found missing:\n${input.missing.map((m) => `- ${m}`).join("\n")}` : "",
+      input.drop ? `\nWhere readers stop: ${input.drop}` : "",
+      notes ? `\nWhat the creator wants looked at:\n${notes}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const answer = await ask(system, prompt, 2_500);
+    const json = answer ? jsonIn(answer) : null;
+    if (!json) return null;
+    const list = (value: unknown) => (Array.isArray(value) ? value : []);
+    const pair = (value: unknown) => (value && typeof value === "object" ? (value as Record<string, unknown>) : {});
+    const fit = pair(json.fit);
+    const yes = list(fit.yes).map((x) => line(x, 200)).filter(Boolean).slice(0, 8);
+    const no = list(fit.no).map((x) => line(x, 200)).filter(Boolean).slice(0, 8);
+    const review: PageReview = {
+      verdict: line(json.verdict, 400),
+      fixes: list(json.fixes)
+        .map((f) => ({ title: line(pair(f).title, 100), detail: line(pair(f).detail, 320) }))
+        .filter((f) => f.title)
+        .slice(0, 5),
+      headlines: list(json.headlines)
+        .map((h) => ({ headline: line(pair(h).headline, 120), sub: line(pair(h).sub, 300) }))
+        .filter((h) => h.headline)
+        .slice(0, 3),
+      fit: yes.length && no.length ? { yes, no } : null,
+      questions: list(json.questions)
+        .map((q) => ({ q: line(pair(q).q, 200), a: block(pair(q).a, 1_500) }))
+        .filter((q) => q.q)
+        .slice(0, 5),
+    };
+    return review.verdict && (review.fixes.length || review.headlines.length) ? review : null;
+  });
+}

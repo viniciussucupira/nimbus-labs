@@ -8,6 +8,7 @@ import { IMAGE_ACCEPT, MAX_ALT_LENGTH, MAX_SOURCE_BYTES, imagePath, imageUrl } f
 import { Icon, type IconName } from "@/components/icons";
 import { toast } from "@/components/toast";
 import { AiAssist } from "@/components/ai-assist";
+import { PageCoach } from "@/components/page-coach";
 import { MIN_VIEWS, type Counts, rate, winner } from "@/lib/headline-test-rules";
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
@@ -285,6 +286,51 @@ export function PageEditor({
       const copy = [...all];
       const [taken] = copy.splice(from, 1);
       copy.splice(to, 0, taken);
+      return copy;
+    });
+  }
+
+  /** Puts a block where it reads best: after the first of `after` found on the page, or right under the hero. */
+  function insertNear(block: PageBlock, after: BlockKind[]) {
+    setDrafts((all) => {
+      if (all.length >= MAX_BLOCKS) return all;
+      const at = all.findIndex((d) => after.includes(d.block.kind));
+      const place = at >= 0 ? at + 1 : all[0]?.block.kind === "hero" ? 1 : 0;
+      const copy = [...all];
+      copy.splice(place, 0, { block, video: "" });
+      return copy;
+    });
+    setOpen(block.id);
+  }
+
+  /** The coach's headline, in the hero: the one there, or a new hero when the page has none. */
+  function putHeadline(headline: string, sub: string) {
+    setDrafts((all) => {
+      if (all[0]?.block.kind === "hero") {
+        return all.map((d, i) => (i === 0 ? { ...d, block: { ...d.block, headline: headline.slice(0, MAX_HEADLINE), sub: sub.slice(0, MAX_SUBHEADLINE) } as PageBlock } : d));
+      }
+      const hero = { ...(emptyBlock("hero") as Extract<PageBlock, { kind: "hero" }>), headline: headline.slice(0, MAX_HEADLINE), sub: sub.slice(0, MAX_SUBHEADLINE), media: product.picture ? ("picture" as const) : ("none" as const) };
+      return [{ block: hero, video: "" }, ...all];
+    });
+  }
+
+  /** The coach's questions, added to the page's questions, or as a block of their own before the last button. */
+  function addQuestions(items: { q: string; a: string }[]) {
+    setDrafts((all) => {
+      const at = all.findIndex((d) => d.block.kind === "faq");
+      if (at >= 0) {
+        return all.map((d, i) => {
+          if (i !== at || d.block.kind !== "faq") return d;
+          const known = new Set(d.block.items.map((item) => item.q.trim().toLowerCase()));
+          const added = items.filter((item) => !known.has(item.q.trim().toLowerCase()));
+          return { ...d, block: { ...d.block, items: [...d.block.items, ...added].slice(0, MAX_FAQ_ITEMS) } };
+        });
+      }
+      if (all.length >= MAX_BLOCKS) return all;
+      const faq: PageBlock = { ...(emptyBlock("faq") as Extract<PageBlock, { kind: "faq" }>), items: items.slice(0, MAX_FAQ_ITEMS) };
+      const lastCta = all.map((d) => d.block.kind).lastIndexOf("cta");
+      const copy = [...all];
+      copy.splice(lastCta > 0 ? lastCta : copy.length, 0, { block: faq, video: "" });
       return copy;
     });
   }
@@ -985,6 +1031,29 @@ export function PageEditor({
                 </div>
               ) : null}
             </div>
+          ) : null}
+
+          {drafts.length > 0 ? (
+            <PageCoach
+              productId={product.id}
+              productTitle={product.title}
+              free={product.free}
+              picture={Boolean(product.picture)}
+              facts={facts}
+              page={pageToSend()}
+              reach={reach}
+              onAdd={(kind) => (kind === "fit" || kind === "facts" || kind === "steps" ? insertNear(emptyBlock(kind), kind === "facts" ? ["hero"] : ["benefits", "inside"]) : add(kind))}
+              onHeadline={putHeadline}
+              onTest={(headline, sub) => {
+                setTesting(true);
+                setTestHeadline(headline.slice(0, MAX_HEADLINE));
+                setTestSub(sub.slice(0, MAX_SUBHEADLINE));
+              }}
+              onFit={(yes, no) =>
+                insertNear({ ...(emptyBlock("fit") as Extract<PageBlock, { kind: "fit" }>), yes: yes.slice(0, MAX_FIT_ITEMS), no: no.slice(0, MAX_FIT_ITEMS) }, ["benefits", "inside", "steps"])
+              }
+              onQuestions={addQuestions}
+            />
           ) : null}
 
           {/*
