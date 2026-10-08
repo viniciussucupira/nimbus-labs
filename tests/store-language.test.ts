@@ -22,6 +22,7 @@ import { MEMBERSHIP_WORDS } from "@/lib/buyer-words/membership";
 import { GIVING_WORDS } from "@/lib/buyer-words/giving";
 import { AFFILIATES_WORDS } from "@/lib/buyer-words/affiliates";
 import { COMMUNITY_WORDS } from "@/lib/buyer-words/community";
+import { THANKS_WORDS } from "@/lib/buyer-words/thanks";
 import { addProduct, claimHandle, ensureStatsId, setLanguage, setProductLink, setStripeAccount, setSubscription, storeForEmail } from "@/lib/store";
 import { readProduct } from "@/lib/catalog";
 import { createCheckout } from "@/lib/store-checkout";
@@ -82,6 +83,8 @@ const SAME: Record<string, Record<string, string[]>> = {
     nl: ["pageTitle", "likes", "studio"],
     pt: ["lengthHoursMinutes", "pts"],
   },
+  // "{price} {every}": the price and the words for how often, each already in the language.
+  thanks: { es: ["priceEvery"], fr: ["priceEvery"], de: ["priceEvery"], it: ["priceEvery"], nl: ["priceEvery"], pt: ["priceEvery"] },
 };
 
 const NUMBERS = new Set(["count", "n", "dates", "minutes", "seats", "episodes", "lessons", "sessions", "days", "trialDays", "payments", "page", "pages", "stars", "boxes", "least", "most", "percent", "more", "hours", "people", "left", "total", "done", "places", "weeks", "months"]);
@@ -144,6 +147,7 @@ async function main(): Promise<void> {
     ["giving", (code) => GIVING_WORDS[code]],
     ["affiliates", (code) => AFFILIATES_WORDS[code]],
     ["community", (code) => COMMUNITY_WORDS[code]],
+    ["thanks", (code) => THANKS_WORDS[code]],
   ];
   for (const [area, wordsOf] of AREAS) {
     const englishWords = wordsOf("en");

@@ -9,13 +9,12 @@ import { notFound } from "next/navigation";
 import { type Listing, normaliseHandle, storeForPage } from "@/lib/store";
 import { formatMoney, toMajor } from "@/lib/money";
 import { linkHost } from "@/lib/product-link";
-import { everyLabel } from "@/lib/product-recurring";
 import { DOWNLOAD_WINDOW_SECONDS, type Order, readOrder } from "@/lib/store-checkout";
 import { lookStyle } from "@/lib/store-look";
 import { canManage } from "@/lib/membership-manage";
 import { canMove, confirmBooking, moveLink } from "@/lib/calls";
 import { readableTime, zoneName } from "@/lib/call-setup";
-import { VIDEO_ROOM_NOTE, isVideoRoom, roomLabel, roomOf } from "@/lib/call-rooms";
+import { isVideoRoom, roomLabel, roomOf, videoRoomNote } from "@/lib/call-rooms";
 import { SITE_URL } from "@/lib/site-url";
 import { StoreTracking } from "@/components/store-tracking";
 import { confirmStock } from "@/lib/stock";
@@ -46,11 +45,18 @@ import { REVIEW_NOTICES, ReviewForm } from "@/components/review-form";
 import { type SaleRecord, noteSale } from "@/lib/sale-events";
 import { BundleDelivery } from "@/components/bundle-delivery";
 import type { BundleContents } from "@/lib/bundles";
+import { thanksWords } from "@/lib/buyer-words/thanks";
+import { ordersWords } from "@/lib/buyer-words/orders";
+import { groupLinkBoxWords, licenceKeyBoxWords } from "@/lib/buyer-words/giving";
+import { speech } from "@/lib/buyer-words";
+import { LANGUAGES } from "@/lib/store-language";
 
-export const metadata: Metadata = {
-  title: "Your order — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: Pick<Params, "params">): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  return { title: `${thanksWords(store?.language).pageTitle} — Marktmorgen`, robots: { index: false, follow: false } };
+}
 
 /** Openings of this page with an order in it, from one connection to one store, in ten minutes. */
 const VIEWS_PER_TEN_MINUTES = 60;
@@ -60,41 +66,6 @@ type Params = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const NOTICES: Record<string, { title: string; body: string }> = {
-  unpaid: {
-    title: "This order has not been paid",
-    body: "If you closed the payment page before finishing, nothing was charged. You can start again from the store.",
-  },
-  processing: {
-    title: "Your payment is on its way",
-    body: "Your bank is still confirming it, which can take a few days. Nothing more is needed from you: when it clears, open this page again, or choose \u201cGet it again\u201d at the bottom of the store with the address you paid with.",
-  },
-  expired: {
-    title: "This link has expired",
-    body: "A download link works for three days. You have not lost what you bought: type the address you paid with on the next page, and a link to all of it is emailed to you.",
-  },
-  invalid: {
-    title: "We could not find this order",
-    body: "Check the link you were given, or write to the store.",
-  },
-  unavailable: {
-    title: "This order cannot be checked right now",
-    body: "This store's payments are not connected at the moment, so the order cannot be looked up here. If you paid, reply to your order confirmation email and it reaches the store.",
-  },
-  error: {
-    title: "We could not check this order",
-    body: "Nothing is lost. Try the link again in a moment.",
-  },
-  slow: {
-    title: "Give it a moment",
-    body: "This page was opened many times in a few minutes, so it is paused for now. Nothing is wrong with your order and nothing is lost: open your link again in a few minutes, or use the link in the email you were sent.",
-  },
-  refunded: {
-    title: "This order was refunded",
-    body: "The payment was given back in full, so what it bought no longer opens here. If you think this is a mistake, reply to the order confirmation you were emailed when you paid; it reaches the store.",
-  },
-};
-
 /**
  * What the buyer's answer to an offer after paying came to, as
  * /api/store/upsell reports it (lib/upsell.ts, TakeResult). A reason whose
@@ -102,28 +73,23 @@ const NOTICES: Record<string, { title: string; body: string }> = {
  * what is still being checked, what was turned down) is said only when the
  * page would otherwise say nothing.
  */
-const UPSELL_NOTES: Record<string, { text: string; always: boolean }> = {
-  done: {
-    text: "Your yes was received. If what you added is not shown here yet, open this page again in a minute: it is charged once at most.",
-    always: false,
-  },
-  declined: { text: "No thanks, noted. Nothing more was charged.", always: true },
-  failed: { text: "That offer was not charged.", always: false },
-  checking: {
-    text: "We are still hearing back from Stripe about that offer. Open this page again in a minute: it is charged once at most.",
-    always: false,
-  },
-  unavailable: { text: "That offer is no longer open, so nothing was charged for it.", always: true },
+const UPSELL_NOTES: Record<string, { always: boolean }> = {
+  done: { always: false },
+  declined: { always: true },
+  failed: { always: false },
+  checking: { always: false },
+  unavailable: { always: true },
 };
 
 /**
  * The reminders a booking gets, as lib/call-records.ts plans them: each only
  * when it is still at least an hour away when the booking is confirmed.
  */
-function reminderWords(start: number, now = Date.now()): string {
+function reminderWords(store: Pick<Store, "language">, start: number, now = Date.now()): string {
+  const t = thanksWords(store.language);
   const ahead = start - now;
-  if (ahead >= 25 * 3600_000) return ", and reminders follow a day and an hour before";
-  if (ahead >= 2 * 3600_000) return ", and a reminder follows an hour before";
+  if (ahead >= 25 * 3600_000) return t.remindDayHour;
+  if (ahead >= 2 * 3600_000) return t.remindHour;
   return "";
 }
 
@@ -140,6 +106,13 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   if (!decoded.startsWith("@")) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
+  const t = thanksWords(store.language);
+  const locale = LANGUAGES[store.language].locale;
+  const lang = locale;
+  const money = (cents: number, currency: string) => formatMoney(cents, currency, locale);
+  const longDate = (seconds: number) =>
+    new Date(seconds * 1000).toLocaleDateString(locale, { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const o = ordersWords(store.language);
 
   const query = await searchParams;
   // Paid with PayPal (lib/paypal-sales.ts): a page of its own.
@@ -165,25 +138,25 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     await noteSession(store, order.record as Parameters<typeof noteSession>[1]).catch((error) => console.error("noting an affiliate sale failed", error));
     const book = bought ? `/@${store.handle}/book/${order.product.id}?pkg=${bought.token}` : null;
     return (
-      <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+      <div lang={LANGUAGES[store.language].locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
         <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
           <div className="st-card p-7 sm:p-10">
-            <p className="st-price text-sm">Paid</p>
-            <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{`Your ${bought?.total ?? packageMeta.sessions} sessions are ready`}</h1>
+            <p className="st-price text-sm">{t.paid}</p>
+            <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{t.sessionsReady(Number(bought?.total ?? packageMeta.sessions))}</h1>
             <p className="st-muted mt-4 text-lg">
-              {"You bought "}
+              {t.youBought}
               <strong style={{ color: "var(--st-text)" }}>{order.product.title}</strong>
-              {`, ${bought?.total ?? packageMeta.sessions} sessions, from ${store.name} for ${formatMoney(order.amount, order.currency)}. Book each one whenever you like; nothing more is charged.`}
+              {t.packageBought(Number(bought?.total ?? packageMeta.sessions), store.name, money(order.amount, order.currency))}
             </p>
             {bought?.until ? (
-              <p className="st-muted mt-3">{`Book them by ${new Date(bought.until * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}.`}</p>
+              <p className="st-muted mt-3">{t.bookBy(longDate(bought.until))}</p>
             ) : null}
             {book ? (
-              <Link href={book} className="btn st-btn btn-lg mt-7">Book your first session</Link>
+              <Link href={book} className="btn st-btn btn-lg mt-7">{t.bookFirst}</Link>
             ) : (
-              <p className="st-note mt-6 text-sm">We could not get your booking link just now. Refresh this page in a moment; it is also on its way to your email.</p>
+              <p className="st-note mt-6 text-sm">{t.noBookingLink}</p>
             )}
-            <p className="st-muted mt-5 text-sm">{`The same link is in the email sent to ${order.email ?? "the address you paid with"}: keep it, it is how you book the rest.`}</p>
+            <p className="st-muted mt-5 text-sm">{t.packageSameLink(order.email ?? t.theAddressYouPaidWith)}</p>
             <StoreTracking
               store={store}
               event={{ type: "purchase", id: sessionId, value: toMajor(order.amount, order.currency), currency: order.currency, productId: order.product.id, title: order.product.title }}
@@ -221,27 +194,27 @@ export default async function ThanksPage({ params, searchParams }: Params) {
       after(() => confirmPurchase(store, sessionId).catch((error) => console.error("delivering a gift failed", error)));
     }
     return (
-      <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+      <div lang={LANGUAGES[store.language].locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
         <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
           <div className="st-card p-7 sm:p-10">
-            <p className="st-price text-sm">Paid</p>
-            <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">Your gift is on its way</h1>
+            <p className="st-price text-sm">{t.paid}</p>
+            <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{t.giftOnWay}</h1>
             <p className="st-muted mt-4 text-lg">
-              {"You bought "}
+              {t.youBought}
               <strong style={{ color: "var(--st-text)" }}>{order.option ? `${order.product.title} (${order.option.label})` : order.product.title}</strong>
-              {` from ${store.name} for ${formatMoney(order.amount, order.currency)}, as a gift${gift ? ` for ${gift.to}` : ""}.`}
+              {gift ? t.giftBoughtFor(store.name, money(order.amount, order.currency), gift.to) : t.giftBought(store.name, money(order.amount, order.currency))}
             </p>
             <p className="st-muted mt-4">
               {isHouseStore(store)
-                ? "This is the demo store, which sends no email: nobody was written to and nothing was handed over. On a real store the person you named gets one email with your name, your message and a link to open it."
+                ? t.giftDemo
                 : gift
-                ? `We are emailing ${gift.to} now${gift.from ? `, from ${gift.from}` : ""}${gift.message ? ", with your message" : ""}, and a link to open it. It is theirs, on their address; you do not get a copy.`
-                : "It goes to the address you gave, with a link to open it."}
+                ? t.giftEmailing(gift.to, gift.from ?? "", Boolean(gift.message))
+                : t.giftToAddress}
             </p>
-            {order.email ? <p className="st-muted mt-4 text-sm">{`Your receipt goes to ${order.email}.`}</p> : null}
+            {order.email ? <p className="st-muted mt-4 text-sm">{t.receiptTo(order.email)}</p> : null}
             <div className="mt-8">
               <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-                {`Back to ${store.name}`}
+                {t.backTo(store.name)}
               </Link>
               <StoreTracking
                 store={store}
@@ -287,37 +260,37 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     const group = await readGroup(order.group).catch(() => null);
     const ready = Boolean(group?.paid && !group.revoked);
     return (
-      <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+      <div lang={LANGUAGES[store.language].locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
         <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
           <div className="st-card p-7 sm:p-10">
-            <p className="st-price text-sm">Paid</p>
+            <p className="st-price text-sm">{t.paid}</p>
             <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
-              {group ? `Your ${group.people} places are ready` : "Your places are ready"}
+              {group ? t.placesReadyCount(group.people) : t.placesReady}
             </h1>
             <p className="st-muted mt-4 text-lg">
-              {"You bought "}
+              {t.youBought}
               <strong style={{ color: "var(--st-text)" }}>{order.option ? `${order.product.title} (${order.option.label})` : order.product.title}</strong>
-              {` from ${store.name}${group ? ` for ${peopleWords(group.people)}` : ""}, for ${formatMoney(order.amount, order.currency)}.`}
+              {group ? t.groupBoughtFor(store.name, peopleWords(group.people, store.language), money(order.amount, order.currency)) : t.groupBought(store.name, money(order.amount, order.currency))}
             </p>
             {group && ready ? (
               <>
-                <GroupLinkBox link={groupLink(storeBase(store), group.id)} />
+                <GroupLinkBox link={groupLink(storeBase(store), group.id)} words={groupLinkBoxWords(store.language)} />
                 <p className="st-muted mt-5">
-                  {`Send it to the people it is for. Each one opens it and types their own email address; a link arrives in their inbox, and opening it puts ${order.product.title} on that address, as if they had bought it.`}
+                  {t.groupSend(order.product.title)}
                 </p>
                 <p className="st-muted mt-3">
-                  {`Take a place yourself the same way: you paid for ${group.people}, and you are one of them only if you take one.`}
+                  {t.groupTakeOne(group.people)}
                 </p>
               </>
             ) : isHouseStore(store) ? (
-              <p className="st-note mt-6 text-sm">This is the demo store, which sends no email, so it makes no link and hands out no places. On a real store this page shows one link to pass on, and the same link is in your receipt: each person opens it, types their own email and has it on their own address.</p>
+              <p className="st-note mt-6 text-sm">{t.groupDemo}</p>
             ) : (
-              <p className="st-note mt-6 text-sm">We could not get your link just now. Refresh this page in a moment; it is also on its way to your email.</p>
+              <p className="st-note mt-6 text-sm">{t.noGroupLink}</p>
             )}
-            {order.email && !isHouseStore(store) ? <p className="st-muted mt-5 text-sm">{`The same link is in the receipt sent to ${order.email}: keep it, it is how the places are handed out.`}</p> : null}
+            {order.email && !isHouseStore(store) ? <p className="st-muted mt-5 text-sm">{t.groupReceipt(order.email)}</p> : null}
             <div className="mt-8">
               <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-                {`Back to ${store.name}`}
+                {t.backTo(store.name)}
               </Link>
               <StoreTracking
                 store={store}
@@ -566,6 +539,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
         value={found !== "error" && found.state === "issued" ? found.key : null}
         revoked={found !== "error" && found.state === "issued" && found.revoked}
         waiting={found !== "error" && found.state === "waiting"}
+        words={licenceKeyBoxWords(store.language, store.name, title)}
       />
     );
 
@@ -598,6 +572,15 @@ export default async function ThanksPage({ params, searchParams }: Params) {
         storeName={store.name}
         missing={items.missing}
         heading={heading}
+        words={{
+          openCourse: o.openCourse,
+          startCourse: o.startCourse,
+          openIt: o.openIt,
+          keptOn: o.keptOn("{host}", "{link}"),
+          downloadIt: o.downloadIt,
+          nothingAttached: o.nothingAttached(store.name),
+          missing: items.missing > 0 ? o.bundleMissing(items.missing, store.name) : null,
+        }}
         lines={items.items.map((p) => ({
           product: p,
           download: p.file && p.options.length === 0 ? download(p.id) : null,
@@ -611,16 +594,17 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   const downloadAt = (extra: Record<string, string>) => (id: string) =>
     `/api/store/download?${new URLSearchParams({ handle: store.handle, session_id: sessionId ?? "", ...extra, pid: id })}`;
 
-  const notice = order.state !== "paid" ? NOTICES[order.state] : null;
+  const notice = order.state !== "paid" ? t.notices[order.state] : null;
   const upsellAnswer = typeof query.upsell === "string" && Object.hasOwn(UPSELL_NOTES, query.upsell) ? UPSELL_NOTES[query.upsell] : null;
   const upsellNote =
     order.state === "paid" && upsellAnswer && (upsellAnswer.always || (!funnel?.taken.length && !funnel?.notes.length))
-      ? upsellAnswer.text
+      ? t.upsellNotes[query.upsell as string]
       : null;
   const hours = order.state === "paid" ? Math.floor(order.secondsLeft / 3600) : 0;
 
   return (
     <div
+      lang={lang}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
@@ -629,19 +613,19 @@ export default async function ThanksPage({ params, searchParams }: Params) {
           {order.state === "paid" ? (
             <>
               <p className="st-price text-sm">
-                {order.product.recurring && order.trialDays > 0 ? "Trial started" : "Paid"}
+                {order.product.recurring && order.trialDays > 0 ? t.trialStarted : t.paid}
               </p>
               <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
-                {booked ? "You are booked" : "Thank you"}
+                {booked ? t.youAreBooked : t.thankYou}
               </h1>
               <p className="st-muted mt-4 text-lg">
                 {order.product.recurring
                   ? order.trialDays > 0
-                    ? "You started a free trial of "
-                    : "You subscribed to "
+                    ? t.startedTrialOf
+                    : t.subscribedTo
                   : booked
-                    ? "You booked "
-                    : "You bought "}
+                    ? t.youBooked
+                    : t.youBought}
                 <strong style={{ color: "var(--st-text)" }}>
                   {order.option
                     ? `${order.product.title} (${order.option.label})`
@@ -649,31 +633,35 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 </strong>
                 {order.bumps.map((added, at) => (
                   <span key={added.key}>
-                    {at === order.bumps.length - 1 ? (order.bumps.length > 1 ? ", and " : " and ") : ", "}
+                    {at === order.bumps.length - 1 ? (order.bumps.length > 1 ? t.andMany : t.andTwo) : t.listComma}
                     <strong style={{ color: "var(--st-text)" }}>{added.product.title}</strong>
                   </span>
-                ))}{" "}
-                from{" "}
-                {store.name}
+                ))}
+                {t.fromStore(store.name)}
                 {order.product.recurring && order.trialDays > 0
-                  ? ". Nothing was charged today"
+                  ? t.nothingChargedToday
                   : booked && order.record.metadata && (order.record.metadata as Record<string, string>).package
-                    ? ", as one session of your package. Nothing more was charged"
-                  : ` for ${
+                    ? t.oneSessionOfPackage
+                  : t.forPrice(
                       order.product.recurring
-                        ? `${formatMoney(order.amount, order.currency)} ${everyLabel(order.product.recurring.interval)}`
+                        ? t.priceEvery(money(order.amount, order.currency), speech(store).w.every(order.product.recurring.interval))
                         : order.plan
-                          ? `${formatMoney(order.amount, order.currency)} today`
-                          : formatMoney(order.amount, order.currency)
-                    }`}
-                .
+                          ? t.priceToday(money(order.amount, order.currency))
+                          : money(order.amount, order.currency),
+                    )}
+                {t.sentenceEnd}
               </p>
               {order.product.recurring && order.trialDays > 0 && !ended ? (
                 <p
                   className="mt-3 rounded-2xl px-4 py-3 text-sm"
                   style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
                 >
-                  {`Your first payment of ${formatMoney(order.option ? order.option.priceCents : order.product.priceCents, order.currency)}${store.tax.enabled && !store.tax.included ? " plus any sales tax" : ""} is taken when the ${order.trialDays}-day trial ends, on ${new Date((order.created + order.trialDays * 86400) * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}, from the card you gave. Cancel before then and you are not charged at all.`}
+                  {t.trialNote(
+                    money(order.option ? order.option.priceCents : order.product.priceCents, order.currency),
+                    store.tax.enabled && !store.tax.included,
+                    order.trialDays,
+                    longDate(order.created + order.trialDays * 86400),
+                  )}
                 </p>
               ) : null}
               {order.plan ? (
@@ -681,7 +669,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   className="mt-3 rounded-2xl px-4 py-3 text-sm"
                   style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
                 >
-                  {`This is the first of ${order.plan.payments} ${order.plan.interval === "week" ? "weekly" : "monthly"} payments. The other ${order.plan.payments - 1} are charged to the same card on ${store.name}'s own account, and the plan stops by itself after the last one. To change the card or ask about a payment, reply to your order confirmation email; it reaches ${store.name}.`}
+                  {t.planNote(order.plan.payments, order.plan.interval === "week", store.name)}
                 </p>
               ) : null}
               {order.product.recurring && !ended ? (
@@ -692,29 +680,29 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   {canManage(store) ? (
                     <>
                       {order.endsAfter > 0
-                        ? `This renews once ${everyLabel(order.product.recurring.interval)} for ${order.endsAfter} payments in all and then ends by itself. You can cancel it yourself before that, without writing to anyone: `
-                        : `This renews once ${everyLabel(order.product.recurring.interval)} until you cancel it, and you can cancel it yourself at any time, without writing to anyone: `}
+                        ? t.renewsForSelf(speech(store).w.every(order.product.recurring.interval), order.endsAfter)
+                        : t.renewsUntilSelf(speech(store).w.every(order.product.recurring.interval))}
                       <Link href={`/@${store.handle}/manage`} className="font-semibold underline underline-offset-4">
-                        manage your membership
+                        {t.manageMembership}
                       </Link>
-                      {" with the email you paid with."}
+                      {t.withEmailPaid}
                     </>
                   ) : (
-                    `This renews once ${everyLabel(order.product.recurring.interval)} ${
-                      order.endsAfter > 0 ? `for ${order.endsAfter} payments in all and then ends by itself, unless you cancel it first` : "until you cancel it"
-                    }. The charge is made by ${store.name}, on their own account. To cancel, reply to your order confirmation email; it reaches them.`
+                    order.endsAfter > 0
+                      ? t.renewsForReply(speech(store).w.every(order.product.recurring.interval), order.endsAfter, store.name)
+                      : t.renewsUntilReply(speech(store).w.every(order.product.recurring.interval), store.name)
                   )}
                 </p>
               ) : null}
 
               {ended ? (
                 <div className="st-note mt-7" role="status">
-                  <p className="font-bold" style={{ color: "var(--st-text)" }}>Your membership has ended</p>
+                  <p className="font-bold" style={{ color: "var(--st-text)" }}>{t.endedTitle}</p>
                   <p className="mt-1 text-sm">
-                    {`Stripe says this membership is no longer running, so what it gave you access to is closed now. Renew it and everything opens again right away.`}
+                    {t.endedBody}
                   </p>
                   <Link href={renewPath(store, order.product)} className="btn st-btn mt-4">
-                    Renew your membership
+                    {t.renew}
                   </Link>
                 </div>
               ) : booked ? (
@@ -723,9 +711,9 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     className="mt-6 rounded-2xl px-5 py-4"
                     style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}
                   >
-                    <p className="text-lg font-semibold">{readableTime(booked.start, booked.buyerTz)}</p>
+                    <p className="text-lg font-semibold">{readableTime(booked.start, booked.buyerTz, locale)}</p>
                     <p className="mt-1 text-sm">
-                      {`${zoneName(booked.start, booked.buyerTz)} \u00b7 ${booked.minutes} minutes`}
+                      {o.callLength(zoneName(booked.start, booked.buyerTz, locale), booked.minutes)}
                     </p>
                   </div>
                   <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -736,36 +724,34 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                         target="_blank"
                         className="btn st-btn"
                       >
-                        {roomLabel(booked.room)}
+                        {roomLabel(booked.room, store.language)}
                       </a>
                     ) : null}
                     <a
                       href={`/api/store/ics?handle=${encodeURIComponent(store.handle)}&session_id=${encodeURIComponent(sessionId ?? "")}`}
                       className="btn btn-secondary"
                     >
-                      Add to your calendar
+                      {t.addToCalendar}
                     </a>
                   </div>
                   <p className="st-muted mt-5 text-sm">
                     {booked.room
-                      ? `Join at that time with the link above. It is also in your confirmation email, with a calendar file.`
-                      : `${store.name} will send you the link to join before the call.`}
-                    {isVideoRoom(booked.room) ? ` ${VIDEO_ROOM_NOTE}` : ""}
-                    {order.email
-                      ? ` A confirmation is on its way to ${order.email}${reminderWords(booked.start)}. To cancel, reply to the confirmation; it reaches ${store.name}.`
-                      : ""}
+                      ? t.joinWithLink
+                      : t.willSendLink(store.name)}
+                    {isVideoRoom(booked.room) ? ` ${videoRoomNote(store.language)}` : ""}
+                    {order.email ? ` ${t.confirmationOnWay(order.email, reminderWords(store, booked.start), store.name)}` : ""}
                   </p>
                   {sessionId && canMove(booked.setup, booked.start, booked.moves) ? (
                     <p className="st-muted mt-3 text-sm">
-                      {"Need another time? "}
+                      {t.needAnotherTime}
                       <a
                         href={moveLink("", store, order.product.id, sessionId)}
                         className="font-semibold underline underline-offset-4"
                         style={{ color: "var(--st-text)" }}
                       >
-                        Move your booking
+                        {t.moveBooking}
                       </a>
-                      {`, up to ${Math.max(booked.setup.noticeHours, 1)} ${Math.max(booked.setup.noticeHours, 1) === 1 ? "hour" : "hours"} before it starts.`}
+                      {t.upToBefore(Math.max(booked.setup.noticeHours, 1))}
                     </p>
                   ) : null}
                 </>
@@ -773,7 +759,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                 <>
                   {contents(order.items, "main", downloadAt({ item: "bundle" }))}
                   <p className="st-muted mt-5 text-sm">
-                    {`Downloads here work for about ${hours} more ${hours === 1 ? "hour" : "hours"}; courses and links keep working. After that nothing is lost: choose \u201cGet it again\u201d at the bottom of ${store.name}'s page, type the address you paid with, and a link to all of it is emailed to you.`}
+                    {t.bundleDownloads(hours, store.name)}
                   </p>
                 </>
               ) : order.product.podcast ? (
@@ -781,10 +767,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   <form action="/api/store/podcast/open" method="post">
                     <input type="hidden" name="handle" value={store.handle} />
                     <input type="hidden" name="session_id" value={sessionId ?? ""} />
-                    <button type="submit" className="btn st-btn btn-lg mt-7">Add it to your podcast app</button>
+                    <button type="submit" className="btn st-btn btn-lg mt-7">{t.addPodcastApp}</button>
                   </form>
                   <p className="st-muted mt-5 text-sm">
-                    {`You get a feed of your own, for Apple Podcasts, Overcast, Pocket Casts or most other apps. On another device, open ${store.name}'s store, find the podcast and ask for it by email: it goes to ${order.email ?? "the address you paid with"}.`}
+                    {t.podcastFeedNote(store.name, order.email ?? t.theAddressYouPaidWith)}
                   </p>
                 </>
               ) : order.product.course ? (
@@ -792,10 +778,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   <form action="/api/store/course/start" method="post">
                     <input type="hidden" name="handle" value={store.handle} />
                     <input type="hidden" name="session_id" value={sessionId ?? ""} />
-                    <button type="submit" className="btn st-btn btn-lg mt-7">Start the course</button>
+                    <button type="submit" className="btn st-btn btn-lg mt-7">{t.startCourse}</button>
                   </form>
                   <p className="st-muted mt-5 text-sm">
-                    {`On this device it opens right away. On any other, open ${store.name}'s store, find the course and ask for a link: it goes to ${order.email ?? "the address you paid with"}. No password to make.`}
+                    {t.courseDeviceNote(store.name, order.email ?? t.theAddressYouPaidWith)}
                   </p>
                 </>
               ) : order.link ? (
@@ -809,10 +795,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     target="_blank"
                     className="btn st-btn btn-lg mt-7"
                   >
-                    Open what you bought
+                    {t.openWhatYouBought}
                   </a>
                   <p className="st-muted mt-5 text-sm">
-                    {`It is kept on ${linkHost(order.link)} by ${store.name}, not here. Save the address: `}
+                    {t.keptOnBy(linkHost(order.link), store.name)}
                     <span className="break-all font-semibold" style={{ color: "var(--st-text)" }}>
                       {order.link}
                     </span>
@@ -826,15 +812,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     )}&session_id=${encodeURIComponent(sessionId ?? "")}`}
                     className="btn st-btn btn-lg mt-7"
                   >
-                    Download it
+                    {t.downloadIt}
                   </a>
 
-                  <p className="st-muted mt-5 text-sm">
-                    This link works for about {hours} more{" "}
-                    {hours === 1 ? "hour" : "hours"}. After that it is not lost:
-                    choose &ldquo;Get it again&rdquo; at the bottom of {store.name}&rsquo;s
-                    page, type the address you paid with, and a new link is emailed to you.
-                  </p>
+                  <p className="st-muted mt-5 text-sm">{t.fileLinkWorks(hours, store.name)}</p>
                 </>
               ) : (
                 /*
@@ -845,10 +826,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   is who can fix it.
                 */
                 <p className="mt-7 rounded-2xl bg-danger-soft px-4 py-3 text-sm text-ink">
-                  <strong>Your payment went through, but this product has
-                  nothing attached to send.</strong> That is for {store.name} to
-                  put right, and the charge is on their own Stripe account, so
-                  reply to your order confirmation email and it reaches them.
+                  <strong>{t.nothingAttachedStrong}</strong> {t.nothingAttachedRest(store.name)}
                 </p>
               )}
               {/* A course or podcast bought at one of several prices: the price
@@ -856,14 +834,14 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   here beside the way in. */}
               {(order.product.course || order.product.podcast) && order.option && (order.file || order.link) ? (
                 <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
-                  <p className="st-label">{`Also in ${order.option.label}`}</p>
+                  <p className="st-label">{t.alsoIn(order.option.label)}</p>
                   {order.link ? (
                     <>
                       <a href={order.link} rel="noopener noreferrer nofollow" target="_blank" className="link mt-1 inline-block font-semibold">
-                        Open it
+                        {t.openIt}
                       </a>
                       <p className="st-muted mt-1 text-sm">
-                        {`Kept on ${linkHost(order.link)} by ${store.name}. Save the address: `}
+                        {t.keptOnSave(linkHost(order.link), store.name)}
                         <span className="break-all font-semibold" style={{ color: "var(--st-text)" }}>{order.link}</span>
                       </p>
                     </>
@@ -873,10 +851,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                         href={`/api/store/download?handle=${encodeURIComponent(store.handle)}&session_id=${encodeURIComponent(sessionId ?? "")}`}
                         className="link mt-1 inline-block font-semibold"
                       >
-                        Download it
+                        {t.downloadIt}
                       </a>
                       <p className="st-muted mt-1 text-sm">
-                        {`This link works for about ${hours} more ${hours === 1 ? "hour" : "hours"}; the ${order.product.course ? "course" : "podcast"} keeps working.`}
+                        {t.optionLinkWorks(hours, Boolean(order.product.course))}
                       </p>
                     </>
                   )}
@@ -888,10 +866,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
               {keyBox(mainKey, bumpKeys.some(Boolean) || upsellKey ? order.product.title : undefined)}
               {order.bumps.map((added, at) => (
                 <div key={added.key} className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
-                  <p className="st-label">Also yours</p>
+                  <p className="st-label">{t.alsoYours}</p>
                   <p className="mt-1 font-semibold">{added.product.title}</p>
                   {added.items ? (
-                    contents(added.items, added.key, downloadAt({ item: added.key }), "Inside it")
+                    contents(added.items, added.key, downloadAt({ item: added.key }), t.insideIt)
                   ) : added.link ? (
                     <>
                       <a
@@ -900,7 +878,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                         target="_blank"
                         className="btn st-btn mt-3"
                       >
-                        Open it
+                        {t.openIt}
                       </a>
                       <p className="st-muted mt-3 break-all text-sm">{added.link}</p>
                     </>
@@ -911,11 +889,11 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                       )}&item=${added.key}`}
                       className="btn st-btn mt-3"
                     >
-                      Download it
+                      {t.downloadIt}
                     </a>
                   ) : (
                     <p className="st-muted mt-2 text-sm">
-                      {`This one has nothing attached right now. Reply to your order confirmation email to ask ${store.name} for it.`}
+                      {o.nothingAttached(store.name)}
                     </p>
                   )}
                   {keyBox(bumpKeys[at] ?? null, added.product.title)}
@@ -927,14 +905,14 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   className="mt-6 rounded-2xl px-5 py-4"
                   style={{ border: "1px solid var(--st-line)" }}
                 >
-                  <p className="st-label">Also yours</p>
+                  <p className="st-label">{t.alsoYours}</p>
                   <p className="mt-1 font-semibold">{added.product.title}</p>
                   {added.items ? (
-                    contents(added.items, added.reference, downloadAt({ item: "upsell", ...(added.slot ? { step: added.slot } : {}) }), "Inside it")
+                    contents(added.items, added.reference, downloadAt({ item: "upsell", ...(added.slot ? { step: added.slot } : {}) }), t.insideIt)
                   ) : added.product.link ? (
                     <>
                       <a href={added.product.link} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn mt-3">
-                        Open it
+                        {t.openIt}
                       </a>
                       <p className="st-muted mt-3 break-all text-sm">{added.product.link}</p>
                     </>
@@ -945,7 +923,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                       )}&item=upsell${added.slot ? `&step=${added.slot}` : ""}`}
                       className="btn st-btn mt-3"
                     >
-                      Download it
+                      {t.downloadIt}
                     </a>
                   ) : null}
                   {keyBox(takenKeys[index] ?? null, added.product.title)}
@@ -953,13 +931,13 @@ export default async function ThanksPage({ params, searchParams }: Params) {
               ))}
               {opensCommunity && community ? (
                 <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
-                  <p className="st-label">Also yours</p>
+                  <p className="st-label">{t.alsoYours}</p>
                   <p className="mt-1 font-semibold">{community.name}</p>
                   <p className="st-muted mt-1 text-sm">
-                    {`This purchase opens ${store.name}'s members' community. Come in with ${order.email ?? "the address you paid with"}: a link is sent there, and there is no password to make.`}
+                    {t.communityOpens(store.name, order.email ?? t.theAddressYouPaidWith)}
                   </p>
                   <Link href={`/@${store.handle}/community`} className="btn st-btn mt-3">
-                    Go to the community
+                    {t.goCommunity}
                   </Link>
                 </div>
               ) : null}
@@ -988,22 +966,22 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     <input type="hidden" name="handle" value={store.handle} />
                     <input type="hidden" name="session_id" value={sessionId} />
                     <input type="hidden" name="step" value={offer.step.id} />
-                    <p className="st-label">{offer.afterNo ? "Before you go" : "One more thing"}</p>
+                    <p className="st-label">{offer.afterNo ? t.beforeYouGo : t.oneMoreThing}</p>
                     <h2 id="offer-title" className="mt-1 text-xl font-semibold leading-snug tracking-[-0.01em]">
-                      {offer.step.headline || `${offer.target.title} for ${formatMoney(offer.step.priceCents, store.currency)}`}
+                      {offer.step.headline || t.titleFor(offer.target.title, money(offer.step.priceCents, store.currency))}
                     </h2>
                     {offer.step.headline ? (
                       <p className="mt-1 text-sm font-semibold">
-                        {`${offer.target.title} for ${formatMoney(offer.step.priceCents, store.currency)}`}
+                        {t.titleFor(offer.target.title, money(offer.step.priceCents, store.currency))}
                       </p>
                     ) : null}
                     {offer.step.text ? <p className="mt-2 text-sm leading-relaxed">{offer.step.text}</p> : null}
                     {offer.step.priceCents < offer.target.priceCents ? (
-                      <p className="st-muted mt-1 text-xs">{`${formatMoney(offer.target.priceCents, store.currency)} on its own`}</p>
+                      <p className="st-muted mt-1 text-xs">{t.onItsOwn(money(offer.target.priceCents, store.currency))}</p>
                     ) : null}
                     <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
                       <button type="submit" name="answer" value="yes" className="btn st-btn">
-                        {`Yes, add it for ${formatMoney(offer.step.priceCents, store.currency)}`}
+                        {t.yesAdd(money(offer.step.priceCents, store.currency))}
                       </button>
                       <button
                         type="submit"
@@ -1011,11 +989,11 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                         value="no"
                         className="st-footer-link inline-flex min-h-11 items-center px-1 text-sm font-semibold"
                       >
-                        No thanks
+                        {t.noThanks}
                       </button>
                     </div>
                     <p className="st-muted mt-3 text-xs">
-                      {`Yes charges the card you just used, once, on ${store.name}'s own account. No thanks charges nothing. You can also simply leave this page.`}
+                      {t.offerNote(store.name)}
                     </p>
                   </form>
                 </section>
@@ -1023,33 +1001,33 @@ export default async function ThanksPage({ params, searchParams }: Params) {
               {funnel?.notes.map((note) => (
                 <p key={`${note.state}-${note.title}`} className="st-note mt-6 text-sm" role="status">
                   {note.state === "checking"
-                    ? `We are still hearing back from Stripe about ${note.title}. Open this page again in a minute: it is charged once at most, and it appears here as soon as it is paid.`
+                    ? t.stillHearing(note.title)
                     : note.state === "unconfirmed"
-                      ? `Your bank has not confirmed ${note.title}, so it was not charged.`
-                      : `${note.title} was not charged: the card you paid with could not be used for it. You can still buy it from the store.`}
+                      ? t.bankNotConfirmed(note.title)
+                      : t.notChargedCard(note.title)}
                 </p>
               ))}
               {confirming && order.email ? (
                 <p className="st-muted mt-2 text-sm">
-                  {`A confirmation from ${store.name} is on its way to ${order.email}, with how to get back to this later. The charge was made on ${store.name}'s own Stripe account, not ours.`}
+                  {t.confirmationFrom(store.name, order.email)}
                 </p>
               ) : order.email ? (
                 <p className="st-muted mt-2 text-sm">
-                  {`This order is filed under ${order.email}. The charge was made on ${store.name}'s own Stripe account, not ours, so any receipt comes from them.`}
+                  {t.filedUnder(order.email, store.name)}
                 </p>
               ) : null}
             </>
           ) : (
             <>
               <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">
-                {notice?.title ?? "We could not find this order"}
+                {notice?.title ?? t.notices.invalid.title}
               </h1>
               <p className="st-muted mt-4 text-lg">
-                {notice?.body ?? "Check the link you were given."}
+                {notice?.body ?? t.checkLink}
               </p>
               {order.state === "expired" && canRecover(store) ? (
                 <Link href={`/@${store.handle}/orders`} className="btn st-btn btn-lg mt-7">
-                  Get what you bought again
+                  {t.getAgain}
                 </Link>
               ) : null}
             </>
@@ -1060,7 +1038,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
               href={`/@${store.handle}`}
               className="st-footer-link text-sm font-semibold"
             >
-              Back to {store.name}
+              {t.backTo(store.name)}
             </Link>
             <StoreTracking
               store={store}
@@ -1083,10 +1061,10 @@ export default async function ThanksPage({ params, searchParams }: Params) {
         {toReview.length > 0 && sessionId ? (
           <section id="review" aria-labelledby="review-title" className="st-card mt-6 scroll-mt-6 p-7 sm:p-10">
             <h2 id="review-title" className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em]">
-              {toReview.length === 1 ? `How is ${toReview[0].title}?` : "How is what you bought?"}
+              {toReview.length === 1 ? t.howIs(toReview[0].title) : t.howIsWhat}
             </h2>
             <p className="st-muted mt-2 text-sm leading-relaxed">
-              {`Whenever you are ready: now, or later from the list of your purchases. Only buyers can review ${store.name}'s products, and yours shows as a verified purchase.`}
+              {t.reviewWhenever(store.name)}
             </p>
             <div className="mt-6 space-y-10">
               {toReview.map((product) => (
@@ -1099,6 +1077,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   storeName={store.name}
                   back="thanks"
                   notice={reviewProduct === product.id ? reviewStatus || null : null}
+                  lang={store.language}
                 />
               ))}
             </div>
@@ -1109,13 +1088,13 @@ export default async function ThanksPage({ params, searchParams }: Params) {
         {order.state === "paid" && sessionId && buyersJoin(store) ? (
           <section aria-labelledby="share-title" className="st-card mt-6 p-7 sm:p-10">
             <h2 id="share-title" className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em]">
-              {`Earn ${store.affiliates.percent}% by sharing ${store.name}`}
+              {t.earnBy(store.affiliates.percent, store.name)}
             </h2>
             <p className="st-muted mt-2 text-sm leading-relaxed">
-              {`Get your own link, without applying. When someone buys through it, you earn ${store.affiliates.percent}% of what they paid for one-time purchases, and ${store.name} pays you directly.`}
+              {t.earnHow(store.affiliates.percent, store.name)}
             </p>
             <Link href={`/@${store.handle}/affiliates?order=${encodeURIComponent(sessionId)}`} className="btn st-btn mt-6">
-              Get my link
+              {t.getMyLink}
             </Link>
           </section>
         ) : null}
@@ -1138,30 +1117,32 @@ async function PayPalThanks({ store, order }: { store: Store; order: string }) {
   const waiting = !ours && allowed ? await stillPending(store, order) : false;
   const fresh = ours ? saleClock() - ours.at < DOWNLOAD_WINDOW_SECONDS : false;
   const link = ours && product && fresh ? await ordersLinkFor(store, ours.email, storeBase(store)).catch(() => null) : null;
+  const t = thanksWords(store.language);
+  const money = (cents: number, currency: string) => formatMoney(cents, currency, LANGUAGES[store.language].locale);
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={LANGUAGES[store.language].locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
         <div className="st-card p-7 sm:p-10">
           {ours && product ? (
             <>
-              <p className="st-price text-sm">Paid with PayPal</p>
-              <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">Thank you</h1>
+              <p className="st-price text-sm">{t.paidWithPayPal}</p>
+              <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{t.thankYou}</h1>
               <p className="st-muted mt-4 text-lg">
-                {"You bought "}
+                {t.youBought}
                 <strong style={{ color: "var(--st-text)" }}>{product.title}</strong>
-                {` from ${store.name} for ${formatMoney(ours.cents, ours.currency)}.`}
+                {t.boughtFrom(store.name, money(ours.cents, ours.currency))}
               </p>
               {link ? (
                 <a href={link} className="btn st-btn btn-lg mt-7">
-                  {product.course ? "Open the course" : "Open what you bought"}
+                  {product.course ? t.openCourse : t.openWhatYouBought}
                 </a>
               ) : (
                 <Link href={`/@${store.handle}/orders`} className="btn st-btn btn-lg mt-7">
-                  Open your purchases
+                  {t.openPurchases}
                 </Link>
               )}
-              <p className="st-muted mt-5 text-sm">{`A receipt with the same link is on its way to ${ours.email}, the address of your PayPal account.`}</p>
-              <p className="st-muted mt-3 text-sm">{`Paid to ${store.name}'s own PayPal account.`}</p>
+              <p className="st-muted mt-5 text-sm">{t.ppReceipt(ours.email)}</p>
+              <p className="st-muted mt-3 text-sm">{t.ppPaidTo(store.name)}</p>
               <StoreTracking
                 store={store}
                 event={{ type: "purchase", id: order, value: toMajor(ours.cents, ours.currency), currency: ours.currency, productId: product.id, title: product.title }}
@@ -1169,26 +1150,25 @@ async function PayPalThanks({ store, order }: { store: Store; order: string }) {
             </>
           ) : waiting ? (
             <>
-              <p className="st-price text-sm">Waiting for PayPal</p>
-              <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">PayPal has not confirmed this payment yet</h1>
+              <p className="st-price text-sm">{t.waitingPayPal}</p>
+              <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{t.ppNotYet}</h1>
               <p className="st-muted mt-4">
-                Some PayPal payments, such as ones from a bank account, take a few days to clear. As soon as PayPal confirms it, what
-                you bought is emailed to the address of your PayPal account. There is nothing more to do here.
+                {t.ppNotYetBody}
               </p>
             </>
           ) : (
             <>
-              <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{allowed ? "We could not find this order" : "That was a lot of tries in a few minutes"}</h1>
+              <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{allowed ? t.notices.invalid.title : t.tooManyTries}</h1>
               <p className="st-muted mt-4">
                 {allowed
-                  ? `If PayPal shows a payment to ${store.name}, write to them by replying to PayPal's receipt.`
-                  : "Wait a few minutes, then open this page again."}
+                  ? t.ppWrite(store.name)
+                  : t.waitFew}
               </p>
             </>
           )}
           <div className="mt-8">
             <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-              {`Back to ${store.name}`}
+              {t.backTo(store.name)}
             </Link>
           </div>
         </div>
