@@ -589,6 +589,7 @@ function wordsOf(block: PageBlock): Record<string, unknown> {
     case "hero":
       return { headline: block.headline, sub: block.sub };
     case "text":
+    case "feature":
     case "guarantee":
     case "bio":
       return { heading: block.heading, body: block.body };

@@ -72,6 +72,8 @@ const filled = (block: PageBlock): boolean => {
       return block.until > 0;
     case "facts":
       return block.show.length > 0;
+    case "feature":
+      return Boolean(block.body || block.picture);
     case "cta":
     case "reviews":
       return true;
@@ -174,7 +176,7 @@ export function coachChecks(input: CoachInput): CoachCheck[] {
         id: "show",
         label: "A look inside",
         why: "Pages of the book, a screen of the course, a lesson to watch: showing the inside beats describing it.",
-        done: has("pictures") || has("video"),
+        done: has("pictures") || has("video") || blocks.some((b) => b.kind === "feature" && b.picture),
         weight: 2,
         add: "pictures",
       },

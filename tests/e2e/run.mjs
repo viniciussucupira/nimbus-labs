@@ -504,6 +504,7 @@ try {
         { id: "step0001", kind: "steps", heading: "How it works", items: [{ title: "Pay", detail: "" }, { title: "Watch a lesson a day", detail: "Ten minutes each." }, { title: "Cook with confidence", detail: "" }] },
         { id: "comp0001", kind: "compare", heading: "Why a course", columnA: "Knife Skills", columnB: "", rows: [{ label: "Feedback on your grip", a: "\u2713", b: "\u2717" }, { label: "Time it takes", a: "Ten days", b: "Years" }] },
         { id: "bonu0001", kind: "bonuses", heading: "Also included", items: [{ title: "A sharpening chart", detail: "One page to keep by the board." }] },
+        { id: "feat0001", kind: "feature", heading: "Why it works", body: "Short lessons you can follow at the board.", picture: null, side: "right" },
         { id: "cta00001", kind: "cta", label: "", note: "" },
       ];
       const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null } }) });
@@ -518,6 +519,7 @@ try {
     is("ticks and crosses spoken as yes and no", [await page.locator('.sp-compare [role="img"][aria-label="Yes"]').count(), await page.locator('.sp-compare [role="img"][aria-label="No"]').count()], [1, 1]);
     is("the bonus on its card, numbered", [await page.locator(".sp-bonus").count(), /bonus 1/i.test(main)], [1, true]);
     is("no number is shown that the store has not counted", await page.locator(".sp-facts").count(), 0);
+    is("words beside a picture, with no picture yet: the words alone", [await page.locator(".sp-feature").count(), await page.locator(".sp-feature-picture").count(), main.includes("Short lessons you can follow at the board.")], [1, 0, true]);
     if (process.env.E2E_SHOTS) await page.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "new-blocks.png") });
   }
 

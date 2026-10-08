@@ -356,6 +356,27 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
           </div>
         </section>
       );
+    case "feature": {
+      if (!block.body && !block.heading && !block.picture) return null;
+      const picture = block.picture;
+      return (
+        <section className="sp-section">
+          <div className={`sp-feature ${picture ? "sp-feature-2" : ""} ${block.side === "right" ? "sp-feature-right" : ""}`}>
+            {picture ? (
+              <figure className="sp-feature-picture">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imageUrl(picture)} alt={picture.alt} width={picture.width} height={picture.height} loading="lazy" decoding="async" />
+                {picture.caption ? <figcaption className="st-muted mt-2 text-sm leading-snug">{picture.caption}</figcaption> : null}
+              </figure>
+            ) : null}
+            <div className="sp-feature-words">
+              <Heading text={block.heading} />
+              <PlainText text={block.body} preview={ctx.preview} className={block.heading ? "mt-3 text-[1.0625rem]" : "text-[1.0625rem]"} />
+            </div>
+          </div>
+        </section>
+      );
+    }
     case "fit": {
       if (block.yes.length === 0 && block.no.length === 0) return null;
       const w = blockWords(ctx.lang ?? DEFAULT_LANGUAGE);

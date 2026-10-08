@@ -4,7 +4,7 @@
  * (lib/page-facts.ts). Each is read back safely, holds to its limits, and the
  * counted numbers appear only when they are true.
  */
-import { CELL_NO, CELL_YES, MAX_COMPARE_ROWS, MAX_FIT_ITEMS, emptyBlock, parsePage, blocksFromTemplate } from "@/lib/sales-page";
+import { CELL_NO, CELL_YES, MAX_COMPARE_ROWS, MAX_FIT_ITEMS, emptyBlock, parsePage, picturePaths, blocksFromTemplate } from "@/lib/sales-page";
 import { pageFacts } from "@/lib/page-facts";
 import { done, is, part } from "./check";
 
@@ -61,6 +61,21 @@ part("By the numbers");
   is("in German, with its own decimal comma", [german.length?.label, german.rating?.value], ["Minuten pro Gespräch", "4,7"]);
   const dated = pageFacts({ language: "en", locale: "en-US", product: { call: { kind: "live", minutes: 60 } }, bundleItems: null, sold: null, reviews: null });
   is("dated sessions, each with its own length, give no single length", dated.length, undefined);
+}
+
+part("A picture beside words");
+{
+  const pic = (n: string) => ({ path: `images/${"a".repeat(24)}/${n.repeat(32)}.webp`, width: 1200, height: 800, alt: "A screen", caption: "" });
+  const page = parsePage({ blocks: [
+    { id: "feat0001", kind: "feature", heading: "Lessons you can follow", body: "Short and clear.", picture: pic("b"), side: "right" },
+    { id: "pics0001", kind: "pictures", heading: "", items: [pic("b"), pic("c")] },
+    { id: "feat0002", kind: "feature", heading: "", body: "", picture: { path: "https://evil.example/x.png", width: 1, height: 1 }, side: "middle" },
+  ] });
+  const [one, pictures, two] = page.blocks;
+  is("kept, on the side chosen", one?.kind === "feature" ? [one.side, one.picture?.path.endsWith("b".repeat(32) + ".webp")] : null, ["right", true]);
+  is("a picture already beside words is not shown twice", pictures?.kind === "pictures" ? pictures.items.length : -1, 1);
+  is("anything that is not one of the store's own pictures is not a picture, and a side is left or right", two?.kind === "feature" ? [two.picture, two.side] : null, [null, "left"]);
+  is("its picture is one of the page's files, kept when the page is saved", picturePaths(page).length, 2);
 }
 
 part("Templates use them");

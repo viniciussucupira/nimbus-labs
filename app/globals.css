@@ -2465,6 +2465,37 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:check
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+/* A picture beside words: stacked on a phone, side by side once there is room, the picture on either side. */
+.sp-feature {
+  display: grid;
+  gap: 1.25rem;
+  align-items: center;
+}
+@container (min-width: 560px) {
+  .sp-feature-2 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2rem;
+  }
+  .sp-feature-right .sp-feature-picture {
+    order: 2;
+  }
+}
+.sp-feature-picture {
+  margin: 0;
+}
+.sp-feature-picture img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 1.25rem;
+  background: var(--st-item);
+  box-shadow:
+    0 0 0 1px var(--st-line),
+    0 18px 36px -28px rgba(11, 17, 25, 0.55);
+}
+.sp-feature-words {
+  min-width: 0;
+}
 /* Who it is for, and who it is not for: two lists side by side once there is room. */
 .sp-fit {
   display: grid;
