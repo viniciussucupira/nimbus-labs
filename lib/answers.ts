@@ -25,7 +25,7 @@ import { type Listing, type Store, isFree } from "@/lib/store";
 import { membershipPrice } from "@/lib/product-recurring";
 import { activePlan, planWords } from "@/lib/product-extras";
 import { activePwyw } from "@/lib/pay-what-you-want";
-import type { SalesPage } from "@/lib/sales-page";
+import { CELL_NO, CELL_YES, type SalesPage } from "@/lib/sales-page";
 import {
   ANSWERS_MONTHLY,
   ANSWER_KEPT_SECONDS,
@@ -128,6 +128,24 @@ export function factsFor(store: Store, product: Listing, about: string, page: Sa
         break;
       case "countdown":
         if (block.until && block.note) parts.push(`A deadline on the page: ${block.note} (${new Date(block.until * 1000).toUTCString()})`);
+        break;
+      case "fit":
+        if (block.yes.length) parts.push(`Who it is for, in the creator's words:\n${block.yes.map((item) => `- ${item}`).join("\n")}`);
+        if (block.no.length) parts.push(`Who it is NOT for, in the creator's words:\n${block.no.map((item) => `- ${item}`).join("\n")}`);
+        break;
+      case "steps":
+        if (block.items.length) parts.push(`${block.heading || "How it works"}, step by step:\n${block.items.map((item, i) => `${i + 1}. ${item.title}${item.detail ? `: ${item.detail}` : ""}`).join("\n")}`);
+        break;
+      case "bonuses":
+        if (block.items.length) parts.push(`Bonuses that come with it:\n${block.items.map((item) => `- ${item.title}${item.detail ? `: ${item.detail}` : ""}`).join("\n")}`);
+        break;
+      case "compare":
+        if (block.rows.length) {
+          const cell = (text: string) => (text === CELL_YES ? "yes" : text === CELL_NO ? "no" : text || "-");
+          parts.push(
+            `A comparison on the page, "${block.columnA || product.title}" against "${block.columnB || "another way"}":\n${block.rows.map((row) => `- ${row.label}: ${cell(row.a)} / ${cell(row.b)}`).join("\n")}`,
+          );
+        }
         break;
       default:
         break;

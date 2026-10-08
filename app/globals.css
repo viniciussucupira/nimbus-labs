@@ -2465,6 +2465,204 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:check
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+/* Who it is for, and who it is not for: two lists side by side once there is room. */
+.sp-fit {
+  display: grid;
+  gap: 0.875rem;
+}
+@container (min-width: 560px) {
+  .sp-fit-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.sp-fit-side {
+  padding: 1.25rem 1.25rem 1.35rem;
+  border-radius: 1.25rem;
+  background: var(--st-card);
+  border: 1px solid var(--st-line);
+}
+.sp-fit-yes {
+  background: var(--st-accent-soft);
+}
+.sp-fit-side ul {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.9rem;
+}
+.sp-fit-side li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  line-height: 1.4;
+}
+.sp-fit-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  margin-top: -0.05rem;
+}
+.sp-fit-yes .sp-fit-mark {
+  background: var(--st-card);
+  color: var(--st-accent-text);
+}
+.sp-fit-no .sp-fit-mark {
+  background: var(--st-item);
+  color: var(--st-muted);
+}
+/* How it works: numbered steps joined by a line, a path from paying to the result. */
+.sp-steps {
+  position: relative;
+  display: grid;
+  gap: 1.1rem;
+  counter-reset: step;
+}
+.sp-step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+.sp-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 1.125rem;
+  top: 2.5rem;
+  bottom: -1rem;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(var(--st-accent), transparent);
+  opacity: 0.45;
+}
+.sp-step-body {
+  min-width: 0;
+  padding-top: 0.35rem;
+}
+/* A comparison: the product's own column carries the accent. */
+.sp-compare {
+  overflow-x: auto;
+  border-radius: 1.25rem;
+  border: 1px solid var(--st-line);
+  background: var(--st-card);
+}
+.sp-compare table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+.sp-compare th,
+.sp-compare td {
+  padding: 0.8rem 0.9rem;
+  text-align: left;
+  vertical-align: middle;
+  border-top: 1px solid var(--st-line);
+}
+.sp-compare thead th {
+  border-top: 0;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.sp-compare tbody th {
+  font-weight: 600;
+}
+.sp-compare .sp-compare-ours {
+  background: var(--st-accent-soft);
+  text-align: center;
+}
+.sp-compare .sp-compare-other {
+  text-align: center;
+  color: var(--st-muted);
+}
+.sp-cell-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+}
+.sp-cell-yes {
+  background: var(--st-card);
+  color: var(--st-accent-text);
+}
+.sp-cell-no {
+  background: var(--st-item);
+  color: var(--st-muted);
+}
+/* Bonuses: each on its own card, numbered. */
+.sp-bonuses {
+  display: grid;
+  gap: 0.875rem;
+}
+@container (min-width: 560px) {
+  .sp-bonuses-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.sp-bonus {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: 1.25rem;
+  background: var(--st-card);
+  border: 1px dashed var(--st-accent);
+}
+.sp-bonus-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, var(--st-accent), var(--st-accent-2));
+  color: var(--st-on-accent);
+}
+.sp-bonus-number {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--st-accent-text);
+}
+/* By the numbers: big figures the store counted itself. */
+.sp-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@container (min-width: 560px) {
+  .sp-facts-3,
+  .sp-facts-4 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.sp-fact {
+  padding: 1.1rem 1rem;
+  border-radius: 1.25rem;
+  background: var(--st-card);
+  border: 1px solid var(--st-line);
+  text-align: center;
+}
+.sp-fact-value {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--st-accent-text);
+}
+.sp-fact-label {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--st-muted);
+}
 .sp-video {
   position: relative;
   aspect-ratio: 16 / 9;
