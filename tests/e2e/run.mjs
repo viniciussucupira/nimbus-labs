@@ -73,9 +73,12 @@ const env = {
 };
 
 let chromium;
+let axePath;
 try {
   const require = createRequire(join(root, "package.json"));
   ({ chromium } = require("playwright"));
+  // The accessibility rules most audits run (axe-core), from this project's own copy.
+  axePath = require.resolve("axe-core/axe.min.js");
 } catch {
   console.error("This needs Playwright on the machine (npm i -g playwright). Nothing was run.");
   process.exit(2);
@@ -698,6 +701,43 @@ try {
   is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);
   await open(page, `${LOCAL}/signin`);
   is("pressed Start your store: they say start", [await words(page.locator("h1")), await page.title()], ["Start your store", "Start your store — Marktmorgen"]);
+
+  part("No accessibility errors on what buyers see");
+  {
+    // A context of its own that lets the rules' script in past the pages'
+    // policy; the pages themselves are drawn exactly as for anyone else.
+    const audit = await browser.newContext({ viewport: { width: 430, height: 900 }, bypassCSP: true });
+    const reader = await audit.newPage();
+    const check = async (path, width) => {
+      if (width) await reader.setViewportSize({ width, height: 900 });
+      await reader.goto(`${LOCAL}${path}`, { waitUntil: "networkidle", timeout: 120_000 });
+      // Checked where it was meant to be, not on a page it was sent on to.
+      if (new URL(reader.url()).pathname !== path.split("?")[0]) return [`landed on ${new URL(reader.url()).pathname}`];
+      await reader.addScriptTag({ path: axePath });
+      const found = await reader.evaluate(async () => {
+        const result = await window.axe.run(document, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"] } });
+        const said = result.violations.map((v) => `${v.id} ×${v.nodes.length}: ${v.nodes[0]?.target.join(" ")} — ${v.nodes[0]?.failureSummary?.split("\n").slice(1, 2).join(" ").trim()}`);
+        // A page the rules found nothing to check on would pass for the wrong reason.
+        return result.passes.length >= 10 ? said : [`only ${result.passes.length} rules applied: the check did not run on the page`];
+      });
+      return found;
+    };
+    const pages = [
+      ["the store", "/@localshop", 0],
+      ["a sales page, on a phone", `/@localshop/p/${ids["Knife Skills"]}`, 0],
+      ["the same page, on a computer", `/@localshop/p/${ids["Knife Skills"]}`, 1200],
+      ["a page with reviews", `/@localshop/p/${ids["Sunday Baking"]}`, 430],
+      ["all of a product's reviews", `/@localshop/p/${ids["Sunday Baking"]}/reviews`, 0],
+      ["a product page without blocks", `/@localshop/p/${ids["Meal Planner"]}`, 0],
+      ["signing in", "/signin", 0],
+      // And what a creator works in, signed in as the store's owner.
+      ["the studio", "/studio", 1200],
+      ["the sales page editor", `/studio/pages?product=${ids["Knife Skills"]}`, 1200],
+    ];
+    await audit.addCookies(await wide.cookies());
+    for (const [name, path, width] of pages) is(name, await check(path, width), []);
+    await audit.close();
+  }
 
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);
