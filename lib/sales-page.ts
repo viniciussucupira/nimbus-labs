@@ -249,7 +249,22 @@ export type FactsBlock = { id: string; kind: "facts"; heading: string; show: Fac
  */
 export type FeatureBlock = { id: string; kind: "feature"; heading: string; body: string; picture: Picture | null; side: "left" | "right" };
 
-export type PageBlock =
+/**
+ * Where a block shows (added 8 October 2026): on every screen, which is
+ * left unsaid, or only on phones, or only on computers and tablets — a
+ * shorter list for a phone, a wide table only where it fits. The line
+ * between the two is the page's own width, 700 pixels, the same width at
+ * which the hero puts its picture beside the headline. The hero always
+ * shows: it carries the page's one main heading.
+ */
+export type BlockShow = "phone" | "computer";
+export const BLOCK_SHOWS: { value: BlockShow | "all"; label: string }[] = [
+  { value: "all", label: "Every screen" },
+  { value: "phone", label: "Phones only" },
+  { value: "computer", label: "Computers and tablets only" },
+];
+
+export type PageBlock = { screens?: BlockShow } & (
   | FeatureBlock
   | FitBlock
   | StepsBlock
@@ -267,7 +282,8 @@ export type PageBlock =
   | ReviewsBlock
   | VideoBlock
   | PicturesBlock
-  | CountdownBlock;
+  | CountdownBlock
+);
 
 export type SalesPage = {
   blocks: PageBlock[];
@@ -303,6 +319,24 @@ export type PageStyle = (typeof PAGE_STYLES)[number];
 /** Whether a section, the `index`-th shown below the hero, sits on a band. */
 export function onBand(style: PageStyle, index: number): boolean {
   return style === "bands" && index % 2 === 0;
+}
+
+/**
+ * Which of the sections shown sit on a band, counted apart for phones and
+ * for larger screens, so the bands still alternate on each when a block
+ * shows on only one of them.
+ */
+export function bandsOf(style: PageStyle, blocks: { screens?: BlockShow }[]): { phone: boolean; computer: boolean }[] {
+  let phone = 0;
+  let computer = 0;
+  return blocks.map((block) => {
+    const onPhone = block.screens !== "computer";
+    const onComputer = block.screens !== "phone";
+    const out = { phone: onPhone && onBand(style, phone), computer: onComputer && onBand(style, computer) };
+    if (onPhone) phone += 1;
+    if (onComputer) computer += 1;
+    return out;
+  });
 }
 
 export type HeadlineTest = { id: string; headline: string; sub: string };
@@ -622,6 +656,8 @@ export function parsePage(raw: unknown): SalesPage {
     for (const entry of value.blocks.slice(0, MAX_BLOCKS * 2)) {
       const block = parseBlock(entry);
       if (!block || seen.has(block.id)) continue;
+      const screens = (entry as { screens?: unknown }).screens;
+      if (block.kind !== "hero" && (screens === "phone" || screens === "computer")) block.screens = screens;
       if (block.kind === "hero" && blocks.length > 0) continue;
       if (block.kind === "reviews") {
         if (reviews) continue;

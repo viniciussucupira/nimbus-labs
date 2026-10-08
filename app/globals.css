@@ -2281,18 +2281,37 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:check
 }
 /* The page's style (lib/sales-page.ts, PageStyle), on .sp-body. Each block
    below the hero sits in a .sp-block. "bands": every other section on a
-   faint wash of the store's colour (.sp-band), whose contrast with the text,
+   faint wash of the store's colour (.sp-band-phone, .sp-band-computer), whose contrast with the text,
    the muted text and the links lib/store-look.ts has already checked.
    "cards": each section on a card of its own, with what was a card inside it
    moved to the item colour so it still stands out. */
 .sp-style-bands .sp-block > .sp-section {
   margin-top: 2.75rem;
 }
-.sp-style-bands .sp-band > .sp-section {
-  background: var(--st-band, var(--st-accent-soft));
-  border-radius: 1.75rem;
-  padding: 2.25rem 1.25rem;
-  margin-inline: -0.5rem;
+/* A band is counted apart for phones and for larger screens
+   (lib/sales-page.ts, bandsOf), so each is drawn only on its own side of
+   the page's 700-pixel line. */
+@container (max-width: 699.98px) {
+  .sp-style-bands .sp-band-phone > .sp-section {
+    background: var(--st-band, var(--st-accent-soft));
+    border-radius: 1.75rem;
+    padding: 2.25rem 1.25rem;
+    margin-inline: -0.5rem;
+  }
+  .sp-only-computer {
+    display: none;
+  }
+}
+@container (min-width: 700px) {
+  .sp-style-bands .sp-band-computer > .sp-section {
+    background: var(--st-band, var(--st-accent-soft));
+    border-radius: 1.75rem;
+    padding: 3rem 2.5rem;
+    margin-inline: -1.5rem;
+  }
+  .sp-only-phone {
+    display: none;
+  }
 }
 .sp-style-cards .sp-block > .sp-section {
   background: var(--st-card);
@@ -2308,16 +2327,12 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:check
   --st-card: var(--st-item);
 }
 @container (min-width: 700px) {
-  .sp-style-bands .sp-band > .sp-section {
-    padding: 3rem 2.5rem;
-    margin-inline: -1.5rem;
-  }
   .sp-style-cards .sp-block > .sp-section {
     padding: 2.25rem;
   }
 }
 @media (min-width: 1100px) {
-  .sp-wide.sp-style-bands .sp-band > .sp-section {
+  .sp-wide.sp-style-bands .sp-band-computer > .sp-section {
     margin-inline: -3rem;
     padding-inline: 3rem;
   }

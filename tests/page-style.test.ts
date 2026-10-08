@@ -13,7 +13,7 @@
  */
 import { readFileSync } from "node:fs";
 import { ACCENTS, THEMES, contrast, lookColours, lookStyle } from "@/lib/store-look";
-import { EMPTY_PAGE, PAGE_STYLES, copyOfPage, onBand, parsePage } from "@/lib/sales-page";
+import { EMPTY_PAGE, PAGE_STYLES, bandsOf, copyOfPage, onBand, parsePage } from "@/lib/sales-page";
 import { done, is, part } from "./check";
 
 async function main() {
@@ -32,6 +32,25 @@ async function main() {
   is("bands: first, third and fifth on a band", [0, 1, 2, 3, 4].map((i) => onBand("bands", i)), [true, false, true, false, true]);
   is("plain: none", [0, 1, 2].map((i) => onBand("plain", i)), [false, false, false]);
   is("cards: none", [0, 1, 2].map((i) => onBand("cards", i)), [false, false, false]);
+
+  part("Blocks kept to one kind of screen");
+  const kept = parsePage({
+    blocks: [
+      { id: "hero0001", kind: "hero", headline: "Bread", sub: "", media: "none", video: null, screens: "phone" },
+      { id: "text0001", kind: "text", heading: "A", body: "a", screens: "phone" },
+      { id: "text0002", kind: "text", heading: "B", body: "b", screens: "computer" },
+      { id: "text0003", kind: "text", heading: "C", body: "c", screens: "tv" },
+    ],
+  });
+  is("phones, computers, or every screen when unsaid or unknown", kept.blocks.map((b) => b.screens ?? "all"), ["all", "phone", "computer", "all"]);
+  is("the hero always shows: it carries the page's heading", kept.blocks[0].screens, undefined);
+  const mixed = [{}, { screens: "phone" as const }, { screens: "computer" as const }, {}, {}];
+  is("bands alternate on what phones show", bandsOf("bands", mixed).map((b) => b.phone), [true, false, false, true, false]);
+  is("and apart, on what computers show", bandsOf("bands", mixed).map((b) => b.computer), [true, false, false, true, false]);
+  is("a block not shown on a screen is never a band there", [bandsOf("bands", [{ screens: "computer" }])[0].phone, bandsOf("bands", [{ screens: "phone" }])[0].computer], [false, false]);
+  is("no bands outside the bands style", bandsOf("cards", mixed).some((b) => b.phone || b.computer), false);
+  const css2 = readFileSync("app/globals.css", "utf8");
+  is("each is hidden on the other side of the page's 700-pixel line", [/@container \(max-width: 699\.98px\) \{[^@]*\.sp-only-computer \{\s*display: none;/.test(css2), /@container \(min-width: 700px\) \{[^@]*\.sp-only-phone \{\s*display: none;/.test(css2)], [true, true]);
 
   part("The band reads, in every look");
   const accents = [...ACCENTS.map((a) => a.hex), "#ffff00", "#00ffff", "#ffffff", "#000000", "#7f7f7f", "#ff00ff"];
@@ -55,7 +74,7 @@ async function main() {
 
   part("The stylesheet draws each style");
   const css = readFileSync("app/globals.css", "utf8");
-  is("bands are drawn", css.includes(".sp-style-bands .sp-band > .sp-section"), true);
+  is("bands are drawn, on phones and on larger screens", [css.includes(".sp-style-bands .sp-band-phone > .sp-section"), css.includes(".sp-style-bands .sp-band-computer > .sp-section")], [true, true]);
   is("cards are drawn", css.includes(".sp-style-cards .sp-block > .sp-section"), true);
   const page = readFileSync("app/[handle]/p/[product]/page.tsx", "utf8");
   is("the live page carries its style", page.includes("sp-style-${page.style}"), true);

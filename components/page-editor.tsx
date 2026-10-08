@@ -59,6 +59,7 @@ import {
   type CompareRow,
   type FactKey,
   PAGE_STYLES,
+  BLOCK_SHOWS,
   MAX_PICKED_REVIEWS,
   PAGE_TEMPLATES,
   type PageStyle,
@@ -1399,6 +1400,7 @@ export function PageEditor({
                     >
                       <span className="text-sm font-semibold text-ink">{`${index + 1}. ${kindLabel(block.kind)}`}</span>
                       <span className="w-full truncate text-xs text-ink-soft">
+                        {block.screens === "phone" ? "Phones only · " : block.screens === "computer" ? "Computers and tablets only · " : ""}
                         {summaryLine(block)}
                         {reach && reach.visitors >= MIN_DEPTH_VISITORS && reach.shares[block.id] !== undefined
                           ? ` · ${reach.shares[block.id]}% of visitors reach it`
@@ -1448,6 +1450,42 @@ export function PageEditor({
                   {isOpen ? (
                     <div id={`panel-${block.id}`} className="border-t border-line p-4 sm:p-5">
                       {blockFields(draft, index)}
+                      {block.kind !== "hero" ? (
+                        <div className="mt-5 border-t border-line pt-4">
+                          <p className="field-label" id={`screens-${block.id}`}>
+                            Shows on
+                          </p>
+                          <div role="group" aria-labelledby={`screens-${block.id}`} className="flex flex-wrap gap-2">
+                            {BLOCK_SHOWS.map((option) => {
+                              const on = (block.screens ?? "all") === option.value;
+                              return (
+                                <button
+                                  key={option.value}
+                                  type="button"
+                                  aria-pressed={on}
+                                  onClick={() =>
+                                    setDrafts((all) =>
+                                      all.map((d, i) => {
+                                        if (i !== index) return d;
+                                        const next = { ...d.block } as PageBlock;
+                                        if (option.value === "all") delete next.screens;
+                                        else next.screens = option.value;
+                                        return { ...d, block: next };
+                                      }),
+                                    )
+                                  }
+                                  className={`inline-flex min-h-11 items-center rounded-full px-3 text-sm font-semibold ring-1 ${on ? "bg-lilac text-violet-ink ring-violet-brand/40" : "text-ink-soft ring-line"}`}
+                                >
+                                  {option.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="mt-1 text-xs text-ink-soft">
+                            A shorter list for phones, a wide table only where it fits. Preview at Phone or Wide width to see each.
+                          </p>
+                        </div>
+                      ) : null}
                       <BlockRewrite
                         key={block.id}
                         productId={product.id}

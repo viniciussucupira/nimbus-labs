@@ -514,7 +514,8 @@ try {
         { id: "step0001", kind: "steps", heading: "How it works", items: [{ title: "Pay", detail: "" }, { title: "Watch a lesson a day", detail: "Ten minutes each." }, { title: "Cook with confidence", detail: "" }] },
         { id: "comp0001", kind: "compare", heading: "Why a course", columnA: "Knife Skills", columnB: "", rows: [{ label: "Feedback on your grip", a: "\u2713", b: "\u2717" }, { label: "Time it takes", a: "Ten days", b: "Years" }] },
         { id: "bonu0001", kind: "bonuses", heading: "Also included", items: [{ title: "A sharpening chart", detail: "One page to keep by the board." }] },
-        { id: "feat0001", kind: "feature", heading: "Why it works", body: "Short lessons you can follow at the board.", picture: null, side: "right" },
+        { id: "feat0001", kind: "feature", heading: "Why it works", body: "Short lessons you can follow at the board.", picture: null, side: "right", screens: "phone" },
+        { id: "comp0002", kind: "compare", heading: "Side by side", columnA: "Knife Skills", columnB: "A video online", rows: [{ label: "A plan to follow", a: "\u2713", b: "\u2717" }], screens: "computer" },
         { id: "cta00001", kind: "cta", label: "", note: "" },
       ];
       const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null, style: "bands" } }) });
@@ -525,15 +526,28 @@ try {
     const main = await words(page.locator("main"));
     is("who it is for, with the heading written for the creator", [main.includes("This is for you if"), main.includes("You fear the knife"), main.includes("This is not for you if")], [true, true, true]);
     is("the steps, numbered", await page.locator(".sp-step").count(), 3);
-    is("the comparison, its other column named for the creator", [await page.locator(".sp-compare tbody tr").count(), main.includes("Another way")], [2, true]);
-    is("ticks and crosses spoken as yes and no", [await page.locator('.sp-compare [role="img"][aria-label="Yes"]').count(), await page.locator('.sp-compare [role="img"][aria-label="No"]').count()], [1, 1]);
+    is("the comparison, its other column named for the creator", [await page.locator('[data-block="comp0001"] .sp-compare tbody tr').count(), main.includes("Another way")], [2, true]);
+    is("ticks and crosses spoken as yes and no", [await page.locator('[data-block="comp0001"] .sp-compare [role="img"][aria-label="Yes"]').count(), await page.locator('[data-block="comp0001"] .sp-compare [role="img"][aria-label="No"]').count()], [1, 1]);
     is("the bonus on its card, numbered", [await page.locator(".sp-bonus").count(), /bonus 1/i.test(main)], [1, true]);
     is("no number is shown that the store has not counted", await page.locator(".sp-facts").count(), 0);
-    // Six sections show (the numbers block has none to show yet), so three bands.
-    is("set in bands: every other section shown, from the first", [await page.locator(".sp-style-bands").count(), await page.locator(".sp-band").count()], [1, 3]);
-    is("a band is painted, not see-through", await page.locator(".sp-band > .sp-section").first().evaluate((el) => getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)"), true);
+    // Six sections show on a phone (the numbers block has none to show yet), so three bands.
+    is("set in bands: every other section shown, from the first", [await page.locator(".sp-style-bands").count(), await page.locator(".sp-band-phone").count()], [1, 3]);
+    is("a band is painted, not see-through", await page.locator(".sp-band-phone > .sp-section").first().evaluate((el) => getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)"), true);
     is("words beside a picture, with no picture yet: the words alone", [await page.locator(".sp-feature").count(), await page.locator(".sp-feature-picture").count(), main.includes("Short lessons you can follow at the board.")], [1, 0, true]);
+    // This browser is phone-wide; the same page is then read at a computer's width.
+    is("on a phone: the block kept to phones shows, the wide table does not", [await page.locator(".sp-only-phone").isVisible(), await page.locator(".sp-only-computer").isVisible()], [true, false]);
     if (process.env.E2E_SHOTS) await page.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "new-blocks.png") });
+    const narrow = page.viewportSize();
+    await page.setViewportSize({ width: 1200, height: 900 });
+    is("on a computer: the other way round", [await page.locator(".sp-only-phone").isVisible(), await page.locator(".sp-only-computer").isVisible()], [false, true]);
+    // Six sections on each screen: the bands alternate on what each one shows.
+    is("bands counted apart for each screen, each painted on its own", [
+      await page.locator(".sp-band-phone").count(),
+      await page.locator(".sp-band-computer").count(),
+      await page.locator(".sp-band-computer > .sp-section").last().evaluate((el) => getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)"),
+    ], [3, 3, true]);
+    if (process.env.E2E_SHOTS) await page.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "new-blocks-wide.png") });
+    await page.setViewportSize(narrow);
   }
 
   part("The page coach in the studio");
@@ -557,7 +571,7 @@ try {
     is("the saved style is the one pressed", await picker.getByRole("button", { name: /^Bands/ }).getAttribute("aria-pressed"), "true");
     await studio.getByRole("button", { name: "Preview", exact: true }).click();
     await studio.getByRole("group", { name: "Page style" }).getByRole("button", { name: "Cards", exact: true }).click();
-    is("the preview redraws in cards, before anything is saved", [await studio.locator(".sp-style-cards").count(), await studio.locator(".sp-band").count()], [1, 0]);
+    is("the preview redraws in cards, before anything is saved", [await studio.locator(".sp-style-cards").count(), await studio.locator("[class*='sp-band-']").count()], [1, 0]);
     is("and the change waits to be saved", await studio.getByRole("button", { name: "Save the page" }).isEnabled(), true);
     await studio.getByRole("button", { name: "Save the page" }).click();
     await studio.getByText("Page saved.").first().waitFor({ timeout: 15_000 });
@@ -582,20 +596,22 @@ try {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
     const blocks = studio.locator("ol > li");
     const before = await blocks.count();
-    await studio.getByRole("button", { name: "Add a block after block 2" }).click();
-    const gallery = studio.getByRole("region", { name: "Add a block after block 2" });
+    await studio.getByRole("button", { name: "Add a block after block 2", exact: true }).click();
+    const gallery = studio.getByRole("region", { name: "Add a block after block 2", exact: true });
     is("a gallery opens there, with a box to find one", [await gallery.count(), await gallery.getByRole("searchbox").evaluate((el) => el === document.activeElement)], [1, true]);
     await gallery.getByRole("searchbox").fill("questions");
     is("finding narrows it", await gallery.getByRole("button", { name: /^Questions/ }).count(), 1);
     await gallery.getByRole("button", { name: /^Questions/ }).click();
     is("the block goes third, open to fill in", [await blocks.count(), (await words(blocks.nth(2))).startsWith("3. Questions"), await studio.locator("#block-find").count()], [before + 1, true, 0]);
+    await studio.getByRole("group", { name: "Shows on" }).getByRole("button", { name: "Phones only" }).click();
+    is("a block can be kept to phones, and its row says so", (await words(blocks.nth(2))).includes("Phones only · "), true);
     await studio.getByRole("button", { name: /^Add a block \(/ }).click();
     await studio.getByRole("region", { name: "Add a block at the end" }).getByRole("button", { name: /^Button/ }).click();
     is("and one at the end goes last", (await words(blocks.last())).includes(`${before + 2}. Button`), true);
     if (process.env.E2E_SHOTS) {
       await studio.locator("ol").first().screenshot({ path: join(process.env.E2E_SHOTS, "block-list.png") });
-      await studio.getByRole("button", { name: "Add a block after block 1" }).click();
-      await studio.getByRole("region", { name: "Add a block after block 1" }).screenshot({ path: join(process.env.E2E_SHOTS, "block-gallery.png") });
+      await studio.getByRole("button", { name: "Add a block after block 1", exact: true }).click();
+      await studio.getByRole("region", { name: "Add a block after block 1", exact: true }).screenshot({ path: join(process.env.E2E_SHOTS, "block-gallery.png") });
     }
   }
 

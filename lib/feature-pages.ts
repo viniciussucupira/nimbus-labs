@@ -1472,6 +1472,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What a page is built from",
         items: [
           { icon: "plus", title: "A gallery of blocks", body: "Every block with its icon and what it is for, grouped by what it does on the page, with a box to find one by name. Add it at the end or right between two blocks, where it goes." },
+          { icon: "phone", title: "Phones, or computers", body: "Keep any block to phones only, or to computers and tablets only: a shorter list where the screen is small, a wide table where it fits. The preview shows each width." },
           { icon: "history", title: "Earlier versions", body: "The page as it was before each of your last five saves, kept for 30 days. Load one into the editor, look it over, and save it to put it back live. Duplicate any block to start the next one from it." },
           { icon: "layout", title: "Three page styles", body: "Plain, bands or cards: every other section on a soft wash of your store's color, or each section on a card of its own. Switch in the preview and see the page redraw before you save. The colors are checked so every line still reads." },
           { icon: "type", title: "Hero", body: "A headline of up to 120 characters and a line under it, beside the product's picture or a video." },
