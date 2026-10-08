@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   if (!store) return new Response("No such store.", { status: 404 });
   const away = (path: string) => new Response(null, { status: 303, headers: { Location: `${origin}${path}`, "Cache-Control": "no-store" } });
   const order = await readOrder(store, sessionId);
-  if (order.state !== "paid" || order.gift || !order.product.podcast || !order.email || order.membership === "ended") return away(`/@${store.handle}`);
+  if (order.state !== "paid" || order.gift || order.group || !order.product.podcast || !order.email || order.membership === "ended") return away(`/@${store.handle}`);
   const token = await feedToken(store, order.product.id, order.email);
   if (!token) return away(`/@${store.handle}/podcast/${order.product.id}?status=error`);
   return away(`/@${store.handle}/podcast/${order.product.id}?t=${token}`);

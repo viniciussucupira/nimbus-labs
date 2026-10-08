@@ -10,6 +10,7 @@ import { paypalReady, takenBy } from "@/lib/paypal-sales";
 import { salePrice } from "@/lib/store-sale";
 import { isSoon } from "@/lib/waitlist";
 import { canGift } from "@/lib/gift-rules";
+import { canGroup } from "@/lib/group-rules";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -39,7 +40,7 @@ import { SITE_URL } from "@/lib/site-url";
 import { EMPTY_PAGE, type SalesPage } from "@/lib/sales-page";
 import { readPage } from "@/lib/sales-page-store";
 import { type Summary, REVIEWS_ON_PAGE, average, showsRating, summaryOf, visibleReviews } from "@/lib/reviews";
-import { BuyBox, GiftBox, PriceTag, ProductFacts, offNow, pageAction, productPath } from "@/components/store-product";
+import { BuyBox, GiftBox, GroupBox, PriceTag, ProductFacts, offNow, pageAction, productPath } from "@/components/store-product";
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { StoreTracking } from "@/components/store-tracking";
@@ -242,6 +243,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const soon = await isSoon(store, product.id).catch(() => false);
   const query = searchParams ? await searchParams : {};
   const giftProblem = typeof query.gift === "string" ? query.gift : "";
+  const groupProblem = typeof query.group === "string" ? query.group : "";
   // Asked of the store, as on the store page (lib/house-store.ts).
   const rehearsal = selling && sellsInTestMode(store);
   const [about, stock, noKeys, page, summary, related, inside, soldCounts] = await Promise.all([
@@ -294,6 +296,8 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const remaining = count !== null && canSellProduct(store, product) ? count : null;
   // Bought for somebody else, where it can be: on sale, not coming soon, not sold out (lib/gift-rules.ts).
   const giftable = selling && !soon && remaining !== 0 && bundleReady && canSellProduct(store, product) && canGift(product);
+  // And for several people at once, where a gift can be and nothing is limited (lib/group-rules.ts).
+  const groupable = selling && !soon && bundleReady && canSellProduct(store, product) && canGroup(product);
   const plan = activePlan(product);
   const pwyw = activePwyw(product);
   const description = page.seoDescription || product.summary || aboutExcerpt(about) || product.title;
@@ -357,6 +361,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       ) : null}
       <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} />
       {giftable ? <GiftBox store={store} product={product} problem={giftProblem} /> : null}
+      {groupable ? <GroupBox store={store} product={product} problem={groupProblem} /> : null}
       {product.recurring && canManage(store) ? (
         <p className="mt-3 text-center text-sm">
           <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">

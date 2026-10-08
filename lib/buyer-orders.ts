@@ -25,6 +25,7 @@
 import { currentMeta } from "@/lib/tier-rules";
 import { packageState, readBought } from "@/lib/call-packages";
 import { giftFrom } from "@/lib/gifts";
+import { isGroupJob } from "@/lib/group-buy";
 import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
@@ -118,6 +119,8 @@ export type Purchase = {
   bumpItems: PurchaseItems | null;
   /** Given as a gift (lib/gifts.ts): the name of whoever gave it, "someone" when they gave none. */
   giftFrom?: string | null;
+  /** A place in a purchase somebody made for several people (lib/group-buy.ts). */
+  place?: boolean;
   /** Paid for with PayPal, into the creator's own PayPal account (lib/paypal-sales.ts). */
   paidWith?: "paypal";
   /** A private podcast opens as a feed of the buyer's own (lib/podcast-access.ts). */
@@ -271,6 +274,8 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       if (meta.kind === "call") continue;
       // A gift is on its recipient's list, not its buyer's (lib/gifts.ts).
       if (meta.gift) continue;
+      // Bought for several: each place is on the list of whoever took it (lib/group-buy.ts).
+      if (meta.group) continue;
       // A package of calls: its sessions left, and the way to book them (lib/call-packages.ts).
       if (meta.kind === "package") {
         const bought = await readBought(id);
@@ -410,6 +415,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         reference,
         kind: "imported",
         giftFrom: await giftFrom(given.job),
+        ...(isGroupJob(given.job) ? { place: true } : {}),
         ...(given.job.startsWith("paypal:") ? { paidWith: "paypal" as const } : {}),
         podcastProduct,
         title: product.title,
@@ -522,8 +528,8 @@ export async function requestOrdersLink(input: {
 }
 
 /** Who charged what, in one sentence, for the email that sends the list of purchases. */
-export function chargedLine(name: string, purchases: Pick<Purchase, "kind" | "giftFrom" | "paidWith">[]): string {
-  const brought = purchases.some((p) => p.kind === "imported" && !p.giftFrom && !p.paidWith);
+export function chargedLine(name: string, purchases: Pick<Purchase, "kind" | "giftFrom" | "paidWith" | "place">[]): string {
+  const brought = purchases.some((p) => p.kind === "imported" && !p.giftFrom && !p.paidWith && !p.place);
   const paypal = purchases.some((p) => p.paidWith === "paypal");
   const where = paypal ? `on their own Stripe or PayPal account` : `on their own Stripe account`;
   return brought

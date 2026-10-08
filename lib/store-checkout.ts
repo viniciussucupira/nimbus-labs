@@ -10,6 +10,7 @@
 import { currentMeta } from "@/lib/tier-rules";
 import { saleOff } from "@/lib/store-sale";
 import { GIFT_ID } from "@/lib/gift-rules";
+import { GROUP_ID, canGroup, payable, peopleWords } from "@/lib/group-rules";
 import { commissionRate } from "@/lib/affiliate-setting";
 import { saleHandles } from "@/lib/store";
 import type { Listing, Product, Store } from "@/lib/store";
@@ -188,6 +189,12 @@ export async function createCheckout(
      */
     gift?: string;
     /**
+     * Bought for several people at once (lib/group-buy.ts): one payment of
+     * the price times that many, with nothing added at checkout and no offer
+     * after it, and one link that hands out the places.
+     */
+    group?: { id: string; people: number };
+    /**
      * A discount code that came in a link (lib/code-link.ts). Applied only as
      * the creator's own live promotion code, by Stripe; otherwise the box to
      * type one is shown as it always is.
@@ -196,7 +203,15 @@ export async function createCheckout(
   } = {},
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
-  if (extras.gift) extras = { ...extras, bump: false, plan: false, upsellKey: undefined };
+  if (extras.gift) extras = { ...extras, bump: false, plan: false, upsellKey: undefined, group: undefined };
+  if (extras.group) {
+    // Checked again here, where the charge is built: the number of people
+    // multiplies the price, so nothing reaches Stripe that the rules refuse.
+    if (!GROUP_ID.test(extras.group.id) || !canGroup(product) || !payable(product.priceCents, extras.group.people)) {
+      throw new Error("This cannot be bought for several people");
+    }
+    extras = { ...extras, bump: false, plan: false, upsellKey: undefined, buyerKey: undefined };
+  }
   // A call is booked for a time, through its own door, never bought blind.
   if (product.call) throw new Error("A call is booked, not bought directly");
 
@@ -222,6 +237,8 @@ export async function createCheckout(
   const priceCents = plan ? plan.amountCents : chosen ? chosen.priceCents : product.priceCents;
   const baseName = chosen ? `${product.title} (${chosen.label})` : product.title;
   const name = plan ? `${baseName} (${planWords(plan, store.currency)})` : baseName;
+  // Bought for several: the same price, that many times, on one line.
+  const people = extras.group ? extras.group.people : 1;
   // The buyer names the amount on Stripe's page, from the creator's floor up.
   // Only a single one-off line can carry that, which activePwyw has checked.
   const pwyw = !chosen && !plan && !membership ? activePwyw(product) : null;
@@ -231,7 +248,7 @@ export async function createCheckout(
     // In English, like every other page a buyer meets here, rather than in
     // whatever language Stripe guesses from the browser.
     locale: "en",
-    "line_items[0][quantity]": "1",
+    "line_items[0][quantity]": String(people),
     // The store's own currency (lib/money.ts): every amount saved in it is in
     // that currency's smallest unit, which is what Stripe counts in.
     "line_items[0][price_data][currency]": store.currency,
@@ -242,7 +259,7 @@ export async function createCheckout(
     // Kept on the charge itself so the order still says what was sold after
     // the creator renames or removes the product. Stripe's record outlives
     // ours, and the creator should not lose the history by tidying the store.
-    "metadata[title]": name.slice(0, 480),
+    "metadata[title]": (extras.group ? `${name} (for ${peopleWords(people)})` : name).slice(0, 480),
     success_url: `${origin}/@${store.handle}/thanks?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/@${store.handle}`,
   });
@@ -337,6 +354,11 @@ export async function createCheckout(
   if (extras.gift) {
     body.set("metadata[gift]", extras.gift);
     if (!recurring) body.set("payment_intent_data[metadata][gift]", extras.gift);
+  }
+  if (extras.group) {
+    body.set("metadata[group]", extras.group.id);
+    body.set("metadata[people]", String(people));
+    body.set("payment_intent_data[metadata][group]", extras.group.id);
   }
   if (extras.buyerKey && !extras.gift) body.set("metadata[buyer_key]", extras.buyerKey);
   if (extras.news) body.set("metadata[news]", "yes");
@@ -590,6 +612,11 @@ export type Order =
        * and nothing is handed over here. Null for an ordinary purchase.
        */
       gift: string | null;
+      /**
+       * Bought for several people (lib/group-buy.ts): its places are handed
+       * out from its own link, and nothing is handed over here. Null otherwise.
+       */
+      group: string | null;
       /** What it was charged in, as Stripe says: the store's currency when it was bought. */
       currency: string;
       /**
@@ -722,6 +749,7 @@ export async function readOrder(
     state: "paid",
     membership,
     gift: typeof metadata?.gift === "string" && GIFT_ID.test(metadata.gift) ? metadata.gift : null,
+    group: typeof metadata?.group === "string" && GROUP_ID.test(metadata.group) ? metadata.group : null,
     reference: sessionId,
     call,
     bump,

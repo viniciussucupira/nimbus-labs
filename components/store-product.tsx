@@ -15,6 +15,7 @@ import type { Summary } from "@/lib/review-summary";
 import { MIN_BUNDLE_ITEMS, worthWords } from "@/lib/bundle-rules";
 import { payPalPrice, paypalReady } from "@/lib/paypal-sales";
 import { comparable, startingOption } from "@/lib/product-option";
+import { DEFAULT_PEOPLE, MAX_PEOPLE, MIN_PEOPLE } from "@/lib/group-rules";
 
 /**
  * How many price options are drawn as cards before they become a list to pick
@@ -232,6 +233,58 @@ export function GiftBox({ store, product, problem = "" }: { store: Store; produc
         </button>
         <p className="st-muted text-xs">
           {`You pay on Stripe's page. Right after, they get one email from ${store.name} with your name, your message and a link to open it on their own address. You get the receipt, not a copy.`}
+        </p>
+      </form>
+    </details>
+  );
+}
+
+const GROUP_PROBLEMS: Record<string, string> = {
+  people: `Type how many people, from ${MIN_PEOPLE} to ${MAX_PEOPLE}. Nothing was charged.`,
+  amount: "That many at this price is more than one payment can carry. Try fewer people, or buy twice. Nothing was charged.",
+  product: "This can no longer be bought for several people.",
+  unavailable: "Buying for several people is not available right now. Nothing was charged.",
+};
+
+/**
+ * Buying a product for several people at once: how many, then Stripe's page
+ * as for anything else, and one link that hands out the places
+ * (lib/group-buy.ts). Folded away under the buy box, like the gift, because
+ * most buyers buy for themselves. The price shown is per person; the total
+ * is on Stripe's page before anything is paid.
+ */
+export function GroupBox({ store, product, problem = "" }: { store: Store; product: Listing; problem?: string }) {
+  const each = formatMoney(salePrice(product.priceCents, offNow(store, product)), store.currency);
+  return (
+    <details id="group" className="mt-4 scroll-mt-24 rounded-2xl px-4 py-3" style={{ border: "1px solid var(--st-line)" }} open={Boolean(problem)}>
+      <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold" style={{ color: "var(--st-text)" }}>
+        Buy it for a team
+      </summary>
+      <form action="/api/store/checkout" method="post" target="_top" className="mt-2 space-y-3 pb-1" data-checkout="">
+        <input type="hidden" name="handle" value={store.handle} />
+        <input type="hidden" name="product" value={product.id} />
+        {problem && GROUP_PROBLEMS[problem] ? (
+          <p className="st-note text-sm" role="alert">{GROUP_PROBLEMS[problem]}</p>
+        ) : null}
+        <label className="block">
+          <span className="st-label">How many people</span>
+          <input
+            className="st-field mt-2"
+            type="number"
+            name="people"
+            required
+            min={MIN_PEOPLE}
+            max={MAX_PEOPLE}
+            step={1}
+            defaultValue={DEFAULT_PEOPLE}
+            inputMode="numeric"
+          />
+        </label>
+        <button type="submit" className="btn st-btn btn-block">
+          {`Buy for your team — ${each} per person`}
+        </button>
+        <p className="st-muted text-xs">
+          {`You pay once on Stripe's page, where the total is shown before you pay. Right after, you get one link to pass on: each person opens it, types their own email and has it on their own address. You take a place the same way.`}
         </p>
       </form>
     </details>

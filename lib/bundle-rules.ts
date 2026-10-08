@@ -205,12 +205,16 @@ export function bundleFromMeta(meta: Record<string, string | undefined> | null |
  * Every product a checkout hands over, by id: the product bought, the one
  * ticked at checkout, and every product of either when it is a bundle, each
  * once. What refunds, reviews, keys, the community's door and courses read.
- * None for a gift, whose buyer is not its owner.
+ * None for a gift, whose buyer is not its owner, or for a purchase for several
+ * people, whose places are handed out from its own link.
  */
 export function deliveredIds(meta: Record<string, string | undefined> | null | undefined): string[] {
   // A gift hands over nothing to whoever paid: it is the recipient's
   // (lib/gifts.ts), written down under their own address.
   if (meta?.gift) return [];
+  // Bought for several: each place is written down under the address that
+  // took it (lib/group-buy.ts), the buyer's own included.
+  if (meta?.group) return [];
   const ids = [meta?.product, meta?.bump, ...bundleFromMeta(meta, "bundle"), ...bundleFromMeta(meta, "bump_bundle")];
   const out: string[] = [];
   for (const id of ids) if (typeof id === "string" && id && !out.includes(id)) out.push(id);

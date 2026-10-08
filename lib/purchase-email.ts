@@ -36,6 +36,7 @@
  */
 import { recordPackage } from "@/lib/call-packages";
 import { deliverGift } from "@/lib/gifts";
+import { resendGroupReceipt, settleGroup } from "@/lib/group-buy";
 import { ordersLinkFor } from "@/lib/buyer-orders";
 import { saleHandles } from "@/lib/store";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -374,7 +375,10 @@ export async function confirmPurchase(
   const listings = await listingsNamed(store, session.metadata);
   // Bought for somebody else: handed to them, and the buyer gets a receipt
   // that says so (lib/gifts.ts), instead of the usual confirmation.
-  if (session.metadata?.gift) return confirmGift(store, session, listings, key);
+  if (session.metadata?.gift) return confirmGift(store, session, key);
+  // Bought for several people: marked as paid, and the buyer gets a receipt
+  // with the link that hands out the places (lib/group-buy.ts).
+  if (session.metadata?.group) return confirmGroup(store, session, key);
   // A package of calls: written down, and its booking link emailed (lib/call-packages.ts).
   if (session.metadata?.kind === "package") {
     const product = listings.find((p) => p.id === session.metadata?.product);
@@ -416,11 +420,22 @@ export async function confirmPurchase(
   return sent ? "sent" : "failed";
 }
 
-async function confirmGift(store: Store, session: SessionRecord, listings: Listing[], key: string): Promise<ConfirmOutcome> {
+/**
+ * The product a checkout for somebody else names. Read by its own id, never
+ * from `listingsNamed`: that list is what the checkout hands to whoever paid
+ * (lib/bundle-rules.ts deliveredIds), which for a gift or a purchase for
+ * several people is nothing at all — and a gift looked for in it was never
+ * found, so it was paid for and never handed over.
+ */
+async function productFor(store: Store, meta: Record<string, string>): Promise<Listing | null> {
+  return meta.product ? readListing(store, meta.product) : null;
+}
+
+async function confirmGift(store: Store, session: SessionRecord, key: string): Promise<ConfirmOutcome> {
   if (!isSettled(session)) return "skip";
   const meta = session.metadata ?? {};
   if (!saleHandles(store).has(meta.store ?? "")) return "skip";
-  const product = listings.find((p) => p.id === meta.product);
+  const product = await productFor(store, meta);
   if (!product) return "skip";
   const base = storeBase(store);
   const outcome = await deliverGift({
@@ -437,6 +452,23 @@ async function confirmGift(store: Store, session: SessionRecord, listings: Listi
   });
   if (outcome !== "skip") await redisPipeline([["SET", key, "sent", "EX", SENT_MARK_SECONDS]]);
   return outcome === "given" ? "sent" : outcome === "already" ? "already" : "skip";
+}
+
+async function confirmGroup(store: Store, session: SessionRecord, key: string): Promise<ConfirmOutcome> {
+  if (!isSettled(session)) return "skip";
+  const meta = session.metadata ?? {};
+  if (!saleHandles(store).has(meta.store ?? "")) return "skip";
+  const product = await productFor(store, meta);
+  if (!product) return "skip";
+  const outcome = await settleGroup({
+    store,
+    session: session as Parameters<typeof settleGroup>[0]["session"],
+    product,
+    base: storeBase(store),
+    from: fromStore(store),
+  });
+  if (outcome !== "skip") await redisPipeline([["SET", key, "sent", "EX", SENT_MARK_SECONDS]]);
+  return outcome === "settled" ? "sent" : outcome === "already" ? "already" : "skip";
 }
 
 /** One offer taken in one click after paying, as Stripe charged it. */
@@ -602,6 +634,16 @@ export async function resendPurchase(store: Store, sessionId: string): Promise<R
   if (session.metadata?.kind === "call") return "call";
   if (await purchaseRefunded(store.stripeAccountId, session)) return "refunded";
   const created = typeof session.created === "number" ? session.created : 0;
+  // Bought for several people: the buyer's receipt, with the link that hands
+  // out the places (lib/group-buy.ts), is what there is to send again.
+  if (session.metadata?.group) {
+    const meta = session.metadata;
+    if (!isSettled(session) || !saleHandles(store).has(meta.store ?? "")) return "unknown";
+    const product = await productFor(store, meta);
+    if (!product) return "unknown";
+    const sent = await resendGroupReceipt({ store, session: session as Parameters<typeof resendGroupReceipt>[0]["session"], product, base: storeBase(store), from: fromStore(store) });
+    return sent ? "sent" : "failed";
+  }
   // Read by id, so a sale of any product of a store of any size is found.
   const listings = await listingsNamed(store, session.metadata);
   const letter = confirmationFor(store, session, created, await keysFor(store, session, listings), listings);

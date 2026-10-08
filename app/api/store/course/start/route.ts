@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
   }
 
   const order = await readOrder(store, sessionId);
-  if (order.state !== "paid" || order.gift) return away(`/@${store.handle}`);
+  if (order.state !== "paid" || order.gift || order.group) return away(`/@${store.handle}`);
   const inside = asked
     ? [...(order.items?.items ?? []), ...(order.bump?.items?.items ?? [])].find((p) => p.id === asked && p.course) ?? null
     : null;

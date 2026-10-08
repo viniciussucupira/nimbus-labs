@@ -255,6 +255,20 @@ export default function PrivacyPage() {
           given is kept under the recipient&apos;s address, like a purchase of
           their own.
         </p>
+        <p id="team-places">
+          <strong className="text-black">Bought for several people.</strong>{" "}
+          When somebody buys a product for several people, they get a link to
+          pass on. If you type your email address on the page it opens, we
+          email that address one link, and the address is kept for 24 hours
+          with it. If you open the link, we keep your address and when you
+          took your place, with the purchase, for about 13 months, so the
+          product can be opened on your address, shown on your list of
+          purchases and taken back if the payment is refunded. Nobody who
+          holds the link is shown who else took a place, only how many are
+          left; you are not added to the creator&apos;s list and receive
+          nothing else from it unless you ask. What you were given is kept
+          under your address, like a purchase of your own.
+        </p>
         <p id="waitlists">
           <strong className="text-black">Waitlists.</strong>{" "}
           When you join the waitlist for something a creator has not put on
