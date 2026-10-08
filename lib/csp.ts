@@ -55,6 +55,7 @@
 import { VIDEO_FRAME_ORIGINS } from "./sales-page";
 import { STREAM_API_ORIGIN, STREAM_PLAYER_ORIGIN } from "./stream-rules";
 import { VAULT_FILES } from "./vault-rules";
+import { REVEAL_HASHES } from "./reveal-scripts";
 
 /** Where the ad platforms' own scripts send what they measure. */
 const PIXEL_CONNECT = [
@@ -128,7 +129,9 @@ export function dynamicPolicy(nonce: string, options: { store?: boolean; room?: 
     ...(options.embed ? { "frame-ancestors": ["*"] } : {}),
     // 'self', https: and 'unsafe-inline' are only for browsers too old to
     // know nonces; every current one ignores them when a nonce is present.
-    "script-src": [`'nonce-${nonce}'`, "'strict-dynamic'", "'self'", "https:", "'unsafe-inline'", ...(dev() ? ["'unsafe-eval'"] : [])],
+    // The layout's two small scripts carry no nonce, and are allowed by their
+    // hashes instead (lib/reveal-scripts.ts).
+    "script-src": [`'nonce-${nonce}'`, ...REVEAL_HASHES, "'strict-dynamic'", "'self'", "https:", "'unsafe-inline'", ...(dev() ? ["'unsafe-eval'"] : [])],
     // The video service's own address is where the studio sends a lesson
     // video's pieces, and its player the one a lesson page frames
     // (lib/stream.ts); the player, like the other three, on a store's pages only.
@@ -150,7 +153,7 @@ export function isEventRoomPage(pathname: string): boolean {
  */
 export function roomPermissions(): string {
   const room = `"${ROOM_FRAME_ORIGIN}"`;
-  return `camera=(self ${room}), microphone=(self ${room}), display-capture=(self ${room}), fullscreen=(self ${room}), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), browsing-topics=()`;
+  return `camera=(self ${room}), microphone=(self ${room}), display-capture=(self ${room}), fullscreen=(self ${room}), geolocation=(), payment=(), usb=(), serial=(), hid=(), browsing-topics=()`;
 }
 
 /** Whether a page rendered per visit is a store's own page (under /@; the demo store's are among them). */

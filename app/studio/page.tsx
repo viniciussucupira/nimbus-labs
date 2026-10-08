@@ -53,6 +53,7 @@ import { AnswersEditor } from "@/components/answers-editor";
 import { answersAllowance, answersUsed, missedQuestions } from "@/lib/answers";
 import { readCards } from "@/lib/catalog";
 import { TaxEditor } from "@/components/tax-editor";
+import { StoreLanguageEditor } from "@/components/store-language-editor";
 import { RecoveryEditor } from "@/components/recovery-editor";
 import { ApiKeyEditor } from "@/components/api-key-editor";
 import { listKeys } from "@/lib/api-keys";
@@ -1203,6 +1204,8 @@ export default async function StudioPage({
                 })()}
 
                 <TaxEditor tax={store.tax} status={tax ? tax.state : "unknown"} connected={Boolean(current?.stripeAccountId)} />
+
+                {may("settings") ? <StoreLanguageEditor language={store.language} handle={store.handle} /> : null}
 
                 <RecoveryEditor
                   recovery={store.recovery}

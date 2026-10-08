@@ -161,7 +161,12 @@ try {
   const context = await browser.newContext({ viewport: { width: 430, height: 900 } });
   const page = await context.newPage();
   const errors = [];
+  // What a page's own security headers refused (lib/csp.ts): a script left without leave to run, a feature no browser knows.
+  const policyRefusals = [];
+  // A frame refused on purpose (the product page framed by another site, below) is the policy working, not a fault.
+  const watchPolicy = (target) => target.on("console", (m) => { if (/Content Security Policy|Permissions-Policy/.test(m.text()) && !/frame-ancestors/.test(m.text())) policyRefusals.push(m.text().slice(0, 200)); });
   page.on("pageerror", (error) => errors.push(String(error)));
+  watchPolicy(page);
   const open = (target, url) => target.goto(url, { waitUntil: "networkidle", timeout: 120_000 });
   const sectionsOn = (target) =>
     target.$$eval("main section[aria-label]", (all) => all.map((s) => [s.querySelector("h2")?.textContent ?? "", s.querySelectorAll("ul > li").length]));
@@ -260,6 +265,7 @@ try {
   await wide.addCookies([{ name: "nl_session", value: session, url: LOCAL }]);
   const studio = await wide.newPage();
   studio.on("pageerror", (error) => errors.push(String(error)));
+  watchPolicy(studio);
   await open(studio, `${LOCAL}/studio`);
   const card = studio.locator(".card", { has: studio.locator('p:text-is("Sections and news on your store")') });
   const headings = card.locator('input[placeholder="For example: Courses"]');
@@ -317,6 +323,7 @@ try {
   // The creator's blog: another address, holding the code exactly as copied.
   const site = await context.newPage();
   site.on("pageerror", (error) => errors.push(String(error)));
+  watchPolicy(site);
   await open(site, `${FAKE}/site?code=${encodeURIComponent(local(cardCode))}`);
   const framed = site.frameLocator("iframe");
   is("there, the card shows the product, its price and its button", [await words(framed.locator("h1")), await words(framed.locator(".st-price")), await words(framed.locator("button[type=submit]"))], ["Pantry Checklist", "$9", "Buy for $9"]);
@@ -355,6 +362,7 @@ try {
   await fits.close();
   is("in a frame of any height, the summary keeps whole lines and the button stays in view", shapes, Array(4).fill({ wholeLines: true, notCut: true, buttonInside: true }));
   tab.on("pageerror", (error) => errors.push(String(error)));
+  watchPolicy(tab);
   await tab.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 });
   is("the button opens the checkout in a new tab, and the blog stays as it was", [site.url().startsWith(FAKE), /\/@localshop\/thanks\?session_id=/.test(tab.url())], [true, true]);
   const sale = services.checkouts().at(-1);
@@ -381,6 +389,7 @@ try {
     const visit = await browser.newContext({ viewport: { width: 430, height: 900 }, extraHTTPHeaders: { "x-vercel-ip-country": country } });
     const there = await visit.newPage();
     there.on("pageerror", (error) => errors.push(String(error)));
+    watchPolicy(there);
     await open(there, `${LOCAL}/@localshop/p/${ids["Pantry Checklist"]}`);
     return { visit, there };
   };
@@ -456,12 +465,22 @@ try {
     await open(there, `${LOCAL}/@localshop/p/${ids["Pantry Checklist"]}`);
     await Promise.all([there.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), there.locator('#buy form[action="/api/store/checkout"] button[type=submit]').first().click()]);
     is("Stripe's page is asked to speak Spanish", services.checkouts().at(-1).locale, "es");
+    const thanks = await words(there.locator("main"));
+    is("the page after paying is in Spanish", /Gracias|Pagado|Este pedido|Volver a/.test(thanks), true);
+    is("with nothing on it left in English", /\b(Thank you|You bought|Back to|Download it|This order)\b/.test(thanks), false);
+    if (process.env.E2E_SHOTS) await there.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "spanish-thanks.png") });
+    await open(there, `${LOCAL}/@localshop/orders`);
+    is("the list of purchases speaks Spanish", await there.locator(".st-page[lang]").first().getAttribute("lang"), "es-ES");
     await visit.close();
   }
   is("and back to English", await setLanguage("en"), 200);
+  await open(studio, `${LOCAL}/studio`);
+  is("the studio has the card that picks it", await studio.locator("select#store-language").count(), 1);
+  is("showing the language the store speaks", await studio.locator("select#store-language").inputValue(), "en");
 
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);
+  is("and no page's own policy refused anything on it", [...new Set(policyRefusals)], []);
   is("nothing was asked of a service with no stand-in", services.unknown(), []);
 } catch (error) {
   failed += 1;

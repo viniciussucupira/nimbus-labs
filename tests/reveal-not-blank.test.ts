@@ -22,6 +22,8 @@ import { join } from "node:path";
 
 const layout = readFileSync(join(process.cwd(), "app/layout.tsx"), "utf8");
 const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+// The two scripts themselves live beside their hashes (lib/reveal-scripts.ts); the layout writes them.
+const scripts = readFileSync(join(process.cwd(), "lib/reveal-scripts.ts"), "utf8");
 
 test("nothing is hidden unless a script is there to show it again", () => {
   // The stylesheet may only hide behind the attribute, never on .reveal itself.
@@ -41,15 +43,17 @@ test("nothing is hidden unless a script is there to show it again", () => {
 
 test("the observer starts in the document, not in a React effect", () => {
   assert.match(
-    layout,
+    scripts,
     /new IntersectionObserver/,
     "app/layout.tsx should start the reveal observer in plain script; without it " +
       "every section stays hidden until the bundle hydrates.",
   );
   // The first script only asks whether the browser HAS an IntersectionObserver;
   // the one that matters is where it makes one.
-  const hide = layout.indexOf('setAttribute("data-reveal"');
-  const show = layout.indexOf("new IntersectionObserver");
+  assert.match(scripts, /REVEAL_ON = [^;]*setAttribute\("data-reveal","on"\)/, "the first script is the one that hides them");
+  assert.match(scripts, /REVEAL_WATCH =[\s\S]*new IntersectionObserver/, "the second is the one that shows them");
+  const hide = layout.indexOf("__html: REVEAL_ON");
+  const show = layout.indexOf("__html: REVEAL_WATCH");
   assert.ok(hide > -1 && show > hide, "the script that shows sections must come after the one that hides them");
   assert.ok(
     show > layout.indexOf("{children}"),
@@ -59,7 +63,7 @@ test("the observer starts in the document, not in a React effect", () => {
 
 test("whatever is already on screen is shown without waiting to be observed", () => {
   assert.match(
-    layout,
+    scripts,
     /getBoundingClientRect\(\)\.top</,
     "the script should show in-view sections straight away rather than leaving the " +
       "first screen to the observer",
@@ -68,7 +72,7 @@ test("whatever is already on screen is shown without waiting to be observed", ()
 
 test("a throw anywhere in it un-hides the page", () => {
   assert.match(
-    layout,
+    scripts,
     /catch\(e\)\{try\{document\.documentElement\.removeAttribute\("data-reveal"\)/,
     "if the reveal script fails it must take the attribute off, so the page is simply all there",
   );

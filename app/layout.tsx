@@ -5,6 +5,7 @@ import { SiteData } from "@/components/structured-data";
 import { Toaster } from "@/components/toast";
 import { SITE_URL } from "@/lib/site-url";
 import { SITE_OG_IMAGE } from "@/lib/site-og";
+import { REVEAL_ON, REVEAL_WATCH } from "@/lib/reveal-scripts";
 
 /* Two faces, both served from our own domain so the page never waits on
    fonts.googleapis.com: Geist for everything a person reads or clicks, and an
@@ -114,8 +115,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html:
-              'try{if(window.IntersectionObserver&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches){document.documentElement.setAttribute("data-reveal","on")}}catch(e){}',
+            __html: REVEAL_ON,
           }}
         />
         {children}
@@ -144,17 +144,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         */}
         <script
           dangerouslySetInnerHTML={{
-            __html:
-              '(function(){try{var d=document,r=d.documentElement;' +
-              'if(r.getAttribute("data-reveal")!=="on")return;' +
-              'var n=d.querySelectorAll(".reveal");if(!n.length)return;' +
-              'var o=new IntersectionObserver(function(e){e.forEach(function(x){' +
-              'if(x.isIntersecting){x.target.classList.add("is-in");o.unobserve(x.target)}})},' +
-              '{rootMargin:"0px 0px -6% 0px",threshold:0.1});' +
-              'var h=window.innerHeight||0,i;' +
-              'for(i=0;i<n.length;i++){' +
-              'if(n[i].getBoundingClientRect().top<h){n[i].classList.add("is-in")}else{o.observe(n[i])}}' +
-              '}catch(e){try{document.documentElement.removeAttribute("data-reveal")}catch(_){}}})()',
+            __html: REVEAL_WATCH,
           }}
         />
         <Toaster />
