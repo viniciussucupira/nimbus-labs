@@ -109,6 +109,7 @@ const KIND_ICONS: Record<BlockKind, IconName> = {
   compare: "scale",
   bonuses: "gift",
   facts: "chart",
+  feature: "layout",
 };
 
 /** A moment in seconds as the date-and-time field holds it, in the creator's own time zone. */
@@ -737,7 +738,7 @@ export function PageEditor({
         );
       }
       case "pictures": {
-        const elsewhere = drafts.reduce((n, d, i) => (i !== index && d.block.kind === "pictures" ? n + d.block.items.length : n), 0);
+        const elsewhere = drafts.reduce((n, d, i) => (i !== index ? n + (d.block.kind === "pictures" ? d.block.items.length : d.block.kind === "feature" && d.block.picture ? 1 : 0) : n), 0);
         return (
           <div className="space-y-4">
             {field(`${base}-h`, "Heading (optional)", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} placeholder="A look inside" onChange={(e) => change(index, { heading: e.target.value })} />)}
@@ -779,6 +780,40 @@ export function PageEditor({
               counter(block.note, MAX_COUNTDOWN_NOTE),
             )}
             <p className="text-xs text-ink-soft">Buyers read this as a promise. Count down only to a moment after which something really changes: a sale that ends, doors that close, a session that starts.</p>
+          </div>
+        );
+      }
+      case "feature": {
+        const elsewhere = drafts.reduce((n, d, i) => (i !== index ? n + (d.block.kind === "pictures" ? d.block.items.length : d.block.kind === "feature" && d.block.picture ? 1 : 0) : n), 0);
+        return (
+          <div className="space-y-4">
+            {field(`${base}-h`, "Heading", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} placeholder="What this part of it does for them" onChange={(e) => change(index, { heading: e.target.value })} />)}
+            {field(
+              `${base}-b`,
+              "Text",
+              <textarea id={`${base}-b`} className="field" rows={5} maxLength={MAX_TEXT} value={block.body} placeholder="A blank line starts a new paragraph. A line starting with “- ” is a point in a list." onChange={(e) => change(index, { body: e.target.value })} />,
+              counter(block.body, MAX_TEXT),
+            )}
+            <PicturesEditor
+              base={base}
+              productId={product.id}
+              folder={folder}
+              items={block.picture ? [block.picture] : []}
+              room={Math.min(1, MAX_PAGE_PICTURES - elsewhere)}
+              onChange={(items) => change(index, { picture: items[0] ?? null })}
+            />
+            <fieldset>
+              <legend className="field-label">The picture goes</legend>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {(["left", "right"] as const).map((side) => (
+                  <label key={side} className={`flex min-h-[44px] cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-semibold ring-1 focus-within:ring-2 focus-within:ring-violet-brand ${block.side === side ? "bg-lilac text-violet-ink ring-violet-brand/40" : "text-ink-soft ring-line"}`}>
+                    <input type="radio" name={`${base}-side`} className="sr-only" checked={block.side === side} onChange={() => change(index, { side })} />
+                    {side === "left" ? "On the left" : "On the right"}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-ink-soft">On a phone the picture is always above the words. Alternating sides down the page reads like a story.</p>
+            </fieldset>
           </div>
         );
       }
@@ -927,6 +962,8 @@ export function PageEditor({
         return `${block.heading ? `${block.heading} · ` : ""}${block.items.length} ${block.kind === "steps" ? (block.items.length === 1 ? "step" : "steps") : block.items.length === 1 ? "bonus" : "bonuses"}`;
       case "compare":
         return `${block.heading ? `${block.heading} · ` : ""}${block.rows.length} ${block.rows.length === 1 ? "row" : "rows"}`;
+      case "feature":
+        return block.heading || (block.body ? block.body.slice(0, 60) : block.picture ? "A picture, no words yet" : "Empty");
       case "facts": {
         const live = block.show.filter((key) => facts[key]).length;
         return `${block.heading ? `${block.heading} · ` : ""}${live} ${live === 1 ? "number" : "numbers"} shown now`;

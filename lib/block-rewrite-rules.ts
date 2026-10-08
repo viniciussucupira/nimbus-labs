@@ -26,7 +26,7 @@ export const REWRITE_STYLES: { id: RewriteStyle; label: string; ask: string }[] 
 ];
 
 /** The blocks it can rewrite: those made of the creator's words. */
-export const REWRITABLE: BlockKind[] = ["hero", "text", "benefits", "inside", "steps", "bonuses", "fit", "faq", "guarantee", "bio", "cta"];
+export const REWRITABLE: BlockKind[] = ["hero", "text", "feature", "benefits", "inside", "steps", "bonuses", "fit", "faq", "guarantee", "bio", "cta"];
 
 export function isRewriteStyle(value: unknown): value is RewriteStyle {
   return REWRITE_STYLES.some((s) => s.id === value);
@@ -43,6 +43,7 @@ export function blockText(block: PageBlock): string {
     case "hero":
       return `${block.headline}\n${block.sub}`;
     case "text":
+    case "feature":
     case "guarantee":
     case "bio":
       return `${block.heading}\n${block.body}`;

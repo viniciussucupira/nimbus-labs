@@ -95,7 +95,8 @@ export type BlockKind =
   | "steps"
   | "compare"
   | "bonuses"
-  | "facts";
+  | "facts"
+  | "feature";
 
 export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "hero", label: "Hero", hint: "The big headline at the top, with the product's picture or a video." },
@@ -114,6 +115,7 @@ export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "steps", label: "How it works", hint: `Up to ${MAX_STEPS} numbered steps, from paying to the result, drawn as a path.` },
   { kind: "compare", label: "Comparison", hint: `A table of up to ${MAX_COMPARE_ROWS} rows: this product beside another way of getting there, with ticks, crosses or a few words.` },
   { kind: "bonuses", label: "Bonuses", hint: `Up to ${MAX_BONUSES} extras that come with it, each on its own card.` },
+  { kind: "feature", label: "Picture and text", hint: "One of your pictures beside a heading and a few paragraphs, the picture on the left or the right. Several in a row make the page read like a story." },
   { kind: "facts", label: "By the numbers", hint: "Lessons, episodes, buyers, the average rating: counted for you from the store, never typed, and always up to date." },
 ];
 
@@ -227,7 +229,17 @@ export const FACT_KEYS: { key: FactKey; label: string; hint: string }[] = [
 ];
 export type FactsBlock = { id: string; kind: "facts"; heading: string; show: FactKey[] };
 
+/**
+ * A picture beside words (added 8 October 2026): the section Kajabi's and
+ * Hotmart Pages' templates are mostly made of — a screen of the course and
+ * what it teaches, a page of the book and why it is there. The picture is one
+ * of the creator's own, kept like a pictures block's, and counted with them
+ * toward the page's pictures.
+ */
+export type FeatureBlock = { id: string; kind: "feature"; heading: string; body: string; picture: Picture | null; side: "left" | "right" };
+
 export type PageBlock =
+  | FeatureBlock
   | FitBlock
   | StepsBlock
   | CompareBlock
@@ -429,12 +441,18 @@ function parseUntil(raw: unknown): number {
   return typeof raw === "number" && Number.isInteger(raw) && raw > 1_600_000_000 && raw < 4_102_444_800 ? raw : 0;
 }
 
+/** The pictures one block shows: a pictures block's, or a picture beside words. */
+export function picturesOf(block: PageBlock): Picture[] {
+  if (block.kind === "pictures") return block.items;
+  if (block.kind === "feature" && block.picture) return [block.picture];
+  return [];
+}
+
 /** Every picture file a page shows, each once: what is kept when the page is saved, and deleted when it is not. */
 export function picturePaths(page: Pick<SalesPage, "blocks">): string[] {
   const out: string[] = [];
   for (const block of page.blocks) {
-    if (block.kind !== "pictures") continue;
-    for (const picture of block.items) if (!out.includes(picture.path)) out.push(picture.path);
+    for (const picture of picturesOf(block)) if (!out.includes(picture.path)) out.push(picture.path);
   }
   return out;
 }
@@ -543,6 +561,8 @@ function parseBlock(raw: unknown): PageBlock | null {
         : [];
       return { id, kind: "compare", heading, columnA: line(value.columnA, MAX_COLUMN), columnB: line(value.columnB, MAX_COLUMN), rows };
     }
+    case "feature":
+      return { id, kind: "feature", heading, body: lines(value.body, MAX_TEXT), picture: parsePicture(value.picture), side: value.side === "right" ? "right" : "left" };
     case "facts": {
       const known = new Set(FACT_KEYS.map((f) => f.key));
       const show = Array.isArray(value.show)
@@ -581,6 +601,10 @@ export function parsePage(raw: unknown): SalesPage {
       if (block.kind === "pictures") {
         block.items = block.items.filter((picture) => !shown.has(picture.path)).slice(0, Math.max(0, MAX_PAGE_PICTURES - shown.size));
         for (const picture of block.items) shown.add(picture.path);
+      }
+      if (block.kind === "feature" && block.picture) {
+        if (shown.has(block.picture.path) || shown.size >= MAX_PAGE_PICTURES) block.picture = null;
+        else shown.add(block.picture.path);
       }
       seen.add(block.id);
       blocks.push(block);
@@ -635,7 +659,9 @@ export function pageProblem(raw: { blocks?: unknown }, parsed: SalesPage): PageP
   }
   // A picture sent that was not kept: not a picture, a second copy of one, or past what a page holds.
   const sentPictures = sent.reduce<number>((n, b) => {
-    const items = b && typeof b === "object" && (b as { kind?: unknown }).kind === "pictures" ? (b as { items?: unknown }).items : null;
+    const value = b && typeof b === "object" ? (b as { kind?: unknown; items?: unknown; picture?: unknown }) : {};
+    if (value.kind === "feature") return n + (value.picture ? 1 : 0);
+    const items = value.kind === "pictures" ? value.items : null;
     return n + (Array.isArray(items) ? items.length : 0);
   }, 0);
   if (sentPictures !== picturePaths(parsed).length) return "pictures";
@@ -681,6 +707,8 @@ export function emptyBlock(kind: BlockKind, id = newBlockId()): PageBlock {
       return { id, kind, heading: "Also included", items: [] };
     case "facts":
       return { id, kind, heading: "", show: FACT_KEYS.map((f) => f.key) };
+    case "feature":
+      return { id, kind, heading: "", body: "", picture: null, side: "left" };
   }
 }
 

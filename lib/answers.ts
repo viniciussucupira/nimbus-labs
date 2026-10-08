@@ -109,6 +109,7 @@ export function factsFor(store: Store, product: Listing, about: string, page: Sa
         if (block.headline || block.sub) parts.push(`Headline: ${[block.headline, block.sub].filter(Boolean).join(" — ")}`);
         break;
       case "text":
+      case "feature":
         if (block.body) parts.push(`${block.heading ? `${block.heading}:\n` : ""}${block.body}`);
         break;
       case "benefits":
