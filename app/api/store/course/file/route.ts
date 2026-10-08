@@ -6,6 +6,7 @@ import { courseAccess, emailKey } from "@/lib/learn";
 import { heldBack, passedQuizzes } from "@/lib/quiz";
 import { plain, serveFile } from "@/lib/serve-file";
 import { readCourseListing } from "@/lib/catalog";
+import { coursesWords } from "@/lib/buyer-words/courses";
 
 /**
  * A lesson's download: a worksheet, the slides. Handed over only to someone
@@ -23,14 +24,16 @@ export async function GET(request: NextRequest) {
   if (!found || !file) return plain(404, "Not found.");
 
   if (!found.lesson.preview) {
+    // Said to the student in the store's language (lib/buyer-words/courses.ts).
+    const w = coursesWords(store.language);
     const access = await courseAccess(store, product, await cookies());
     if (!course || access.state !== "open" || !isOpen(course, found.unit, access.start)) {
-      return plain(403, "This lesson is not open for you. Open the course page to get in.");
+      return plain(403, w.notOpenForYou);
     }
     if (!access.learner.owner && course) {
       const passed = await passedQuizzes(course.id, emailKey(access.learner.email));
       if (heldBack(course, passed).has(found.lesson.id)) {
-        return plain(403, "This lesson opens when you pass the quiz before it.");
+        return plain(403, w.opensOnPassFile);
       }
     }
   }

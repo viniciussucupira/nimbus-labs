@@ -7,30 +7,34 @@ import { readListing } from "@/lib/catalog";
 import { readFeedToken } from "@/lib/podcast-access";
 import { appLinks } from "@/lib/podcast-rules";
 import { SITE_URL } from "@/lib/site-url";
-
-export const metadata: Metadata = {
-  title: "Your private podcast — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+import { speech } from "@/lib/buyer-words";
+import { coursesWords } from "@/lib/buyer-words/courses";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const NOTICES: Record<string, { title: string; body: string }> = {
-  sent: {
-    title: "Check your inbox",
-    body: "If that address has this podcast, a link to its own feed is on its way. It comes from the store via Marktmorgen and usually arrives within a minute; if it is not there, look in spam.",
-  },
-  email: { title: "That does not look like an email address", body: "Type the address you bought it with." },
-  limited: { title: "Too many requests for now", body: "Try again in an hour." },
-  error: { title: "We could not send it just now", body: "Try again in a moment." },
-};
+/** The tab's title, in the store's language. */
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  let language: unknown;
+  try {
+    const decoded = decodeURIComponent(handle);
+    language = decoded.startsWith("@") ? (await storeForPage(normaliseHandle(decoded)))?.language : undefined;
+  } catch {
+    language = undefined;
+  }
+  return {
+    title: coursesWords(language).metaPodcast,
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * Where a buyer gets their own feed of a private podcast and adds it to their
- * podcast app; or, on another device, asks for it by email.
+ * podcast app; or, on another device, asks for it by email. In the store's
+ * language (lib/buyer-words/courses.ts).
  */
 export default async function PodcastPage({ params, searchParams }: Params) {
   const { handle: raw, product: productId } = await params;
@@ -40,39 +44,37 @@ export default async function PodcastPage({ params, searchParams }: Params) {
   if (!store) notFound();
   const product = await readListing(store, productId);
   if (!product?.podcast) redirect(`/@${store.handle}`);
+  const said = speech(store);
+  const w = coursesWords(store.language);
   const query = await searchParams;
   const token = typeof query.t === "string" ? query.t : "";
   const status = typeof query.status === "string" ? query.status : "";
   const grant = token ? await readFeedToken(token) : null;
   const mine = grant && grant.s === store.statsId && grant.p === product.id ? token : null;
   const feed = mine ? `${SITE_URL}/api/store/podcast/feed/${mine}.xml` : null;
-  const notice = NOTICES[status];
+  const notice = w.podcastNotices[status];
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={said.lang.locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
         <div className="st-card p-7 sm:p-10">
-          <p className="st-price text-sm">Private podcast</p>
+          <p className="st-price text-sm">{w.privatePodcast}</p>
           <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{product.title}</h1>
           {feed ? (
             <>
-              <p className="st-muted mt-4 text-lg">
-                This is your own feed. Open this page on your phone and pick your podcast app: new episodes then arrive in it like any show&apos;s.
-              </p>
+              <p className="st-muted mt-4 text-lg">{w.ownFeed}</p>
               <div className="mt-6 grid gap-3">
                 {appLinks(feed).map((app) => (
                   <a key={app.name} href={app.href} className="btn st-btn btn-block">
-                    {`Add to ${app.name}`}
+                    {w.addTo(app.name)}
                   </a>
                 ))}
               </div>
               <label className="mt-6 block">
-                <span className="st-label">Another app? Paste this address where it says &ldquo;add a show by URL&rdquo;</span>
+                <span className="st-label">{w.anotherApp}</span>
                 <input className="st-field mt-2 font-mono text-sm" readOnly value={feed} />
               </label>
-              <p className="st-muted mt-4 text-sm">
-                {`The feed is yours alone: please do not share it. It keeps working for as long as you have the podcast. Spotify does not take private feeds; Apple Podcasts, Overcast, Pocket Casts and most others do.`}
-              </p>
+              <p className="st-muted mt-4 text-sm">{w.feedNote}</p>
             </>
           ) : (
             <>
@@ -82,21 +84,21 @@ export default async function PodcastPage({ params, searchParams }: Params) {
                   <p className="st-muted mt-1">{notice.body}</p>
                 </div>
               ) : (
-                <p className="st-muted mt-4 text-lg">{`Bought it? Type the address you bought it with, and a link to your own feed is emailed to you.`}</p>
+                <p className="st-muted mt-4 text-lg">{w.boughtIt}</p>
               )}
               <form action="/api/store/podcast/link" method="post" className="mt-6 space-y-3">
                 <input type="hidden" name="handle" value={store.handle} />
                 <input type="hidden" name="product" value={product.id} />
                 <label className="block">
-                  <span className="st-label">Your email</span>
-                  <input className="st-field mt-2" type="email" name="email" required maxLength={254} autoComplete="email" placeholder="you@example.com" />
+                  <span className="st-label">{said.w.yourEmail}</span>
+                  <input className="st-field mt-2" type="email" name="email" required maxLength={254} autoComplete="email" placeholder={said.w.emailPlaceholder} />
                 </label>
-                <button type="submit" className="btn st-btn btn-block">Email me my feed</button>
+                <button type="submit" className="btn st-btn btn-block">{w.emailMyFeed}</button>
               </form>
             </>
           )}
           <div className="mt-8">
-            <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">{`Back to ${store.name}`}</Link>
+            <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">{said.w.backTo(store.name)}</Link>
           </div>
         </div>
       </main>
