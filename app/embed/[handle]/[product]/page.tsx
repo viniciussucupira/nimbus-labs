@@ -65,7 +65,14 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
  */
 const SEE_THROUGH =
   "html,body{background:transparent!important;min-height:0!important;height:100%;margin:0}" +
-  `.em-cover{display:none}@media (min-height:${CARD_COVER_FROM}px){.em-cover{display:block}.em-thumb{display:none}}`;
+  `.em-cover{display:none}@media (min-height:${CARD_COVER_FROM}px){.em-cover{display:block}.em-thumb{display:none}}` +
+  // The summary gets whole lines only: as many as the card has room for
+  // under its title, never one cut through the middle.
+  ".em-sum{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;-webkit-line-clamp:var(--lines,2)}" +
+  `@media (max-height:${CARD_COVER_FROM - 1}px){.em-sum[data-picture]{-webkit-line-clamp:1}}`;
+
+/** Past about this many characters a title takes two lines on the card, and the summary gives one up. */
+const LONG_TITLE = 30;
 
 export default async function EmbedCard({ params, searchParams }: Params) {
   await connection();
@@ -126,7 +133,7 @@ export default async function EmbedCard({ params, searchParams }: Params) {
       <style>{SEE_THROUGH}</style>
       <article className="st-card flex h-full flex-col overflow-hidden p-4" style={{ boxShadow: "none" }}>
         {image ? (
-          <a href={page} target="_blank" rel="noopener" tabIndex={-1} className="em-cover -mx-4 -mt-4 mb-4 h-[170px] shrink-0 overflow-hidden" style={{ background: "var(--st-item)" }}>
+          <a href={page} target="_blank" rel="noopener" tabIndex={-1} className="em-cover -mx-4 -mt-4 mb-4 h-[160px] shrink-0 overflow-hidden" style={{ background: "var(--st-item)" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imageUrl(image)} alt={image.alt} width={image.width} height={image.height} className="h-full w-full object-cover" decoding="async" />
           </a>
@@ -157,7 +164,15 @@ export default async function EmbedCard({ params, searchParams }: Params) {
           ) : null}
         </div>
         <div className="mt-2 min-h-0 flex-1 overflow-hidden">
-          {product.summary ? <p className="st-muted line-clamp-3 text-sm leading-relaxed">{product.summary}</p> : null}
+          {product.summary ? (
+            <p
+              className="em-sum st-muted text-sm leading-relaxed"
+              data-picture={image ? "" : undefined}
+              style={{ "--lines": product.title.length > LONG_TITLE ? 1 : 2 } as React.CSSProperties}
+            >
+              {product.summary}
+            </p>
+          ) : null}
         </div>
         {action.kind === "checkout" ? (
           <form action="/api/store/checkout" method="post" target="_blank" rel="noopener" className="mt-3" data-checkout="">
