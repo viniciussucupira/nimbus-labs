@@ -206,6 +206,7 @@ export const nl: BuyerWords = {
   starsOutOf5: (stars) => `${stars} van 5 sterren`,
   verifiedBuyer: "Geverifieerde koper",
   verifiedPurchase: "Geverifieerde aankoop",
+  pickedByCreator: "Gekozen door de maker",
   refundedNotCounted: "Terugbetaald, telt niet mee",
   edited: (date) => ` · bewerkt op ${date}`,
   replyFrom: (store) => `Reactie van ${store}`,

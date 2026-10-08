@@ -25,6 +25,9 @@ import { missedQuestions } from "@/lib/answers";
 import { AiOn } from "@/components/ai-assist";
 import { aiLeft, isAiConfigured } from "@/lib/ai";
 
+/** How many of the newest reviews the editor offers to show first. */
+const PICKABLE_REVIEWS = 30;
+
 export const metadata: Metadata = {
   title: "Sales pages — Marktmorgen",
   robots: { index: false, follow: false },
@@ -72,14 +75,16 @@ export default async function StudioPagesPage({ searchParams }: Params) {
   if (chosen && !listed.some((p) => p.id === chosen.id)) listed.unshift(chosen);
   // What the selected product offers in the box at checkout, for where its buttons lead.
   const related = selected?.bumps.length ? await readListings(store, bumpTargets(selected)) : [];
-  const [page, about, summary, reviews] = selected
+  const [page, about, summary] = selected
     ? await Promise.all([
         selected.page ? readPage(store.statsId, selected.id) : Promise.resolve({ ...EMPTY_PAGE, blocks: [] }),
         selected.about ? readAbout(store.statsId, selected.id) : Promise.resolve(""),
         summaryOf(store.statsId, selected.id).catch(() => null),
-        visibleReviews(store.statsId, selected.id, 0, 3).catch(() => []),
       ])
-    : [null, "", null, []];
+    : [null, "", null];
+  // The newest reviews, to pick up to three to show first, with the ones already picked even when older.
+  const picked = page?.blocks.find((block) => block.kind === "reviews")?.first ?? [];
+  const reviews = selected && summary && summary.visible > 0 ? await visibleReviews(store.statsId, selected.id, 0, PICKABLE_REVIEWS, picked).catch(() => []) : [];
   const action = selected ? pageAction(store, selected, null, canSell(store), related) : null;
   const leadsTo = !selected || !action
     ? ""

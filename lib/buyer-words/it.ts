@@ -206,6 +206,7 @@ export const it: BuyerWords = {
   starsOutOf5: (stars) => `${stars} ${plural(stars, "stella", "stelle")} su 5`,
   verifiedBuyer: "Acquirente verificato",
   verifiedPurchase: "Acquisto verificato",
+  pickedByCreator: "Scelta dal creatore",
   refundedNotCounted: "Rimborsato, non conteggiato",
   edited: (date) => ` · modificata il ${date}`,
   replyFrom: (store) => `Risposta di ${store}`,

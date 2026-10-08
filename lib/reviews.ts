@@ -194,15 +194,37 @@ export async function summaryOf(statsId: string | null, productId: string): Prom
 }
 
 /** The reviews on a product's page, newest first. */
-export async function visibleReviews(statsId: string | null, productId: string, offset = 0, limit = REVIEWS_ON_PAGE): Promise<Review[]> {
+export async function visibleReviews(
+  statsId: string | null,
+  productId: string,
+  offset = 0,
+  limit = REVIEWS_ON_PAGE,
+  /**
+   * Reviews the creator picked to show before the others (lib/sales-page.ts,
+   * ReviewsBlock), read in the same request as the rest. Only a visible review
+   * that was not refunded is put first; the others keep their order after it.
+   */
+  first: string[] = [],
+): Promise<Review[]> {
   if (!statsId || !STATS_ID_PATTERN.test(statsId) || !isRedisConfigured()) return [];
   const [ids] = await redisPipeline([
     ["ZREVRANGEBYSCORE", visibleKey(statsId, productId), "+inf", "-inf", "LIMIT", offset, limit],
   ]);
   const list = Array.isArray(ids) ? (ids as string[]).filter((id) => REVIEW_ID_PATTERN.test(id)) : [];
-  if (list.length === 0) return [];
-  const [rows] = await redisPipeline([["HMGET", productKey(statsId, productId), ...list]]);
-  return (Array.isArray(rows) ? rows : []).map(parseReview).filter((r): r is Review => r !== null && !r.hidden);
+  const picked = offset === 0 ? first.filter((id) => REVIEW_ID_PATTERN.test(id)).slice(0, 3) : [];
+  const wanted = [...new Set([...picked, ...list])];
+  if (wanted.length === 0) return [];
+  const [rows] = await redisPipeline([["HMGET", productKey(statsId, productId), ...wanted]]);
+  const read = (Array.isArray(rows) ? rows : []).map(parseReview);
+  const byId = new Map<string, Review>();
+  wanted.forEach((id, i) => {
+    const review = read[i];
+    if (review && review.id === id && !review.hidden) byId.set(id, review);
+  });
+  const shownFirst = picked.map((id) => byId.get(id)).filter((r): r is Review => r !== undefined && !r.refunded);
+  const firstIds = new Set(shownFirst.map((r) => r.id));
+  const rest = list.map((id) => byId.get(id)).filter((r): r is Review => r !== undefined && !firstIds.has(r.id));
+  return [...shownFirst, ...rest].slice(0, Math.max(limit, shownFirst.length));
 }
 
 /** One review, when it exists. */

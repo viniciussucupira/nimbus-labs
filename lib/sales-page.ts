@@ -142,7 +142,18 @@ export type FaqItem = { q: string; a: string };
 export type FaqBlock = { id: string; kind: "faq"; heading: string; items: FaqItem[] };
 export type GuaranteeBlock = { id: string; kind: "guarantee"; heading: string; body: string };
 export type CtaBlock = { id: string; kind: "cta"; label: string; note: string };
-export type ReviewsBlock = { id: string; kind: "reviews"; heading: string };
+/**
+ * Where the verified reviews stand. `first` is up to three of them the
+ * creator picked to show before the others, by id; each is still a review a
+ * buyer who paid wrote, shown with its own stars and marked as picked, and
+ * the average and the count stay those of every review.
+ */
+export type ReviewsBlock = { id: string; kind: "reviews"; heading: string; first: string[] };
+export const MAX_PICKED_REVIEWS = 3;
+// The same as lib/review-summary.ts. Written here, not imported: next.config.ts
+// reads this file (through lib/csp.ts), and the config loader cannot follow
+// an import. tests/picked-reviews.test.ts holds the two to the same rule.
+const REVIEW_ID_PATTERN = /^[0-9a-f]{24}$/;
 /**
  * A video of its own, anywhere below the hero (added 7 October 2026). The
  * hero carries one video; a sales page that sells a course or a skill often
@@ -526,8 +537,12 @@ function parseBlock(raw: unknown): PageBlock | null {
       return { id, kind: "guarantee", heading, body: lines(value.body, MAX_GUARANTEE) };
     case "cta":
       return { id, kind: "cta", label: line(value.label, MAX_CTA_LABEL), note: line(value.note, MAX_CTA_NOTE) };
-    case "reviews":
-      return { id, kind: "reviews", heading };
+    case "reviews": {
+      const first = Array.isArray(value.first)
+        ? [...new Set(value.first.filter((v): v is string => typeof v === "string" && REVIEW_ID_PATTERN.test(v)))].slice(0, MAX_PICKED_REVIEWS)
+        : [];
+      return { id, kind: "reviews", heading, first };
+    }
     case "video":
       return { id, kind: "video", heading, video: parseVideo(value.video), caption: lines(value.caption, MAX_CAPTION) };
     case "pictures": {
@@ -706,7 +721,7 @@ export function emptyBlock(kind: BlockKind, id = newBlockId()): PageBlock {
     case "cta":
       return { id, kind, label: "", note: "" };
     case "reviews":
-      return { id, kind, heading: "Reviews" };
+      return { id, kind, heading: "Reviews", first: [] };
     case "video":
       return { id, kind, heading: "", video: null, caption: "" };
     case "pictures":
