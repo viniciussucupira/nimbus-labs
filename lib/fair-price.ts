@@ -22,7 +22,10 @@
  * Bank's numbers suggest the discount for every country or only the
  * countries they list get one, and, country by country, how much — a level
  * of their own, from 5% to 90% off, or none at all, which takes a country
- * the numbers would lower off the list.
+ * the numbers would lower off the list. And which products: every one it
+ * can cover, or only those they pick, as a sale does — a $9 file can stay at
+ * its price while a $199 course is lowered, as Gumroad lets a seller switch
+ * it off product by product.
  *
  * Percentages are whole multiples of five, rounded down, so a buyer is never
  * given more off than the numbers say and the creator's Stripe account holds
@@ -55,6 +58,9 @@ export type FairPricing = {
   maxOff: number;
   /** The creator's own level for a country, by its two-letter code; 0 is none. */
   levels: Record<string, number>;
+  /** Every product it can cover, or only those in `products`. */
+  all: boolean;
+  products: string[];
 };
 
 export const FAIR_MAX_CHOICES = [20, 30, 40, 50, 60] as const;
@@ -62,7 +68,9 @@ export const FAIR_MAX_CHOICES = [20, 30, 40, 50, 60] as const;
 export const FAIR_LEVEL_CHOICES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90] as const;
 /** As many countries as there are. */
 export const MAX_FAIR_COUNTRIES = 250;
-export const DEFAULT_FAIR: FairPricing = { on: false, auto: true, maxOff: 50, levels: {} };
+/** As many products as a sale can be limited to (lib/store-sale.ts). */
+export const MAX_FAIR_PRODUCTS = 200;
+export const DEFAULT_FAIR: FairPricing = { on: false, auto: true, maxOff: 50, levels: {}, all: true, products: [] };
 
 /** Above this price level, nothing is taken off. */
 export const FAIR_FROM_LEVEL = 0.8;
@@ -104,6 +112,11 @@ export function parseFair(raw: unknown): FairPricing {
     auto: value.auto !== false,
     maxOff: (FAIR_MAX_CHOICES as readonly number[]).includes(maxOff) ? maxOff : DEFAULT_FAIR.maxOff,
     levels,
+    // A setting saved before products could be picked covered every one.
+    all: value.all !== false,
+    products: Array.isArray(value.products)
+      ? [...new Set(value.products.filter((p): p is string => typeof p === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(p)))].slice(0, MAX_FAIR_PRODUCTS)
+      : [],
   };
 }
 
@@ -132,6 +145,7 @@ export function storeCountryOff(setting: FairPricing | undefined, country: strin
 /** The percentage off this product for a buyer in this country, or 0. */
 export function fairOff(setting: FairPricing | undefined, product: SaleCandidate, country: string): number {
   if (!saleable(product)) return 0;
+  if (setting && !setting.all && !setting.products.includes(product.id)) return 0;
   return storeCountryOff(setting, country);
 }
 

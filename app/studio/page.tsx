@@ -1151,6 +1151,7 @@ export default async function StudioPage({
                   initial={store.fair}
                   currency={store.currency}
                   examplePrice={2700}
+                  products={await saleCandidates(store)}
                   names={Object.fromEntries(allCountries().map((code) => [code, countryName(code)]))}
                 />
 

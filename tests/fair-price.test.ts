@@ -12,7 +12,8 @@
  *   - the creator's own level for a country wins, none included; with
  *     automatic off, only the listed countries get anything;
  *   - it covers what a sale covers, and the page takes the larger of a sale
- *     and a fair price, never both;
+ *     and a fair price, never both; the creator can limit it to the
+ *     products they pick, and a setting saved before that covers every one;
  *   - at checkout: the coupon is made once on the creator's account, at the
  *     percentage the page showed, written on the order, and the sale's
  *     coupon is used instead when it takes off more; no country, no plan, a
@@ -86,6 +87,12 @@ async function main(): Promise<void> {
     fairOff(on(), product({ options: [{}] }), "IN"),
   ], [0, 0, 0, 0]);
   is("no country, nothing", fairOff(on(), product(), ""), 0);
+  const picked = on({ all: false, products: ["p1"] });
+  is("only the products picked: one picked gets it, another does not", [fairOff(picked, product(), "IN"), fairOff(picked, product({ id: "p2" }), "IN")], [50, 0]);
+  is("only the products picked, none picked: nothing anywhere", fairOff(on({ all: false, products: [] }), product(), "IN"), 0);
+  is("a setting saved before products could be picked covers every one", [parseFair({ on: true }).all, parseFair({ on: true }).products], [true, []]);
+  is("product ids are kept clean and once each", parseFair({ on: true, all: false, products: ["p1", "p1", "bad id", 7, "p_2"] }).products, ["p1", "p_2"]);
+  is("a picked product that cannot have one still does not", fairOff(picked, product({ recurring: { interval: "month" } }), "IN"), 0);
 
   part("At checkout");
   await claimHandle(OWNER, "harbor", "Harbor Kitchen", "");
@@ -114,6 +121,12 @@ async function main(): Promise<void> {
   is("the creator's own level for Mexico", sent.get("metadata[fair]"), "MX:30");
   sent = await open("US");
   is("a country it does not cover pays the normal price, and may type a code", [sent.get("discounts[0][coupon]"), sent.get("metadata[fair]")], [null, null]);
+  await setFair(OWNER, { on: true, auto: true, maxOff: 50, levels: { MX: 30 }, all: false, products: ["someone_else"] });
+  sent = await open("IN");
+  is("a product the creator did not pick pays the normal price", [sent.get("discounts[0][coupon]"), sent.get("metadata[fair]")], [null, null]);
+  await setFair(OWNER, { on: true, auto: true, maxOff: 50, levels: { MX: 30 }, all: false, products: [made.product.id] });
+  sent = await open("IN");
+  is("a product they picked gets it", sent.get("metadata[fair]"), "IN:50");
   sent = await open("", {});
   is("no country known: the normal price", sent.get("metadata[fair]"), null);
   await setProductExtras(OWNER, made.product.id, { plan: { payments: 3, interval: "month", amountCents: 1000 } });

@@ -29,6 +29,7 @@ export function FairPriceEditor({
   currency,
   examplePrice,
   names,
+  products,
 }: {
   initial: FairPricing;
   currency: string;
@@ -40,6 +41,8 @@ export function FairPriceEditor({
    * disagree about a name.
    */
   names: Record<string, string>;
+  /** The products it can cover: bought once, at one price the store sets, as a sale. */
+  products: { id: string; title: string }[];
 }) {
   const countryName = (code: string) => names[code] ?? code;
   const router = useRouter();
@@ -48,10 +51,16 @@ export function FairPriceEditor({
   const [maxOff, setMaxOff] = useState(initial.maxOff);
   const [levels, setLevels] = useState<[string, number][]>(Object.entries(initial.levels));
   const [adding, setAdding] = useState("");
+  const [all, setAll] = useState(initial.all);
+  const [chosen, setChosen] = useState<Set<string>>(new Set(initial.products));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const setting: FairPricing = { on: true, auto, maxOff, levels: Object.fromEntries(levels) };
-  const changed = JSON.stringify({ on, auto, maxOff, levels: Object.fromEntries(levels) }) !== JSON.stringify({ on: initial.on, auto: initial.auto, maxOff: initial.maxOff, levels: initial.levels });
+  const setting: FairPricing = { on: true, auto, maxOff, levels: Object.fromEntries(levels), all: true, products: [] };
+  const picked = products.filter((p) => chosen.has(p.id)).map((p) => p.id);
+  const body = { on, auto, maxOff, levels: Object.fromEntries(levels), all, products: all ? [] : picked };
+  const changed =
+    JSON.stringify(body) !==
+    JSON.stringify({ on: initial.on, auto: initial.auto, maxOff: initial.maxOff, levels: initial.levels, all: initial.all, products: initial.all ? [] : products.filter((p) => initial.products.includes(p.id)).map((p) => p.id) });
   const listed = new Set(levels.map(([code]) => code));
   const choices = Object.keys(names).filter((code) => !listed.has(code));
   const priceAt = (off: number) => formatMoney(examplePrice - Math.round((examplePrice * off) / 100), currency);
@@ -63,7 +72,7 @@ export function FairPriceEditor({
       const response = await fetch("/api/store/fair", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ on, auto, maxOff, levels: Object.fromEntries(levels) }),
+        body: JSON.stringify(body),
       });
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!data.ok) {
@@ -82,7 +91,7 @@ export function FairPriceEditor({
   function add(code: string) {
     if (!code || listed.has(code) || levels.length >= MAX_FAIR_COUNTRIES) return;
     // A country added starts at what the numbers suggest for it, or 20% where they suggest nothing.
-    setLevels((all) => [...all, [code, countryOff(code, 60) || 20]]);
+    setLevels((rows) => [...rows, [code, countryOff(code, 60) || 20]]);
     setAdding("");
   }
 
@@ -179,7 +188,7 @@ export function FairPriceEditor({
                     <select
                       className="field"
                       value={percent}
-                      onChange={(event) => setLevels((all) => all.map((row, i) => (i === index ? [row[0], Number(event.target.value)] : row)))}
+                      onChange={(event) => setLevels((rows) => rows.map((row, i) => (i === index ? [row[0], Number(event.target.value)] : row)))}
                     >
                       {FAIR_LEVEL_CHOICES.map((choice) => (
                         <option key={choice} value={choice}>{choice ? `${choice}% off` : "None (normal price)"}</option>
@@ -189,7 +198,7 @@ export function FairPriceEditor({
                   <span className="w-20 text-right text-sm font-semibold tabular-nums text-ink">{priceAt(percent)}</span>
                   <button
                     type="button"
-                    onClick={() => setLevels((all) => all.filter((_, i) => i !== index))}
+                    onClick={() => setLevels((rows) => rows.filter((_, i) => i !== index))}
                     className="inline-flex h-11 w-11 items-center justify-center rounded-full text-ink-soft hover:bg-danger-soft hover:text-danger"
                     aria-label={`Remove ${countryName(code)}`}
                   >
@@ -211,6 +220,46 @@ export function FairPriceEditor({
             </label>
           ) : null}
         </div>
+        <fieldset className="mt-6">
+          <legend className="font-semibold text-ink">Which products</legend>
+          <label className="mt-2 flex min-h-11 items-center gap-3 text-sm text-ink">
+            <input type="radio" name="fair-products" checked={all} onChange={() => setAll(true)} className="h-4 w-4" />
+            Every product it can cover, including ones you add later
+          </label>
+          <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
+            <input type="radio" name="fair-products" checked={!all} onChange={() => setAll(false)} className="h-4 w-4" />
+            Only the ones I pick
+          </label>
+          {!all ? (
+            products.length ? (
+              <ul className="mt-2 max-h-64 space-y-1 overflow-y-auto rounded-2xl border border-line p-3">
+                {products.map((p) => (
+                  <li key={p.id}>
+                    <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={chosen.has(p.id)}
+                        onChange={(event) =>
+                          setChosen((prev) => {
+                            const next = new Set(prev);
+                            if (event.target.checked) next.add(p.id);
+                            else next.delete(p.id);
+                            return next;
+                          })
+                        }
+                      />
+                      <span className="min-w-0 break-words">{p.title}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-ink-soft">None of your products can have a fair price yet: add one sold once at one price.</p>
+            )
+          ) : null}
+          <p className="mt-2 text-xs text-ink-soft">Memberships, calls, products with price options and products whose buyers name the price never get one.</p>
+        </fieldset>
       </fieldset>
 
       <p className="mt-5 text-sm text-ink-soft">
