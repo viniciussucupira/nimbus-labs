@@ -411,6 +411,29 @@ try {
     await visit.close();
   }
 
+  part("Fair prices only on the products the creator picks");
+  const products = fairCard.getByRole("group", { name: "Which products" });
+  await products.getByLabel("Only the ones I pick").check();
+  await products.getByLabel("Meal Planner").check();
+  await fairCard.getByRole("button", { name: "Save" }).click();
+  await studio.getByRole("status").getByText("Saved. Fair prices are on.").last().waitFor({ timeout: 30_000 });
+  {
+    const { visit, there } = await asBuyerFrom("IN");
+    is("a product not picked: a buyer in India sees the normal price", await words(there.locator("main .st-price").first()), "$9");
+    await visit.close();
+  }
+  await studio.reload();
+  is("the choice is kept", [await products.getByLabel("Only the ones I pick").isChecked(), await products.getByLabel("Meal Planner").isChecked(), await products.getByLabel("Pantry Checklist").isChecked()], [true, true, false]);
+  await products.getByLabel("Pantry Checklist").check();
+  await fairCard.getByRole("button", { name: "Save" }).click();
+  await studio.getByRole("status").getByText("Saved. Fair prices are on.").last().waitFor({ timeout: 30_000 });
+  {
+    const { visit, there } = await asBuyerFrom("IN");
+    is("picked: the fair price again", await words(there.locator("main .st-price").first()), "Was $9 now $4.50");
+    if (process.env.E2E_SHOTS) await fairCard.screenshot({ path: join(process.env.E2E_SHOTS, "fair-products.png") });
+    await visit.close();
+  }
+
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);
   is("nothing was asked of a service with no stand-in", services.unknown(), []);
