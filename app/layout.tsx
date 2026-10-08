@@ -83,9 +83,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // data-reveal is set on <html> by the first script in the body, before
+    // React loads (lib/reveal-scripts.ts); React is told that attribute is
+    // expected, so it does not report the page as mismatched.
     <html
       lang="en"
       className={`${geist.variable} ${accent.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       {/*
         The photographs come from one other host, and a browser cannot start

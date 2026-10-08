@@ -6,7 +6,9 @@ import { wordsIn } from "@/lib/buyer-words";
 import { DEFAULT_LANGUAGE, LANGUAGES, type LanguageCode } from "@/lib/store-language";
 import { imageUrl } from "@/lib/product-image";
 import { type Piece, aboutBlocks } from "@/lib/product-about";
-import type { CtaBlock, HeroBlock, PageBlock } from "@/lib/sales-page";
+import { CELL_NO, CELL_YES, type CtaBlock, type HeroBlock, type PageBlock } from "@/lib/sales-page";
+import { blockWords } from "@/lib/buyer-words/blocks";
+import type { PageFacts } from "@/lib/page-facts";
 
 /**
  * The blocks of a product's page, drawn (lib/sales-page.ts says what each is).
@@ -47,7 +49,23 @@ export type BlockContext = {
   now?: number;
   /** The store's language (lib/store-language.ts), for the words the blocks add themselves. */
   lang?: LanguageCode;
+  /** The numbers a "By the numbers" block may show, counted by the store (lib/page-facts.ts). */
+  facts?: PageFacts;
 };
+
+/** A cell of a comparison: a tick, a cross, or the creator's few words. */
+function Cell({ text, ours, ctx }: { text: string; ours: boolean; ctx: BlockContext }) {
+  const w = blockWords(ctx.lang ?? DEFAULT_LANGUAGE);
+  if (text === CELL_YES || text === CELL_NO) {
+    const yes = text === CELL_YES;
+    return (
+      <span className={`sp-cell-mark ${yes ? "sp-cell-yes" : "sp-cell-no"}`} role="img" aria-label={yes ? w.cellYes : w.cellNo}>
+        <Icon name={yes ? "check" : "close"} size={16} strokeWidth={2.4} />
+      </span>
+    );
+  }
+  return <span className={ours ? "font-semibold" : ""}>{text}</span>;
+}
 
 function Line({ pieces, preview }: { pieces: Piece[]; preview?: boolean }) {
   return (
@@ -338,6 +356,156 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
           </div>
         </section>
       );
+    case "fit": {
+      if (block.yes.length === 0 && block.no.length === 0) return null;
+      const w = blockWords(ctx.lang ?? DEFAULT_LANGUAGE);
+      const both = block.yes.length > 0 && block.no.length > 0;
+      return (
+        <section className="sp-section">
+          <Heading text={block.heading} />
+          <div className={`sp-fit ${both ? "sp-fit-2" : ""} ${block.heading ? "mt-5" : ""}`}>
+            {block.yes.length ? (
+              <div className="sp-fit-side sp-fit-yes">
+                <h3 className="text-lg font-bold">{block.yesLabel || w.fitYes}</h3>
+                <ul>
+                  {block.yes.map((item, i) => (
+                    <li key={i}>
+                      <span className="sp-fit-mark" aria-hidden="true">
+                        <Icon name="check" size={14} strokeWidth={2.6} />
+                      </span>
+                      <span className="font-semibold">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {block.no.length ? (
+              <div className="sp-fit-side sp-fit-no">
+                <h3 className="text-lg font-bold">{block.noLabel || w.fitNo}</h3>
+                <ul>
+                  {block.no.map((item, i) => (
+                    <li key={i}>
+                      <span className="sp-fit-mark" aria-hidden="true">
+                        <Icon name="close" size={14} strokeWidth={2.6} />
+                      </span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      );
+    }
+    case "steps": {
+      if (block.items.length === 0) return null;
+      const w = blockWords(ctx.lang ?? DEFAULT_LANGUAGE);
+      return (
+        <section className="sp-section">
+          <Heading text={block.heading} />
+          <ol className={`sp-steps ${block.heading ? "mt-5" : ""}`}>
+            {block.items.map((item, i) => (
+              <li key={i} className="sp-step">
+                <span className="sp-number" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <span className="sp-step-body">
+                  <span className="sr-only">{`${w.stepN(i + 1)}: `}</span>
+                  <span className="block font-semibold leading-snug">{item.title}</span>
+                  {item.detail ? <span className="st-muted mt-1 block whitespace-pre-line text-[0.9375rem] leading-relaxed">{item.detail}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </section>
+      );
+    }
+    case "compare": {
+      if (block.rows.length === 0) return null;
+      const w = blockWords(ctx.lang ?? DEFAULT_LANGUAGE);
+      const first = block.columnA || ctx.productTitle;
+      const second = block.columnB || w.compareOther;
+      return (
+        <section className="sp-section">
+          <Heading text={block.heading} />
+          <div className={`sp-compare ${block.heading ? "mt-5" : ""}`}>
+            <table>
+              <thead>
+                <tr>
+                  <td aria-hidden="true" />
+                  <th scope="col" className="sp-compare-ours">{first}</th>
+                  <th scope="col" className="sp-compare-other">{second}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {block.rows.map((row, i) => (
+                  <tr key={i}>
+                    <th scope="row">{row.label}</th>
+                    <td className="sp-compare-ours">
+                      <Cell text={row.a} ours ctx={ctx} />
+                    </td>
+                    <td className="sp-compare-other">
+                      <Cell text={row.b} ours={false} ctx={ctx} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      );
+    }
+    case "bonuses": {
+      if (block.items.length === 0) return null;
+      const w = blockWords(ctx.lang ?? DEFAULT_LANGUAGE);
+      return (
+        <section className="sp-section">
+          <Heading text={block.heading} />
+          <ul className={`sp-bonuses ${block.items.length > 1 ? "sp-bonuses-2" : ""} ${block.heading ? "mt-5" : ""}`}>
+            {block.items.map((item, i) => (
+              <li key={i} className="sp-bonus">
+                <span className="sp-bonus-icon" aria-hidden="true">
+                  <Icon name="gift" size={20} />
+                </span>
+                <span className="min-w-0">
+                  <span className="sp-bonus-number">{w.bonusN(i + 1)}</span>
+                  <span className="mt-0.5 block font-semibold leading-snug">{item.title}</span>
+                  {item.detail ? <span className="st-muted mt-1 block whitespace-pre-line text-[0.9375rem] leading-relaxed">{item.detail}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      );
+    }
+    case "facts": {
+      // Only numbers the store counted, and only those the creator chose; none, and the block is not drawn.
+      const shown = block.show.map((key) => ctx.facts?.[key]).filter((fact): fact is NonNullable<typeof fact> => Boolean(fact));
+      if (shown.length === 0) return null;
+      const w = blockWords(ctx.lang ?? DEFAULT_LANGUAGE);
+      return (
+        <section className="sp-section">
+          <Heading text={block.heading} />
+          <dl className={`sp-facts sp-facts-${Math.min(shown.length, 4)} ${block.heading ? "mt-5" : ""}`}>
+            {shown.map((fact) => (
+              <div key={fact.key} className="sp-fact">
+                <dt className="sr-only">{fact.label}</dt>
+                <dd>
+                  <span className="sp-fact-value">
+                    {fact.value}
+                    {fact.key === "rating" ? <span className="sr-only">{` ${w.outOfFive}`}</span> : null}
+                  </span>
+                  <span className="sp-fact-label" aria-hidden="true">
+                    {fact.key === "rating" ? `${w.outOfFive} · ${fact.label}` : fact.label}
+                  </span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      );
+    }
     case "countdown":
       // One that was never given its moment, or whose moment has passed, is not drawn.
       if (!block.until || (ctx.now !== undefined && block.until <= ctx.now)) return null;

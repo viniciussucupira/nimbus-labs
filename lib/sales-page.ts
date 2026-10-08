@@ -63,10 +63,39 @@ export const MAX_COUNTDOWN_NOTE = 200;
 /** No countdown to a moment further away than this: a year is a plan, not a deadline. */
 export const MAX_COUNTDOWN_DAYS = 366;
 export const MAX_SEO_DESCRIPTION = 160;
+/** Points on each side of a "who it is for" block. */
+export const MAX_FIT_ITEMS = 8;
+/** Steps in a "how it works" block, bonuses in a bonus block. */
+export const MAX_STEPS = 8;
+export const MAX_BONUSES = 8;
+/** Rows in a comparison, and the length of a column's name and of one cell. */
+export const MAX_COMPARE_ROWS = 12;
+export const MAX_COLUMN = 40;
+export const MAX_CELL = 80;
+/** What a cell holds to be drawn as a tick or a cross rather than as words. */
+export const CELL_YES = "\u2713";
+export const CELL_NO = "\u2717";
 /** The most a page's record may weigh, in bytes: well past thirty full blocks. */
 export const MAX_PAGE_BYTES = 120_000;
 
-export type BlockKind = "hero" | "text" | "benefits" | "inside" | "bio" | "faq" | "guarantee" | "cta" | "reviews" | "video" | "pictures" | "countdown";
+export type BlockKind =
+  | "hero"
+  | "text"
+  | "benefits"
+  | "inside"
+  | "bio"
+  | "faq"
+  | "guarantee"
+  | "cta"
+  | "reviews"
+  | "video"
+  | "pictures"
+  | "countdown"
+  | "fit"
+  | "steps"
+  | "compare"
+  | "bonuses"
+  | "facts";
 
 export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "hero", label: "Hero", hint: "The big headline at the top, with the product's picture or a video." },
@@ -81,6 +110,11 @@ export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "video", label: "Video", hint: "A video anywhere on the page — a lesson to try, a walkthrough, a result — with a heading and a line under it." },
   { kind: "pictures", label: "Pictures", hint: `Up to ${MAX_PICTURES} pictures of your own — pages of the book, a screen of the course, the finished result — each with a line under it.` },
   { kind: "countdown", label: "Countdown", hint: "Days, hours and minutes to one real moment, the same for every visitor: a launch price ending, doors closing, a live session starting." },
+  { kind: "fit", label: "Who it is for", hint: `Two short lists side by side: who it is for, and who it is not for. Up to ${MAX_FIT_ITEMS} points each.` },
+  { kind: "steps", label: "How it works", hint: `Up to ${MAX_STEPS} numbered steps, from paying to the result, drawn as a path.` },
+  { kind: "compare", label: "Comparison", hint: `A table of up to ${MAX_COMPARE_ROWS} rows: this product beside another way of getting there, with ticks, crosses or a few words.` },
+  { kind: "bonuses", label: "Bonuses", hint: `Up to ${MAX_BONUSES} extras that come with it, each on its own card.` },
+  { kind: "facts", label: "By the numbers", hint: "Lessons, episodes, buyers, the average rating: counted for you from the store, never typed, and always up to date." },
 ];
 
 export type VideoProvider = "youtube" | "vimeo" | "loom";
@@ -142,7 +176,63 @@ export type PicturesBlock = { id: string; kind: "pictures"; heading: string; ite
  */
 export type CountdownBlock = { id: string; kind: "countdown"; heading: string; until: number; note: string };
 
+/**
+ * Who it is for, and who it is not for (added 8 October 2026). Saying who
+ * should not buy is the most honest line a sales page can carry, and the
+ * one that sends the fewest refunds back: a buyer who reads themselves in
+ * the second list leaves before paying instead of after. The two headings
+ * are the creator's to change; left empty, the page writes them in the
+ * store's language.
+ */
+export type FitBlock = { id: string; kind: "fit"; heading: string; yesLabel: string; noLabel: string; yes: string[]; no: string[] };
+
+/** How it works: numbered steps, drawn as a path (added 8 October 2026). */
+export type StepsBlock = { id: string; kind: "steps"; heading: string; items: InsideItem[] };
+
+/**
+ * A comparison (added 8 October 2026): this product beside one other way of
+ * getting the same thing — doing it alone, a free video, the usual course.
+ * Every cell is the creator's own words; a tick or a cross is a cell that
+ * holds only CELL_YES or CELL_NO, drawn as an icon with its meaning spoken
+ * to a screen reader. The other column names no competitor by default, and
+ * nothing here states a price: the price is the buy box's.
+ */
+export type CompareRow = { label: string; a: string; b: string };
+export type CompareBlock = { id: string; kind: "compare"; heading: string; columnA: string; columnB: string; rows: CompareRow[] };
+
+/**
+ * What comes with it besides (added 8 October 2026). Each bonus is a title and
+ * a line, numbered on its card. No "worth $497" next to it: a value nobody
+ * ever paid is a number made up to make the price look small, and a buyer
+ * who notices stops believing the rest of the page.
+ */
+export type BonusesBlock = { id: string; kind: "bonuses"; heading: string; items: InsideItem[] };
+
+/**
+ * The numbers that are true about it, counted by the store itself (added 8
+ * October 2026): a course's lessons, a podcast's episodes, a bundle's
+ * products, a call's length, how many times it was bought (only when the
+ * store shows that, and from ten up) and its buyers' average rating. The
+ * creator only chooses which may appear; a number that is not there yet is
+ * simply not drawn, so the block can never say something false.
+ */
+export type FactKey = "lessons" | "episodes" | "products" | "length" | "buyers" | "rating";
+export const FACT_KEYS: { key: FactKey; label: string; hint: string }[] = [
+  { key: "lessons", label: "Lessons", hint: "How many lessons the course has." },
+  { key: "episodes", label: "Episodes", hint: "How many episodes the private podcast has." },
+  { key: "products", label: "Products inside", hint: "How many products the bundle holds." },
+  { key: "length", label: "Call length", hint: "How long each call lasts." },
+  { key: "buyers", label: "Times bought", hint: "Shown from 10 sales up, and only while your store's look shows how many times products were bought." },
+  { key: "rating", label: "Average rating", hint: "From verified buyers' reviews, with how many there are." },
+];
+export type FactsBlock = { id: string; kind: "facts"; heading: string; show: FactKey[] };
+
 export type PageBlock =
+  | FitBlock
+  | StepsBlock
+  | CompareBlock
+  | BonusesBlock
+  | FactsBlock
   | HeroBlock
   | TextBlock
   | BenefitsBlock
@@ -423,6 +513,43 @@ function parseBlock(raw: unknown): PageBlock | null {
     }
     case "countdown":
       return { id, kind: "countdown", heading: line(value.heading, MAX_COUNTDOWN_LABEL), until: parseUntil(value.until), note: line(value.note, MAX_COUNTDOWN_NOTE) };
+    case "fit": {
+      const list = (raw: unknown) => (Array.isArray(raw) ? raw.map((item) => line(item, MAX_ITEM)).filter(Boolean).slice(0, MAX_FIT_ITEMS) : []);
+      return { id, kind: "fit", heading, yesLabel: line(value.yesLabel, MAX_HEADING), noLabel: line(value.noLabel, MAX_HEADING), yes: list(value.yes), no: list(value.no) };
+    }
+    case "steps":
+    case "bonuses": {
+      const max = value.kind === "steps" ? MAX_STEPS : MAX_BONUSES;
+      const items = Array.isArray(value.items)
+        ? value.items
+            .map((item) => {
+              const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+              return { title: line(row.title, MAX_ITEM), detail: lines(row.detail, MAX_ITEM_DETAIL) };
+            })
+            .filter((item) => item.title)
+            .slice(0, max)
+        : [];
+      return value.kind === "steps" ? { id, kind: "steps", heading, items } : { id, kind: "bonuses", heading, items };
+    }
+    case "compare": {
+      const rows = Array.isArray(value.rows)
+        ? value.rows
+            .map((item) => {
+              const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+              return { label: line(row.label, MAX_ITEM), a: line(row.a, MAX_CELL), b: line(row.b, MAX_CELL) };
+            })
+            .filter((row) => row.label && (row.a || row.b))
+            .slice(0, MAX_COMPARE_ROWS)
+        : [];
+      return { id, kind: "compare", heading, columnA: line(value.columnA, MAX_COLUMN), columnB: line(value.columnB, MAX_COLUMN), rows };
+    }
+    case "facts": {
+      const known = new Set(FACT_KEYS.map((f) => f.key));
+      const show = Array.isArray(value.show)
+        ? FACT_KEYS.map((f) => f.key).filter((key) => (value.show as unknown[]).includes(key) && known.has(key))
+        : [];
+      return { id, kind: "facts", heading, show };
+    }
     default:
       return null;
   }
@@ -544,6 +671,16 @@ export function emptyBlock(kind: BlockKind, id = newBlockId()): PageBlock {
       return { id, kind, heading: "", items: [] };
     case "countdown":
       return { id, kind, heading: "", until: 0, note: "" };
+    case "fit":
+      return { id, kind, heading: "", yesLabel: "", noLabel: "", yes: [], no: [] };
+    case "steps":
+      return { id, kind, heading: "How it works", items: [] };
+    case "compare":
+      return { id, kind, heading: "", columnA: "", columnB: "", rows: [] };
+    case "bonuses":
+      return { id, kind, heading: "Also included", items: [] };
+    case "facts":
+      return { id, kind, heading: "", show: FACT_KEYS.map((f) => f.key) };
   }
 }
 
@@ -619,7 +756,7 @@ const TEMPLATE_BLOCKS: Record<string, TemplateBlock[]> = {
     { kind: "benefits", heading: "What you get" },
     { kind: "pictures", heading: "A look inside" },
     { kind: "inside", heading: "What's inside" },
-    { kind: "text", heading: "Who it is for" },
+    { kind: "fit" },
     { kind: "cta" },
     { kind: "faq", heading: "Questions", items: questions("What format is it in?", "How do I get it after paying?", "Can I get a refund?") },
     { kind: "guarantee", heading: "Guarantee" },
@@ -629,9 +766,11 @@ const TEMPLATE_BLOCKS: Record<string, TemplateBlock[]> = {
   ],
   course: [
     { kind: "video", heading: "Watch a lesson first" },
+    { kind: "facts" },
     { kind: "benefits", heading: "What you will be able to do" },
     { kind: "inside", heading: "The lessons" },
-    { kind: "text", heading: "Who this course is for" },
+    { kind: "fit" },
+    { kind: "bonuses", heading: "Also included" },
     { kind: "bio" },
     { kind: "cta" },
     { kind: "faq", heading: "Questions", items: questions("How long do I have access?", "How much time does it take?", "What if it is not for me?") },
@@ -641,7 +780,8 @@ const TEMPLATE_BLOCKS: Record<string, TemplateBlock[]> = {
   ],
   coaching: [
     { kind: "benefits", heading: "What we work on" },
-    { kind: "inside", heading: "How it goes" },
+    { kind: "steps", heading: "How it goes" },
+    { kind: "fit" },
     { kind: "bio" },
     { kind: "cta" },
     { kind: "faq", heading: "Questions", items: questions("How do we meet?", "Can I move my booking?", "What should I prepare?") },
@@ -650,7 +790,7 @@ const TEMPLATE_BLOCKS: Record<string, TemplateBlock[]> = {
   membership: [
     { kind: "benefits", heading: "What members get" },
     { kind: "inside", heading: "What happens each month" },
-    { kind: "text", heading: "Who it is for" },
+    { kind: "fit" },
     { kind: "cta" },
     { kind: "faq", heading: "Questions", items: questions("When am I charged?", "Can I cancel at any time?", "What do I get the day I join?") },
     { kind: "bio" },

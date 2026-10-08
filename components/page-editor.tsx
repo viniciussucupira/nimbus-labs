@@ -42,6 +42,17 @@ import {
   MAX_PAGE_PICTURES,
   MAX_PICTURES,
   MAX_PICTURE_CAPTION,
+  MAX_FIT_ITEMS,
+  MAX_STEPS,
+  MAX_BONUSES,
+  MAX_COMPARE_ROWS,
+  MAX_COLUMN,
+  MAX_CELL,
+  CELL_YES,
+  CELL_NO,
+  FACT_KEYS,
+  type CompareRow,
+  type FactKey,
   PAGE_TEMPLATES,
   PROVIDER_NAMES,
   type PageBlock,
@@ -54,6 +65,9 @@ import {
   videoAddress,
 } from "@/lib/sales-page";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
+import type { PageFacts } from "@/lib/page-facts";
+import { blockWords } from "@/lib/buyer-words/blocks";
+import type { LanguageCode } from "@/lib/store-language";
 
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
@@ -87,6 +101,11 @@ const KIND_ICONS: Record<BlockKind, IconName> = {
   video: "play",
   pictures: "camera",
   countdown: "clock",
+  fit: "target",
+  steps: "ladder",
+  compare: "scale",
+  bonuses: "gift",
+  facts: "chart",
 };
 
 /** A moment in seconds as the date-and-time field holds it, in the creator's own time zone. */
@@ -151,6 +170,8 @@ export function PageEditor({
   summary,
   reviews = [],
   folder,
+  lang = "en",
+  facts = {},
 }: {
   product: EditorProduct;
   /** The store's own picture folder (lib/product-image.ts), where a page's pictures go. */
@@ -167,6 +188,10 @@ export function PageEditor({
   summary: Summary | null;
   /** The newest reviews on the page, so the preview shows real ones. */
   reviews?: Review[];
+  /** The store's language, so the preview speaks it as the page does. */
+  lang?: LanguageCode;
+  /** The numbers the store has counted for this product (lib/page-facts.ts). */
+  facts?: PageFacts;
 }) {
   const router = useRouter();
   const [drafts, setDrafts] = useState<Draft[]>(() => toDrafts(initial));
@@ -345,6 +370,8 @@ export function PageEditor({
     action: { kind: "link", href: "#" },
     defaultLabel: product.defaultLabel,
     preview: true,
+    lang,
+    facts,
   };
   const preview = useMemo(() => {
     const blocks = drafts.map((d) => d.block);
@@ -683,6 +710,107 @@ export function PageEditor({
           </div>
         );
       }
+      case "fit": {
+        const said = blockWords(lang);
+        return (
+          <div className="space-y-4">
+            {field(`${base}-h`, "Heading (optional)", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} placeholder="Is it for you?" onChange={(e) => change(index, { heading: e.target.value })} />)}
+            <div className="rounded-xl bg-paper p-3 ring-1 ring-line">
+              {field(`${base}-yl`, "Above the first list", <input id={`${base}-yl`} className="field" maxLength={MAX_HEADING} value={block.yesLabel} placeholder={said.fitYes} onChange={(e) => change(index, { yesLabel: e.target.value })} />)}
+              <div className="mt-3">
+                <ListEditor base={`${base}-y`} label="Point" items={block.yes} max={MAX_FIT_ITEMS} maxLength={MAX_ITEM} onChange={(yes) => change(index, { yes })} />
+              </div>
+            </div>
+            <div className="rounded-xl bg-paper p-3 ring-1 ring-line">
+              {field(`${base}-nl`, "Above the second list", <input id={`${base}-nl`} className="field" maxLength={MAX_HEADING} value={block.noLabel} placeholder={said.fitNo} onChange={(e) => change(index, { noLabel: e.target.value })} />)}
+              <div className="mt-3">
+                <ListEditor base={`${base}-n`} label="Point" items={block.no} max={MAX_FIT_ITEMS} maxLength={MAX_ITEM} onChange={(no) => change(index, { no })} />
+              </div>
+            </div>
+            <p className="text-xs text-ink-soft">
+              Saying who should not buy is the most honest line on a page, and the one that sends back the fewest refunds: a visitor who sees themselves in the second list leaves before paying instead of after. Left empty, the two headings are written in your store&apos;s language.
+            </p>
+          </div>
+        );
+      }
+      case "steps":
+      case "bonuses":
+        return (
+          <div className="space-y-4">
+            {field(`${base}-h`, "Heading", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} onChange={(e) => change(index, { heading: e.target.value })} />)}
+            <PairEditor
+              base={base}
+              first={{ label: block.kind === "steps" ? "Step" : "Bonus", max: MAX_ITEM }}
+              second={{ label: "A line about it (optional)", max: MAX_ITEM_DETAIL }}
+              items={block.items.map((item) => [item.title, item.detail] as [string, string])}
+              max={block.kind === "steps" ? MAX_STEPS : MAX_BONUSES}
+              onChange={(pairs) => change(index, { items: pairs.map(([title, detail]) => ({ title, detail })) })}
+              addLabel={block.kind === "steps" ? "Add a step" : "Add a bonus"}
+            />
+            {block.kind === "bonuses" ? (
+              <p className="text-xs text-ink-soft">
+                Only what really comes with it. There is no place for a &ldquo;worth $497&rdquo; beside a bonus on purpose: a value nobody ever paid makes buyers doubt the rest of the page.
+              </p>
+            ) : (
+              <p className="text-xs text-ink-soft">From the moment they pay to the result: what happens first, what they do next, what they end up with.</p>
+            )}
+          </div>
+        );
+      case "compare":
+        return (
+          <div className="space-y-4">
+            {field(`${base}-h`, "Heading (optional)", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} placeholder="Why this, and not the usual way" onChange={(e) => change(index, { heading: e.target.value })} />)}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {field(`${base}-ca`, "Your column", <input id={`${base}-ca`} className="field" maxLength={MAX_COLUMN} value={block.columnA} placeholder={product.title.slice(0, MAX_COLUMN)} onChange={(e) => change(index, { columnA: e.target.value })} />)}
+              {field(`${base}-cb`, "The other column", <input id={`${base}-cb`} className="field" maxLength={MAX_COLUMN} value={block.columnB} placeholder="Figuring it out alone" onChange={(e) => change(index, { columnB: e.target.value })} />)}
+            </div>
+            <CompareEditor base={base} rows={block.rows} onChange={(rows) => change(index, { rows })} />
+            <p className="text-xs text-ink-soft">
+              Compare with a way of doing it, not with a named competitor, and write only what you could show to be true. A row with nothing in either column is left out when you save.
+            </p>
+          </div>
+        );
+      case "facts": {
+        const chosen = new Set(block.show);
+        return (
+          <div className="space-y-4">
+            {field(`${base}-h`, "Heading (optional)", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} placeholder="By the numbers" onChange={(e) => change(index, { heading: e.target.value })} />)}
+            <fieldset>
+              <legend className="field-label">Which numbers may appear</legend>
+              <div className="mt-2 space-y-1">
+                {FACT_KEYS.map((fact) => {
+                  const now = facts[fact.key];
+                  return (
+                    <label key={fact.key} className="flex min-h-[44px] cursor-pointer items-start gap-3 py-1 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 shrink-0"
+                        checked={chosen.has(fact.key)}
+                        onChange={(e) => {
+                          const next = new Set(block.show);
+                          if (e.target.checked) next.add(fact.key);
+                          else next.delete(fact.key);
+                          change(index, { show: FACT_KEYS.map((f) => f.key).filter((k): k is FactKey => next.has(k)) });
+                        }}
+                      />
+                      <span>
+                        <span className="block font-semibold text-ink">
+                          {fact.label}
+                          <span className="ml-2 font-normal text-ink-soft">{now ? `now: ${now.value} ${now.label}` : "not shown yet"}</span>
+                        </span>
+                        <span className="block text-xs text-ink-soft">{fact.hint}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <p className="text-xs text-ink-soft">
+              Every number here is counted by your store and kept up to date by itself; none can be typed. One that is not there yet, such as a rating before the first review, simply does not appear.
+            </p>
+          </div>
+        );
+      }
       case "reviews":
         return (
           <div className="space-y-4">
@@ -720,6 +848,17 @@ export function PageEditor({
         return block.until
           ? `${block.heading ? `${block.heading} · ` : ""}${new Date(block.until * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
           : "No moment set yet";
+      case "fit":
+        return `${block.heading ? `${block.heading} · ` : ""}${block.yes.length} for, ${block.no.length} not for`;
+      case "steps":
+      case "bonuses":
+        return `${block.heading ? `${block.heading} · ` : ""}${block.items.length} ${block.kind === "steps" ? (block.items.length === 1 ? "step" : "steps") : block.items.length === 1 ? "bonus" : "bonuses"}`;
+      case "compare":
+        return `${block.heading ? `${block.heading} · ` : ""}${block.rows.length} ${block.rows.length === 1 ? "row" : "rows"}`;
+      case "facts": {
+        const live = block.show.filter((key) => facts[key]).length;
+        return `${block.heading ? `${block.heading} · ` : ""}${live} ${live === 1 ? "number" : "numbers"} shown now`;
+      }
     }
   };
 
@@ -1080,6 +1219,87 @@ export function PageEditor({
 }
 
 /** A list of one-line points. */
+/** The rows of a comparison: what is compared, and a cell for each column, with a tick and a cross a press away. */
+function CompareEditor({ base, rows, onChange }: { base: string; rows: CompareRow[]; onChange: (rows: CompareRow[]) => void }) {
+  const set = (i: number, patch: Partial<CompareRow>) => onChange(rows.map((row, j) => (j === i ? { ...row, ...patch } : row)));
+  const cell = (i: number, side: "a" | "b", label: string) => {
+    const value = rows[i][side];
+    return (
+      <div className="min-w-0">
+        <label htmlFor={`${base}-r${i}${side}`} className="text-xs font-semibold text-ink-soft">
+          {label}
+        </label>
+        <div className="mt-1 flex items-center gap-1.5">
+          <input
+            id={`${base}-r${i}${side}`}
+            className="field min-w-0"
+            maxLength={MAX_CELL}
+            value={value === CELL_YES ? "" : value === CELL_NO ? "" : value}
+            placeholder={value === CELL_YES ? "A tick" : value === CELL_NO ? "A cross" : "A few words"}
+            onChange={(e) => set(i, { [side]: e.target.value })}
+          />
+          <button
+            type="button"
+            aria-pressed={value === CELL_YES}
+            onClick={() => set(i, { [side]: value === CELL_YES ? "" : CELL_YES })}
+            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-1 ring-line ${value === CELL_YES ? "bg-mint-soft text-mint-deep" : "text-ink-soft hover:bg-paper"}`}
+            aria-label={`A tick in ${label.toLowerCase()}`}
+          >
+            <Icon name="check" size={16} />
+          </button>
+          <button
+            type="button"
+            aria-pressed={value === CELL_NO}
+            onClick={() => set(i, { [side]: value === CELL_NO ? "" : CELL_NO })}
+            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-1 ring-line ${value === CELL_NO ? "bg-danger-soft text-danger" : "text-ink-soft hover:bg-paper"}`}
+            aria-label={`A cross in ${label.toLowerCase()}`}
+          >
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+  return (
+    <div className="space-y-3">
+      {rows.map((row, i) => (
+        <div key={i} className="rounded-xl bg-paper p-3 ring-1 ring-line">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-ink-mute">{`Row ${i + 1}`}</p>
+            <button
+              type="button"
+              onClick={() => onChange(rows.filter((_, j) => j !== i))}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-danger-soft hover:text-danger"
+              aria-label={`Remove row ${i + 1}`}
+            >
+              <Icon name="close" size={15} />
+            </button>
+          </div>
+          <label htmlFor={`${base}-r${i}l`} className="sr-only">{`What row ${i + 1} compares`}</label>
+          <input
+            id={`${base}-r${i}l`}
+            className="field mt-1"
+            maxLength={MAX_ITEM}
+            value={row.label}
+            placeholder="What is compared, e.g. Feedback on your work"
+            onChange={(e) => set(i, { label: e.target.value })}
+          />
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {cell(i, "a", "Your column")}
+            {cell(i, "b", "The other column")}
+          </div>
+        </div>
+      ))}
+      {rows.length < MAX_COMPARE_ROWS ? (
+        <button type="button" onClick={() => onChange([...rows, { label: "", a: CELL_YES, b: CELL_NO }])} className="btn btn-ghost btn-sm">
+          <Icon name="plus" size={15} />
+          {`Add a row (${rows.length} of ${MAX_COMPARE_ROWS})`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function ListEditor({
   base,
   label,

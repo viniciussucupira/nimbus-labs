@@ -23,6 +23,7 @@ import { GIVING_WORDS } from "@/lib/buyer-words/giving";
 import { AFFILIATES_WORDS } from "@/lib/buyer-words/affiliates";
 import { COMMUNITY_WORDS } from "@/lib/buyer-words/community";
 import { THANKS_WORDS } from "@/lib/buyer-words/thanks";
+import { BLOCK_WORDS } from "@/lib/buyer-words/blocks";
 import { addProduct, claimHandle, ensureStatsId, setLanguage, setProductLink, setStripeAccount, setSubscription, storeForEmail } from "@/lib/store";
 import { readProduct } from "@/lib/catalog";
 import { createCheckout } from "@/lib/store-checkout";
@@ -84,6 +85,8 @@ const SAME: Record<string, Record<string, string[]>> = {
     pt: ["lengthHoursMinutes", "pts"],
   },
   // "{price} {every}": the price and the words for how often, each already in the language.
+  // "Bonus 7": Spanish says bonus too.
+  "page blocks": { es: ["bonusN"] },
   thanks: { es: ["priceEvery"], fr: ["priceEvery"], de: ["priceEvery"], it: ["priceEvery"], nl: ["priceEvery"], pt: ["priceEvery"] },
 };
 
@@ -148,6 +151,7 @@ async function main(): Promise<void> {
     ["affiliates", (code) => AFFILIATES_WORDS[code]],
     ["community", (code) => COMMUNITY_WORDS[code]],
     ["thanks", (code) => THANKS_WORDS[code]],
+    ["page blocks", (code) => BLOCK_WORDS[code]],
   ];
   for (const [area, wordsOf] of AREAS) {
     const englishWords = wordsOf("en");

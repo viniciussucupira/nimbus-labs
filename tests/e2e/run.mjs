@@ -157,14 +157,24 @@ try {
     await new Promise((wait) => setTimeout(wait, 1500));
   }
 
+  // The dev server builds each route the first time it is asked for; asked
+  // once here, so no check below races a route still being built.
+  for (const path of [`/@localshop/p/${ids["Meal Planner"]}`, "/api/store/checkout", "/studio", "/@localshop/orders"]) {
+    await fetch(`${LOCAL}${path}`).catch(() => {});
+  }
   browser = await chromium.launch(process.env.PLAYWRIGHT_BROWSERS_PATH ? { executablePath: join(process.env.PLAYWRIGHT_BROWSERS_PATH, "chromium") } : {}).catch(() => chromium.launch());
   const context = await browser.newContext({ viewport: { width: 430, height: 900 } });
   const page = await context.newPage();
   const errors = [];
   // What a page's own security headers refused (lib/csp.ts): a script left without leave to run, a feature no browser knows.
   const policyRefusals = [];
+  const reactWarnings = [];
   // A frame refused on purpose (the product page framed by another site, below) is the policy working, not a fault.
-  const watchPolicy = (target) => target.on("console", (m) => { if (/Content Security Policy|Permissions-Policy/.test(m.text()) && !/frame-ancestors/.test(m.text())) policyRefusals.push(m.text().slice(0, 200)); });
+  const watchPolicy = (target) => target.on("console", (m) => {
+    if (/Content Security Policy|Permissions-Policy/.test(m.text()) && !/frame-ancestors/.test(m.text())) policyRefusals.push(m.text().slice(0, 200));
+    // React saying the page the server drew is not the one the browser drew: the "1 Issue" a creator would see in development.
+    if (/hydrat|did not match|Warning: /.test(m.text())) reactWarnings.push(m.text().slice(0, 300));
+  });
   page.on("pageerror", (error) => errors.push(String(error)));
   watchPolicy(page);
   const open = (target, url) => target.goto(url, { waitUntil: "networkidle", timeout: 120_000 });
@@ -478,9 +488,37 @@ try {
   is("the studio has the card that picks it", await studio.locator("select#store-language").count(), 1);
   is("showing the language the store speaks", await studio.locator("select#store-language").inputValue(), "en");
 
+  part("A sales page with the newer blocks");
+  {
+    const saved = await studio.evaluate(async (id) => {
+      const blocks = [
+        { id: "hero0001", kind: "hero", headline: "Cut faster, safely", sub: "Ten short lessons.", media: "none", video: null },
+        { id: "fact0001", kind: "facts", heading: "By the numbers", show: ["lessons", "buyers", "rating"] },
+        { id: "fit00001", kind: "fit", heading: "Is it for you?", yesLabel: "", noLabel: "", yes: ["You cook every day", "You fear the knife"], no: ["You are a trained chef"] },
+        { id: "step0001", kind: "steps", heading: "How it works", items: [{ title: "Pay", detail: "" }, { title: "Watch a lesson a day", detail: "Ten minutes each." }, { title: "Cook with confidence", detail: "" }] },
+        { id: "comp0001", kind: "compare", heading: "Why a course", columnA: "Knife Skills", columnB: "", rows: [{ label: "Feedback on your grip", a: "\u2713", b: "\u2717" }, { label: "Time it takes", a: "Ten days", b: "Years" }] },
+        { id: "bonu0001", kind: "bonuses", heading: "Also included", items: [{ title: "A sharpening chart", detail: "One page to keep by the board." }] },
+        { id: "cta00001", kind: "cta", label: "", note: "" },
+      ];
+      const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null } }) });
+      return (await response.json()).ok === true;
+    }, ids["Knife Skills"]);
+    is("saved from the studio", saved, true);
+    await open(page, `${LOCAL}/@localshop/p/${ids["Knife Skills"]}`);
+    const main = await words(page.locator("main"));
+    is("who it is for, with the heading written for the creator", [main.includes("This is for you if"), main.includes("You fear the knife"), main.includes("This is not for you if")], [true, true, true]);
+    is("the steps, numbered", await page.locator(".sp-step").count(), 3);
+    is("the comparison, its other column named for the creator", [await page.locator(".sp-compare tbody tr").count(), main.includes("Another way")], [2, true]);
+    is("ticks and crosses spoken as yes and no", [await page.locator('.sp-compare [role="img"][aria-label="Yes"]').count(), await page.locator('.sp-compare [role="img"][aria-label="No"]').count()], [1, 1]);
+    is("the bonus on its card, numbered", [await page.locator(".sp-bonus").count(), /bonus 1/i.test(main)], [1, true]);
+    is("no number is shown that the store has not counted", await page.locator(".sp-facts").count(), 0);
+    if (process.env.E2E_SHOTS) await page.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "new-blocks.png") });
+  }
+
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);
   is("and no page's own policy refused anything on it", [...new Set(policyRefusals)], []);
+  is("and React found every page as the server drew it", [...new Set(reactWarnings)], []);
   is("nothing was asked of a service with no stand-in", services.unknown(), []);
 } catch (error) {
   failed += 1;

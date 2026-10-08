@@ -46,6 +46,8 @@ import { readPage } from "@/lib/sales-page-store";
 import { type Summary, REVIEWS_ON_PAGE, average, showsRating, summaryOf, visibleReviews } from "@/lib/reviews";
 import { BuyBox, GiftBox, GroupBox, PriceTag, ProductFacts, pageAction, productPath, saleNow } from "@/components/store-product";
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
+import { pageFacts } from "@/lib/page-facts";
+import { LANGUAGES } from "@/lib/store-language";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { StoreTracking } from "@/components/store-tracking";
 import { isResting } from "@/lib/traffic";
@@ -515,6 +517,15 @@ export default async function ProductPage({ params, searchParams }: Params) {
     // For a countdown's first numbers: the same on the server and in the browser.
     now: saleClock(),
     lang: store.language,
+    // The numbers a "By the numbers" block may show, counted here, never typed (lib/page-facts.ts).
+    facts: pageFacts({
+      language: store.language,
+      locale: LANGUAGES[store.language].locale,
+      product,
+      bundleItems: product.bundle ? inside?.length ?? 0 : null,
+      sold: soldCount && soldCount >= SHOWN_FROM ? soldCount : null,
+      reviews: summary,
+    }),
   };
   const [first, ...others] = page.blocks;
   const firstHero = first?.kind === "hero" ? first : null;
