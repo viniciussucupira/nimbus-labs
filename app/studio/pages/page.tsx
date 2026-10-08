@@ -172,7 +172,7 @@ export default async function StudioPagesPage({ searchParams }: Params) {
                 title: selected.title,
                 summary: selected.summary,
                 free: isFree(selected),
-                pill: pricePill(selected, store.currency),
+                pill: pricePill(store, selected),
                 picture: selected.image
                   ? { src: imageUrl(selected.image), alt: selected.image.alt, width: selected.image.width, height: selected.image.height }
                   : null,

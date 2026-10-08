@@ -115,6 +115,7 @@ import {
 import { type Announcement, type StoreSection, parseAnnouncement, parseSections, sectionsWithout } from "@/lib/store-sections";
 import { type AnswersSetting, NO_ANSWERS, parseAnswers } from "@/lib/answers-rules";
 import { DEFAULT_FAIR, type FairPricing, parseFair } from "@/lib/fair-price";
+import { DEFAULT_LANGUAGE, type LanguageCode, parseLanguage } from "@/lib/store-language";
 
 // What the rest of the site has always imported from here.
 export { MAX_PRODUCTS, MAX_SUMMARY_LENGTH, MAX_TITLE_LENGTH, StoreFullError };
@@ -489,6 +490,12 @@ export type Store = {
    */
   fair: FairPricing;
   /**
+   * The language the store speaks to its buyers in (lib/store-language.ts):
+   * every word on its pages the creator did not write, and Stripe's payment
+   * page. English on every store until its creator picks another.
+   */
+  language: LanguageCode;
+  /**
    * The country the visitor's connection is in, for the page drawn for them
    * now (lib/fair-price.ts, readCountry). Set by the store's pages from the
    * request, never stored: a record read from the database has none.
@@ -739,6 +746,8 @@ function parseStore(raw: unknown): Store | null {
       announcement: parseAnnouncement(value.announcement),
       answers: parseAnswers(value.answers),
       fair: parseFair(value.fair),
+      // Stores written before a store could pick its language speak English.
+      language: parseLanguage(value.language),
       // Stores written before either existed send nothing anywhere.
       emailSync: parseEmailSyncRef(value.emailSync),
       phoneSales: value.phoneSales === true,
@@ -905,6 +914,7 @@ async function freshStore(fields: {
     announcement: null,
     answers: { ...NO_ANSWERS },
     fair: { ...DEFAULT_FAIR },
+    language: DEFAULT_LANGUAGE,
     emailSync: null,
     phoneSales: false,
     pastBuyers: false,
@@ -3173,6 +3183,11 @@ export async function setAnswers(email: string, raw: unknown): Promise<Store | n
 /** Switches fair prices by country on or off, with the deepest discount the creator accepts (lib/fair-price.ts). */
 export async function setFair(email: string, raw: unknown): Promise<Store | null> {
   return patchStore(email, () => ({ fair: parseFair(raw) }));
+}
+
+/** Sets the language the store speaks to its buyers in (lib/store-language.ts). */
+export async function setLanguage(email: string, raw: unknown): Promise<Store | null> {
+  return patchStore(email, () => ({ language: parseLanguage(raw) }));
 }
 
 /** Sets the line of news across the top of the store page, or takes it away (null or empty). */

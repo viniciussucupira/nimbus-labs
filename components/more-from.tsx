@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Listing, Store } from "@/lib/store";
 import { imageUrl } from "@/lib/product-image";
 import { PriceTag, productPath } from "@/components/store-product";
+import { speech } from "@/lib/buyer-words";
 
 /** How many other products a product's page points to. */
 export const MORE_FROM_COUNT = 3;
@@ -36,7 +37,7 @@ export function MoreFrom({ store, products }: { store: Store; products: Listing[
   return (
     <section className="sp-section" aria-labelledby="more-from-title">
       <h2 id="more-from-title" className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em]">
-        {`More from ${store.name}`}
+        {speech(store).w.moreFrom(store.name)}
       </h2>
       <ul className="mt-5 space-y-3">
         {products.map((product) => (

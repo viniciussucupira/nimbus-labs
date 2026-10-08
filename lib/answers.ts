@@ -20,6 +20,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { answerModel, askModel, isAiConfigured, jsonIn } from "@/lib/ai";
 import { inTrial } from "@/lib/mail";
 import { formatMoney } from "@/lib/money";
+import { speech } from "@/lib/buyer-words";
 import { type Listing, type Store, isFree } from "@/lib/store";
 import { membershipPrice } from "@/lib/product-recurring";
 import { activePlan, planWords } from "@/lib/product-extras";
@@ -34,7 +35,6 @@ import {
   MISSED_SECONDS,
   questionKey,
   readQuestion,
-  unknownWords,
 } from "@/lib/answers-rules";
 
 const ANSWER_TIMEOUT_MS = 20_000;
@@ -170,7 +170,7 @@ export async function answerQuestion(input: {
   if (!question) return { ok: false, reason: "question" };
 
   const facts = factsFor(store, product, input.about, input.page);
-  const hash = sha(`${store.statsId}|${product.id}|${sha(facts)}|${questionKey(question)}`).slice(0, 40);
+  const hash = sha(`${store.statsId}|${product.id}|${store.language}|${sha(facts)}|${questionKey(question)}`).slice(0, 40);
   const [kept] = await redisPipeline([["GET", answerKey(hash)]]);
   if (typeof kept === "string") {
     try {
@@ -206,7 +206,8 @@ export async function answerQuestion(input: {
   const shaped = json !== null && typeof json.known === "boolean";
   const said = shaped && typeof json.answer === "string" ? json.answer.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_ANSWER) : "";
   const known = shaped && json.known === true && said !== "";
-  const answer = known ? said : unknownWords(store.name);
+  // Said in the store's language (lib/buyer-words), like the rest of its page.
+  const answer = known ? said : speech(store).w.askUnknown(store.name);
 
   const commands: (string | number)[][] = [["SET", answerKey(hash), JSON.stringify({ answer, known }), "EX", ANSWER_KEPT_SECONDS]];
   if (!known && shaped) {

@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 import { get } from "@/lib/blob";
-import { isFree, normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
 import { lookColours } from "@/lib/store-look";
 import { MAX_IMAGE_BYTES } from "@/lib/product-image";
@@ -82,8 +82,8 @@ export default async function OpengraphImage({ params }: Params) {
     store && product ? summaryOf(store.statsId, product.id).catch(() => null) : Promise.resolve(null),
   ]);
   const stars = summary && showsRating(summary) ? summary : null;
-  // In the store's own currency (lib/money.ts), as the page writes it.
-  const price = product && store ? (isFree(product) ? "Free" : pricePill(product, store.currency)) : "";
+  // In the store's own currency and language (lib/money.ts, lib/buyer-words), as the page writes it.
+  const price = product && store ? pricePill(store, product) : "";
   const address =
     store?.domain?.liveAt && canUseDomain(store) ? store.domain.name : `marktmorgen.com/@${store?.handle ?? ""}`;
 

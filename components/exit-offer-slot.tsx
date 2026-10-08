@@ -4,6 +4,7 @@ import { canGiveProduct } from "@/lib/free";
 import { canWrite } from "@/lib/mail";
 import { ExitOffer } from "@/components/exit-offer";
 import { BuyBox } from "@/components/store-product";
+import { speech } from "@/lib/buyer-words";
 
 /**
  * The store's offer for leaving visitors, when it has one that can be given
@@ -15,7 +16,7 @@ export async function ExitOfferSlot({ store, except }: { store: Store; except?: 
   const product = await readListing(store, store.exitOffer).catch(() => null);
   if (!product || !canGiveProduct(store, product)) return null;
   return (
-    <ExitOffer store={store.handle} title={product.title}>
+    <ExitOffer store={store.handle} title={product.title} words={{ close: speech(store).w.close, beforeYouGo: speech(store).w.beforeYouGo }}>
       {product.summary ? <p className="st-muted mt-2">{product.summary}</p> : null}
       <BuyBox store={store} product={product} related={[]} remaining={null} writes={canWrite(store)} selling place="x-" />
     </ExitOffer>

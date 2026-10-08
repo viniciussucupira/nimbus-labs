@@ -66,7 +66,7 @@ function NextUp({ store, product }: { store: Store; product: Listing }) {
           <h2 id="next-title" className="font-display mt-1 text-xl font-semibold leading-snug">
             {product.title}
           </h2>
-          <p className="st-price mt-2 text-sm">{pricePill(product, store.currency)}</p>
+          <p className="st-price mt-2 text-sm">{pricePill(store, product)}</p>
           {product.summary ? <p className="st-muted mt-2 text-sm leading-relaxed">{product.summary}</p> : null}
           <Link href={productPath(store, product)} className="btn st-btn mt-4">
             {`See ${product.title}`}

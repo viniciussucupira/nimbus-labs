@@ -16,6 +16,7 @@ import { bumpTargets } from "@/lib/product-extras";
 import { CARD_COVER_FROM, CARD_HEIGHTS, placeFrom, tagged } from "@/lib/embed-rules";
 import { PriceTag, pageAction, productPath } from "@/components/store-product";
 import { RatingLine } from "@/components/review-list";
+import { speech } from "@/lib/buyer-words";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -92,9 +93,9 @@ export default async function EmbedCard({ params, searchParams }: Params) {
         <p className="rounded-3xl bg-white px-5 py-4 text-center text-sm text-ink-soft ring-1 ring-line">
           {store ? (
             <>
-              {"This product is no longer on sale. "}
+              {`${speech(store).w.noLongerOnSale} `}
               <a href={tagged(`/@${store.handle}`, place)} target="_blank" rel="noopener" className="font-semibold underline underline-offset-4">
-                {`See ${store.name}`}
+                {speech(store).w.seeStore(store.name)}
               </a>
             </>
           ) : (
@@ -120,17 +121,19 @@ export default async function EmbedCard({ params, searchParams }: Params) {
   // A product page link with the place on it, and the part of the page it was meant for.
   const into = (href: string) => (href.startsWith("#") ? `${page}${href}` : tagged(href, place));
   const testMode = selling && sellsInTestMode(store);
+  const { w, num, lang } = speech(store);
   const note = testMode
-    ? "Test mode: no real card is charged."
+    ? w.cardTestMode
     : action.kind === "checkout"
-      ? "Secure checkout by Stripe, in a new tab."
+      ? w.cardCheckout
       : action.kind === "link"
-        ? `Opens on ${store.name}'s store, in a new tab.`
+        ? w.cardOpens(store.name)
         : "";
   const image = product.image;
 
   return (
     <div
+      lang={lang.locale}
       className={`st-page st-theme-${store.look.theme} h-screen`}
       style={{ ...(lookStyle(store.look) as React.CSSProperties), background: "transparent" }}
       data-card-height={image ? CARD_HEIGHTS.picture : CARD_HEIGHTS.plain}
@@ -163,9 +166,9 @@ export default async function EmbedCard({ params, searchParams }: Params) {
           <p className="st-price text-sm">
             <PriceTag store={store} product={product} />
           </p>
-          {summary ? <RatingLine summary={summary} className="text-sm" /> : null}
+          {summary ? <RatingLine summary={summary} className="text-sm" lang={store.language} /> : null}
           {remaining !== null && remaining > 0 && !soon ? (
-            <p className="text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>{`${remaining.toLocaleString("en-US")} left`}</p>
+            <p className="text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>{w.left(remaining, num(remaining))}</p>
           ) : null}
         </div>
         <div className="mt-2 min-h-0 flex-1 overflow-hidden">

@@ -14,7 +14,21 @@ const never = () => () => {};
  * ask, and a box that does nothing when pressed is worse than no box. The
  * page sells without it.
  */
-export function AskBox({ handle, product, storeName }: { handle: string; product: string; storeName: string }) {
+/** Everything the box says, in the store's language (lib/buyer-words), with the store's name already in. */
+export type AskWords = {
+  aria: string;
+  label: string;
+  placeholder: string;
+  busy: string;
+  ask: string;
+  closed: string;
+  typeFirst: string;
+  slow: string;
+  failed: string;
+  note: string;
+};
+
+export function AskBox({ handle, product, words }: { handle: string; product: string; words: AskWords }) {
   const here = useSyncExternalStore(never, () => true, () => false);
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
@@ -22,13 +36,12 @@ export function AskBox({ handle, product, storeName }: { handle: string; product
   const [note, setNote] = useState<string | null>(null);
   if (!here) return null;
 
-  const closed = `Questions are closed right now. Ask ${storeName} before you buy.`;
   const NOTES: Record<string, string> = {
-    question: "Type your question first.",
-    slow: "Too many questions just now. Try again in a few minutes.",
-    closed,
-    off: closed,
-    failed: "That could not be answered just now. Try again in a moment.",
+    question: words.typeFirst,
+    slow: words.slow,
+    closed: words.closed,
+    off: words.closed,
+    failed: words.failed,
   };
 
   async function ask(event: React.FormEvent) {
@@ -62,10 +75,10 @@ export function AskBox({ handle, product, storeName }: { handle: string; product
   }
 
   return (
-    <section className="st-ask mt-4" aria-label="Ask a question about this product">
+    <section className="st-ask mt-4" aria-label={words.aria}>
       <form onSubmit={ask}>
         <label htmlFor={`ask-${product}`} className="st-label">
-          A question before you buy?
+          {words.label}
         </label>
         <div className="mt-2 flex gap-2">
           <input
@@ -74,12 +87,12 @@ export function AskBox({ handle, product, storeName }: { handle: string; product
             maxLength={MAX_QUESTION}
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
-            placeholder="Is it a PDF? How long do I have access?"
+            placeholder={words.placeholder}
             autoComplete="off"
             enterKeyHint="send"
           />
           <button type="submit" className="btn st-btn-ghost shrink-0" disabled={busy} aria-busy={busy}>
-            {busy ? "Reading…" : "Ask"}
+            {busy ? words.busy : words.ask}
           </button>
         </div>
       </form>
@@ -96,9 +109,7 @@ export function AskBox({ handle, product, storeName }: { handle: string; product
           </p>
         ) : null}
       </div>
-      <p className="st-muted mt-2 text-xs">
-        {`Answered automatically, only from what this page says. Your question may be shown to ${storeName}, without anything about who you are, so leave personal details out.`}
-      </p>
+      <p className="st-muted mt-2 text-xs">{words.note}</p>
     </section>
   );
 }

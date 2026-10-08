@@ -3,6 +3,7 @@ import { canRecover } from "@/lib/buyer-orders";
 import { photoUrl } from "@/lib/photo-limits";
 import type { Store } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
+import { speech } from "@/lib/buyer-words";
 
 /**
  * A store's page while it rests (lib/traffic.ts, isResting): a store with
@@ -16,8 +17,10 @@ import { lookStyle } from "@/lib/store-look";
  * counted: a page that is resting has stopped adding to the month.
  */
 export function StoreResting({ store }: { store: Store }) {
+  const { w, lang } = speech(store);
   return (
     <div
+      lang={lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
@@ -37,36 +40,33 @@ export function StoreResting({ store }: { store: Store }) {
 
           <div className="st-note mt-10 text-center" role="status">
             <p className="font-bold" style={{ color: "var(--st-text)" }}>
-              This page is resting for now
+              {w.restingTitle}
             </p>
-            <p className="mt-2 text-sm">
-              It will be open again at the start of next month, or sooner. Anything you already have from {store.name} is
-              still yours, and still open.
-            </p>
+            <p className="mt-2 text-sm">{w.restingBody(store.name)}</p>
           </div>
 
           <div className="mt-10">
             {canRecover(store) ? (
               <p className="mb-4">
                 <Link href={`/@${store.handle}/orders`} className="st-footer-link text-sm font-semibold">
-                  Bought something here? Get it again
+                  {w.getAgain}
                 </Link>
               </p>
             ) : null}
             {store.community?.on ? (
               <p className="mb-4">
                 <Link href={`/@${store.handle}/community`} className="st-footer-link text-sm font-semibold">
-                  Members&apos; community
+                  {w.communityTitle}
                 </Link>
               </p>
             ) : null}
             <p className="mb-4">
               <Link href="/studio" className="st-footer-link text-sm font-semibold">
-                Is this your store? Your studio says why, and how to open it again
+                {w.restingOwner}
               </Link>
             </p>
             <Link href="/" className="st-footer-link text-sm font-semibold">
-              Made with Marktmorgen
+              {w.madeWith}
             </Link>
           </div>
         </div>

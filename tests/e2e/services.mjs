@@ -103,6 +103,8 @@ export async function startServices(port) {
           customer_email: null,
           // What a real checkout would take off, kept for the test to read.
           discount_coupon: body.get("discounts[0][coupon]"),
+          // And the language Stripe's page was asked to speak.
+          locale: body.get("locale"),
           subscription: null,
           customer: null,
         });

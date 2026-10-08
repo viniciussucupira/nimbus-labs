@@ -26,7 +26,9 @@ import {
 import { isPaidUp } from "@/lib/billing";
 import { livePromotionId } from "@/lib/discount";
 import { StripeError, checkoutClosesAt, onAccount, platformKey } from "@/lib/stripe-account";
-import { type Bump, MAX_BUMPS, activeBumps, activePlan, bumpTargets, planWords } from "@/lib/product-extras";
+import { type Bump, MAX_BUMPS, activeBumps, activePlan, bumpTargets } from "@/lib/product-extras";
+import { planLine } from "@/lib/buyer-words";
+import { LANGUAGES } from "@/lib/store-language";
 import { type CameFrom, hasSource } from "@/lib/came-from";
 import { applyTax, applyTaxDocuments, refusedTaxDocuments, withoutTaxDocuments } from "@/lib/tax";
 import { inTheCurrencyShown, isSettled, onlyInstantMethods, reusableMethod, saveCardForOffers } from "@/lib/instant-pay";
@@ -245,7 +247,7 @@ export async function createCheckout(
   const recurring = membership !== null || plan !== null;
   const priceCents = plan ? plan.amountCents : chosen ? chosen.priceCents : product.priceCents;
   const baseName = chosen ? `${product.title} (${chosen.label})` : product.title;
-  const name = plan ? `${baseName} (${planWords(plan, store.currency)})` : baseName;
+  const name = plan ? `${baseName} (${planLine(store, plan)})` : baseName;
   // Bought for several: the same price, that many times, on one line.
   const people = extras.group ? extras.group.people : 1;
   if (extras.group && !payable(priceCents, people)) throw new Error("This cannot be bought for several people");
@@ -255,9 +257,9 @@ export async function createCheckout(
 
   const body = new URLSearchParams({
     mode: recurring ? "subscription" : "payment",
-    // In English, like every other page a buyer meets here, rather than in
-    // whatever language Stripe guesses from the browser.
-    locale: "en",
+    // In the store's language, like every other page a buyer meets here
+    // (lib/store-language.ts), rather than whatever Stripe guesses from the browser.
+    locale: LANGUAGES[store.language].stripe,
     "line_items[0][quantity]": String(people),
     // The store's own currency (lib/money.ts): every amount saved in it is in
     // that currency's smallest unit, which is what Stripe counts in.
@@ -446,7 +448,7 @@ export async function createCheckout(
     body.set("subscription_data[metadata][kind]", "plan");
     body.set("subscription_data[metadata][plan_payments]", String(plan.payments));
     body.set("subscription_data[metadata][plan_interval]", plan.interval);
-    body.set("subscription_data[description]", `${product.title}: ${planWords(plan, store.currency)}`.slice(0, 500));
+    body.set("subscription_data[description]", `${product.title}: ${planLine(store, plan)}`.slice(0, 500));
   } else {
     body.set("payment_intent_data[metadata][store]", store.handle);
     body.set("payment_intent_data[metadata][product]", product.id);

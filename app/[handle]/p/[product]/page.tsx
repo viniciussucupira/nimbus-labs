@@ -5,9 +5,10 @@ import { ExitOfferSlot } from "@/components/exit-offer-slot";
 import { PageDepth } from "@/components/page-depth";
 import { previewable } from "@/lib/pdf-preview";
 import { after } from "next/server";
-import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
+import { SHOWN_FROM, readSoldCounts, refreshSoldCounts, stale } from "@/lib/sold-count";
+import { planLine, speech, worthLine } from "@/lib/buyer-words";
 import { readAllTimeSales } from "@/lib/stats";
-import { paypalReady, takenBy } from "@/lib/paypal-sales";
+import { paypalReady } from "@/lib/paypal-sales";
 import { saleClock, salePrice } from "@/lib/store-sale";
 import { isSoon } from "@/lib/waitlist";
 import { canGift } from "@/lib/gift-rules";
@@ -22,14 +23,14 @@ import { AB_COOKIE, count as countTest, readBucket, readCounts, versionFor, winn
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { cache } from "react";
 import { type Listing, type Store, isFree, normaliseHandle, storeForPage } from "@/lib/store";
-import { formatMoney, moneyField } from "@/lib/money";
+import { moneyField } from "@/lib/money";
 import { readListing, readListings } from "@/lib/catalog";
 import { canSell, canSellProduct, sellableOptions } from "@/lib/store-checkout";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { imageUrl, IMAGE_SIZES, imageSrcSet } from "@/lib/product-image";
 import { type Block, type Piece, aboutBlocks, aboutExcerpt, readAbout } from "@/lib/product-about";
-import { activePlan, bumpTargets, planWords } from "@/lib/product-extras";
+import { activePlan, bumpTargets } from "@/lib/product-extras";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { stockLeft } from "@/lib/stock";
 import { outOfKeys } from "@/lib/licence-keys";
@@ -51,7 +52,7 @@ import { isResting } from "@/lib/traffic";
 import { StoreResting } from "@/components/store-resting";
 import { JsonLd } from "@/components/structured-data";
 import { offeredItems } from "@/lib/bundles";
-import { MIN_BUNDLE_ITEMS, worthWords } from "@/lib/bundle-rules";
+import { MIN_BUNDLE_ITEMS } from "@/lib/bundle-rules";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -100,7 +101,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { store, product } = found;
   const [about, page] = await Promise.all([product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""), pageOf(store, product)]);
   const description =
-    page.seoDescription || product.summary || aboutExcerpt(about) || `${product.title}, from the store of ${store.name}.`;
+    page.seoDescription || product.summary || aboutExcerpt(about) || speech(store).w.productDescription(product.title, store.name);
   const title = page.seoTitle || `${product.title} — ${store.name}`;
   const ownDomain = store.domain?.liveAt && canUseDomain(store) ? `https://${store.domain.name}` : null;
   // On the creator's own domain the page's address is the short one, /p/<id>,
@@ -232,6 +233,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const { product, asked } = found;
   // With the visitor's country, for a fair price for it (lib/fair-price.ts).
   const store = await forVisitor(found.store);
+  const { w, money, num } = speech(store);
 
   // The same rules the store page follows for the creator's own domain and
   // for an old address of the store.
@@ -267,16 +269,17 @@ export default async function ProductPage({ params, searchParams }: Params) {
     readSoldCounts(store).catch(() => null),
   ]);
   if (store.look.sold && stale(soldCounts)) after(() => refreshSoldCounts(store, readAllTimeSales).then(() => undefined));
-  const sold = soldWords(soldCounts?.byProduct[product.id]);
+  const soldCount = soldCounts?.byProduct[product.id];
+  const sold = soldCount && soldCount >= SHOWN_FROM ? w.bought(num(soldCount)) : null;
   const soldLine = sold ? <p className="st-sold mt-2 text-sm font-semibold">{sold}</p> : null;
   const bundleReady = !product.bundle || (inside?.length ?? 0) >= MIN_BUNDLE_ITEMS;
-  const worth = inside && product.bundle ? worthWords(inside, product.priceCents, store.currency) : null;
+  const worth = inside && product.bundle ? worthLine(store, inside, product.priceCents) : null;
   // What a bundle holds, each with what it costs on its own and its own page
   // when it has one on the store.
   const bundleList =
     inside && inside.length > 0 ? (
       <section className="mt-6" aria-labelledby="inside-title">
-        <h2 id="inside-title" className="st-label">{`What is inside: ${inside.length} products`}</h2>
+        <h2 id="inside-title" className="st-label">{w.insideTitle(inside.length)}</h2>
         <ul className="mt-3 divide-y" style={{ borderColor: "var(--st-line)" }}>
           {inside.map((item) => (
             <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5" style={{ borderColor: "var(--st-line)" }}>
@@ -288,13 +291,13 @@ export default async function ProductPage({ params, searchParams }: Params) {
                 </Link>
               )}
               <span className="st-muted shrink-0 text-sm tabular-nums">
-                {`${item.course ? `Course, ${item.course.lessons} ${item.course.lessons === 1 ? "lesson" : "lessons"} \u00b7 ` : ""}${formatMoney(item.priceCents, store.currency)} on its own`}
+                {`${item.course ? w.insideCourse(item.course.lessons) : ""}${w.onItsOwn(money(item.priceCents))}`}
               </span>
             </li>
           ))}
         </ul>
         {worth ? <p className="mt-3 font-semibold">{worth}</p> : null}
-        <p className="st-muted mt-2 text-sm">Each one is yours straight after paying, as if you had bought it on its own.</p>
+        <p className="st-muted mt-2 text-sm">{w.insideNote}</p>
       </section>
     ) : null;
   const reviews = summary && summary.visible > 0 ? await visibleReviews(store.statsId, product.id, 0, REVIEWS_ON_PAGE).catch(() => []) : [];
@@ -322,6 +325,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
         storeName={store.name}
         productTitle={product.title}
         moreHref={summary.visible > reviews.length ? reviewsHref : null}
+        lang={store.language}
       />
     ) : null;
 
@@ -331,50 +335,63 @@ export default async function ProductPage({ params, searchParams }: Params) {
     <DemoNote />
   ) : rehearsal ? (
     <p className="st-note mt-6 text-sm">
-      <strong>This checkout is running in Stripe&apos;s test mode.</strong> No real money moves through it and no
-      real card is charged, so do not put a card you own into it.
+      <strong>{w.testModeTitle}</strong> {w.testModeBody}
     </p>
   ) : selling || byPayPal ? (
-    <p className="st-muted mt-6 text-center text-sm">
-      Payment is taken by {takenBy(selling, byPayPal)} on {store.name}&apos;s own account. Marktmorgen never holds the money and takes none of it.
-    </p>
+    <p className="st-muted mt-6 text-center text-sm">{w.paidBy(w.takenBy(selling, byPayPal), store.name)}</p>
   ) : (
     <p className="st-note mt-6 text-sm">
-      <strong>This store cannot take payments yet.</strong> The price above is real, but nothing here can charge a
-      card. To buy, write to {store.name} directly.
+      <strong>{w.noPaymentsTitle}</strong> {w.noPaymentsBodyOne(store.name)}
     </p>
   );
 
   const buyTerms = (
     <>
       {plan && canSellProduct(store, product) ? (
-        <p className="st-muted text-sm font-semibold">{`Pay in full, or in ${planWords(plan, store.currency)}`}</p>
+        <p className="st-muted text-sm font-semibold">{w.payInFullOr(planLine(store, plan))}</p>
       ) : null}
       {pwyw && canSellProduct(store, product) ? (
-        <p className="st-muted text-sm font-semibold">{`You choose the price: ${formatMoney(product.priceCents, store.currency)} or more.`}</p>
+        <p className="st-muted text-sm font-semibold">{w.youChoose(money(product.priceCents))}</p>
       ) : null}
       {remaining !== null ? (
         <p className="mt-1 text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>
-          {remaining === 0 ? "Sold out" : `${remaining.toLocaleString("en-US")} left`}
+          {remaining === 0 ? w.soldOut : w.left(remaining, num(remaining))}
         </p>
       ) : null}
       {product.preview > 0 && product.file && previewable(product.file) ? (
         /* The first pages only, as a file of their own (lib/pdf-preview.ts). */
         <p className="mb-4 text-sm font-semibold">
           <a href={`/api/store/preview?handle=${encodeURIComponent(store.handle)}&product=${encodeURIComponent(product.id)}`} rel="nofollow" className="underline underline-offset-4" style={{ color: "var(--st-text)" }}>
-            {`Read the first ${product.preview === 1 ? "page" : `${product.preview} pages`} free (PDF)`}
+            {w.readFirst(product.preview)}
           </a>
         </p>
       ) : null}
       <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} />
       {/* A question before buying, answered from this page (lib/answers.ts): only where the creator switched it on. */}
-      {selling && answersOn(store) ? <AskBox handle={store.handle} product={product.id} storeName={store.name} /> : null}
+      {selling && answersOn(store) ? (
+        <AskBox
+          handle={store.handle}
+          product={product.id}
+          words={{
+            aria: w.askAria,
+            label: w.askLabel,
+            placeholder: w.askPlaceholder,
+            busy: w.askBusy,
+            ask: w.ask,
+            closed: w.askClosed(store.name),
+            typeFirst: w.askTypeFirst,
+            slow: w.askSlow,
+            failed: w.askFailed,
+            note: w.askNote(store.name),
+          }}
+        />
+      ) : null}
       {giftable ? <GiftBox store={store} product={product} problem={giftProblem} /> : null}
       {groupable ? <GroupBox store={store} product={product} problem={groupProblem} /> : null}
       {product.recurring && canManage(store) ? (
         <p className="mt-3 text-center text-sm">
           <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">
-            Already a member? Manage or cancel
+            {w.memberManage}
           </Link>
         </p>
       ) : null}
@@ -401,7 +418,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const footer = (
     <div className="mt-10 text-center">
       <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-        {`Everything from ${store.name}`}
+        {w.everythingFrom(store.name)}
       </Link>
       <StoreTracking store={store} presence />
     </div>
@@ -417,6 +434,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
 
   const shell = (children: ReactNode, wide: boolean) => (
     <div
+      lang={speech(store).lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
@@ -458,7 +476,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
               </h1>
               <p className="st-price text-base"><PriceTag store={store} product={product} /></p>
             </div>
-            {summary ? <RatingLine summary={summary} href="#reviews" className="mt-2" /> : null}
+            {summary ? <RatingLine summary={summary} href="#reviews" className="mt-2" lang={store.language} /> : null}
             {soldLine}
             <ProductFacts store={store} product={product} bundleItems={inside} linkCourse={false} />
             {product.summary ? <p className="st-muted mt-4 text-lg leading-relaxed">{product.summary}</p> : null}
@@ -472,7 +490,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
         </article>
 
         {payments}
-        {anyReviews ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}
+        {anyReviews ? <section className="sp-section">{reviewsPart(w.reviews)}</section> : null}
         {more}
         {footer}
       </>,
@@ -496,6 +514,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
     defaultLabel: label,
     // For a countdown's first numbers: the same on the server and in the browser.
     now: saleClock(),
+    lang: store.language,
   };
   const [first, ...others] = page.blocks;
   const firstHero = first?.kind === "hero" ? first : null;
@@ -515,13 +534,13 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const rest = hero ? others : page.blocks;
   const placed = page.blocks.find((block) => block.kind === "reviews");
   const pill = <p className="st-price text-sm"><PriceTag store={store} product={product} /></p>;
-  const rating = summary ? <RatingLine summary={summary} href="#reviews" /> : null;
+  const rating = summary ? <RatingLine summary={summary} href="#reviews" lang={store.language} /> : null;
 
   const buySection = (
     <section id={free ? "get" : "buy"} className="st-card sp-section scroll-mt-6 p-6 sm:p-8" aria-labelledby="buy-title">
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <h2 id="buy-title" className="font-display min-w-0 text-xl font-semibold leading-snug tracking-[-0.01em] sm:text-2xl">
-          {free ? `Get ${product.title}` : product.title}
+          {free ? w.getTitle(product.title) : product.title}
         </h2>
         <p className="st-price text-base"><PriceTag store={store} product={product} /></p>
       </div>
@@ -563,7 +582,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       <PageDepth handle={store.handle} product={product.id} />
       {free ? null : buySection}
       {payments}
-      {!placed && anyReviews ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}
+      {!placed && anyReviews ? <section className="sp-section">{reviewsPart(w.reviews)}</section> : null}
       {more}
       {footer}
     </div>,

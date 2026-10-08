@@ -25,7 +25,18 @@ const QUIET_DAYS = 30;
  *     with the same unticked box for more email the page itself has. No
  *     countdown, no "wait!", no discount that was not on offer to everyone.
  */
-export function ExitOffer({ store, title, children }: { store: string; title: string; children: React.ReactNode }) {
+export function ExitOffer({
+  store,
+  title,
+  words,
+  children,
+}: {
+  store: string;
+  title: string;
+  /** In the store's language (lib/buyer-words). */
+  words: { close: string; beforeYouGo: string };
+  children: React.ReactNode;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [armed, setArmed] = useState(false);
   const key = `nl_exit_${store}`;
@@ -67,10 +78,10 @@ export function ExitOffer({ store, title, children }: { store: string; title: st
       }}
     >
       <div className="st-card st-exit-card p-6 sm:p-8">
-        <button type="button" className="st-exit-close" aria-label="Close" onClick={() => dialog.current?.close()}>
+        <button type="button" className="st-exit-close" aria-label={words.close} onClick={() => dialog.current?.close()}>
           ×
         </button>
-        <p className="st-label">Before you go — free</p>
+        <p className="st-label">{words.beforeYouGo}</p>
         <h2 id="exit-title" className="font-display mt-2 text-2xl font-semibold leading-tight">
           {title}
         </h2>
