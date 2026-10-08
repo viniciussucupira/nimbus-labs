@@ -657,6 +657,7 @@ try {
       const blocks = [
         { id: "hero0002", kind: "hero", headline: "Bake on Sundays", sub: "", media: "none", video: null },
         { id: "revw0002", kind: "reviews", heading: "What bakers say", first: [first] },
+        { id: "faq00002", kind: "faq", heading: "Questions", items: [{ q: "Do I need a stand mixer?", a: "No: every recipe is kneaded by hand." }] },
       ];
       const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null, style: "plain" } }) });
       return (await response.json()).ok === true;
@@ -671,6 +672,9 @@ try {
       (await words(items.nth(1))).includes("My Sunday mornings smell like bread now."),
       (await words(items.nth(1))).includes("Picked by the creator"),
     ], [3, true, true, true, false]);
+    const marked = await page.locator('script[type="application/ld+json"]').evaluateAll((all) => all.map((el) => JSON.parse(el.textContent)["@type"]));
+    const faq = await page.locator('script[type="application/ld+json"]').evaluateAll((all) => all.map((el) => JSON.parse(el.textContent)).find((d) => d["@type"] === "FAQPage"));
+    is("search engines are told the product, where it sits, and its answered questions", [marked.includes("Product"), marked.includes("BreadcrumbList"), faq?.mainEntity?.[0]?.name], [true, true, "Do I need a stand mixer?"]);
     if (process.env.E2E_SHOTS) await page.locator("#reviews").screenshot({ path: join(process.env.E2E_SHOTS, "picked-reviews.png") });
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Sunday Baking"]}`);
     await studio.getByRole("button", { name: /^2\. Reviews/ }).click();

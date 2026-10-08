@@ -56,6 +56,7 @@ import { JsonLd } from "@/components/structured-data";
 import { offeredItems } from "@/lib/bundles";
 import { MIN_BUNDLE_ITEMS } from "@/lib/bundle-rules";
 import { productSegment } from "@/lib/product-slug";
+import { breadcrumbData, faqData } from "@/lib/page-structured-data";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -319,6 +320,8 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const description = page.seoDescription || product.summary || aboutExcerpt(about) || product.title;
   const free = isFree(product);
   const built = page.blocks.length > 0;
+  // The page's own questions and answers, for search engines (lib/page-structured-data.ts).
+  const faq = built ? faqData(page.blocks) : null;
   // A product with any review — even only hidden ones — says so on its page.
   const anyReviews = summary !== null && summary.visible + summary.hidden > 0;
   const reviewsHref = `${productPath(store, product)}/reviews`;
@@ -446,6 +449,8 @@ export default async function ProductPage({ params, searchParams }: Params) {
       style={lookStyle(store.look) as React.CSSProperties}
     >
       <JsonLd data={productData(store, product, description, remaining === 0, summary, soon)} />
+      <JsonLd data={breadcrumbData({ name: store.name, url: `${SITE_URL}/@${store.handle}` }, { title: product.title, url: `${SITE_URL}${productPath(store, product)}` })} />
+      {faq ? <JsonLd data={faq} /> : null}
       <ExitOfferSlot store={store} except={product.id} />
       <main id="content" className={`relative mx-auto ${wide ? "max-w-3xl" : "max-w-2xl"} px-4 pb-16 pt-10 sm:pt-14${sticky ? " st-has-sticky" : ""}`}>
         {children}
