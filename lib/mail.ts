@@ -24,6 +24,8 @@ import type { Store } from "@/lib/store";
 import { creatorAddress } from "@/lib/mail-from";
 import { type MailTag, taggedLink } from "@/lib/mail-links";
 import { type Pause, healthId, healthTags, noteSent, pausedFor, rampBack, rampRoom } from "@/lib/mail-health";
+import { affiliatesWords } from "@/lib/buyer-words/affiliates";
+import { LANGUAGES, parseLanguage } from "@/lib/store-language";
 
 export const MAX_SUBJECT = 150;
 export const MAX_MAIL_BODY = 20_000;
@@ -350,11 +352,14 @@ export function render(store: Store, subject: string, body: string, token: strin
   const address = store.mail?.address ?? "";
   const unsub = door ? door.page : token ? `${SITE_URL}/unsubscribe?t=${token}` : `${SITE_URL}/@${store.handle}`;
   const oneClick = door ? door.oneClick : token ? `${SITE_URL}/api/mail/unsubscribe?t=${token}` : "";
-  const why = door ? door.why : `You are getting this because you told ${fromName} you wanted to hear from them.`;
-  const label = door ? door.label : "Unsubscribe";
-  const after = door ? door.after : `in one click, and ${fromName} will not email you again.`;
-  const sent = door?.sent ?? "Sent with Marktmorgen.";
-  const html = `<!doctype html><html${door?.lang ? ` lang="${escape(door.lang)}"` : ""}><body style="margin:0;padding:0;background:#f7f5f0">
+  // The words the store adds around the creator's own, in the store's
+  // language (lib/buyer-words/affiliates.ts); a door brings its own.
+  const a = affiliatesWords(store.language);
+  const why = door ? door.why : a.listWhy(fromName);
+  const label = door ? door.label : a.footerUnsubscribe;
+  const after = door ? door.after : a.footerUnsubscribeAfter(fromName);
+  const sent = door?.sent ?? a.sentWith;
+  const html = `<!doctype html><html lang="${escape(door?.lang ?? LANGUAGES[parseLanguage(store.language)].locale)}"><body style="margin:0;padding:0;background:#f7f5f0">
 <div style="max-width:560px;margin:0 auto;padding:32px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1c1917">
 <div style="background:#ffffff;border-radius:16px;padding:28px 24px">${bodyHtml(body, tag ? (href) => taggedLink(href, store, tag) : undefined)}</div>
 <div style="padding:20px 8px 0;font-size:13px;line-height:1.5;color:#57534e">
@@ -368,7 +373,7 @@ ${address ? `<p style="margin:0 0 8px">${escape(fromName)} · ${escape(address)}
     "",
     "—",
     why,
-    door ? door.line ?? `${door.label}: ${unsub}` : `Unsubscribe in one click: ${unsub}`,
+    door ? door.line ?? a.doorText(door.label, unsub) : a.unsubscribeText(unsub),
     address ? `${fromName} · ${address}` : "",
     sent,
   ]

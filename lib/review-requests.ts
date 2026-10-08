@@ -64,15 +64,17 @@ async function stopLink(store: Store, email: string): Promise<string> {
 }
 
 /** Who a stop link belongs to, without acting on it. */
-export async function readReviewStop(token: string): Promise<{ email: string; storeName: string; stopped: boolean } | null> {
+export async function readReviewStop(token: string): Promise<{ email: string; storeName: string; stopped: boolean; handle: string } | null> {
   if (!REVIEW_STOP.test(token) || !isRedisConfigured()) return null;
   const [raw] = await redisPipeline([["GET", stopKey(token)]]);
   if (typeof raw !== "string" || !raw) return null;
   try {
-    const grant = JSON.parse(raw) as { s?: unknown; e?: unknown; n?: unknown };
+    const grant = JSON.parse(raw) as { s?: unknown; e?: unknown; n?: unknown; h?: unknown };
     if (typeof grant.s !== "string" || typeof grant.e !== "string" || !grant.s || !grant.e) return null;
     const [off] = await redisPipeline([["EXISTS", offKey(grant.s, grant.e)]]);
-    return { email: grant.e, storeName: typeof grant.n === "string" ? grant.n : "", stopped: Number(off) === 1 };
+    // The store's handle, so the page can speak the store's language.
+    const handle = typeof grant.h === "string" ? grant.h : "";
+    return { email: grant.e, storeName: typeof grant.n === "string" ? grant.n : "", stopped: Number(off) === 1, handle };
   } catch {
     return null;
   }

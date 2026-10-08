@@ -3,67 +3,97 @@ import { readUnsubToken } from "@/lib/contacts";
 import { STOP_TOKEN, readStopToken } from "@/lib/checkout-recovery";
 import { COMMUNITY_UNSUB, readCommunityUnsub } from "@/lib/community-mail";
 import { readConfig } from "@/lib/community";
-import { storeForHandle } from "@/lib/store";
+import { type Store, storeForPage } from "@/lib/store";
 import { REVIEW_STOP, readReviewStop } from "@/lib/review-requests";
+import { affiliatesWords } from "@/lib/buyer-words/affiliates";
+import { LANGUAGES, parseLanguage } from "@/lib/store-language";
 
-export const metadata: Metadata = {
-  title: "Unsubscribe — Marktmorgen",
-  robots: { index: false, follow: false },
+type Query = { [key: string]: string | string[] | undefined };
+
+const param = (query: Query, key: string) => {
+  const value = query[key];
+  return typeof value === "string" ? value.slice(0, 60) : "";
 };
 
-/** The store behind a list, for the name on the page. */
-async function storeName(handle: string, listId: string): Promise<string> {
-  const store = handle ? await storeForHandle(handle) : null;
-  return store && store.listId === listId ? store.mail?.fromName || store.name : "";
+/**
+ * The store behind a link, for the language the page speaks, or null when
+ * the link is not one we know — then the page is in English. A list's link
+ * counts only while the store still has that list.
+ */
+async function storeOf(query: Query): Promise<Store | null> {
+  const reminder = param(query, "r");
+  if (reminder) {
+    const found = STOP_TOKEN.test(reminder) ? await readStopToken(reminder) : null;
+    return found?.handle ? storeForPage(found.handle) : null;
+  }
+  const review = param(query, "v");
+  if (review) {
+    const found = REVIEW_STOP.test(review) ? await readReviewStop(review) : null;
+    return found?.handle ? storeForPage(found.handle) : null;
+  }
+  const community = param(query, "c");
+  if (community) {
+    const found = COMMUNITY_UNSUB.test(community) ? await readCommunityUnsub(community) : null;
+    return found ? storeForPage(found.handle) : null;
+  }
+  const token = param(query, "t");
+  const found = token ? await readUnsubToken(token) : null;
+  const store = found?.handle ? await storeForPage(found.handle) : null;
+  return store && found && store.listId === found.listId ? store : null;
 }
 
-/** One button, and the answer. Nobody is asked why. */
-export default async function UnsubscribePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Query> }): Promise<Metadata> {
+  const store = await storeOf(await searchParams);
+  return {
+    title: `${affiliatesWords(store?.language).unsubscribeButton} — Marktmorgen`,
+    robots: { index: false, follow: false },
+  };
+}
+
+/** The language a page about this store's emails speaks: the store's, or English. */
+const wordsFor = (store: Store | null) => affiliatesWords(store?.language);
+const localeOf = (store: Store | null) => LANGUAGES[parseLanguage(store?.language)].locale;
+
+/** One button, and the answer. Nobody is asked why. Said in the store's language (lib/buyer-words/affiliates.ts). */
+export default async function UnsubscribePage({ searchParams }: { searchParams: Promise<Query> }) {
   const query = await searchParams;
-  const reminder = typeof query.r === "string" ? query.r.slice(0, 60) : "";
+  const reminder = param(query, "r");
   if (reminder) return <StopReminders token={reminder} done={query.done === "1"} />;
-  const review = typeof query.v === "string" ? query.v.slice(0, 60) : "";
+  const review = param(query, "v");
   if (review) return <StopReviewRequests token={review} done={query.done === "1"} />;
-  const community = typeof query.c === "string" ? query.c.slice(0, 60) : "";
+  const community = param(query, "c");
   if (community) return <StopAnnouncements token={community} done={query.done === "1"} />;
-  const token = typeof query.t === "string" ? query.t.slice(0, 60) : "";
+  const token = param(query, "t");
   const done = query.done === "1";
   const found = token ? await readUnsubToken(token) : null;
-  const name = found ? await storeName(found.handle, found.listId) : "";
-  const who = name || "this creator";
+  const listStore = found ? await storeOf(query) : null;
+  const name = listStore ? listStore.mail?.fromName || listStore.name : "";
+  const a = wordsFor(listStore);
 
   return (
-    <main id="content" className="min-h-screen bg-paper px-4 py-20 text-ink">
+    <main id="content" lang={localeOf(listStore)} className="min-h-screen bg-paper px-4 py-20 text-ink">
       <div className="card mx-auto max-w-md p-7 sm:p-9">
         {!found ? (
           <>
-            <h1 className="t-h3">This link is not one we know</h1>
-            <p className="mt-3 text-ink-soft">
-              Open the unsubscribe link from the email itself, or use your mail app&apos;s own unsubscribe button.
-            </p>
+            <h1 className="t-h3">{a.unknownLink}</h1>
+            <p className="mt-3 text-ink-soft">{a.unknownListBody}</p>
           </>
         ) : done || found.contact.unsub ? (
           <>
-            <h1 className="t-h3">You are unsubscribed</h1>
-            <p className="mt-3 text-ink-soft">
-              {`${found.email} will not get emails from ${who} again. Nothing else is needed.`}
-            </p>
+            <h1 className="t-h3">{a.listDoneTitle}</h1>
+            <p className="mt-3 text-ink-soft">{a.listDone(found.email, name)}</p>
           </>
         ) : (
           <>
-            <h1 className="t-h3">{`Stop emails from ${who}?`}</h1>
-            <p className="mt-3 text-ink-soft">{`For ${found.email}. One press stops them for good.`}</p>
+            <h1 className="t-h3">{a.listAsk(name)}</h1>
+            <p className="mt-3 text-ink-soft">{a.forEmail(found.email)}</p>
             <form action={`/api/mail/unsubscribe?t=${token}`} method="post" className="mt-6">
               <input type="hidden" name="from" value="page" />
-              <button type="submit" className="btn btn-primary btn-block">Unsubscribe</button>
+              <button type="submit" className="btn btn-primary btn-block">{a.unsubscribeButton}</button>
             </form>
           </>
         )}
-        <p className="mt-6 text-sm text-ink-mute">Emails sent with Marktmorgen, on behalf of the creator who wrote them.</p>
+        <p className="mt-6 text-sm text-ink-mute">{a.onBehalfCreator}</p>
       </div>
     </main>
   );
@@ -72,38 +102,35 @@ export default async function UnsubscribePage({
 /** The same one button, for a community's emails: announcements and live event reminders. */
 async function StopAnnouncements({ token, done }: { token: string; done: boolean }) {
   const found = COMMUNITY_UNSUB.test(token) ? await readCommunityUnsub(token) : null;
-  const store = found ? await storeForHandle(found.handle) : null;
+  const store = found ? await storeForPage(found.handle) : null;
   const config = found && store?.community?.id === found.community ? await readConfig(found.community) : null;
-  const who = store ? store.mail?.fromName || store.name : "this creator";
-  const where = config?.name ?? "the community";
+  const who = store ? store.mail?.fromName || store.name : "";
+  const where = config?.name ?? "";
+  const a = wordsFor(store);
   return (
-    <main id="content" className="min-h-screen bg-paper px-4 py-20 text-ink">
+    <main id="content" lang={localeOf(store)} className="min-h-screen bg-paper px-4 py-20 text-ink">
       <div className="card mx-auto max-w-md p-7 sm:p-9">
         {!found ? (
           <>
-            <h1 className="t-h3">This link is not one we know</h1>
-            <p className="mt-3 text-ink-soft">
-              Open the link from the email itself, or use your mail app&apos;s own unsubscribe button.
-            </p>
+            <h1 className="t-h3">{a.unknownLink}</h1>
+            <p className="mt-3 text-ink-soft">{a.unknownOtherBody}</p>
           </>
         ) : done || !found.member.mail ? (
           <>
-            <h1 className="t-h3">No more emails from the community</h1>
-            <p className="mt-3 text-ink-soft">
-              {`${found.member.e} will not be emailed ${who}'s announcements or live event reminders again. You are still in ${where}, and can read them there. If an event you RSVP'd to is moved or canceled, you are still told, once.`}
-            </p>
+            <h1 className="t-h3">{a.communityDoneTitle}</h1>
+            <p className="mt-3 text-ink-soft">{a.communityDone(found.member.e, who, where)}</p>
           </>
         ) : (
           <>
-            <h1 className="t-h3">{`Stop ${who}'s community emails?`}</h1>
-            <p className="mt-3 text-ink-soft">{`Announcements and live event reminders, for ${found.member.e}. You stay in ${where}, and keep your RSVPs; only the emails stop.`}</p>
+            <h1 className="t-h3">{a.communityAsk(who)}</h1>
+            <p className="mt-3 text-ink-soft">{a.communityFor(found.member.e, where)}</p>
             <form action={`/api/mail/unsubscribe?c=${token}`} method="post" className="mt-6">
               <input type="hidden" name="from" value="page" />
-              <button type="submit" className="btn btn-primary btn-block">Stop the emails</button>
+              <button type="submit" className="btn btn-primary btn-block">{a.stopEmails}</button>
             </form>
           </>
         )}
-        <p className="mt-6 text-sm text-ink-mute">Emails sent with Marktmorgen, on behalf of the creator who wrote them.</p>
+        <p className="mt-6 text-sm text-ink-mute">{a.onBehalfCreator}</p>
       </div>
     </main>
   );
@@ -112,35 +139,33 @@ async function StopAnnouncements({ token, done }: { token: string; done: boolean
 /** The same one button, for a store's abandoned-checkout reminders. */
 async function StopReminders({ token, done }: { token: string; done: boolean }) {
   const found = STOP_TOKEN.test(token) ? await readStopToken(token) : null;
-  const who = found?.storeName || "this store";
+  const store = found?.handle ? await storeForPage(found.handle) : null;
+  const who = found?.storeName || "";
+  const a = wordsFor(store);
   return (
-    <main id="content" className="min-h-screen bg-paper px-4 py-20 text-ink">
+    <main id="content" lang={localeOf(store)} className="min-h-screen bg-paper px-4 py-20 text-ink">
       <div className="card mx-auto max-w-md p-7 sm:p-9">
         {!found ? (
           <>
-            <h1 className="t-h3">This link is not one we know</h1>
-            <p className="mt-3 text-ink-soft">
-              Open the link from the email itself, or use your mail app&apos;s own unsubscribe button.
-            </p>
+            <h1 className="t-h3">{a.unknownLink}</h1>
+            <p className="mt-3 text-ink-soft">{a.unknownOtherBody}</p>
           </>
         ) : done || found.stopped ? (
           <>
-            <h1 className="t-h3">No more reminders</h1>
-            <p className="mt-3 text-ink-soft">
-              {`${found.email} will not get checkout reminders from ${who} again. Nothing else is needed.`}
-            </p>
+            <h1 className="t-h3">{a.remindersDoneTitle}</h1>
+            <p className="mt-3 text-ink-soft">{a.remindersDone(found.email, who)}</p>
           </>
         ) : (
           <>
-            <h1 className="t-h3">{`Stop checkout reminders from ${who}?`}</h1>
-            <p className="mt-3 text-ink-soft">{`For ${found.email}. One press stops them for good.`}</p>
+            <h1 className="t-h3">{a.remindersAsk(who)}</h1>
+            <p className="mt-3 text-ink-soft">{a.forEmail(found.email)}</p>
             <form action={`/api/mail/unsubscribe?r=${token}`} method="post" className="mt-6">
               <input type="hidden" name="from" value="page" />
-              <button type="submit" className="btn btn-primary btn-block">Stop reminders</button>
+              <button type="submit" className="btn btn-primary btn-block">{a.stopReminders}</button>
             </form>
           </>
         )}
-        <p className="mt-6 text-sm text-ink-mute">Emails sent with Marktmorgen, on behalf of the store that sent them.</p>
+        <p className="mt-6 text-sm text-ink-mute">{a.onBehalfStore}</p>
       </div>
     </main>
   );
@@ -149,35 +174,33 @@ async function StopReminders({ token, done }: { token: string; done: boolean }) 
 /** The same one button, for a store's emails asking for a review. */
 async function StopReviewRequests({ token, done }: { token: string; done: boolean }) {
   const found = REVIEW_STOP.test(token) ? await readReviewStop(token) : null;
-  const who = found?.storeName || "this store";
+  const store = found?.handle ? await storeForPage(found.handle) : null;
+  const who = found?.storeName || "";
+  const a = wordsFor(store);
   return (
-    <main id="content" className="min-h-screen bg-paper px-4 py-20 text-ink">
+    <main id="content" lang={localeOf(store)} className="min-h-screen bg-paper px-4 py-20 text-ink">
       <div className="card mx-auto max-w-md p-7 sm:p-9">
         {!found ? (
           <>
-            <h1 className="t-h3">This link is not one we know</h1>
-            <p className="mt-3 text-ink-soft">
-              Open the link from the email itself, or use your mail app&apos;s own unsubscribe button.
-            </p>
+            <h1 className="t-h3">{a.unknownLink}</h1>
+            <p className="mt-3 text-ink-soft">{a.unknownOtherBody}</p>
           </>
         ) : done || found.stopped ? (
           <>
-            <h1 className="t-h3">No more review requests</h1>
-            <p className="mt-3 text-ink-soft">
-              {`${found.email} will not be asked for a review by ${who} again. Nothing else is needed.`}
-            </p>
+            <h1 className="t-h3">{a.reviewsDoneTitle}</h1>
+            <p className="mt-3 text-ink-soft">{a.reviewsDone(found.email, who)}</p>
           </>
         ) : (
           <>
-            <h1 className="t-h3">{`Stop review requests from ${who}?`}</h1>
-            <p className="mt-3 text-ink-soft">{`For ${found.email}. One press stops them for good. A review you already wrote stays as it is.`}</p>
+            <h1 className="t-h3">{a.reviewsAsk(who)}</h1>
+            <p className="mt-3 text-ink-soft">{a.reviewsFor(found.email)}</p>
             <form action={`/api/mail/unsubscribe?v=${token}`} method="post" className="mt-6">
               <input type="hidden" name="from" value="page" />
-              <button type="submit" className="btn btn-primary btn-block">Stop review requests</button>
+              <button type="submit" className="btn btn-primary btn-block">{a.stopReviews}</button>
             </form>
           </>
         )}
-        <p className="mt-6 text-sm text-ink-mute">Emails sent with Marktmorgen, on behalf of the store that sent them.</p>
+        <p className="mt-6 text-sm text-ink-mute">{a.onBehalfStore}</p>
       </div>
     </main>
   );

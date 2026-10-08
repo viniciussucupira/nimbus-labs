@@ -31,6 +31,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { AFFILIATES_WORDS } from "@/lib/buyer-words/affiliates";
 import {
   MAX_COMMITTED_SHARE,
   MAX_PARTNERS_PER_PRODUCT,
@@ -234,9 +235,13 @@ test("the partner needs no account anywhere, which is where Hotmart stops", () =
   const at = aff.indexOf("export async function invitePartner");
   assert.ok(at > 0, "the creator has to be able to invite somebody from outside");
   const body = aff.slice(at, aff.indexOf("export async function acceptPartnership"));
-  assert.match(body, /you need no account with us/, "and the email has to say so");
-  assert.match(body, /% of every sale of/, "the email states the share");
-  assert.match(body, /pays you directly, from their own account/, "and who pays, because it is not us");
+  // The words are in the store's language (lib/buyer-words/affiliates.ts).
+  assert.match(body, /a\.partnerPays\(store\.name\)/, "and the email has to say so");
+  assert.match(body, /a\.partnerOffer\(store\.name, share\.percent\)/, "the email states the share");
+  const words = AFFILIATES_WORDS.en;
+  assert.match(words.partnerPays("Harbor Kitchen"), /you need no account with us/, "and the email has to say so");
+  assert.match(words.partnerOffer("Harbor Kitchen", 30), /30% of every sale of/, "the email states the share");
+  assert.match(words.partnerPays("Harbor Kitchen"), /pays you directly, from their own account/, "and who pays, because it is not us");
 });
 
 test("nothing is written down until the invitation is opened", () => {

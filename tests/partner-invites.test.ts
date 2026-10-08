@@ -24,6 +24,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { AFFILIATES_WORDS } from "@/lib/buyer-words/affiliates";
 import {
   MAX_WAITING,
   answerInvite,
@@ -186,6 +187,9 @@ test("the offer is still emailed, because a studio nobody opens is a letter nobo
   const at = aff.indexOf("if (input.alreadyHere)");
   const branch = aff.slice(at, at + 1_600);
   assert.match(branch, /sendEmail\(/, "they are told it is there");
-  assert.match(branch, /waiting in your own studio/, "and where to find it");
-  assert.match(branch, /Nothing happens until you answer it/, "and that it is theirs to decide");
+  // The words are in the store's language (lib/buyer-words/affiliates.ts).
+  assert.match(branch, /a\.partnerInStudio/, "and where to find it");
+  assert.match(branch, /a\.partnerAnswer/, "and that it is theirs to decide");
+  assert.match(AFFILIATES_WORDS.en.partnerInStudio, /waiting in your own studio/, "said in English as it always was");
+  assert.match(AFFILIATES_WORDS.en.partnerAnswer, /Nothing happens until you answer it/);
 });
