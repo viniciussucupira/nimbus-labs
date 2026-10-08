@@ -28,6 +28,12 @@ const en = {
   bought: (n: number) => plural(n, "time bought", "times bought"),
   rating: (count: number) => `average from ${count} ${plural(count, "review", "reviews")}`,
   outOfFive: "out of 5",
+  /** The picture viewer (components/picture-viewer.tsx). */
+  viewerClose: "Close",
+  viewerPrev: "Previous picture",
+  viewerNext: "Next picture",
+  viewerCount: (n: number, total: number) => `${n} of ${total}`,
+  viewerOriginal: "Open the original",
 };
 
 export type BlockWords = typeof en;
@@ -47,6 +53,12 @@ const es: BlockWords = {
   bought: (n) => plural(n, "compra", "compras"),
   rating: (count) => `media de ${count} ${plural(count, "reseña", "reseñas")}`,
   outOfFive: "de 5",
+  /** The picture viewer (components/picture-viewer.tsx). */
+  viewerClose: "Cerrar",
+  viewerPrev: "Foto anterior",
+  viewerNext: "Foto siguiente",
+  viewerCount: (n, total) => `${n} de ${total}`,
+  viewerOriginal: "Abrir el original",
 };
 
 const fr: BlockWords = {
@@ -64,6 +76,12 @@ const fr: BlockWords = {
   bought: (n) => frPlural(n, "achat", "achats"),
   rating: (count) => `moyenne de ${count} ${frPlural(count, "avis", "avis")}`,
   outOfFive: "sur 5",
+  /** The picture viewer (components/picture-viewer.tsx). */
+  viewerClose: "Fermer",
+  viewerPrev: "Photo précédente",
+  viewerNext: "Photo suivante",
+  viewerCount: (n, total) => `${n} sur ${total}`,
+  viewerOriginal: "Ouvrir l'original",
 };
 
 const de: BlockWords = {
@@ -81,6 +99,12 @@ const de: BlockWords = {
   bought: (n) => plural(n, "Mal gekauft", "Mal gekauft"),
   rating: (count) => `Durchschnitt aus ${count} ${plural(count, "Bewertung", "Bewertungen")}`,
   outOfFive: "von 5",
+  /** The picture viewer (components/picture-viewer.tsx). */
+  viewerClose: "Schließen",
+  viewerPrev: "Vorheriges Bild",
+  viewerNext: "Nächstes Bild",
+  viewerCount: (n, total) => `${n} von ${total}`,
+  viewerOriginal: "Original öffnen",
 };
 
 const it: BlockWords = {
@@ -98,6 +122,12 @@ const it: BlockWords = {
   bought: (n) => plural(n, "acquisto", "acquisti"),
   rating: (count) => `media di ${count} ${plural(count, "recensione", "recensioni")}`,
   outOfFive: "su 5",
+  /** The picture viewer (components/picture-viewer.tsx). */
+  viewerClose: "Chiudi",
+  viewerPrev: "Foto precedente",
+  viewerNext: "Foto successiva",
+  viewerCount: (n, total) => `${n} di ${total}`,
+  viewerOriginal: "Apri l'originale",
 };
 
 const nl: BlockWords = {
@@ -115,6 +145,12 @@ const nl: BlockWords = {
   bought: (n) => plural(n, "keer gekocht", "keer gekocht"),
   rating: (count) => `gemiddelde van ${count} ${plural(count, "beoordeling", "beoordelingen")}`,
   outOfFive: "van 5",
+  /** The picture viewer (components/picture-viewer.tsx). */
+  viewerClose: "Sluiten",
+  viewerPrev: "Vorige foto",
+  viewerNext: "Volgende foto",
+  viewerCount: (n, total) => `${n} van ${total}`,
+  viewerOriginal: "Origineel openen",
 };
 
 const pt: BlockWords = {
@@ -132,6 +168,12 @@ const pt: BlockWords = {
   bought: (n) => plural(n, "compra", "compras"),
   rating: (count) => `média de ${count} ${plural(count, "avaliação", "avaliações")}`,
   outOfFive: "em 5",
+  /** The picture viewer (components/picture-viewer.tsx). */
+  viewerClose: "Fechar",
+  viewerPrev: "Foto anterior",
+  viewerNext: "Próxima foto",
+  viewerCount: (n, total) => `${n} de ${total}`,
+  viewerOriginal: "Abrir o original",
 };
 
 export const BLOCK_WORDS: Record<LanguageCode, BlockWords> = { en, es, fr, de, it, nl, pt };

@@ -4,9 +4,11 @@
  * a session for its owner. Written through the same functions the studio
  * uses, into the stand-in database.
  */
-import { addProduct, claimHandle, ensureStatsId, setAnnouncement, setProductExtras, setProductImage, setProductLink, setSections, setStripeAccount, setSubscription } from "@/lib/store";
+import { addProduct, claimHandle, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setProductLink, setSections, setStripeAccount, setSubscription } from "@/lib/store";
 import { openSession } from "@/lib/auth";
 import { saveReview } from "@/lib/reviews";
+import { writePage } from "@/lib/sales-page-store";
+import { parsePage } from "@/lib/sales-page";
 
 const OWNER = "owner@example.com";
 
@@ -60,6 +62,18 @@ async function main(): Promise<void> {
     if (saved.state !== "created") throw new Error(`review ${n} was refused: ${saved.state}`);
     reviews.push(saved.review.id);
   }
+  // A page with three pictures, written as the studio would have kept it,
+  // for the picture viewer. Their files are not in this stand-in.
+  const shot = (n: number, alt: string, caption: string) => ({ path: `images/${"a".repeat(24)}/${String(n).padStart(32, "c")}.jpg`, width: 1200, height: 900, alt, caption });
+  const withPictures = parsePage({
+    blocks: [
+      { id: "hero0003", kind: "hero", headline: "Bake on Sundays", sub: "", media: "none", video: null },
+      { id: "pics0003", kind: "pictures", heading: "A look inside", items: [shot(1, "The rye loaf, sliced", "Week one: rye"), shot(2, "A lemon cake", "Week two: lemon cake"), shot(3, "Cinnamon rolls on a tray", "")] },
+    ],
+  });
+  await writePage(statsId, ids["Sunday Baking"], withPictures);
+  const marked = await setProductPage(OWNER, ids["Sunday Baking"], true);
+  if (!marked.ok) throw new Error("the page could not be marked");
   console.log(JSON.stringify({ ids, reviews, session: await openSession(OWNER) }));
 }
 

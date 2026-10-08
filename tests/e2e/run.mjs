@@ -651,6 +651,25 @@ try {
     }
   }
 
+  part("Pictures seen large, without leaving the page");
+  {
+    await open(page, `${LOCAL}/@localshop/p/${ids["Sunday Baking"]}`);
+    const viewer = page.locator("dialog.pv-dialog");
+    await page.getByRole("link", { name: "The rye loaf, sliced, full size" }).click();
+    is("a click opens the picture on the page, with where it is among them", [await viewer.evaluate((d) => d.open), await words(viewer.locator(".pv-count")), (await words(viewer)).includes("Week one: rye")], [true, "1 of 3", true]);
+    await page.keyboard.press("ArrowRight");
+    is("the arrow keys go through them", [await words(viewer.locator(".pv-count")), await viewer.locator(".pv-image").getAttribute("alt")], ["2 of 3", "A lemon cake"]);
+    await viewer.getByRole("button", { name: "Previous picture" }).click();
+    await viewer.getByRole("button", { name: "Previous picture" }).click();
+    is("and round, from the first back to the last", await words(viewer.locator(".pv-count")), "3 of 3");
+    await page.keyboard.press("Escape");
+    is("Escape closes it, back where the reader was", [await viewer.evaluate((d) => d.open), page.url().includes(`/p/${ids["Sunday Baking"]}`)], [false, true]);
+    await page.getByRole("link", { name: "A lemon cake, full size" }).click();
+    if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "picture-viewer.png") });
+    await viewer.getByRole("button", { name: "Close" }).click();
+    is("and so does Close", await viewer.evaluate((d) => d.open), false);
+  }
+
   part("Reviews picked to show first");
   {
     const saved = await studio.evaluate(async ([id, first]) => {
