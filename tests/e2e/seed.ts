@@ -6,6 +6,7 @@
  */
 import { addProduct, claimHandle, ensureStatsId, setAnnouncement, setProductExtras, setProductImage, setProductLink, setSections, setStripeAccount, setSubscription } from "@/lib/store";
 import { openSession } from "@/lib/auth";
+import { saveReview } from "@/lib/reviews";
 
 const OWNER = "owner@example.com";
 
@@ -50,7 +51,16 @@ async function main(): Promise<void> {
   if (!sections.ok) throw new Error("the sections were refused");
   const news = await setAnnouncement(OWNER, { text: "New: Knife Skills, ten short lessons", product: ids["Knife Skills"] });
   if (!news.ok) throw new Error("the line of news was refused");
-  console.log(JSON.stringify({ ids, session: await openSession(OWNER) }));
+  // Three verified reviews on one product, oldest first, for picking which show first.
+  const statsId = (await ensureStatsId(OWNER))?.statsId;
+  if (!statsId) throw new Error("the store has no statsId");
+  const reviews: string[] = [];
+  for (const [n, rating, text] of [[1, 5, "The rye loaf alone was worth it."], [2, 4, "Clear steps, though the cake took longer."], [3, 5, "My Sunday mornings smell like bread now."]] as const) {
+    const saved = await saveReview(statsId, { productId: ids["Sunday Baking"], email: `reader${n}@example.com`, reference: `cs_test_seed${n}`, pi: `pi_seed${n}`, rating, text, name: `Reader ${n}` }, Date.now() - (10 - n) * 86_400_000);
+    if (saved.state !== "created") throw new Error(`review ${n} was refused: ${saved.state}`);
+    reviews.push(saved.review.id);
+  }
+  console.log(JSON.stringify({ ids, reviews, session: await openSession(OWNER) }));
 }
 
 main().catch((error) => {

@@ -128,7 +128,7 @@ try {
     child.on("close", (status) => done({ status, ...said }));
   });
   if (seeded.status !== 0) throw new Error(`the store could not be made:\n${seeded.err}`);
-  const { ids, session } = JSON.parse(seeded.out.trim().split("\n").at(-1));
+  const { ids, reviews: seededReviews, session } = JSON.parse(seeded.out.trim().split("\n").at(-1));
 
   // The app. A dev server stopped while writing can leave Turbopack's cache
   // unreadable, and the next one panics on it; it is only a cache, so it is
@@ -173,7 +173,8 @@ try {
   const watchPolicy = (target) => target.on("console", (m) => {
     if (/Content Security Policy|Permissions-Policy/.test(m.text()) && !/frame-ancestors/.test(m.text())) policyRefusals.push(m.text().slice(0, 200));
     // React saying the page the server drew is not the one the browser drew: the "1 Issue" a creator would see in development.
-    if (/hydrat|did not match|Warning: /.test(m.text())) reactWarnings.push(m.text().slice(0, 300));
+    // With where it happened and the end of React's diff, which names what differed.
+    if (/hydrat|did not match|Warning: /.test(m.text())) reactWarnings.push(`${target.url()} :: ${m.text().slice(0, 160)} … ${m.text().slice(-700)}`);
   });
   page.on("pageerror", (error) => errors.push(String(error)));
   watchPolicy(page);
@@ -565,6 +566,33 @@ try {
       await studio.locator("ol > li").count(),
       await studio.getByRole("button", { name: "Save the page" }).isEnabled(),
     ], ["true", before, true]);
+  }
+
+  part("Reviews picked to show first");
+  {
+    const saved = await studio.evaluate(async ([id, first]) => {
+      const blocks = [
+        { id: "hero0002", kind: "hero", headline: "Bake on Sundays", sub: "", media: "none", video: null },
+        { id: "revw0002", kind: "reviews", heading: "What bakers say", first: [first] },
+      ];
+      const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null, style: "plain" } }) });
+      return (await response.json()).ok === true;
+    }, [ids["Sunday Baking"], seededReviews[0]]);
+    is("saved with the oldest review picked", saved, true);
+    await open(page, `${LOCAL}/@localshop/p/${ids["Sunday Baking"]}`);
+    const items = page.locator(".rv-item");
+    is("the picked one first, marked as picked, then the newest", [
+      await items.count(),
+      (await words(items.nth(0))).includes("The rye loaf alone was worth it."),
+      (await words(items.nth(0))).includes("Picked by the creator"),
+      (await words(items.nth(1))).includes("My Sunday mornings smell like bread now."),
+      (await words(items.nth(1))).includes("Picked by the creator"),
+    ], [3, true, true, true, false]);
+    if (process.env.E2E_SHOTS) await page.locator("#reviews").screenshot({ path: join(process.env.E2E_SHOTS, "picked-reviews.png") });
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Sunday Baking"]}`);
+    await studio.getByRole("button", { name: /^2\. Reviews/ }).click();
+    const boxes = studio.getByRole("group", { name: /^Show first/ }).getByRole("checkbox");
+    is("the studio offers each review, with the picked one checked", [await boxes.count(), await boxes.nth(0).isChecked()], [3, true]);
   }
 
   part("A page started from another product's page");
