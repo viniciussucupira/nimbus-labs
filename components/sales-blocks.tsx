@@ -344,8 +344,16 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
                   {ctx.preview ? (
                     image
                   ) : (
-                    /* The whole picture, in its own tab: a page of a book is read, not glanced at. */
-                    <a href={imageUrl(picture)} target="_blank" rel="noopener noreferrer" aria-label={picture.alt ? wordsIn(ctx.lang ?? DEFAULT_LANGUAGE).fullSize(picture.alt) : wordsIn(ctx.lang ?? DEFAULT_LANGUAGE).openFullSize}>
+                    /* The whole picture: a page of a book is read, not glanced at. */
+                    <a
+                      href={imageUrl(picture)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={picture.alt ? wordsIn(ctx.lang ?? DEFAULT_LANGUAGE).fullSize(picture.alt) : wordsIn(ctx.lang ?? DEFAULT_LANGUAGE).openFullSize}
+                      // Opened large on the page itself where script runs (components/picture-viewer.tsx).
+                      data-picture-group={block.id}
+                      data-caption={picture.caption || undefined}
+                    >
                       {image}
                     </a>
                   )}

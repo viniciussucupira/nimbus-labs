@@ -57,6 +57,7 @@ import { offeredItems } from "@/lib/bundles";
 import { MIN_BUNDLE_ITEMS } from "@/lib/bundle-rules";
 import { productSegment } from "@/lib/product-slug";
 import { breadcrumbData, faqData } from "@/lib/page-structured-data";
+import { PictureViewer } from "@/components/picture-viewer";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -452,6 +453,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       <JsonLd data={breadcrumbData({ name: store.name, url: `${SITE_URL}/@${store.handle}` }, { title: product.title, url: `${SITE_URL}${productPath(store, product)}` })} />
       {faq ? <JsonLd data={faq} /> : null}
       <ExitOfferSlot store={store} except={product.id} />
+      {page.blocks.some((block) => block.kind === "pictures" && block.items.length > 0) ? <PictureViewer lang={store.language} /> : null}
       <main id="content" className={`relative mx-auto ${wide ? "max-w-3xl" : "max-w-2xl"} px-4 pb-16 pt-10 sm:pt-14${sticky ? " st-has-sticky" : ""}`}>
         {children}
       </main>
