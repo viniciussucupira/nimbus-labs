@@ -549,6 +549,22 @@ try {
     await studio.getByRole("group", { name: "Page style" }).getByRole("button", { name: "Cards", exact: true }).click();
     is("the preview redraws in cards, before anything is saved", [await studio.locator(".sp-style-cards").count(), await studio.locator(".sp-band").count()], [1, 0]);
     is("and the change waits to be saved", await studio.getByRole("button", { name: "Save the page" }).isEnabled(), true);
+    await studio.getByRole("button", { name: "Save the page" }).click();
+    await studio.getByText("Page saved.").first().waitFor({ timeout: 15_000 });
+    await studio.getByRole("button", { name: "Build", exact: true }).click();
+    const before = await studio.locator("ol > li").count();
+    await studio.getByRole("button", { name: /^Duplicate block 2,/ }).click();
+    is("a block is copied right under itself", await studio.locator("ol > li").count(), before + 1);
+    await studio.getByText("Earlier versions").click();
+    const load = studio.getByRole("button", { name: /^Load the version from / }).first();
+    await load.waitFor({ timeout: 15_000 });
+    await load.click();
+    await studio.getByText(/^Loaded the version from /).first().waitFor({ timeout: 15_000 });
+    is("the page as it was before the save comes back, in bands, waiting to be saved", [
+      await studio.getByRole("group", { name: "Page style" }).getByRole("button", { name: /^Bands/ }).getAttribute("aria-pressed"),
+      await studio.locator("ol > li").count(),
+      await studio.getByRole("button", { name: "Save the page" }).isEnabled(),
+    ], ["true", before, true]);
   }
 
   part("A page started from another product's page");

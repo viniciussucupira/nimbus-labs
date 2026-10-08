@@ -1,0 +1,53 @@
+import type { NextRequest } from "next/server";
+import { productIdFor } from "@/lib/catalog";
+import { jsonAccess } from "@/lib/studio-route";
+import { keepPictures, picturePaths } from "@/lib/sales-page";
+import { readPage, readVersions } from "@/lib/sales-page-store";
+
+/**
+ * A product's page as it was before its last saves (lib/sales-page-store.ts,
+ * readVersions), to bring one back in the studio's editor.
+ *
+ *   `?id=<product>`        -> each version: when it was saved over, how many blocks, its headline
+ *   `?id=<product>&n=<i>`  -> that version, to load into the editor; nothing is saved here
+ *
+ * A version comes back with only the pictures the page still keeps: a
+ * picture taken off the page was deleted when it was saved without it, and
+ * the editor is told how many were left out.
+ */
+export async function GET(request: NextRequest) {
+  const access = await jsonAccess(request, "products");
+  if (access instanceof Response) return access;
+  const params = request.nextUrl.searchParams;
+  const id = (params.get("id") ?? "").slice(0, 40);
+  const store = access.store;
+  if (!store || !id || productIdFor(store, id) !== id) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
+  const headers = { "Cache-Control": "private, no-store" };
+  try {
+    const versions = await readVersions(store.statsId, id);
+    const n = params.get("n");
+    if (n === null) {
+      return Response.json(
+        {
+          ok: true,
+          versions: versions.map((v, index) => ({
+            index,
+            at: v.at,
+            blocks: v.page.blocks.length,
+            headline: v.page.blocks[0]?.kind === "hero" ? v.page.blocks[0].headline : "",
+            style: v.page.style,
+          })),
+        },
+        { headers },
+      );
+    }
+    const version = /^\d$/.test(n) ? versions[Number(n)] : undefined;
+    if (!version) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
+    const kept = new Set(picturePaths(await readPage(store.statsId, id)));
+    const { page, dropped } = keepPictures(version.page, kept);
+    return Response.json({ ok: true, at: version.at, page, dropped }, { headers });
+  } catch (error) {
+    console.error("reading a page's earlier versions failed", error);
+    return Response.json({ ok: false, error: "server_error" }, { status: 500 });
+  }
+}

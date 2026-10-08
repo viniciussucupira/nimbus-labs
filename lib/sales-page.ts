@@ -873,6 +873,28 @@ export function blocksFromTemplate(id: string, product: { title: string; summary
 }
 
 /**
+ * A page with only the pictures in `keep`, and how many it lost: an earlier
+ * version brought back shows only pictures whose files are still kept, since
+ * a picture taken off a page is deleted when the page is saved without it.
+ */
+export function keepPictures(page: SalesPage, keep: ReadonlySet<string>): { page: SalesPage; dropped: number } {
+  let dropped = 0;
+  const blocks = page.blocks.map((block): PageBlock => {
+    if (block.kind === "pictures") {
+      const items = block.items.filter((picture) => keep.has(picture.path));
+      dropped += block.items.length - items.length;
+      return { ...block, items };
+    }
+    if (block.kind === "feature" && block.picture && !keep.has(block.picture.path)) {
+      dropped += 1;
+      return { ...block, picture: null };
+    }
+    return block;
+  });
+  return { page: { ...page, blocks }, dropped };
+}
+
+/**
  * Another product's page, as a start for this one (added 8 October 2026):
  * the same blocks in the same order with fresh ids, its words and videos
  * kept, and its pictures left out. A picture belongs to the one page that

@@ -156,6 +156,16 @@ function toDrafts(page: SalesPage): Draft[] {
   }));
 }
 
+/** Blocks that can stand more than once on a page, with no picture of their own to share. */
+function canDuplicate(block: PageBlock): boolean {
+  return block.kind !== "hero" && block.kind !== "reviews" && block.kind !== "pictures";
+}
+
+/** When a version was saved over, in the creator's own clock: "Oct 8, 3:12 PM". */
+function whenSaved(ms: number): string {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(ms));
+}
+
 function counter(value: string, max: number) {
   return <span className="text-xs tabular-nums text-ink-mute">{`${value.length}/${max}`}</span>;
 }
@@ -358,6 +368,66 @@ export function PageEditor({
     setDrafts((all) => all.filter((_, i) => i !== index));
   }
 
+  /**
+   * A copy of a block right under it, with a new id, to change from there.
+   * The hero and the reviews stand once on a page; a picture is shown once,
+   * so a copy of words beside a picture comes without it.
+   */
+  function duplicate(index: number) {
+    const source = drafts[index];
+    if (!source || drafts.length >= MAX_BLOCKS || !canDuplicate(source.block)) return;
+    const block = { ...structuredClone(source.block), id: newBlockId() } as PageBlock;
+    if (block.kind === "feature") block.picture = null;
+    setDrafts((all) => {
+      if (all.length >= MAX_BLOCKS) return all;
+      const copy = [...all];
+      copy.splice(index + 1, 0, { block, video: source.video });
+      return copy;
+    });
+    setOpen(block.id);
+    toast(`Block ${index + 1} copied below it.`);
+  }
+
+  // Earlier versions of the saved page (lib/sales-page-store.ts, readVersions).
+  const [versions, setVersions] = useState<{ index: number; at: number; blocks: number; headline: string }[] | null>(null);
+  const [versionNote, setVersionNote] = useState<string | null>(null);
+  async function loadVersions() {
+    setVersionNote(null);
+    try {
+      const response = await fetch(`/api/store/page-versions?id=${encodeURIComponent(product.id)}`, { cache: "no-store" });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; versions?: { index: number; at: number; blocks: number; headline: string }[] };
+      if (!data.ok || !data.versions) throw new Error("unread");
+      setVersions(data.versions);
+    } catch {
+      setVersions(null);
+      setVersionNote("The earlier versions could not be read just now. Try again in a moment.");
+    }
+  }
+  async function bringBack(index: number) {
+    setVersionNote(null);
+    try {
+      const response = await fetch(`/api/store/page-versions?id=${encodeURIComponent(product.id)}&n=${index}`, { cache: "no-store" });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; at?: number; page?: SalesPage; dropped?: number };
+      if (!data.ok || !data.page) throw new Error("unread");
+      const page = data.page;
+      setDrafts(toDrafts(page));
+      setSeoTitle(page.seoTitle);
+      setSeoDescription(page.seoDescription);
+      setNext(page.next ?? "");
+      setStyle(page.style);
+      setTesting(page.test !== null);
+      setTestHeadline(page.test?.headline ?? "");
+      setTestSub(page.test?.sub ?? "");
+      setOpen(null);
+      const dropped = data.dropped ?? 0;
+      toast(
+        `Loaded the version from ${whenSaved(data.at ?? 0)}. Press Save to put it back live${dropped ? `; ${dropped === 1 ? "one picture was" : `${dropped} pictures were`} deleted since, so add ${dropped === 1 ? "it" : "them"} again if you want ${dropped === 1 ? "it" : "them"}` : ""}.`,
+      );
+    } catch {
+      setVersionNote("That version could not be read just now. Try again in a moment.");
+    }
+  }
+
   /** A first page from a template: its order of blocks, with the product's own title and summary on top. */
   function startFromTemplate() {
     const blocks = blocksFromTemplate(template, { title: product.title, summary: product.summary, picture: Boolean(product.picture) });
@@ -450,6 +520,8 @@ export function PageEditor({
         toast(confirmation);
         setConfirmClear(false);
         router.refresh();
+        // The page as it was a moment ago is now the newest earlier version.
+        if (versions !== null) void loadVersions();
         return;
       }
       setError(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
@@ -1296,6 +1368,17 @@ export function PageEditor({
                       >
                         <Icon name="chevron-down" size={18} />
                       </button>
+                      {canDuplicate(block) ? (
+                        <button
+                          type="button"
+                          onClick={() => duplicate(index)}
+                          disabled={drafts.length >= MAX_BLOCKS}
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-paper hover:text-ink disabled:opacity-30"
+                          aria-label={`Duplicate block ${index + 1}, ${kindLabel(block.kind)}`}
+                        >
+                          <Icon name="copy" size={17} />
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => remove(index)}
@@ -1368,6 +1451,48 @@ export function PageEditor({
               </p>
             </div>
           ) : null}
+
+          <details
+            className="mt-6 rounded-2xl bg-paper p-4 ring-1 ring-line sm:p-5"
+            onToggle={(event) => {
+              if (event.currentTarget.open) void loadVersions();
+            }}
+          >
+            <summary className="cursor-pointer text-sm font-semibold text-ink">
+              <span className="inline-flex items-center gap-2">
+                <Icon name="history" size={17} />
+                Earlier versions
+              </span>
+            </summary>
+            <p className="mt-3 text-xs text-ink-soft">
+              The page as it was before each of your last five saves, kept for 30 days after your last save. Loading one changes nothing live until you press Save.
+            </p>
+            {versionNote ? (
+              <p className="notice notice-error mt-3" role="alert">
+                {versionNote}
+              </p>
+            ) : versions === null ? (
+              <p className="mt-3 text-sm text-ink-soft">Reading…</p>
+            ) : versions.length === 0 ? (
+              <p className="mt-3 text-sm text-ink-soft">None yet. Each time you save, the page as it was is kept here.</p>
+            ) : (
+              <ul className="mt-3 divide-y divide-line rounded-xl bg-white ring-1 ring-line">
+                {versions.map((v) => (
+                  <li key={v.index} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-ink">{whenSaved(v.at)}</span>
+                      <span className="block truncate text-xs text-ink-soft">
+                        {`${v.blocks} ${v.blocks === 1 ? "block" : "blocks"}${v.headline ? ` · “${v.headline}”` : ""}`}
+                      </span>
+                    </span>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => void bringBack(v.index)} aria-label={`Load the version from ${whenSaved(v.at)}`}>
+                      Load
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </details>
 
           <details className="mt-6 rounded-2xl bg-paper p-4 ring-1 ring-line sm:p-5">
             <summary className="cursor-pointer text-sm font-semibold text-ink">Search and sharing</summary>
