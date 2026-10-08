@@ -44,6 +44,7 @@ import type { MeetRecord } from "@/lib/meet-records";
 import { keepHandle, webhooksView } from "@/lib/webhooks";
 import { PixelEditor } from "@/components/pixel-editor";
 import { ExitOfferEditor } from "@/components/exit-offer-editor";
+import { StoreLayoutEditor } from "@/components/store-layout-editor";
 import { readCards } from "@/lib/catalog";
 import { TaxEditor } from "@/components/tax-editor";
 import { RecoveryEditor } from "@/components/recovery-editor";
@@ -1154,7 +1155,17 @@ export default async function StudioPage({
                     .filter((item) => (item.kind & KIND.free) !== 0 && (item.kind & KIND.hidden) === 0)
                     .map((item) => ({ id: item.id, title: cards.get(item.id)?.title ?? "" }))
                     .filter((p) => p.title);
-                  return <ExitOfferEditor current={store.exitOffer} free={free} />;
+                  // The published products, in the store's own order: where a section can start, and what the news can lead to.
+                  const published = store.catalog.items
+                    .filter((item) => (item.kind & KIND.hidden) === 0)
+                    .map((item) => ({ id: item.id, title: cards.get(item.id)?.title ?? "" }))
+                    .filter((p) => p.title);
+                  return (
+                    <>
+                      <ExitOfferEditor current={store.exitOffer} free={free} />
+                      {may("page") ? <StoreLayoutEditor sections={store.sections} announcement={store.announcement} products={published} /> : null}
+                    </>
+                  );
                 })()}
 
                 <TaxEditor tax={store.tax} status={tax ? tax.state : "unknown"} connected={Boolean(current?.stripeAccountId)} />
