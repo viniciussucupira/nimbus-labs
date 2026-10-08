@@ -29,7 +29,12 @@
  *     list of purchases, and a fourth person told every place is taken;
  *   - a gift: both emails, and the product on the recipient's list as a gift;
  *   - the studio: the sections as saved, a change to them showing on the
- *     store, and the sale named for what it was.
+ *     store, and the sale named for what it was;
+ *   - selling from the creator's own website: the code copied from the
+ *     studio, pasted into a page on another address, shows the card; its
+ *     button opens a paid checkout in a new tab with the place named on the
+ *     sale; the plain button leads to the product's page; and the product's
+ *     own page, framed the same way, is refused.
  *
  * It needs a browser driver (Playwright) on the machine; it is not part of
  * `npm test`, which runs anywhere. It takes about a minute.
@@ -213,6 +218,65 @@ try {
   await studio.waitForTimeout(2500);
   await open(page, `${LOCAL}/@localshop`);
   is("a change there shows on the store", await sectionsOn(page), [["Cookbooks", 2], ["Planning", 1], ["Quick lists", 1], ["Courses", 1]]);
+
+  part("Selling from the creator's own website");
+  const tool = studio.locator("#buy-button");
+  await tool.locator("select").first().selectOption({ label: "Pantry Checklist" });
+  await tool.locator('input[maxlength="30"]').fill("blog");
+  const cardCode = await tool.locator("textarea").inputValue();
+  is("the studio gives the code for a card, tagged with the place", /^<iframe src="https:\/\/marktmorgen\.com\/embed\/localshop\/[^"?]+\?utm_source=blog&amp;utm_medium=buy-button"/.test(cardCode), true);
+  is("and shows the card as it will look", await words(tool.frameLocator("iframe").locator("h1")), "Pantry Checklist");
+  const asked = async (title) => {
+    await tool.locator("select").first().selectOption({ label: title });
+    await tool.frameLocator("iframe").locator("h1", { hasText: title }).waitFor();
+    await studio.waitForTimeout(300);
+    return (await tool.locator("textarea").inputValue()).match(/ height="(\d+)"/)?.[1];
+  };
+  const withPicture = await asked("Knife Skills");
+  if (process.env.E2E_SHOTS) await tool.locator("iframe").screenshot({ path: join(process.env.E2E_SHOTS, "card-picture.png") });
+  is("at the height the card asks for: taller with a picture across the top", [withPicture, await asked("Pantry Checklist")], ["420", "260"]);
+  const cardAddress = `${LOCAL}/embed/localshop/${ids["Pantry Checklist"]}`;
+  const framing = async (url) => {
+    const response = await fetch(url);
+    return [response.headers.get("x-frame-options"), (response.headers.get("content-security-policy") ?? "").match(/frame-ancestors [^;]+/)?.[0] ?? ""];
+  };
+  is("the card may be framed by any site", await framing(cardAddress), [null, "frame-ancestors *"]);
+  is("the product's own page still only by this one", await framing(`${LOCAL}/@localshop/p/${ids["Pantry Checklist"]}`), ["SAMEORIGIN", "frame-ancestors 'self'"]);
+
+  // The creator's blog: another address, holding the code exactly as copied.
+  const site = await context.newPage();
+  site.on("pageerror", (error) => errors.push(String(error)));
+  await open(site, `${FAKE}/site?code=${encodeURIComponent(local(cardCode))}`);
+  const framed = site.frameLocator("iframe");
+  is("there, the card shows the product, its price and its button", [await words(framed.locator("h1")), await words(framed.locator(".st-price")), await words(framed.locator("button[type=submit]"))], ["Pantry Checklist", "$9", "Buy for $9"]);
+  // Read the same way as the refused frame below, so that check can fail.
+  const readsCard = (frame) => frame?.evaluate(() => document.body?.innerText.includes("Pantry Checklist")).catch(() => false);
+  is("the browser drew it inside the blog's page", await readsCard(site.frames().find((frame) => frame !== site.mainFrame())), true);
+  if (process.env.E2E_SHOTS) {
+    await site.screenshot({ path: join(process.env.E2E_SHOTS, "site-card.png"), fullPage: true });
+    await tool.screenshot({ path: join(process.env.E2E_SHOTS, "studio-card.png") });
+  }
+  const [tab] = await Promise.all([context.waitForEvent("page"), framed.locator("button[type=submit]").click()]);
+  tab.on("pageerror", (error) => errors.push(String(error)));
+  await tab.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 });
+  is("the button opens the checkout in a new tab, and the blog stays as it was", [site.url().startsWith(FAKE), /\/@localshop\/thanks\?session_id=/.test(tab.url())], [true, true]);
+  const sale = services.checkouts().at(-1);
+  is("for that product at its price, and the sale names the place", [sale.metadata.product, sale.amount_total, sale.metadata.utm_source, sale.metadata.utm_medium], [ids["Pantry Checklist"], 900, "blog", "buy-button"]);
+  await tab.close();
+
+  await open(site, `${FAKE}/site?code=${encodeURIComponent(`<iframe src="${LOCAL}/@localshop/p/${ids["Pantry Checklist"]}" width="400" height="300"></iframe>`)}`);
+  const refused = site.frames().find((frame) => frame !== site.mainFrame());
+  is("while the product's own page, framed there, is refused by the browser", [Boolean(refused), await readsCard(refused)], [true, false]);
+
+  await tool.locator('input[value="button"]').check();
+  await tool.locator('input[maxlength="60"]').fill("Get the checklist");
+  const button = await tool.locator("textarea").inputValue();
+  await open(site, `${FAKE}/site?code=${encodeURIComponent(local(button))}`);
+  is("the plain button says what was typed", await words(site.locator("body a")), "Get the checklist");
+  if (process.env.E2E_SHOTS) await site.screenshot({ path: join(process.env.E2E_SHOTS, "site-button.png") });
+  await Promise.all([site.waitForURL(/\/@localshop\/p\//, { timeout: 120_000 }), site.locator("body a").click()]);
+  is("and leads to the product's page, tagged with the place", [new URL(site.url()).searchParams.get("utm_source"), await words(site.locator("main h1").first())], ["blog", "Pantry Checklist"]);
+  await site.close();
 
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);

@@ -45,6 +45,8 @@ import { keepHandle, webhooksView } from "@/lib/webhooks";
 import { PixelEditor } from "@/components/pixel-editor";
 import { ExitOfferEditor } from "@/components/exit-offer-editor";
 import { StoreLayoutEditor } from "@/components/store-layout-editor";
+import { BuyButtonEditor } from "@/components/buy-button-editor";
+import { lookColours } from "@/lib/store-look";
 import { AnswersEditor } from "@/components/answers-editor";
 import { answersAllowance, answersUsed, missedQuestions } from "@/lib/answers";
 import { readCards } from "@/lib/catalog";
@@ -1166,6 +1168,14 @@ export default async function StudioPage({
                     <>
                       <ExitOfferEditor current={store.exitOffer} free={free} />
                       {may("page") ? <StoreLayoutEditor sections={store.sections} announcement={store.announcement} products={published} /> : null}
+                      {may("page") ? (
+                        <BuyButtonEditor
+                          handle={store.handle}
+                          products={published}
+                          fill={lookColours(store.look).accent}
+                          onFill={lookColours(store.look).onAccent}
+                        />
+                      ) : null}
                       {may("page") && isAiConfigured() ? (
                         <AnswersEditor
                           setting={store.answers}

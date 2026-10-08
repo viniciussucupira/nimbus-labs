@@ -417,7 +417,7 @@ export const PAGES: TopicPage[] = [
           ["Reviews", "Added by the creator. Their help center says customers cannot write one", "Written only by paying buyers, checked on your Stripe account. You can answer or hide one, never edit or delete it; hidden reviews still count in the average, and a full refund takes the stars out"],
           ["Your own domain", "Not available", DOMAINS ? "Yes, on the $99 Pro plan, with the certificate handled for you" : "Not available"],
           ["Custom code on the page", "Explicitly not supported", "Not available"],
-          ["Embed the store on your own site", "Not available", "Not available"],
+          ["Selling on your own website", "Not available: the checkout is only at stan.store/<name>", "One product at a time, as a card with its picture, price, rating and buy button that opens Stripe's checkout in a new tab, or as a plain button in your color. Pasted into any page that takes HTML. The whole store cannot be put inside another site"],
           ["Several stores in one account", "Not in one account. Several accounts, each with its own email and its own subscription", "Up to five in one account, each with its own address, Stripe account and plan, switched at the top of the studio"],
           ["A team with roles", "Not for the store: their help center says the only way to give someone admin access is to share your login. Admins and moderators exist inside the community only", "Up to five people per store, as Admin, Editor or Support, each signing in with their own email, checked on our server, with an activity log"],
         ],

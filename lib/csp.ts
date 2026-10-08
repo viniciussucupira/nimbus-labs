@@ -37,7 +37,14 @@
  *     an https address.
  *
  * Both let a page be framed only by this site ('self'), because the home page
- * shows the demo store in a frame of its own. Files handed over by the API
+ * shows the demo store in a frame of its own. One kind of page is the
+ * exception: the card a creator pastes into their own website
+ * (/embed/<handle>/<product>, lib/embed-rules.ts), which exists to be framed
+ * by any site. Framing is safe there because nothing on it acts for anybody:
+ * it reads no session, sets no cookie, and its one button opens Stripe's
+ * checkout in a new tab, where the buyer still types their card and presses
+ * pay themselves. A site that hid it under something else could at most
+ * open a checkout nobody pays. Files handed over by the API
  * carry their own, stricter policy (lib/request-guard.ts, fileHeaders).
  *
  * Deliberately left out: 'upgrade-insecure-requests', which would break the
@@ -112,11 +119,13 @@ const shared = (): Record<string, string[]> => ({
  * run none of that, so for them the list of other addresses stays at the
  * file storage the studio uploads to.
  */
-export function dynamicPolicy(nonce: string, options: { store?: boolean; room?: boolean } = {}): string {
+export function dynamicPolicy(nonce: string, options: { store?: boolean; room?: boolean; embed?: boolean } = {}): string {
   const store = options.store !== false;
   const room = store && options.room === true;
   return join({
     ...shared(),
+    // The pasted card, and nothing else, may be framed by any site (above).
+    ...(options.embed ? { "frame-ancestors": ["*"] } : {}),
     // 'self', https: and 'unsafe-inline' are only for browsers too old to
     // know nonces; every current one ignores them when a nonce is present.
     "script-src": [`'nonce-${nonce}'`, "'strict-dynamic'", "'self'", "https:", "'unsafe-inline'", ...(dev() ? ["'unsafe-eval'"] : [])],
@@ -177,5 +186,10 @@ export function newNonce(): string {
  * this about the path it rewrites to, which always starts with /@.
  */
 export function isDynamicPage(pathname: string): boolean {
-  return /^\/(?:@|%40)/i.test(pathname) || /^\/(studio|signin|unsubscribe)(\/|$)/.test(pathname);
+  return /^\/(?:@|%40)/i.test(pathname) || /^\/(studio|signin|unsubscribe)(\/|$)/.test(pathname) || isEmbedPage(pathname);
+}
+
+/** The card a creator pastes into their own site: framed anywhere, and nothing else is. */
+export function isEmbedPage(pathname: string): boolean {
+  return /^\/embed\/[^/]+\/[^/]+\/?$/.test(pathname);
 }
