@@ -1,0 +1,63 @@
+/**
+ * The links a creator shares a page with (components/share-panel.tsx), each
+ * tagged with where it was shared, so the studio's numbers say which place
+ * brought the visits and the sales (lib/came-from.ts reads the same tags).
+ *
+ * Every one opens the network's own page to post from, with the words filled
+ * in; nothing is posted for the creator, and nothing is sent to any of them
+ * from here. The plain link to copy is left untagged, since nobody can tell
+ * where it will be pasted.
+ */
+
+export const SHARE_MEDIUM = "share";
+
+export type SharePlace = "x" | "facebook" | "linkedin" | "whatsapp" | "email" | "qr" | "device";
+
+/** The address with the tags naming where it was shared. */
+export function taggedFor(url: string, place: SharePlace): string {
+  const join = url.includes("?") ? "&" : "?";
+  const medium = place === "qr" ? "qr-code" : SHARE_MEDIUM;
+  return `${url}${join}utm_source=${place}&utm_medium=${medium}`;
+}
+
+/** Where each network's own page to post from opens, with the words in. */
+export function shareLinks(url: string, text: string): { place: Exclude<SharePlace, "qr" | "device">; label: string; href: string }[] {
+  const e = encodeURIComponent;
+  const at = (place: SharePlace) => taggedFor(url, place);
+  return [
+    { place: "x", label: "X", href: `https://x.com/intent/post?text=${e(text)}&url=${e(at("x"))}` },
+    { place: "facebook", label: "Facebook", href: `https://www.facebook.com/sharer/sharer.php?u=${e(at("facebook"))}` },
+    { place: "linkedin", label: "LinkedIn", href: `https://www.linkedin.com/sharing/share-offsite/?url=${e(at("linkedin"))}` },
+    { place: "whatsapp", label: "WhatsApp", href: `https://wa.me/?text=${e(`${text} ${at("whatsapp")}`)}` },
+    { place: "email", label: "Email", href: `mailto:?subject=${e(text)}&body=${e(`${text}\n\n${at("email")}`)}` },
+  ];
+}
+
+/**
+ * A QR code as an SVG drawing: one path of dark squares on a white field with
+ * the four-square quiet border scanners need. `modules` is the code's grid,
+ * row by row, true for dark.
+ */
+export function qrSvg(modules: boolean[], size: number, scale = 8): string {
+  const quiet = 4;
+  const full = (size + quiet * 2) * scale;
+  let path = "";
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      if (modules[y * size + x]) path += `M${(x + quiet) * scale} ${(y + quiet) * scale}h${scale}v${scale}h-${scale}z`;
+    }
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${full}" height="${full}" viewBox="0 0 ${full} ${full}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#ffffff"/><path fill="#000000" d="${path}"/></svg>`;
+}
+
+/** A file name from a title: "knife-skills-qr.svg". */
+export function qrFileName(title: string, ext: "svg" | "png"): string {
+  const base = title
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  return `${base || "page"}-qr.${ext}`;
+}

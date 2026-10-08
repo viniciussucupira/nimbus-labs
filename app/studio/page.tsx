@@ -113,6 +113,8 @@ import { PasskeyManager } from "@/components/passkey-manager";
 import { ResendPurchase } from "@/components/resend-purchase";
 import { LeaveTeam } from "@/components/team-manager";
 import { productSegment } from "@/lib/product-slug";
+import { SharePanel } from "@/components/share-panel";
+import { storeBase } from "@/lib/purchase-email";
 
 export const metadata: Metadata = {
   title: "Your account — Marktmorgen",
@@ -920,6 +922,13 @@ export default async function StudioPage({
                 </Link>
                 {may("settings") ? <RenameForm current={store.handle} /> : null}
               </div>
+
+              <details className="mt-5 rounded-2xl bg-paper p-4 ring-1 ring-line">
+                <summary className="cursor-pointer text-sm font-semibold text-ink">Share the store: link, QR code, posts</summary>
+                <div className="mt-4">
+                  <SharePanel url={storeBase(store)} title={store.name} what="store" />
+                </div>
+              </details>
 
               {may("settings") ? <OldAddresses handles={store.previousHandles} /> : null}
             </div>

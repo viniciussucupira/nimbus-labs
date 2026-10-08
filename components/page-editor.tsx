@@ -11,6 +11,7 @@ import { AiAssist } from "@/components/ai-assist";
 import { PageCoach } from "@/components/page-coach";
 import { PageStylePicker } from "@/components/page-style-picker";
 import { BlockPicker } from "@/components/block-picker";
+import { SharePanel } from "@/components/share-panel";
 import { BlockRewrite } from "@/components/block-rewrite";
 import { type CourseOutline, insideFromCourse } from "@/lib/course-outline-items";
 import { MIN_VIEWS, type Counts, rate, winner } from "@/lib/headline-test-rules";
@@ -186,6 +187,7 @@ export function PageEditor({
   storeName,
   photo,
   pageHref,
+  shareUrl = null,
   nextOptions,
   summary,
   reviews = [],
@@ -207,6 +209,8 @@ export function PageEditor({
   storeName: string;
   photo: string | null;
   pageHref: string;
+  /** The page's full address to share, on the creator's own domain when it has one; null for a draft. */
+  shareUrl?: string | null;
   /** For something free: the paid products that can be shown after a sign-up. */
   nextOptions: { id: string; title: string }[];
   summary: Summary | null;
@@ -251,6 +255,7 @@ export function PageEditor({
   const [testSub, setTestSub] = useState(initial.test?.sub ?? "");
   const [open, setOpen] = useState<string | null>(null);
   const [view, setView] = useState<"build" | "preview">("build");
+  const [sharing, setSharing] = useState(false);
   const [wide, setWide] = useState(false);
   // Where the block picker is open: the place a new block would take, or null when closed.
   const [picking, setPicking] = useState<number | null>(null);
@@ -1171,11 +1176,30 @@ export function PageEditor({
             </button>
           ))}
         </div>
-        <a href={pageHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-violet-deep underline-offset-4 hover:underline">
-          Open the live page
-          <Icon name="external" size={15} />
-        </a>
+        <div className="flex flex-wrap items-center gap-x-4">
+          {shareUrl ? (
+            <button
+              type="button"
+              aria-expanded={sharing}
+              aria-controls="share-panel"
+              onClick={() => setSharing((v) => !v)}
+              className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-violet-deep underline-offset-4 hover:underline"
+            >
+              <Icon name="link" size={15} />
+              Share
+            </button>
+          ) : null}
+          <a href={pageHref} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-semibold text-violet-deep underline-offset-4 hover:underline">
+            Open the live page
+            <Icon name="external" size={15} />
+          </a>
+        </div>
       </div>
+      {shareUrl && sharing ? (
+        <section id="share-panel" aria-label={`Share ${product.title}`} className="mt-4 rounded-2xl bg-paper p-4 ring-1 ring-line sm:p-5">
+          <SharePanel url={shareUrl} title={product.title} />
+        </section>
+      ) : null}
 
       {view === "preview" ? (
         <div className="mt-5">
