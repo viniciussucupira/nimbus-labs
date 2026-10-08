@@ -10,6 +10,10 @@
  * the site's own way back, as if the buyer had typed a card and returned.
  * Emails are kept in a list for the test to read: an emailed link is how a
  * gift, or a place in a purchase for several people, is opened.
+ *
+ * It also serves one page that stands for a creator's own website
+ * (GET /site?code=…): the code they copied from the studio, pasted into a
+ * page on another address, as it would be on their blog.
  */
 import http from "node:http";
 import { mkdtempSync } from "node:fs";
@@ -48,6 +52,11 @@ export async function startServices(port) {
     const url = new URL(req.url ?? "/", "http://local");
     const path = url.pathname;
     try {
+      if (req.method === "GET" && path === "/site") {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        return res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="icon" href="data:,"><title>A creator's own website</title></head><body style="font-family:sans-serif;padding:24px"><h1>My cooking blog</h1><p>Here is the planner I use every week.</p>${url.searchParams.get("code") ?? ""}</body></html>`);
+      }
       if (req.method === "POST" && path === "/pipeline") {
         const results = [];
         for (const command of JSON.parse(await read(req))) {
@@ -120,6 +129,7 @@ export async function startServices(port) {
   await new Promise((ready) => server.listen(port, "127.0.0.1", ready));
   return {
     emails: () => [...emails],
+    checkouts: () => [...sessions.values()],
     unknown: () => [...unknown],
     close: () => new Promise((closed) => server.close(closed)),
   };

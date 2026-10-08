@@ -118,21 +118,35 @@ const nextConfig: NextConfig = {
    * reached by a redirect, never a popup, so nothing needs that handle.
    */
   async headers() {
+    const common = [
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      {
+        key: "Permissions-Policy",
+        value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), browsing-topics=()",
+      },
+      { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+      { key: "Strict-Transport-Security", value: "max-age=63072000" },
+    ];
     return [
       {
-        source: "/:path*",
+        // Every address but the card creators paste into their own sites.
+        source: "/((?!embed/).*)",
         headers: [
           { key: "Content-Security-Policy", value: staticPolicy() },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=(), browsing-topics=()",
-          },
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-          { key: "Strict-Transport-Security", value: "max-age=63072000" },
+          ...common,
         ],
+      },
+      /*
+       * That card (lib/embed-rules.ts) is framed by other sites on purpose,
+       * so it is sent without X-Frame-Options, which can only name this
+       * site. Its Content-Security-Policy, which says any site may frame it
+       * and nothing more, is written per visit by proxy.ts (lib/csp.ts).
+       */
+      {
+        source: "/embed/:path*",
+        headers: common,
       },
       /*
        * Nothing the API answers is a page. A picture, a file, a calendar or a

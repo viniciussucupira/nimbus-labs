@@ -3,7 +3,7 @@ import { handleForDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
 import { AFFILIATE_CODE_PATTERN, VIA_COOKIE_SECONDS, viaCookieName, viaCookieValue } from "@/lib/affiliate-setting";
 import { needsConsent } from "@/lib/pixels";
-import { dynamicPolicy, isDynamicPage, isEventRoomPage, isStorePage, newNonce, roomPermissions } from "@/lib/csp";
+import { dynamicPolicy, isDynamicPage, isEmbedPage, isEventRoomPage, isStorePage, newNonce, roomPermissions } from "@/lib/csp";
 import { fromAnotherSite } from "@/lib/request-guard";
 import { isPlatformHost, requestHost } from "@/lib/request-origin";
 import { ZOOM_ARRIVAL_COOKIE, ZOOM_ARRIVAL_SECONDS, arrivedForZoom } from "@/lib/zoom-arrival";
@@ -188,8 +188,10 @@ function withPolicy(path: string, headers: Headers): Policy | null {
   if (!isDynamicPage(path)) return null;
   // Ad platforms and video players only on a store's own pages, and a live
   // event's video room only on that event's own page (lib/csp.ts).
+  // The card pasted into a creator's site may be framed by it, and needs
+  // neither (lib/embed-rules.ts).
   const room = isEventRoomPage(path);
-  const policy = dynamicPolicy(newNonce(), { store: isStorePage(path), room });
+  const policy = dynamicPolicy(newNonce(), { store: isStorePage(path), room, embed: isEmbedPage(path) });
   headers.set("content-security-policy", policy);
   return { csp: policy, room };
 }

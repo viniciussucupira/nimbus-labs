@@ -4,7 +4,7 @@
  * a session for its owner. Written through the same functions the studio
  * uses, into the stand-in database.
  */
-import { addProduct, claimHandle, ensureStatsId, setAnnouncement, setProductLink, setSections, setStripeAccount, setSubscription } from "@/lib/store";
+import { addProduct, claimHandle, ensureStatsId, setAnnouncement, setProductImage, setProductLink, setSections, setStripeAccount, setSubscription } from "@/lib/store";
 import { openSession } from "@/lib/auth";
 
 const OWNER = "owner@example.com";
@@ -31,6 +31,11 @@ async function main(): Promise<void> {
     const linked = await setProductLink(OWNER, made.product.id, `https://example.com/${made.product.id}`);
     if (!linked.ok) throw new Error(`${title} could not be given its link`);
   }
+  // A picture on one product, so the card pasted into a creator's site is
+  // drawn with one. Its file is not in this stand-in, so it shows as missing;
+  // what is checked is the room the card gives it.
+  const pictured = await setProductImage(OWNER, ids["Knife Skills"], { path: `images/${"a".repeat(24)}/${"b".repeat(32)}.jpg`, width: 1200, height: 800, alt: "A chef's knife on a board", bytes: 1, small: null });
+  if (!pictured.ok) throw new Error("the picture was refused");
   const sections = await setSections(OWNER, [
     { title: "Recipe books", at: ids["Weeknight Dinners"] },
     { title: "Planning", at: ids["Meal Planner"] },

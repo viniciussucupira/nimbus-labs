@@ -321,10 +321,15 @@ async function main(): Promise<void> {
   const forms = [...sources("app"), ...sources("components")].flatMap((file) =>
     [...withoutComments(read(file)).matchAll(/<form\b[^>]*>/g)].map((m) => ({ file, tag: m[0] })).filter((f) => OPENS.test(f.tag)),
   );
+  // The card pasted into other sites (lib/embed-rules.ts) opens a new tab
+  // instead: some page builders hold pasted code in a frame that may not
+  // move the page, and every one of them lets it open a tab.
+  const EMBED = "app/embed/[handle]/[product]/page.tsx";
+  const leaves = (file: string, tag: string) => /target="_top"/.test(tag) || (file.endsWith(EMBED) && /target="_blank"/.test(tag));
   is("there are such forms to check", forms.length >= 9, true);
-  is("each of them has target=\"_top\"", forms.filter((f) => !/target="_top"/.test(f.tag)).map((f) => f.file), []);
+  is("each of them has target=\"_top\", or a new tab on the pasted card", forms.filter((f) => !leaves(f.file, f.tag)).map((f) => f.file), []);
   const marked = [...sources("app"), ...sources("components")].flatMap((file) =>
-    [...withoutComments(read(file)).matchAll(/<form\b[^>]*data-checkout[^>]*>/g)].filter((m) => !/target="_top"/.test(m[0])).map(() => file),
+    [...withoutComments(read(file)).matchAll(/<form\b[^>]*data-checkout[^>]*>/g)].filter((m) => !leaves(file, m[0])).map(() => file),
   );
   is("and so has every form marked as opening a checkout", marked, []);
 
