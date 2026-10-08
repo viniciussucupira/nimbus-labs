@@ -1,4 +1,7 @@
 import { countDay } from "@/lib/day-visit";
+import { forVisitor } from "@/lib/visitor";
+import { salePrice } from "@/lib/store-sale";
+import { offNow } from "@/components/store-product";
 import { paypalReady } from "@/lib/paypal-sales";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -55,8 +58,10 @@ export default async function CoursePage({ params, searchParams }: Params) {
   const { handle: raw, product: productId } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForPage(normaliseHandle(decoded));
-  if (!store) notFound();
+  const loaded = await storeForPage(normaliseHandle(decoded));
+  if (!loaded) notFound();
+  // With the visitor's country, for a fair price for it (lib/fair-price.ts).
+  const store = await forVisitor(loaded);
   const product = await readListing(store, productId);
   if (!product?.course) redirect(`/@${store.handle}`);
   const course = await readCourse(product.course.id);
@@ -104,7 +109,8 @@ export default async function CoursePage({ params, searchParams }: Params) {
     ? membershipPrice(product.recurring, `${formatMoney(product.priceCents, store.currency)}`)
     : activePwyw(product)
       ? `${formatMoney(product.priceCents, store.currency)} or more, you choose`
-      : `${formatMoney(product.priceCents, store.currency)}`;
+      : // A sale or a fair price for the visitor's country, as the checkout takes it off.
+        `${formatMoney(salePrice(product.priceCents, offNow(store, product)), store.currency)}`;
 
   return (
     <div

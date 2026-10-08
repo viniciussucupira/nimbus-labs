@@ -33,6 +33,7 @@ export async function startServices(port) {
   const redis = new MemoryRedis();
   const sessions = new Map();
   const emails = [];
+  const coupons = [];
   const unknown = [];
   let counter = 0;
 
@@ -100,10 +101,17 @@ export async function startServices(port) {
           metadata,
           customer_details: { email: "buyer@example.com" },
           customer_email: null,
+          // What a real checkout would take off, kept for the test to read.
+          discount_coupon: body.get("discounts[0][coupon]"),
           subscription: null,
           customer: null,
         });
         return json(res, 200, { id, url: (body.get("success_url") ?? "").replace("{CHECKOUT_SESSION_ID}", id) });
+      }
+      if (req.method === "POST" && path === "/v1/coupons") {
+        const body = new URLSearchParams(await read(req));
+        coupons.push(Object.fromEntries(body));
+        return json(res, 200, { id: body.get("id") ?? `coupon_${coupons.length}`, object: "coupon", percent_off: Number(body.get("percent_off")) });
       }
       const one = path.match(/^\/v1\/checkout\/sessions\/(cs_[A-Za-z0-9_]+)$/);
       if (req.method === "GET" && one) {
@@ -130,6 +138,7 @@ export async function startServices(port) {
   return {
     emails: () => [...emails],
     checkouts: () => [...sessions.values()],
+    coupons: () => [...coupons],
     unknown: () => [...unknown],
     close: () => new Promise((closed) => server.close(closed)),
   };

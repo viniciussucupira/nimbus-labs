@@ -1,5 +1,6 @@
 import { packageLimitWords, packageSaving } from "@/lib/call-package-rules";
 import { endsWords, saleClock, saleOff, salePrice } from "@/lib/store-sale";
+import { countryName, fairOff } from "@/lib/fair-price";
 import Link from "next/link";
 import { isFree, syncTakesBuyer, type Listing, type Store } from "@/lib/store";
 import { formatMoney } from "@/lib/money";
@@ -47,8 +48,22 @@ export function pricePill(product: Listing, currency: string): string {
 }
 
 /** The percentage a running store-wide sale takes off this product now, or 0 (lib/store-sale.ts). */
-export function offNow(store: Store, product: Listing): number {
+export function saleNow(store: Store, product: Listing): number {
   return store.sale ? saleOff(store.sale, product, saleClock()) : 0;
+}
+
+/** The percentage this visitor's country takes off this product, or 0 (lib/fair-price.ts). */
+export function fairNow(store: Store, product: Listing): number {
+  return fairOff(store.fair, product, store.visitorCountry ?? "");
+}
+
+/**
+ * The percentage off this product for this visitor now: a sale or a fair
+ * price for their country, whichever is larger, never both. The checkout
+ * takes off the same one (lib/store-checkout.ts).
+ */
+export function offNow(store: Store, product: Listing): number {
+  return Math.max(saleNow(store, product), fairNow(store, product));
 }
 
 /**
@@ -72,7 +87,20 @@ export function PriceTag({ store, product }: { store: Store; product: Listing })
 
 /** "Black Friday: 30% off · Ends in 2 days", under the buy button while a sale covers it. */
 export function SaleNote({ store, product }: { store: Store; product: Listing }) {
-  const off = offNow(store, product);
+  const sale = saleNow(store, product);
+  const fair = fairNow(store, product);
+  // A fair price for the visitor's country, when it takes off more than the sale does.
+  if (fair > sale) {
+    return (
+      <p className="mt-2 text-center text-sm font-semibold" style={{ color: "var(--st-accent-text)" }}>
+        {`A fair price for ${countryName(store.visitorCountry ?? "")}: ${fair}% off`}
+        <span className="st-muted block text-xs font-normal">
+          {`${store.name} lowers prices where money buys less. Taken off on the payment page, no code needed${activePlan(product) ? "; the lower price is for paying in full" : ""}.`}
+        </span>
+      </p>
+    );
+  }
+  const off = sale;
   if (!off) return null;
   const end = new Date(store.sale.ends * 1000);
   return (

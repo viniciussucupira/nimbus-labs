@@ -114,6 +114,7 @@ import {
 } from "@/lib/catalog";
 import { type Announcement, type StoreSection, parseAnnouncement, parseSections, sectionsWithout } from "@/lib/store-sections";
 import { type AnswersSetting, NO_ANSWERS, parseAnswers } from "@/lib/answers-rules";
+import { DEFAULT_FAIR, type FairPricing, parseFair } from "@/lib/fair-price";
 
 // What the rest of the site has always imported from here.
 export { MAX_PRODUCTS, MAX_SUMMARY_LENGTH, MAX_TITLE_LENGTH, StoreFullError };
@@ -482,6 +483,18 @@ export type Store = {
    */
   answers: AnswersSetting;
   /**
+   * A lower price for buyers in countries where money buys less
+   * (lib/fair-price.ts), and the deepest discount the creator accepts. Off
+   * on every store until its creator switches it on.
+   */
+  fair: FairPricing;
+  /**
+   * The country the visitor's connection is in, for the page drawn for them
+   * now (lib/fair-price.ts, readCountry). Set by the store's pages from the
+   * request, never stored: a record read from the database has none.
+   */
+  visitorCountry?: string;
+  /**
    * Whether buyers who agree to hear from the creator are sent on to the
    * creator's own email platform (lib/email-sync.ts), and for which products.
    * Only this much is kept here, so a store page can offer the box without
@@ -725,6 +738,7 @@ function parseStore(raw: unknown): Store | null {
       sections: parseSections(value.sections),
       announcement: parseAnnouncement(value.announcement),
       answers: parseAnswers(value.answers),
+      fair: parseFair(value.fair),
       // Stores written before either existed send nothing anywhere.
       emailSync: parseEmailSyncRef(value.emailSync),
       phoneSales: value.phoneSales === true,
@@ -890,6 +904,7 @@ async function freshStore(fields: {
     sections: [],
     announcement: null,
     answers: { ...NO_ANSWERS },
+    fair: { ...DEFAULT_FAIR },
     emailSync: null,
     phoneSales: false,
     pastBuyers: false,
@@ -3153,6 +3168,11 @@ export async function setSections(email: string, raw: unknown): Promise<Sections
 /** Switches the answers to visitors' questions on or off, and keeps the creator's notes for them (lib/answers-rules.ts). */
 export async function setAnswers(email: string, raw: unknown): Promise<Store | null> {
   return patchStore(email, () => ({ answers: parseAnswers(raw) }));
+}
+
+/** Switches fair prices by country on or off, with the deepest discount the creator accepts (lib/fair-price.ts). */
+export async function setFair(email: string, raw: unknown): Promise<Store | null> {
+  return patchStore(email, () => ({ fair: parseFair(raw) }));
 }
 
 /** Sets the line of news across the top of the store page, or takes it away (null or empty). */

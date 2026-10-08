@@ -220,7 +220,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Gumroad is ahead of us today",
-        body: `A marketplace that can send you buyers;${DOMAINS ? "" : " your own domain;"} a Zapier app; purchasing power parity pricing; and a mobile app. We have none of those. We now have affiliates (paid from your own PayPal, not by us), license keys, PDF stamping and reviews from buyers, webhooks that Zapier can catch instead of an app of our own, and a public API, which on our side reads and changes nothing. Email to your list we have on our $99 Pro plan; Gumroad includes it at no extra charge. They have been doing this since 2011 and it shows.`,
+        body: `A marketplace that can send you buyers;${DOMAINS ? "" : " your own domain;"} a Zapier app; and a mobile app. We have none of those. We now have fair prices by country (their purchasing power parity, worked out the same way), affiliates (paid from your own PayPal, not by us), license keys, PDF stamping and reviews from buyers, webhooks that Zapier can catch instead of an app of our own, and a public API, which on our side reads and changes nothing. Email to your list we have on our $99 Pro plan; Gumroad includes it at no extra charge. They have been doing this since 2011 and it shows.`,
       },
     ],
   },
