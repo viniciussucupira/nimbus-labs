@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash } from "node:crypto";
-import { isFree } from "@/lib/store";
+import { imageFolder, isFree } from "@/lib/store";
 import { readCards, readListing, readListings } from "@/lib/catalog";
 import { studioPath, studioView } from "@/lib/studio-route";
 import { StudioHeader } from "@/components/studio-header";
@@ -179,6 +179,7 @@ export default async function StudioPagesPage({ searchParams }: Params) {
                 leadsTo,
               }}
               initial={page}
+              folder={await imageFolder(view.ref)}
               about={about}
               look={store.look}
               storeName={store.name}

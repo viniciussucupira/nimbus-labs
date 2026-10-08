@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Icon } from "@/components/icons";
 import { VideoEmbed } from "@/components/video-embed";
+import { Countdown } from "@/components/countdown";
+import { imageUrl } from "@/lib/product-image";
 import { type Piece, aboutBlocks } from "@/lib/product-about";
 import type { CtaBlock, HeroBlock, PageBlock } from "@/lib/sales-page";
 
@@ -36,6 +38,11 @@ export type BlockContext = {
   defaultLabel: string;
   /** Drawn in the studio: buttons and links do nothing. */
   preview?: boolean;
+  /**
+   * The clock when the page was drawn, in seconds, for a countdown's first
+   * numbers. Left out in the studio, where the browser's own clock is used.
+   */
+  now?: number;
 };
 
 function Line({ pieces, preview }: { pieces: Piece[]; preview?: boolean }) {
@@ -297,6 +304,42 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
             <VideoEmbed video={block.video} title={block.heading || ctx.productTitle} poster={null} inert={ctx.preview} />
           </div>
           {block.caption ? <PlainText text={block.caption} preview={ctx.preview} className="st-muted mt-3" /> : null}
+        </section>
+      );
+    case "pictures":
+      if (block.items.length === 0) return null;
+      return (
+        <section className="sp-section">
+          <Heading text={block.heading} />
+          <div className={`sp-pictures sp-pictures-${Math.min(block.items.length, 3)} ${block.heading ? "mt-5" : ""}`}>
+            {block.items.map((picture) => {
+              const image = (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imageUrl(picture)} alt={picture.alt} width={picture.width} height={picture.height} loading="lazy" decoding="async" />
+              );
+              return (
+                <figure key={picture.path} className="sp-picture">
+                  {ctx.preview ? (
+                    image
+                  ) : (
+                    /* The whole picture, in its own tab: a page of a book is read, not glanced at. */
+                    <a href={imageUrl(picture)} target="_blank" rel="noopener noreferrer" aria-label={picture.alt ? `${picture.alt}, full size` : "Open this picture full size"}>
+                      {image}
+                    </a>
+                  )}
+                  {picture.caption ? <figcaption className="st-muted mt-2 text-sm leading-snug">{picture.caption}</figcaption> : null}
+                </figure>
+              );
+            })}
+          </div>
+        </section>
+      );
+    case "countdown":
+      // One that was never given its moment, or whose moment has passed, is not drawn.
+      if (!block.until || (ctx.now !== undefined && block.until <= ctx.now)) return null;
+      return (
+        <section className="sp-section">
+          <Countdown until={block.until} now={ctx.now} heading={block.heading} note={block.note} />
         </section>
       );
   }

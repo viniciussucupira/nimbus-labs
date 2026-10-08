@@ -485,6 +485,8 @@ export default async function ProductPage({ params, searchParams }: Params) {
     photo: store.photoId ? photoUrl(store.photoId) : null,
     action,
     defaultLabel: label,
+    // For a countdown's first numbers: the same on the server and in the browser.
+    now: Math.floor(Date.now() / 1000),
   };
   const [first, ...others] = page.blocks;
   const firstHero = first?.kind === "hero" ? first : null;

@@ -798,7 +798,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           "Renewals are not in the revenue figure; they are in your Stripe dashboard.",
           "All time starts at the first visit still on record; daily visits are kept for about thirteen months.",
-          "No A/B tests of the page.",
+          "A sales page's headline can be tested against a second one; a whole page cannot be tested against another yet.",
         ],
       },
       {
@@ -1140,6 +1140,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "download", title: "The book, as a file", body: "Download who is owed what as a CSV, and note each payment with its date and reference." },
           { icon: "users", title: "Up to 1,000 people", body: "Per store, applications included. You approve or decline each one." },
           { icon: "star", title: "A share for one affiliate", body: "Give your best partner 40% while everyone else earns 20%: 1% to 90% for one affiliate, on every product except those you set to 0%. Sales already made keep what they earned." },
+          { icon: "handshake", title: "A partner's share of a product", body: "Somebody who made a product with you, or lent it their audience, takes a share of every sale of it, not only of the buyers they sent: 1% to 80%, on the products you name, for up to 10 partners per product. It is recorded against each sale and paid from your own PayPal in the same batch as your affiliates. A partner never earns on their own purchase, and the shares promised on one product, affiliates included, cannot pass 90%." },
           { icon: "mail", title: "They choose where PayPal pays them", body: "On their own page, each affiliate gives the PayPal address to pay them at, and the address they joined with hears of every change. Otherwise they are paid at the address they joined with." },
         ],
       },
@@ -1446,7 +1447,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "A page that sells it,",
     highlight: "built from blocks",
     intro:
-      "Any product's own page can be laid out by you: a headline with a picture or a video, what the buyer gets, what is inside, who made it, questions, your guarantee, buttons and real buyers' reviews. For something free, the same page asks for an email.",
+      "Any product's own page can be laid out by you: a headline with a picture or a video, your own pictures, what the buyer gets, what is inside, who made it, questions, your guarantee, a countdown to a real deadline, buttons and real buyers' reviews. Start from a template, from an AI draft or from nothing. For something free, the same page asks for an email.",
     badge: WORKING,
     accent: "from-pink-brand to-violet-brand",
     plan: "creator",
@@ -1459,7 +1460,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "From a product to a page",
         items: [
           { title: "Open the product's page", body: "In your studio, under Sales pages. A product without blocks keeps the plain page it always had." },
-          { title: "Stack the blocks, or have AI draft them", body: "Up to 30, in the order you want, with a preview beside them before anything is saved. Or press Write the whole page with AI: a full draft — headline, what the buyer gets, what is inside, questions and buttons — from the product's own description, for you to read and change." },
+          { title: "Stack the blocks, or have AI draft them", body: "Start from one of six templates — an ebook, a course, a call, a membership, a launch with a deadline, a free download — each an order of blocks with its headings and the questions buyers of it ask, and the words yours to write. Drag a block to move it. Up to 30, in the order you want, with a preview beside them before anything is saved. Or press Write the whole page with AI: a full draft — headline, what the buyer gets, what is inside, questions and buttons — from the product's own description, for you to read and change." },
           { title: "Share one link", body: "Your store address, /p/ and the product. The buy button on the page opens the same checkout the store page does." },
         ],
       },
@@ -1469,6 +1470,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "type", title: "Hero", body: "A headline of up to 120 characters and a line under it, beside the product's picture or a video." },
           { icon: "play", title: "Video that waits", body: "One beside the headline and as many more as the page needs, each in a block of its own with a heading and a line under it. From YouTube, Vimeo or Loom. Nothing from them loads until the visitor presses play, and YouTube plays from its privacy-enhanced address." },
+          { icon: "camera", title: "Your own pictures", body: "Pages of the book, a screen of the course, the finished result: up to 6 in a block and 24 on a page, each with a line under it and a description for people who cannot see it. Shrunk in your browser before they are sent, served from our own address, and opened full size with a press." },
+          { icon: "clock", title: "A countdown that cannot be faked", body: "Days, hours, minutes and seconds to one moment you set — a launch price ending, doors closing, a session starting — shown to each visitor in their own time zone. It is the same moment for everybody and never starts again for anyone, and once it has passed the block disappears by itself. Up to a year ahead." },
           { icon: "list", title: "Benefits and what is inside", body: "Up to 12 points with a check mark, and up to 20 numbered parts, each with a line about it." },
           { icon: "user", title: "Text, and about you", body: "A heading and paragraphs in your own words, and who made it, with your store photo." },
           { icon: "chat", title: "Questions", body: "Up to 15 questions and answers that open and close." },
@@ -1495,7 +1498,8 @@ export const FEATURE_PAGES: TopicPage[] = [
         intro: "Said here so nobody signs up expecting it.",
         items: [
           "No custom code, HTML or styles: every block is plain text, drawn in your store's theme and color. Blocks stack in the order you set; there are no columns or free layout.",
-          "Pictures are the product's own and your store photo. Videos come only from YouTube, Vimeo or Loom.",
+          "Pictures are your own uploads (JPEG, PNG, WebP, GIF or AVIF, shrunk to a megabyte at most), the product's picture and your store photo; nothing is loaded from another site. Videos come only from YouTube, Vimeo or Loom.",
+          "A countdown runs to one fixed moment. There is no timer that starts again for each visitor, on purpose: that is a deadline that is not real.",
           "A button cannot state a price or a deal of its own: it leads to the checkout with the prices the store page shows.",
           "One page per product. There is no editor that chains several pages into a funnel, and no thank-you page of your own.",
           "Tests compare two headlines (and the line under each), not whole pages, prices or layouts.",
@@ -2102,7 +2106,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         kind: "faq",
         title: "Questions coaches ask",
         items: [
-          { q: "Can I sell a package of several calls?", a: "Not as one booking. Each call is booked and paid on its own. A program with a set of calls can be sold as a course or a file, with your instructions for booking inside it." },
+          { q: "Can I sell a package of several calls?", a: "Yes, for a call with weekly hours: 2 to 20 sessions at one price, with a time limit you choose or none. The buyer pays once and books each session from their own link whenever they like, with the reminders and the meeting link every booking gets." },
           { q: "Where does the video call happen?", a: "In a Google Meet made for each booking once you connect your Google Calendar, on the service whose link you give — Zoom or any other — or in a private Jitsi Meet room made for each booking. The link goes into every invitation." },
           { q: "Can I see who finished the program?", a: "Yes. Your studio shows each student and how many lessons they marked done." },
         ],
@@ -2227,7 +2231,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         title: "Where it falls short for trainers today",
         items: [
           "No workout-tracking app and no progress photos: students mark lessons done, and that is what you see.",
-          "No live group chat for a challenge: your community holds posts, comments and likes, updated when the page is opened.",
+          "The community's live room is text only: there is no group video inside it, so a live workout runs as a live event on Google Meet, Jitsi or your own link.",
           "Video is covered for 400 hours watched a month; past that it is $0.03 for each hour watched, and nobody is cut off.",
         ],
       },

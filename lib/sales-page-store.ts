@@ -9,11 +9,44 @@
  * own page, the page after a free sign-up and the studio.
  *
  *   nl:product:page:<statsId>:<productId>  -> the page, as JSON
+ *   nl:product:pics:<statsId>              -> hash: picture path -> the product whose page shows it
+ *
+ * A page's pictures are files in the store's picture folder
+ * (lib/product-image.ts). Each belongs to the one page that first showed it,
+ * written down in the hash, so that taking a picture off a page — or removing
+ * the product — deletes a file no other page is showing, and never one that
+ * another page is.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
-import { EMPTY_PAGE, MAX_PAGE_BYTES, type SalesPage, parsePage } from "@/lib/sales-page";
+import { EMPTY_PAGE, MAX_PAGE_BYTES, type SalesPage, parsePage, picturePaths } from "@/lib/sales-page";
 
 const pageKey = (statsId: string, productId: string) => `nl:product:page:${statsId}:${productId}`;
+const picsKey = (statsId: string) => `nl:product:pics:${statsId}`;
+
+/**
+ * Says these pictures are this product's page's. Returns the ones that are
+ * not: already shown on another product's page, which keeps them.
+ */
+export async function claimPictures(statsId: string, productId: string, paths: string[]): Promise<string[]> {
+  if (paths.length === 0 || !isRedisConfigured()) return [];
+  await redisPipeline(paths.map((path) => ["HSETNX", picsKey(statsId), path, productId]));
+  const [owners] = await redisPipeline([["HMGET", picsKey(statsId), ...paths]]);
+  const list = Array.isArray(owners) ? owners : [];
+  return paths.filter((_, i) => list[i] !== productId);
+}
+
+/**
+ * Lets go of pictures a page no longer shows. Returns the files to delete:
+ * only those this product's page was the one showing.
+ */
+export async function releasePictures(statsId: string, productId: string, paths: string[]): Promise<string[]> {
+  if (paths.length === 0 || !isRedisConfigured()) return [];
+  const [owners] = await redisPipeline([["HMGET", picsKey(statsId), ...paths]]);
+  const list = Array.isArray(owners) ? owners : [];
+  const mine = paths.filter((_, i) => list[i] === productId);
+  if (mine.length) await redisPipeline([["HDEL", picsKey(statsId), ...mine]]);
+  return mine;
+}
 
 /** A product's page, or the empty page when it has none (or it cannot be read). */
 export async function readPage(statsId: string | null, productId: string): Promise<SalesPage> {
@@ -38,8 +71,10 @@ export async function writePage(statsId: string, productId: string, page: SalesP
   await redisPipeline([empty ? ["DEL", pageKey(statsId, productId)] : ["SET", pageKey(statsId, productId), JSON.stringify(page)]]);
 }
 
-/** Forgets the page of a product that is gone. */
-export async function dropPage(statsId: string | null, productId: string): Promise<void> {
-  if (!statsId || !isRedisConfigured()) return;
+/** Forgets the page of a product that is gone. Returns the picture files it was the one showing, to delete. */
+export async function dropPage(statsId: string | null, productId: string): Promise<string[]> {
+  if (!statsId || !isRedisConfigured()) return [];
+  const shown = picturePaths(await readPage(statsId, productId).catch(() => ({ blocks: [] })));
   await redisPipeline([["DEL", pageKey(statsId, productId)]]);
+  return releasePictures(statsId, productId, shown);
 }

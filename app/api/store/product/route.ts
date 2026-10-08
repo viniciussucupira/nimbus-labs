@@ -188,7 +188,11 @@ export async function POST(request: NextRequest) {
         if (course) had.push(...filesInCourse(course));
         if (going.about) await dropAbout(removed.store.statsId, id).catch(() => {});
         // Its page of blocks, and the reviews of a product nobody can buy any more.
-        if (going.page) await dropPage(removed.store.statsId, id).catch(() => {});
+        if (going.page) {
+          // And the pictures on that page (lib/sales-page-store.ts).
+          const pictures = await dropPage(removed.store.statsId, id).catch(() => [] as string[]);
+          had.push(...pictures.map((pathname) => ({ pathname })));
+        }
         await dropReviews(removed.store.statsId, id).catch(() => {});
         if (course) await dropCourse(course).catch((error: unknown) => console.error("could not drop a removed course", error));
         for (const file of had) {
