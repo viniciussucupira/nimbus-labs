@@ -121,7 +121,7 @@ export function cleanTag(raw: string): string {
   return raw.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "").slice(0, 30);
 }
 
-export type HitKind = "view" | "checkout" | "link";
+export type HitKind = "view" | "checkout" | "link" | "product";
 
 /**
  * Counts one thing a visitor did.
@@ -164,6 +164,16 @@ export async function recordHit(
     both(`c:${hit.id}`);
   } else if (hit.kind === "link" && hit.id) {
     both(`l:${hit.id}`);
+  } else if (hit.kind === "product" && hit.id) {
+    // A product's own page was opened (each page load sends this once,
+    // components/store-beacon.tsx): what its checkouts and sales are read
+    // against. One command, and the day's end set once by the first of the
+    // day, because every visit's cost is held to what a plan charges for it
+    // (tests/traffic-cost.ts). The day's count only, not the all-time
+    // record, so "all time" has no figure for it rather than a wrong one.
+    const [opened] = await redisPipeline([["HINCRBY", counts, `pv:${hit.id}`, 1]]);
+    if (Number(opened) === 1) await redisPipeline([["EXPIRE", counts, TTL_SECONDS]]);
+    return;
   } else {
     return;
   }
@@ -190,6 +200,8 @@ export type WindowStats = {
   mediums: Ranked;
   campaigns: Ranked;
   checkoutsByProduct: Record<string, number>;
+  /** Times each product's own page was opened. */
+  viewsByProduct: Record<string, number>;
   linkClicks: Record<string, number>;
 };
 
@@ -217,6 +229,7 @@ class Tally {
   mediums = new Map<string, number>();
   campaigns = new Map<string, number>();
   checkoutsByProduct: Record<string, number> = {};
+  viewsByProduct: Record<string, number> = {};
   linkClicks: Record<string, number> = {};
 
   add(field: string, count: number) {
@@ -226,6 +239,7 @@ class Tally {
     else if (field.startsWith("m:")) this.mediums.set(field.slice(2), (this.mediums.get(field.slice(2)) ?? 0) + count);
     else if (field.startsWith("g:")) this.campaigns.set(field.slice(2), (this.campaigns.get(field.slice(2)) ?? 0) + count);
     else if (field.startsWith("c:")) this.checkoutsByProduct[field.slice(2)] = (this.checkoutsByProduct[field.slice(2)] ?? 0) + count;
+    else if (field.startsWith("pv:")) this.viewsByProduct[field.slice(3)] = (this.viewsByProduct[field.slice(3)] ?? 0) + count;
     else if (field.startsWith("l:")) this.linkClicks[field.slice(2)] = (this.linkClicks[field.slice(2)] ?? 0) + count;
   }
 
@@ -238,6 +252,7 @@ class Tally {
       mediums: ranked(this.mediums),
       campaigns: ranked(this.campaigns),
       checkoutsByProduct: this.checkoutsByProduct,
+      viewsByProduct: this.viewsByProduct,
       linkClicks: this.linkClicks,
     };
   }
@@ -635,7 +650,8 @@ export type RangeKey = "d7" | "d30" | "d90" | "all";
 
 export type Totals = { visitors: number; views: number; checkouts: number; sales: number; cents: number };
 
-export type ProductRow = { checkouts: number; sales: number; cents: number };
+/** `views` is -1 for all time, which is not kept for a product's page. */
+export type ProductRow = { views: number; checkouts: number; sales: number; cents: number };
 
 export type StatsData = {
   days: { date: string; visitors: number; views: number; checkouts: number; sales: number }[];
@@ -666,7 +682,7 @@ export type StatsData = {
   revenueBySource: { source: string; cents: number; sales: number }[];
 };
 
-const EMPTY_WINDOW: WindowStats = { visitors: 0, views: 0, checkouts: 0, sources: [], mediums: [], campaigns: [], checkoutsByProduct: {}, linkClicks: {} };
+const EMPTY_WINDOW: WindowStats = { visitors: 0, views: 0, checkouts: 0, sources: [], mediums: [], campaigns: [], checkoutsByProduct: {}, viewsByProduct: {}, linkClicks: {} };
 
 /** Visits and sales put together, the shape the studio's panel draws. */
 /** Products listed in the numbers when none has any activity yet: the first ones in the store's order. */
@@ -713,7 +729,8 @@ export function studioStats(
       title: product.title,
       ...per((k) => {
         const s = k === "all" ? zero : sales?.byProduct[product.id]?.[k] ?? zero;
-        return { checkouts: w[k].checkoutsByProduct[product.id] ?? 0, sales: s.sales, cents: s.cents };
+        // Page views are kept by the day only (recordHit): no all-time figure, rather than a wrong one.
+        return { views: k === "all" ? -1 : w[k].viewsByProduct[product.id] ?? 0, checkouts: w[k].checkoutsByProduct[product.id] ?? 0, sales: s.sales, cents: s.cents };
       }),
     })),
     links: store.links.map((link) => ({ id: link.id, title: link.title, ...per((k) => w[k].linkClicks[link.id] ?? 0) })),

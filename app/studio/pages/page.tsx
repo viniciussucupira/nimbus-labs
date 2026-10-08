@@ -19,6 +19,7 @@ import { bumpTargets } from "@/lib/product-extras";
 import { pageAction, pricePill, productPath } from "@/components/store-product";
 import { PageEditor } from "@/components/page-editor";
 import { readPageFacts } from "@/lib/page-facts-read";
+import { readStats } from "@/lib/stats";
 import { AiOn } from "@/components/ai-assist";
 import { aiLeft, isAiConfigured } from "@/lib/ai";
 
@@ -192,6 +193,9 @@ export default async function StudioPagesPage({ searchParams }: Params) {
               reviews={reviews}
               lang={store.language}
               facts={await readPageFacts(store, selected)}
+              traffic={await readStats(store)
+                .then((stats) => (stats ? { views: stats.windows.d30.viewsByProduct[selected.id] ?? 0, checkouts: stats.windows.d30.checkoutsByProduct[selected.id] ?? 0 } : null))
+                .catch(() => null)}
             />
             </AiOn>
           </div>

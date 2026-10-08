@@ -17,19 +17,22 @@ export async function StoreTracking({
   store,
   countVisit = false,
   presence = false,
+  product = "",
   event = null,
 }: {
   store: Store;
   countVisit?: boolean;
   /** A page of the store other than its front one: somebody who opens it is a visit (lib/traffic.ts), and nothing else is counted. */
   presence?: boolean;
+  /** A product's own page: which product, so the people who open it are counted for it (lib/stats.ts). */
+  product?: string;
   event?: PixelEvent;
 }) {
   const withPixels = hasPixels(store.pixels);
   const askFirst = withPixels || store.affiliates.enabled ? needsConsent((await headers()).get("x-vercel-ip-country")) : true;
   return (
     <>
-      {countVisit ? <StoreBeacon handle={store.handle} /> : presence ? <StoreBeacon handle={store.handle} front={false} /> : null}
+      {countVisit ? <StoreBeacon handle={store.handle} /> : presence ? <StoreBeacon handle={store.handle} front={false} product={product} /> : null}
       {store.affiliates.enabled ? (
         <AffiliateClick handle={store.handle} storeName={store.name} days={store.affiliates.days} askFirst={askFirst} />
       ) : null}

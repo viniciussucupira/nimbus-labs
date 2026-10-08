@@ -26,7 +26,7 @@ function beacon(payload: Record<string, string>) {
  * only that the page was opened, so that somebody who arrives by a link
  * straight to a product is a visit too.
  */
-export function StoreBeacon({ handle, front = true }: { handle: string; front?: boolean }) {
+export function StoreBeacon({ handle, front = true, product = "" }: { handle: string; front?: boolean; product?: string }) {
   useEffect(() => {
     const key = `${handle}|${location.href}`;
     if (!sent.has(key)) {
@@ -36,8 +36,9 @@ export function StoreBeacon({ handle, front = true }: { handle: string; front?: 
         const tag = (name: string) => (query.get(name) ?? "").slice(0, 60);
         beacon({ h: handle, k: "v", r: document.referrer.slice(0, 500), u: tag("utm_source"), m: tag("utm_medium"), g: tag("utm_campaign") });
       } else {
-        // Any other page of the store: only that somebody came (lib/traffic.ts).
-        beacon({ h: handle, k: "p" });
+        // Any other page of the store: only that somebody came (lib/traffic.ts),
+        // and on a product's own page, which product: what its sales are measured against.
+        beacon(product ? { h: handle, k: "p", p: product } : { h: handle, k: "p" });
       }
     }
     // Which links are followed is counted on the front page, where they are.
@@ -54,6 +55,6 @@ export function StoreBeacon({ handle, front = true }: { handle: string; front?: 
       document.removeEventListener("click", onClick);
       document.removeEventListener("auxclick", onClick);
     };
-  }, [handle, front]);
+  }, [handle, front, product]);
   return null;
 }

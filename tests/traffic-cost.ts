@@ -100,9 +100,13 @@ export const COMMANDS = {
    * a twentieth of a command to the visit, inside what is rounded up here.
    */
   firstOfDay: 3,
-  /** Drawing another page of the store, and saying it was opened. */
+  /**
+   * Drawing another page of the store, and saying it was opened. On a
+   * product's own page that also counts the page's view (lib/stats.ts, added
+   * 8 October 2026): two commands more, measured, and a third once a day.
+   */
   laterPage: 10,
-  laterCount: 6,
+  laterCount: 8,
   /**
    * Handing a member's page ten minutes' leave to ask the room, at the
    * route that knows who is asking: the store, the community's settings,
