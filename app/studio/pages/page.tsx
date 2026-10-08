@@ -18,10 +18,7 @@ import { summaryOf, visibleReviews } from "@/lib/reviews";
 import { bumpTargets } from "@/lib/product-extras";
 import { pageAction, pricePill, productPath } from "@/components/store-product";
 import { PageEditor } from "@/components/page-editor";
-import { pageFacts } from "@/lib/page-facts";
-import { LANGUAGES } from "@/lib/store-language";
-import { offeredItems } from "@/lib/bundles";
-import { SHOWN_FROM, readSoldCounts } from "@/lib/sold-count";
+import { readPageFacts } from "@/lib/page-facts-read";
 import { AiOn } from "@/components/ai-assist";
 import { aiLeft, isAiConfigured } from "@/lib/ai";
 
@@ -194,17 +191,7 @@ export default async function StudioPagesPage({ searchParams }: Params) {
               summary={summary && summary.visible + summary.hidden > 0 ? summary : null}
               reviews={reviews}
               lang={store.language}
-              facts={pageFacts({
-                language: store.language,
-                locale: LANGUAGES[store.language].locale,
-                product: selected,
-                bundleItems: selected.bundle ? (await offeredItems(store, [selected]).catch(() => new Map())).get(selected.id)?.length ?? 0 : null,
-                sold: await (async () => {
-                  const n = (await readSoldCounts(store).catch(() => null))?.byProduct[selected.id] ?? 0;
-                  return n >= SHOWN_FROM ? n : null;
-                })(),
-                reviews: summary,
-              })}
+              facts={await readPageFacts(store, selected)}
             />
             </AiOn>
           </div>
