@@ -40,12 +40,13 @@ after(() => {
 
 /** Runs as if on the host, in production, with a request in hand. */
 async function onHost(answer: Partial<typeof next>, env: Partial<Record<(typeof KEYS)[number], string>> = {}): Promise<boolean> {
-  const kept = Object.fromEntries(KEYS.map((key) => [key, process.env[key]]));
+  const env_ = process.env as Record<string, string | undefined>;
+  const kept = Object.fromEntries(KEYS.map((key) => [key, env_[key]]));
   const world = globalThis as unknown as Record<symbol, unknown>;
   const context = world[CONTEXT];
   const { error, warn } = console;
   next = { body: "{}", status: 200, after: 0, ...answer };
-  Object.assign(process.env, { VERCEL: "1", NODE_ENV: "production", VERCEL_OIDC_TOKEN: "token", OVERRIDE_BOTID_SERVER_URL: base, ...env });
+  Object.assign(env_, { VERCEL: "1", NODE_ENV: "production", VERCEL_OIDC_TOKEN: "token", OVERRIDE_BOTID_SERVER_URL: base, ...env });
   world[CONTEXT] = {
     get: () => ({
       headers: { host: "marktmorgen.com", "x-is-human": "{}", "x-path": "/api/auth/request", "x-method": "POST" },
@@ -62,8 +63,8 @@ async function onHost(answer: Partial<typeof next>, env: Partial<Record<(typeof 
     console.warn = warn;
     world[CONTEXT] = context;
     for (const key of KEYS) {
-      if (kept[key] === undefined) delete process.env[key];
-      else process.env[key] = kept[key];
+      if (kept[key] === undefined) delete env_[key];
+      else env_[key] = kept[key];
     }
   }
 }
