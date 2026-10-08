@@ -15,7 +15,7 @@ import { SharePanel } from "@/components/share-panel";
 import { BlockRewrite } from "@/components/block-rewrite";
 import { type CourseOutline, insideFromCourse } from "@/lib/course-outline-items";
 import { MIN_VIEWS, type Counts, rate, winner } from "@/lib/headline-test-rules";
-import { type BlockContext, HeroView, PageSections } from "@/components/sales-blocks";
+import { type BlockContext, type FeaturedCard, HeroView, PageSections } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { type StoreLook, lookStyle } from "@/lib/store-look";
 import type { Review, Summary } from "@/lib/review-summary";
@@ -62,6 +62,7 @@ import {
   PAGE_STYLES,
   BLOCK_SHOWS,
   MAX_PICKED_REVIEWS,
+  MAX_PRODUCT_NOTE,
   PAGE_TEMPLATES,
   type PageStyle,
   PROVIDER_NAMES,
@@ -117,6 +118,7 @@ const KIND_ICONS: Record<BlockKind, IconName> = {
   bonuses: "gift",
   facts: "chart",
   feature: "layout",
+  product: "basket",
 };
 
 /** A moment in seconds as the date-and-time field holds it, in the creator's own time zone. */
@@ -198,6 +200,7 @@ export function PageEditor({
   outline = [],
   asked = [],
   pagesToCopy = [],
+  featurable = [],
 }: {
   product: EditorProduct;
   /** The store's own picture folder (lib/product-image.ts), where a page's pictures go. */
@@ -228,6 +231,8 @@ export function PageEditor({
   asked?: string[];
   /** The store's other products that have a page of their own, to start this one from. */
   pagesToCopy?: { id: string; title: string }[];
+  /** The store's other products a page can show as a card (lib/featured-cards.ts). */
+  featurable?: { id: string; card: FeaturedCard }[];
 }) {
   const router = useRouter();
   const [drafts, setDrafts] = useState<Draft[]>(() => toDrafts(initial));
@@ -558,6 +563,7 @@ export function PageEditor({
     preview: true,
     lang,
     facts,
+    featured: Object.fromEntries(featurable.map((p) => [p.id, p.card])),
   };
   const preview = useMemo(() => {
     const blocks = drafts.map((d) => d.block);
@@ -1010,6 +1016,37 @@ export function PageEditor({
             </p>
           </div>
         );
+      case "product": {
+        const known = featurable.some((p) => p.id === block.product);
+        return (
+          <div className="space-y-4">
+            {field(
+              `${base}-p`,
+              "Product",
+              <select id={`${base}-p`} className="field" value={known ? block.product : ""} onChange={(e) => change(index, { product: e.target.value })}>
+                <option value="">Choose one of your products</option>
+                {featurable.map((p) => (
+                  <option key={p.id} value={p.id}>{`${p.card.title} (${p.card.pill})`}</option>
+                ))}
+              </select>,
+            )}
+            {block.product && !known ? (
+              <p className="notice notice-error text-sm" role="status">
+                The product chosen before is not among the first 24 on your store page, or is a draft, so its card is not shown. Choose another, or move it up on your store page.
+              </p>
+            ) : null}
+            {field(`${base}-h`, "Heading", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} placeholder="Goes well with it" onChange={(e) => change(index, { heading: e.target.value })} />)}
+            {field(
+              `${base}-n`,
+              "A line about why (optional)",
+              <input id={`${base}-n`} className="field" maxLength={MAX_PRODUCT_NOTE} value={block.note} placeholder="The recipes from the course, ready to print." onChange={(e) => change(index, { note: e.target.value })} />,
+            )}
+            <p className="text-xs text-ink-soft">
+              Its picture, name and price are always today&apos;s, and the card links to its own page. Products among the first 24 on your store page can be shown.
+            </p>
+          </div>
+        );
+      }
       case "facts": {
         const chosen = new Set(block.show);
         return (
@@ -1137,6 +1174,10 @@ export function PageEditor({
         return `${block.heading ? `${block.heading} · ` : ""}${block.rows.length} ${block.rows.length === 1 ? "row" : "rows"}`;
       case "feature":
         return block.heading || (block.body ? block.body.slice(0, 60) : block.picture ? "A picture, no words yet" : "Empty");
+      case "product": {
+        const chosen = featurable.find((p) => p.id === block.product);
+        return `${block.heading ? `${block.heading} · ` : ""}${chosen ? chosen.card.title : "No product chosen yet"}`;
+      }
       case "facts": {
         const live = block.show.filter((key) => facts[key]).length;
         return `${block.heading ? `${block.heading} · ` : ""}${live} ${live === 1 ? "number" : "numbers"} shown now`;

@@ -96,7 +96,8 @@ export type BlockKind =
   | "compare"
   | "bonuses"
   | "facts"
-  | "feature";
+  | "feature"
+  | "product";
 
 export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "hero", label: "Hero", hint: "The big headline at the top, with the product's picture or a video." },
@@ -116,6 +117,7 @@ export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "compare", label: "Comparison", hint: `A table of up to ${MAX_COMPARE_ROWS} rows: this product beside another way of getting there, with ticks, crosses or a few words.` },
   { kind: "bonuses", label: "Bonuses", hint: `Up to ${MAX_BONUSES} extras that come with it, each on its own card.` },
   { kind: "feature", label: "Picture and text", hint: "One of your pictures beside a heading and a few paragraphs, the picture on the left or the right. Several in a row make the page read like a story." },
+  { kind: "product", label: "Another product", hint: "One of your other products, with its picture, price and a link to its own page: what goes well with this one." },
   { kind: "facts", label: "By the numbers", hint: "Lessons, episodes, buyers, the average rating: counted for you from the store, never typed, and always up to date." },
 ];
 
@@ -241,6 +243,17 @@ export const FACT_KEYS: { key: FactKey; label: string; hint: string }[] = [
 export type FactsBlock = { id: string; kind: "facts"; heading: string; show: FactKey[] };
 
 /**
+ * Another of the store's products, shown as a card with its picture, its
+ * price as the store shows it and a link to its own page (added 8 October
+ * 2026): the course beside the ebook, the next step after the free guide.
+ * Only the product's id is kept, so its name, picture and price are always
+ * today's; a product taken off, or one past the store's first page of
+ * products, is simply not drawn.
+ */
+export type ProductBlock = { id: string; kind: "product"; heading: string; product: string; note: string };
+export const MAX_PRODUCT_NOTE = 160;
+
+/**
  * A picture beside words (added 8 October 2026): the section Kajabi's and
  * Hotmart Pages' templates are mostly made of — a screen of the course and
  * what it teaches, a page of the book and why it is there. The picture is one
@@ -283,6 +296,7 @@ export type PageBlock = { screens?: BlockShow } & (
   | VideoBlock
   | PicturesBlock
   | CountdownBlock
+  | ProductBlock
 );
 
 export type SalesPage = {
@@ -634,6 +648,10 @@ function parseBlock(raw: unknown): PageBlock | null {
         : [];
       return { id, kind: "facts", heading, show };
     }
+    case "product": {
+      const product = typeof value.product === "string" && PRODUCT_ID_PATTERN.test(value.product) ? value.product : "";
+      return { id, kind: "product", heading, product, note: line(value.note, MAX_PRODUCT_NOTE) };
+    }
     default:
       return null;
   }
@@ -776,6 +794,8 @@ export function emptyBlock(kind: BlockKind, id = newBlockId()): PageBlock {
       return { id, kind, heading: "", show: FACT_KEYS.map((f) => f.key) };
     case "feature":
       return { id, kind, heading: "", body: "", picture: null, side: "left" };
+    case "product":
+      return { id, kind, heading: "Goes well with it", product: "", note: "" };
   }
 }
 

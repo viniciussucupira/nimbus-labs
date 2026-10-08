@@ -26,6 +26,7 @@ import { AiOn } from "@/components/ai-assist";
 import { aiLeft, isAiConfigured } from "@/lib/ai";
 import { storeBase } from "@/lib/purchase-email";
 import { productSegment } from "@/lib/product-slug";
+import { featuredCards } from "@/lib/featured-cards";
 
 /** How many of the newest reviews the editor offers to show first. */
 const PICKABLE_REVIEWS = 30;
@@ -200,6 +201,7 @@ export default async function StudioPagesPage({ searchParams }: Params) {
               shareUrl={selected.hidden ? null : `${storeBase(store)}/p/${productSegment(selected)}`}
               nextOptions={isFree(selected) ? products.filter((p) => !isFree(p)).map((p) => ({ id: p.id, title: p.title })) : []}
               pagesToCopy={products.filter((p) => p.page && p.id !== selected.id).map((p) => ({ id: p.id, title: p.title }))}
+              featurable={Object.entries(featuredCards(store, selected.id)).map(([id, card]) => ({ id, card }))}
               summary={summary && summary.visible + summary.hidden > 0 ? summary : null}
               reviews={reviews}
               lang={store.language}

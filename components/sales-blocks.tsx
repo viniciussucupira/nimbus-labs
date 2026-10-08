@@ -51,6 +51,18 @@ export type BlockContext = {
   lang?: LanguageCode;
   /** The numbers a "By the numbers" block may show, counted by the store (lib/page-facts.ts). */
   facts?: PageFacts;
+  /** The store's other products a page may show as a card (lib/sales-page.ts, ProductBlock), by id. */
+  featured?: Record<string, FeaturedCard>;
+};
+
+/** Another product, as its card on a sales page shows it: today's name, picture and price. */
+export type FeaturedCard = {
+  title: string;
+  summary: string;
+  /** Its price as the store shows it: "$27", "from €9 a month", "Free". */
+  pill: string;
+  href: string;
+  picture: { src: string; alt: string; width: number; height: number } | null;
 };
 
 /** A cell of a comparison: a tick, a cross, or the creator's few words. */
@@ -505,6 +517,39 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
               </li>
             ))}
           </ul>
+        </section>
+      );
+    }
+    case "product": {
+      const card = block.product ? ctx.featured?.[block.product] : undefined;
+      if (!card) return null;
+      const w = blockWords(ctx.lang ?? DEFAULT_LANGUAGE);
+      const inner = (
+        <>
+          {card.picture ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={card.picture.src} alt="" width={card.picture.width} height={card.picture.height} loading="lazy" decoding="async" className="sp-product-picture" />
+          ) : null}
+          <span className="sp-product-words">
+            <span className="sp-product-title">{card.title}</span>
+            {card.summary ? <span className="st-muted sp-product-summary">{card.summary}</span> : null}
+            <span className="sp-product-foot">
+              <span className="st-price text-sm">{card.pill}</span>
+              <span className="sp-product-go">
+                {w.productLink}
+                <Icon name="arrow-right" size={16} />
+              </span>
+            </span>
+          </span>
+        </>
+      );
+      return (
+        <section className="sp-section">
+          <Heading text={block.heading} />
+          {block.note ? <PlainText text={block.note} preview={ctx.preview} className="st-muted mt-2" /> : null}
+          <div className={block.heading || block.note ? "mt-5" : ""}>
+            {ctx.preview ? <div className="sp-product">{inner}</div> : <a href={card.href} className="sp-product">{inner}</a>}
+          </div>
         </section>
       );
     }

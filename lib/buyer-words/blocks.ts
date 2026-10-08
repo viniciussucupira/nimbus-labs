@@ -34,6 +34,8 @@ const en = {
   viewerNext: "Next picture",
   viewerCount: (n: number, total: number) => `${n} of ${total}`,
   viewerOriginal: "Open the original",
+  /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
+  productLink: "Take a look",
 };
 
 export type BlockWords = typeof en;
@@ -59,6 +61,8 @@ const es: BlockWords = {
   viewerNext: "Foto siguiente",
   viewerCount: (n, total) => `${n} de ${total}`,
   viewerOriginal: "Abrir el original",
+  /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
+  productLink: "Ver más",
 };
 
 const fr: BlockWords = {
@@ -82,6 +86,8 @@ const fr: BlockWords = {
   viewerNext: "Photo suivante",
   viewerCount: (n, total) => `${n} sur ${total}`,
   viewerOriginal: "Ouvrir l'original",
+  /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
+  productLink: "Découvrir",
 };
 
 const de: BlockWords = {
@@ -105,6 +111,8 @@ const de: BlockWords = {
   viewerNext: "Nächstes Bild",
   viewerCount: (n, total) => `${n} von ${total}`,
   viewerOriginal: "Original öffnen",
+  /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
+  productLink: "Ansehen",
 };
 
 const it: BlockWords = {
@@ -128,6 +136,8 @@ const it: BlockWords = {
   viewerNext: "Foto successiva",
   viewerCount: (n, total) => `${n} di ${total}`,
   viewerOriginal: "Apri l'originale",
+  /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
+  productLink: "Scopri",
 };
 
 const nl: BlockWords = {
@@ -151,6 +161,8 @@ const nl: BlockWords = {
   viewerNext: "Volgende foto",
   viewerCount: (n, total) => `${n} van ${total}`,
   viewerOriginal: "Origineel openen",
+  /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
+  productLink: "Bekijken",
 };
 
 const pt: BlockWords = {
@@ -174,6 +186,8 @@ const pt: BlockWords = {
   viewerNext: "Próxima foto",
   viewerCount: (n, total) => `${n} de ${total}`,
   viewerOriginal: "Abrir o original",
+  /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
+  productLink: "Ver mais",
 };
 
 export const BLOCK_WORDS: Record<LanguageCode, BlockWords> = { en, es, fr, de, it, nl, pt };

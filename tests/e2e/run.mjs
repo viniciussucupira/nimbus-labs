@@ -204,8 +204,9 @@ try {
   await open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`);
   // The first product page a fresh dev server builds has, now and then, come
   // back without its buy box; what it showed is said, and it is asked once more.
-  if (!(await page.locator("#group summary").count())) {
+  for (let tries = 0; tries < 3 && !(await page.locator("#group summary").count()); tries += 1) {
     console.log("the product page came back without its buy box:", page.url(), (await words(page.locator("body"))).slice(0, 400));
+    await page.waitForTimeout(3_000);
     await open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`);
   }
   await page.locator("#group summary").click();
@@ -672,15 +673,16 @@ try {
 
   part("Reviews picked to show first");
   {
-    const saved = await studio.evaluate(async ([id, first]) => {
+    const saved = await studio.evaluate(async ([id, first, knife]) => {
       const blocks = [
         { id: "hero0002", kind: "hero", headline: "Bake on Sundays", sub: "", media: "none", video: null },
         { id: "revw0002", kind: "reviews", heading: "What bakers say", first: [first] },
         { id: "faq00002", kind: "faq", heading: "Questions", items: [{ q: "Do I need a stand mixer?", a: "No: every recipe is kneaded by hand." }] },
+        { id: "prod0002", kind: "product", heading: "Goes well with it", product: knife, note: "Sharp knives make quicker bread." },
       ];
       const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null, style: "plain" } }) });
       return (await response.json()).ok === true;
-    }, [ids["Sunday Baking"], seededReviews[0]]);
+    }, [ids["Sunday Baking"], seededReviews[0], ids["Knife Skills"]]);
     is("saved with the oldest review picked", saved, true);
     await open(page, `${LOCAL}/@localshop/p/${ids["Sunday Baking"]}`);
     const items = page.locator(".rv-item");
@@ -691,6 +693,9 @@ try {
       (await words(items.nth(1))).includes("My Sunday mornings smell like bread now."),
       (await words(items.nth(1))).includes("Picked by the creator"),
     ], [3, true, true, true, false]);
+    const card = page.locator("a.sp-product");
+    if (process.env.E2E_SHOTS) await page.locator('[data-block="prod0002"]').screenshot({ path: join(process.env.E2E_SHOTS, "product-card.png") });
+    is("another product as a card: today's name and price, linking to its own page", [await card.count(), (await card.getAttribute("href"))?.endsWith(`/p/knife-skills-${ids["Knife Skills"]}`), (await words(card)).includes("Knife Skills"), (await words(card)).includes("$49")], [1, true, true, true]);
     const marked = await page.locator('script[type="application/ld+json"]').evaluateAll((all) => all.map((el) => JSON.parse(el.textContent)["@type"]));
     const faq = await page.locator('script[type="application/ld+json"]').evaluateAll((all) => all.map((el) => JSON.parse(el.textContent)).find((d) => d["@type"] === "FAQPage"));
     is("search engines are told the product, where it sits, and its answered questions", [marked.includes("Product"), marked.includes("BreadcrumbList"), faq?.mainEntity?.[0]?.name], [true, true, "Do I need a stand mixer?"]);
@@ -699,6 +704,8 @@ try {
     await studio.getByRole("button", { name: /^2\. Reviews/ }).click();
     const boxes = studio.getByRole("group", { name: /^Show first/ }).getByRole("checkbox");
     is("the studio offers each review, with the picked one checked", [await boxes.count(), await boxes.nth(0).isChecked()], [3, true]);
+    await studio.getByRole("button", { name: /^4\. Another product/ }).click();
+    is("and the card's product is chosen in a list of the store's others", await studio.locator("select[id$='-p']").inputValue(), ids["Knife Skills"]);
   }
 
   part("A page started from another product's page");
