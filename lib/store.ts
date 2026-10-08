@@ -113,6 +113,7 @@ import {
   hasProduct,
 } from "@/lib/catalog";
 import { type Announcement, type StoreSection, parseAnnouncement, parseSections, sectionsWithout } from "@/lib/store-sections";
+import { type AnswersSetting, NO_ANSWERS, parseAnswers } from "@/lib/answers-rules";
 
 // What the rest of the site has always imported from here.
 export { MAX_PRODUCTS, MAX_SUMMARY_LENGTH, MAX_TITLE_LENGTH, StoreFullError };
@@ -475,6 +476,12 @@ export type Store = {
   /** One line of the creator's own news across the top of the store page, or null. */
   announcement: Announcement | null;
   /**
+   * Whether visitors' questions about a product are answered from its page
+   * (lib/answers-rules.ts), and the creator's notes for those answers. Off on
+   * every store until its creator switches it on.
+   */
+  answers: AnswersSetting;
+  /**
    * Whether buyers who agree to hear from the creator are sent on to the
    * creator's own email platform (lib/email-sync.ts), and for which products.
    * Only this much is kept here, so a store page can offer the box without
@@ -717,6 +724,7 @@ function parseStore(raw: unknown): Store | null {
       exitOffer: typeof value.exitOffer === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(value.exitOffer) ? value.exitOffer : null,
       sections: parseSections(value.sections),
       announcement: parseAnnouncement(value.announcement),
+      answers: parseAnswers(value.answers),
       // Stores written before either existed send nothing anywhere.
       emailSync: parseEmailSyncRef(value.emailSync),
       phoneSales: value.phoneSales === true,
@@ -881,6 +889,7 @@ async function freshStore(fields: {
     exitOffer: null,
     sections: [],
     announcement: null,
+    answers: { ...NO_ANSWERS },
     emailSync: null,
     phoneSales: false,
     pastBuyers: false,
@@ -3125,6 +3134,11 @@ export async function setSections(email: string, raw: unknown): Promise<Sections
     return { ok: true, store: await save({ ...store, sections }) };
   });
   return result ?? { ok: false, reason: "none" };
+}
+
+/** Switches the answers to visitors' questions on or off, and keeps the creator's notes for them (lib/answers-rules.ts). */
+export async function setAnswers(email: string, raw: unknown): Promise<Store | null> {
+  return patchStore(email, () => ({ answers: parseAnswers(raw) }));
 }
 
 /** Sets the line of news across the top of the store page, or takes it away (null or empty). */

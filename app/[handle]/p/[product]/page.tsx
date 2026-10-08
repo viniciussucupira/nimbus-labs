@@ -7,10 +7,12 @@ import { after } from "next/server";
 import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
 import { readAllTimeSales } from "@/lib/stats";
 import { paypalReady, takenBy } from "@/lib/paypal-sales";
-import { salePrice } from "@/lib/store-sale";
+import { saleClock, salePrice } from "@/lib/store-sale";
 import { isSoon } from "@/lib/waitlist";
 import { canGift } from "@/lib/gift-rules";
 import { canGroup } from "@/lib/group-rules";
+import { answersOn } from "@/lib/answers";
+import { AskBox } from "@/components/ask-box";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -360,6 +362,8 @@ export default async function ProductPage({ params, searchParams }: Params) {
         </p>
       ) : null}
       <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} />
+      {/* A question before buying, answered from this page (lib/answers.ts): only where the creator switched it on. */}
+      {selling && answersOn(store) ? <AskBox handle={store.handle} product={product.id} storeName={store.name} /> : null}
       {giftable ? <GiftBox store={store} product={product} problem={giftProblem} /> : null}
       {groupable ? <GroupBox store={store} product={product} problem={groupProblem} /> : null}
       {product.recurring && canManage(store) ? (
@@ -486,7 +490,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
     action,
     defaultLabel: label,
     // For a countdown's first numbers: the same on the server and in the browser.
-    now: Math.floor(Date.now() / 1000),
+    now: saleClock(),
   };
   const [first, ...others] = page.blocks;
   const firstHero = first?.kind === "hero" ? first : null;

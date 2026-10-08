@@ -2022,6 +2022,18 @@ a.chip {
   border-color: var(--st-accent-text);
   box-shadow: 0 0 0 3px var(--st-accent-soft);
 }
+/* "A question before you buy?" on a product's page, and its answer. */
+.st-ask {
+  border-radius: 1rem;
+  border: 1px solid var(--st-line);
+  padding: 0.875rem 1rem;
+}
+.st-ask-answer {
+  border-radius: 0.875rem;
+  background: var(--st-accent-soft);
+  padding: 0.75rem 0.875rem;
+  color: var(--st-text);
+}
 /* The creator's one line of news, across the top of their store page. */
 .st-announce {
   padding: 0.75rem 1rem;

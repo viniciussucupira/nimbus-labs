@@ -45,6 +45,8 @@ import { keepHandle, webhooksView } from "@/lib/webhooks";
 import { PixelEditor } from "@/components/pixel-editor";
 import { ExitOfferEditor } from "@/components/exit-offer-editor";
 import { StoreLayoutEditor } from "@/components/store-layout-editor";
+import { AnswersEditor } from "@/components/answers-editor";
+import { answersAllowance, answersUsed, missedQuestions } from "@/lib/answers";
 import { readCards } from "@/lib/catalog";
 import { TaxEditor } from "@/components/tax-editor";
 import { RecoveryEditor } from "@/components/recovery-editor";
@@ -1164,6 +1166,18 @@ export default async function StudioPage({
                     <>
                       <ExitOfferEditor current={store.exitOffer} free={free} />
                       {may("page") ? <StoreLayoutEditor sections={store.sections} announcement={store.announcement} products={published} /> : null}
+                      {may("page") && isAiConfigured() ? (
+                        <AnswersEditor
+                          setting={store.answers}
+                          used={await answersUsed(store).catch(() => 0)}
+                          allowance={answersAllowance(store)}
+                          missed={(await missedQuestions(store).catch(() => [])).map((row) => ({
+                            title: cards.get(row.productId)?.title ?? "A product that is no longer listed",
+                            question: row.question,
+                            at: row.at,
+                          }))}
+                        />
+                      ) : null}
                     </>
                   );
                 })()}

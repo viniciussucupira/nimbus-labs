@@ -90,15 +90,31 @@ const DELIVERY: Record<ProductKind, string> = {
 
 export type AiResult<T> = { ok: true; value: T; left: number } | { ok: false; reason: "off" | "used" | "failed" | "notes" };
 
+/**
+ * The model that answers visitors' questions (lib/answers.ts): the smallest
+ * current one, because each answer is short, read from a page it is handed,
+ * and paid for by a store's plan. A deployment may name another in
+ * AI_ANSWER_MODEL.
+ */
+export function answerModel(): string {
+  const named = process.env.AI_ANSWER_MODEL?.trim();
+  return named && /^claude-[a-z0-9.-]{3,60}$/.test(named) ? named : "claude-haiku-5-5";
+}
+
 /** One question to the model, counted against the store's month. The answer's text, or null. */
 async function ask(system: string, prompt: string, maxTokens: number): Promise<string | null> {
+  return askModel(system, prompt, maxTokens, model());
+}
+
+/** One question to a named model, uncounted: whoever calls it counts it. The answer's text, or null. */
+export async function askModel(system: string, prompt: string, maxTokens: number, named: string, timeoutMs = AI_TIMEOUT_MS): Promise<string | null> {
   const key = apiKey();
   if (!key) return null;
-  const response = await timed(AI_TIMEOUT_MS, (signal) =>
+  const response = await timed(timeoutMs, (signal) =>
     fetch(API, {
       method: "POST",
       headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: model(), max_tokens: maxTokens, system, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({ model: named, max_tokens: maxTokens, system, messages: [{ role: "user", content: prompt }] }),
       cache: "no-store",
       signal,
     }),
