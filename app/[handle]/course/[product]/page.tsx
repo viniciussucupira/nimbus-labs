@@ -22,6 +22,7 @@ import { CourseOutline, WithDay } from "@/components/course-outline";
 import { readListing } from "@/lib/catalog";
 import { membershipLine, speech } from "@/lib/buyer-words";
 import { coursesWords } from "@/lib/buyer-words/courses";
+import { productSegment } from "@/lib/product-slug";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -248,7 +249,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
                   <button type="submit" className="btn st-btn btn-lg btn-block">{w.buyCourse(access.state === "ended", price)}</button>
                 </form>
               ) : paypalReady(store, product) ? (
-                <Link href={`/@${store.handle}/p/${product.id}#buy`} className="btn st-btn btn-lg btn-block">{w.buyWithPayPal(price)}</Link>
+                <Link href={`/@${store.handle}/p/${productSegment(product)}#buy`} className="btn st-btn btn-lg btn-block">{w.buyWithPayPal(price)}</Link>
               ) : (
                 <p className="st-muted text-sm">{w.noPayments(store.name)}</p>
               )}

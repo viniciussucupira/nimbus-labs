@@ -60,6 +60,7 @@ import { MAX_ABOUT_LENGTH } from "@/lib/product-about";
 import { imageUrl } from "@/lib/product-image";
 import { StoreField, useStudioHref, useStudioStore } from "@/components/studio-store-pin";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
+import { productSegment } from "@/lib/product-slug";
 
 /** The sentences about amounts, in the store's own currency (lib/money.ts). */
 const optionPrice = (currency: Currency) => `Type an amount ${rangeWords(currency)}, like ${priceExample(currency, 39)}.`;
@@ -1794,7 +1795,7 @@ export function ProductEditor({
                     </button>
                   ) : (
                     <>
-                      <a href={`/@${handle}/p/${product.id}`} target="_blank" rel="noopener noreferrer" className={quiet}>
+                      <a href={`/@${handle}/p/${productSegment(product)}`} target="_blank" rel="noopener noreferrer" className={quiet}>
                         Its page
                       </a>
                       <button

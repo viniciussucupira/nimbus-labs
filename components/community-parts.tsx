@@ -10,6 +10,7 @@ import { initialOf, segments } from "@/lib/community-text";
 import { MAX_QUERY_LENGTH } from "@/lib/community-search";
 import { withMentions } from "@/lib/community-mentions";
 import type { PollView } from "@/lib/community-polls";
+import { productSegment } from "@/lib/product-slug";
 
 /**
  * The pieces every community page is made of: the bar across the top, a
@@ -660,7 +661,7 @@ export function Gate({
           <ul className="mt-2 space-y-2">
             {products.map((p) => (
               <li key={p.id}>
-                <Link href={`/@${store.handle}/p/${p.id}`} className="cm-row">
+                <Link href={`/@${store.handle}/p/${productSegment(p)}`} className="cm-row">
                   <span className="min-w-0 break-words font-semibold">{p.title}</span>
                   <span className="st-muted shrink-0 text-sm">{p.kind}</span>
                 </Link>

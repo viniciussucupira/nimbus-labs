@@ -35,6 +35,7 @@ import {
   parseJob,
 } from "@/lib/waitlist-rules";
 import { cleanText, cleanLine } from "@/lib/community-text";
+import { productSegment } from "@/lib/product-slug";
 
 const soonKey = (sid: string) => `nl:wl:${sid}:soon`;
 const listKey = (sid: string, pid: string) => `nl:wl:${sid}:${pid}`;
@@ -283,7 +284,7 @@ export async function runLaunches(load: (handle: string) => Promise<Store | null
         storeName: store.name,
         title: product.title,
         price: product.priceCents > 0 ? said.money(product.priceCents) : "",
-        link: `${SITE_URL}/@${store.handle}/p/${product.id}`,
+        link: `${SITE_URL}/@${store.handle}/p/${productSegment(product)}`,
         note: job.note,
       },
       store.language,

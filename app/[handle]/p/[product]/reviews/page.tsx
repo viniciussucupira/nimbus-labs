@@ -3,7 +3,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
-import { readListing } from "@/lib/catalog";
+import { productIdFromAddress, readListing } from "@/lib/catalog";
 import { lookStyle } from "@/lib/store-look";
 import { canUseDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
@@ -11,6 +11,7 @@ import { REVIEWS_PER_PAGE, summaryOf, visibleReviews } from "@/lib/reviews";
 import { productPath } from "@/components/store-product";
 import { ReviewsSection } from "@/components/review-list";
 import { speech } from "@/lib/buyer-words";
+import { productSegment } from "@/lib/product-slug";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { handle, product: id } = await params;
   const decoded = decodeURIComponent(handle);
   const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)) : null;
-  const product = store ? await readListing(store, id) : null;
+  const product = store ? await readListing(store, productIdFromAddress(store, id) ?? id) : null;
   if (!store || !product) return { title: "Not found — Marktmorgen" };
   return {
     title: `${speech(store).w.reviewsOf(product.title)} — ${store.name}`,
@@ -41,7 +42,7 @@ export default async function ReviewsPage({ params, searchParams }: Params) {
   if (!decoded.startsWith("@")) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
-  const product = await readListing(store, id);
+  const product = await readListing(store, productIdFromAddress(store, id) ?? id);
   if (!product) redirect(`/@${store.handle}`);
   const reachedOn = (await headers()).get("x-nimbus-domain");
   if (reachedOn && (store.domain?.name !== reachedOn || !canUseDomain(store))) {
@@ -54,7 +55,7 @@ export default async function ReviewsPage({ params, searchParams }: Params) {
   const pages = Math.max(1, Math.ceil(summary.visible / REVIEWS_PER_PAGE));
   const page = Number.isInteger(asked) && asked >= 1 ? Math.min(asked, pages) : 1;
   const reviews = await visibleReviews(store.statsId, product.id, (page - 1) * REVIEWS_PER_PAGE, REVIEWS_PER_PAGE);
-  const base = `/@${store.handle}/p/${product.id}/reviews`;
+  const base = `/@${store.handle}/p/${productSegment(product)}/reviews`;
   const { w } = speech(store);
 
   return (
