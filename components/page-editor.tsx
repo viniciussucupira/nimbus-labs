@@ -10,6 +10,7 @@ import { toast } from "@/components/toast";
 import { AiAssist } from "@/components/ai-assist";
 import { PageCoach } from "@/components/page-coach";
 import { PageStylePicker } from "@/components/page-style-picker";
+import { BlockPicker } from "@/components/block-picker";
 import { BlockRewrite } from "@/components/block-rewrite";
 import { type CourseOutline, insideFromCourse } from "@/lib/course-outline-items";
 import { MIN_VIEWS, type Counts, rate, winner } from "@/lib/headline-test-rules";
@@ -250,7 +251,8 @@ export function PageEditor({
   const [open, setOpen] = useState<string | null>(null);
   const [view, setView] = useState<"build" | "preview">("build");
   const [wide, setWide] = useState(false);
-  const [adding, setAdding] = useState<BlockKind>("text");
+  // Where the block picker is open: the place a new block would take, or null when closed.
+  const [picking, setPicking] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
@@ -276,7 +278,6 @@ export function PageEditor({
   const hasHero = drafts[0]?.block.kind === "hero";
   const hasReviews = drafts.some((d) => d.block.kind === "reviews");
   const addable = BLOCK_KINDS.filter((k) => (k.kind === "hero" ? !hasHero : k.kind === "reviews" ? !hasReviews : true));
-  const chosen = addable.some((k) => k.kind === adding) ? adding : addable[0]?.kind ?? "text";
 
   function change(index: number, patch: Partial<PageBlock>) {
     setDrafts((all) => all.map((d, i) => (i === index ? { ...d, block: { ...d.block, ...patch } as PageBlock } : d)));
@@ -289,12 +290,20 @@ export function PageEditor({
     );
   }
 
-  function add(kind: BlockKind) {
+  /** A new block at `at` (the end when left out); a hero always goes on top. */
+  function add(kind: BlockKind, at?: number) {
     if (drafts.length >= MAX_BLOCKS) return;
     const block = emptyBlock(kind, newBlockId());
     const draft: Draft = { block, video: "" };
-    setDrafts((all) => (kind === "hero" ? [draft, ...all] : [...all, draft]));
+    setDrafts((all) => {
+      if (kind === "hero") return [draft, ...all];
+      const place = at === undefined ? all.length : Math.max(all[0]?.block.kind === "hero" ? 1 : 0, Math.min(at, all.length));
+      const copy = [...all];
+      copy.splice(place, 0, draft);
+      return copy;
+    });
     setOpen(block.id);
+    setPicking(null);
   }
 
   function move(index: number, by: -1 | 1) {
@@ -1071,7 +1080,7 @@ export function PageEditor({
                               <span className="sr-only">{`${review.rating} out of 5 stars`}</span>
                               {` · ${review.name || "Verified buyer"}`}
                             </span>
-                            {review.text ? <span className="mt-0.5 line-clamp-3 block text-xs text-ink-soft [overflow-wrap:anywhere]">{review.text}</span> : null}
+                            {review.text ? <span className="mt-0.5 line-clamp-3 text-xs text-ink-soft [overflow-wrap:anywhere]">{review.text}</span> : null}
                           </span>
                         </label>
                       </li>
@@ -1337,7 +1346,7 @@ export function PageEditor({
             />
           </div>
 
-          <ol className="mt-6 space-y-3">
+          <ol className="mt-6">
             {drafts.map((draft, index) => {
               const block = draft.block;
               const isOpen = open === block.id;
@@ -1345,7 +1354,7 @@ export function PageEditor({
               return (
                 <li
                   key={block.id}
-                  className={`rounded-2xl border bg-white transition-shadow ${over === index && dragged !== null && dragged !== index && !locked ? "border-violet-brand ring-2 ring-violet-brand/30" : "border-line"} ${dragged === index ? "opacity-60" : ""}`}
+                  className="relative"
                   onDragOver={(event) => {
                     if (dragged === null || locked) return;
                     event.preventDefault();
@@ -1360,6 +1369,7 @@ export function PageEditor({
                     setOver(null);
                   }}
                 >
+                  <div className={`rounded-2xl border bg-white transition-shadow ${over === index && dragged !== null && dragged !== index && !locked ? "border-violet-brand ring-2 ring-violet-brand/30" : "border-line"} ${dragged === index ? "opacity-60" : ""}`}>
                   <div className="flex items-center gap-2 p-2 pl-3 sm:gap-3">
                     {/* The handle: dragged with a mouse to put the block somewhere else. The arrows beside it do the same from a keyboard or a phone. */}
                     <span
@@ -1447,29 +1457,48 @@ export function PageEditor({
                       />
                     </div>
                   ) : null}
+                  </div>
+                  {/* Between two blocks: a block added right here, rather than at the end and moved up. */}
+                  {index < drafts.length - 1 ? (
+                    picking === index + 1 && drafts.length < MAX_BLOCKS ? (
+                      <div className="py-3">
+                        <BlockPicker icons={KIND_ICONS} allowed={addable.map((k) => k.kind)} where={`after block ${index + 1}`} onPick={(kind) => add(kind, index + 1)} onClose={() => setPicking(null)} />
+                      </div>
+                    ) : drafts.length >= MAX_BLOCKS ? (
+                      <div className="h-3" />
+                    ) : (
+                      <div className="flex h-9 items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setPicking(index + 1)}
+                          className="inline-flex h-7 items-center gap-1 rounded-full bg-white px-2.5 text-xs font-semibold text-ink-soft ring-1 ring-line transition hover:text-violet-deep hover:ring-violet-brand/50 focus-visible:ring-2 focus-visible:ring-violet-brand"
+                          aria-label={`Add a block after block ${index + 1}`}
+                        >
+                          <Icon name="plus" size={13} />
+                          Add here
+                        </button>
+                      </div>
+                    )
+                  ) : null}
                 </li>
               );
             })}
           </ol>
 
-          <div className="mt-4 flex flex-wrap items-end gap-3 rounded-2xl border-2 border-dashed border-line-strong p-3 sm:p-4">
-            {drafts.length < MAX_BLOCKS ? (
-              <>
-                <label className="min-w-0 flex-1" htmlFor="add-kind">
-                  <span className="field-label">{`Add a block (${drafts.length} of ${MAX_BLOCKS})`}</span>
-                  <select id="add-kind" className="field" value={chosen} onChange={(e) => setAdding(e.target.value as BlockKind)}>
-                    {addable.map((k) => (
-                      <option key={k.kind} value={k.kind}>{`${k.label} — ${k.hint}`}</option>
-                    ))}
-                  </select>
-                </label>
-                <button type="button" onClick={() => add(chosen)} className="btn btn-secondary">
-                  <Icon name="plus" size={17} />
-                  Add
-                </button>
-              </>
+          <div className="mt-4">
+            {drafts.length >= MAX_BLOCKS ? (
+              <p className="rounded-2xl border-2 border-dashed border-line-strong p-3 text-sm text-ink-soft sm:p-4">{`${MAX_BLOCKS} blocks is the most one page can have.`}</p>
+            ) : picking === drafts.length ? (
+              <BlockPicker icons={KIND_ICONS} allowed={addable.map((k) => k.kind)} where="at the end" onPick={(kind) => add(kind)} onClose={() => setPicking(null)} />
             ) : (
-              <p className="text-sm text-ink-soft">{`${MAX_BLOCKS} blocks is the most one page can have.`}</p>
+              <button
+                type="button"
+                onClick={() => setPicking(drafts.length)}
+                className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-line-strong p-3 text-sm font-semibold text-ink-soft transition hover:border-violet-brand/60 hover:text-violet-deep sm:p-4"
+              >
+                <Icon name="plus" size={17} />
+                {`Add a block (${drafts.length} of ${MAX_BLOCKS})`}
+              </button>
             )}
           </div>
 

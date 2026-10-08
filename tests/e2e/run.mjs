@@ -169,12 +169,21 @@ try {
   // What a page's own security headers refused (lib/csp.ts): a script left without leave to run, a feature no browser knows.
   const policyRefusals = [];
   const reactWarnings = [];
+  // A screenshot taken while another page is still being drawn hides the
+  // text cursor by writing caret-color into the inputs: Playwright's doing,
+  // not the page's. A diff that differs in nothing else is not a fault.
+  const onlyScreenshotCaret = (text) => {
+    // The diff is what follows React's link; the bullet list before it is the same in every warning.
+    const diff = text.includes("hydration-mismatch") ? text.slice(text.indexOf("hydration-mismatch")) : "";
+    const changed = diff.split("\n").map((line) => line.trim()).filter((line) => /^[+-]\s/.test(line));
+    return changed.length > 0 && changed.every((line) => /caret-color:\s*"?transparent/.test(line));
+  };
   // A frame refused on purpose (the product page framed by another site, below) is the policy working, not a fault.
   const watchPolicy = (target) => target.on("console", (m) => {
     if (/Content Security Policy|Permissions-Policy/.test(m.text()) && !/frame-ancestors/.test(m.text())) policyRefusals.push(m.text().slice(0, 200));
     // React saying the page the server drew is not the one the browser drew: the "1 Issue" a creator would see in development.
     // With where it happened and the end of React's diff, which names what differed.
-    if (/hydrat|did not match|Warning: /.test(m.text())) reactWarnings.push(`${target.url()} :: ${m.text().slice(0, 160)} … ${m.text().slice(-700)}`);
+    if (/hydrat|did not match|Warning: /.test(m.text()) && !onlyScreenshotCaret(m.text())) reactWarnings.push(`${target.url()} :: ${m.text().slice(0, 160)} … ${m.text().slice(-700)}`);
   });
   page.on("pageerror", (error) => errors.push(String(error)));
   watchPolicy(page);
@@ -566,6 +575,28 @@ try {
       await studio.locator("ol > li").count(),
       await studio.getByRole("button", { name: "Save the page" }).isEnabled(),
     ], ["true", before, true]);
+  }
+
+  part("Blocks added where they go, from a gallery");
+  {
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
+    const blocks = studio.locator("ol > li");
+    const before = await blocks.count();
+    await studio.getByRole("button", { name: "Add a block after block 2" }).click();
+    const gallery = studio.getByRole("region", { name: "Add a block after block 2" });
+    is("a gallery opens there, with a box to find one", [await gallery.count(), await gallery.getByRole("searchbox").evaluate((el) => el === document.activeElement)], [1, true]);
+    await gallery.getByRole("searchbox").fill("questions");
+    is("finding narrows it", await gallery.getByRole("button", { name: /^Questions/ }).count(), 1);
+    await gallery.getByRole("button", { name: /^Questions/ }).click();
+    is("the block goes third, open to fill in", [await blocks.count(), (await words(blocks.nth(2))).startsWith("3. Questions"), await studio.locator("#block-find").count()], [before + 1, true, 0]);
+    await studio.getByRole("button", { name: /^Add a block \(/ }).click();
+    await studio.getByRole("region", { name: "Add a block at the end" }).getByRole("button", { name: /^Button/ }).click();
+    is("and one at the end goes last", (await words(blocks.last())).includes(`${before + 2}. Button`), true);
+    if (process.env.E2E_SHOTS) {
+      await studio.locator("ol").first().screenshot({ path: join(process.env.E2E_SHOTS, "block-list.png") });
+      await studio.getByRole("button", { name: "Add a block after block 1" }).click();
+      await studio.getByRole("region", { name: "Add a block after block 1" }).screenshot({ path: join(process.env.E2E_SHOTS, "block-gallery.png") });
+    }
   }
 
   part("Reviews picked to show first");
