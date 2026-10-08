@@ -1,4 +1,5 @@
 import { StickyBuy } from "@/components/sticky-buy";
+import { forVisitor } from "@/lib/visitor";
 import { MoreFrom, moreFrom } from "@/components/more-from";
 import { ExitOfferSlot } from "@/components/exit-offer-slot";
 import { PageDepth } from "@/components/page-depth";
@@ -42,7 +43,7 @@ import { SITE_URL } from "@/lib/site-url";
 import { EMPTY_PAGE, type SalesPage } from "@/lib/sales-page";
 import { readPage } from "@/lib/sales-page-store";
 import { type Summary, REVIEWS_ON_PAGE, average, showsRating, summaryOf, visibleReviews } from "@/lib/reviews";
-import { BuyBox, GiftBox, GroupBox, PriceTag, ProductFacts, offNow, pageAction, productPath } from "@/components/store-product";
+import { BuyBox, GiftBox, GroupBox, PriceTag, ProductFacts, pageAction, productPath, saleNow } from "@/components/store-product";
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { StoreTracking } from "@/components/store-tracking";
@@ -186,9 +187,11 @@ function productData(store: Store, product: Listing, description: string, soldOu
       : {
           "@type": "Offer",
           priceCurrency: store.currency.toUpperCase(),
-          price: isFree(product) ? "0" : moneyField(salePrice(options[0]?.priceCents ?? product.priceCents, offNow(store, product)), store.currency),
+          // The price everybody can buy at: a sale counts, a fair price for
+          // one country does not (lib/fair-price.ts).
+          price: isFree(product) ? "0" : moneyField(salePrice(options[0]?.priceCents ?? product.priceCents, saleNow(store, product)), store.currency),
           // A sale's price is said with the moment it ends (lib/store-sale.ts).
-          ...(offNow(store, product) ? { priceValidUntil: new Date(store.sale.ends * 1000).toISOString().slice(0, 10) } : {}),
+          ...(saleNow(store, product) ? { priceValidUntil: new Date(store.sale.ends * 1000).toISOString().slice(0, 10) } : {}),
           availability,
           url,
         };
@@ -226,7 +229,9 @@ export default async function ProductPage({ params, searchParams }: Params) {
     if (store) redirect(`/@${store.handle}`);
     notFound();
   }
-  const { store, product, asked } = found;
+  const { product, asked } = found;
+  // With the visitor's country, for a fair price for it (lib/fair-price.ts).
+  const store = await forVisitor(found.store);
 
   // The same rules the store page follows for the creator's own domain and
   // for an old address of the store.

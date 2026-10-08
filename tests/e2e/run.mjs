@@ -375,6 +375,42 @@ try {
   is("and leads to the product's page, tagged with the place", [new URL(site.url()).searchParams.get("utm_source"), await words(site.locator("main h1").first())], ["blog", "Pantry Checklist"]);
   await site.close();
 
+  part("Fair prices by country, switched on by the creator");
+  const fairCard = studio.locator("#fair-prices");
+  const asBuyerFrom = async (country) => {
+    const visit = await browser.newContext({ viewport: { width: 430, height: 900 }, extraHTTPHeaders: { "x-vercel-ip-country": country } });
+    const there = await visit.newPage();
+    there.on("pageerror", (error) => errors.push(String(error)));
+    await open(there, `${LOCAL}/@localshop/p/${ids["Pantry Checklist"]}`);
+    return { visit, there };
+  };
+  {
+    const { visit, there } = await asBuyerFrom("IN");
+    is("off until switched on: a buyer in India sees the normal price", await words(there.locator("main .st-price").first()), "$9");
+    await visit.close();
+  }
+  await fairCard.getByLabel("Show fair prices on my store").check();
+  await fairCard.getByLabel("Add a country").selectOption({ label: "Brazil" });
+  await fairCard.getByLabel("Level for Brazil").selectOption({ label: "20% off" });
+  await fairCard.getByRole("button", { name: "Save" }).click();
+  await studio.getByRole("status").getByText("Saved. Fair prices are on.").waitFor({ timeout: 30_000 });
+  for (const [country, price, note] of [["IN", "Was $9 now $4.50", "A fair price for India: 50% off"], ["BR", "Was $9 now $7.20", "A fair price for Brazil: 20% off"], ["US", "$9", ""]]) {
+    const { visit, there } = await asBuyerFrom(country);
+    const shown = [await words(there.locator("main .st-price").first()), (await words(there.locator("#buy"))).includes(note || "A fair price")];
+    is(`a buyer in ${country} sees ${note ? "the fair price, and why" : "the normal price"}`, shown, [price, Boolean(note)]);
+    if (country === "IN") {
+      if (process.env.E2E_SHOTS) {
+        await there.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "fair-india.png") });
+        await fairCard.screenshot({ path: join(process.env.E2E_SHOTS, "fair-studio.png") });
+      }
+      await Promise.all([there.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), there.locator('#buy form[action="/api/store/checkout"] button[type=submit]').first().click()]);
+      const paid = services.checkouts().at(-1);
+      is("and pays it: the creator's own coupon at the same percentage, written on the order", [paid.discount_coupon, paid.metadata.fair], ["mm_fair_50", "IN:50"]);
+      is("made on their account once", services.coupons().map((c) => [c.id, c.percent_off]), [["mm_fair_50", "50"]]);
+    }
+    await visit.close();
+  }
+
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);
   is("nothing was asked of a service with no stand-in", services.unknown(), []);

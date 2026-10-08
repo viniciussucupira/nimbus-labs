@@ -1,6 +1,8 @@
 import { paypalSalesConfigured } from "@/lib/paypal-sales";
 import { lowestPriceCents } from "@/lib/product-option";
 import { SaleEditor } from "@/components/sale-editor";
+import { FairPriceEditor } from "@/components/fair-price-editor";
+import { allCountries, countryName } from "@/lib/fair-price";
 import { TierEditor } from "@/components/tier-editor";
 import { canTier } from "@/lib/tier-rules";
 import { tierWords } from "@/lib/tier-switch";
@@ -1143,6 +1145,13 @@ export default async function StudioPage({
                   products={await saleCandidates(store)}
                   connected={Boolean(current?.stripeAccountId)}
                   now={saleClock()}
+                />
+
+                <FairPriceEditor
+                  initial={store.fair}
+                  currency={store.currency}
+                  examplePrice={2700}
+                  names={Object.fromEntries(allCountries().map((code) => [code, countryName(code)]))}
                 />
 
                 {await (async () => {

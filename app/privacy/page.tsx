@@ -271,6 +271,16 @@ export default function PrivacyPage() {
           details out of a question: it is read by the model and may be read
           by the creator.
         </p>
+        <p id="fair-prices">
+          <strong className="text-black">Prices for your country.</strong>{" "}
+          Some stores lower their prices for buyers in certain countries. To
+          show you the right one, the country your internet connection is in,
+          as our host reads it from your network address, is used while the
+          page is drawn and when you start paying. It is not stored. When a
+          lower price was given, the country and the percentage are written on
+          that order on the creator&apos;s own Stripe account, so they can see
+          why it cost what it did.
+        </p>
         <p id="team-places">
           <strong className="text-black">Bought for several people.</strong>{" "}
           When somebody buys a product for several people, they get a link to

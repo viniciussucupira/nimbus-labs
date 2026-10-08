@@ -9,6 +9,8 @@
  */
 import { currentMeta } from "@/lib/tier-rules";
 import { saleOff } from "@/lib/store-sale";
+import { fairOff } from "@/lib/fair-price";
+import { fairCoupon } from "@/lib/fair-coupon";
 import { GIFT_ID } from "@/lib/gift-rules";
 import { GROUP_ID, canGroup, payable, peopleWords } from "@/lib/group-rules";
 import { commissionRate } from "@/lib/affiliate-setting";
@@ -185,6 +187,11 @@ export async function createCheckout(
     coupon?: string;
     /** The address the checkout opens with, fixed, for an offer made to one person. */
     email?: string;
+    /**
+     * The country the buyer's connection is in (lib/fair-price.ts), read by
+     * the route from the request; "" when it is not known.
+     */
+    country?: string;
     /** No free trial: somebody coming back has had theirs. */
     noTrial?: boolean;
     /**
@@ -342,9 +349,16 @@ export async function createCheckout(
   // creator's own coupon, with no code to type, while it runs. Not on a
   // payment plan: the page says the sale price is for paying in full.
   const saleOffNow = !extras.coupon && !plan ? saleOff(store.sale, product, Math.floor(Date.now() / 1000)) : 0;
+  // A fair price for the buyer's country (lib/fair-price.ts): the same rule
+  // the page used to show the price, and taken off the same way as a sale,
+  // when it takes off more than the sale does. Never both.
+  const fairOffNow = !extras.coupon && !plan && !membership ? fairOff(store.fair, product, extras.country ?? "") : 0;
   if (extras.coupon && !pwyw) {
     body.set("discounts[0][coupon]", extras.coupon);
     body.set("metadata[winback]", "yes");
+  } else if (fairOffNow > saleOffNow) {
+    body.set("discounts[0][coupon]", await fairCoupon(store.stripeAccountId, fairOffNow));
+    body.set("metadata[fair]", `${extras.country}:${fairOffNow}`);
   } else if (saleOffNow > 0) {
     body.set("discounts[0][coupon]", store.sale.coupon);
     body.set("metadata[sale]", String(saleOffNow));

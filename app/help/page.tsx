@@ -306,6 +306,14 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can buyers in poorer countries pay less?",
+        a: [
+          "Yes, if you switch it on, for the countries you choose and at the level you choose. In your studio, under \u201cFair prices by country,\u201d check the box. It is off on every store until its creator turns it on.",
+          "Then pick how. Automatic: every country gets what the World Bank's price levels for 2024 suggest, up to the most you allow (20% to 60% off), and you can change or remove any country. India, for example, gets the most you allow; Brazil and Mexico about half off; the United States, Canada, the UK, most of Western Europe, Australia, Japan and the other high-income countries nothing. Or only the countries you list, each at its own level from 5% to 90% off.",
+          "A buyer in one of those countries sees your price lowered with a line saying why, and pays that on Stripe's page with no code to type. It covers products bought once at one price, the same ones a sale covers; when a sale is running, the larger of the two comes off, never both. One thing to know: the country comes from the internet connection, so somebody using a VPN can be shown another country's price, and the card's country is not checked before paying. The levels you set are what that can cost you.",
+        ],
+      },
+      {
         q: "Can I sell a product from my own website or blog?",
         a: [
           "Yes, one product at a time. In your studio, under \u201cSell from your own website,\u201d pick the product and copy the code: a card with its picture, price, buyers' rating and buy button, or a plain button in your store's color that leads to the product's page. Paste it into a block that takes HTML, called Embed, Code or Custom HTML in most website builders.",

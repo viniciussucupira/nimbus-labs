@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { forVisitor } from "@/lib/visitor";
 import { sellsThroughPayPal, takenBy } from "@/lib/paypal-sales";
 import { endsWords, saleClock, saleRunning } from "@/lib/store-sale";
 import { soonProducts } from "@/lib/waitlist";
@@ -130,7 +131,9 @@ export default async function StorePage({ params, searchParams }: Params) {
   const asking = typeof query.page === "string" && /^\d{1,4}$/.test(query.page) ? Number(query.page) : 1;
   const found = await load(handle);
   if (!found) notFound();
-  const { store, asked } = found;
+  const { asked } = found;
+  // With the visitor's country, for a fair price for it (lib/fair-price.ts).
+  const store = await forVisitor(found.store);
 
   // Reached on the creator's own domain (proxy.ts says which): it serves the
   // store only while it is this store's and the store is on Pro. Otherwise the

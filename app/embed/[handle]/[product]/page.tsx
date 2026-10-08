@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { forVisitor } from "@/lib/visitor";
 import { connection } from "next/server";
 import { cache } from "react";
 import { type Listing, type Store, normaliseHandle, storeForPage } from "@/lib/store";
@@ -79,7 +80,10 @@ export default async function EmbedCard({ params, searchParams }: Params) {
   await connection();
   const { handle, product: id } = await params;
   const place = placeFrom((await searchParams).utm_source);
-  const { store, product } = await load(handle, id);
+  const loaded = await load(handle, id);
+  const product = loaded.product;
+  // With the visitor's country, for a fair price for it (lib/fair-price.ts).
+  const store = loaded.store ? await forVisitor(loaded.store) : null;
 
   if (!store || !product) {
     return (

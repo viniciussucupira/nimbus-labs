@@ -24,6 +24,7 @@ import { cameFrom } from "@/lib/came-from";
 import { codeCookieName, readLinkCode } from "@/lib/code-link";
 import { AB_COOKIE, count as countTest, readBucket, readCounts, versionFor, winner } from "@/lib/headline-test";
 import { readPage } from "@/lib/sales-page-store";
+import { readCountry } from "@/lib/fair-price";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -182,6 +183,9 @@ export async function POST(request: NextRequest) {
         // A code that came in a link to this store (lib/code-link.ts), applied
         // by Stripe only if it is one of the creator's live codes.
         code: readLinkCode(request.cookies.get(codeCookieName(store.handle))?.value) || undefined,
+        // Where the buyer's connection is, for a fair price for that country
+        // (lib/fair-price.ts), the same header the page read to show it.
+        country: readCountry(request.headers.get("x-vercel-ip-country")),
       }),
     );
     if (!held.ok) return away(`/@${store.handle}?status=${held.reason}`);
