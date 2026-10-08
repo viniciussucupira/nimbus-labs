@@ -537,6 +537,15 @@ try {
     if (process.env.E2E_SHOTS) await studio.locator("#coach-title").locator("xpath=ancestor::section[1]").screenshot({ path: join(process.env.E2E_SHOTS, "page-coach.png") });
   }
 
+  part("A page started from another product's page");
+  {
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Pantry Checklist"]}`);
+    await studio.locator("#page-copy").selectOption({ label: "Knife Skills" });
+    await studio.getByRole("button", { name: "Copy its blocks" }).click();
+    await studio.locator("#coach-title").waitFor({ timeout: 30_000 });
+    is("its blocks are here, ready to change, and nothing saved yet", [await studio.locator("ol > li").count() >= 8, await studio.getByRole("button", { name: "Save the page" }).isEnabled()], [true, true]);
+  }
+
   part("Each product's page views, in the studio's numbers");
   {
     await open(studio, `${LOCAL}/studio`);
