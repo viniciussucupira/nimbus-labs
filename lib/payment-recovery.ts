@@ -43,6 +43,8 @@ import { fromStore, storeBase } from "@/lib/purchase-email";
 import { readListings } from "@/lib/catalog";
 import { type Store, saleHandles, storesAfter } from "@/lib/store";
 import { sellsMemberships } from "@/lib/membership-manage";
+import { LANGUAGES, type LanguageCode, parseLanguage } from "@/lib/store-language";
+import { membershipWords } from "@/lib/buyer-words/membership";
 
 const CURSOR_KEY = "nl:dun:cursor";
 /** One invoice, one email, kept long past the 30 days its page stays open. */
@@ -86,32 +88,32 @@ export function failedPaymentEmail(input: {
    * will be.
    */
   nextTry: string | null;
+  /** The store's language (lib/store-language.ts); English when left out. */
+  language?: LanguageCode;
 }): { subject: string; text: string } {
+  const m = membershipWords(input.language);
   // "for The Inner Circle" reads right whatever the product is called. The
   // first draft said "your The Inner Circle Membership membership" for one
   // title and "your your membership" for none.
-  const what = input.title ? `for ${input.title}` : `to ${input.storeName}`;
   return {
-    subject: `Your payment to ${input.storeName} didn't go through`.slice(0, 200),
+    subject: m.failedSubject(input.storeName).slice(0, 200),
     text: [
-      "Hi,",
+      m.hi,
       "",
-      `The latest payment of ${input.amount} ${what} didn't go through. This happens when a card expires, is replaced, or is declined by the bank.`,
+      input.title ? m.failedFor(input.amount, input.title) : m.failedTo(input.amount, input.storeName),
       "",
-      "Pay it here, with the same card or a new one:",
+      m.payHere,
       input.payUrl,
       "",
-      "The card you pay with is used for your next payments too, so this only has to be done once.",
+      m.cardKept,
       "",
       input.nextTry
         ? input.isPlan
-          ? `If you do nothing, the card on file is tried again on ${input.nextTry}.`
-          : `If you do nothing, the card on file is tried again on ${input.nextTry}, and your access stays on in the meantime.`
-        : "The card on file won't be tried again, so this payment stays unpaid until it is paid from the link above.",
+          ? m.triedAgainPlan(input.nextTry)
+          : m.triedAgain(input.nextTry)
+        : m.notTriedAgain,
       "",
-      input.isPlan
-        ? `To see your receipts, or change the card: ${input.manageUrl}`
-        : `To cancel instead, or see your receipts: ${input.manageUrl}`,
+      input.isPlan ? m.receiptsPlan(input.manageUrl) : m.cancelInstead(input.manageUrl),
       "",
       `— ${input.storeName}`,
     ].join("\n"),
@@ -173,11 +175,13 @@ async function sweepStore(store: Store, deadline: number): Promise<number> {
         new URLSearchParams({ "payment_settings[save_default_payment_method]": "on_subscription" }),
       );
       const isPlan = sub.metadata?.kind === "plan";
+      const language = parseLanguage(store.language);
+      const locale = LANGUAGES[language].locale;
       const next = typeof invoice?.next_payment_attempt === "number" && invoice.next_payment_attempt > 0 ? invoice.next_payment_attempt : 0;
       const mail = failedPaymentEmail({
         storeName: store.name,
         title: titles.get(sub.metadata?.product ?? "") || null,
-        amount: formatMoney(amount, typeof invoice?.currency === "string" ? invoice.currency : store.currency),
+        amount: formatMoney(amount, typeof invoice?.currency === "string" ? invoice.currency : store.currency, locale),
         payUrl,
         manageUrl: `${storeBase(store)}/manage`,
         isPlan,
@@ -185,8 +189,9 @@ async function sweepStore(store: Store, deadline: number): Promise<number> {
         // hand, the day is the one it falls on in UTC, which is never more
         // than a day out and never claims an hour.
         nextTry: next
-          ? new Date(next * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" })
+          ? new Date(next * 1000).toLocaleDateString(locale, { month: "long", day: "numeric", timeZone: "UTC" })
           : null,
+        language,
       });
       const ok = await sendEmail({
         from: fromStore(store),

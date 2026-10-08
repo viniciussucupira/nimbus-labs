@@ -1,0 +1,1557 @@
+/**
+ * Every word a member meets that the creator did not write, in the store's
+ * language (lib/store-language.ts): the page where they manage, switch or
+ * cancel a membership, the page that says a membership has ended, the page
+ * after leaving a checkout unpaid, and the emails about all of these — the
+ * link to manage a membership, the receipt of a switch, and the note that a
+ * renewal did not go through.
+ *
+ * Prices and dates arrive already written in the store's language
+ * (lib/buyer-words/index.ts, speech); a sentence here only places them.
+ */
+import { type LanguageCode, parseLanguage } from "@/lib/store-language";
+
+type Interval = "day" | "week" | "month" | "year";
+type Notice = { title: string; body: string };
+
+/** A space that never breaks, before French ":", "?", "!", ";" and every "%". */
+const S = " ";
+
+const en = {
+  // ---- Page titles (the browser tab, before "— Marktmorgen") ------------------
+  yourMembership: "Your membership",
+  switchTitle: "Switch your membership",
+  endedTitle: "Your membership has ended",
+  nothingCharged: "Nothing was charged",
+
+  // ---- Managing a membership: asking for the link --------------------------------
+  manageNotices: {
+    email: {
+      title: "That does not look like an email address",
+      body: "Check it and try again. Use the address you pay with: the one you typed when you joined.",
+    },
+    limited: {
+      title: "Too many requests for now",
+      body: "To keep this form from being used to flood somebody's inbox, it takes a limited number of requests an hour. Try again in an hour.",
+    },
+    unavailable: {
+      title: "This store cannot open memberships right now",
+      body: "Its payments are not connected to Stripe right now, so there is no membership to open from this page. Reply to your order confirmation email and it reaches the store.",
+    },
+    error: {
+      title: "Something went wrong on our side",
+      body: "Nothing was changed. Try again in a moment.",
+    },
+    expired: {
+      title: "This link has expired",
+      body: "A link to your membership works for one hour. Ask for a new one below; it takes a few seconds.",
+    },
+    used: {
+      title: "This link has been used too many times",
+      body: "Ask for a new one below; it takes a few seconds.",
+    },
+    switched: {
+      title: "Your membership was switched",
+      body: "What the new plan includes is open to you now, and a receipt is on its way to your inbox.",
+    },
+    declined: {
+      title: "The card was not charged, so nothing changed",
+      body: "Your bank declined the payment or asked for a step we could not show here. Update your card with “Change card or see receipts” below, then try the switch again.",
+    },
+    stale: {
+      title: "That price was more than 15 minutes old",
+      body: "Nothing was changed. Pick the plan again to see the price as it stands now.",
+    },
+    busy: {
+      title: "A switch was already under way",
+      body: "Wait a moment and look at your membership below before trying again.",
+    },
+    "cannot-switch": {
+      title: "That switch cannot be made",
+      body: "The plan may no longer be offered, or the membership may be canceled or waiting on a payment. Nothing was changed.",
+    },
+  } as Record<string, Notice>,
+  manageHead: "Manage or cancel your membership",
+  manageIntro: (store: string) =>
+    `Type the email you pay ${store} with, and we will email you a link to your membership. No account and no password: you cancel it yourself, on Stripe's own page.`,
+  manageUnavailable: (store: string) =>
+    `${store} cannot take payments through Stripe right now, so there is no membership to open from here. Reply to your order confirmation email and it reaches them.`,
+  payEmailLabel: "The email you pay with",
+  emailMeLink: "Email me a link to my membership",
+  linkNote: (store: string, hours: number) =>
+    `If that address has a membership with ${store}, a link to it usually arrives within a minute. It works for ${hours === 1 ? "one hour" : `${hours} hours`}. We say the same thing whether or not it does, so nobody can use this page to find out who is a member.`,
+  checkInbox: "Check your inbox",
+  sentBody: (store: string) =>
+    `If that address has a membership with ${store}, the link is on its way. It comes from ${store} via Marktmorgen and usually arrives within a minute. If it is not there, look in spam.`,
+  tryOther: "Nothing arrived? You may pay with a different address: the one you typed when you joined. Try that one below.",
+
+  // ---- Managing: the memberships behind the link -----------------------------------
+  yourMemberships: "Your memberships",
+  /** "a month", "every 3 months": how often a membership is paid for. */
+  every: (interval: Interval, count: number) => (count === 1 ? `a ${interval}` : `every ${count} ${interval}s`),
+  ends: (date: string) => `Ends ${date}`,
+  cancel: "Cancel",
+  switchPlan: "Switch plan",
+  upgrade: " · upgrade",
+  downgrade: " · downgrade",
+  exactFirst: "You see the exact amount before anything is charged.",
+  cannotList:
+    "Stripe could not list your memberships just now. The button below opens them all on Stripe's own page, where you can cancel.",
+  changeCard: "Change card or see receipts",
+  openMembership: "Open my membership",
+  cancelNote:
+    "If you cancel, the membership stays on until the end of the period you have already paid for, and nothing more is charged.",
+
+  // ---- Switching to another plan ------------------------------------------------------
+  switchProblems: {
+    expired: { title: "This link has expired", body: "A link to your membership works for one hour. Ask for a new one on your membership page." },
+    gone: { title: "This membership cannot switch", body: "It may be canceled, set to end, waiting on a payment, or no longer yours on this link. Nothing was changed." },
+    tier: { title: "That plan is not offered anymore", body: "Go back to your membership page to see the plans you can switch to now. Nothing was changed." },
+    error: { title: "Stripe could not work out the price just now", body: "Nothing was changed. Try again in a moment." },
+  } as Record<string, Notice>,
+  switchTo: (title: string) => `Switch to ${title}`,
+  nowLabel: "Now",
+  afterLabel: "After the switch",
+  nothingNow: "Nothing is charged now",
+  chargedToday: (amount: string) => `${amount} charged today`,
+  offNext: (amount: string) => `${amount} comes off your next payments`,
+  nothingToday: "Nothing is charged today",
+  switchTrialNote: "You are in your free trial. The new plan opens now, and its price starts when the trial ends.",
+  dueNote: "The new price, less what was left of your last payment, to the card you pay with. The new plan opens as soon as it is paid.",
+  creditNote: "What was left of your last payment becomes a credit with the store, taken off your next payments. The new plan opens now.",
+  opensNow: "The new plan opens now.",
+  switchAndPay: (amount: string) => `Switch and pay ${amount}`,
+  switchNow: "Switch now",
+  holdsNote: (store: string, title: string) =>
+    `This price holds for 15 minutes. Charged by ${store} on their own Stripe account. Anything only ${title} includes closes when you switch.`,
+  backToMembership: "Back to your membership",
+
+  // ---- A membership that has ended ----------------------------------------------------------
+  offerNotices: {
+    expired: "This offer has ended. You can still come back at the usual price below.",
+    unavailable: "This offer cannot be used for this membership any more. You can still come back at the usual price below, if it is offered.",
+    refused: "The offer could not be applied just now. You can come back at the usual price below, or reply to the email it came in.",
+    limited: "Too many tries for now. Wait a few minutes and press the button again.",
+  } as Record<string, string>,
+  membershipLabel: "Membership",
+  endedBody: (title: string) =>
+    `Your membership for ${title} is no longer running, so what it gave you access to is closed now. Renew it and everything opens again right away.`,
+  endedGone: (store: string) => `This membership is no longer running, and ${store} no longer lists it.`,
+  comeBackOffer: "Your come-back offer",
+  /** "25% off your first payment", "25% off your first 3 payments". */
+  offerWords: (percent: number, months: number) =>
+    months === 1 ? `${percent}% off your first payment` : `${percent}% off your first ${months} payments`,
+  offerFor: (email: string, until: string) =>
+    `For ${email}, until ${until}. Applied on Stripe's page before you pay; no free trial this time.`,
+  comeBackWith: "Come back with this offer",
+  renewTitle: (title: string) => `Renew ${title}`,
+  renewPrice: (price: string) => `Renew · ${price}`,
+  renew: "Renew",
+  notTaking: (store: string) =>
+    `${store} is not taking new members for this right now. Reply to your order confirmation email and it reaches them.`,
+  see: (title: string) => `See ${title}`,
+  /** A sentence with a link in it: before, the link, after. */
+  failedBefore: "Did it end because a payment failed, not because you canceled? Updating the card may bring it back without renewing: ",
+  failedLink: "manage your membership",
+  failedAfter: " with the email you paid with.",
+  boughtBefore: "Anything you bought outright stays yours: ",
+  boughtLink: "get what you bought again",
+  boughtAfter: ".",
+
+  // ---- After leaving a checkout unpaid ----------------------------------------------------------
+  leftNotices: {
+    email: {
+      title: "That does not look like an email address",
+      body: "Check it and try again. The reminder goes to the address you type, so it has to be one you can open.",
+    },
+    limited: {
+      title: "Too many reminders asked for just now",
+      body: "To keep this form from being used to fill somebody's inbox, it takes a limited number an hour. Nothing was kept. The product is still here whenever you want it.",
+    },
+    closed: {
+      title: "No reminder can be sent for this",
+      body: "It may have sold out or been taken off sale. Nothing was kept.",
+    },
+    error: {
+      title: "We could not keep that just now",
+      body: "Nothing was kept. Try again in a moment.",
+    },
+  } as Record<string, Notice>,
+  done: "Done",
+  oneReminder: "One reminder, in about an hour",
+  willEmail: (store: string, title: string) =>
+    `${store} will email you once, with the link to ${title}. If you buy it before then, no reminder is sent.`,
+  onlyEmail:
+    "That is the only email this sends. It does not add you to any list, and it has a link that stops reminders from this store for good.",
+  leftBefore: (title: string) => `You left before paying for ${title}`,
+  notCharged: "Your card was not charged. If you still want it, it is one press away.",
+  notReady: "Not ready yet?",
+  remindNote: (store: string) =>
+    `Leave your email and ${store} sends you one reminder with the link, in about an hour. One email. It does not add you to any list.`,
+  remindMe: "Remind me once",
+  addressUse: (store: string) =>
+    `Your address is used for this one reminder and for the link in it that stops reminders from ${store}, and for nothing else.`,
+
+  // ---- The email with the link to a membership ---------------------------------------------------
+  /** The name an email is sent under. */
+  fromName: (store: string) => `${store} via Marktmorgen`,
+  /** The email's subject, and the heading of Stripe's page for the membership. */
+  membershipWith: (store: string) => `Your membership with ${store}`,
+  linkIntro: (store: string) => `You asked to manage your membership with ${store}. Here is the way in:`,
+  linkTiers:
+    "Open the link to see your membership. From there you can switch to another plan, seeing the exact amount before anything is charged, or cancel it, change the card it is paid with, or see your receipts. If you cancel, it stays on until the end of the period you have already paid for, and nothing more is charged.",
+  linkNoTiers:
+    "Open the link and press the button. Stripe then shows your membership: you can cancel it, change the card it is paid with, or see your receipts. If you cancel, it stays on until the end of the period you have already paid for, and nothing more is charged.",
+  linkWorks: "The link works for one hour. If you did not ask for this, ignore this email; nothing happens unless the link is used.",
+  linkFooter: (store: string) =>
+    `Sent by Marktmorgen on behalf of ${store}. The membership is charged by ${store} on their own Stripe account.`,
+
+  // ---- The receipt of a switch -----------------------------------------------------------------------
+  switchedSubject: (title: string) => `You switched to ${title}`,
+  switchedNow: (store: string, title: string, from: string) =>
+    `Your membership with ${store} is now ${title}, in place of ${from}.`,
+  paidTrial: "You are in your free trial, so nothing was charged. The new price starts when the trial ends.",
+  paidCharged: (amount: string) => `Charged today: ${amount}, the new price less what was left of your last payment.`,
+  paidCredit: (amount: string) => `A credit of ${amount}, for what was left of your last payment, comes off your next payments.`,
+  paidNothing: "Nothing was charged today.",
+  fromNow: (price: string) => `From now on: ${price}.`,
+  switchedOpen:
+    "What it includes is open to you now. Your receipts are on your membership page, from the link on the store's page.",
+  switchedFooter: (store: string) =>
+    `Charged by ${store} on their own Stripe account. Questions go to ${store} by replying to this email.`,
+
+  // ---- A renewal that did not go through --------------------------------------------------------------
+  failedSubject: (store: string) => `Your payment to ${store} didn't go through`,
+  hi: "Hi,",
+  failedFor: (amount: string, title: string) =>
+    `The latest payment of ${amount} for ${title} didn't go through. This happens when a card expires, is replaced, or is declined by the bank.`,
+  failedTo: (amount: string, store: string) =>
+    `The latest payment of ${amount} to ${store} didn't go through. This happens when a card expires, is replaced, or is declined by the bank.`,
+  payHere: "Pay it here, with the same card or a new one:",
+  cardKept: "The card you pay with is used for your next payments too, so this only has to be done once.",
+  /** `date` is a day and month: "October 3". */
+  triedAgainPlan: (date: string) => `If you do nothing, the card on file is tried again on ${date}.`,
+  triedAgain: (date: string) =>
+    `If you do nothing, the card on file is tried again on ${date}, and your access stays on in the meantime.`,
+  notTriedAgain: "The card on file won't be tried again, so this payment stays unpaid until it is paid from the link above.",
+  receiptsPlan: (url: string) => `To see your receipts, or change the card: ${url}`,
+  cancelInstead: (url: string) => `To cancel instead, or see your receipts: ${url}`,
+};
+
+export type MembershipWords = typeof en;
+
+const es: MembershipWords = {
+  yourMembership: "Tu membresía",
+  switchTitle: "Cambia tu membresía",
+  endedTitle: "Tu membresía ha terminado",
+  nothingCharged: "No se cobró nada",
+
+  manageNotices: {
+    email: {
+      title: "Eso no parece una dirección de email",
+      body: "Revísala y vuelve a intentarlo. Usa la dirección con la que pagas: la que escribiste al hacerte miembro.",
+    },
+    limited: {
+      title: "Demasiadas solicitudes por ahora",
+      body: "Para que nadie use este formulario para llenar de mensajes la bandeja de entrada de otra persona, acepta un número limitado de solicitudes por hora. Vuelve a intentarlo dentro de una hora.",
+    },
+    unavailable: {
+      title: "Esta tienda no puede abrir membresías en este momento",
+      body: "Sus pagos no están conectados a Stripe en este momento, así que no hay ninguna membresía que abrir desde esta página. Responde al email de confirmación de tu pedido y le llegará a la tienda.",
+    },
+    error: {
+      title: "Algo salió mal por nuestra parte",
+      body: "No se cambió nada. Vuelve a intentarlo en un momento.",
+    },
+    expired: {
+      title: "Este enlace ha expirado",
+      body: "Un enlace a tu membresía funciona durante una hora. Pide uno nuevo abajo; tarda unos segundos.",
+    },
+    used: {
+      title: "Este enlace se ha usado demasiadas veces",
+      body: "Pide uno nuevo abajo; tarda unos segundos.",
+    },
+    switched: {
+      title: "Tu membresía se cambió",
+      body: "Ya tienes acceso a lo que incluye el nuevo plan, y un recibo va de camino a tu bandeja de entrada.",
+    },
+    declined: {
+      title: "No se cobró la tarjeta, así que no cambió nada",
+      body: "Tu banco rechazó el pago o pidió un paso que no podíamos mostrar aquí. Actualiza tu tarjeta con “Cambiar tarjeta o ver recibos”, abajo, y vuelve a intentar el cambio.",
+    },
+    stale: {
+      title: "Ese precio tenía más de 15 minutos",
+      body: "No se cambió nada. Vuelve a elegir el plan para ver el precio tal como está ahora.",
+    },
+    busy: {
+      title: "Ya había un cambio en curso",
+      body: "Espera un momento y revisa tu membresía abajo antes de volver a intentarlo.",
+    },
+    "cannot-switch": {
+      title: "Ese cambio no se puede hacer",
+      body: "Puede que el plan ya no se ofrezca, o que la membresía esté cancelada o pendiente de un pago. No se cambió nada.",
+    },
+  },
+  manageHead: "Gestiona o cancela tu membresía",
+  manageIntro: (store) =>
+    `Escribe el email con el que pagas a ${store} y te enviaremos por email un enlace a tu membresía. Sin cuenta y sin contraseña: la cancelas por tu cuenta, en la propia página de Stripe.`,
+  manageUnavailable: (store) =>
+    `${store} no puede aceptar pagos a través de Stripe en este momento, así que no hay ninguna membresía que abrir desde aquí. Responde al email de confirmación de tu pedido y le llegará.`,
+  payEmailLabel: "El email con el que pagas",
+  emailMeLink: "Envíame un enlace a mi membresía",
+  linkNote: (store, hours) =>
+    `Si esa dirección tiene una membresía en ${store}, el enlace suele llegar en menos de un minuto. Funciona durante ${hours === 1 ? "una hora" : `${hours} horas`}. Decimos lo mismo tanto si la tiene como si no, para que nadie pueda usar esta página para averiguar quién es miembro.`,
+  checkInbox: "Revisa tu bandeja de entrada",
+  sentBody: (store) =>
+    `Si esa dirección tiene una membresía en ${store}, el enlace va de camino. Lo envía ${store} a través de Marktmorgen y suele llegar en menos de un minuto. Si no está, mira en la carpeta de spam.`,
+  tryOther: "¿No llegó nada? Puede que pagues con otra dirección: la que escribiste al hacerte miembro. Prueba con esa abajo.",
+
+  yourMemberships: "Tus membresías",
+  every: (interval, count) =>
+    count === 1
+      ? { day: "al día", week: "a la semana", month: "al mes", year: "al año" }[interval]
+      : `cada ${count} ${{ day: "días", week: "semanas", month: "meses", year: "años" }[interval]}`,
+  ends: (date) => `Termina el ${date}`,
+  cancel: "Cancelar",
+  switchPlan: "Cambiar de plan",
+  upgrade: " · plan superior",
+  downgrade: " · plan inferior",
+  exactFirst: "Ves el importe exacto antes de que se cobre nada.",
+  cannotList:
+    "Stripe no pudo mostrar tus membresías en este momento. El botón de abajo las abre todas en la propia página de Stripe, donde puedes cancelar.",
+  changeCard: "Cambiar tarjeta o ver recibos",
+  openMembership: "Abrir mi membresía",
+  cancelNote: "Si cancelas, la membresía sigue activa hasta el final del periodo que ya pagaste, y no se cobra nada más.",
+
+  switchProblems: {
+    expired: { title: "Este enlace ha expirado", body: "Un enlace a tu membresía funciona durante una hora. Pide uno nuevo en la página de tu membresía." },
+    gone: {
+      title: "Esta membresía no se puede cambiar",
+      body: "Puede que esté cancelada, programada para terminar, pendiente de un pago o que ya no sea tuya con este enlace. No se cambió nada.",
+    },
+    tier: { title: "Ese plan ya no se ofrece", body: "Vuelve a la página de tu membresía para ver los planes a los que puedes cambiar ahora. No se cambió nada." },
+    error: { title: "Stripe no pudo calcular el precio en este momento", body: "No se cambió nada. Vuelve a intentarlo en un momento." },
+  },
+  switchTo: (title) => `Cambiar a ${title}`,
+  nowLabel: "Ahora",
+  afterLabel: "Después del cambio",
+  nothingNow: "No se cobra nada ahora",
+  chargedToday: (amount) => `Hoy se cobra ${amount}`,
+  offNext: (amount) => `Se descuenta ${amount} de tus próximos pagos`,
+  nothingToday: "Hoy no se cobra nada",
+  switchTrialNote: "Estás en tu prueba gratis. El nuevo plan se abre ahora, y su precio empieza cuando termine la prueba.",
+  dueNote: "Se cobra a la tarjeta con la que pagas el nuevo precio, menos lo que quedaba de tu último pago. El nuevo plan se abre en cuanto se paga.",
+  creditNote: "Lo que quedaba de tu último pago pasa a ser un crédito con la tienda, que se descuenta de tus próximos pagos. El nuevo plan se abre ahora.",
+  opensNow: "El nuevo plan se abre ahora.",
+  switchAndPay: (amount) => `Cambiar y pagar ${amount}`,
+  switchNow: "Cambiar ahora",
+  holdsNote: (store, title) =>
+    `Este precio se mantiene durante 15 minutos. Lo cobra ${store} en su propia cuenta de Stripe. Todo lo que solo incluye ${title} se cierra al cambiar.`,
+  backToMembership: "Volver a tu membresía",
+
+  offerNotices: {
+    expired: "Esta oferta ha terminado. Todavía puedes volver al precio habitual, abajo.",
+    unavailable: "Esta oferta ya no se puede usar para esta membresía. Todavía puedes volver al precio habitual, abajo, si se ofrece.",
+    refused: "No se pudo aplicar la oferta en este momento. Puedes volver al precio habitual, abajo, o responder al email en el que llegó.",
+    limited: "Demasiados intentos por ahora. Espera unos minutos y vuelve a pulsar el botón.",
+  },
+  membershipLabel: "Membresía",
+  endedBody: (title) =>
+    `Tu membresía de ${title} ya no está activa, así que aquello a lo que te daba acceso está cerrado ahora. Renuévala y todo se vuelve a abrir al instante.`,
+  endedGone: (store) => `Esta membresía ya no está activa, y ${store} ya no la ofrece.`,
+  comeBackOffer: "Tu oferta para volver",
+  offerWords: (percent, months) =>
+    months === 1 ? `${percent}${S}% de descuento en tu primer pago` : `${percent}${S}% de descuento en tus primeros ${months} pagos`,
+  offerFor: (email, until) =>
+    `Para ${email}, hasta el ${until}. Se aplica en la página de Stripe antes de pagar; esta vez sin prueba gratis.`,
+  comeBackWith: "Volver con esta oferta",
+  renewTitle: (title) => `Renovar ${title}`,
+  renewPrice: (price) => `Renovar · ${price}`,
+  renew: "Renovar",
+  notTaking: (store) =>
+    `${store} no está aceptando nuevos miembros para esto en este momento. Responde al email de confirmación de tu pedido y le llegará.`,
+  see: (title) => `Ver ${title}`,
+  failedBefore: "¿Terminó porque falló un pago, no porque cancelaras? Actualizar la tarjeta puede reactivarla sin renovar: ",
+  failedLink: "gestiona tu membresía",
+  failedAfter: " con el email con el que pagaste.",
+  boughtBefore: "Lo que compraste aparte sigue siendo tuyo: ",
+  boughtLink: "vuelve a obtener lo que compraste",
+  boughtAfter: ".",
+
+  leftNotices: {
+    email: {
+      title: "Eso no parece una dirección de email",
+      body: "Revísala y vuelve a intentarlo. El recordatorio va a la dirección que escribas, así que tiene que ser una que puedas abrir.",
+    },
+    limited: {
+      title: "Se han pedido demasiados recordatorios ahora mismo",
+      body: "Para que nadie use este formulario para llenar de mensajes la bandeja de entrada de otra persona, acepta un número limitado por hora. No se guardó nada. El producto sigue aquí cuando lo quieras.",
+    },
+    closed: {
+      title: "No se puede enviar un recordatorio para esto",
+      body: "Puede que se haya agotado o que se haya retirado de la venta. No se guardó nada.",
+    },
+    error: {
+      title: "No pudimos guardarlo en este momento",
+      body: "No se guardó nada. Vuelve a intentarlo en un momento.",
+    },
+  },
+  done: "Hecho",
+  oneReminder: "Un recordatorio, dentro de una hora aproximadamente",
+  willEmail: (store, title) =>
+    `${store} te escribirá una sola vez, con el enlace a ${title}. Si lo compras antes, no se envía ningún recordatorio.`,
+  onlyEmail:
+    "Es el único email que se envía. No te añade a ninguna lista, y tiene un enlace que detiene para siempre los recordatorios de esta tienda.",
+  leftBefore: (title) => `Te fuiste antes de pagar ${title}`,
+  notCharged: "No se cobró nada en tu tarjeta. Si todavía lo quieres, está a un solo clic.",
+  notReady: "¿Todavía no te decides?",
+  remindNote: (store) =>
+    `Deja tu email y ${store} te envía un recordatorio con el enlace, dentro de una hora aproximadamente. Un solo email. No te añade a ninguna lista.`,
+  remindMe: "Recuérdamelo una vez",
+  addressUse: (store) =>
+    `Tu dirección se usa para este único recordatorio y para el enlace que contiene para detener los recordatorios de ${store}, y para nada más.`,
+
+  fromName: (store) => `${store} vía Marktmorgen`,
+  membershipWith: (store) => `Tu membresía en ${store}`,
+  linkIntro: (store) => `Pediste gestionar tu membresía en ${store}. Este es el acceso:`,
+  linkTiers:
+    "Abre el enlace para ver tu membresía. Desde ahí puedes cambiar a otro plan, viendo el importe exacto antes de que se cobre nada, o cancelarla, cambiar la tarjeta con la que se paga o ver tus recibos. Si cancelas, sigue activa hasta el final del periodo que ya pagaste, y no se cobra nada más.",
+  linkNoTiers:
+    "Abre el enlace y pulsa el botón. Stripe te muestra entonces tu membresía: puedes cancelarla, cambiar la tarjeta con la que se paga o ver tus recibos. Si cancelas, sigue activa hasta el final del periodo que ya pagaste, y no se cobra nada más.",
+  linkWorks: "El enlace funciona durante una hora. Si no lo pediste, ignora este email; no pasa nada a menos que se use el enlace.",
+  linkFooter: (store) =>
+    `Enviado por Marktmorgen en nombre de ${store}. La membresía la cobra ${store} en su propia cuenta de Stripe.`,
+
+  switchedSubject: (title) => `Cambiaste a ${title}`,
+  switchedNow: (store, title, from) => `Tu membresía en ${store} ahora es ${title}, en lugar de ${from}.`,
+  paidTrial: "Estás en tu prueba gratis, así que no se cobró nada. El nuevo precio empieza cuando termine la prueba.",
+  paidCharged: (amount) => `Cobrado hoy: ${amount}, el nuevo precio menos lo que quedaba de tu último pago.`,
+  paidCredit: (amount) => `Un crédito de ${amount}, por lo que quedaba de tu último pago, se descuenta de tus próximos pagos.`,
+  paidNothing: "Hoy no se cobró nada.",
+  fromNow: (price) => `A partir de ahora: ${price}.`,
+  switchedOpen:
+    "Ya tienes acceso a lo que incluye. Tus recibos están en la página de tu membresía, desde el enlace de la página de la tienda.",
+  switchedFooter: (store) =>
+    `Lo cobra ${store} en su propia cuenta de Stripe. Si tienes preguntas, responde a este email y le llegarán a ${store}.`,
+
+  failedSubject: (store) => `Tu pago a ${store} no se completó`,
+  hi: "Hola,",
+  failedFor: (amount, title) =>
+    `El último pago de ${amount} por ${title} no se completó. Esto pasa cuando una tarjeta expira, se sustituye o el banco la rechaza.`,
+  failedTo: (amount, store) =>
+    `El último pago de ${amount} a ${store} no se completó. Esto pasa cuando una tarjeta expira, se sustituye o el banco la rechaza.`,
+  payHere: "Págalo aquí, con la misma tarjeta o con una nueva:",
+  cardKept: "La tarjeta con la que pagues se usa también para tus próximos pagos, así que solo tienes que hacerlo una vez.",
+  triedAgainPlan: (date) => `Si no haces nada, se vuelve a intentar el cobro en la tarjeta registrada el ${date}.`,
+  triedAgain: (date) =>
+    `Si no haces nada, se vuelve a intentar el cobro en la tarjeta registrada el ${date}, y mientras tanto sigues teniendo acceso.`,
+  notTriedAgain:
+    "No se volverá a intentar el cobro en la tarjeta registrada, así que este pago seguirá pendiente hasta que se pague desde el enlace de arriba.",
+  receiptsPlan: (url) => `Para ver tus recibos o cambiar la tarjeta: ${url}`,
+  cancelInstead: (url) => `Si prefieres cancelar, o ver tus recibos: ${url}`,
+};
+
+const fr: MembershipWords = {
+  yourMembership: "Votre abonnement",
+  switchTitle: "Modifier votre abonnement",
+  endedTitle: "Votre abonnement est terminé",
+  nothingCharged: "Rien n'a été débité",
+
+  manageNotices: {
+    email: {
+      title: "Cela ne ressemble pas à une adresse e-mail",
+      body: `Vérifiez-la et réessayez. Utilisez l'adresse avec laquelle vous payez${S}: celle que vous avez saisie lors de votre inscription.`,
+    },
+    limited: {
+      title: "Trop de demandes pour le moment",
+      body: "Pour éviter que ce formulaire serve à inonder la boîte de réception de quelqu'un, il accepte un nombre limité de demandes par heure. Réessayez dans une heure.",
+    },
+    unavailable: {
+      title: "Cette boutique ne peut pas ouvrir d'abonnements pour le moment",
+      body: "Ses paiements ne sont pas reliés à Stripe pour le moment, il n'y a donc aucun abonnement à ouvrir depuis cette page. Répondez à l'e-mail de confirmation de votre commande et il parviendra à la boutique.",
+    },
+    error: {
+      title: "Un problème est survenu de notre côté",
+      body: "Rien n'a été modifié. Réessayez dans un instant.",
+    },
+    expired: {
+      title: "Ce lien a expiré",
+      body: `Un lien vers votre abonnement fonctionne pendant une heure. Demandez-en un nouveau ci-dessous${S}; cela prend quelques secondes.`,
+    },
+    used: {
+      title: "Ce lien a été utilisé trop de fois",
+      body: `Demandez-en un nouveau ci-dessous${S}; cela prend quelques secondes.`,
+    },
+    switched: {
+      title: "Votre abonnement a été modifié",
+      body: "Ce que comprend la nouvelle formule vous est accessible dès maintenant, et un reçu arrive dans votre boîte de réception.",
+    },
+    declined: {
+      title: "La carte n'a pas été débitée, donc rien n'a changé",
+      body: `Votre banque a refusé le paiement ou demandé une étape que nous ne pouvions pas afficher ici. Mettez à jour votre carte avec «${S}Changer de carte ou voir les reçus${S}» ci-dessous, puis réessayez le changement.`,
+    },
+    stale: {
+      title: `Ce prix datait de plus de 15${S}minutes`,
+      body: "Rien n'a été modifié. Choisissez à nouveau la formule pour voir le prix actuel.",
+    },
+    busy: {
+      title: "Un changement était déjà en cours",
+      body: "Patientez un instant et consultez votre abonnement ci-dessous avant de réessayer.",
+    },
+    "cannot-switch": {
+      title: "Ce changement est impossible",
+      body: "La formule n'est peut-être plus proposée, ou l'abonnement est peut-être annulé ou en attente d'un paiement. Rien n'a été modifié.",
+    },
+  },
+  manageHead: "Gérer ou annuler votre abonnement",
+  manageIntro: (store) =>
+    `Saisissez l'e-mail avec lequel vous payez ${store}, et nous vous enverrons par e-mail un lien vers votre abonnement. Ni compte ni mot de passe${S}: vous l'annulez vous-même, directement sur la page de Stripe.`,
+  manageUnavailable: (store) =>
+    `${store} ne peut pas accepter de paiements via Stripe pour le moment, il n'y a donc aucun abonnement à ouvrir ici. Répondez à l'e-mail de confirmation de votre commande et il lui parviendra.`,
+  payEmailLabel: "L'e-mail avec lequel vous payez",
+  emailMeLink: "M'envoyer un lien vers mon abonnement",
+  linkNote: (store, hours) =>
+    `Si cette adresse a un abonnement chez ${store}, un lien arrive généralement en moins d'une minute. Il fonctionne pendant ${hours < 2 ? "une heure" : `${hours}${S}heures`}. Nous affichons le même message dans tous les cas, pour que personne ne puisse utiliser cette page pour savoir qui est membre.`,
+  checkInbox: "Consultez votre boîte de réception",
+  sentBody: (store) =>
+    `Si cette adresse a un abonnement chez ${store}, le lien est en route. Il vient de ${store} via Marktmorgen et arrive généralement en moins d'une minute. S'il n'y est pas, regardez dans les spams.`,
+  tryOther: `Rien reçu${S}? Vous payez peut-être avec une autre adresse${S}: celle que vous avez saisie lors de votre inscription. Essayez-la ci-dessous.`,
+
+  yourMemberships: "Vos abonnements",
+  every: (interval, count) =>
+    count < 2
+      ? { day: "par jour", week: "par semaine", month: "par mois", year: "par an" }[interval]
+      : {
+          day: `tous les ${count}${S}jours`,
+          week: `toutes les ${count}${S}semaines`,
+          month: `tous les ${count}${S}mois`,
+          year: `tous les ${count}${S}ans`,
+        }[interval],
+  ends: (date) => `Se termine le ${date}`,
+  cancel: "Annuler",
+  switchPlan: "Changer de formule",
+  upgrade: " · formule supérieure",
+  downgrade: " · formule inférieure",
+  exactFirst: "Vous voyez le montant exact avant tout débit.",
+  cannotList:
+    "Stripe n'a pas pu afficher vos abonnements pour le moment. Le bouton ci-dessous les ouvre tous sur la page de Stripe, où vous pouvez annuler.",
+  changeCard: "Changer de carte ou voir les reçus",
+  openMembership: "Ouvrir mon abonnement",
+  cancelNote: "Si vous annulez, l'abonnement reste actif jusqu'à la fin de la période déjà payée, et plus rien n'est débité.",
+
+  switchProblems: {
+    expired: { title: "Ce lien a expiré", body: "Un lien vers votre abonnement fonctionne pendant une heure. Demandez-en un nouveau sur la page de votre abonnement." },
+    gone: {
+      title: "Cet abonnement ne peut pas changer de formule",
+      body: "Il est peut-être annulé, programmé pour se terminer, en attente d'un paiement, ou il n'est plus le vôtre avec ce lien. Rien n'a été modifié.",
+    },
+    tier: {
+      title: "Cette formule n'est plus proposée",
+      body: "Revenez à la page de votre abonnement pour voir les formules vers lesquelles vous pouvez passer maintenant. Rien n'a été modifié.",
+    },
+    error: { title: "Stripe n'a pas pu calculer le prix pour le moment", body: "Rien n'a été modifié. Réessayez dans un instant." },
+  },
+  switchTo: (title) => `Passer à ${title}`,
+  nowLabel: "Actuellement",
+  afterLabel: "Après le changement",
+  nothingNow: "Rien n'est débité maintenant",
+  chargedToday: (amount) => `Débité aujourd'hui${S}: ${amount}`,
+  offNext: (amount) => `Déduit de vos prochains paiements${S}: ${amount}`,
+  nothingToday: "Rien n'est débité aujourd'hui",
+  switchTrialNote: "Vous êtes dans votre essai gratuit. La nouvelle formule s'ouvre maintenant, et son prix commence à la fin de l'essai.",
+  dueNote: "Le nouveau prix, moins ce qui restait de votre dernier paiement, sur la carte avec laquelle vous payez. La nouvelle formule s'ouvre dès que c'est payé.",
+  creditNote: "Ce qui restait de votre dernier paiement devient un avoir auprès de la boutique, déduit de vos prochains paiements. La nouvelle formule s'ouvre maintenant.",
+  opensNow: "La nouvelle formule s'ouvre maintenant.",
+  switchAndPay: (amount) => `Changer et payer ${amount}`,
+  switchNow: "Changer maintenant",
+  holdsNote: (store, title) =>
+    `Ce prix est garanti pendant 15${S}minutes. Débité par ${store} sur son propre compte Stripe. Tout ce qui n'est compris que dans ${title} se ferme lorsque vous changez.`,
+  backToMembership: "Retour à votre abonnement",
+
+  offerNotices: {
+    expired: "Cette offre est terminée. Vous pouvez toujours revenir au prix habituel ci-dessous.",
+    unavailable: "Cette offre ne peut plus être utilisée pour cet abonnement. Vous pouvez toujours revenir au prix habituel ci-dessous, s'il est proposé.",
+    refused: "L'offre n'a pas pu être appliquée pour le moment. Vous pouvez revenir au prix habituel ci-dessous, ou répondre à l'e-mail dans lequel elle est arrivée.",
+    limited: "Trop de tentatives pour le moment. Attendez quelques minutes et appuyez à nouveau sur le bouton.",
+  },
+  membershipLabel: "Abonnement",
+  endedBody: (title) =>
+    `Votre abonnement à ${title} n'est plus actif, donc ce à quoi il vous donnait accès est désormais fermé. Renouvelez-le et tout se rouvre immédiatement.`,
+  endedGone: (store) => `Cet abonnement n'est plus actif, et ${store} ne le propose plus.`,
+  comeBackOffer: "Votre offre de retour",
+  offerWords: (percent, months) =>
+    months < 2
+      ? `${percent}${S}% de réduction sur votre premier paiement`
+      : `${percent}${S}% de réduction sur vos ${months} premiers paiements`,
+  offerFor: (email, until) =>
+    `Pour ${email}, jusqu'au ${until}. Appliquée sur la page de Stripe avant de payer${S}; pas d'essai gratuit cette fois.`,
+  comeBackWith: "Revenir avec cette offre",
+  renewTitle: (title) => `Renouveler ${title}`,
+  renewPrice: (price) => `Renouveler · ${price}`,
+  renew: "Renouveler",
+  notTaking: (store) =>
+    `${store} n'accepte pas de nouveaux membres pour cela en ce moment. Répondez à l'e-mail de confirmation de votre commande et il lui parviendra.`,
+  see: (title) => `Voir ${title}`,
+  failedBefore: `Il s'est terminé parce qu'un paiement a échoué, et non parce que vous avez annulé${S}? Mettre à jour la carte peut le rétablir sans le renouveler${S}: `,
+  failedLink: "gérez votre abonnement",
+  failedAfter: " avec l'e-mail avec lequel vous avez payé.",
+  boughtBefore: `Ce que vous avez acheté séparément reste à vous${S}: `,
+  boughtLink: "récupérez vos achats",
+  boughtAfter: ".",
+
+  leftNotices: {
+    email: {
+      title: "Cela ne ressemble pas à une adresse e-mail",
+      body: "Vérifiez-la et réessayez. Le rappel est envoyé à l'adresse que vous saisissez, elle doit donc être une adresse que vous pouvez consulter.",
+    },
+    limited: {
+      title: "Trop de rappels demandés à l'instant",
+      body: "Pour éviter que ce formulaire serve à remplir la boîte de réception de quelqu'un, il accepte un nombre limité de demandes par heure. Rien n'a été enregistré. Le produit est toujours là quand vous le voulez.",
+    },
+    closed: {
+      title: "Aucun rappel ne peut être envoyé pour cela",
+      body: "Il est peut-être épuisé ou retiré de la vente. Rien n'a été enregistré.",
+    },
+    error: {
+      title: "Nous n'avons pas pu l'enregistrer pour le moment",
+      body: "Rien n'a été enregistré. Réessayez dans un instant.",
+    },
+  },
+  done: "C'est fait",
+  oneReminder: "Un rappel, dans une heure environ",
+  willEmail: (store, title) =>
+    `${store} vous enverra un seul e-mail, avec le lien vers ${title}. Si vous l'achetez d'ici là, aucun rappel n'est envoyé.`,
+  onlyEmail:
+    "C'est le seul e-mail envoyé. Il ne vous inscrit à aucune liste, et il contient un lien qui arrête définitivement les rappels de cette boutique.",
+  leftBefore: (title) => `Vous avez quitté la page avant de payer ${title}`,
+  notCharged: "Votre carte n'a pas été débitée. Si vous le voulez toujours, il est à un clic.",
+  notReady: `Vous hésitez encore${S}?`,
+  remindNote: (store) =>
+    `Laissez votre e-mail et ${store} vous envoie un rappel avec le lien, dans une heure environ. Un seul e-mail. Il ne vous inscrit à aucune liste.`,
+  remindMe: "Me le rappeler une fois",
+  addressUse: (store) =>
+    `Votre adresse sert à ce seul rappel et au lien qu'il contient pour arrêter les rappels de ${store}, et à rien d'autre.`,
+
+  fromName: (store) => `${store} via Marktmorgen`,
+  membershipWith: (store) => `Votre abonnement chez ${store}`,
+  linkIntro: (store) => `Vous avez demandé à gérer votre abonnement chez ${store}. Voici le lien d'accès${S}:`,
+  linkTiers:
+    "Ouvrez le lien pour voir votre abonnement. De là, vous pouvez passer à une autre formule, en voyant le montant exact avant tout débit, ou l'annuler, changer la carte avec laquelle il est payé, ou voir vos reçus. Si vous annulez, il reste actif jusqu'à la fin de la période déjà payée, et plus rien n'est débité.",
+  linkNoTiers: `Ouvrez le lien et appuyez sur le bouton. Stripe affiche alors votre abonnement${S}: vous pouvez l'annuler, changer la carte avec laquelle il est payé, ou voir vos reçus. Si vous annulez, il reste actif jusqu'à la fin de la période déjà payée, et plus rien n'est débité.`,
+  linkWorks: `Le lien fonctionne pendant une heure. Si vous n'avez rien demandé, ignorez cet e-mail${S}; rien ne se passe tant que le lien n'est pas utilisé.`,
+  linkFooter: (store) =>
+    `Envoyé par Marktmorgen pour le compte de ${store}. L'abonnement est débité par ${store} sur son propre compte Stripe.`,
+
+  switchedSubject: (title) => `Votre abonnement est passé à ${title}`,
+  switchedNow: (store, title, from) => `Votre abonnement chez ${store} est désormais ${title}, à la place de ${from}.`,
+  paidTrial: "Vous êtes dans votre essai gratuit, donc rien n'a été débité. Le nouveau prix commence à la fin de l'essai.",
+  paidCharged: (amount) => `Débité aujourd'hui${S}: ${amount}, le nouveau prix moins ce qui restait de votre dernier paiement.`,
+  paidCredit: (amount) =>
+    `Un avoir de ${amount}, pour ce qui restait de votre dernier paiement, est déduit de vos prochains paiements.`,
+  paidNothing: "Rien n'a été débité aujourd'hui.",
+  fromNow: (price) => `Désormais${S}: ${price}.`,
+  switchedOpen:
+    "Ce qu'il comprend vous est accessible dès maintenant. Vos reçus se trouvent sur la page de votre abonnement, via le lien sur la page de la boutique.",
+  switchedFooter: (store) =>
+    `Débité par ${store} sur son propre compte Stripe. Pour toute question, répondez à cet e-mail et elle parviendra à ${store}.`,
+
+  failedSubject: (store) => `Votre paiement à ${store} n'a pas abouti`,
+  hi: "Bonjour,",
+  failedFor: (amount, title) =>
+    `Le dernier paiement de ${amount} pour ${title} n'a pas abouti. Cela arrive quand une carte expire, est remplacée ou est refusée par la banque.`,
+  failedTo: (amount, store) =>
+    `Le dernier paiement de ${amount} à ${store} n'a pas abouti. Cela arrive quand une carte expire, est remplacée ou est refusée par la banque.`,
+  payHere: `Réglez-le ici, avec la même carte ou une nouvelle${S}:`,
+  cardKept: "La carte avec laquelle vous payez sert aussi pour vos prochains paiements, vous n'avez donc à le faire qu'une fois.",
+  triedAgainPlan: (date) => `Si vous ne faites rien, une nouvelle tentative sera faite sur la carte enregistrée le ${date}.`,
+  triedAgain: (date) =>
+    `Si vous ne faites rien, une nouvelle tentative sera faite sur la carte enregistrée le ${date}, et votre accès reste ouvert en attendant.`,
+  notTriedAgain:
+    "Aucune nouvelle tentative ne sera faite sur la carte enregistrée, donc ce paiement reste impayé tant qu'il n'est pas réglé depuis le lien ci-dessus.",
+  receiptsPlan: (url) => `Pour voir vos reçus, ou changer de carte${S}: ${url}`,
+  cancelInstead: (url) => `Pour annuler plutôt, ou voir vos reçus${S}: ${url}`,
+};
+
+const de: MembershipWords = {
+  yourMembership: "Ihre Mitgliedschaft",
+  switchTitle: "Mitgliedschaft wechseln",
+  endedTitle: "Ihre Mitgliedschaft ist beendet",
+  nothingCharged: "Es wurde nichts berechnet",
+
+  manageNotices: {
+    email: {
+      title: "Das sieht nicht nach einer E-Mail-Adresse aus",
+      body: "Prüfen Sie sie und versuchen Sie es erneut. Verwenden Sie die Adresse, mit der Sie bezahlen: die, die Sie beim Beitritt eingegeben haben.",
+    },
+    limited: {
+      title: "Vorerst zu viele Anfragen",
+      body: "Damit dieses Formular nicht dazu benutzt wird, jemandes Posteingang zu überfluten, nimmt es nur eine begrenzte Zahl von Anfragen pro Stunde an. Versuchen Sie es in einer Stunde erneut.",
+    },
+    unavailable: {
+      title: "Dieser Shop kann gerade keine Mitgliedschaften öffnen",
+      body: "Seine Zahlungen sind gerade nicht mit Stripe verbunden, daher gibt es auf dieser Seite keine Mitgliedschaft zu öffnen. Antworten Sie auf die E-Mail mit Ihrer Bestellbestätigung, dann erreicht Ihre Nachricht den Shop.",
+    },
+    error: {
+      title: "Bei uns ist etwas schiefgelaufen",
+      body: "Es wurde nichts geändert. Versuchen Sie es gleich noch einmal.",
+    },
+    expired: {
+      title: "Dieser Link ist abgelaufen",
+      body: "Ein Link zu Ihrer Mitgliedschaft funktioniert eine Stunde lang. Fordern Sie unten einen neuen an; das dauert nur ein paar Sekunden.",
+    },
+    used: {
+      title: "Dieser Link wurde zu oft verwendet",
+      body: "Fordern Sie unten einen neuen an; das dauert nur ein paar Sekunden.",
+    },
+    switched: {
+      title: "Ihre Mitgliedschaft wurde gewechselt",
+      body: "Was der neue Tarif umfasst, steht Ihnen jetzt offen, und eine Quittung ist auf dem Weg in Ihren Posteingang.",
+    },
+    declined: {
+      title: "Die Karte wurde nicht belastet, daher hat sich nichts geändert",
+      body: "Ihre Bank hat die Zahlung abgelehnt oder einen Schritt verlangt, den wir hier nicht anzeigen konnten. Aktualisieren Sie Ihre Karte unten über „Karte ändern oder Quittungen ansehen“ und versuchen Sie den Wechsel dann erneut.",
+    },
+    stale: {
+      title: "Dieser Preis war älter als 15 Minuten",
+      body: "Es wurde nichts geändert. Wählen Sie den Tarif erneut, um den aktuellen Preis zu sehen.",
+    },
+    busy: {
+      title: "Ein Wechsel war bereits im Gange",
+      body: "Warten Sie einen Moment und sehen Sie sich unten Ihre Mitgliedschaft an, bevor Sie es erneut versuchen.",
+    },
+    "cannot-switch": {
+      title: "Dieser Wechsel ist nicht möglich",
+      body: "Der Tarif wird möglicherweise nicht mehr angeboten, oder die Mitgliedschaft ist gekündigt oder wartet auf eine Zahlung. Es wurde nichts geändert.",
+    },
+  },
+  manageHead: "Mitgliedschaft verwalten oder kündigen",
+  manageIntro: (store) =>
+    `Geben Sie die E-Mail-Adresse ein, mit der Sie bei ${store} bezahlen, und wir schicken Ihnen per E-Mail einen Link zu Ihrer Mitgliedschaft. Kein Konto und kein Passwort: Sie kündigen selbst, direkt auf der Seite von Stripe.`,
+  manageUnavailable: (store) =>
+    `${store} kann gerade keine Zahlungen über Stripe annehmen, daher gibt es hier keine Mitgliedschaft zu öffnen. Antworten Sie auf die E-Mail mit Ihrer Bestellbestätigung, dann erreicht Ihre Nachricht ${store}.`,
+  payEmailLabel: "Die E-Mail-Adresse, mit der Sie bezahlen",
+  emailMeLink: "Link zu meiner Mitgliedschaft per E-Mail senden",
+  linkNote: (store, hours) =>
+    `Wenn diese Adresse eine Mitgliedschaft bei ${store} hat, kommt ein Link dazu meist innerhalb einer Minute an. Er funktioniert ${hours === 1 ? "eine Stunde" : `${hours} Stunden`} lang. Wir sagen dasselbe, ob das der Fall ist oder nicht, damit niemand mit dieser Seite herausfinden kann, wer Mitglied ist.`,
+  checkInbox: "Sehen Sie in Ihrem Posteingang nach",
+  sentBody: (store) =>
+    `Wenn diese Adresse eine Mitgliedschaft bei ${store} hat, ist der Link unterwegs. Er kommt von ${store} über Marktmorgen und trifft meist innerhalb einer Minute ein. Falls er nicht da ist, sehen Sie im Spam-Ordner nach.`,
+  tryOther:
+    "Nichts angekommen? Vielleicht bezahlen Sie mit einer anderen Adresse: der, die Sie beim Beitritt eingegeben haben. Versuchen Sie es unten mit dieser.",
+
+  yourMemberships: "Ihre Mitgliedschaften",
+  every: (interval, count) =>
+    count === 1
+      ? { day: "pro Tag", week: "pro Woche", month: "pro Monat", year: "pro Jahr" }[interval]
+      : `alle ${count} ${{ day: "Tage", week: "Wochen", month: "Monate", year: "Jahre" }[interval]}`,
+  ends: (date) => `Endet am ${date}`,
+  cancel: "Kündigen",
+  switchPlan: "Tarif wechseln",
+  upgrade: " · höherer Tarif",
+  downgrade: " · niedrigerer Tarif",
+  exactFirst: "Sie sehen den genauen Betrag, bevor etwas berechnet wird.",
+  cannotList:
+    "Stripe konnte Ihre Mitgliedschaften gerade nicht auflisten. Die Schaltfläche unten öffnet sie alle auf der Seite von Stripe, wo Sie kündigen können.",
+  changeCard: "Karte ändern oder Quittungen ansehen",
+  openMembership: "Meine Mitgliedschaft öffnen",
+  cancelNote:
+    "Wenn Sie kündigen, läuft die Mitgliedschaft bis zum Ende des bereits bezahlten Zeitraums weiter, und es wird nichts mehr berechnet.",
+
+  switchProblems: {
+    expired: {
+      title: "Dieser Link ist abgelaufen",
+      body: "Ein Link zu Ihrer Mitgliedschaft funktioniert eine Stunde lang. Fordern Sie auf der Seite Ihrer Mitgliedschaft einen neuen an.",
+    },
+    gone: {
+      title: "Diese Mitgliedschaft kann nicht wechseln",
+      body: "Sie ist möglicherweise gekündigt, auf ein Ende gesetzt, wartet auf eine Zahlung oder gehört über diesen Link nicht mehr Ihnen. Es wurde nichts geändert.",
+    },
+    tier: {
+      title: "Dieser Tarif wird nicht mehr angeboten",
+      body: "Gehen Sie zurück zur Seite Ihrer Mitgliedschaft, um die Tarife zu sehen, zu denen Sie jetzt wechseln können. Es wurde nichts geändert.",
+    },
+    error: { title: "Stripe konnte den Preis gerade nicht berechnen", body: "Es wurde nichts geändert. Versuchen Sie es gleich noch einmal." },
+  },
+  switchTo: (title) => `Zu ${title} wechseln`,
+  nowLabel: "Jetzt",
+  afterLabel: "Nach dem Wechsel",
+  nothingNow: "Jetzt wird nichts berechnet",
+  chargedToday: (amount) => `Heute berechnet: ${amount}`,
+  offNext: (amount) => `Von Ihren nächsten Zahlungen abgezogen: ${amount}`,
+  nothingToday: "Heute wird nichts berechnet",
+  switchTrialNote:
+    "Sie sind in Ihrem kostenlosen Testzeitraum. Der neue Tarif öffnet sich jetzt, und sein Preis gilt ab dem Ende des Testzeitraums.",
+  dueNote:
+    "Der neue Preis, abzüglich dessen, was von Ihrer letzten Zahlung übrig war, auf die Karte, mit der Sie bezahlen. Der neue Tarif öffnet sich, sobald bezahlt ist.",
+  creditNote:
+    "Was von Ihrer letzten Zahlung übrig war, wird zu einem Guthaben beim Shop und von Ihren nächsten Zahlungen abgezogen. Der neue Tarif öffnet sich jetzt.",
+  opensNow: "Der neue Tarif öffnet sich jetzt.",
+  switchAndPay: (amount) => `Wechseln und ${amount} bezahlen`,
+  switchNow: "Jetzt wechseln",
+  holdsNote: (store, title) =>
+    `Dieser Preis gilt 15 Minuten lang. Berechnet von ${store} über das eigene Stripe-Konto. Alles, was nur ${title} umfasst, wird mit dem Wechsel geschlossen.`,
+  backToMembership: "Zurück zu Ihrer Mitgliedschaft",
+
+  offerNotices: {
+    expired: "Dieses Angebot ist abgelaufen. Sie können unten weiterhin zum normalen Preis zurückkehren.",
+    unavailable:
+      "Dieses Angebot kann für diese Mitgliedschaft nicht mehr genutzt werden. Sie können unten weiterhin zum normalen Preis zurückkehren, falls er angeboten wird.",
+    refused:
+      "Das Angebot konnte gerade nicht angewendet werden. Sie können unten zum normalen Preis zurückkehren oder auf die E-Mail antworten, mit der es kam.",
+    limited: "Vorerst zu viele Versuche. Warten Sie ein paar Minuten und drücken Sie die Schaltfläche erneut.",
+  },
+  membershipLabel: "Mitgliedschaft",
+  endedBody: (title) =>
+    `Ihre Mitgliedschaft für ${title} läuft nicht mehr, daher ist das, wozu sie Ihnen Zugang gab, jetzt geschlossen. Erneuern Sie sie, und alles öffnet sich sofort wieder.`,
+  endedGone: (store) => `Diese Mitgliedschaft läuft nicht mehr, und ${store} bietet sie nicht mehr an.`,
+  comeBackOffer: "Ihr Rückkehrangebot",
+  offerWords: (percent, months) =>
+    months === 1 ? `${percent}${S}% Rabatt auf Ihre erste Zahlung` : `${percent}${S}% Rabatt auf Ihre ersten ${months} Zahlungen`,
+  offerFor: (email, until) =>
+    `Für ${email}, bis zum ${until}. Wird auf der Seite von Stripe vor dem Bezahlen angewendet; diesmal ohne kostenlosen Testzeitraum.`,
+  comeBackWith: "Mit diesem Angebot zurückkehren",
+  renewTitle: (title) => `${title} erneuern`,
+  renewPrice: (price) => `Erneuern · ${price}`,
+  renew: "Erneuern",
+  notTaking: (store) =>
+    `${store} nimmt hierfür gerade keine neuen Mitglieder auf. Antworten Sie auf die E-Mail mit Ihrer Bestellbestätigung, dann erreicht Ihre Nachricht ${store}.`,
+  see: (title) => `${title} ansehen`,
+  failedBefore:
+    "Endete sie, weil eine Zahlung fehlgeschlagen ist, und nicht, weil Sie gekündigt haben? Eine aktualisierte Karte kann sie ohne Erneuerung zurückbringen: ",
+  failedLink: "verwalten Sie Ihre Mitgliedschaft",
+  failedAfter: " mit der E-Mail-Adresse, mit der Sie bezahlt haben.",
+  boughtBefore: "Was Sie einzeln gekauft haben, gehört weiterhin Ihnen: ",
+  boughtLink: "Ihre Käufe erneut abrufen",
+  boughtAfter: ".",
+
+  leftNotices: {
+    email: {
+      title: "Das sieht nicht nach einer E-Mail-Adresse aus",
+      body: "Prüfen Sie sie und versuchen Sie es erneut. Die Erinnerung geht an die Adresse, die Sie eingeben, also muss es eine sein, die Sie abrufen können.",
+    },
+    limited: {
+      title: "Gerade zu viele Erinnerungen angefordert",
+      body: "Damit dieses Formular nicht dazu benutzt wird, jemandes Posteingang zu füllen, nimmt es nur eine begrenzte Zahl pro Stunde an. Es wurde nichts gespeichert. Das Produkt ist weiterhin hier, wann immer Sie es möchten.",
+    },
+    closed: {
+      title: "Hierfür kann keine Erinnerung gesendet werden",
+      body: "Es ist möglicherweise ausverkauft oder nicht mehr im Verkauf. Es wurde nichts gespeichert.",
+    },
+    error: {
+      title: "Das konnten wir gerade nicht speichern",
+      body: "Es wurde nichts gespeichert. Versuchen Sie es gleich noch einmal.",
+    },
+  },
+  done: "Erledigt",
+  oneReminder: "Eine Erinnerung, in etwa einer Stunde",
+  willEmail: (store, title) =>
+    `${store} schickt Ihnen einmalig eine E-Mail mit dem Link zu ${title}. Wenn Sie es vorher kaufen, wird keine Erinnerung gesendet.`,
+  onlyEmail:
+    "Das ist die einzige E-Mail, die hierdurch gesendet wird. Sie werden in keine Liste aufgenommen, und sie enthält einen Link, der Erinnerungen von diesem Shop dauerhaft beendet.",
+  leftBefore: (title) => `Sie haben die Seite verlassen, bevor Sie ${title} bezahlt haben`,
+  notCharged: "Ihre Karte wurde nicht belastet. Wenn Sie es noch möchten, ist es nur einen Klick entfernt.",
+  notReady: "Noch nicht so weit?",
+  remindNote: (store) =>
+    `Hinterlassen Sie Ihre E-Mail-Adresse, und ${store} schickt Ihnen in etwa einer Stunde eine Erinnerung mit dem Link. Eine E-Mail. Sie werden in keine Liste aufgenommen.`,
+  remindMe: "Einmal erinnern",
+  addressUse: (store) =>
+    `Ihre Adresse wird für diese eine Erinnerung und den darin enthaltenen Link verwendet, der Erinnerungen von ${store} beendet, und für nichts anderes.`,
+
+  fromName: (store) => `${store} über Marktmorgen`,
+  membershipWith: (store) => `Ihre Mitgliedschaft bei ${store}`,
+  linkIntro: (store) => `Sie wollten Ihre Mitgliedschaft bei ${store} verwalten. Hier ist Ihr Zugang:`,
+  linkTiers:
+    "Öffnen Sie den Link, um Ihre Mitgliedschaft zu sehen. Dort können Sie zu einem anderen Tarif wechseln und sehen dabei den genauen Betrag, bevor etwas berechnet wird, oder sie kündigen, die Karte ändern, mit der sie bezahlt wird, oder Ihre Quittungen ansehen. Wenn Sie kündigen, läuft sie bis zum Ende des bereits bezahlten Zeitraums weiter, und es wird nichts mehr berechnet.",
+  linkNoTiers:
+    "Öffnen Sie den Link und drücken Sie die Schaltfläche. Stripe zeigt Ihnen dann Ihre Mitgliedschaft: Sie können sie kündigen, die Karte ändern, mit der sie bezahlt wird, oder Ihre Quittungen ansehen. Wenn Sie kündigen, läuft sie bis zum Ende des bereits bezahlten Zeitraums weiter, und es wird nichts mehr berechnet.",
+  linkWorks:
+    "Der Link funktioniert eine Stunde lang. Wenn Sie das nicht angefordert haben, ignorieren Sie diese E-Mail; es passiert nichts, solange der Link nicht verwendet wird.",
+  linkFooter: (store) =>
+    `Gesendet von Marktmorgen im Auftrag von ${store}. Die Mitgliedschaft wird von ${store} über das eigene Stripe-Konto berechnet.`,
+
+  switchedSubject: (title) => `Sie haben zu ${title} gewechselt`,
+  switchedNow: (store, title, from) => `Ihre Mitgliedschaft bei ${store} ist jetzt ${title}, anstelle von ${from}.`,
+  paidTrial: "Sie sind in Ihrem kostenlosen Testzeitraum, daher wurde nichts berechnet. Der neue Preis gilt ab dem Ende des Testzeitraums.",
+  paidCharged: (amount) => `Heute berechnet: ${amount}, der neue Preis abzüglich dessen, was von Ihrer letzten Zahlung übrig war.`,
+  paidCredit: (amount) =>
+    `Ein Guthaben von ${amount} für das, was von Ihrer letzten Zahlung übrig war, wird von Ihren nächsten Zahlungen abgezogen.`,
+  paidNothing: "Heute wurde nichts berechnet.",
+  fromNow: (price) => `Ab jetzt: ${price}.`,
+  switchedOpen:
+    "Was er umfasst, steht Ihnen jetzt offen. Ihre Quittungen finden Sie auf der Seite Ihrer Mitgliedschaft, über den Link auf der Seite des Shops.",
+  switchedFooter: (store) =>
+    `Berechnet von ${store} über das eigene Stripe-Konto. Fragen erreichen ${store}, wenn Sie auf diese E-Mail antworten.`,
+
+  failedSubject: (store) => `Ihre Zahlung an ${store} ist nicht durchgegangen`,
+  hi: "Hallo,",
+  failedFor: (amount, title) =>
+    `Die letzte Zahlung von ${amount} für ${title} ist nicht durchgegangen. Das passiert, wenn eine Karte abläuft, ersetzt wird oder von der Bank abgelehnt wird.`,
+  failedTo: (amount, store) =>
+    `Die letzte Zahlung von ${amount} an ${store} ist nicht durchgegangen. Das passiert, wenn eine Karte abläuft, ersetzt wird oder von der Bank abgelehnt wird.`,
+  payHere: "Bezahlen Sie sie hier, mit derselben oder einer neuen Karte:",
+  cardKept: "Die Karte, mit der Sie bezahlen, wird auch für Ihre nächsten Zahlungen verwendet, Sie müssen das also nur einmal tun.",
+  triedAgainPlan: (date) => `Wenn Sie nichts tun, wird am ${date} erneut versucht, die hinterlegte Karte zu belasten.`,
+  triedAgain: (date) =>
+    `Wenn Sie nichts tun, wird am ${date} erneut versucht, die hinterlegte Karte zu belasten, und Ihr Zugang bleibt bis dahin bestehen.`,
+  notTriedAgain:
+    "Es wird kein weiterer Versuch unternommen, die hinterlegte Karte zu belasten, daher bleibt diese Zahlung offen, bis sie über den Link oben bezahlt wird.",
+  receiptsPlan: (url) => `Um Ihre Quittungen zu sehen oder die Karte zu ändern: ${url}`,
+  cancelInstead: (url) => `Um stattdessen zu kündigen oder Ihre Quittungen zu sehen: ${url}`,
+};
+
+/** Italian elides "il" and "al" before the 8th and the 11th: "l'8 ottobre", "all'11 ottobre". */
+const elides = (date: string) => /^(8|11)\b/.test(date);
+const il = (date: string) => (elides(date) ? `l'${date}` : `il ${date}`);
+const al = (date: string) => (elides(date) ? `all'${date}` : `al ${date}`);
+
+const it: MembershipWords = {
+  yourMembership: "Il tuo abbonamento",
+  switchTitle: "Cambia il tuo abbonamento",
+  endedTitle: "Il tuo abbonamento è terminato",
+  nothingCharged: "Non è stato addebitato nulla",
+
+  manageNotices: {
+    email: {
+      title: "Non sembra un indirizzo email",
+      body: "Controllalo e riprova. Usa l'indirizzo con cui paghi: quello che hai inserito al momento dell'iscrizione.",
+    },
+    limited: {
+      title: "Troppe richieste per ora",
+      body: "Per evitare che questo modulo venga usato per intasare la casella di posta di qualcuno, accetta un numero limitato di richieste all'ora. Riprova tra un'ora.",
+    },
+    unavailable: {
+      title: "Questo negozio non può aprire abbonamenti in questo momento",
+      body: "I suoi pagamenti non sono collegati a Stripe in questo momento, quindi da questa pagina non c'è nessun abbonamento da aprire. Rispondi all'email di conferma del tuo ordine e arriverà al negozio.",
+    },
+    error: {
+      title: "Qualcosa è andato storto da parte nostra",
+      body: "Non è stato modificato nulla. Riprova tra un momento.",
+    },
+    expired: {
+      title: "Questo link è scaduto",
+      body: "Un link al tuo abbonamento funziona per un'ora. Chiedine uno nuovo qui sotto; ci vogliono pochi secondi.",
+    },
+    used: {
+      title: "Questo link è stato usato troppe volte",
+      body: "Chiedine uno nuovo qui sotto; ci vogliono pochi secondi.",
+    },
+    switched: {
+      title: "Il tuo abbonamento è stato cambiato",
+      body: "Ciò che include il nuovo piano è già accessibile, e una ricevuta sta arrivando nella tua casella di posta.",
+    },
+    declined: {
+      title: "La carta non è stata addebitata, quindi non è cambiato nulla",
+      body: "La tua banca ha rifiutato il pagamento o ha chiesto un passaggio che non potevamo mostrare qui. Aggiorna la carta con “Cambia carta o vedi le ricevute” qui sotto, poi riprova il cambio.",
+    },
+    stale: {
+      title: "Quel prezzo aveva più di 15 minuti",
+      body: "Non è stato modificato nulla. Scegli di nuovo il piano per vedere il prezzo attuale.",
+    },
+    busy: {
+      title: "Un cambio era già in corso",
+      body: "Aspetta un momento e controlla il tuo abbonamento qui sotto prima di riprovare.",
+    },
+    "cannot-switch": {
+      title: "Quel cambio non si può fare",
+      body: "Il piano potrebbe non essere più offerto, oppure l'abbonamento potrebbe essere annullato o in attesa di un pagamento. Non è stato modificato nulla.",
+    },
+  },
+  manageHead: "Gestisci o annulla il tuo abbonamento",
+  manageIntro: (store) =>
+    `Inserisci l'email con cui paghi ${store} e ti invieremo via email un link al tuo abbonamento. Nessun account e nessuna password: lo annulli in autonomia, direttamente sulla pagina di Stripe.`,
+  manageUnavailable: (store) =>
+    `${store} non può accettare pagamenti tramite Stripe in questo momento, quindi da qui non c'è nessun abbonamento da aprire. Rispondi all'email di conferma del tuo ordine e arriverà a ${store}.`,
+  payEmailLabel: "L'email con cui paghi",
+  emailMeLink: "Inviami un link al mio abbonamento",
+  linkNote: (store, hours) =>
+    `Se quell'indirizzo ha un abbonamento con ${store}, di solito il link arriva entro un minuto. Funziona per ${hours === 1 ? "un'ora" : `${hours} ore`}. Diciamo la stessa cosa in ogni caso, così nessuno può usare questa pagina per scoprire chi è membro.`,
+  checkInbox: "Controlla la tua casella di posta",
+  sentBody: (store) =>
+    `Se quell'indirizzo ha un abbonamento con ${store}, il link è in arrivo. Lo invia ${store} tramite Marktmorgen e di solito arriva entro un minuto. Se non c'è, guarda nella cartella spam.`,
+  tryOther:
+    "Non è arrivato nulla? Forse paghi con un altro indirizzo: quello che hai inserito al momento dell'iscrizione. Prova con quello qui sotto.",
+
+  yourMemberships: "I tuoi abbonamenti",
+  every: (interval, count) =>
+    count === 1
+      ? { day: "al giorno", week: "a settimana", month: "al mese", year: "all'anno" }[interval]
+      : `ogni ${count} ${{ day: "giorni", week: "settimane", month: "mesi", year: "anni" }[interval]}`,
+  ends: (date) => `Termina ${il(date)}`,
+  cancel: "Annulla",
+  switchPlan: "Cambia piano",
+  upgrade: " · piano superiore",
+  downgrade: " · piano inferiore",
+  exactFirst: "Vedi l'importo esatto prima di qualsiasi addebito.",
+  cannotList:
+    "Stripe non è riuscito a elencare i tuoi abbonamenti in questo momento. Il pulsante qui sotto li apre tutti sulla pagina di Stripe, dove puoi annullarli.",
+  changeCard: "Cambia carta o vedi le ricevute",
+  openMembership: "Apri il mio abbonamento",
+  cancelNote: "Se annulli, l'abbonamento resta attivo fino alla fine del periodo che hai già pagato, e non ti viene addebitato altro.",
+
+  switchProblems: {
+    expired: { title: "Questo link è scaduto", body: "Un link al tuo abbonamento funziona per un'ora. Chiedine uno nuovo dalla pagina del tuo abbonamento." },
+    gone: {
+      title: "Questo abbonamento non può cambiare piano",
+      body: "Potrebbe essere annullato, impostato per terminare, in attesa di un pagamento o non più tuo con questo link. Non è stato modificato nulla.",
+    },
+    tier: {
+      title: "Quel piano non è più offerto",
+      body: "Torna alla pagina del tuo abbonamento per vedere i piani a cui puoi passare ora. Non è stato modificato nulla.",
+    },
+    error: { title: "Stripe non è riuscito a calcolare il prezzo in questo momento", body: "Non è stato modificato nulla. Riprova tra un momento." },
+  },
+  switchTo: (title) => `Passa a ${title}`,
+  nowLabel: "Ora",
+  afterLabel: "Dopo il cambio",
+  nothingNow: "Ora non viene addebitato nulla",
+  chargedToday: (amount) => `Addebito di oggi: ${amount}`,
+  offNext: (amount) => `Da scalare dai tuoi prossimi pagamenti: ${amount}`,
+  nothingToday: "Oggi non viene addebitato nulla",
+  switchTrialNote: "Sei nella prova gratuita. Il nuovo piano si apre ora, e il suo prezzo parte alla fine della prova.",
+  dueNote: "Il nuovo prezzo, meno ciò che restava del tuo ultimo pagamento, sulla carta con cui paghi. Il nuovo piano si apre appena è pagato.",
+  creditNote: "Ciò che restava del tuo ultimo pagamento diventa un credito presso il negozio, scalato dai tuoi prossimi pagamenti. Il nuovo piano si apre ora.",
+  opensNow: "Il nuovo piano si apre ora.",
+  switchAndPay: (amount) => `Cambia e paga ${amount}`,
+  switchNow: "Cambia ora",
+  holdsNote: (store, title) =>
+    `Questo prezzo è valido per 15 minuti. Addebitato da ${store} sul proprio conto Stripe. Tutto ciò che include solo ${title} si chiude quando cambi.`,
+  backToMembership: "Torna al tuo abbonamento",
+
+  offerNotices: {
+    expired: "Questa offerta è terminata. Puoi comunque tornare al prezzo normale qui sotto.",
+    unavailable: "Questa offerta non può più essere usata per questo abbonamento. Puoi comunque tornare al prezzo normale qui sotto, se è offerto.",
+    refused: "Non è stato possibile applicare l'offerta in questo momento. Puoi tornare al prezzo normale qui sotto, o rispondere all'email con cui è arrivata.",
+    limited: "Troppi tentativi per ora. Aspetta qualche minuto e premi di nuovo il pulsante.",
+  },
+  membershipLabel: "Abbonamento",
+  endedBody: (title) =>
+    `Il tuo abbonamento a ${title} non è più attivo, quindi ciò a cui ti dava accesso ora è chiuso. Rinnovalo e tutto si riapre subito.`,
+  endedGone: (store) => `Questo abbonamento non è più attivo, e ${store} non lo offre più.`,
+  comeBackOffer: "La tua offerta per tornare",
+  offerWords: (percent, months) =>
+    months === 1 ? `${percent}${S}% di sconto sul tuo primo pagamento` : `${percent}${S}% di sconto sui tuoi primi ${months} pagamenti`,
+  offerFor: (email, until) =>
+    `Per ${email}, fino ${al(until)}. Applicata sulla pagina di Stripe prima di pagare; questa volta senza prova gratuita.`,
+  comeBackWith: "Torna con questa offerta",
+  renewTitle: (title) => `Rinnova ${title}`,
+  renewPrice: (price) => `Rinnova · ${price}`,
+  renew: "Rinnova",
+  notTaking: (store) =>
+    `${store} non accetta nuovi membri per questo al momento. Rispondi all'email di conferma del tuo ordine e arriverà a ${store}.`,
+  see: (title) => `Vedi ${title}`,
+  failedBefore:
+    "È terminato perché un pagamento non è andato a buon fine, e non perché hai annullato? Aggiornare la carta può riattivarlo senza rinnovarlo: ",
+  failedLink: "gestisci il tuo abbonamento",
+  failedAfter: " con l'email con cui hai pagato.",
+  boughtBefore: "Ciò che hai acquistato a parte resta tuo: ",
+  boughtLink: "recupera i tuoi acquisti",
+  boughtAfter: ".",
+
+  leftNotices: {
+    email: {
+      title: "Non sembra un indirizzo email",
+      body: "Controllalo e riprova. Il promemoria va all'indirizzo che inserisci, quindi deve essere uno che puoi aprire.",
+    },
+    limited: {
+      title: "Troppi promemoria richiesti in questo momento",
+      body: "Per evitare che questo modulo venga usato per riempire la casella di posta di qualcuno, ne accetta un numero limitato all'ora. Non è stato salvato nulla. Il prodotto è sempre qui, quando lo vuoi.",
+    },
+    closed: {
+      title: "Non si può inviare un promemoria per questo",
+      body: "Potrebbe essere esaurito o non più in vendita. Non è stato salvato nulla.",
+    },
+    error: {
+      title: "Non siamo riusciti a salvarlo in questo momento",
+      body: "Non è stato salvato nulla. Riprova tra un momento.",
+    },
+  },
+  done: "Fatto",
+  oneReminder: "Un promemoria, tra circa un'ora",
+  willEmail: (store, title) =>
+    `${store} ti scriverà una sola volta, con il link a ${title}. Se lo acquisti prima, non viene inviato nessun promemoria.`,
+  onlyEmail:
+    "È l'unica email che viene inviata. Non ti aggiunge a nessuna lista, e contiene un link che interrompe per sempre i promemoria di questo negozio.",
+  leftBefore: (title) => `Hai lasciato la pagina prima di pagare ${title}`,
+  notCharged: "La tua carta non è stata addebitata. Se lo vuoi ancora, è a un clic di distanza.",
+  notReady: "Non hai ancora deciso?",
+  remindNote: (store) =>
+    `Lascia la tua email e ${store} ti invia un promemoria con il link, tra circa un'ora. Una sola email. Non ti aggiunge a nessuna lista.`,
+  remindMe: "Ricordamelo una volta",
+  addressUse: (store) =>
+    `Il tuo indirizzo viene usato per questo unico promemoria e per il link che contiene per interrompere i promemoria di ${store}, e per nient'altro.`,
+
+  fromName: (store) => `${store} tramite Marktmorgen`,
+  membershipWith: (store) => `Il tuo abbonamento con ${store}`,
+  linkIntro: (store) => `Hai chiesto di gestire il tuo abbonamento con ${store}. Ecco il link per accedere:`,
+  linkTiers:
+    "Apri il link per vedere il tuo abbonamento. Da lì puoi passare a un altro piano, vedendo l'importo esatto prima di qualsiasi addebito, oppure annullarlo, cambiare la carta con cui lo paghi o vedere le tue ricevute. Se annulli, resta attivo fino alla fine del periodo che hai già pagato, e non ti viene addebitato altro.",
+  linkNoTiers:
+    "Apri il link e premi il pulsante. Stripe ti mostra allora il tuo abbonamento: puoi annullarlo, cambiare la carta con cui lo paghi o vedere le tue ricevute. Se annulli, resta attivo fino alla fine del periodo che hai già pagato, e non ti viene addebitato altro.",
+  linkWorks: "Il link funziona per un'ora. Se non l'hai chiesto tu, ignora questa email; non succede nulla se il link non viene usato.",
+  linkFooter: (store) =>
+    `Inviata da Marktmorgen per conto di ${store}. L'abbonamento è addebitato da ${store} sul proprio conto Stripe.`,
+
+  switchedSubject: (title) => `Il tuo abbonamento è passato a ${title}`,
+  switchedNow: (store, title, from) => `Il tuo abbonamento con ${store} ora è ${title}, al posto di ${from}.`,
+  paidTrial: "Sei nella prova gratuita, quindi non è stato addebitato nulla. Il nuovo prezzo parte alla fine della prova.",
+  paidCharged: (amount) => `Addebitato oggi: ${amount}, il nuovo prezzo meno ciò che restava del tuo ultimo pagamento.`,
+  paidCredit: (amount) =>
+    `Un credito di ${amount}, per ciò che restava del tuo ultimo pagamento, viene scalato dai tuoi prossimi pagamenti.`,
+  paidNothing: "Oggi non è stato addebitato nulla.",
+  fromNow: (price) => `D'ora in poi: ${price}.`,
+  switchedOpen:
+    "Ciò che include è già accessibile. Le tue ricevute sono nella pagina del tuo abbonamento, dal link sulla pagina del negozio.",
+  switchedFooter: (store) =>
+    `Addebitato da ${store} sul proprio conto Stripe. Per domande, rispondi a questa email e arriveranno a ${store}.`,
+
+  failedSubject: (store) => `Il tuo pagamento a ${store} non è andato a buon fine`,
+  hi: "Ciao,",
+  failedFor: (amount, title) =>
+    `L'ultimo pagamento di ${amount} per ${title} non è andato a buon fine. Succede quando una carta scade, viene sostituita o viene rifiutata dalla banca.`,
+  failedTo: (amount, store) =>
+    `L'ultimo pagamento di ${amount} a ${store} non è andato a buon fine. Succede quando una carta scade, viene sostituita o viene rifiutata dalla banca.`,
+  payHere: "Pagalo qui, con la stessa carta o con una nuova:",
+  cardKept: "La carta con cui paghi viene usata anche per i tuoi prossimi pagamenti, quindi basta farlo una volta.",
+  triedAgainPlan: (date) => `Se non fai nulla, l'addebito sulla carta registrata verrà ritentato ${il(date)}.`,
+  triedAgain: (date) =>
+    `Se non fai nulla, l'addebito sulla carta registrata verrà ritentato ${il(date)}, e nel frattempo il tuo accesso resta attivo.`,
+  notTriedAgain:
+    "L'addebito sulla carta registrata non verrà ritentato, quindi questo pagamento resta in sospeso finché non viene saldato dal link qui sopra.",
+  receiptsPlan: (url) => `Per vedere le tue ricevute o cambiare la carta: ${url}`,
+  cancelInstead: (url) => `Se preferisci annullare, o vedere le tue ricevute: ${url}`,
+};
+
+const nl: MembershipWords = {
+  yourMembership: "Je lidmaatschap",
+  switchTitle: "Je lidmaatschap wijzigen",
+  endedTitle: "Je lidmaatschap is beëindigd",
+  nothingCharged: "Er is niets afgeschreven",
+
+  manageNotices: {
+    email: {
+      title: "Dat lijkt geen e-mailadres",
+      body: "Controleer het en probeer het opnieuw. Gebruik het adres waarmee je betaalt: het adres dat je invulde toen je lid werd.",
+    },
+    limited: {
+      title: "Even te veel aanvragen",
+      body: "Om te voorkomen dat dit formulier wordt gebruikt om iemands inbox te overspoelen, neemt het maar een beperkt aantal aanvragen per uur aan. Probeer het over een uur opnieuw.",
+    },
+    unavailable: {
+      title: "Deze winkel kan nu geen lidmaatschappen openen",
+      body: "De betalingen zijn nu niet aan Stripe gekoppeld, dus er is via deze pagina geen lidmaatschap te openen. Beantwoord de bevestigingsmail van je bestelling, dan komt je bericht bij de winkel aan.",
+    },
+    error: {
+      title: "Er ging bij ons iets mis",
+      body: "Er is niets gewijzigd. Probeer het zo opnieuw.",
+    },
+    expired: {
+      title: "Deze link is verlopen",
+      body: "Een link naar je lidmaatschap werkt een uur. Vraag hieronder een nieuwe aan; dat duurt een paar seconden.",
+    },
+    used: {
+      title: "Deze link is te vaak gebruikt",
+      body: "Vraag hieronder een nieuwe aan; dat duurt een paar seconden.",
+    },
+    switched: {
+      title: "Je lidmaatschap is gewijzigd",
+      body: "Wat het nieuwe abonnement omvat, staat nu voor je open, en er is een ontvangstbewijs onderweg naar je inbox.",
+    },
+    declined: {
+      title: "De kaart is niet belast, dus er is niets veranderd",
+      body: "Je bank heeft de betaling geweigerd of vroeg om een stap die we hier niet konden tonen. Werk je kaart bij via “Kaart wijzigen of ontvangstbewijzen bekijken” hieronder en probeer de overstap daarna opnieuw.",
+    },
+    stale: {
+      title: "Die prijs was meer dan 15 minuten oud",
+      body: "Er is niets gewijzigd. Kies het abonnement opnieuw om de prijs van dit moment te zien.",
+    },
+    busy: {
+      title: "Er liep al een overstap",
+      body: "Wacht even en bekijk hieronder je lidmaatschap voordat je het opnieuw probeert.",
+    },
+    "cannot-switch": {
+      title: "Die overstap kan niet",
+      body: "Het abonnement wordt misschien niet meer aangeboden, of het lidmaatschap is misschien opgezegd of wacht op een betaling. Er is niets gewijzigd.",
+    },
+  },
+  manageHead: "Je lidmaatschap beheren of opzeggen",
+  manageIntro: (store) =>
+    `Vul het e-mailadres in waarmee je bij ${store} betaalt, dan mailen we je een link naar je lidmaatschap. Geen account en geen wachtwoord: je zegt het zelf op, op de pagina van Stripe zelf.`,
+  manageUnavailable: (store) =>
+    `${store} kan nu geen betalingen via Stripe ontvangen, dus er is hier geen lidmaatschap te openen. Beantwoord de bevestigingsmail van je bestelling, dan komt je bericht bij ${store} aan.`,
+  payEmailLabel: "Het e-mailadres waarmee je betaalt",
+  emailMeLink: "Mail me een link naar mijn lidmaatschap",
+  linkNote: (store, hours) =>
+    `Als dat adres een lidmaatschap bij ${store} heeft, komt er meestal binnen een minuut een link aan. Die werkt ${hours === 1 ? "een uur" : `${hours} uur`}. We zeggen hetzelfde, of dat nu zo is of niet, zodat niemand via deze pagina kan uitzoeken wie lid is.`,
+  checkInbox: "Kijk in je inbox",
+  sentBody: (store) =>
+    `Als dat adres een lidmaatschap bij ${store} heeft, is de link onderweg. Hij komt van ${store} via Marktmorgen en komt meestal binnen een minuut aan. Staat hij er niet, kijk dan in je spam.`,
+  tryOther: "Niets ontvangen? Misschien betaal je met een ander adres: het adres dat je invulde toen je lid werd. Probeer dat hieronder.",
+
+  yourMemberships: "Je lidmaatschappen",
+  every: (interval, count) =>
+    count === 1
+      ? { day: "per dag", week: "per week", month: "per maand", year: "per jaar" }[interval]
+      : `elke ${count} ${{ day: "dagen", week: "weken", month: "maanden", year: "jaar" }[interval]}`,
+  ends: (date) => `Eindigt op ${date}`,
+  cancel: "Opzeggen",
+  switchPlan: "Abonnement wijzigen",
+  upgrade: " · hoger abonnement",
+  downgrade: " · lager abonnement",
+  exactFirst: "Je ziet het precieze bedrag voordat er iets wordt afgeschreven.",
+  cannotList:
+    "Stripe kon je lidmaatschappen nu niet tonen. De knop hieronder opent ze allemaal op de pagina van Stripe zelf, waar je kunt opzeggen.",
+  changeCard: "Kaart wijzigen of ontvangstbewijzen bekijken",
+  openMembership: "Mijn lidmaatschap openen",
+  cancelNote: "Als je opzegt, loopt het lidmaatschap door tot het einde van de periode die je al hebt betaald, en wordt er niets meer afgeschreven.",
+
+  switchProblems: {
+    expired: { title: "Deze link is verlopen", body: "Een link naar je lidmaatschap werkt een uur. Vraag een nieuwe aan op de pagina van je lidmaatschap." },
+    gone: {
+      title: "Dit lidmaatschap kan niet overstappen",
+      body: "Het is misschien opgezegd, ingesteld om te stoppen, wacht op een betaling, of is via deze link niet meer van jou. Er is niets gewijzigd.",
+    },
+    tier: {
+      title: "Dat abonnement wordt niet meer aangeboden",
+      body: "Ga terug naar de pagina van je lidmaatschap om te zien naar welke abonnementen je nu kunt overstappen. Er is niets gewijzigd.",
+    },
+    error: { title: "Stripe kon de prijs nu niet berekenen", body: "Er is niets gewijzigd. Probeer het zo opnieuw." },
+  },
+  switchTo: (title) => `Overstappen naar ${title}`,
+  nowLabel: "Nu",
+  afterLabel: "Na de overstap",
+  nothingNow: "Er wordt nu niets afgeschreven",
+  chargedToday: (amount) => `Vandaag afgeschreven: ${amount}`,
+  offNext: (amount) => `Gaat af van je volgende betalingen: ${amount}`,
+  nothingToday: "Er wordt vandaag niets afgeschreven",
+  switchTrialNote: "Je zit in je gratis proefperiode. Het nieuwe abonnement gaat nu open, en de prijs ervan gaat in wanneer de proefperiode eindigt.",
+  dueNote: "De nieuwe prijs, min wat er over was van je laatste betaling, van de kaart waarmee je betaalt. Het nieuwe abonnement gaat open zodra het betaald is.",
+  creditNote: "Wat er over was van je laatste betaling, wordt tegoed bij de winkel dat van je volgende betalingen afgaat. Het nieuwe abonnement gaat nu open.",
+  opensNow: "Het nieuwe abonnement gaat nu open.",
+  switchAndPay: (amount) => `Overstappen en ${amount} betalen`,
+  switchNow: "Nu overstappen",
+  holdsNote: (store, title) =>
+    `Deze prijs geldt 15 minuten. Afgeschreven door ${store} via de eigen Stripe-rekening. Alles wat alleen ${title} omvat, sluit wanneer je overstapt.`,
+  backToMembership: "Terug naar je lidmaatschap",
+
+  offerNotices: {
+    expired: "Dit aanbod is afgelopen. Je kunt hieronder nog steeds terugkomen tegen de gewone prijs.",
+    unavailable: "Dit aanbod kan niet meer voor dit lidmaatschap worden gebruikt. Je kunt hieronder nog steeds terugkomen tegen de gewone prijs, als die wordt aangeboden.",
+    refused: "Het aanbod kon nu niet worden toegepast. Je kunt hieronder terugkomen tegen de gewone prijs, of de e-mail beantwoorden waarin het kwam.",
+    limited: "Even te veel pogingen. Wacht een paar minuten en druk dan opnieuw op de knop.",
+  },
+  membershipLabel: "Lidmaatschap",
+  endedBody: (title) =>
+    `Je lidmaatschap voor ${title} loopt niet meer, dus waar het je toegang toe gaf, is nu gesloten. Verleng het en alles gaat meteen weer open.`,
+  endedGone: (store) => `Dit lidmaatschap loopt niet meer, en ${store} biedt het niet meer aan.`,
+  comeBackOffer: "Je aanbod om terug te komen",
+  offerWords: (percent, months) =>
+    months === 1 ? `${percent}${S}% korting op je eerste betaling` : `${percent}${S}% korting op je eerste ${months} betalingen`,
+  offerFor: (email, until) =>
+    `Voor ${email}, tot ${until}. Wordt op de pagina van Stripe toegepast voordat je betaalt; deze keer zonder gratis proefperiode.`,
+  comeBackWith: "Terugkomen met dit aanbod",
+  renewTitle: (title) => `${title} verlengen`,
+  renewPrice: (price) => `Verlengen · ${price}`,
+  renew: "Verlengen",
+  notTaking: (store) =>
+    `${store} neemt hiervoor op dit moment geen nieuwe leden aan. Beantwoord de bevestigingsmail van je bestelling, dan komt je bericht bij ${store} aan.`,
+  see: (title) => `${title} bekijken`,
+  failedBefore: "Is het gestopt omdat een betaling mislukte, en niet omdat je opzegde? Je kaart bijwerken kan het terugbrengen zonder te verlengen: ",
+  failedLink: "beheer je lidmaatschap",
+  failedAfter: " met het e-mailadres waarmee je betaalde.",
+  boughtBefore: "Wat je los hebt gekocht, blijft van jou: ",
+  boughtLink: "haal je aankopen opnieuw op",
+  boughtAfter: ".",
+
+  leftNotices: {
+    email: {
+      title: "Dat lijkt geen e-mailadres",
+      body: "Controleer het en probeer het opnieuw. De herinnering gaat naar het adres dat je invult, dus het moet een adres zijn dat je kunt openen.",
+    },
+    limited: {
+      title: "Net te veel herinneringen aangevraagd",
+      body: "Om te voorkomen dat dit formulier wordt gebruikt om iemands inbox te vullen, neemt het er maar een beperkt aantal per uur aan. Er is niets bewaard. Het product staat hier nog wanneer je het wilt.",
+    },
+    closed: {
+      title: "Hiervoor kan geen herinnering worden gestuurd",
+      body: "Het is misschien uitverkocht of uit de verkoop gehaald. Er is niets bewaard.",
+    },
+    error: {
+      title: "We konden dat nu niet bewaren",
+      body: "Er is niets bewaard. Probeer het zo opnieuw.",
+    },
+  },
+  done: "Klaar",
+  oneReminder: "Eén herinnering, over ongeveer een uur",
+  willEmail: (store, title) =>
+    `${store} mailt je één keer, met de link naar ${title}. Koop je het voor die tijd, dan wordt er geen herinnering gestuurd.`,
+  onlyEmail:
+    "Dat is de enige e-mail die dit verstuurt. Je wordt aan geen enkele lijst toegevoegd, en er staat een link in waarmee je herinneringen van deze winkel voorgoed stopt.",
+  leftBefore: (title) => `Je ging weg voordat je ${title} had betaald`,
+  notCharged: "Je kaart is niet belast. Wil je het nog steeds, dan is het één klik verwijderd.",
+  notReady: "Nog niet zover?",
+  remindNote: (store) =>
+    `Laat je e-mailadres achter en ${store} stuurt je over ongeveer een uur één herinnering met de link. Eén e-mail. Je wordt aan geen enkele lijst toegevoegd.`,
+  remindMe: "Herinner me één keer",
+  addressUse: (store) =>
+    `Je adres wordt gebruikt voor deze ene herinnering en voor de link erin waarmee je herinneringen van ${store} stopt, en voor niets anders.`,
+
+  fromName: (store) => `${store} via Marktmorgen`,
+  membershipWith: (store) => `Je lidmaatschap bij ${store}`,
+  linkIntro: (store) => `Je vroeg om je lidmaatschap bij ${store} te beheren. Hier is de link om binnen te komen:`,
+  linkTiers:
+    "Open de link om je lidmaatschap te zien. Daar kun je overstappen naar een ander abonnement, waarbij je het precieze bedrag ziet voordat er iets wordt afgeschreven, of het opzeggen, de kaart wijzigen waarmee je betaalt, of je ontvangstbewijzen bekijken. Als je opzegt, loopt het door tot het einde van de periode die je al hebt betaald, en wordt er niets meer afgeschreven.",
+  linkNoTiers:
+    "Open de link en druk op de knop. Stripe toont je dan je lidmaatschap: je kunt het opzeggen, de kaart wijzigen waarmee je betaalt, of je ontvangstbewijzen bekijken. Als je opzegt, loopt het door tot het einde van de periode die je al hebt betaald, en wordt er niets meer afgeschreven.",
+  linkWorks: "De link werkt een uur. Heb je hier niet om gevraagd, negeer deze e-mail dan; er gebeurt niets zolang de link niet wordt gebruikt.",
+  linkFooter: (store) =>
+    `Verstuurd door Marktmorgen namens ${store}. Het lidmaatschap wordt door ${store} afgeschreven via de eigen Stripe-rekening.`,
+
+  switchedSubject: (title) => `Je bent overgestapt naar ${title}`,
+  switchedNow: (store, title, from) => `Je lidmaatschap bij ${store} is nu ${title}, in plaats van ${from}.`,
+  paidTrial: "Je zit in je gratis proefperiode, dus er is niets afgeschreven. De nieuwe prijs gaat in wanneer de proefperiode eindigt.",
+  paidCharged: (amount) => `Vandaag afgeschreven: ${amount}, de nieuwe prijs min wat er over was van je laatste betaling.`,
+  paidCredit: (amount) => `Een tegoed van ${amount}, voor wat er over was van je laatste betaling, gaat af van je volgende betalingen.`,
+  paidNothing: "Er is vandaag niets afgeschreven.",
+  fromNow: (price) => `Vanaf nu: ${price}.`,
+  switchedOpen:
+    "Wat het omvat, staat nu voor je open. Je ontvangstbewijzen staan op de pagina van je lidmaatschap, via de link op de pagina van de winkel.",
+  switchedFooter: (store) =>
+    `Afgeschreven door ${store} via de eigen Stripe-rekening. Vragen komen bij ${store} terecht als je op deze e-mail antwoordt.`,
+
+  failedSubject: (store) => `Je betaling aan ${store} is niet gelukt`,
+  hi: "Hallo,",
+  failedFor: (amount, title) =>
+    `De laatste betaling van ${amount} voor ${title} is niet gelukt. Dat gebeurt als een kaart verloopt, wordt vervangen of door de bank wordt geweigerd.`,
+  failedTo: (amount, store) =>
+    `De laatste betaling van ${amount} aan ${store} is niet gelukt. Dat gebeurt als een kaart verloopt, wordt vervangen of door de bank wordt geweigerd.`,
+  payHere: "Betaal hem hier, met dezelfde kaart of een nieuwe:",
+  cardKept: "De kaart waarmee je betaalt, wordt ook voor je volgende betalingen gebruikt, dus dit hoeft maar één keer.",
+  triedAgainPlan: (date) => `Als je niets doet, wordt op ${date} opnieuw geprobeerd de opgeslagen kaart te belasten.`,
+  triedAgain: (date) =>
+    `Als je niets doet, wordt op ${date} opnieuw geprobeerd de opgeslagen kaart te belasten, en blijft je toegang tot die tijd open.`,
+  notTriedAgain:
+    "Er wordt niet opnieuw geprobeerd de opgeslagen kaart te belasten, dus deze betaling blijft openstaan tot ze via de link hierboven is betaald.",
+  receiptsPlan: (url) => `Om je ontvangstbewijzen te bekijken of de kaart te wijzigen: ${url}`,
+  cancelInstead: (url) => `Om in plaats daarvan op te zeggen, of je ontvangstbewijzen te bekijken: ${url}`,
+};
+
+const pt: MembershipWords = {
+  yourMembership: "A sua subscrição",
+  switchTitle: "Mudar a sua subscrição",
+  endedTitle: "A sua subscrição terminou",
+  nothingCharged: "Nada foi cobrado",
+
+  manageNotices: {
+    email: {
+      title: "Isso não parece um endereço de email",
+      body: "Verifique-o e tente novamente. Utilize o endereço com que paga: o que introduziu quando aderiu.",
+    },
+    limited: {
+      title: "Demasiados pedidos por agora",
+      body: "Para evitar que este formulário seja usado para inundar a caixa de entrada de alguém, aceita um número limitado de pedidos por hora. Tente novamente dentro de uma hora.",
+    },
+    unavailable: {
+      title: "Esta loja não pode abrir subscrições neste momento",
+      body: "Os pagamentos da loja não estão ligados à Stripe neste momento, por isso não há nenhuma subscrição para abrir a partir desta página. Responda ao email de confirmação da sua encomenda e a mensagem chega à loja.",
+    },
+    error: {
+      title: "Algo correu mal do nosso lado",
+      body: "Nada foi alterado. Tente novamente daqui a pouco.",
+    },
+    expired: {
+      title: "Esta ligação expirou",
+      body: "Uma ligação para a sua subscrição funciona durante uma hora. Peça uma nova abaixo; demora poucos segundos.",
+    },
+    used: {
+      title: "Esta ligação foi usada demasiadas vezes",
+      body: "Peça uma nova abaixo; demora poucos segundos.",
+    },
+    switched: {
+      title: "A sua subscrição foi alterada",
+      body: "O que o novo plano inclui já está disponível para si, e um recibo está a caminho da sua caixa de entrada.",
+    },
+    declined: {
+      title: "O cartão não foi cobrado, por isso nada mudou",
+      body: "O seu banco recusou o pagamento ou pediu um passo que não podíamos mostrar aqui. Atualize o seu cartão em “Alterar cartão ou ver recibos”, abaixo, e depois tente novamente a mudança.",
+    },
+    stale: {
+      title: "Esse preço tinha mais de 15 minutos",
+      body: "Nada foi alterado. Escolha novamente o plano para ver o preço atual.",
+    },
+    busy: {
+      title: "Já estava em curso uma mudança",
+      body: "Aguarde um momento e veja a sua subscrição abaixo antes de tentar novamente.",
+    },
+    "cannot-switch": {
+      title: "Essa mudança não pode ser feita",
+      body: "O plano pode já não estar disponível, ou a subscrição pode estar cancelada ou à espera de um pagamento. Nada foi alterado.",
+    },
+  },
+  manageHead: "Gerir ou cancelar a sua subscrição",
+  manageIntro: (store) =>
+    `Introduza o email com que paga a ${store} e enviamos-lhe por email uma ligação para a sua subscrição. Sem conta e sem palavra-passe: cancela-a por si, na própria página da Stripe.`,
+  manageUnavailable: (store) =>
+    `${store} não pode receber pagamentos através da Stripe neste momento, por isso não há nenhuma subscrição para abrir aqui. Responda ao email de confirmação da sua encomenda e a mensagem chega a ${store}.`,
+  payEmailLabel: "O email com que paga",
+  emailMeLink: "Enviar-me uma ligação para a minha subscrição",
+  linkNote: (store, hours) =>
+    `Se esse endereço tiver uma subscrição com ${store}, a ligação costuma chegar em menos de um minuto. Funciona durante ${hours === 1 ? "uma hora" : `${hours} horas`}. Dizemos o mesmo quer tenha quer não, para que ninguém possa usar esta página para descobrir quem é membro.`,
+  checkInbox: "Verifique a sua caixa de entrada",
+  sentBody: (store) =>
+    `Se esse endereço tiver uma subscrição com ${store}, a ligação está a caminho. É enviada por ${store} através da Marktmorgen e costuma chegar em menos de um minuto. Se não estiver lá, veja na pasta de spam.`,
+  tryOther: "Não chegou nada? Talvez pague com outro endereço: o que introduziu quando aderiu. Experimente esse abaixo.",
+
+  yourMemberships: "As suas subscrições",
+  every: (interval, count) =>
+    count === 1
+      ? { day: "por dia", week: "por semana", month: "por mês", year: "por ano" }[interval]
+      : `a cada ${count} ${{ day: "dias", week: "semanas", month: "meses", year: "anos" }[interval]}`,
+  ends: (date) => `Termina a ${date}`,
+  cancel: "Cancelar",
+  switchPlan: "Mudar de plano",
+  upgrade: " · plano superior",
+  downgrade: " · plano inferior",
+  exactFirst: "Vê o valor exato antes de qualquer cobrança.",
+  cannotList:
+    "A Stripe não conseguiu listar as suas subscrições neste momento. O botão abaixo abre-as todas na própria página da Stripe, onde pode cancelar.",
+  changeCard: "Alterar cartão ou ver recibos",
+  openMembership: "Abrir a minha subscrição",
+  cancelNote: "Se cancelar, a subscrição mantém-se ativa até ao fim do período que já pagou, e não é cobrado mais nada.",
+
+  switchProblems: {
+    expired: { title: "Esta ligação expirou", body: "Uma ligação para a sua subscrição funciona durante uma hora. Peça uma nova na página da sua subscrição." },
+    gone: {
+      title: "Esta subscrição não pode mudar de plano",
+      body: "Pode estar cancelada, programada para terminar, à espera de um pagamento, ou já não ser sua nesta ligação. Nada foi alterado.",
+    },
+    tier: {
+      title: "Esse plano já não está disponível",
+      body: "Volte à página da sua subscrição para ver os planos para os quais pode mudar agora. Nada foi alterado.",
+    },
+    error: { title: "A Stripe não conseguiu calcular o preço neste momento", body: "Nada foi alterado. Tente novamente daqui a pouco." },
+  },
+  switchTo: (title) => `Mudar para ${title}`,
+  nowLabel: "Agora",
+  afterLabel: "Depois da mudança",
+  nothingNow: "Não é cobrado nada agora",
+  chargedToday: (amount) => `Cobrado hoje: ${amount}`,
+  offNext: (amount) => `Descontado nos seus próximos pagamentos: ${amount}`,
+  nothingToday: "Não é cobrado nada hoje",
+  switchTrialNote: "Está no seu período de teste grátis. O novo plano abre agora, e o seu preço começa quando o teste terminar.",
+  dueNote: "O novo preço, menos o que restava do seu último pagamento, no cartão com que paga. O novo plano abre assim que for pago.",
+  creditNote: "O que restava do seu último pagamento passa a ser um crédito na loja, descontado nos seus próximos pagamentos. O novo plano abre agora.",
+  opensNow: "O novo plano abre agora.",
+  switchAndPay: (amount) => `Mudar e pagar ${amount}`,
+  switchNow: "Mudar agora",
+  holdsNote: (store, title) =>
+    `Este preço mantém-se durante 15 minutos. Cobrado por ${store} na própria conta Stripe. Tudo o que só ${title} inclui fecha quando mudar.`,
+  backToMembership: "Voltar à sua subscrição",
+
+  offerNotices: {
+    expired: "Esta oferta terminou. Ainda pode voltar ao preço habitual, abaixo.",
+    unavailable: "Esta oferta já não pode ser usada nesta subscrição. Ainda pode voltar ao preço habitual, abaixo, se estiver disponível.",
+    refused: "Não foi possível aplicar a oferta neste momento. Pode voltar ao preço habitual, abaixo, ou responder ao email em que ela chegou.",
+    limited: "Demasiadas tentativas por agora. Aguarde alguns minutos e carregue novamente no botão.",
+  },
+  membershipLabel: "Subscrição",
+  endedBody: (title) =>
+    `A sua subscrição de ${title} já não está ativa, por isso aquilo a que lhe dava acesso está agora fechado. Renove-a e tudo volta a abrir de imediato.`,
+  endedGone: (store) => `Esta subscrição já não está ativa, e ${store} já não a disponibiliza.`,
+  comeBackOffer: "A sua oferta de regresso",
+  offerWords: (percent, months) =>
+    months === 1 ? `${percent}${S}% de desconto no seu primeiro pagamento` : `${percent}${S}% de desconto nos seus primeiros ${months} pagamentos`,
+  offerFor: (email, until) =>
+    `Para ${email}, até ${until}. Aplicada na página da Stripe antes de pagar; desta vez sem teste grátis.`,
+  comeBackWith: "Voltar com esta oferta",
+  renewTitle: (title) => `Renovar ${title}`,
+  renewPrice: (price) => `Renovar · ${price}`,
+  renew: "Renovar",
+  notTaking: (store) =>
+    `${store} não está a aceitar novos membros para isto neste momento. Responda ao email de confirmação da sua encomenda e a mensagem chega a ${store}.`,
+  see: (title) => `Ver ${title}`,
+  failedBefore: "Terminou porque um pagamento falhou, e não porque cancelou? Atualizar o cartão pode reativá-la sem renovar: ",
+  failedLink: "gira a sua subscrição",
+  failedAfter: " com o email com que pagou.",
+  boughtBefore: "O que comprou à parte continua a ser seu: ",
+  boughtLink: "volte a obter as suas compras",
+  boughtAfter: ".",
+
+  leftNotices: {
+    email: {
+      title: "Isso não parece um endereço de email",
+      body: "Verifique-o e tente novamente. O lembrete vai para o endereço que introduzir, por isso tem de ser um que consiga abrir.",
+    },
+    limited: {
+      title: "Demasiados lembretes pedidos neste momento",
+      body: "Para evitar que este formulário seja usado para encher a caixa de entrada de alguém, aceita um número limitado por hora. Nada foi guardado. O produto continua aqui sempre que o quiser.",
+    },
+    closed: {
+      title: "Não é possível enviar um lembrete para isto",
+      body: "Pode ter esgotado ou ter sido retirado de venda. Nada foi guardado.",
+    },
+    error: {
+      title: "Não conseguimos guardar isso neste momento",
+      body: "Nada foi guardado. Tente novamente daqui a pouco.",
+    },
+  },
+  done: "Feito",
+  oneReminder: "Um lembrete, dentro de cerca de uma hora",
+  willEmail: (store, title) =>
+    `${store} vai enviar-lhe um único email, com a ligação para ${title}. Se o comprar antes disso, não é enviado nenhum lembrete.`,
+  onlyEmail:
+    "É o único email que isto envia. Não o adiciona a nenhuma lista, e tem uma ligação que acaba de vez com os lembretes desta loja.",
+  leftBefore: (title) => `Saiu antes de pagar ${title}`,
+  notCharged: "O seu cartão não foi cobrado. Se ainda o quiser, está à distância de um clique.",
+  notReady: "Ainda não se decidiu?",
+  remindNote: (store) =>
+    `Deixe o seu email e ${store} envia-lhe um lembrete com a ligação, dentro de cerca de uma hora. Um único email. Não o adiciona a nenhuma lista.`,
+  remindMe: "Lembrar-me uma vez",
+  addressUse: (store) =>
+    `O seu endereço é usado para este único lembrete e para a ligação nele que acaba com os lembretes de ${store}, e para mais nada.`,
+
+  fromName: (store) => `${store} via Marktmorgen`,
+  membershipWith: (store) => `A sua subscrição com ${store}`,
+  linkIntro: (store) => `Pediu para gerir a sua subscrição com ${store}. Eis a forma de entrar:`,
+  linkTiers:
+    "Abra a ligação para ver a sua subscrição. A partir daí, pode mudar para outro plano, vendo o valor exato antes de qualquer cobrança, ou cancelá-la, alterar o cartão com que é paga ou ver os seus recibos. Se cancelar, mantém-se ativa até ao fim do período que já pagou, e não é cobrado mais nada.",
+  linkNoTiers:
+    "Abra a ligação e carregue no botão. A Stripe mostra-lhe então a sua subscrição: pode cancelá-la, alterar o cartão com que é paga ou ver os seus recibos. Se cancelar, mantém-se ativa até ao fim do período que já pagou, e não é cobrado mais nada.",
+  linkWorks: "A ligação funciona durante uma hora. Se não pediu isto, ignore este email; nada acontece a menos que a ligação seja usada.",
+  linkFooter: (store) =>
+    `Enviado pela Marktmorgen em nome de ${store}. A subscrição é cobrada por ${store} na própria conta Stripe.`,
+
+  switchedSubject: (title) => `Mudou para ${title}`,
+  switchedNow: (store, title, from) => `A sua subscrição com ${store} é agora ${title}, em vez de ${from}.`,
+  paidTrial: "Está no seu período de teste grátis, por isso nada foi cobrado. O novo preço começa quando o teste terminar.",
+  paidCharged: (amount) => `Cobrado hoje: ${amount}, o novo preço menos o que restava do seu último pagamento.`,
+  paidCredit: (amount) => `Um crédito de ${amount}, pelo que restava do seu último pagamento, é descontado nos seus próximos pagamentos.`,
+  paidNothing: "Nada foi cobrado hoje.",
+  fromNow: (price) => `A partir de agora: ${price}.`,
+  switchedOpen:
+    "O que inclui já está disponível para si. Os seus recibos estão na página da sua subscrição, a partir da ligação na página da loja.",
+  switchedFooter: (store) =>
+    `Cobrado por ${store} na própria conta Stripe. As perguntas chegam a ${store} se responder a este email.`,
+
+  failedSubject: (store) => `O seu pagamento a ${store} não foi concluído`,
+  hi: "Olá,",
+  failedFor: (amount, title) =>
+    `O último pagamento de ${amount} por ${title} não foi concluído. Isto acontece quando um cartão expira, é substituído ou é recusado pelo banco.`,
+  failedTo: (amount, store) =>
+    `O último pagamento de ${amount} a ${store} não foi concluído. Isto acontece quando um cartão expira, é substituído ou é recusado pelo banco.`,
+  payHere: "Pague-o aqui, com o mesmo cartão ou com um novo:",
+  cardKept: "O cartão com que pagar é usado também nos seus próximos pagamentos, por isso só tem de fazer isto uma vez.",
+  triedAgainPlan: (date) => `Se não fizer nada, a cobrança no cartão registado será tentada novamente a ${date}.`,
+  triedAgain: (date) =>
+    `Se não fizer nada, a cobrança no cartão registado será tentada novamente a ${date}, e o seu acesso mantém-se entretanto.`,
+  notTriedAgain:
+    "A cobrança no cartão registado não será tentada novamente, por isso este pagamento fica por pagar até ser pago a partir da ligação acima.",
+  receiptsPlan: (url) => `Para ver os seus recibos ou alterar o cartão: ${url}`,
+  cancelInstead: (url) => `Para cancelar, em alternativa, ou ver os seus recibos: ${url}`,
+};
+
+export const MEMBERSHIP_WORDS: Record<LanguageCode, MembershipWords> = { en, es, fr, de, it, nl, pt };
+
+/** A store's words for its members, in its language; English for anything else. */
+export function membershipWords(language: unknown): MembershipWords {
+  return MEMBERSHIP_WORDS[parseLanguage(language)];
+}

@@ -6,64 +6,23 @@ import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { MANAGE_LINK_SECONDS, type Membership, canManage, membershipsFor } from "@/lib/membership-manage";
 import { formatMoney } from "@/lib/money";
+import { speech } from "@/lib/buyer-words";
+import { membershipWords } from "@/lib/buyer-words/membership";
 import { choicesFor, liveTiers } from "@/lib/tier-switch";
-
-export const metadata: Metadata = {
-  title: "Your membership — Marktmorgen",
-  robots: { index: false, follow: false },
-};
 
 type Params = {
   params: Promise<{ handle: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const NOTICES: Record<string, { title: string; body: string }> = {
-  email: {
-    title: "That does not look like an email address",
-    body: "Check it and try again. Use the address you pay with: the one you typed when you joined.",
-  },
-  limited: {
-    title: "Too many requests for now",
-    body: "To keep this form from being used to flood somebody's inbox, it takes a limited number of requests an hour. Try again in an hour.",
-  },
-  unavailable: {
-    title: "This store cannot open memberships right now",
-    body: "Its payments are not connected to Stripe right now, so there is no membership to open from this page. Reply to your order confirmation email and it reaches the store.",
-  },
-  error: {
-    title: "Something went wrong on our side",
-    body: "Nothing was changed. Try again in a moment.",
-  },
-  expired: {
-    title: "This link has expired",
-    body: "A link to your membership works for one hour. Ask for a new one below; it takes a few seconds.",
-  },
-  used: {
-    title: "This link has been used too many times",
-    body: "Ask for a new one below; it takes a few seconds.",
-  },
-  switched: {
-    title: "Your membership was switched",
-    body: "What the new plan includes is open to you now, and a receipt is on its way to your inbox.",
-  },
-  declined: {
-    title: "The card was not charged, so nothing changed",
-    body: "Your bank declined the payment or asked for a step we could not show here. Update your card with \u201cChange card or see receipts\u201d below, then try the switch again.",
-  },
-  stale: {
-    title: "That price was more than 15 minutes old",
-    body: "Nothing was changed. Pick the plan again to see the price as it stands now.",
-  },
-  busy: {
-    title: "A switch was already under way",
-    body: "Wait a moment and look at your membership below before trying again.",
-  },
-  "cannot-switch": {
-    title: "That switch cannot be made",
-    body: "The plan may no longer be offered, or the membership may be canceled or waiting on a payment. Nothing was changed.",
-  },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const decoded = decodeURIComponent((await params).handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)) : null;
+  return {
+    title: `${membershipWords(store?.language).yourMembership} — Marktmorgen`,
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * Where a member manages or cancels a membership, on their own.
@@ -90,27 +49,27 @@ export default async function ManagePage({ params, searchParams }: Params) {
   // The plans each membership can switch to (lib/tier-switch.ts).
   const tiers = memberships?.length ? await liveTiers(store).catch(() => []) : [];
   const available = canManage(store);
-  const notice = token && !live ? NOTICES.expired : NOTICES[status] ?? null;
+  const say = speech(store);
+  const { w } = say;
+  const m = membershipWords(store.language);
+  const notice = token && !live ? m.manageNotices.expired : m.manageNotices[status] ?? null;
   const hours = Math.round(MANAGE_LINK_SECONDS / 3600);
   // Out loud, the way a member thinks about what they pay: "$29 a month".
-  const every = (m: Membership) => {
-    const unit = m.interval === "year" ? "year" : m.interval === "week" ? "week" : m.interval === "day" ? "day" : "month";
-    return m.intervalCount === 1 ? `a ${unit}` : `every ${m.intervalCount} ${unit}s`;
-  };
-  const endDate = (at: number) =>
-    new Date(at * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const every = (one: Membership) =>
+    m.every(one.interval === "year" ? "year" : one.interval === "week" ? "week" : one.interval === "day" ? "day" : "month", one.intervalCount);
+  const endDate = (at: number) => say.date(at * 1000);
 
   const form = (
     <form action="/api/store/manage" method="post" className="mt-7 space-y-3">
       <input type="hidden" name="handle" value={store.handle} />
       <div aria-hidden="true" className="hidden">
         <label>
-          Leave this empty
+          {w.leaveEmpty}
           <input type="text" name="website" tabIndex={-1} autoComplete="off" />
         </label>
       </div>
       <label htmlFor="manage-email" className="st-label">
-        The email you pay with
+        {m.payEmailLabel}
       </label>
       <input
         id="manage-email"
@@ -119,20 +78,21 @@ export default async function ManagePage({ params, searchParams }: Params) {
         required
         maxLength={254}
         autoComplete="email"
-        placeholder="you@example.com"
+        placeholder={w.emailPlaceholder}
         className="st-field"
       />
       <button type="submit" className="btn st-btn btn-block">
-        Email me a link to my membership
+        {m.emailMeLink}
       </button>
       <p className="st-muted text-sm">
-        {`If that address has a membership with ${store.name}, a link to it usually arrives within a minute. It works for ${hours === 1 ? "one hour" : `${hours} hours`}. We say the same thing whether or not it does, so nobody can use this page to find out who is a member.`}
+        {m.linkNote(store.name, hours)}
       </p>
     </form>
   );
 
   return (
     <div
+      lang={say.lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
@@ -159,55 +119,55 @@ export default async function ManagePage({ params, searchParams }: Params) {
                 </div>
               ) : null}
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">
-                {memberships.length > 1 ? "Your memberships" : "Your membership"}
+                {memberships.length > 1 ? m.yourMemberships : m.yourMembership}
               </h1>
 
               {/* Each membership with its own way out. Cancel goes straight to
                   Stripe's own cancellation page for that one membership. */}
               {memberships.length ? (
                 <ul className="mt-6 space-y-3">
-                  {memberships.map((m) => (
-                    <li key={m.id} className="st-row">
+                  {memberships.map((one) => (
+                    <li key={one.id} className="st-row">
                       <div className="min-w-0">
-                        <p className="font-bold" style={{ color: "var(--st-text)" }}>{m.title}</p>
+                        <p className="font-bold" style={{ color: "var(--st-text)" }}>{one.title}</p>
                         <p className="st-muted text-sm">
-                          {m.amount ? `${formatMoney(m.amount, m.currency)} ${every(m)}` : null}
-                          {m.endsAt ? `${m.amount ? " · " : ""}Ends ${endDate(m.endsAt)}` : null}
+                          {one.amount ? `${formatMoney(one.amount, one.currency, say.lang.locale)} ${every(one)}` : null}
+                          {one.endsAt ? `${one.amount ? " · " : ""}${m.ends(endDate(one.endsAt))}` : null}
                         </p>
                       </div>
-                      {m.endsAt === null ? (
+                      {one.endsAt === null ? (
                         <form action="/api/store/manage/cancel" method="post">
                           <input type="hidden" name="handle" value={store.handle} />
                           <input type="hidden" name="token" value={token} />
-                          <input type="hidden" name="subscription" value={m.id} />
+                          <input type="hidden" name="subscription" value={one.id} />
                           <button type="submit" className="btn btn-secondary btn-sm">
-                            Cancel
+                            {m.cancel}
                           </button>
                         </form>
                       ) : null}
                       {(() => {
-                        const choices = choicesFor(store, m, tiers);
+                        const choices = choicesFor(store, one, tiers);
                         if (!choices.length) return null;
                         return (
                           <details className="mt-3 w-full basis-full">
                             <summary className="cursor-pointer text-sm font-semibold" style={{ color: "var(--st-text)" }}>
-                              Switch plan
+                              {m.switchPlan}
                             </summary>
                             <ul className="mt-2 space-y-2">
                               {choices.map((c) => (
                                 <li key={c.id}>
                                   <Link
                                     prefetch={false}
-                                    href={`/@${store.handle}/manage/switch?token=${token}&sub=${m.id}&to=${c.id}`}
+                                    href={`/@${store.handle}/manage/switch?token=${token}&sub=${one.id}&to=${c.id}`}
                                     className="st-row text-sm"
                                   >
                                     <span className="basis-full font-bold" style={{ color: "var(--st-text)" }}>{c.title}</span>
-                                    <span className="st-muted -mt-2 basis-full">{`${c.words}${c.way === "up" ? " · upgrade" : c.way === "down" ? " · downgrade" : ""}`}</span>
+                                    <span className="st-muted -mt-2 basis-full">{`${c.words}${c.way === "up" ? m.upgrade : c.way === "down" ? m.downgrade : ""}`}</span>
                                   </Link>
                                 </li>
                               ))}
                             </ul>
-                            <p className="st-muted mt-2 text-xs">You see the exact amount before anything is charged.</p>
+                            <p className="st-muted mt-2 text-xs">{m.exactFirst}</p>
                           </details>
                         );
                       })()}
@@ -216,7 +176,7 @@ export default async function ManagePage({ params, searchParams }: Params) {
                 </ul>
               ) : (
                 <p className="st-muted mt-4 text-lg leading-relaxed">
-                  {`Stripe could not list your memberships just now. The button below opens them all on Stripe's own page, where you can cancel.`}
+                  {m.cannotList}
                 </p>
               )}
 
@@ -224,23 +184,23 @@ export default async function ManagePage({ params, searchParams }: Params) {
                 <input type="hidden" name="handle" value={store.handle} />
                 <input type="hidden" name="token" value={token} />
                 <button type="submit" className="btn st-btn btn-lg btn-block">
-                  {memberships.length ? "Change card or see receipts" : "Open my membership"}
+                  {memberships.length ? m.changeCard : m.openMembership}
                 </button>
               </form>
               <p className="st-muted mt-5 text-sm">
-                If you cancel, the membership stays on until the end of the period you have already paid for, and nothing more is charged.
+                {m.cancelNote}
               </p>
             </>
           ) : status === "sent" ? (
             <>
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">
-                Check your inbox
+                {m.checkInbox}
               </h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
-                {`If that address has a membership with ${store.name}, the link is on its way. It comes from ${store.name} via Marktmorgen and usually arrives within a minute. If it is not there, look in spam.`}
+                {m.sentBody(store.name)}
               </p>
               <p className="st-muted mt-4 text-sm">
-                Nothing arrived? You may pay with a different address: the one you typed when you joined. Try that one below.
+                {m.tryOther}
               </p>
               {available ? form : null}
             </>
@@ -253,12 +213,10 @@ export default async function ManagePage({ params, searchParams }: Params) {
                 </div>
               ) : null}
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">
-                Manage or cancel your membership
+                {m.manageHead}
               </h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
-                {available
-                  ? `Type the email you pay ${store.name} with, and we will email you a link to your membership. No account and no password: you cancel it yourself, on Stripe's own page.`
-                  : `${store.name} cannot take payments through Stripe right now, so there is no membership to open from here. Reply to your order confirmation email and it reaches them.`}
+                {available ? m.manageIntro(store.name) : m.manageUnavailable(store.name)}
               </p>
               {available ? form : null}
             </>
@@ -267,7 +225,7 @@ export default async function ManagePage({ params, searchParams }: Params) {
 
         <div className="mt-8 text-center">
           <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-            {`Back to ${store.name}`}
+            {w.backTo(store.name)}
           </Link>
         </div>
       </main>

@@ -97,8 +97,13 @@ test("the form is this site's own, and a robot that fills every field is told it
 
 test("the page asks nothing of somebody who only wants to go back", () => {
   const page = read("app/[handle]/left/page.tsx");
-  assert.ok(page.indexOf("Back to ${product.title}") < page.indexOf('action="/api/store/remind"'), "the way back comes first");
-  assert.match(page, /Nothing was charged/);
-  assert.match(page, /It does not add you to any list\./);
+  // The page's words are in the store's language (lib/buyer-words/membership.ts).
+  const words = read("lib/buyer-words/membership.ts");
+  const back = page.indexOf("w.backTo(product.title)");
+  assert.ok(back > 0 && back < page.indexOf('action="/api/store/remind"'), "the way back comes first");
+  assert.match(page, /m\.nothingCharged/);
+  assert.match(words, /nothingCharged: "Nothing was charged"/);
+  assert.match(page, /m\.remindNote\(store\.name\)/);
+  assert.match(words, /It does not add you to any list\./);
   assert.match(page, /robots: \{ index: false, follow: false \}/);
 });
