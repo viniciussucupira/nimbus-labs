@@ -3,7 +3,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { clientAddress, withinLimit } from "@/lib/request-guard";
-import { normaliseHandle, storeForHandle } from "@/lib/store";
+import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { imageUrl } from "@/lib/product-image";
@@ -12,18 +12,23 @@ import { doorFields, openDoor, readDoor } from "@/lib/review-proof";
 import { type Review, readReview, reviewId } from "@/lib/reviews";
 import { REVIEW_NOTICES, ReviewForm } from "@/components/review-form";
 import { productPath } from "@/components/store-product";
-
-export const metadata: Metadata = {
-  title: "Your review — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+import { speech } from "@/lib/buyer-words";
+import { givingWords } from "@/lib/buyer-words/giving";
 
 type Params = {
   params: Promise<{ handle: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const DATE = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)) : null;
+  return {
+    title: `${givingWords(store?.language).reviewMetaTitle} — Marktmorgen`,
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * Openings of this page with an order in it, from one connection to one
@@ -46,7 +51,7 @@ export default async function ReviewPage({ params, searchParams }: Params) {
   const { handle: raw } = await params;
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) notFound();
-  const store = await storeForHandle(normaliseHandle(decoded));
+  const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
 
   const query = await searchParams;
@@ -66,26 +71,27 @@ export default async function ReviewPage({ params, searchParams }: Params) {
     existing = new Map(rows);
   }
 
+  const said = speech(store);
+  const g = givingWords(store.language);
   const problem =
     opened.state === "ok"
       ? opened.proof.refunded
-        ? { title: "This order was refunded", body: `An order ${store.name} refunded in full cannot be reviewed. If you wrote a review from it, its stars no longer count.` }
+        ? { title: g.orderRefundedTitle, body: g.orderRefundedBody(store.name) }
         : null
       : opened.state === "expired"
         ? {
-            title: "This link has expired",
-            body: canRecover(store)
-              ? "Ask for your purchases again: a new link usually arrives by email within a minute, and you can review from there."
-              : `Reply to the order confirmation ${store.name} emailed you, and it reaches them.`,
+            title: g.linkExpired,
+            body: canRecover(store) ? g.expiredRecover : g.expiredReply(store.name),
           }
         : opened.state === "error"
-          ? { title: "Something went wrong on our side", body: "Nothing was changed. Try again in a moment." }
+          ? { title: g.wrongTitle, body: g.nothingChanged }
           : opened.state === "slow"
-            ? { title: "Too many tries", body: "This page was opened many times in a few minutes. Wait a little, then open your link again." }
-            : { title: "This order cannot be reviewed here", body: "Open the link from your email or from your list of purchases." };
+            ? { title: g.tooManyTries, body: g.tooManyBody }
+            : { title: g.cannotReviewTitle, body: g.cannotReviewBody };
 
   return (
     <div
+      lang={said.lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
@@ -109,18 +115,18 @@ export default async function ReviewPage({ params, searchParams }: Params) {
               <p className="st-muted mt-4 text-lg leading-relaxed">{problem?.body}</p>
               {opened.state === "expired" && canRecover(store) ? (
                 <Link href={`/@${store.handle}/orders`} className="btn st-btn btn-lg mt-7">
-                  Get my purchases
+                  {g.getMyPurchases}
                 </Link>
               ) : null}
             </>
           ) : (
             <>
-              <p className="st-price text-sm">Verified purchase</p>
+              <p className="st-price text-sm">{said.w.verifiedPurchase}</p>
               <h1 className="font-display mt-5 text-3xl font-semibold leading-tight tracking-[-0.02em]">
-                {opened.proof.products.length === 1 ? `Review ${opened.proof.products[0].title}` : "Review what you bought"}
+                {opened.proof.products.length === 1 ? g.reviewOne(opened.proof.products[0].title) : g.reviewAll}
               </h1>
               <p className="st-muted mt-3 leading-relaxed">
-                {`Bought from ${store.name}${opened.proof.paidAt ? ` on ${DATE.format(new Date(opened.proof.paidAt * 1000))}` : ""}. An honest review is what helps the next buyer, and ${store.name}.`}
+                {g.boughtFromOn(store.name, opened.proof.paidAt ? said.date(opened.proof.paidAt * 1000) : "")}
               </p>
               <div className="mt-8 space-y-10">
                 {opened.proof.products.map((product) => (
@@ -144,6 +150,7 @@ export default async function ReviewPage({ params, searchParams }: Params) {
                       storeName={store.name}
                       back="review"
                       notice={statusProduct === product.id && REVIEW_NOTICES[status] ? status : null}
+                      lang={said.lang.code}
                     />
                   </section>
                 ))}
@@ -154,7 +161,7 @@ export default async function ReviewPage({ params, searchParams }: Params) {
 
         <div className="mt-8 text-center">
           <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-            {`Back to ${store.name}`}
+            {said.w.backTo(store.name)}
           </Link>
         </div>
       </main>

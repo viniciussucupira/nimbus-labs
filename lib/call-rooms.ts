@@ -41,6 +41,7 @@
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { type CallSetup, isGroup, roomFor } from "@/lib/call-setup";
 import { callScope, givenLink, parseRecord, recordKey } from "@/lib/meet-records";
+import { bookingWords } from "@/lib/buyer-words/booking";
 
 export const VIDEO_ROOM_BASE = "https://meet.jit.si/";
 
@@ -158,18 +159,12 @@ export function roomKind(room: string | null): "room" | "meet" | "zoom" | "other
   return "other";
 }
 
-/** What a button that opens a room says: where it goes, when that is known. */
-export function roomLabel(room: string | null): string {
-  switch (roomKind(room)) {
-    case "room":
-      return "Join the video room";
-    case "meet":
-      return "Join on Google Meet";
-    case "zoom":
-      return "Join on Zoom";
-    default:
-      return "Join the call";
-  }
+/**
+ * What a button that opens a room says: where it goes, when that is known.
+ * In English unless given the store's language (lib/buyer-words/booking.ts).
+ */
+export function roomLabel(room: string | null, language: unknown = "en"): string {
+  return bookingWords(language).roomLabels[roomKind(room)];
 }
 
 /** The room of one booking (roomsFor, for one). */
@@ -179,7 +174,12 @@ export async function roomOf(callsId: string | null, ask: RoomAsk): Promise<stri
 
 /**
  * What a buyer or the creator is told next to a room made here, so nobody
- * is surprised at the door.
+ * is surprised at the door. In English, as the creator is told; a buyer is
+ * told in the store's language (videoRoomNote).
  */
-export const VIDEO_ROOM_NOTE =
-  "This is a private Jitsi Meet room (a free video service run by a third party). The first person to open it may be asked to sign in to Jitsi (with a Google account, for example) to start the meeting; everyone else joins without an account once it has started.";
+export const VIDEO_ROOM_NOTE = bookingWords("en").videoRoomNote;
+
+/** VIDEO_ROOM_NOTE in a store's language (lib/buyer-words/booking.ts), for its buyers. */
+export function videoRoomNote(language: unknown): string {
+  return bookingWords(language).videoRoomNote;
+}

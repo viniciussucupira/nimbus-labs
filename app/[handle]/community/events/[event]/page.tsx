@@ -7,23 +7,22 @@ import { lookStyle } from "@/lib/store-look";
 import { readListings } from "@/lib/catalog";
 import { communityVisitor } from "@/lib/community-page";
 import { ITEM_ID } from "@/lib/community-text";
-import { VIDEO_ROOM_NOTE, isVideoRoom, roomKind } from "@/lib/call-rooms";
+import { isVideoRoom, roomKind, videoRoomNote } from "@/lib/call-rooms";
 import { MEET_NAMES } from "@/lib/call-setup";
 import { eventMeetings } from "@/lib/event-meetings";
 import {
   eventClock,
-  eventTime,
-  eventWhenWords,
   isOver,
   joinWindow,
-  lengthWords,
   mayAttend,
   readEvent,
   rsvpNumbers,
   wayInFor,
 } from "@/lib/community-events";
-import { Carry, CommunityBar, NOTICES, PostText, ticketKind } from "@/components/community-parts";
-import { DateLeaf, placesWords } from "@/components/community-events";
+import { Carry, CommunityBar, PostText, communityNotices, ticketKind } from "@/components/community-parts";
+import { communityWords } from "@/lib/buyer-words/community";
+import { LANGUAGES } from "@/lib/store-language";
+import { DateLeaf, eventTimeIn, eventWhenIn, lengthIn, placesWords } from "@/components/community-events";
 import { DoorTimer, LocalTime, RoomEmbed } from "@/components/community-event-room";
 import { VideoEmbed } from "@/components/video-embed";
 
@@ -32,13 +31,15 @@ type Params = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export const metadata: Metadata = {
-  title: "Live event — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  return { title: `${communityWords(store?.language).liveEventTitle} — Marktmorgen`, robots: { index: false, follow: false } };
+}
 
-function clockAt(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(ms));
+function clockAt(ms: number, tz: string, locale = "en-US"): string {
+  return new Intl.DateTimeFormat(locale, { timeZone: tz, hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(ms));
 }
 
 /**
@@ -64,7 +65,9 @@ export default async function CommunityEventPage({ params, searchParams }: Param
   const event = await readEvent(id, eventId);
   if (!event) notFound();
   const query = await searchParams;
-  const notice = NOTICES[typeof query.n === "string" ? query.n : ""] ?? null;
+  const w = communityWords(store.language);
+  const locale = LANGUAGES[store.language].locale;
+  const notice = communityNotices(store.language)[typeof query.n === "string" ? query.n : ""] ?? null;
   const now = eventClock();
 
   const [allowed, numbers, meetings] = await Promise.all([
@@ -81,8 +84,8 @@ export default async function CommunityEventPage({ params, searchParams }: Param
   const door = joinWindow(event, now);
   const way = wayInFor(event, { owner: viewer.owner, mayAttend: allowed, going: mine }, now, meeting?.link || null);
   const place = event.where === "meet" && event.meet && meeting?.made && !meeting.gone ? event.meet : null;
-  const whereWords = place ? MEET_NAMES[place] : event.where === "link" ? "Online meeting" : "Private video room";
-  const openWords = roomKind(way) === "meet" ? "Join on Google Meet" : roomKind(way) === "zoom" ? "Join on Zoom" : "Open the meeting";
+  const whereWords = place ? MEET_NAMES[place] : event.where === "link" ? w.onlineMeeting : w.privateRoom;
+  const openWords = roomKind(way) === "meet" ? w.joinMeet : roomKind(way) === "zoom" ? w.joinZoom : w.openMeeting;
   // The host's own way into a Zoom meeting: a fresh start link asked of Zoom on the click, never kept (app/api/integrations/zoom/host).
   const hostLink =
     viewer.owner && place === "zoom" && meeting && roomKind(way) === "zoom"
@@ -90,45 +93,45 @@ export default async function CommunityEventPage({ params, searchParams }: Param
       : null;
   const full = event.cap > 0 && going >= event.cap;
   const room = way && isVideoRoom(way) ? way : null;
-  const doorsOpenAt = clockAt(door.opensAt, event.tz);
-  const forProducts = allowed ? [] : (await readListings(store, event.only.filter((p) => viewer.config.access.includes(p)))).map((p) => ({ id: p.id, title: p.title, kind: ticketKind(p, store.currency) }));
+  const doorsOpenAt = clockAt(door.opensAt, event.tz, locale);
+  const forProducts = allowed ? [] : (await readListings(store, event.only.filter((p) => viewer.config.access.includes(p)))).map((p) => ({ id: p.id, title: p.title, kind: ticketKind(store, p) }));
   const labelId = "event-title";
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <CommunityBar store={store} config={viewer.config} tab="events" signedIn />
       {!over && !event.cancelled ? <DoorTimer at={[door.opensAt, door.closesAt]} /> : null}
       <main id="content" className="mx-auto max-w-3xl px-4 pb-16 pt-6">
         <p>
-          <Link href={`${home}/events`} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">All events</Link>
+          <Link href={`${home}/events`} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">{w.allEvents}</Link>
         </p>
         {notice ? <p className={`cm-flash mt-4 ${notice.tone === "warn" ? "cm-flash-warn" : ""}`} role="status">{notice.text}</p> : null}
 
         <article aria-labelledby={labelId} className={`st-card mt-4 p-5 sm:p-7 ${event.cancelled ? "cm-hidden" : ""}`}>
           <div className="flex items-start gap-4">
-            <DateLeaf event={event} size="lg" />
+            <DateLeaf event={event} size="lg" locale={locale} />
             <div className="min-w-0 flex-1">
               <p className="flex flex-wrap gap-1.5">
                 <span className={`cm-badge ${!event.cancelled && !over && event.start <= now ? "cm-badge-creator ev-live" : event.cancelled ? "cm-badge-warn" : "cm-badge-accent"}`}>
-                  {eventWhenWords(event, now)}
+                  {eventWhenIn(store, event, now)}
                 </span>
-                {mine && !over && !event.cancelled ? <span className="cm-badge cm-badge-accent">You are going</span> : null}
+                {mine && !over && !event.cancelled ? <span className="cm-badge cm-badge-accent">{w.youAreGoing}</span> : null}
               </p>
               <h1 id={labelId} className="font-display mt-2 break-words text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">{event.title}</h1>
               <p className="mt-2 font-semibold">
-                <time dateTime={new Date(event.start).toISOString()}>{eventTime(event)}</time>
-                <span className="st-muted font-normal">{` · ${lengthWords(event.minutes)}`}</span>
+                <time dateTime={new Date(event.start).toISOString()}>{eventTimeIn(store, event)}</time>
+                <span className="st-muted font-normal">{` · ${lengthIn(store, event.minutes)}`}</span>
               </p>
-              <LocalTime ms={event.start} tz={event.tz} />
+              <LocalTime ms={event.start} tz={event.tz} locale={locale} template={w.yourTime("{time}")} />
               <p className="st-muted mt-1 text-sm">
-                {`${whereWords} · hosted by ${store.name}${event.cancelled ? "" : over ? ` · ${going} RSVP'd` : ` · ${placesWords(event, going)}`}`}
+                {`${whereWords} · ${w.hostedBy(store.name)}${event.cancelled ? "" : over ? ` · ${w.rsvpd(going)}` : ` · ${placesWords(store, event, going)}`}`}
               </p>
             </div>
           </div>
 
           {!allowed ? (
             <div className="st-note mt-6" role="status">
-              <p className="font-bold" style={{ color: "var(--st-text)" }}>This event is for members who have</p>
+              <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.forMembersWho}</p>
               {forProducts.length ? (
                 <ul className="mt-2 space-y-2">
                   {forProducts.map((p) => (
@@ -141,75 +144,79 @@ export default async function CommunityEventPage({ params, searchParams }: Param
                   ))}
                 </ul>
               ) : (
-                <p className="mt-1 text-sm">{`A product ${store.name} no longer offers here.`}</p>
+                <p className="mt-1 text-sm">{w.productGone(store.name)}</p>
               )}
-              <p className="mt-3 text-sm">{`If you bought one with another address, sign out on your You page and come back in with that one.`}</p>
+              <p className="mt-3 text-sm">{w.otherAddress}</p>
             </div>
           ) : event.cancelled ? (
-            <p className="cm-flash cm-flash-warn mt-6">{`${store.name} canceled this event, and everyone who had RSVP'd was emailed. There is nothing for you to do.`}</p>
+            <p className="cm-flash cm-flash-warn mt-6">{w.canceledByCreator(store.name)}</p>
           ) : !over ? (
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {viewer.owner ? (
-                <span className="cm-pill cm-pill-still">{`You host · ${going} going`}</span>
+                <span className="cm-pill cm-pill-still">{w.youHost(going)}</span>
               ) : mine ? (
                 <>
-                  <span className="cm-pill cm-pill-on" role="status">You are going</span>
+                  <span className="cm-pill cm-pill-on" role="status">{w.youAreGoing}</span>
                   <form action="/api/store/community/rsvp" method="post">
                     <Carry store={store} action="notgoing" from="feed" />
                     <input type="hidden" name="event" value={event.id} />
-                    <button type="submit" className="cm-pill">Cancel my RSVP</button>
+                    <button type="submit" className="cm-pill">{w.cancelRsvp}</button>
                   </form>
                 </>
               ) : full ? (
-                <span className="cm-pill cm-pill-still">Every place is taken</span>
+                <span className="cm-pill cm-pill-still">{w.everyPlaceTaken}</span>
               ) : (
                 <form action="/api/store/community/rsvp" method="post">
                   <Carry store={store} action="going" from="feed" />
                   <input type="hidden" name="event" value={event.id} />
-                  <button type="submit" className="btn st-btn">{event.cap ? "RSVP and take a place" : "RSVP"}</button>
+                  <button type="submit" className="btn st-btn">{event.cap ? w.rsvpTakePlace : w.rsvp}</button>
                 </form>
               )}
-              <a href={`/api/store/community/calendar?h=${encodeURIComponent(store.handle)}&e=${event.id}`} className="cm-pill">Add to calendar (.ics)</a>
+              <a href={`/api/store/community/calendar?h=${encodeURIComponent(store.handle)}&e=${event.id}`} className="cm-pill">{w.addToCalendar}</a>
             </div>
           ) : null}
 
           {allowed && !event.cancelled && !over ? (
             <section aria-labelledby="ev-join" className="ev-join mt-6">
-              <h2 id="ev-join" className="text-base font-bold">Join</h2>
+              <h2 id="ev-join" className="text-base font-bold">{w.join}</h2>
               {way ? (
                 <>
                   {viewer.owner && !door.open ? (
-                    <p className="st-muted mt-1 text-sm">{`Only you see this now. Members see the way in from ${doorsOpenAt}. Open the room a few minutes early.`}</p>
+                    <p className="st-muted mt-1 text-sm">{w.onlyYouSee(doorsOpenAt)}</p>
                   ) : (
-                    <p className="st-muted mt-1 text-sm">{event.start <= now ? "It is on now." : `The doors are open. It starts at ${clockAt(event.start, event.tz)}.`}</p>
+                    <p className="st-muted mt-1 text-sm">{event.start <= now ? w.onNowSentence : w.doorsOpenStarts(clockAt(event.start, event.tz, locale))}</p>
                   )}
                   {room ? (
                     <div className="mt-4">
-                      <RoomEmbed room={room} title={event.title} name={viewer.owner ? store.name : viewer.member?.n ?? ""} note={VIDEO_ROOM_NOTE} />
+                      <RoomEmbed
+                        room={room}
+                        title={event.title}
+                        name={viewer.owner ? store.name : viewer.member?.n ?? ""}
+                        note={videoRoomNote(store.language)}
+                        words={{ leave: w.leaveRoom, join: w.joinHere, newTab: w.openNewTab, title: w.roomTitle(event.title) }}
+                      />
                     </div>
                   ) : (
                     <>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         {hostLink ? (
-                          <a href={hostLink} target="_blank" rel="noopener noreferrer" className="btn st-btn">Start in Zoom as the host</a>
+                          <a href={hostLink} target="_blank" rel="noopener noreferrer" className="btn st-btn">{w.startZoomHost}</a>
                         ) : null}
                         <a href={way} target="_blank" rel="noopener noreferrer" className={hostLink ? "cm-pill" : "btn st-btn"}>{openWords}</a>
                         <span className="st-muted min-w-0 break-all text-sm">{way}</span>
                       </div>
                       {place && !viewer.owner ? (
                         <p className="st-muted mt-2 text-sm">
-                          {place === "google" ? `Google Meet may ask you to wait until ${store.name} lets you in.` : `Zoom lets you in once ${store.name} starts the meeting; if they use a waiting room, they admit you from there.`}
+                          {place === "google" ? w.meetWait(store.name) : w.zoomWait(store.name)}
                         </p>
                       ) : null}
                     </>
                   )}
                 </>
               ) : door.open && event.cap > 0 && !mine ? (
-                <p className="st-muted mt-1 text-sm">Places are limited: the way in shows to those who RSVP&apos;d.</p>
+                <p className="st-muted mt-1 text-sm">{w.placesLimited}</p>
               ) : (
-                <p className="st-muted mt-1 text-sm">
-                  {`The way in shows here from ${doorsOpenAt}, 15 minutes before the start, to ${event.cap ? "everyone with a place" : "every member who can come"}. Keep this page open and it appears by itself.`}
-                </p>
+                <p className="st-muted mt-1 text-sm">{event.cap ? w.wayInShowsPlaces(doorsOpenAt) : w.wayInShowsAll(doorsOpenAt)}</p>
               )}
             </section>
           ) : null}
@@ -218,13 +225,13 @@ export default async function CommunityEventPage({ params, searchParams }: Param
 
           {over && !event.cancelled ? (
             <section aria-labelledby="ev-replay" className="mt-6">
-              <h2 id="ev-replay" className="text-base font-bold">Replay</h2>
+              <h2 id="ev-replay" className="text-base font-bold">{w.replay}</h2>
               {event.replay && allowed ? (
                 <div className="mt-3">
                   <VideoEmbed video={event.replay} title={event.title} poster={null} />
                 </div>
               ) : (
-                <p className="st-muted mt-1 text-sm">{allowed ? `This event has ended. ${store.name} has not posted a replay yet.` : "The replay is for the members this event was for."}</p>
+                <p className="st-muted mt-1 text-sm">{allowed ? w.noReplay(store.name) : w.replayForMembers}</p>
               )}
             </section>
           ) : null}

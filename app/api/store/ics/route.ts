@@ -1,8 +1,9 @@
 import type { NextRequest } from "next/server";
 import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { readOrder } from "@/lib/store-checkout";
-import { callInvite } from "@/lib/calls";
-import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
+import { buyerNote, callInvite } from "@/lib/calls";
+import { roomOf } from "@/lib/call-rooms";
+import { bookingWords } from "@/lib/buyer-words/booking";
 import { linkUpdates } from "@/lib/meet-links";
 
 /**
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
     start: order.call.start,
     end: order.call.end,
   });
+  const words = bookingWords(store.language);
   const ics = callInvite({
     // A link replaced after a failure counts, like a move (lib/meet-links.ts).
     sequence: order.call.moves + (await linkUpdates(store.callsId, { session: sessionId, product: order.product.id, start: order.call.start })),
@@ -40,7 +42,9 @@ export async function GET(request: NextRequest) {
     title: order.product.title,
     storeName: store.name,
     room,
-    note: room ? `Join: ${room}${isVideoRoom(room) ? `\n\n${VIDEO_ROOM_NOTE}` : ""}` : `${store.name} will send the link to join.`,
+    // A buyer's file, in the store's language (lib/buyer-words/booking.ts).
+    note: buyerNote(words, store, room),
+    words,
   });
   return new Response(ics, {
     headers: {

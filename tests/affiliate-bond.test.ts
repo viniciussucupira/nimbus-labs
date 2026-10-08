@@ -217,6 +217,8 @@ test("nothing user-facing promises a cookie will last, which is the part nobody 
     "lib/affiliate-setting.ts",
     "components/affiliate-studio.tsx",
     "app/[handle]/affiliates/page.tsx",
+    // Where the affiliate page's words now live, in every language.
+    "lib/buyer-words/affiliates.ts",
     "app/privacy/page.tsx",
   ];
   for (const file of facing) {

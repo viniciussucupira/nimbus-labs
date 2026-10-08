@@ -1614,6 +1614,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "calendar", title: "Pay later", body: "Klarna, Afterpay or Clearpay, Affirm and the rest: the buyer pays in installments, and you are paid in full." },
           { icon: "bank", title: "Bank payments confirmed on the spot", body: "iDEAL, Bancontact, BLIK, Przelewy24 and others that confirm while the buyer waits." },
           { icon: "globe", title: "Prices written their way", body: "Every page, email, spreadsheet and number in your studio writes money in your store's currency: ¥2,700, not $27.00." },
+          { icon: "chat", title: "Your store in seven languages", body: "English, Spanish, French, German, Italian, Dutch or Portuguese (Portugal), chosen once in your studio. Every page your buyers read, Stripe's checkout and every email your store sends them speak it, with dates, numbers and prices written that language's way. Your studio stays in English." },
           { icon: "bolt", title: "Delivery that stays instant", body: "Ways to pay that are not confirmed while the buyer waits are left out, so nobody pays and then meets a page saying nothing was paid." },
         ],
       },
@@ -1622,6 +1623,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do",
         intro: "Said here so nobody signs up expecting it.",
         items: [
+          "One language per store. A page does not change language with each visitor's browser, and what you write yourself, such as product names, descriptions and lessons, is shown as you wrote it, not translated.",
           "Do not count on PayPal here. Stripe offers PayPal only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein, and its documentation, read on September 28, 2026, lists it as not supported for direct charges, which is how every sale here is charged. Stan lets creators connect a PayPal Business account, so on PayPal Stan is ahead.",
           "Slow bank debits and vouchers — ACH, SEPA and Bacs Direct Debit, bank transfers, Boleto, OXXO, Konbini, Multibanco — and stablecoins are left out on purpose, because they are not confirmed while the buyer waits.",
           "One-click offers after paying are shown only to buyers who paid by card, Apple Pay or Google Pay.",

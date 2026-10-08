@@ -38,6 +38,8 @@ import { ASK_DUE_KEY, type AskEntry, dueAt, readAskMember } from "@/lib/review-a
 import { mintReviewLink, provePurchase } from "@/lib/review-proof";
 import { readReview, reviewId } from "@/lib/reviews";
 import type { Store } from "@/lib/store";
+import { speech } from "@/lib/buyer-words";
+import { givingWords } from "@/lib/buyer-words/giving";
 
 /** Orders looked at in one run of the job. */
 export const MAX_ASKS_PER_RUN = 50;
@@ -54,8 +56,6 @@ const sentKey = (reference: string) => `nl:rev:ask:sent:${reference}`;
 const offKey = (statsId: string, email: string) => `nl:rev:off:${statsId}:${sha(`nimbus-review-off:${normaliseEmail(email)}`).slice(0, 32)}`;
 const stopKey = (token: string) => `nl:rev:stop:${token}`;
 
-const DATE = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
-
 async function stopLink(store: Store, email: string): Promise<string> {
   const token = randomBytes(20).toString("hex");
   const grant = { s: store.statsId, e: normaliseEmail(email), h: store.handle, n: store.mail?.fromName || store.name };
@@ -64,15 +64,17 @@ async function stopLink(store: Store, email: string): Promise<string> {
 }
 
 /** Who a stop link belongs to, without acting on it. */
-export async function readReviewStop(token: string): Promise<{ email: string; storeName: string; stopped: boolean } | null> {
+export async function readReviewStop(token: string): Promise<{ email: string; storeName: string; stopped: boolean; handle: string } | null> {
   if (!REVIEW_STOP.test(token) || !isRedisConfigured()) return null;
   const [raw] = await redisPipeline([["GET", stopKey(token)]]);
   if (typeof raw !== "string" || !raw) return null;
   try {
-    const grant = JSON.parse(raw) as { s?: unknown; e?: unknown; n?: unknown };
+    const grant = JSON.parse(raw) as { s?: unknown; e?: unknown; n?: unknown; h?: unknown };
     if (typeof grant.s !== "string" || typeof grant.e !== "string" || !grant.s || !grant.e) return null;
     const [off] = await redisPipeline([["EXISTS", offKey(grant.s, grant.e)]]);
-    return { email: grant.e, storeName: typeof grant.n === "string" ? grant.n : "", stopped: Number(off) === 1 };
+    // The store's handle, so the page can speak the store's language.
+    const handle = typeof grant.h === "string" ? grant.h : "";
+    return { email: grant.e, storeName: typeof grant.n === "string" ? grant.n : "", stopped: Number(off) === 1, handle };
   } catch {
     return null;
   }
@@ -93,21 +95,22 @@ export async function stopReviewRequests(token: string): Promise<boolean> {
   }
 }
 
-/** The words of the email, for one order and the products in it not reviewed yet. */
+/** The words of the email, for one order and the products in it not reviewed yet, in the store's language. */
 export function requestText(store: Store, titles: string[], paidAt: number, link: string): { subject: string; body: string } {
   const name = store.mail?.fromName || store.name;
-  const what = titles.length === 1 ? titles[0] : `${titles.slice(0, -1).join(", ")} and ${titles[titles.length - 1]}`;
+  const g = givingWords(store.language);
+  const what = titles.length === 1 ? titles[0] : g.listAnd(titles.slice(0, -1).join(", "), titles[titles.length - 1]);
   return {
-    subject: `How is ${titles[0]}?`.slice(0, 150),
+    subject: g.askSubject(titles[0]).slice(0, 150),
     body: [
-      `You bought ${what} from ${name} on ${DATE.format(new Date(paidAt * 1000))}. If you have a minute, ${name} would like to know what you think, good or bad.`,
+      g.askLead(what, name, speech(store).date(paidAt * 1000)),
       "",
-      "Give it one to five stars and a few words here:",
+      g.askHow,
       link,
       "",
-      `Your review appears on ${name}'s page marked as a verified purchase, under the name you choose. Your email address is never shown. The same link lets you change or delete it for 60 days.`,
+      g.askShows(name),
       "",
-      "This is the only email about reviewing this order.",
+      g.askOnly,
     ].join("\n"),
   };
 }
@@ -207,12 +210,17 @@ export async function sendReviewRequests(
     const stop = await stopLink(store, email);
     const fromName = store.mail?.fromName || store.name;
     const words = requestText(store, open.map((p) => p.title), entry.paidAt, `${storeBase(store)}/review?ask=${token}`);
+    const g = givingWords(store.language);
+    const page = `${SITE_URL}/unsubscribe?v=${stop}`;
     const r = render(store, words.subject, words.body, null, {
-      page: `${SITE_URL}/unsubscribe?v=${stop}`,
+      page,
       oneClick: `${SITE_URL}/api/mail/unsubscribe?v=${stop}`,
-      why: `You are getting this because you bought from ${fromName}.`,
-      label: "Stop review requests",
-      after: `from ${fromName} in one click.`,
+      why: g.askWhy(fromName),
+      label: g.askStopLabel,
+      after: g.askStopAfter(fromName),
+      line: g.askStopLine(page),
+      sent: g.sentWith,
+      lang: speech(store).lang.locale,
     });
     const group = groups.get(entry.handle) ?? { store, ready: [] };
     group.ready.push({

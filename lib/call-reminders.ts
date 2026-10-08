@@ -27,6 +27,8 @@ import { listingFinder } from "@/lib/catalog";
 import { readableTime, seatsAt, zoneName, isTimeZone } from "@/lib/call-setup";
 import { VIDEO_ROOM_NOTE, isVideoRoom, roomKind, roomOf } from "@/lib/call-rooms";
 import { REMINDER_QUEUE, parseMember } from "@/lib/call-records";
+import { LANGUAGES, parseLanguage } from "@/lib/store-language";
+import { bookingWords } from "@/lib/buyer-words/booking";
 import {
   type PaidCall,
   canMove,
@@ -65,23 +67,25 @@ async function remindBuyer(store: Store, product: Listing, call: PaidCall, mark:
   const tz = isTimeZone(call.buyerTz) ? call.buyerTz : setup.tz;
   const room = await roomOf(store.callsId, { product: product.id, setup, session: call.session, start: call.start, end: call.end });
   const minutes = Math.round((call.end - call.start) / 60_000);
+  // In the store's language (lib/buyer-words/booking.ts), times in its locale.
+  const b = bookingWords(store.language);
+  const locale = LANGUAGES[parseLanguage(store.language)].locale;
+  const isDay = mark === "24";
   return sendEmail({
     from: storeSender(store),
     to: call.email,
-    subject: `${when(mark)}: ${product.title} with ${store.name}`,
+    subject: b.reminderSubject(isDay, product.title, store.name),
     text: [
-      `A reminder: ${product.title} with ${store.name} starts ${mark === "24" ? "in a day" : "in an hour"}.`,
+      b.reminderHead(isDay, product.title, store.name),
       "",
-      `${readableTime(call.start, tz)} (${zoneName(call.start, tz)}), ${minutes} minutes`,
+      b.whenLength(`${readableTime(call.start, tz, locale)} (${zoneName(call.start, tz, locale)})`, minutes),
       "",
-      room
-        ? `Join here at that time: ${room}`
-        : `${store.name} will send you the link to join. If it has not reached you, reply to this email.`,
-      ...(isVideoRoom(room) ? [VIDEO_ROOM_NOTE] : []),
+      room ? b.joinAtThatTime(room) : b.willSendOrReply(store.name),
+      ...(isVideoRoom(room) ? [b.videoRoomNote] : []),
       "",
-      `Add it to your calendar: ${icsLink(origin, store, call.session)}`,
-      ...(canMove(setup, call.start, call.moves) ? [`To move it to another time: ${moveLink(origin, store, product.id, call.session)}`] : []),
-      `To cancel, reply to this email; the reply goes to ${store.name}.`,
+      b.addToCalendar(icsLink(origin, store, call.session)),
+      ...(canMove(setup, call.start, call.moves) ? [b.moveToAnother(moveLink(origin, store, product.id, call.session))] : []),
+      b.toCancel(store.name),
     ].join("\n"),
     replyTo: store.email,
   });

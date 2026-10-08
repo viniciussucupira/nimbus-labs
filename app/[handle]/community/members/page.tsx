@@ -10,16 +10,20 @@ import { mayMessage, pairOf } from "@/lib/community-dm";
 import { DIRECTORY_PAGE } from "@/lib/community-text";
 import { CommunityBar, CreatorBadge, Face, LevelBadge } from "@/components/community-parts";
 import { levelOf, pointsOf } from "@/lib/community-points";
+import { communityWords } from "@/lib/buyer-words/community";
+import { LANGUAGES } from "@/lib/store-language";
 
 type Params = { params: Promise<{ handle: string }>; searchParams: Promise<{ [key: string]: string | string[] | undefined }> };
 
-export const metadata: Metadata = {
-  title: "Members — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  return { title: `${communityWords(store?.language).tabMembers} — Marktmorgen`, robots: { index: false, follow: false } };
+}
 
-function joined(seconds: number): string {
-  return new Date(seconds * 1000).toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+function joined(seconds: number, locale: string): string {
+  return new Date(seconds * 1000).toLocaleDateString(locale, { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
 /**
@@ -38,6 +42,8 @@ export default async function CommunityMembersPage({ params, searchParams }: Par
   const home = `/@${store.handle}/community`;
   if (viewer.state !== "in") redirect(home);
   const id = store.community.id;
+  const w = communityWords(store.language);
+  const locale = LANGUAGES[store.language].locale;
   const query = await searchParams;
   const beforeRaw = typeof query.before === "string" ? Number(query.before) : NaN;
   const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : null;
@@ -53,25 +59,25 @@ export default async function CommunityMembersPage({ params, searchParams }: Par
     return (
       <p className="mt-1">
         <Link href={`${home}/messages/${pairOf(key, who)}`} className="cm-quiet-link cm-mini text-xs font-semibold">
-          Message
+          {w.messageLink}
         </Link>
       </p>
     );
   };
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <CommunityBar store={store} config={viewer.config} tab="members" signedIn />
       <main id="content" className="mx-auto max-w-3xl px-4 pb-16 pt-6">
-        <h1 className="font-display text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">Members</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">{w.tabMembers}</h1>
         <p className="st-muted mt-2">
-          {`${total} ${total === 1 ? "member has" : "members have"} chosen to be listed. Only the name each chose is shown; nobody's email address is, ever.`}
+          {w.listedTotal(total)}
         </p>
         {!viewer.owner ? (
           <p className="st-muted mt-1 text-sm">
-            {listed ? "You are listed. " : "You are not listed. "}
+            {listed ? w.youListed : w.youNotListed}{" "}
             <Link href={`${home}/you`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>
-              {listed ? "Change that" : "Choose a name and be listed"}
+              {listed ? w.changeThat : w.chooseNameListed}
             </Link>
           </p>
         ) : null}
@@ -83,9 +89,9 @@ export default async function CommunityMembersPage({ params, searchParams }: Par
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 font-bold">
                   <span className="break-words">{store.name}</span>
-                  <CreatorBadge />
+                  <CreatorBadge store={store} />
                 </p>
-                <p className="st-muted text-sm">Runs this community</p>
+                <p className="st-muted text-sm">{w.runsCommunity}</p>
                 {writeTo(CREATOR)}
               </div>
             </li>
@@ -96,9 +102,9 @@ export default async function CommunityMembersPage({ params, searchParams }: Par
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 font-bold">
                   <span className="break-words">{m.n}</span>
-                  <LevelBadge level={levelOf(points.get(m.k) ?? 0)} />
+                  <LevelBadge level={levelOf(points.get(m.k) ?? 0)} store={store} />
                 </p>
-                <p className="st-muted text-sm">{`Joined ${joined(m.at)}`}</p>
+                <p className="st-muted text-sm">{w.joined(joined(m.at, locale))}</p>
                 {writeTo(m.k)}
               </div>
             </li>
@@ -106,7 +112,7 @@ export default async function CommunityMembersPage({ params, searchParams }: Par
         </ul>
         {page.next ? (
           <p className="mt-6 text-center">
-            <Link href={`${home}/members?before=${page.next}`} className="cm-pill cm-pill-wide">More members</Link>
+            <Link href={`${home}/members?before=${page.next}`} className="cm-pill cm-pill-wide">{w.moreMembers}</Link>
           </p>
         ) : null}
       </main>

@@ -7,43 +7,23 @@ import { StoreTracking } from "@/components/store-tracking";
 import { readListing } from "@/lib/catalog";
 import { WAIT_TOKEN, readWaitToken } from "@/lib/waitlist";
 import { productPath } from "@/components/store-product";
-
-export const metadata: Metadata = {
-  title: "Waitlist — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+import { speech } from "@/lib/buyer-words";
+import { givingWords } from "@/lib/buyer-words/giving";
 
 type Params = {
   params: Promise<{ handle: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const NOTICES: Record<string, { title: string; body: string }> = {
-  email: {
-    title: "That does not look like an email address",
-    body: "Check it and try again. The confirmation goes to the address you type, so it has to be one you can open.",
-  },
-  limited: {
-    title: "Too many sign-ups for now",
-    body: "To keep this form from being used to flood somebody's inbox, it takes a limited number an hour. Try again in an hour.",
-  },
-  full: {
-    title: "This waitlist is full",
-    body: "It holds as many people as it can. Nothing was kept.",
-  },
-  closed: {
-    title: "This is not coming soon any more",
-    body: "It may already be on sale. Nothing was kept.",
-  },
-  error: {
-    title: "We could not send it just now",
-    body: "Try again in a moment.",
-  },
-  expired: {
-    title: "This link has expired",
-    body: "A confirmation link works for 7 days. Join again from the product's page; it takes a few seconds.",
-  },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)) : null;
+  return {
+    title: `${givingWords(store?.language).waitlist} — Marktmorgen`,
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * The waitlist's own page: "check your inbox" after joining, the button that
@@ -67,72 +47,73 @@ export default async function WaitlistPage({ params, searchParams }: Params) {
   const grant = token && WAIT_TOKEN.test(token) ? await readWaitToken(token) : leave && WAIT_TOKEN.test(leave) ? await readWaitToken(leave) : null;
   const productId = grant?.p ?? read("product");
   const product = productId ? await readListing(store, productId) : null;
-  const title = product?.title ?? "it";
+  // Empty when the product is gone: each sentence then says "it" its own way.
+  const title = product?.title ?? "";
+  const said = speech(store);
+  const g = givingWords(store.language);
 
   let body: React.ReactNode;
   if (token) {
     body =
       grant && grant.k === "confirm" ? (
         <>
-          <p className="st-price text-sm">Waitlist</p>
-          <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">Confirm your spot</h1>
-          <p className="st-muted mt-4 text-lg">{`Press the button and ${store.name} emails you once, when ${title} goes on sale.`}</p>
+          <p className="st-price text-sm">{g.waitlist}</p>
+          <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{g.confirmSpotTitle}</h1>
+          <p className="st-muted mt-4 text-lg">{g.confirmSpotBody(store.name, title)}</p>
           <form action="/api/store/waitlist/confirm" method="post" className="mt-7">
             <input type="hidden" name="token" value={token} />
-            <button type="submit" className="btn st-btn btn-lg">Confirm my spot</button>
+            <button type="submit" className="btn st-btn btn-lg">{g.confirmSpotButton}</button>
           </form>
         </>
       ) : (
         <>
-          <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{NOTICES.expired.title}</h1>
-          <p className="st-muted mt-4 text-lg">{NOTICES.expired.body}</p>
+          <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{g.waitNotices.expired.title}</h1>
+          <p className="st-muted mt-4 text-lg">{g.waitNotices.expired.body}</p>
         </>
       );
   } else if (leave) {
     body =
       grant && grant.k === "leave" ? (
         <>
-          <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">Remove your address?</h1>
-          <p className="st-muted mt-4 text-lg">{`You will not be told when ${title} goes on sale.`}</p>
+          <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{g.removeTitle}</h1>
+          <p className="st-muted mt-4 text-lg">{g.notTold(title)}</p>
           <form action="/api/store/waitlist/leave" method="post" className="mt-7">
             <input type="hidden" name="token" value={leave} />
-            <button type="submit" className="btn st-btn btn-lg">Remove my address</button>
+            <button type="submit" className="btn st-btn btn-lg">{g.removeButton}</button>
           </form>
         </>
       ) : (
         <>
-          <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">Your address is not on this waitlist</h1>
-          <p className="st-muted mt-4 text-lg">It was removed already, or the waitlist has done its job and its addresses are gone.</p>
+          <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{g.notOnListTitle}</h1>
+          <p className="st-muted mt-4 text-lg">{g.notOnListBody}</p>
         </>
       );
   } else if (status === "sent") {
     body = (
       <>
-        <p className="st-price text-sm">Almost there</p>
-        <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">Check your inbox</h1>
-        <p className="st-muted mt-4 text-lg">
-          {`We emailed you a button to confirm your spot on the waitlist for ${title}. It comes from ${store.name} via Marktmorgen and usually arrives within a minute; if it is not there, look in spam.`}
-        </p>
-        <p className="st-muted mt-4 text-sm">Your spot counts once you press it, so a mistyped address is never told anything.</p>
+        <p className="st-price text-sm">{g.almostThere}</p>
+        <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{g.checkInbox}</h1>
+        <p className="st-muted mt-4 text-lg">{g.waitSentBody(title, store.name)}</p>
+        <p className="st-muted mt-4 text-sm">{g.waitSentNote}</p>
       </>
     );
   } else if (status === "confirmed") {
     body = (
       <>
-        <p className="st-price text-sm">You are on the list</p>
-        <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{`We will tell you when ${title} is out`}</h1>
-        <p className="st-muted mt-4 text-lg">One email, the day it goes on sale, with its link. That is all this waitlist sends.</p>
+        <p className="st-price text-sm">{g.onTheList}</p>
+        <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{g.tellWhenOut(title)}</h1>
+        <p className="st-muted mt-4 text-lg">{g.oneEmailDay}</p>
       </>
     );
   } else if (status === "left") {
     body = (
       <>
-        <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">Your address is removed</h1>
-        <p className="st-muted mt-4 text-lg">{`You will not be told when ${title} goes on sale.`}</p>
+        <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{g.removedTitle}</h1>
+        <p className="st-muted mt-4 text-lg">{g.notTold(title)}</p>
       </>
     );
   } else {
-    const notice = NOTICES[status] ?? NOTICES.error;
+    const notice = g.waitNotices[status] ?? g.waitNotices.error;
     body = (
       <>
         <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{notice.title}</h1>
@@ -142,18 +123,18 @@ export default async function WaitlistPage({ params, searchParams }: Params) {
   }
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={said.lang.locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
         <div className="st-card p-7 sm:p-10">
           {body}
           <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2">
             {product && !product.hidden ? (
               <Link href={productPath(store, product)} className="st-footer-link text-sm font-semibold">
-                {`See ${product.title}`}
+                {said.w.seeStore(product.title)}
               </Link>
             ) : null}
             <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-              {`Back to ${store.name}`}
+              {said.w.backTo(store.name)}
             </Link>
             <StoreTracking store={store} presence event={status === "sent" && product ? { type: "lead", productId: product.id } : null} />
           </div>

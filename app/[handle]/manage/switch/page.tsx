@@ -4,24 +4,23 @@ import { notFound } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { formatMoney } from "@/lib/money";
+import { LANGUAGES, parseLanguage } from "@/lib/store-language";
+import { membershipWords } from "@/lib/buyer-words/membership";
 import { previewSwitch } from "@/lib/tier-switch";
-
-export const metadata: Metadata = {
-  title: "Switch your membership — Marktmorgen",
-  robots: { index: false, follow: false },
-};
 
 type Params = {
   params: Promise<{ handle: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const PROBLEMS: Record<string, { title: string; body: string }> = {
-  expired: { title: "This link has expired", body: "A link to your membership works for one hour. Ask for a new one on your membership page." },
-  gone: { title: "This membership cannot switch", body: "It may be canceled, set to end, waiting on a payment, or no longer yours on this link. Nothing was changed." },
-  tier: { title: "That plan is not offered anymore", body: "Go back to your membership page to see the plans you can switch to now. Nothing was changed." },
-  error: { title: "Stripe could not work out the price just now", body: "Nothing was changed. Try again in a moment." },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const decoded = decodeURIComponent((await params).handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)) : null;
+  return {
+    title: `${membershipWords(store?.language).switchTitle} — Marktmorgen`,
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * What a switch to another tier costs, in Stripe's own figures, before
@@ -41,26 +40,30 @@ export default async function SwitchPage({ params, searchParams }: Params) {
   const to = read("to");
   const result = await previewSwitch(store, token, sub, to);
   const back = `/@${store.handle}/manage${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  const m = membershipWords(store.language);
+  const locale = LANGUAGES[parseLanguage(store.language)].locale;
+  // Stripe's own figures, in its own currency, written the store's way.
+  const money = (cents: number, currency: string) => formatMoney(cents, currency, locale);
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
       <main id="content" className="relative mx-auto max-w-xl px-4 py-14 sm:py-20">
         <p className="st-muted text-center text-sm font-semibold">{store.name}</p>
         <div className="st-card mt-6 p-6 sm:p-9">
           {result.ok ? (
             <>
-              <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">{`Switch to ${result.preview.to.title}`}</h1>
+              <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">{m.switchTo(result.preview.to.title)}</h1>
               <ul className="mt-6 space-y-3">
                 <li className="st-row">
                   <div className="min-w-0">
-                    <p className="st-muted text-xs font-semibold uppercase tracking-wide">Now</p>
+                    <p className="st-muted text-xs font-semibold uppercase tracking-wide">{m.nowLabel}</p>
                     <p className="font-bold" style={{ color: "var(--st-text)" }}>{result.preview.from.title}</p>
                     <p className="st-muted text-sm">{result.preview.from.words}</p>
                   </div>
                 </li>
                 <li className="st-row">
                   <div className="min-w-0">
-                    <p className="st-muted text-xs font-semibold uppercase tracking-wide">After the switch</p>
+                    <p className="st-muted text-xs font-semibold uppercase tracking-wide">{m.afterLabel}</p>
                     <p className="font-bold" style={{ color: "var(--st-text)" }}>{result.preview.to.title}</p>
                     <p className="st-muted text-sm">{result.preview.to.words}</p>
                   </div>
@@ -69,21 +72,21 @@ export default async function SwitchPage({ params, searchParams }: Params) {
               <div className="st-note mt-6">
                 <p className="font-bold" style={{ color: "var(--st-text)" }}>
                   {result.preview.trialing
-                    ? "Nothing is charged now"
+                    ? m.nothingNow
                     : result.preview.due > 0
-                      ? `${formatMoney(result.preview.due, result.preview.currency)} charged today`
+                      ? m.chargedToday(money(result.preview.due, result.preview.currency))
                       : result.preview.due < 0
-                        ? `${formatMoney(-result.preview.due, result.preview.currency)} comes off your next payments`
-                        : "Nothing is charged today"}
+                        ? m.offNext(money(-result.preview.due, result.preview.currency))
+                        : m.nothingToday}
                 </p>
                 <p className="mt-1 text-sm">
                   {result.preview.trialing
-                    ? "You are in your free trial. The new plan opens now, and its price starts when the trial ends."
+                    ? m.switchTrialNote
                     : result.preview.due > 0
-                      ? "The new price, less what was left of your last payment, to the card you pay with. The new plan opens as soon as it is paid."
+                      ? m.dueNote
                       : result.preview.due < 0
-                        ? "What was left of your last payment becomes a credit with the store, taken off your next payments. The new plan opens now."
-                        : "The new plan opens now."}
+                        ? m.creditNote
+                        : m.opensNow}
                 </p>
               </div>
               <form action="/api/store/manage/switch" method="post" className="mt-6">
@@ -93,23 +96,23 @@ export default async function SwitchPage({ params, searchParams }: Params) {
                 <input type="hidden" name="to" value={result.preview.to.id} />
                 <input type="hidden" name="at" value={String(result.preview.at)} />
                 <button type="submit" className="btn st-btn btn-lg btn-block">
-                  {result.preview.due > 0 && !result.preview.trialing ? `Switch and pay ${formatMoney(result.preview.due, result.preview.currency)}` : "Switch now"}
+                  {result.preview.due > 0 && !result.preview.trialing ? m.switchAndPay(money(result.preview.due, result.preview.currency)) : m.switchNow}
                 </button>
               </form>
               <p className="st-muted mt-4 text-sm">
-                {`This price holds for 15 minutes. Charged by ${store.name} on their own Stripe account. Anything only ${result.preview.from.title} includes closes when you switch.`}
+                {m.holdsNote(store.name, result.preview.from.title)}
               </p>
             </>
           ) : (
             <div className="st-note">
-              <p className="font-bold" style={{ color: "var(--st-text)" }}>{PROBLEMS[result.reason].title}</p>
-              <p className="mt-1 text-sm">{PROBLEMS[result.reason].body}</p>
+              <p className="font-bold" style={{ color: "var(--st-text)" }}>{m.switchProblems[result.reason].title}</p>
+              <p className="mt-1 text-sm">{m.switchProblems[result.reason].body}</p>
             </div>
           )}
         </div>
         <div className="mt-8 text-center">
           <Link href={back} className="st-footer-link text-sm font-semibold">
-            Back to your membership
+            {m.backToMembership}
           </Link>
         </div>
       </main>

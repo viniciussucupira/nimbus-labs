@@ -13,13 +13,18 @@ import { requestCount } from "@/lib/community-dm";
 import { unreadCount } from "@/lib/community-notify";
 import { CommunityBar } from "@/components/community-parts";
 import { CommunityRoom } from "@/components/community-room";
+import { communityWords, roomWords } from "@/lib/buyer-words/community";
+import { LANGUAGES } from "@/lib/store-language";
+import { AWAY_AFTER_MS, IDLE_MS, LIVE_MS } from "@/lib/chat-pace";
 
 type Params = { params: Promise<{ handle: string }> };
 
-export const metadata: Metadata = {
-  title: "Room — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  return { title: `${communityWords(store?.language).tabRoom} — Marktmorgen`, robots: { index: false, follow: false } };
+}
 
 /**
  * The room: where a community talks at the speed people talk.
@@ -42,11 +47,13 @@ export default async function CommunityChatPage({ params }: Params) {
   if (!config.chat.on) redirect(`${home}?n=chatoff`);
 
   const id = store.community.id;
+  const w = communityWords(store.language);
+  const locale = LANGUAGES[store.language].locale;
   const page = await room(id);
   const members = await readMembers(id, page.messages.map((m) => m.a).filter((a) => a !== CREATOR));
   const names: Record<string, string> = {};
   for (const message of page.messages) {
-    names[message.a] = message.a === CREATOR ? store.name : members.get(message.a)?.n || message.n || "A member";
+    names[message.a] = message.a === CREATOR ? store.name : members.get(message.a)?.n || message.n || w.aMember;
   }
   // Leave for this page to ask what is new for the next ten minutes, counted
   // toward the store's visits (lib/chat-grant.ts): at the pace of a talking
@@ -61,15 +68,15 @@ export default async function CommunityChatPage({ params }: Params) {
   ]);
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <CommunityBar store={store} config={config} tab="chat" signedIn messages={config.dm.on} requests={waiting} news={news} room={config.chat.on} />
       <main id="content" className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <p className="mb-4">
-          <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">Back to the feed</Link>
+          <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">{w.backToFeed}</Link>
         </p>
-        <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">The room</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">{w.theRoom}</h1>
         <p className="st-muted mt-1 text-sm">
-          For the hour everybody is here at once. What is worth coming back to belongs in a post.
+          {w.roomIntro}
         </p>
 
         <CommunityRoom
@@ -89,6 +96,7 @@ export default async function CommunityChatPage({ params }: Params) {
           creatorOnly={config.chat.creatorOnly}
           slow={config.chat.slow}
           links={config.chat.links}
+          words={roomWords(store.language, locale, { live: LIVE_MS / 1000, idle: IDLE_MS / 1000, away: AWAY_AFTER_MS / 60_000, kept: 500 })}
         />
       </main>
     </div>

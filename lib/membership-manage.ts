@@ -30,6 +30,8 @@ import type { Store } from "@/lib/store";
 import { readListings, sellsAny } from "@/lib/catalog";
 import { canOffer, saveOn } from "@/lib/save-offer";
 import { productOfSub } from "@/lib/tier-rules";
+import { LANGUAGES, parseLanguage } from "@/lib/store-language";
+import { membershipWords } from "@/lib/buyer-words/membership";
 
 /** How long the emailed link keeps working. */
 export const MANAGE_LINK_SECONDS = 60 * 60;
@@ -73,8 +75,17 @@ const ipKey = async (ip: string, handle: string) =>
   `nl:rl:manage:ip:${(await sha256Hex(`nimbus-manage-ip:${ip}:${handle}`)).slice(0, 32)}`;
 const addressKey = async (email: string) =>
   `nl:rl:manage:addr:${(await sha256Hex(`nimbus-manage-addr:${email}`)).slice(0, 32)}`;
-/** The portal set-up made on one connected account, reused for every member. */
-const configKey = (account: string) => `nl:manage:portal:${account}`;
+/**
+ * The portal set-up made on one connected account, reused for every member.
+ * Its heading is in the store's language, so a store in another language has
+ * its own set-up, made the first time one of its members needs it.
+ */
+const configKey = (account: string, language: unknown = "en") => {
+  const code = parseLanguage(language);
+  return code === "en" ? `nl:manage:portal:${account}` : `nl:manage:portal:${account}:${code}`;
+};
+/** What Stripe's own pages are asked to speak (the portal's `locale`). */
+const stripeLocale = (store: Store) => LANGUAGES[parseLanguage(store.language)].stripe;
 
 async function within(key: string, limit: number): Promise<boolean> {
   const [, count] = await redisPipeline([
@@ -198,22 +209,21 @@ export async function requestManageLink(input: {
 
   const name = store.name;
   const link = `${origin}/@${store.handle}/manage?token=${token}`;
+  const m = membershipWords(store.language);
   const sent = await sendEmail({
-    from: `"${displayName(name)} via Marktmorgen" <${senderAddress()}>`,
+    from: `"${m.fromName(displayName(name))}" <${senderAddress()}>`,
     to: email,
-    subject: `Your membership with ${name}`,
+    subject: m.membershipWith(name),
     text: [
-      `You asked to manage your membership with ${name}. Here is the way in:`,
+      m.linkIntro(name),
       "",
       link,
       "",
-      store.tiers.length
-        ? "Open the link to see your membership. From there you can switch to another plan, seeing the exact amount before anything is charged, or cancel it, change the card it is paid with, or see your receipts. If you cancel, it stays on until the end of the period you have already paid for, and nothing more is charged."
-        : "Open the link and press the button. Stripe then shows your membership: you can cancel it, change the card it is paid with, or see your receipts. If you cancel, it stays on until the end of the period you have already paid for, and nothing more is charged.",
+      store.tiers.length ? m.linkTiers : m.linkNoTiers,
       "",
-      "The link works for one hour. If you did not ask for this, ignore this email; nothing happens unless the link is used.",
+      m.linkWorks,
       "",
-      `Sent by Marktmorgen on behalf of ${name}. The membership is charged by ${name} on their own Stripe account.`,
+      m.linkFooter(name),
     ].join("\n"),
   });
   return sent ? "sent" : "error";
@@ -241,13 +251,14 @@ export async function linkIsLive(token: string): Promise<boolean> {
 /** The portal set-up on this account, made the first time a member needs it. */
 async function portalConfiguration(store: Store, origin: string, fresh = false): Promise<string> {
   const account = store.stripeAccountId as string;
+  const key = configKey(account, store.language);
   if (!fresh) {
-    const [cached] = await redisPipeline([["GET", configKey(account)]]);
+    const [cached] = await redisPipeline([["GET", key]]);
     if (typeof cached === "string" && CONFIG_PATTERN.test(cached)) return cached;
   }
 
   const body = new URLSearchParams({
-    "business_profile[headline]": `Your membership with ${displayName(store.name)}`.slice(0, 60),
+    "business_profile[headline]": membershipWords(store.language).membershipWith(displayName(store.name)).slice(0, 60),
     default_return_url: `${origin}/@${store.handle}`,
     "features[subscription_cancel][enabled]": "true",
     "features[subscription_cancel][mode]": "at_period_end",
@@ -264,7 +275,7 @@ async function portalConfiguration(store: Store, origin: string, fresh = false):
   const made = await onAccount("POST", account, "/billing_portal/configurations", body);
   const id = typeof made.id === "string" ? made.id : "";
   if (!CONFIG_PATTERN.test(id)) throw new Error("Stripe returned no portal configuration");
-  await redisPipeline([["SET", configKey(account), id]]);
+  await redisPipeline([["SET", key, id]]);
   return id;
 }
 
@@ -299,6 +310,7 @@ export async function openPortal(store: Store, token: string, origin: string): P
         customer: grant.c,
         configuration,
         return_url: `${origin}/@${store.handle}`,
+        locale: stripeLocale(store),
       }),
     );
 
@@ -439,7 +451,7 @@ export async function membershipsFor(store: Store, token: string): Promise<Membe
       product,
       status: typeof sub.status === "string" ? sub.status : "",
       fixedEnd: Boolean(sub.metadata?.ends_after),
-      title: titles.get(product) || "Your membership",
+      title: titles.get(product) || membershipWords(store.language).yourMembership,
       amount: typeof price?.unit_amount === "number" ? price.unit_amount : 0,
       currency: typeof price?.currency === "string" ? price.currency : store.currency,
       interval: typeof price?.recurring?.interval === "string" ? price.recurring.interval : "month",
@@ -500,6 +512,7 @@ export async function openCancel(store: Store, token: string, subscription: stri
       customer: grant.c,
       configuration: await portalConfiguration(store, origin),
       return_url: `${origin}/@${store.handle}/manage?token=${token}`,
+      locale: stripeLocale(store),
       "flow_data[type]": "subscription_cancel",
       "flow_data[subscription_cancel][subscription]": subscription,
       "flow_data[after_completion][type]": "hosted_confirmation",

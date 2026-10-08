@@ -78,6 +78,7 @@ import type { Store } from "@/lib/store";
 import { plainAmount } from "@/lib/money";
 import { alertCreator } from "@/lib/phone-alerts";
 import { bumpsFromMeta } from "@/lib/bundle-rules";
+import { affiliatesWords } from "@/lib/buyer-words/affiliates";
 
 /** How long the emailed link to apply or sign in keeps working. */
 export const AFFILIATE_LINK_SECONDS = 24 * 60 * 60;
@@ -324,14 +325,15 @@ export async function setPayAddress(store: Store, affiliate: Affiliate, raw: str
   if (value === affiliate.paypal) return { ok: true };
   await writeAffiliate(store, { ...affiliate, paypal: value });
   if (isSenderConfigured()) {
+    const a = affiliatesWords(store.language);
     await sendEmail({
       from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
       to: affiliate.email,
-      subject: `Where ${store.name} pays you changed`,
+      subject: a.payChangedSubject(store.name),
       text: [
-        `The PayPal address ${store.name} pays your affiliate commissions to is now: ${value || affiliate.email}.`,
+        a.payChangedLine(store.name, value || affiliate.email),
         "",
-        "If you did not change it, open your affiliate page, change it back and sign out on every browser, then tell the store by replying to this email:",
+        a.payChangedIfNot,
         `${SITE_URL}/@${store.handle}/affiliates`,
       ].join("\n"),
       replyTo: store.email,
@@ -522,25 +524,22 @@ export async function requestAffiliateLink(input: {
   await redisPipeline([["SET", linkKey(token), JSON.stringify(grant), "EX", AFFILIATE_LINK_SECONDS]]);
 
   const name = store.name;
+  const a = affiliatesWords(store.language);
   const link = `${origin}/@${store.handle}/affiliates?token=${token}`;
   const sent = await sendEmail({
     from: `"${displayName(name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
-    subject: typeof known === "string" ? `Your affiliate page for ${name}` : `Confirm your affiliate application to ${name}`,
+    subject: typeof known === "string" ? a.yourPageFor(name) : a.linkSubjectNew(name),
     text: [
-      typeof known === "string"
-        ? `Here is the way in to your affiliate page for ${name}:`
-        : `You asked to become an affiliate of ${name}. Open this link and press the button to send your application:`,
+      typeof known === "string" ? a.linkIntroKnown(name) : a.linkIntroNew(name),
       "",
       link,
       "",
-      typeof known === "string"
-        ? "It shows your link, your clicks, your sales and what you have earned and been paid."
-        : `${name} decides on each application. Once you are approved, your page gives you your own link, and a one-time purchase made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you a share.`,
+      typeof known === "string" ? a.linkShowsKnown : a.linkAboutNew(name, store.affiliates.days),
       "",
-      `Commissions are paid to you by ${name} directly, not by Marktmorgen, which never holds the money.`,
+      a.paidByStore(name),
       "",
-      "The link works for 24 hours. If you did not ask for this, ignore this email; nothing happens unless the link is used.",
+      a.linkExpires,
     ].join("\n"),
   });
   return sent ? "sent" : "error";
@@ -585,6 +584,9 @@ export async function invitePartner(input: {
   }
 
   const named = share.products.map((id) => input.titles.get(id) ?? "a product").slice(0, 12);
+  // The same list in the email, in the store's language; the studio's copy stays English.
+  const a = affiliatesWords(store.language);
+  const listed = share.products.map((id) => input.titles.get(id) ?? a.someProduct).slice(0, 12);
 
   // Somebody who already has a store here has a better place to be asked than
   // an inbox: their own studio (lib/partner-invites.ts). The offer waits there
@@ -602,17 +604,17 @@ export async function invitePartner(input: {
     await sendEmail({
       from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
       to: email,
-      subject: `${store.name} wants you as a partner`,
+      subject: a.partnerSubject(store.name),
       text: [
-        `${store.name} is offering you ${share.percent}% of every sale of:`,
+        a.partnerOffer(store.name, share.percent),
         "",
-        ...named.map((title) => `  • ${title}`),
+        ...listed.map((title) => `  • ${title}`),
         "",
-        "It is waiting in your own studio, with the terms, to accept or decline:",
+        a.partnerInStudio,
         "",
         `${SITE_URL}/studio/affiliates`,
         "",
-        "Nothing happens until you answer it. Declining tells them nothing beyond that you declined.",
+        a.partnerAnswer,
       ].join("\n"),
       replyTo: store.email,
     }).catch((error) => console.error("telling a creator about a partnership offer failed", error));
@@ -625,21 +627,21 @@ export async function invitePartner(input: {
   const sent = await sendEmail({
     from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
-    subject: `${store.name} wants you as a partner`,
+    subject: a.partnerSubject(store.name),
     text: [
-      `${store.name} is offering you ${share.percent}% of every sale of:`,
+      a.partnerOffer(store.name, share.percent),
       "",
-      ...named.map((title) => `  • ${title}`),
+      ...listed.map((title) => `  • ${title}`),
       "",
-      `That is ${share.percent}% of what each buyer pays before tax, on every sale — not only the ones you send them. A refunded sale earns nothing, and a partly refunded one earns on what was kept.`,
+      a.partnerTerms(share.percent),
       "",
-      "Open this link to accept and see your own page, which shows every sale you have earned on and what you have been paid:",
+      a.partnerOpen,
       "",
       `${origin}/@${store.handle}/affiliates?token=${token}`,
       "",
-      `${store.name} pays you directly, from their own account. Marktmorgen never holds this money, so there is no balance to wait on and nothing to claim by a deadline. You will be asked for the PayPal address to be paid at; you need no account with us.`,
+      a.partnerPays(store.name),
       "",
-      "The link works for 24 hours. If this was not meant for you, ignore it; nothing happens unless the link is used.",
+      a.partnerExpires,
     ].join("\n"),
     replyTo: store.email,
   });
@@ -920,20 +922,25 @@ export async function decide(store: Store, id: string, decision: Decision): Prom
   const next: Affiliate = { ...affiliate, status, decidedAt: Date.now() };
   await writeAffiliate(store, next);
   if (decision === "approve" && affiliate.status === "pending" && isSenderConfigured()) {
+    const a = affiliatesWords(store.language);
     await sendEmail({
       from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
       to: affiliate.email,
-      subject: `You are an affiliate of ${store.name}`,
+      subject: a.approvedSubject(store.name),
       text: [
-        `${store.name} approved your application. Your link:`,
+        a.approvedIntro(store.name),
         "",
         affiliateLink(store, affiliate.code),
         "",
-        `A one-time purchase made through it within ${store.affiliates.days} ${store.affiliates.days === 1 ? "day" : "days"} of a click earns you ${affiliate.rate ?? store.affiliates.percent}% of what the buyer paid before tax${affiliate.rate === null && Object.keys(store.affiliates.rates).length ? " (some products earn a different share; your page lists them)" : ""}. Memberships and payment plans do not earn, and a refunded sale earns nothing.`,
+        a.approvedTerms(
+          store.affiliates.days,
+          affiliate.rate ?? store.affiliates.percent,
+          affiliate.rate === null && Object.keys(store.affiliates.rates).length > 0,
+        ),
         "",
-        `Your clicks, sales and earnings: ${SITE_URL}/@${store.handle}/affiliates`,
+        a.approvedPage(`${SITE_URL}/@${store.handle}/affiliates`),
         "",
-        `Commissions are paid to you by ${store.name} directly, not by Marktmorgen, which never holds the money.`,
+        a.paidByStore(store.name),
       ].join("\n"),
     }).catch((error) => console.error("telling an affiliate they were approved failed", error));
   }

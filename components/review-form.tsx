@@ -1,20 +1,20 @@
 import { Fragment } from "react";
 import { MAX_REVIEW_NAME, MAX_REVIEW_TEXT, type Review } from "@/lib/review-summary";
+import { LANGUAGES, type LanguageCode, parseLanguage } from "@/lib/store-language";
+import { wordsIn } from "@/lib/buyer-words";
+import { GIVING_WORDS } from "@/lib/buyer-words/giving";
 
-/** What happened to the last thing sent, in the buyer's words. */
-export const REVIEW_NOTICES: Record<string, { text: string; alert?: boolean }> = {
-  saved: { text: "Thank you. Your review is on the page now." },
-  updated: { text: "Your review has been updated." },
-  deleted: { text: "Your review has been deleted. Its stars no longer count in the average." },
-  rating: { text: "Pick from one to five stars.", alert: true },
-  refunded: { text: "This order was refunded, so it cannot be reviewed.", alert: true },
-  expired: { text: "This link has expired. Ask for your purchases again from the store and review from there.", alert: true },
-  no: { text: "This order cannot be reviewed here.", alert: true },
-  full: { text: "This product cannot take more reviews.", alert: true },
-  slow: { text: "That was a lot of tries in a short time. Wait a few minutes and send it again.", alert: true },
-  busy: { text: "Someone else was saving at the same moment. Send it again.", alert: true },
-  error: { text: "Something went wrong on our side. Nothing was changed. Try again in a moment.", alert: true },
-};
+/** Notices that report something done, rather than something that went wrong. */
+const DONE = new Set(["saved", "updated", "deleted"]);
+
+/**
+ * What happened to the last thing sent, in the buyer's words: the notices a
+ * page may name in its address, in English. Each language's text for them is
+ * in lib/buyer-words/giving.ts (reviewNotices), under the same names.
+ */
+export const REVIEW_NOTICES: Record<string, { text: string; alert?: boolean }> = Object.fromEntries(
+  Object.entries(GIVING_WORDS.en.reviewNotices).map(([key, text]) => [key, DONE.has(key) ? { text } : { text, alert: true }]),
+);
 
 /**
  * The form a buyer reviews one product with: stars, a few words, the name
@@ -34,6 +34,7 @@ export function ReviewForm({
   storeName,
   back,
   notice,
+  lang = "en",
 }: {
   handle: string;
   /** The hidden fields that prove the order. */
@@ -44,9 +45,15 @@ export function ReviewForm({
   /** Which page the answer comes back to. */
   back: "thanks" | "review";
   notice: string | null;
+  /** The store's language (lib/store-language.ts); English when left out. */
+  lang?: LanguageCode;
 }) {
+  const code = parseLanguage(lang);
+  const g = GIVING_WORDS[code];
+  const w = wordsIn(code);
   const base = `rv-${product.id}`;
-  const said = notice ? REVIEW_NOTICES[notice] ?? null : null;
+  const known = notice ? REVIEW_NOTICES[notice] ?? null : null;
+  const said = known && notice ? { text: g.reviewNotices[notice] ?? known.text, alert: known.alert } : null;
   const hidden = (
     <>
       <input type="hidden" name="handle" value={handle} />
@@ -69,12 +76,12 @@ export function ReviewForm({
         <input type="hidden" name="action" value="save" />
         <div aria-hidden="true" className="hidden">
           <label>
-            Leave this empty
+            {w.leaveEmpty}
             <input type="text" name="website" tabIndex={-1} autoComplete="off" />
           </label>
         </div>
         <fieldset>
-          <legend className="st-label">{`Your rating for ${product.title}`}</legend>
+          <legend className="st-label">{g.yourRating(product.title)}</legend>
           <div className="rv-rate mt-1">
             {[1, 2, 3, 4, 5].map((n) => (
               <Fragment key={n}>
@@ -95,7 +102,7 @@ export function ReviewForm({
                       strokeLinejoin="round"
                     />
                   </svg>
-                  <span className="sr-only">{`${n} ${n === 1 ? "star" : "stars"}`}</span>
+                  <span className="sr-only">{w.starLabel(n)}</span>
                 </label>
               </Fragment>
             ))}
@@ -103,7 +110,7 @@ export function ReviewForm({
         </fieldset>
         <div>
           <label htmlFor={`${base}-text`} className="st-label">
-            What you think (optional)
+            {g.whatYouThink}
           </label>
           <textarea
             id={`${base}-text`}
@@ -114,11 +121,13 @@ export function ReviewForm({
             className="st-field mt-1"
             aria-describedby={`${base}-text-hint`}
           />
-          <p id={`${base}-text-hint`} className="st-muted mt-1 text-xs">{`Up to ${MAX_REVIEW_TEXT.toLocaleString("en-US")} characters.`}</p>
+          <p id={`${base}-text-hint`} className="st-muted mt-1 text-xs">
+            {g.upTo(MAX_REVIEW_TEXT.toLocaleString(LANGUAGES[code].locale))}
+          </p>
         </div>
         <div>
           <label htmlFor={`${base}-name`} className="st-label">
-            Name to show (optional)
+            {g.nameToShow}
           </label>
           <input
             id={`${base}-name`}
@@ -126,24 +135,22 @@ export function ReviewForm({
             name="name"
             maxLength={MAX_REVIEW_NAME}
             autoComplete="given-name"
-            placeholder="Verified buyer"
+            placeholder={w.verifiedBuyer}
             defaultValue={existing?.name ?? ""}
             className="st-field mt-1"
           />
         </div>
         <button type="submit" className="btn st-btn">
-          {existing ? "Update my review" : "Post my review"}
+          {existing ? g.updateReview : g.postReview}
         </button>
-        <p className="st-muted text-xs leading-relaxed">
-          {`Your review is public on ${storeName}'s page, marked as a verified purchase. Your email address is never shown. ${storeName} can reply and can hide it, but cannot change it.`}
-        </p>
+        <p className="st-muted text-xs leading-relaxed">{g.reviewPublic(storeName)}</p>
       </form>
       {existing ? (
         <form action="/api/store/review" method="post" className="mt-3">
           {hidden}
           <input type="hidden" name="action" value="delete" />
           <button type="submit" className="st-footer-link inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4">
-            Delete my review
+            {g.deleteReview}
           </button>
         </form>
       ) : null}

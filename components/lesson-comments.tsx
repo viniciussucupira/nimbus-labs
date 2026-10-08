@@ -1,4 +1,4 @@
-import { initialOf, segments, whenWords } from "@/lib/community-text";
+import { initialOf, segments } from "@/lib/community-text";
 import {
   CREATOR_AUTHOR,
   type LessonComment,
@@ -7,21 +7,31 @@ import {
   type Thread,
   countShown,
 } from "@/lib/lesson-comments-rules";
+import { type CoursesWords, coursesWords } from "@/lib/buyer-words/courses";
+import { LANGUAGES, type LanguageCode, parseLanguage } from "@/lib/store-language";
 
-const NOTICES: Record<string, { text: string; warn?: boolean }> = {
-  posted: { text: "Posted." },
-  deleted: { text: "Deleted." },
-  hidden: { text: "Hidden. Only you and whoever wrote it can see it now." },
-  shown: { text: "Shown again to every student." },
-  empty: { text: "Write something first.", warn: true },
-  name: { text: "Add the name other students will see, then post again.", warn: true },
-  slow: { text: "That is a lot of comments at once. Wait a minute, then post again.", warn: true },
-  parent: { text: "That comment is no longer there.", warn: true },
-  replies: { text: "That comment has as many answers as it can take. Start a new comment instead.", warn: true },
-  full: { text: "This lesson has as many comments as it can keep.", warn: true },
-  gone: { text: "That comment is no longer there.", warn: true },
-  off: { text: "Comments are switched off for this course.", warn: true },
-};
+/** The notices that say something went wrong, as opposed to that it went through. */
+const WARNINGS = new Set(["empty", "name", "slow", "parent", "replies", "full", "gone", "off"]);
+
+/**
+ * How long ago, "5 min ago", and past a week the day it was written, as
+ * lib/community-text.ts whenWords says it, in the store's language.
+ */
+function when(w: CoursesWords, locale: string, seconds: number, nowSeconds: number): string {
+  const ago = Math.max(0, nowSeconds - seconds);
+  if (ago < 60) return w.justNow;
+  if (ago < 3_600) return w.minutesAgo(Math.floor(ago / 60));
+  if (ago < 86_400) return w.hoursAgo(Math.floor(ago / 3_600));
+  if (ago < 7 * 86_400) return w.daysAgo(Math.floor(ago / 86_400));
+  const date = new Date(seconds * 1000);
+  const sameYear = date.getUTCFullYear() === new Date(nowSeconds * 1000).getUTCFullYear();
+  return date.toLocaleDateString(locale, {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+    timeZone: "UTC",
+  });
+}
 
 function Words({ text }: { text: string }) {
   return (
@@ -53,12 +63,12 @@ function Fields({ where, action }: { where: Where; action: string }) {
 }
 
 /** The name box, only for a student who has not chosen one yet. */
-function NameField({ show }: { show: boolean }) {
+function NameField({ show, w, placeholder }: { show: boolean; w: CoursesWords; placeholder: string }) {
   if (!show) return null;
   return (
     <label className="block">
-      <span className="st-label">Your name, as other students see it</span>
-      <input className="st-field mt-2" name="name" required maxLength={MAX_COMMENTER_NAME} autoComplete="given-name" placeholder="Dana" />
+      <span className="st-label">{w.nameAsSeen}</span>
+      <input className="st-field mt-2" name="name" required maxLength={MAX_COMMENTER_NAME} autoComplete="given-name" placeholder={placeholder} />
     </label>
   );
 }
@@ -71,6 +81,8 @@ function One({
   storeName,
   where,
   now,
+  w,
+  locale,
 }: {
   comment: LessonComment;
   reply: boolean;
@@ -79,10 +91,12 @@ function One({
   storeName: string;
   where: Where;
   now: number;
+  w: CoursesWords;
+  locale: string;
 }) {
   const creator = reader === CREATOR_AUTHOR;
   const fromCreator = comment.by === CREATOR_AUTHOR;
-  const name = fromCreator ? storeName : comment.name || "A student";
+  const name = fromCreator ? storeName : comment.name || w.aStudent;
   const mine = comment.by === reader;
   return (
     <div id={`c-${comment.id}`} className={`flex gap-3 ${comment.hidden ? "opacity-60" : ""}`}>
@@ -92,9 +106,9 @@ function One({
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <span className="font-semibold" style={{ color: "var(--st-text)" }}>{name}</span>
-          {fromCreator ? <span className="cm-badge cm-badge-creator">Creator</span> : null}
-          {comment.hidden ? <span className="cm-badge cm-badge-warn">Hidden</span> : null}
-          <span className="st-muted">{whenWords(comment.at, now)}</span>
+          {fromCreator ? <span className="cm-badge cm-badge-creator">{w.creatorBadge}</span> : null}
+          {comment.hidden ? <span className="cm-badge cm-badge-warn">{w.hiddenBadge}</span> : null}
+          <span className="st-muted">{when(w, locale, comment.at, now)}</span>
         </p>
         <Words text={comment.text} />
         {mine || creator ? (
@@ -104,7 +118,7 @@ function One({
                 <Fields where={where} action={comment.hidden ? "show" : "hide"} />
                 <input type="hidden" name="id" value={comment.id} />
                 <button type="submit" className="st-footer-link inline-flex min-h-11 items-center font-semibold">
-                  {comment.hidden ? "Show" : "Hide"}
+                  {comment.hidden ? w.show : w.hide}
                 </button>
               </form>
             ) : null}
@@ -112,7 +126,7 @@ function One({
               <Fields where={where} action="delete" />
               <input type="hidden" name="id" value={comment.id} />
               <button type="submit" className="st-footer-link inline-flex min-h-11 items-center font-semibold">
-                {answers > 0 ? "Delete with its answers" : "Delete"}
+                {answers > 0 ? w.deleteWithAnswers : w.delete}
               </button>
             </form>
           </div>
@@ -125,7 +139,9 @@ function One({
 /**
  * The comments under a lesson, for a student of the course or its creator.
  * Plain forms that post to /api/store/course/comment: nothing here needs
- * a script to work.
+ * a script to work. Said in the store's `language`
+ * (lib/buyer-words/courses.ts), English unless given; `namePlaceholder` is
+ * the store's example of a first name.
  */
 export function LessonComments({
   threads,
@@ -135,6 +151,8 @@ export function LessonComments({
   myName,
   notice,
   now,
+  language = "en",
+  namePlaceholder = "Dana",
 }: {
   threads: Thread[];
   /** CREATOR_AUTHOR, or the student's key. */
@@ -146,64 +164,65 @@ export function LessonComments({
   myName: string;
   notice: string;
   now: number;
+  language?: LanguageCode;
+  namePlaceholder?: string;
 }) {
+  const w = coursesWords(language);
+  const locale = LANGUAGES[parseLanguage(language)].locale;
   const creator = reader === CREATOR_AUTHOR;
   const count = countShown(threads);
-  const flash = NOTICES[notice];
+  const flash = w.commentNotices[notice];
+  const warn = WARNINGS.has(notice);
   return (
     <section id="comments" aria-labelledby="comments-title" className="st-card p-5 sm:p-8">
       <h2 id="comments-title" className="font-display text-xl font-semibold tracking-[-0.01em]" style={{ color: "var(--st-text)" }}>
-        {count ? `Questions and comments (${count})` : "Questions and comments"}
+        {w.commentsTitle(count)}
       </h2>
-      <p className="st-muted mt-1 text-sm">
-        {creator
-          ? "What your students write under this lesson. You answer here as the creator; a student you answer gets an email with your words."
-          : "Seen by the creator and the other students of this course, under the name you choose. Your email address is never shown."}
-      </p>
+      <p className="st-muted mt-1 text-sm">{creator ? w.commentsCreator : w.commentsStudent}</p>
 
       {flash ? (
-        <p className={`cm-flash mt-4 ${flash.warn ? "cm-flash-warn" : ""}`} role={flash.warn ? "alert" : "status"}>
-          {flash.text}
+        <p className={`cm-flash mt-4 ${warn ? "cm-flash-warn" : ""}`} role={warn ? "alert" : "status"}>
+          {flash}
         </p>
       ) : null}
 
       <form action="/api/store/course/comment" method="post" className="mt-5 space-y-3">
         <Fields where={hidden} action="post" />
-        <NameField show={!creator && !myName} />
+        <NameField show={!creator && !myName} w={w} placeholder={namePlaceholder} />
         <label className="block">
-          <span className="st-label">{creator ? "Write to your students" : "Ask a question or share what you made"}</span>
+          <span className="st-label">{creator ? w.writeToStudents : w.askOrShare}</span>
           <textarea className="st-field mt-2" name="text" rows={3} required maxLength={MAX_LESSON_COMMENT} />
         </label>
-        <button type="submit" className="btn st-btn">Post</button>
-        {myName && !creator ? <p className="st-muted text-xs">{`You post as ${myName}.`}</p> : null}
+        <button type="submit" className="btn st-btn">{w.post}</button>
+        {myName && !creator ? <p className="st-muted text-xs">{w.postAs(myName)}</p> : null}
       </form>
 
       {threads.length ? (
         <ol className="mt-8 space-y-6">
           {threads.map(({ comment, replies }) => (
             <li key={comment.id} className="space-y-3">
-              <One comment={comment} reply={false} answers={replies.length} reader={reader} storeName={storeName} where={hidden} now={now} />
+              <One comment={comment} reply={false} answers={replies.length} reader={reader} storeName={storeName} where={hidden} now={now} w={w} locale={locale} />
               {replies.length ? (
                 <ol className="cm-thread ml-5 space-y-3">
                   {replies.map((r) => (
                     <li key={r.id}>
-                      <One comment={r} reply reader={reader} storeName={storeName} where={hidden} now={now} />
+                      <One comment={r} reply reader={reader} storeName={storeName} where={hidden} now={now} w={w} locale={locale} />
                     </li>
                   ))}
                 </ol>
               ) : null}
               {comment.hidden ? null : (
               <details className="cm-reply ml-[3.25rem]">
-                <summary className="st-footer-link inline-flex text-sm font-semibold">Answer</summary>
+                <summary className="st-footer-link inline-flex text-sm font-semibold">{w.answer}</summary>
                 <form action="/api/store/course/comment" method="post" className="mt-2 space-y-3">
                   <Fields where={hidden} action="post" />
                   <input type="hidden" name="parent" value={comment.id} />
-                  <NameField show={!creator && !myName} />
+                  <NameField show={!creator && !myName} w={w} placeholder={namePlaceholder} />
                   <label className="block">
-                    <span className="sr-only">{`Your answer to ${comment.by === CREATOR_AUTHOR ? storeName : comment.name}`}</span>
+                    <span className="sr-only">{w.answerTo(comment.by === CREATOR_AUTHOR ? storeName : comment.name)}</span>
                     <textarea className="st-field" name="text" rows={2} required maxLength={MAX_LESSON_COMMENT} />
                   </label>
-                  <button type="submit" className="btn st-btn">Post the answer</button>
+                  <button type="submit" className="btn st-btn">{w.postAnswer}</button>
                 </form>
               </details>
               )}
@@ -211,7 +230,7 @@ export function LessonComments({
           ))}
         </ol>
       ) : (
-        <p className="st-muted mt-6 text-sm">Nothing here yet. The first question often helps everyone who comes after.</p>
+        <p className="st-muted mt-6 text-sm">{w.noComments}</p>
       )}
     </section>
   );

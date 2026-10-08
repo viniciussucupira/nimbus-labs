@@ -29,6 +29,7 @@
  */
 import { redisPipeline } from "@/lib/redis";
 import { pushMembers } from "@/lib/community-push";
+import { communityWords } from "@/lib/buyer-words/community";
 
 const base = (id: string) => `nl:cm:${id}`;
 const listKey = (id: string, who: string) => `${base(id)}:nt:${who}`;
@@ -87,7 +88,7 @@ export async function tell(
   to: string[],
   notice: Omit<Notice, "at" | "words"> & { words: string },
   /** Where a phone should be sent, and by what name. Left out, none is sent. */
-  phone?: { handle: string; who: string },
+  phone?: { handle: string; who: string; language?: unknown },
 ): Promise<void> {
   const who = [...new Set(to)].filter((one) => one && one !== notice.by);
   if (!who.length) return;
@@ -105,15 +106,13 @@ export async function tell(
   if (!phone) return;
   // The words are deliberately absent: a notification is read on a lock
   // screen, and this one says who did what and where, nothing more.
+  // In the store's language, like the pages it opens.
+  const w = communityWords(phone.language);
   const said =
-    notice.kind === "reply"
-      ? `${phone.who} answered your post`
-      : notice.kind === "answer"
-        ? `${phone.who} answered your comment`
-        : `${phone.who} named you`;
+    notice.kind === "reply" ? w.whatReply(phone.who) : notice.kind === "answer" ? w.whatAnswer(phone.who) : w.whatMention(phone.who);
   await pushMembers(id, who, {
     title: said,
-    body: "Open the community to read it.",
+    body: w.pushOpen,
     url: notice.comment
       ? `/@${phone.handle}/community/post/${notice.post}#comment-${notice.comment}`
       : `/@${phone.handle}/community/post/${notice.post}`,

@@ -31,6 +31,7 @@ import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { isPaidUp } from "@/lib/billing";
 import { csvCell } from "@/lib/csv";
 import { type Listing, type Store, isFree } from "@/lib/store";
+import { givingWords } from "@/lib/buyer-words/giving";
 import {
   type AddResult,
   MAX_LEADS,
@@ -190,25 +191,24 @@ export async function requestCopy(input: {
   ]);
 
   const name = store.name;
+  const g = givingWords(store.language);
   const link = `${origin}/@${store.handle}/free?token=${token}`;
   const sent = await sendEmail({
     from: `"${displayName(name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
-    subject: `Your copy of ${product.title}`,
+    subject: g.freeSubject(product.title),
     text: [
-      `You asked ${name} for ${product.title}. Here it is:`,
+      g.freeAsked(name, product.title),
       "",
       link,
       "",
-      "Open the link and press the button. It works for 7 days.",
+      g.freeOpen,
       "",
-      consent
-        ? `You also said ${name} may send you emails. You can unsubscribe from any of them.`
-        : `You did not check the box to hear from ${name}, so your address reaches them marked as having asked for this one thing, and nothing more.`,
+      consent ? g.freeConsented(name) : g.freeNotConsented(name),
       "",
-      "If you did not ask for this, ignore this email. Nothing happens unless the link is used.",
+      g.freeIgnore,
       "",
-      `Sent by Marktmorgen on behalf of ${name}. Marktmorgen uses your address for nothing else, and replies to this email do not reach ${name}.`,
+      g.freeSentBy(name),
     ].join("\n"),
   });
   return sent ? "sent" : "error";

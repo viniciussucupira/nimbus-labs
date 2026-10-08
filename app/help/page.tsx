@@ -314,6 +314,14 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can my store speak another language to my buyers?",
+        a: [
+          "Yes: English, Spanish, French, German, Italian, Dutch or Portuguese (Portugal). In your studio, under \u201cYour store\u2019s language,\u201d pick one and press Save. Every store speaks English until its creator picks another.",
+          "From then on your buyers read it everywhere: your store and product pages, Stripe's checkout, the page after paying, their purchases, bookings, courses, memberships, your community, and every email your store sends them, with dates, numbers and prices written that language's way. Your studio stays in English.",
+          "What you write yourself is shown exactly as you wrote it: product names, descriptions, lessons, posts and emails you compose. Write them in the same language, so a page never mixes two. One store speaks one language; a page does not switch by each visitor's browser.",
+        ],
+      },
+      {
         q: "Can I sell a product from my own website or blog?",
         a: [
           "Yes, one product at a time. In your studio, under \u201cSell from your own website,\u201d pick the product and copy the code: a card with its picture, price, buyers' rating and buy button, or a plain button in your store's color that leads to the product's page. Paste it into a block that takes HTML, called Embed, Code or Custom HTML in most website builders.",

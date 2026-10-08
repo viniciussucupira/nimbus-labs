@@ -32,6 +32,7 @@
  */
 import type { Listing } from "@/lib/catalog";
 import { canGift } from "@/lib/gift-rules";
+import { givingWords } from "@/lib/buyer-words/giving";
 
 export const GROUP_ID = /^grp_[0-9a-f]{24}$/;
 /** The link in a place's email. */
@@ -76,14 +77,15 @@ export function payable(priceCents: number, people: number): boolean {
   return priceCents > 0 && priceCents * people <= MAX_TOTAL_CENTS;
 }
 
-/** "5 people", for a receipt, a sale's name and the page after paying. */
-export function peopleWords(people: number): string {
-  return `${people} ${people === 1 ? "person" : "people"}`;
+/**
+ * "5 people", for a receipt, a sale's name and the page after paying, in the
+ * store's language (lib/buyer-words/giving.ts); English when none is given.
+ */
+export function peopleWords(people: number, language: unknown = "en"): string {
+  return givingWords(language).people(people);
 }
 
-/** "3 of 5 places are still open", for the page the link opens. */
-export function placesWords(people: number, taken: number): string {
-  const left = Math.max(0, people - taken);
-  if (left === 0) return `All ${people} places have been taken.`;
-  return `${left} of ${people} places ${left === 1 ? "is" : "are"} still open.`;
+/** "3 of 5 places are still open", for the page the link opens, in the store's language. */
+export function placesWords(people: number, taken: number, language: unknown = "en"): string {
+  return givingWords(language).placesLeft(people, Math.max(0, people - taken));
 }

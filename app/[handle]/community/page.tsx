@@ -17,11 +17,14 @@ import { levelOf, pointsOf } from "@/lib/community-points";
 import {
   CommunityBar,
   Gate,
-  LINK_NOTICES,
-  NOTICES,
   PostCard,
+  communityNotices,
+  linkNotices,
   ticketKind,
 } from "@/components/community-parts";
+import { communityWords, composerWords } from "@/lib/buyer-words/community";
+import { MAX_POLL_OPTIONS } from "@/lib/community-polls";
+import { LANGUAGES } from "@/lib/store-language";
 import { CommunityComposer, ConfirmDeletes } from "@/components/community-composer";
 
 type Params = {
@@ -29,10 +32,12 @@ type Params = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export const metadata: Metadata = {
-  title: "Community — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  return { title: `${communityWords(store?.language).pageTitle} — Marktmorgen`, robots: { index: false, follow: false } };
+}
 
 /** The community's feed: every space, or one, newest first, a page at a time. */
 export default async function CommunityPage({ params, searchParams }: Params) {
@@ -46,12 +51,15 @@ export default async function CommunityPage({ params, searchParams }: Params) {
   const id = store.community.id;
   const query = await searchParams;
   const word = typeof query.n === "string" ? query.n : "";
-  const notice = NOTICES[word] ?? null;
+  const w = communityWords(store.language);
+  const lang = LANGUAGES[store.language].locale;
+  const notices = communityNotices(store.language);
+  const notice = notices[word] ?? null;
 
   if (viewer.state !== "in") {
-    const products = (await accessProducts(store, viewer.config)).map((p) => ({ id: p.id, title: p.title, kind: ticketKind(p, store.currency) }));
+    const products = (await accessProducts(store, viewer.config)).map((p) => ({ id: p.id, title: p.title, kind: ticketKind(store, p) }));
     return (
-      <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
+      <div lang={lang} className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
         <CommunityBar store={store} config={viewer.config} tab={null} signedIn={false} />
         <main id="content" className="px-4 pb-16">
           <Gate
@@ -60,7 +68,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
             state={viewer.state}
             email={viewer.state === "out" ? null : viewer.email}
             products={products}
-            link={LINK_NOTICES[typeof query.link === "string" ? query.link : ""] ?? (word === "out" ? { title: "Your session here ended", body: "Ask for a new link below." } : null)}
+            link={linkNotices(store.language)[typeof query.link === "string" ? query.link : ""] ?? (word === "out" ? w.sessionEnded : null)}
           />
         </main>
       </div>
@@ -111,16 +119,16 @@ export default async function CommunityPage({ params, searchParams }: Params) {
   const openTo = await accessProducts(store, config);
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={lang} className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <ConfirmDeletes />
       <CommunityBar store={store} config={config} tab="feed" signedIn messages={config.dm.on} requests={waiting} news={news} room={config.chat.on} />
       <main id="content" className="mx-auto grid max-w-5xl gap-x-8 px-4 pb-16 pt-6 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
         <aside className="hidden lg:block">
-          <nav aria-label="Spaces" className="sticky top-24">
-            <p className="st-label px-3 text-xs uppercase tracking-[0.08em]">Spaces</p>
+          <nav aria-label={w.spaces} className="sticky top-24">
+            <p className="st-label px-3 text-xs uppercase tracking-[0.08em]">{w.spaces}</p>
             <ul className="mt-2 space-y-0.5">
               <li>
-                <Link href={home} aria-current={!space ? "page" : undefined} className="cm-side">All posts</Link>
+                <Link href={home} aria-current={!space ? "page" : undefined} className="cm-side">{w.allPosts}</Link>
               </li>
               {spaces.map((s) => (
                 <li key={s.id}>
@@ -134,10 +142,10 @@ export default async function CommunityPage({ params, searchParams }: Params) {
         </aside>
 
         <div className="min-w-0">
-          <nav aria-label="Spaces" className="cm-chips -mx-4 mb-5 px-4 lg:hidden">
+          <nav aria-label={w.spaces} className="cm-chips -mx-4 mb-5 px-4 lg:hidden">
             <ul className="flex gap-2">
               <li className="shrink-0">
-                <Link href={home} aria-current={!space ? "page" : undefined} className="cm-chip">All posts</Link>
+                <Link href={home} aria-current={!space ? "page" : undefined} className="cm-chip">{w.allPosts}</Link>
               </li>
               {spaces.map((s) => (
                 <li key={s.id} className="shrink-0">
@@ -153,26 +161,26 @@ export default async function CommunityPage({ params, searchParams }: Params) {
 
           {owner && !store.community.on ? (
             <div className="st-note mb-5 text-sm" role="status">
-              <strong>Switched off: only you can see this.</strong>{" "}
-              Set it up, then switch it on in the <Link href="/studio/community" className="font-semibold underline underline-offset-4">studio</Link>.
+              <strong>{w.switchedOff}</strong> {w.switchedOffHow}{" "}
+              <Link href="/studio/community" className="font-semibold underline underline-offset-4">{w.studio}</Link>.
             </div>
           ) : null}
           {owner && openTo.length === 0 ? (
             <div className="st-note mb-5 text-sm" role="status">
-              <strong>Nobody can come in yet.</strong>{" "}
-              Choose which of your products open it, in the <Link href="/studio/community" className="font-semibold underline underline-offset-4">studio</Link>.
+              <strong>{w.nobodyYet}</strong> {w.nobodyYetHow}{" "}
+              <Link href="/studio/community" className="font-semibold underline underline-offset-4">{w.studio}</Link>.
             </div>
           ) : null}
-          {member?.muted ? <p className="cm-flash cm-flash-warn mb-5">{NOTICES.muted.text}</p> : null}
+          {member?.muted ? <p className="cm-flash cm-flash-warn mb-5">{notices.muted.text}</p> : null}
           {member && !member.muted && (!member.n || (config.questions.length > 0 && !member.qa)) ? (
             <div className="st-note mb-5 text-sm" role="status">
-              <strong>{`Welcome to ${config.name}.`}</strong>{" "}
+              <strong>{w.welcome(config.name)}</strong>{" "}
               {!member.n && config.questions.length && !member.qa
-                ? `Before your first post, choose the name members see and answer ${store.name}'s ${config.questions.length === 1 ? "question" : "questions"}. `
+                ? w.welcomeNameAndQuestions(store.name, config.questions.length)
                 : !member.n
-                  ? "Before your first post, choose the name members see. "
-                  : `Before your first post, answer ${store.name}'s ${config.questions.length === 1 ? "question" : "questions"}. `}
-              <Link href={`${home}/you`} className="font-semibold underline underline-offset-4">It takes a minute</Link>
+                  ? w.welcomeName
+                  : w.welcomeQuestions(store.name, config.questions.length)}
+              <Link href={`${home}/you`} className="font-semibold underline underline-offset-4">{w.takesAMinute}</Link>
             </div>
           ) : null}
 
@@ -180,11 +188,11 @@ export default async function CommunityPage({ params, searchParams }: Params) {
             <div className="mb-5">
               <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">{space.name}</h1>
               {space.about ? <p className="st-muted mt-1">{space.about}</p> : null}
-              {space.creatorOnly ? <p className="st-muted mt-1 text-sm">{`Only ${store.name} starts posts here. Everyone can comment.`}</p> : null}
+              {space.creatorOnly ? <p className="st-muted mt-1 text-sm">{w.onlyCreatorStarts(store.name)}</p> : null}
               {!space.creatorOnly && space.level >= 2 ? (
                 <p className="st-muted mt-1 text-sm">
-                  {`Starting a post here opens at Level ${space.level}${locked(space) ? `; you are at Level ${myLevel}` : ""}. Everyone can comment. `}
-                  <Link href={`${home}/leaderboard`} className="font-semibold underline underline-offset-4">How levels work</Link>
+                  {locked(space) ? w.spaceLevelYours(space.level, myLevel) : w.spaceLevel(space.level)}
+                  <Link href={`${home}/leaderboard`} className="font-semibold underline underline-offset-4">{w.howLevelsWork}</Link>
                 </p>
               ) : null}
             </div>
@@ -205,14 +213,15 @@ export default async function CommunityPage({ params, searchParams }: Params) {
                 canEmail={owner && canAnnounceByEmail(store)}
                 reach={reach}
                 named={Boolean(member?.n)}
+                words={composerWords(store.language, MAX_POLL_OPTIONS, reach)}
               />
             </div>
           ) : null}
 
           {shown.length === 0 ? (
             <div className="st-note text-center">
-              <p className="font-bold" style={{ color: "var(--st-text)" }}>{before ? "Nothing older" : "No posts here yet"}</p>
-              <p className="mt-1 text-sm">{before ? "That is everything." : canWrite && !(space && locked(space)) ? "Be the first: say hello, ask something, share a win." : "When somebody posts, it shows up here."}</p>
+              <p className="font-bold" style={{ color: "var(--st-text)" }}>{before ? w.nothingOlder : w.noPostsYet}</p>
+              <p className="mt-1 text-sm">{before ? w.thatIsEverything : canWrite && !(space && locked(space)) ? w.beTheFirst : w.whenSomebodyPosts}</p>
             </div>
           ) : (
             <ul className="space-y-4">
@@ -238,7 +247,7 @@ export default async function CommunityPage({ params, searchParams }: Params) {
           {page.next ? (
             <p className="mt-6 text-center">
               <Link href={`${home}?${space ? `space=${space.id}&` : ""}before=${page.next}`} className="cm-pill cm-pill-wide">
-                Older posts
+                {w.olderPosts}
               </Link>
             </p>
           ) : null}

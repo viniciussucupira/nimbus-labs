@@ -49,12 +49,12 @@ import { leadsKey, parseContact } from "@/lib/contacts";
 import { canSellProduct, fromPriceCents } from "@/lib/store-checkout";
 import { stockLeft } from "@/lib/stock";
 import { type SessionRecord, fromCreator, storeBase } from "@/lib/purchase-email";
-import { membershipPrice } from "@/lib/product-recurring";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { SITE_URL } from "@/lib/site-url";
 import type { Store } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
-import { formatMoney } from "@/lib/money";
+import { membershipLine, speech } from "@/lib/buyer-words";
+import { givingWords } from "@/lib/buyer-words/giving";
 
 /** A checkout that closed longer ago than this is left alone. */
 export const REMIND_WITHIN_SECONDS = 6 * 60 * 60;
@@ -108,15 +108,17 @@ async function stopLink(store: Store, email: string): Promise<{ page: string; on
 /** Who a stop link belongs to, without acting on it. */
 export async function readStopToken(
   token: string,
-): Promise<{ email: string; storeName: string; stopped: boolean } | null> {
+): Promise<{ email: string; storeName: string; stopped: boolean; handle: string } | null> {
   if (!STOP_TOKEN.test(token) || !isRedisConfigured()) return null;
   const [raw] = await redisPipeline([["GET", linkKey(token)]]);
   if (typeof raw !== "string" || !raw) return null;
   try {
-    const grant = JSON.parse(raw) as { k?: unknown; e?: unknown; n?: unknown };
+    const grant = JSON.parse(raw) as { k?: unknown; e?: unknown; n?: unknown; h?: unknown };
     if (typeof grant.k !== "string" || typeof grant.e !== "string" || !grant.k || !grant.e) return null;
     const [off] = await redisPipeline([["EXISTS", offKey(grant.k, grant.e)]]);
-    return { email: grant.e, storeName: typeof grant.n === "string" ? grant.n : "", stopped: Number(off) === 1 };
+    // The store's handle, so the page can speak the store's language.
+    const handle = typeof grant.h === "string" ? grant.h : "";
+    return { email: grant.e, storeName: typeof grant.n === "string" ? grant.n : "", stopped: Number(off) === 1, handle };
   } catch {
     return null;
   }
@@ -189,7 +191,7 @@ export async function remindAbandoned(
   return deliver(store, product, email, {
     claim: id,
     since: created,
-    why: `It reached you because you agreed, on the checkout page, to hear from ${store.name}.`,
+    why: givingWords(store.language).recoverWhyCheckout(store.name),
   });
 }
 
@@ -210,7 +212,7 @@ export async function remindAsked(
   return deliver(store, product, ask.email, {
     claim: `ask-${ask.key}`,
     since: ask.askedAt,
-    why: `It reached you because you asked for it on ${store.name}'s store.`,
+    why: givingWords(store.language).recoverWhyAsked(store.name),
   });
 }
 
@@ -252,29 +254,31 @@ async function deliver(
   if (claimed === null || claimedOnce === null) return "skip";
 
   const name = store.name;
+  const { w, money } = speech(store);
+  const g = givingWords(store.language);
   // The price as the store page says it: the floor of a price the buyer
   // chooses, and a membership's trial and set number of payments with it.
-  const price = `${formatMoney(fromPriceCents(product), store.currency)}`;
-  const from = product.options.length > 1 ? "from " : "";
+  const price = money(fromPriceCents(product));
+  const from = (said: string) => (product.options.length > 1 ? w.fromPrice(said) : said);
   const priceWords = activePwyw(product)
-    ? `you choose it, from ${formatMoney(product.priceCents, store.currency)}`
+    ? g.youChoosePrice(money(product.priceCents))
     : product.recurring
-      ? `${from}${membershipPrice(product.recurring, price)}`
-      : `${from}${price}`;
+      ? from(membershipLine(store, product.recurring, price))
+      : from(price);
   const stop = await stopLink(store, email);
   const text = [
-    `You started buying ${product.title} from ${name} and did not finish, so nothing was charged.`,
+    g.recoverLead(product.title, name),
     "",
-    "If you still want it, it is here:",
+    g.recoverHere,
     productLink(store, product.id),
     "",
-    `The price: ${priceWords}. The checkout opens at today's price.`,
+    g.recoverPrice(priceWords),
     "",
-    `This is the only reminder about that checkout. ${how.why}`,
+    g.recoverOnly(how.why),
     "",
-    `Stop these reminders from ${name}: ${stop.page}`,
+    g.recoverStop(name, stop.page),
     `${name} · ${store.recovery.address}`,
-    "Sent with Marktmorgen.",
+    g.sentWith,
   ].join("\n");
 
   let ok = false;
@@ -284,7 +288,7 @@ async function deliver(
       // from their own address where there is one (lib/mail-from.ts).
       from: fromCreator(store),
       to: email,
-      subject: `You left ${product.title} at checkout`.slice(0, 200),
+      subject: g.recoverSubject(product.title).slice(0, 200),
       text,
       replyTo: store.email,
       headers: { "List-Unsubscribe": `<${stop.oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },

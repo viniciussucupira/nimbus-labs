@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { photoUrl } from "@/lib/photo-limits";
 import { isFree, type Listing, type Store } from "@/lib/store";
-import { formatMoney } from "@/lib/money";
+import { speech } from "@/lib/buyer-words";
+import { communityWords, pollWhenIn, whenIn } from "@/lib/buyer-words/community";
+import { LANGUAGES } from "@/lib/store-language";
 import { CREATOR, type CommunityConfig, type Member, type Post } from "@/lib/community";
 import { communityImageFile } from "@/lib/community-image";
-import { initialOf, segments, whenWords } from "@/lib/community-text";
+import { initialOf, segments } from "@/lib/community-text";
 import { MAX_QUERY_LENGTH } from "@/lib/community-search";
 import { withMentions } from "@/lib/community-mentions";
-import { type PollView, pollWhen } from "@/lib/community-polls";
+import type { PollView } from "@/lib/community-polls";
 
 /**
  * The pieces every community page is made of: the bar across the top, a
@@ -21,86 +23,37 @@ import { type PollView, pollWhen } from "@/lib/community-polls";
  * any script.
  */
 
-export const NOTICES: Record<string, { text: string; tone?: "warn" }> = {
-  posted: { text: "Posted." },
-  announced: { text: "Posted, and the email to members who asked for announcements is on its way." },
-  noemail: { text: "Posted. It was not emailed: emailing announcements is part of Pro, with your email settings filled in.", tone: "warn" },
-  noreaders: { text: "Posted. Nobody has asked for announcement emails yet, so none were sent." },
-  commented: { text: "Comment added." },
-  voted: { text: "Your vote is in. You can change it, or take it back, while the poll is open." },
-  dmsent: { text: "Sent." },
-  dmasked: { text: "Sent as a request. They see it when they choose to, and it becomes a conversation if they accept." },
-  dmaccepted: { text: "Accepted. You can write to each other now." },
-  dmdeclined: { text: "Declined. It is gone, and they cannot ask again." },
-  dmunblocked: { text: "They can write to you again." },
-  dmoff: { text: "Messages are not switched on in this community.", tone: "warn" },
-  dmbetween: { text: `Members cannot message each other here. The creator can still be written to.`, tone: "warn" },
-  dmfull: { text: "That inbox is full right now, so the message was not sent.", tone: "warn" },
-  chatoff: { text: "There is no live room in this community.", tone: "warn" },
-  pollclosed: { text: "That poll has closed, so the count stands as it is.", tone: "warn" },
-  polloptions: { text: "A poll needs at least two answers, each with something written in it.", tone: "warn" },
-  polltitle: { text: "Give the poll a question: it goes in the title.", tone: "warn" },
-  edited: { text: "Saved. It is marked as edited, so nobody is replying to words that quietly changed." },
-  notyours: { text: "Only the person who wrote it can rewrite it.", tone: "warn" },
-  liked: { text: "Like updated." },
-  reported: { text: "Reported. The creator sees it in their moderation queue; nobody else is told who reported it." },
-  deleted: { text: "Deleted." },
-  hidden: { text: "Hidden from members. You can still see it, and show it again." },
-  shown: { text: "Shown to members again." },
-  pinned: { text: "Pinned to the top." },
-  unpinned: { text: "Unpinned." },
-  start: { text: "This is now the Start here post." },
-  unstart: { text: "No longer the Start here post." },
-  "muted-member": { text: "Muted. They can read, and cannot post, comment or like until you unmute them." },
-  "unmuted-member": { text: "Unmuted." },
-  saved: { text: "Saved." },
-  empty: { text: "Write something first.", tone: "warn" },
-  links: { text: "That has more web addresses than a post or comment may carry. Take a few out.", tone: "warn" },
-  slow: { text: "That is a lot in a short time. Wait a little, then try again.", tone: "warn" },
-  name: { text: "Choose the name other members see you by, then post.", tone: "warn" },
-  questions: { text: "Answer the questions below once, then post and comment as you like.", tone: "warn" },
-  image: { text: "That picture could not be checked. Try a JPEG, PNG or WebP.", tone: "warn" },
-  creatoronly: { text: "Only the creator starts posts in that space. You can still comment.", tone: "warn" },
-  level: { text: "Starting a post in that space opens at a higher level. You can still read and comment; the leaderboard shows how levels are reached.", tone: "warn" },
-  muted: { text: "The creator has muted you here: you can read, and cannot post, comment or like.", tone: "warn" },
-  full: { text: "This community has as many members as it can hold, so there is no member record for you: you can read, but cannot post, comment, like or save your choices. Tell the creator.", tone: "warn" },
-  fullposts: { text: "This community holds as many posts as it can. The creator can delete old ones to make room.", tone: "warn" },
-  fullcomments: { text: "This post has as many comments as one post holds.", tone: "warn" },
-  pinfull: { text: "Three posts are pinned already. Unpin one first.", tone: "warn" },
-  gone: { text: "That is not there anymore.", tone: "warn" },
-  forbidden: { text: "That is not yours to change.", tone: "warn" },
-  going: { text: "You are going. The way in shows on this page 15 minutes before the start." },
-  goingnomail: { text: "You are going. The way in shows on this page 15 minutes before the start. For reminder emails a day and an hour before, check the “Email me” box on your You page." },
-  notgoing: { text: "Your RSVP is canceled." },
-  eventfull: { text: "Every place is taken. If somebody cancels, a place opens here again.", tone: "warn" },
-  eventcancelled: { text: "This event was canceled.", tone: "warn" },
-  eventover: { text: "This event is over.", tone: "warn" },
-  eventlocked: { text: "This event is for members who have one of the products named on it.", tone: "warn" },
-  host: { text: "You host this event, so there is no place for you to take.", tone: "warn" },
-  nospace: { text: "There is no space to post in yet.", tone: "warn" },
-  spacelocked: { text: "That space is for members who have one of the products it is kept for.", tone: "warn" },
-  out: { text: "Your session here ended. Ask for a new link below.", tone: "warn" },
-  off: { text: "This community is closed right now.", tone: "warn" },
-  error: { text: "Something went wrong on our side. Nothing was changed; try again in a moment.", tone: "warn" },
-};
+/** Notices that warn rather than confirm: drawn in the warning colour. */
+const WARN = new Set([
+  "noemail", "dmoff", "dmbetween", "dmfull", "chatoff", "pollclosed", "polloptions", "polltitle", "notyours", "empty", "links", "slow",
+  "name", "questions", "image", "creatoronly", "level", "muted", "full", "fullposts", "fullcomments", "pinfull", "gone", "forbidden",
+  "eventfull", "eventcancelled", "eventover", "eventlocked", "host", "nospace", "spacelocked", "out", "off", "error",
+]);
 
-export const LINK_NOTICES: Record<string, { title: string; body: string }> = {
-  sent: {
-    title: "Check your inbox",
-    body: "If that address has something that opens this community, a link to come in is on its way. It works for one hour.",
-  },
-  email: { title: "That address does not look right", body: "Check it and try again." },
-  limited: { title: "Too many requests", body: "Wait a little, then ask again." },
-  error: { title: "The email could not be sent", body: "Nothing is lost. Try again in a moment." },
-};
+/** What happened after a button, in the store's language (lib/buyer-words/community.ts). */
+export function communityNotices(language: unknown): Record<string, { text: string; tone?: "warn" }> {
+  const w = communityWords(language);
+  return Object.fromEntries(Object.entries(w.notices).map(([key, text]) => [key, WARN.has(key) ? { text, tone: "warn" as const } : { text }]));
+}
+
+/** After asking for a link to come in, in the store's language. */
+export function linkNotices(language: unknown): Record<string, { title: string; body: string }> {
+  return communityWords(language).linkNotices;
+}
+
+/** "5 min ago", "Sep 4", in the store's language. */
+export function storeWhen(store: Store, seconds: number): string {
+  return whenIn(store.language, LANGUAGES[store.language].locale, seconds);
+}
 
 /** What a product that opens the community is, in a few words. */
-export function ticketKind(product: Listing, currency: string): string {
-  if (isFree(product)) return "Free";
-  const price = formatMoney(product.priceCents, currency);
-  if (product.recurring) return `Membership · ${price}`;
-  if (product.course) return `Course · ${price}`;
-  if (product.call) return `Call · ${price}`;
+export function ticketKind(store: Store, product: Listing): string {
+  const w = communityWords(store.language);
+  if (isFree(product)) return w.ticketFree;
+  const price = speech(store).money(product.priceCents);
+  if (product.recurring) return w.ticketMembership(price);
+  if (product.course) return w.ticketCourse(price);
+  if (product.call) return w.ticketCall(price);
   return price;
 }
 
@@ -139,15 +92,16 @@ export function CommunityBar({
   room?: boolean;
 }) {
   const home = `/@${store.handle}/community`;
+  const w = communityWords(store.language);
   const tabs: { id: Tab; label: string; href: string }[] = [
-    { id: "feed", label: "Feed", href: home },
-    ...(room ? [{ id: "chat" as Tab, label: "Room", href: `${home}/chat` }] : []),
-    { id: "events", label: "Events", href: `${home}/events` },
-    { id: "members", label: "Members", href: `${home}/members` },
-    { id: "leaderboard", label: "Leaderboard", href: `${home}/leaderboard` },
-    { id: "you", label: "You", href: `${home}/you` },
-    ...(messages ? [{ id: "messages" as Tab, label: requests ? `Messages (${requests})` : "Messages", href: `${home}/messages` }] : []),
-    { id: "notifications" as Tab, label: news ? `News (${news})` : "News", href: `${home}/notifications` },
+    { id: "feed", label: w.tabFeed, href: home },
+    ...(room ? [{ id: "chat" as Tab, label: w.tabRoom, href: `${home}/chat` }] : []),
+    { id: "events", label: w.tabEvents, href: `${home}/events` },
+    { id: "members", label: w.tabMembers, href: `${home}/members` },
+    { id: "leaderboard", label: w.tabLeaderboard, href: `${home}/leaderboard` },
+    { id: "you", label: w.tabYou, href: `${home}/you` },
+    ...(messages ? [{ id: "messages" as Tab, label: requests ? w.tabMessagesWaiting(requests) : w.tabMessages, href: `${home}/messages` }] : []),
+    { id: "notifications" as Tab, label: news ? w.tabNewsWaiting(news) : w.tabNews, href: `${home}/notifications` },
   ];
   return (
     <header className="cm-bar relative z-30 sm:sticky sm:top-0">
@@ -163,11 +117,11 @@ export function CommunityBar({
           )}
           <span className="min-w-0">
             <span className="block truncate text-[0.9375rem] font-bold leading-tight">{config.name}</span>
-            <span className="st-muted block truncate text-xs font-semibold">{`by ${store.name} · back to the store`}</span>
+            <span className="st-muted block truncate text-xs font-semibold">{w.byStore(store.name)}</span>
           </span>
         </Link>
         {signedIn ? (
-          <nav aria-label="Community" className="w-full sm:w-auto">
+          <nav aria-label={w.pageTitle} className="w-full sm:w-auto">
             <ul className="flex flex-wrap gap-1">
               {tabs.map((t) => (
                 <li key={t.id} className="flex-none">
@@ -183,14 +137,14 @@ export function CommunityBar({
           // Its own form, and a GET: a search is a place you can send somebody,
           // go back to, and bookmark, so it belongs in the address.
           <form action={`${home}/search`} method="get" role="search" className="w-full sm:w-56">
-            <label htmlFor="cm-search" className="sr-only">Search this community</label>
+            <label htmlFor="cm-search" className="sr-only">{w.searchLabel}</label>
             <input
               id="cm-search"
               type="search"
               name="q"
               defaultValue={query}
               maxLength={MAX_QUERY_LENGTH}
-              placeholder="Search posts and comments"
+              placeholder={w.searchPlaceholder}
               className="cm-search"
               autoComplete="off"
             />
@@ -219,7 +173,7 @@ export function Face({ store, author, name, size = 40 }: { store: Store; author:
 /** The name an author is shown by: the store's for the creator, a member's chosen one, or "A member". */
 export function authorName(store: Store, author: string, members: Map<string, Member>): string {
   if (author === CREATOR) return store.name;
-  return members.get(author)?.n || "A member";
+  return members.get(author)?.n || communityWords(store.language).aMember;
 }
 
 /** A member's words, with their web addresses as links and their line breaks kept. */
@@ -353,16 +307,17 @@ function Bubble() {
 }
 
 /** A creator badge: what tells every member who the creator is. */
-export function CreatorBadge() {
-  return <span className="cm-badge cm-badge-creator">Creator</span>;
+export function CreatorBadge({ store }: { store?: Store }) {
+  return <span className="cm-badge cm-badge-creator">{communityWords(store?.language).creatorBadge}</span>;
 }
 
 /** A member's level (lib/community-points.ts), beside their name everywhere they write. */
-export function LevelBadge({ level }: { level: number | undefined }) {
+export function LevelBadge({ level, store }: { level: number | undefined; store?: Store }) {
   if (!level) return null;
+  const said = communityWords(store?.language).levelBadge(level);
   return (
-    <span className="cm-badge" title={`Level ${level}`}>
-      {`Level ${level}`}
+    <span className="cm-badge" title={said}>
+      {said}
     </span>
   );
 }
@@ -396,7 +351,8 @@ function PollBox({
   space?: string | null;
 }) {
   const { poll, counts, total, mine, closed, showing } = view;
-  const when = pollWhen(poll);
+  const w = communityWords(store.language);
+  const when = pollWhenIn(store.language, poll.ends);
   const voted = mine.length > 0;
   const open = !closed && viewer.canWrite;
   const share = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
@@ -405,7 +361,7 @@ function PollBox({
       <form action="/api/store/community" method="post">
         <Carry store={store} action="vote" post={post.id} from={from} space={space} />
         <fieldset disabled={!open}>
-        <legend className="sr-only">{post.title || "Poll"}</legend>
+        <legend className="sr-only">{post.title || w.poll}</legend>
         <ul className="space-y-1.5">
           {poll.options.map((option) => {
             const n = counts[option.id] ?? 0;
@@ -434,7 +390,7 @@ function PollBox({
         </ul>
         {open ? (
           <div className="mt-3">
-            <button type="submit" className="cm-pill">{voted ? "Change my vote" : "Vote"}</button>
+            <button type="submit" className="cm-pill">{voted ? w.changeVote : w.vote}</button>
           </div>
         ) : null}
         </fieldset>
@@ -445,21 +401,21 @@ function PollBox({
         // real one is simply the real one: the button did nothing, silently.
         <form action="/api/store/community" method="post" className="mt-2">
           <Carry store={store} action="vote" post={post.id} from={from} space={space} />
-          <button type="submit" className="cm-quiet-link cm-mini text-xs font-semibold">Take my vote back</button>
+          <button type="submit" className="cm-quiet-link cm-mini text-xs font-semibold">{w.takeVoteBack}</button>
         </form>
       ) : null}
       <p className="st-muted mt-2 text-xs font-semibold">
         {[
-          showing ? `${total} ${total === 1 ? "vote" : "votes"}` : "Results are hidden until this closes",
-          poll.multi ? "Pick as many as you like" : "Pick one",
+          showing ? w.votes(total) : w.resultsHidden,
+          poll.multi ? w.pickMany : w.pickOne,
           when,
-          closed ? "" : viewer.canWrite ? "" : "You cannot vote here",
+          closed ? "" : viewer.canWrite ? "" : w.cannotVote,
         ]
           .filter(Boolean)
           .join(" · ")}
       </p>
       <p className="st-muted mt-1 text-xs">
-        {`Your vote is counted against your account, so it can only count once. ${store.name} sees the totals, never who chose what.`}
+        {w.voteNote(store.name)}
       </p>
     </div>
   );
@@ -508,6 +464,8 @@ export function PostCard({
   const link = `${home}/post/${post.id}`;
   const labelId = `post-title-${post.id}`;
   const authorMuted = post.a !== CREATOR && members.get(post.a)?.muted;
+  const w = communityWords(store.language);
+  const { num } = speech(store);
 
   return (
     <article id={`post-${post.id}`} aria-labelledby={labelId} className={`st-card cm-post scroll-mt-28 p-5 sm:p-6 ${post.hid ? "cm-hidden" : ""}`}>
@@ -516,7 +474,7 @@ export function PostCard({
         <div className="min-w-0 flex-1">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.9375rem] font-bold leading-tight">
             <span className="min-w-0 break-words">{name}</span>
-            {post.a === CREATOR ? <CreatorBadge /> : <LevelBadge level={levels?.get(post.a)} />}
+            {post.a === CREATOR ? <CreatorBadge store={store} /> : <LevelBadge level={levels?.get(post.a)} store={store} />}
           </p>
           <p className="st-muted mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm">
             {place ? (
@@ -525,12 +483,12 @@ export function PostCard({
                 <span aria-hidden="true">·</span>
               </>
             ) : null}
-            <time dateTime={new Date(post.at * 1000).toISOString()}>{whenWords(post.at)}</time>
+            <time dateTime={new Date(post.at * 1000).toISOString()}>{storeWhen(store, post.at)}</time>
             {post.ed ? (
               <>
                 <span aria-hidden="true">·</span>
                 {/* Said out loud, because people reply to what a post said. */}
-                <span title={`Edited ${whenWords(post.ed)}`}>Edited</span>
+                <span title={w.editedAt(storeWhen(store, post.ed))}>{w.edited}</span>
               </>
             ) : null}
           </p>
@@ -539,20 +497,20 @@ export function PostCard({
 
       {start || pinned || post.kind === "announcement" || post.hid ? (
         <p className="mt-3 flex flex-wrap gap-1.5">
-          {start ? <span className="cm-badge cm-badge-accent">Start here</span> : null}
-          {pinned ? <span className="cm-badge">Pinned</span> : null}
-          {post.kind === "announcement" ? <span className="cm-badge cm-badge-accent">Announcement</span> : null}
-          {post.hid ? <span className="cm-badge cm-badge-warn">Hidden from members</span> : null}
+          {start ? <span className="cm-badge cm-badge-accent">{w.startHere}</span> : null}
+          {pinned ? <span className="cm-badge">{w.pinnedBadge}</span> : null}
+          {post.kind === "announcement" ? <span className="cm-badge cm-badge-accent">{w.announcement}</span> : null}
+          {post.hid ? <span className="cm-badge cm-badge-warn">{w.hiddenFromMembers}</span> : null}
         </p>
       ) : null}
 
       <h2 id={labelId} className={`font-display mt-3 break-words text-lg font-semibold leading-snug tracking-[-0.01em] sm:text-xl ${post.title ? "" : "sr-only"}`}>
-        {full ? post.title || `A post by ${name}` : <Link href={link} className="st-title-link">{post.title || `A post by ${name}`}</Link>}
+        {full ? post.title || w.postBy(name) : <Link href={link} className="st-title-link">{post.title || w.postBy(name)}</Link>}
       </h2>
       {shown ? <PostText text={shown} className="mt-2" named={named} store={store} /> : null}
       {long ? (
         <p className="mt-2 text-sm font-semibold">
-          <Link href={link} className="cm-quiet-link underline underline-offset-4">Read the whole post</Link>
+          <Link href={link} className="cm-quiet-link underline underline-offset-4">{w.readWholePost}</Link>
         </p>
       ) : null}
       {post.img ? (
@@ -583,67 +541,67 @@ export function PostCard({
           >
             <Heart filled={Boolean(numbers?.liked)} />
             <span aria-hidden="true">{likes}</span>
-            <span className="sr-only">{`${numbers?.liked ? "Unlike" : "Like"} this post, ${likes} ${likes === 1 ? "like" : "likes"}`}</span>
+            <span className="sr-only">{numbers?.liked ? w.unlikeThis(likes, num(likes)) : w.likeThis(likes, num(likes))}</span>
           </ActButton>
         ) : (
           <span className="cm-pill cm-pill-still">
             <Heart filled={false} />
             <span aria-hidden="true">{likes}</span>
-            <span className="sr-only">{`${likes} ${likes === 1 ? "like" : "likes"}`}</span>
+            <span className="sr-only">{w.likes(likes, num(likes))}</span>
           </span>
         )}
         {full ? (
           <a href="#comments" className="cm-pill">
             <Bubble />
-            <span>{`${comments} ${comments === 1 ? "comment" : "comments"}`}</span>
+            <span>{w.comments(comments, num(comments))}</span>
           </a>
         ) : (
           <Link href={`${link}#comments`} className="cm-pill">
             <Bubble />
-            <span>{comments === 0 ? "Comment" : `${comments} ${comments === 1 ? "comment" : "comments"}`}</span>
+            <span>{comments === 0 ? w.commentVerb : w.comments(comments, num(comments))}</span>
           </Link>
         )}
 
         {viewer.canWrite ? (
           <details className="cm-menu ml-auto">
-            <summary className="cm-pill" aria-label="More for this post">
+            <summary className="cm-pill" aria-label={w.moreForPost}>
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor">
                 <circle cx="5" cy="12" r="1.8" />
                 <circle cx="12" cy="12" r="1.8" />
                 <circle cx="19" cy="12" r="1.8" />
               </svg>
             </summary>
-            <div className="cm-menu-list" role="group" aria-label="Post actions">
+            <div className="cm-menu-list" role="group" aria-label={w.postActions}>
               {viewer.owner ? (
                 <>
                   <ActButton store={store} action={pinned ? "unpin" : "pin"} post={post.id} from={from} space={space}>
-                    {pinned ? "Unpin" : "Pin to the top"}
+                    {pinned ? w.unpin : w.pinToTop}
                   </ActButton>
                   <ActButton store={store} action={start ? "unstart" : "start"} post={post.id} from={from} space={space}>
-                    {start ? "No longer Start here" : "Make it Start here"}
+                    {start ? w.noLongerStart : w.makeStart}
                   </ActButton>
                   <ActButton store={store} action={post.hid ? "unhide" : "hide"} post={post.id} from={from} space={space}>
-                    {post.hid ? "Show to members" : "Hide from members"}
+                    {post.hid ? w.showToMembers : w.hideFromMembers}
                   </ActButton>
                   {post.a !== CREATOR ? (
                     <ActButton store={store} action={authorMuted ? "unmute" : "mute"} post={post.id} from={from} space={space}>
-                      {authorMuted ? `Unmute ${name}` : `Mute ${name}`}
+                      {authorMuted ? w.unmute(name) : w.mute(name)}
                     </ActButton>
                   ) : null}
                 </>
               ) : !mine ? (
                 <ActButton store={store} action="report" post={post.id} from={from} space={space}>
-                  Report to the creator
+                  {w.reportToCreator}
                 </ActButton>
               ) : null}
               {mine ? (
                 <Link href={`${link}?edit=post`} className="cm-menu-item">
-                  Edit the post
+                  {w.editPost}
                 </Link>
               ) : null}
               {viewer.owner || mine ? (
-                <ActButton store={store} action="delete" post={post.id} from={from} space={space} className="cm-menu-item cm-danger" confirm="Delete this post, with its comments, for good?">
-                  Delete the post
+                <ActButton store={store} action="delete" post={post.id} from={from} space={space} className="cm-menu-item cm-danger" confirm={w.deletePostConfirm}>
+                  {w.deletePost}
                 </ActButton>
               ) : null}
             </div>
@@ -670,9 +628,10 @@ export function Gate({
   products: { id: string; title: string; kind: string }[];
   link: { title: string; body: string } | null;
 }) {
+  const w = communityWords(store.language);
   return (
     <div className="st-card mx-auto mt-8 max-w-xl p-6 sm:p-8">
-      <p className="st-label">Community</p>
+      <p className="st-label">{w.pageTitle}</p>
       <h1 className="font-display mt-1 text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">{config.name}</h1>
       {config.about ? <PostText text={config.about} className="st-muted mt-3 leading-relaxed" /> : null}
 
@@ -685,21 +644,19 @@ export function Gate({
 
       {state === "removed" ? (
         <div className="st-note mt-6" role="status">
-          <p className="font-bold" style={{ color: "var(--st-text)" }}>{`${store.name} has taken you out of this community`}</p>
-          <p className="mt-1 text-sm">{`Signed in as ${email}. What you bought is untouched; only the community is closed to this address.`}</p>
+          <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.removedTitle(store.name)}</p>
+          <p className="mt-1 text-sm">{w.removedBody(email ?? "")}</p>
         </div>
       ) : state === "closed" ? (
         <div className="st-note mt-6" role="status">
-          <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing that opens it yet</p>
-          <p className="mt-1 text-sm">
-            {`${email} has nothing from ${store.name} that opens this community, or a membership that did has stopped. If you used another address, ask for a link with it below.`}
-          </p>
+          <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.closedTitle}</p>
+          <p className="mt-1 text-sm">{w.closedBody(email ?? "", store.name)}</p>
         </div>
       ) : null}
 
       {state !== "removed" && products.length > 0 ? (
         <div className="mt-6">
-          <p className="text-sm font-semibold">Open to everyone who has</p>
+          <p className="text-sm font-semibold">{w.openToEveryone}</p>
           <ul className="mt-2 space-y-2">
             {products.map((p) => (
               <li key={p.id}>
@@ -716,11 +673,11 @@ export function Gate({
       {state !== "removed" ? (
         <form action="/api/store/community/link" method="post" className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
           <input type="hidden" name="handle" value={store.handle} />
-          <label htmlFor="community-email" className="st-label">{state === "closed" ? "Try another address" : "Already a member?"}</label>
-          <p className="st-muted mt-1 text-sm">Type the address you used to buy or sign up, and a link to come in on this device is sent there. No password.</p>
+          <label htmlFor="community-email" className="st-label">{state === "closed" ? w.tryAnotherAddress : w.alreadyMember}</label>
+          <p className="st-muted mt-1 text-sm">{w.linkExplain}</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <input id="community-email" name="email" type="email" required autoComplete="email" placeholder="you@example.com" className="st-field min-w-0 flex-1" />
-            <button type="submit" className="btn st-btn">Send me the link</button>
+            <input id="community-email" name="email" type="email" required autoComplete="email" placeholder={speech(store).w.emailPlaceholder} className="st-field min-w-0 flex-1" />
+            <button type="submit" className="btn st-btn">{w.sendLink}</button>
           </div>
         </form>
       ) : null}

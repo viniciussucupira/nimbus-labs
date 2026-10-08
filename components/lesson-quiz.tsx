@@ -1,5 +1,7 @@
 import type { Attempt, Quiz } from "@/lib/quiz";
 import { triesLeft } from "@/lib/quiz";
+import { coursesWords } from "@/lib/buyer-words/courses";
+import type { LanguageCode } from "@/lib/store-language";
 
 /**
  * A lesson's quiz, as a student meets it: the questions to answer, and after
@@ -9,6 +11,9 @@ import { triesLeft } from "@/lib/quiz";
  * What is shown after a try follows lib/quiz.ts: which questions were right,
  * the explanations of those, and — once passed or out of tries — the right
  * answers and every explanation.
+ *
+ * Said in the store's `language` (lib/buyer-words/courses.ts), English
+ * unless given.
  */
 export function LessonQuiz({
   quiz,
@@ -18,6 +23,7 @@ export function LessonQuiz({
   hidden,
   storeName,
   justMarked,
+  language = "en",
 }: {
   quiz: Quiz;
   attempt: Attempt | null;
@@ -28,19 +34,15 @@ export function LessonQuiz({
   storeName: string;
   /** Came straight back from marking a try: the result is announced. */
   justMarked: boolean;
+  language?: LanguageCode;
 }) {
+  const w = coursesWords(language);
   const total = quiz.questions.length;
   const heading = (
     <div className="flex flex-wrap items-baseline justify-between gap-2">
-      <h2 id="quiz-title" className="font-display text-xl font-semibold">Quiz</h2>
+      <h2 id="quiz-title" className="font-display text-xl font-semibold">{w.quiz}</h2>
       <p className="st-muted text-sm">
-        {[
-          `${total} ${total === 1 ? "question" : "questions"}`,
-          `pass mark ${quiz.passPercent}%`,
-          quiz.attempts ? `${quiz.attempts} ${quiz.attempts === 1 ? "try" : "tries"}` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
+        {[w.questions(total), w.passMark(quiz.passPercent), quiz.attempts ? w.tries(quiz.attempts) : null].filter(Boolean).join(" · ")}
       </p>
     </div>
   );
@@ -49,7 +51,7 @@ export function LessonQuiz({
     return (
       <section id="quiz" className="mt-8 scroll-mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }} aria-labelledby="quiz-title">
         {heading}
-        <p className="st-muted mt-2 text-sm">Students answer it here, and it is marked on the spot.</p>
+        <p className="st-muted mt-2 text-sm">{w.visitorQuiz}</p>
       </section>
     );
   }
@@ -66,9 +68,7 @@ export function LessonQuiz({
       {heading}
 
       {mode === "owner" ? (
-        <p className="st-note mt-3 text-sm">
-          You see the right answers because this is your course. Students see only the questions; the right answers appear once they pass or run out of tries.
-        </p>
+        <p className="st-note mt-3 text-sm">{w.ownerQuiz}</p>
       ) : last ? (
         <div
           id="quiz-result"
@@ -78,25 +78,21 @@ export function LessonQuiz({
         >
           <p className="font-semibold">
             {passed
-              ? `Passed — ${last.grade.right} of ${last.grade.total} right (${last.grade.percent}%).`
-              : `${last.grade.right} of ${last.grade.total} right (${last.grade.percent}%). You need ${quiz.passPercent}% to pass.`}
+              ? w.passedScore(last.grade.right, last.grade.total, last.grade.percent)
+              : w.failedScore(last.grade.right, last.grade.total, last.grade.percent, quiz.passPercent)}
           </p>
           <p className="st-muted mt-1 text-sm">
             {passed
-              ? "This lesson is marked done. The right answers and every explanation are below."
+              ? w.passedNote
               : left === 0
-                ? `You have used all ${quiz.attempts} ${quiz.attempts === 1 ? "try" : "tries"}. The right answers are below. To try again, reply to your purchase confirmation email: it reaches ${storeName}, who can give you more tries.`
+                ? w.outOfTries(quiz.attempts, storeName)
                 : left === null
-                  ? "Look at the ones marked “Not quite” and try again. You can try as often as you like."
-                  : `Look at the ones marked “Not quite” and try again. ${left} ${left === 1 ? "try" : "tries"} left.`}
+                  ? w.againAny
+                  : w.againLeft(left)}
           </p>
         </div>
       ) : (
-        <p className="st-muted mt-2 text-sm">
-          {left === null
-            ? "Answer every question, then check your answers. You can try as often as you like."
-            : `Answer every question, then check your answers. You have ${left} ${left === 1 ? "try" : "tries"}.`}
-        </p>
+        <p className="st-muted mt-2 text-sm">{left === null ? w.answerAny : w.answerLeft(left)}</p>
       )}
 
       <form action={action} method="post" className="mt-5">
@@ -114,7 +110,7 @@ export function LessonQuiz({
                   <legend className="font-semibold leading-snug" style={{ color: "var(--st-text)" }}>
                     <span className="st-muted mr-1 tabular-nums">{`${qi + 1}.`}</span>
                     <span className="whitespace-pre-line">{question.text}</span>
-                    {question.kind === "multiple" ? <span className="st-muted mt-1 block text-sm font-normal">Choose every right answer.</span> : null}
+                    {question.kind === "multiple" ? <span className="st-muted mt-1 block text-sm font-normal">{w.chooseEvery}</span> : null}
                   </legend>
                   <div className="mt-3 space-y-2">
                     {question.choices.map((choice, ci) => {
@@ -133,7 +129,7 @@ export function LessonQuiz({
                           <span className="min-w-0 flex-1 break-words">{choice}</span>
                           {reveal && right ? (
                             <span className="shrink-0 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--st-accent-text)" }}>
-                              {"✓ Right answer"}
+                              {w.rightAnswer}
                             </span>
                           ) : null}
                         </label>
@@ -142,7 +138,7 @@ export function LessonQuiz({
                   </div>
                   {mark !== undefined ? (
                     <p className="mt-2 text-sm font-semibold" style={{ color: mark ? "var(--st-accent-text)" : "var(--st-text)" }}>
-                      {mark ? "✓ You got this one right." : "✗ Not quite."}
+                      {mark ? w.gotIt : w.notQuite}
                     </p>
                   ) : null}
                   {showWhy && question.explanation ? (
@@ -156,9 +152,9 @@ export function LessonQuiz({
         {canAnswer ? (
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button type="submit" className="btn st-btn">
-              {last ? "Check my answers again" : "Check my answers"}
+              {last ? w.checkAgain : w.check}
             </button>
-            {left !== null ? <span className="st-muted text-sm">{`${left} ${left === 1 ? "try" : "tries"} left`}</span> : null}
+            {left !== null ? <span className="st-muted text-sm">{w.triesLeft(left)}</span> : null}
           </div>
         ) : null}
       </form>

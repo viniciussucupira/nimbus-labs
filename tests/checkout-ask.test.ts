@@ -65,7 +65,9 @@ test("both kinds of yes go through the one set of limits", () => {
   for (const guard of ["offKey(statsId, email)", "onceKey(statsId, email, product.id)", "parseContact(contact)?.unsub", "paidSince(store, email, product.id, how.since)"]) {
     assert.ok(deliver.includes(guard), `the one email is always behind ${guard}`);
   }
-  assert.match(src, /It reached you because you asked for it on \$\{store\.name\}'s store\./, "and the email says why it came");
+  // The words are the store's language's (lib/buyer-words/giving.ts); the English ones say it so.
+  assert.match(src, /why: givingWords\(store\.language\)\.recoverWhyAsked\(store\.name\)/, "and the email says why it came");
+  assert.match(code("lib/buyer-words/giving.ts"), /recoverWhyAsked: \(store: string\) => `It reached you because you asked for it on \$\{store\}'s store\.`/);
 });
 
 test("Stripe is asked for its own box only where Stripe offers one", () => {
@@ -97,8 +99,13 @@ test("the form is this site's own, and a robot that fills every field is told it
 
 test("the page asks nothing of somebody who only wants to go back", () => {
   const page = read("app/[handle]/left/page.tsx");
-  assert.ok(page.indexOf("Back to ${product.title}") < page.indexOf('action="/api/store/remind"'), "the way back comes first");
-  assert.match(page, /Nothing was charged/);
-  assert.match(page, /It does not add you to any list\./);
+  // The page's words are in the store's language (lib/buyer-words/membership.ts).
+  const words = read("lib/buyer-words/membership.ts");
+  const back = page.indexOf("w.backTo(product.title)");
+  assert.ok(back > 0 && back < page.indexOf('action="/api/store/remind"'), "the way back comes first");
+  assert.match(page, /m\.nothingCharged/);
+  assert.match(words, /nothingCharged: "Nothing was charged"/);
+  assert.match(page, /m\.remindNote\(store\.name\)/);
+  assert.match(words, /It does not add you to any list\./);
   assert.match(page, /robots: \{ index: false, follow: false \}/);
 });

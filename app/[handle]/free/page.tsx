@@ -11,35 +11,23 @@ import { canSellProduct } from "@/lib/store-checkout";
 import { readPage } from "@/lib/sales-page-store";
 import { imageUrl } from "@/lib/product-image";
 import { pricePill, productPath } from "@/components/store-product";
-
-export const metadata: Metadata = {
-  title: "Your free copy — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+import { speech } from "@/lib/buyer-words";
+import { givingWords } from "@/lib/buyer-words/giving";
 
 type Params = {
   params: Promise<{ handle: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const NOTICES: Record<string, { title: string; body: string }> = {
-  email: {
-    title: "That does not look like an email address",
-    body: "Check it and try again. The copy goes to the address you type, so it has to be one you can open.",
-  },
-  limited: {
-    title: "Too many requests for now",
-    body: "To keep this form from being used to flood somebody's inbox, it takes a limited number of requests an hour. Try again in an hour.",
-  },
-  unavailable: {
-    title: "This is not available right now",
-    body: "Nothing was sent and nothing was kept. The store may still be setting it up.",
-  },
-  error: {
-    title: "We could not send it just now",
-    body: "Nothing was kept. Try again in a moment.",
-  },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)) : null;
+  return {
+    title: `${givingWords(store?.language).freeMetaTitle} — Marktmorgen`,
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * The paid product a free one's landing page names to show next
@@ -54,6 +42,7 @@ async function nextProduct(store: Store, free: Listing | null): Promise<Listing 
 
 /** A link to that product's own page, with its picture, price and a line about it. Nothing is charged from here. */
 function NextUp({ store, product }: { store: Store; product: Listing }) {
+  const { w } = speech(store);
   return (
     <section aria-labelledby="next-title" className="st-card mt-6 overflow-hidden">
       <div className="flex gap-4 p-6 sm:p-7">
@@ -62,14 +51,14 @@ function NextUp({ store, product }: { store: Store; product: Listing }) {
           <img src={imageUrl(product.image)} alt="" width={96} height={96} className="st-callout-img shrink-0" />
         ) : null}
         <div className="min-w-0">
-          <p className="st-label">{`Also from ${store.name}`}</p>
+          <p className="st-label">{givingWords(store.language).alsoFrom(store.name)}</p>
           <h2 id="next-title" className="font-display mt-1 text-xl font-semibold leading-snug">
             {product.title}
           </h2>
           <p className="st-price mt-2 text-sm">{pricePill(store, product)}</p>
           {product.summary ? <p className="st-muted mt-2 text-sm leading-relaxed">{product.summary}</p> : null}
           <Link href={productPath(store, product)} className="btn st-btn mt-4">
-            {`See ${product.title}`}
+            {w.seeStore(product.title)}
           </Link>
         </div>
       </div>
@@ -110,9 +99,13 @@ export default async function FreePage({ params, searchParams }: Params) {
   const stillFree = claimed !== null && claimed.priceCents === 0;
   // After signing up, the paid product the free one's page names, if any.
   const next = await nextProduct(store, token ? (stillFree ? claimed : null) : status === "sent" ? asked : null);
+  const said = speech(store);
+  const g = givingWords(store.language);
+  const notice = g.freeNotices[status] ?? g.freeNotices.error;
 
   return (
     <div
+      lang={said.lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
@@ -122,13 +115,13 @@ export default async function FreePage({ params, searchParams }: Params) {
             claimed && stillFree ? (
               <>
                 <p className="st-price text-sm">
-                  Free
+                  {said.w.free}
                 </p>
                 <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
                   {claimed.title}
                 </h1>
                 <p className="st-muted mt-4 text-lg">
-                  From {store.name}. Press the button and it is yours.
+                  {g.freeFrom(store.name)}
                 </p>
                 <form
                   action="/api/store/free/download"
@@ -140,59 +133,51 @@ export default async function FreePage({ params, searchParams }: Params) {
                     type="submit"
                     className="btn st-btn btn-lg"
                   >
-                    {claimed.link ? "Open it" : "Download it"}
+                    {claimed.link ? g.openIt : g.downloadIt}
                   </button>
                 </form>
                 {claimed.link ? (
                   <p className="st-muted mt-5 text-sm">
-                    {`It is kept on ${linkHost(claimed.link)} by ${store.name}, not here, so the button takes you there.`}
+                    {g.keptOn(linkHost(claimed.link), store.name)}
                   </p>
                 ) : (
                   <p className="st-muted mt-5 text-sm">
-                    The link in your email works for 7 days, so you can come
-                    back for it on another device.
+                    {g.freeLinkWorks}
                   </p>
                 )}
               </>
             ) : (
               <>
                 <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">
-                  {claimed ? "This is no longer free" : "This link has expired"}
+                  {claimed ? g.noLongerFree : g.linkExpired}
                 </h1>
                 <p className="st-muted mt-4 text-lg">
-                  {claimed
-                    ? `${store.name} has changed it since the email was sent, so it is not handed out from this link.`
-                    : "A free copy's link works for 7 days. Ask the store for a new one — it takes a few seconds."}
+                  {claimed ? g.changedSince(store.name) : g.freeLinkDays}
                 </p>
               </>
             )
           ) : status === "sent" ? (
             <>
               <p className="st-price text-sm">
-                Sent
+                {g.sent}
               </p>
               <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">
-                Check your inbox
+                {g.checkInbox}
               </h1>
               <p className="st-muted mt-4 text-lg">
-                {asked
-                  ? `We emailed you a link to ${asked.title}.`
-                  : "We emailed you a link."}{" "}
-                It comes from {store.name} via Marktmorgen and usually arrives
-                within a minute. If it is not there, look in spam.
+                {`${asked ? g.emailedLinkTo(asked.title) : g.emailedLink} ${g.comesFrom(store.name)}`}
               </p>
               <p className="st-muted mt-4 text-sm">
-                Your address joins {store.name}&apos;s list only once you use
-                that link, so a mistyped address never ends up on it.
+                {g.joinsOnUse(store.name)}
               </p>
             </>
           ) : (
             <>
               <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">
-                {(NOTICES[status] ?? NOTICES.error).title}
+                {notice.title}
               </h1>
               <p className="st-muted mt-4 text-lg">
-                {(NOTICES[status] ?? NOTICES.error).body}
+                {notice.body}
               </p>
             </>
           )}
@@ -202,7 +187,7 @@ export default async function FreePage({ params, searchParams }: Params) {
               href={`/@${store.handle}`}
               className="st-footer-link text-sm font-semibold"
             >
-              Back to {store.name}
+              {said.w.backTo(store.name)}
             </Link>
             <StoreTracking
               store={store}

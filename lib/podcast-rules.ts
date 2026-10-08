@@ -94,6 +94,8 @@ export function feedXml(input: {
   image: string | null;
   episodes: Episode[];
   audio: (episode: Episode) => string;
+  /** The store's language, as RSS writes one ("es-es"); "en-us" unless given. */
+  language?: string;
 }): string {
   const items = [...input.episodes]
     .sort((a, b) => b.at - a.at)
@@ -113,7 +115,7 @@ export function feedXml(input: {
     <title>${xml(input.title)}</title>
     <link>${xml(input.page)}</link>
     <description>${xml(input.summary || input.title)}</description>
-    <language>en-us</language>
+    <language>${xml(input.language || "en-us")}</language>
     <itunes:author>${xml(input.author)}</itunes:author>
     <itunes:block>Yes</itunes:block>
     <itunes:explicit>false</itunes:explicit>

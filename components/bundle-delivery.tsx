@@ -14,6 +14,37 @@ export type BundleLine = {
 };
 
 /**
+ * Everything the list says, in the store's language
+ * (lib/buyer-words/orders.ts), with the store's name already in.
+ */
+export type BundleWords = {
+  openCourse: string;
+  startCourse: string;
+  openIt: string;
+  /** "Kept on {host}: {link}". */
+  keptOn: string;
+  downloadIt: string;
+  nothingAttached: string;
+  /** Said when products are missing, already with how many; null when none are. */
+  missing: string | null;
+};
+
+function englishWords(storeName: string, missing: number): BundleWords {
+  return {
+    openCourse: "Open the course",
+    startCourse: "Start the course",
+    openIt: "Open it",
+    keptOn: "Kept on {host}: {link}",
+    downloadIt: "Download it",
+    nothingAttached: `This one has nothing attached right now. Reply to your order confirmation email to ask ${storeName} for it.`,
+    missing:
+      missing > 0
+        ? `${missing === 1 ? "One product" : `${missing} products`} of this bundle ${missing === 1 ? "is" : "are"} no longer in ${storeName}'s store, so there is nothing here to open for ${missing === 1 ? "it" : "them"}. Reply to your order confirmation email and it reaches ${storeName}.`
+        : null,
+  };
+}
+
+/**
  * What a bundle hands over, one product after another, each with its own way
  * to open it — the same download, link or course a buyer of that product on
  * its own gets. Used by the thanks page and by the list of purchases.
@@ -23,13 +54,17 @@ export function BundleDelivery({
   missing,
   storeName,
   heading = "What is inside",
+  words: given,
 }: {
   lines: BundleLine[];
   /** How many products of the bundle this store no longer has. */
   missing: number;
   storeName: string;
   heading?: string;
+  /** Said in the store's language; English when not given. */
+  words?: BundleWords;
 }) {
+  const words = given ?? englishWords(storeName, missing);
   return (
     <section className="mt-6" aria-label={heading}>
       <p className="st-label">{heading}</p>
@@ -42,7 +77,7 @@ export function BundleDelivery({
               {line.course ? (
                 "href" in line.course ? (
                   <a href={line.course.href} className="btn st-btn mt-3">
-                    Open the course
+                    {words.openCourse}
                   </a>
                 ) : (
                   <form action={line.course.action} method="post" className="mt-3">
@@ -50,36 +85,32 @@ export function BundleDelivery({
                       <input key={name} type="hidden" name={name} value={value} />
                     ))}
                     <button type="submit" className="btn st-btn">
-                      Start the course
+                      {words.startCourse}
                     </button>
                   </form>
                 )
               ) : product.link ? (
                 <>
                   <a href={product.link} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn mt-3">
-                    Open it
+                    {words.openIt}
                   </a>
-                  <p className="st-muted mt-2 break-all text-xs">{`Kept on ${linkHost(product.link)}: ${product.link}`}</p>
+                  <p className="st-muted mt-2 break-all text-xs">
+                    {words.keptOn.replace("{host}", linkHost(product.link)).replace("{link}", product.link)}
+                  </p>
                 </>
               ) : line.download ? (
                 <a href={line.download} className="btn st-btn mt-3">
-                  Download it
+                  {words.downloadIt}
                 </a>
               ) : (
-                <p className="st-muted mt-2 text-sm">
-                  {`This one has nothing attached right now. Reply to your order confirmation email to ask ${storeName} for it.`}
-                </p>
+                <p className="st-muted mt-2 text-sm">{words.nothingAttached}</p>
               )}
               {line.keyBox}
             </li>
           );
         })}
       </ul>
-      {missing > 0 ? (
-        <p className="st-muted mt-3 text-sm">
-          {`${missing === 1 ? "One product" : `${missing} products`} of this bundle ${missing === 1 ? "is" : "are"} no longer in ${storeName}'s store, so there is nothing here to open for ${missing === 1 ? "it" : "them"}. Reply to your order confirmation email and it reaches ${storeName}.`}
-        </p>
-      ) : null}
+      {missing > 0 && words.missing ? <p className="st-muted mt-3 text-sm">{words.missing}</p> : null}
     </section>
   );
 }

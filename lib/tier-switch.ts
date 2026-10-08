@@ -29,7 +29,9 @@ import { canSellProduct } from "@/lib/store-checkout";
 import { type Membership, endsAtOf, grantOf, subsOf } from "@/lib/membership-manage";
 import { canTier, direction, dueNow, productOfSub } from "@/lib/tier-rules";
 import { formatMoney } from "@/lib/money";
-import { membershipPrice } from "@/lib/product-recurring";
+import { membershipLine } from "@/lib/buyer-words";
+import { membershipWords } from "@/lib/buyer-words/membership";
+import { DEFAULT_LANGUAGE, LANGUAGES, parseLanguage } from "@/lib/store-language";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
 import { withLock } from "@/lib/redis-lock";
 import { forgetPaid } from "@/lib/learn";
@@ -59,10 +61,16 @@ export async function liveTiers(store: Store): Promise<Listing[]> {
 /** A tier as the member's page offers it. */
 export type TierChoice = { id: string; title: string; words: string; way: "up" | "down" | "same" };
 
-/** What price a tier is sold at, said the way the store page says it, without the trial. */
-export function tierWords(store: Store, product: Listing): string {
+/**
+ * What price a tier is sold at, said the way the store page says it, without
+ * the trial. In English unless a language is asked for: the studio reads it
+ * too, and the studio is in English; a member is told it in the store's
+ * language (store.language).
+ */
+export function tierWords(store: Store, product: Listing, language: unknown = DEFAULT_LANGUAGE): string {
   if (!product.recurring) return "";
-  return membershipPrice({ ...product.recurring, trialDays: 0 }, formatMoney(product.priceCents, store.currency));
+  const locale = LANGUAGES[parseLanguage(language)].locale;
+  return membershipLine({ language, currency: store.currency }, { ...product.recurring, trialDays: 0 }, formatMoney(product.priceCents, store.currency, locale));
 }
 
 /** The tiers one membership can switch to; none when it cannot switch at all. */
@@ -75,7 +83,7 @@ export function choicesFor(store: Store, membership: Membership, tiers: Listing[
     .map((t) => ({
       id: t.id,
       title: t.title,
-      words: tierWords(store, t),
+      words: tierWords(store, t, store.language),
       way: direction({ priceCents: membership.amount, interval: membership.interval }, { priceCents: t.priceCents, interval: t.recurring!.interval }),
     }));
 }
@@ -182,8 +190,8 @@ export async function previewSwitch(store: Store, token: string, subscription: s
       ok: true,
       preview: {
         sub: subscription,
-        from: { id: found.from.id, title: found.from.title, words: tierWords(store, found.from) },
-        to: { id: found.to.id, title: found.to.title, words: tierWords(store, found.to) },
+        from: { id: found.from.id, title: found.from.title, words: tierWords(store, found.from, store.language) },
+        to: { id: found.to.id, title: found.to.title, words: tierWords(store, found.to, store.language) },
         due: found.trialing ? 0 : due,
         currency: typeof invoice.currency === "string" ? invoice.currency : store.currency,
         trialing: found.trialing,
@@ -261,28 +269,31 @@ async function tell(store: Store, account: string, found: Found, updated: Record
   const raw = typeof invoice?.total === "number" && !found.trialing ? invoice.total : 0;
   const total = raw > 0 && typeof invoice?.amount_paid === "number" ? invoice.amount_paid : raw;
   const currency = typeof invoice?.currency === "string" ? invoice.currency : store.currency;
+  // The member's receipt is in the store's language; the creator's note below stays in English.
+  const m = membershipWords(store.language);
+  const locale = LANGUAGES[parseLanguage(store.language)].locale;
   const paid =
     found.trialing
-      ? "You are in your free trial, so nothing was charged. The new price starts when the trial ends."
+      ? m.paidTrial
       : total > 0
-        ? `Charged today: ${formatMoney(total, currency)}, the new price less what was left of your last payment.`
+        ? m.paidCharged(formatMoney(total, currency, locale))
         : total < 0
-          ? `A credit of ${formatMoney(-total, currency)}, for what was left of your last payment, comes off your next payments.`
-          : "Nothing was charged today.";
-  const from = `"${store.name.replace(/["\\<>\r\n]/g, "").slice(0, 60)} via Marktmorgen" <${(NIMBUS_FROM.match(/<([^>]+)>/)?.[1] ?? NIMBUS_FROM).trim()}>`;
+          ? m.paidCredit(formatMoney(-total, currency, locale))
+          : m.paidNothing;
+  const from = `"${m.fromName(store.name.replace(/["\\<>\r\n]/g, "").slice(0, 60))}" <${(NIMBUS_FROM.match(/<([^>]+)>/)?.[1] ?? NIMBUS_FROM).trim()}>`;
   await sendEmail({
     from,
     to: email,
-    subject: `You switched to ${found.to.title}`.slice(0, 200),
+    subject: m.switchedSubject(found.to.title).slice(0, 200),
     text: [
-      `Your membership with ${store.name} is now ${found.to.title}, in place of ${found.from.title}.`,
+      m.switchedNow(store.name, found.to.title, found.from.title),
       "",
       paid,
-      `From now on: ${tierWords(store, found.to)}.`,
+      m.fromNow(tierWords(store, found.to, store.language)),
       "",
-      "What it includes is open to you now. Your receipts are on your membership page, from the link on the store's page.",
+      m.switchedOpen,
       "",
-      `Charged by ${store.name} on their own Stripe account. Questions go to ${store.name} by replying to this email.`,
+      m.switchedFooter(store.name),
     ].join("\n"),
     replyTo: store.email,
   }).catch((error) => console.error("a tier switch receipt failed", error));

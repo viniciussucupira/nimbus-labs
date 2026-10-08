@@ -39,6 +39,8 @@ import { saleOff, salePrice } from "@/lib/store-sale";
 import { sendEmail } from "@/lib/email";
 import { isPaidUp } from "@/lib/billing";
 import { type Listing, type Store, setPastBuyers, storeRef } from "@/lib/store";
+import { speech } from "@/lib/buyer-words";
+import { givingWords } from "@/lib/buyer-words/giving";
 
 /** Local tests may point this at a stand-in on 127.0.0.1; nothing else is taken. */
 const API = /^http:\/\/127\.0\.0\.1:\d+$/.test(process.env.PAYPAL_API_BASE ?? "")
@@ -462,23 +464,24 @@ export async function deliverPayPal(input: {
   if (!store.pastBuyers) await setPastBuyers(storeRef(store));
   for (const id of [product.id, ...(items ?? [])]) await input.recordStart(paid.email, id, paid.at);
   const link = (await input.ordersLink(paid.email)) ?? `${base}/orders`;
+  const g = givingWords(store.language);
   await sendEmail({
     from: input.from,
     to: paid.email,
-    subject: `Your purchase: ${product.title}`.slice(0, 200),
+    subject: g.ppSubject(product.title).slice(0, 200),
     text: [
-      `Thank you for buying from ${store.name}. This is your confirmation.`,
+      g.ppThanks(store.name),
       "",
-      `What you bought: ${product.title}`,
-      `Paid with PayPal: ${formatMoney(paid.cents, paid.currency)}`,
-      `PayPal transaction: ${paid.capture}`,
+      g.ppWhat(product.title),
+      g.ppPaid(formatMoney(paid.cents, paid.currency, speech(store).lang.locale)),
+      g.ppTransaction(paid.capture),
       "",
-      "Open it here:",
+      g.openHere,
       link,
       "",
-      `That link works for 24 hours. After that, go to ${base}/orders, type this address, and a new one comes right away.`,
+      g.link24(`${base}/orders`),
       "",
-      `Paid to ${store.name}'s own PayPal account. Questions go to ${store.name} by replying to this email.`,
+      g.ppPaidTo(store.name),
     ].join("\n"),
     replyTo: store.email,
     idempotencyKey: `nimbus-paypal:${paid.order}`,

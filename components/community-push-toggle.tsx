@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CommunityWords } from "@/lib/buyer-words/community";
+
+/** What the switch says: plain strings, so the page hands them over in the store's language. */
+export type PushWords = CommunityWords["push"];
 
 /**
  * Turning notifications on for this device.
@@ -21,12 +25,14 @@ export function CommunityPushToggle({
   handle,
   publicKey,
   devices,
+  words: t,
 }: {
   handle: string;
   /** Our VAPID public key. Empty when push is not set up on this deployment. */
   publicKey: string;
   /** How many devices this person already has listening. */
   devices: number;
+  words: PushWords;
 }) {
   const [state, setState] = useState<"unknown" | "off" | "on" | "denied" | "unsupported" | "homescreen">("unknown");
   const [busy, setBusy] = useState(false);
@@ -89,10 +95,10 @@ export function CommunityPushToggle({
         await subscription.unsubscribe().catch(() => {});
         setError(
           data.error === "full"
-            ? "That is as many devices as one person can have listening here. Turn it off on one you no longer use."
+            ? t.full
             : data.error === "unavailable"
-              ? "Notifications are not switched on for this site yet."
-              : "That did not work. Try again in a moment.",
+              ? t.unavailable
+              : t.failed,
         );
         setState("off");
         return;
@@ -100,7 +106,7 @@ export function CommunityPushToggle({
       setCount(data.devices ?? count + 1);
       setState("on");
     } catch {
-      setError("That did not work. Try again in a moment.");
+      setError(t.failed);
       setState("off");
     } finally {
       setBusy(false);
@@ -133,37 +139,34 @@ export function CommunityPushToggle({
 
   return (
     <div className="st-note mt-6 text-sm">
-      <p className="font-bold" style={{ color: "var(--st-text)" }}>Notifications on this device</p>
+      <p className="font-bold" style={{ color: "var(--st-text)" }}>{t.title}</p>
       <p className="mt-1">
-        You are told when somebody answers your post, answers your comment, or names you with an @. Never what anybody
-        wrote — only who did what, and where to look.
+        {t.what}
       </p>
 
       {state === "homescreen" ? (
         <p className="mt-2">
-          On iPhone and iPad this works once the page is on your home screen. Tap Share, then <strong>Add to Home
-          Screen</strong>, open it from there and come back to this page. Apple requires that, not us.
+          {t.homeBefore}<strong>{t.homeAdd}</strong>{t.homeAfter}
         </p>
       ) : state === "unsupported" ? (
-        <p className="mt-2">This browser cannot show notifications. Everything still shows up on this page.</p>
+        <p className="mt-2">{t.unsupported}</p>
       ) : state === "denied" ? (
         <p className="mt-2">
-          This browser has notifications blocked for this site, and nothing here can undo that. Allow them in the
-          browser&rsquo;s own settings for this site, then come back.
+          {t.denied}
         </p>
       ) : state === "on" ? (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <button type="button" className="cm-pill" disabled={busy} onClick={turnOff}>
-            Turn off on this device
+            {t.turnOff}
           </button>
           <span className="st-muted text-xs font-semibold">
-            {count === 1 ? "On, on this device" : `On, on ${count} of your devices`}
+            {count === 1 ? t.onHere : t.onMany.replace("{n}", String(count))}
           </span>
         </div>
       ) : (
         <div className="mt-3">
           <button type="button" className="btn st-btn" disabled={busy} onClick={turnOn}>
-            {busy ? "Just a moment…" : "Turn notifications on"}
+            {busy ? t.wait : t.turnOn}
           </button>
         </div>
       )}

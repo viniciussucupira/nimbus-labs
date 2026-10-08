@@ -15,9 +15,10 @@ import { type SearchKind, MAX_QUERY_LENGTH, queryWords, search, searchEverything
 import { walkCommunity } from "@/lib/community-walk";
 import { eventsFound, lessonsFound, membersFound } from "@/lib/community-found";
 import { readableTime } from "@/lib/call-setup";
-import { whenWords } from "@/lib/community-text";
 import { pollViews } from "@/lib/community-polls";
-import { CommunityBar, Face, NOTICES, PostCard } from "@/components/community-parts";
+import { CommunityBar, Face, PostCard, communityNotices, storeWhen } from "@/components/community-parts";
+import { type CommunityWords, communityWords } from "@/lib/buyer-words/community";
+import { LANGUAGES } from "@/lib/store-language";
 import { ConfirmDeletes } from "@/components/community-composer";
 
 type Params = {
@@ -25,10 +26,12 @@ type Params = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export const metadata: Metadata = {
-  title: "Search — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  return { title: `${communityWords(store?.language).searchTitle} — Marktmorgen`, robots: { index: false, follow: false } };
+}
 
 /**
  * The four indexed kinds, and the two read straight from where they are kept:
@@ -37,21 +40,20 @@ export const metadata: Metadata = {
  */
 type Tab = SearchKind | "room" | "dm";
 
-const ALL_TABS: { kind: Tab; label: string; one: string; many: string }[] = [
-  { kind: "post", label: "Posts", one: "post", many: "posts" },
-  { kind: "lesson", label: "Lessons", one: "lesson", many: "lessons" },
-  { kind: "event", label: "Events", one: "event", many: "events" },
-  { kind: "member", label: "People", one: "person", many: "people" },
-  { kind: "room", label: "Room", one: "message", many: "messages" },
-  { kind: "dm", label: "Messages", one: "message", many: "messages" },
+const tabsIn = (w: CommunityWords): { kind: Tab; label: string }[] => [
+  { kind: "post", label: w.tabPosts },
+  { kind: "lesson", label: w.tabLessons },
+  { kind: "event", label: w.tabEvents },
+  { kind: "member", label: w.tabPeople },
+  { kind: "room", label: w.tabRoom },
+  { kind: "dm", label: w.tabMessages },
 ];
 
 /** How many matches from the room, or from one's messages, are listed. The newest. */
 const SHOWN_TALK = 50;
 
-/** "a, b, and c", as American English lists things, whatever the count. */
-const inWords = (items: string[]) =>
-  items.length <= 2 ? items.join(" and ") : `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+/** "a, b, and c", as the store's language lists things, whatever the count. */
+const inWords = (items: string[], locale: string) => new Intl.ListFormat(locale, { type: "conjunction" }).format(items);
 
 const isTab = (value: unknown): value is Tab =>
   value === "post" || value === "lesson" || value === "event" || value === "member" || value === "room" || value === "dm";
@@ -91,12 +93,14 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
   const id = store.community.id;
   const query = await searchParams;
   const asked = (typeof query.q === "string" ? query.q : "").slice(0, MAX_QUERY_LENGTH);
-  const notice = NOTICES[typeof query.n === "string" ? query.n : ""] ?? null;
+  const w = communityWords(store.language);
+  const locale = LANGUAGES[store.language].locale;
+  const notice = communityNotices(store.language)[typeof query.n === "string" ? query.n : ""] ?? null;
   const beforeRaw = typeof query.before === "string" ? Number(query.before) : NaN;
   const before = Number.isInteger(beforeRaw) && beforeRaw > 0 ? beforeRaw : null;
   const { config, owner, key, canWrite, email } = viewer;
   // The room and messages are tabs only where the creator has them on.
-  const TABS = ALL_TABS.filter((t) => (t.kind === "room" ? config.chat.on : t.kind === "dm" ? config.dm.on : true));
+  const TABS = tabsIn(w).filter((t) => (t.kind === "room" ? config.chat.on : t.kind === "dm" ? config.dm.on : true));
   const chosen: Tab | null = isTab(query.k) && TABS.some((t) => t.kind === query.k) ? query.k : null;
 
   const wanted = queryWords(asked);
@@ -172,13 +176,12 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
     : tab === "member" ? people.length
     : tab === "room" ? talk.length
     : mine.length;
-  const here = TABS.find((t) => t.kind === tab) ?? ALL_TABS[0];
   const link = (kind: Tab) => `${home}/search?q=${encodeURIComponent(asked)}${kind === "post" ? "" : `&k=${kind}`}`;
-  const nameOf = (who: string) => (who === CREATOR ? store.name : members.get(who)?.n || "A member");
+  const nameOf = (who: string) => (who === CREATOR ? store.name : members.get(who)?.n || w.aMember);
   // "5 min ago", "Sep 4": the way every post here says when it was written.
   // A clock time made on the server would be in the server's time zone, and a
   // member in New York would read "2:13 PM" for a message sent at 10:13.
-  const at = (seconds: number) => whenWords(seconds);
+  const at = (seconds: number) => storeWhen(store, seconds);
   // Some of what the index found on this page is behind a door this reader is
   // not through. Counted against THIS page and never against the total, which
   // spans every page: "4 more are in something you do not have" under a page
@@ -187,41 +190,38 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
   const held = page.posts.length - shown;
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <ConfirmDeletes />
       <CommunityBar store={store} config={config} tab={null} signedIn query={asked} messages={config.dm.on} requests={waiting} news={news} room={config.chat.on} />
       <main id="content" className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <p className="mb-4">
-          <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">Back to the feed</Link>
+          <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">{w.backToFeed}</Link>
         </p>
         {notice ? <p className={`cm-flash mb-5 ${notice.tone === "warn" ? "cm-flash-warn" : ""}`} role="status">{notice.text}</p> : null}
 
         <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">
-          {asked.trim() ? `Search: ${asked.trim()}` : "Search"}
+          {asked.trim() ? w.searchFor(asked.trim()) : w.searchTitle}
         </h1>
 
         {!asked.trim() ? (
           <p className="st-muted mt-2">
-            {`Type in the box above to look through ${inWords([
-              "the posts here and every comment under them",
-              "the lessons of the courses you have",
-              "what is on the calendar",
-              "the people in the directory",
-              ...(config.chat.on ? ["the room"] : []),
-              ...(config.dm.on ? ["your own messages"] : []),
-            ])}.`}
+            {w.searchIntro(
+              inWords(
+                [...w.searchParts, ...(config.chat.on ? [w.searchRoomPart] : []), ...(config.dm.on ? [w.searchDmPart] : [])],
+                locale,
+              ),
+            )}
           </p>
         ) : wanted.length === 0 ? (
           <p className="st-muted mt-2">
-            Those are all words too common to narrow anything down. Try the words that would only appear in what you are
-            looking for.
+            {w.tooCommon}
           </p>
         ) : (
           <>
             {/* Four tabs, each carrying how many matched. A tab with nothing in
                 it is still drawn and still says nothing, because a tab that
                 disappears makes somebody wonder where it went. */}
-            <nav className="cm-tabs mt-4" aria-label="What to search">
+            <nav className="cm-tabs mt-4" aria-label={w.searchWhat}>
               {TABS.map((t) => {
                 const n = count(t.kind);
                 const on = t.kind === tab;
@@ -240,21 +240,16 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
             </nav>
 
             <p className="st-muted mt-3 text-sm">
-              {shown === 0
-                ? `No ${here.many} hold ${used.length === 1 ? "that word" : "all of those words"}.`
-                : `${shown === 1 ? `1 ${here.one} holds` : `${shown} ${here.many} hold`} ${used.length === 1 ? "that word" : "all of those words"}.`}
-              {dropped && used.length ? ` Searched for: ${used.join(", ")}.` : ""}
-              {held > 0
-                ? ` ${held === 1 ? "One more match on this page is" : `${held} more matches on this page are`} in something you do not have.`
-                : ""}
+              {w.found(tab, shown, used.length === 1)}
+              {dropped && used.length ? ` ${w.searchedFor(used.join(", "))}` : ""}
+              {held > 0 ? ` ${w.heldMore(held)}` : ""}
             </p>
 
             {shown === 0 ? (
               <div className="st-note mt-5 text-center">
-                <p className="font-bold" style={{ color: "var(--st-text)" }}>No match</p>
+                <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.noMatch}</p>
                 <p className="mt-1 text-sm">
-                  Every word has to be there. Fewer words find more, and words are matched whole — “pay” does not find
-                  “payment.”
+                  {w.noMatchHow}
                 </p>
               </div>
             ) : null}
@@ -307,8 +302,8 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                       {event.title}
                     </Link>
                     <p className="st-muted mt-1 text-sm">
-                      {readableTime(event.start, event.tz)}
-                      {state === "cancelled" ? " · Canceled" : state === "over" ? " · Over" : ""}
+                      {readableTime(event.start, event.tz, locale)}
+                      {state === "cancelled" ? ` · ${w.canceled}` : state === "over" ? ` · ${w.eventOver}` : ""}
                     </p>
                   </li>
                 ))}
@@ -326,7 +321,7 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                       {person.k !== key && !mayMessage(config.dm, key, person.k) ? (
                         <p className="mt-1">
                           <Link href={`${home}/messages/${pairOf(key, person.k)}`} className="cm-quiet-link cm-mini text-xs font-semibold">
-                            Message
+                            {w.messageLink}
                           </Link>
                         </p>
                       ) : null}
@@ -345,7 +340,7 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                     <p className="st-muted mt-1 text-xs font-semibold">
                       {at(m.at)}
                       {" · "}
-                      <Link href={`${home}/chat`} className="cm-quiet-link underline underline-offset-4">Open the room</Link>
+                      <Link href={`${home}/chat`} className="cm-quiet-link underline underline-offset-4">{w.openTheRoom}</Link>
                     </p>
                   </li>
                 ))}
@@ -357,13 +352,13 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                 {mine.map((h) => (
                   <li key={`${h.pair}.${h.message.at}.${h.message.a}`} className="st-card p-4">
                     <p className="text-xs font-bold">
-                      {h.message.a === key ? `You, to ${nameOf(h.other)}` : nameOf(h.message.a)}
+                      {h.message.a === key ? w.youTo(nameOf(h.other)) : nameOf(h.message.a)}
                     </p>
                     <p className="cm-text mt-1">{h.message.text}</p>
                     <p className="st-muted mt-1 text-xs font-semibold">
                       {at(h.message.at)}
                       {" · "}
-                      <Link href={`${home}/messages/${h.pair}`} className="cm-quiet-link underline underline-offset-4">Open the conversation</Link>
+                      <Link href={`${home}/messages/${h.pair}`} className="cm-quiet-link underline underline-offset-4">{w.openConversation}</Link>
                     </p>
                   </li>
                 ))}
@@ -376,19 +371,19 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                 ever written. */}
             {tab === "room" ? (
               <p className="st-muted mt-5 text-xs">
-                {`The room keeps its last 500 messages, and those are what is searched.${roomHits.length > SHOWN_TALK ? ` The ${SHOWN_TALK} newest matches are shown.` : ""}`}
+                {`${w.roomSearched(500)}${roomHits.length > SHOWN_TALK ? ` ${w.newestShown(SHOWN_TALK)}` : ""}`}
               </p>
             ) : null}
             {tab === "dm" ? (
               <p className="st-muted mt-5 text-xs">
-                {`Only your own conversations are searched: your ${SEARCH_CONVERSATIONS} most recent, and the last ${SEARCH_MESSAGES} messages of each.${dmHits.length > SHOWN_TALK ? ` The ${SHOWN_TALK} newest matches are shown.` : ""}`}
+                {`${w.dmSearched(SEARCH_CONVERSATIONS, SEARCH_MESSAGES)}${dmHits.length > SHOWN_TALK ? ` ${w.newestShown(SHOWN_TALK)}` : ""}`}
               </p>
             ) : null}
 
             {page.next ? (
               <p className="mt-6 text-center">
                 <Link href={`${link(tab)}&before=${page.next}`} className="cm-pill cm-pill-wide">
-                  {tab === "member" ? "Members who joined earlier" : tab === "lesson" ? "Later lessons" : "Older matches"}
+                  {tab === "member" ? w.membersEarlier : tab === "lesson" ? w.laterLessons : w.olderMatches}
                 </Link>
               </p>
             ) : null}
@@ -398,8 +393,7 @@ export default async function CommunitySearchPage({ params, searchParams }: Para
                 concluding the search is broken. */}
             {tab === "lesson" ? (
               <p className="st-muted mt-5 text-xs">
-                Lessons are found by their title, their module and their written text. What is spoken inside a video is
-                not searched.
+                {w.lessonsSearchNote}
               </p>
             ) : null}
           </>

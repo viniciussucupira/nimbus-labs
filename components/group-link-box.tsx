@@ -2,17 +2,22 @@
 
 import { useState } from "react";
 
+/** What the box says, in the store's language (lib/buyer-words/giving.ts, groupLinkBoxWords). */
+export type GroupLinkWords = { label: string; copy: string; copied: string };
+
+const ENGLISH: GroupLinkWords = { label: "The link to pass on", copy: "Copy the link", copied: "Copied" };
+
 /**
  * The link that hands out the places of a purchase for several people
  * (lib/group-buy.ts), whole and selectable, with a button that copies it.
  * Without JavaScript the box still selects and copies by hand.
  */
-export function GroupLinkBox({ link }: { link: string }) {
+export function GroupLinkBox({ link, words = ENGLISH }: { link: string; words?: GroupLinkWords }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="mt-6 space-y-3">
       <label htmlFor="group-link" className="st-label">
-        The link to pass on
+        {words.label}
       </label>
       <input id="group-link" readOnly value={link} onFocus={(event) => event.currentTarget.select()} className="st-field" />
       <button
@@ -28,7 +33,7 @@ export function GroupLinkBox({ link }: { link: string }) {
           }
         }}
       >
-        <span aria-live="polite">{copied ? "Copied" : "Copy the link"}</span>
+        <span aria-live="polite">{copied ? words.copied : words.copy}</span>
       </button>
     </div>
   );

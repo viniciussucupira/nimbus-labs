@@ -9,49 +9,40 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
 import { normaliseHandle, storeForPage } from "@/lib/store";
-import { formatMoney } from "@/lib/money";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canSellProduct } from "@/lib/store-checkout";
-import { membershipPrice } from "@/lib/product-recurring";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { beforeStart, isCohort, isOpen, lessonCount, lessonsInOrder, readCourse } from "@/lib/course";
 import { courseAccess, doneLessons, emailKey, touchStudent } from "@/lib/learn";
 import { heldBack, passedQuizzes, requiredQuizLessons } from "@/lib/quiz";
 import { MAX_CERT_NAME, MIN_CERT_NAME, certificateOf, hasFinished } from "@/lib/certificate";
 import { canManage } from "@/lib/membership-manage";
-import { CourseOutline } from "@/components/course-outline";
-import { LocalDay } from "@/components/local-day";
+import { CourseOutline, WithDay } from "@/components/course-outline";
 import { readListing } from "@/lib/catalog";
+import { membershipLine, speech } from "@/lib/buyer-words";
+import { coursesWords } from "@/lib/buyer-words/courses";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export const metadata: Metadata = {
-  title: "Course — Marktmorgen",
-  robots: { index: false, follow: true },
-};
-
-const LINK_NOTICES: Record<string, { title: string; body: string }> = {
-  sent: {
-    title: "Check your inbox",
-    body: "If that address bought this course, a link to open it is on its way. It works for one hour.",
-  },
-  email: { title: "That address does not look right", body: "Check it and try again." },
-  limited: { title: "Too many requests", body: "Wait a little, then ask again." },
-  error: { title: "The email could not be sent", body: "Nothing is lost. Try again in a moment." },
-  ask: {
-    title: "One more step",
-    body: "Type the address you paid with below, and a link to open the course is sent there.",
-  },
-};
-
-const CERT_NOTICES: Record<string, string> = {
-  name: `Type your name as it should appear, between ${MIN_CERT_NAME} and ${MAX_CERT_NAME} characters.`,
-  unfinished: "Finish every lesson first, and pass the quizzes that have to be passed.",
-};
+/** The tab's title, in the store's language. */
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  let language: unknown;
+  try {
+    const decoded = decodeURIComponent(handle);
+    language = decoded.startsWith("@") ? (await storeForPage(normaliseHandle(decoded)))?.language : undefined;
+  } catch {
+    language = undefined;
+  }
+  return {
+    title: coursesWords(language).metaCourse,
+    robots: { index: false, follow: true },
+  };
+}
 
 /** The course's front door: its outline, and for a student, where they are. */
 export default async function CoursePage({ params, searchParams }: Params) {
@@ -66,9 +57,11 @@ export default async function CoursePage({ params, searchParams }: Params) {
   if (!product?.course) redirect(`/@${store.handle}`);
   const course = await readCourse(product.course.id);
   if (!course) redirect(`/@${store.handle}`);
+  const said = speech(store);
+  const w = coursesWords(store.language);
 
   const query = await searchParams;
-  const notice = LINK_NOTICES[typeof query.link === "string" ? query.link : ""] ?? null;
+  const notice = w.linkNotices[typeof query.link === "string" ? query.link : ""] ?? null;
   const access = await courseAccess(store, product, await cookies());
   const open = access.state === "open";
   const start = open ? access.start : null;
@@ -91,7 +84,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
   const held = studying ? heldBack(course, passed) : new Map<string, string>();
   const finished = studying && hasFinished(course, done, passed);
   const mustPass = requiredQuizLessons(course).length;
-  const certNotice = CERT_NOTICES[typeof query.cert === "string" ? query.cert : ""] ?? null;
+  const certNotice = w.certNotices(MIN_CERT_NAME, MAX_CERT_NAME)[typeof query.cert === "string" ? query.cert : ""] ?? null;
 
   const all = lessonsInOrder(course);
   const total = lessonCount(course);
@@ -106,14 +99,15 @@ export default async function CoursePage({ params, searchParams }: Params) {
   // Said with every term the checkout will apply: a trial, a set number of
   // payments, a price the buyer chooses.
   const price = product.recurring
-    ? membershipPrice(product.recurring, `${formatMoney(product.priceCents, store.currency)}`)
+    ? membershipLine(store, product.recurring, said.money(product.priceCents))
     : activePwyw(product)
-      ? `${formatMoney(product.priceCents, store.currency)} or more, you choose`
+      ? w.pwywPrice(said.money(product.priceCents))
       : // A sale or a fair price for the visitor's country, as the checkout takes it off.
-        `${formatMoney(salePrice(product.priceCents, offNow(store, product)), store.currency)}`;
+        said.money(salePrice(product.priceCents, offNow(store, product)));
 
   return (
     <div
+      lang={said.lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
@@ -131,16 +125,11 @@ export default async function CoursePage({ params, searchParams }: Params) {
         </div>
 
         <div className="st-card mt-6 p-6 sm:p-8">
-          <p className="st-label">Course</p>
+          <p className="st-label">{w.courseLabel}</p>
           <h1 className="font-display mt-1 text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">{product.title}</h1>
           {product.summary ? <p className="st-muted mt-3 leading-relaxed">{product.summary}</p> : null}
           <p className="st-muted mt-3 text-sm font-semibold">
-            {[
-              `${total} ${total === 1 ? "lesson" : "lessons"} in ${course.modules.length} ${course.modules.length === 1 ? "module" : "modules"}`,
-              course.certificate ? "certificate of completion" : null,
-            ]
-              .filter(Boolean)
-              .join(" \u00b7 ")}
+            {[w.outline(total, course.modules.length), course.certificate ? w.withCertificate : null].filter(Boolean).join(" · ")}
           </p>
 
           {notice ? (
@@ -152,12 +141,12 @@ export default async function CoursePage({ params, searchParams }: Params) {
 
           {open && access.learner.owner ? (
             <div className="st-note mt-6">
-              <p className="font-bold" style={{ color: "var(--st-text)" }}>This is your own course</p>
-              <p className="mt-1 text-sm">You see every lesson, as a student sees an open one. Nothing you do here is counted as progress.</p>
+              <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.ownTitle}</p>
+              <p className="mt-1 text-sm">{w.ownBody}</p>
               {course.certificate ? (
                 <p className="mt-2 text-sm">
                   <Link href={`/@${store.handle}/certificate/sample?product=${product.id}`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>
-                    See the certificate students get
+                    {w.seeSample}
                   </Link>
                 </p>
               ) : null}
@@ -166,15 +155,13 @@ export default async function CoursePage({ params, searchParams }: Params) {
 
           {access.state === "ended" ? (
             <div className="st-note mt-6" role="status">
-              <p className="font-bold" style={{ color: "var(--st-text)" }}>Your membership has ended</p>
-              <p className="mt-1 text-sm">
-                {`This course came with your membership, which is no longer running, so its lessons are closed now. Renew and it opens right away, with your progress where you left it.`}
-              </p>
+              <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.endedTitle}</p>
+              <p className="mt-1 text-sm">{w.endedBody}</p>
               {canManage(store) ? (
                 <p className="mt-2 text-sm">
-                  {"Did it end because a payment failed, not because you canceled? Updating the card may bring it back: "}
+                  {w.endedPayment}
                   <Link href={`/@${store.handle}/manage`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>
-                    manage your membership
+                    {w.manageMembership}
                   </Link>
                   .
                 </p>
@@ -187,13 +174,13 @@ export default async function CoursePage({ params, searchParams }: Params) {
               {!access.learner.owner ? (
                 <>
                   <p className="text-sm font-semibold" style={{ color: "var(--st-text)" }}>
-                    {`${doneCount} of ${total} done`}
+                    {w.doneOf(doneCount, total)}
                   </p>
                   <div
                     className="mt-2 h-2 overflow-hidden rounded-full"
                     style={{ background: "var(--st-accent-soft)" }}
                     role="progressbar"
-                    aria-label="Your progress"
+                    aria-label={w.yourProgress}
                     aria-valuemin={0}
                     aria-valuemax={total}
                     aria-valuenow={doneCount}
@@ -204,20 +191,20 @@ export default async function CoursePage({ params, searchParams }: Params) {
               ) : null}
               {next ? (
                 <Link href={`${base}/${next.lesson.id}`} className="btn st-btn btn-lg mt-5">
-                  {doneCount === 0 ? "Start the first lesson" : doneCount >= total ? "Go back to the start" : "Continue where you left off"}
+                  {doneCount === 0 ? w.startFirst : doneCount >= total ? w.startOver : w.continueOn}
                 </Link>
               ) : (
-                <p className="st-muted mt-5 text-sm">The first lessons open soon: the dates are below.</p>
+                <p className="st-muted mt-5 text-sm">{w.opensSoon}</p>
               )}
 
               {studying && course.certificate ? (
                 <div id="certificate" className="mt-6 scroll-mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line-strong)" }}>
-                  <p className="st-label">Certificate of completion</p>
+                  <p className="st-label">{w.certLabel}</p>
                   {certificate ? (
                     <>
-                      <p className="st-muted mt-1 text-sm">{`Issued to ${certificate.name}. Anyone you share the link with can check it is real.`}</p>
+                      <p className="st-muted mt-1 text-sm">{w.issuedTo(certificate.name)}</p>
                       <Link href={`/@${store.handle}/certificate/${certificate.id}`} className="btn st-btn mt-3">
-                        Open your certificate
+                        {w.openCertificate}
                       </Link>
                     </>
                   ) : finished ? (
@@ -225,7 +212,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
                       <input type="hidden" name="handle" value={store.handle} />
                       <input type="hidden" name="product" value={product.id} />
                       <label htmlFor="cert-name" className="st-muted block text-sm">
-                        You finished the course. Type your name exactly as it should be printed; it cannot be changed afterward.
+                        {w.finishedName}
                       </label>
                       {certNotice ? (
                         <p className="mt-2 text-sm font-semibold" role="alert" style={{ color: "var(--st-text)" }}>
@@ -240,18 +227,14 @@ export default async function CoursePage({ params, searchParams }: Params) {
                           minLength={MIN_CERT_NAME}
                           maxLength={MAX_CERT_NAME}
                           autoComplete="name"
-                          placeholder="Your full name"
+                          placeholder={w.fullName}
                           className="st-field min-w-0 flex-1"
                         />
-                        <button type="submit" className="btn st-btn">Get my certificate</button>
+                        <button type="submit" className="btn st-btn">{w.getCertificate}</button>
                       </div>
                     </form>
                   ) : (
-                    <p className="st-muted mt-1 text-sm">
-                      {mustPass > 0
-                        ? `Finish every lesson and pass ${mustPass === 1 ? "the quiz that has" : `the ${mustPass} quizzes that have`} to be passed, and you can print yours with your name on it.`
-                        : "Finish every lesson and you can print yours with your name on it."}
-                    </p>
+                    <p className="st-muted mt-1 text-sm">{w.certHow(mustPass)}</p>
                   )}
                 </div>
               ) : null}
@@ -262,17 +245,17 @@ export default async function CoursePage({ params, searchParams }: Params) {
                 <form action="/api/store/checkout" method="post" target="_top" data-checkout="">
                   <input type="hidden" name="handle" value={store.handle} />
                   <input type="hidden" name="product" value={product.id} />
-                  <button type="submit" className="btn st-btn btn-lg btn-block">{`${access.state === "ended" ? "Renew" : "Buy the course"} · ${price}`}</button>
+                  <button type="submit" className="btn st-btn btn-lg btn-block">{w.buyCourse(access.state === "ended", price)}</button>
                 </form>
               ) : paypalReady(store, product) ? (
-                <Link href={`/@${store.handle}/p/${product.id}#buy`} className="btn st-btn btn-lg btn-block">{`Buy the course with PayPal · ${price}`}</Link>
+                <Link href={`/@${store.handle}/p/${product.id}#buy`} className="btn st-btn btn-lg btn-block">{w.buyWithPayPal(price)}</Link>
               ) : (
-                <p className="st-muted text-sm">{`${store.name}'s store is not taking payments right now.`}</p>
+                <p className="st-muted text-sm">{w.noPayments(store.name)}</p>
               )}
               {preview ? (
                 <p className="text-sm">
                   <Link href={`${base}/${preview.lesson.id}`} className="font-semibold underline underline-offset-2" style={{ color: "var(--st-text)" }}>
-                    {`Try a free lesson first: ${preview.lesson.title}`}
+                    {w.tryFree(preview.lesson.title)}
                   </Link>
                 </p>
               ) : null}
@@ -280,11 +263,11 @@ export default async function CoursePage({ params, searchParams }: Params) {
               <form action="/api/store/course/link" method="post" className="rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
                 <input type="hidden" name="handle" value={store.handle} />
                 <input type="hidden" name="product" value={product.id} />
-                <label htmlFor="course-email" className="st-label">Already bought it?</label>
-                <p className="st-muted mt-1 text-sm">Type the address you paid with and a link to open the course on this device is sent there. No password.</p>
+                <label htmlFor="course-email" className="st-label">{w.alreadyBought}</label>
+                <p className="st-muted mt-1 text-sm">{w.alreadyBoughtNote}</p>
                 <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                  <input id="course-email" name="email" type="email" required autoComplete="email" placeholder="you@example.com" className="st-field min-w-0 flex-1" />
-                  <button type="submit" className="btn st-btn">Send me the link</button>
+                  <input id="course-email" name="email" type="email" required autoComplete="email" placeholder={said.w.emailPlaceholder} className="st-field min-w-0 flex-1" />
+                  <button type="submit" className="btn st-btn">{w.sendLink}</button>
                 </div>
               </form>
               )}
@@ -293,7 +276,7 @@ export default async function CoursePage({ params, searchParams }: Params) {
         </div>
 
         <div className="st-card mt-6 p-6 sm:p-8">
-          <h2 className="font-display text-xl font-semibold">What is inside</h2>
+          <h2 className="font-display text-xl font-semibold">{w.inside}</h2>
           {/*
             A course that runs to a timetable says so here, above the
             outline, and says it to a visitor as well as to a student.
@@ -308,23 +291,17 @@ export default async function CoursePage({ params, searchParams }: Params) {
           */}
           {isCohort(course) ? (
             <p className="st-muted mt-3 text-sm">
-              {beforeStart(course)
-                ? "Everyone on this course moves through it together. It begins on "
-                : "Everyone on this course moves through it together. It began on "}
-              <LocalDay seconds={course.startsAt!} />
-              {beforeStart(course)
-                ? ", and the first module opens that morning — buying earlier holds your place rather than starting you early."
-                : ", and everything released up to now is open to you from the day you join."}
+              <WithDay text={beforeStart(course) ? w.cohortBefore : w.cohortAfter} seconds={course.startsAt!} locale={said.lang.locale} />
             </p>
           ) : null}
           <div className="mt-4">
-            <CourseOutline course={course} base={base} start={start} done={done} held={held} />
+            <CourseOutline course={course} base={base} start={start} done={done} held={held} language={store.language} />
           </div>
         </div>
 
         <div className="mt-6 text-center">
           <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-            {`Back to ${store.name}`}
+            {said.w.backTo(store.name)}
           </Link>
         </div>
       </main>
