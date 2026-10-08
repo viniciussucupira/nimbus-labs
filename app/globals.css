@@ -2345,6 +2345,77 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked
 .sp-cta-btn {
   min-width: min(100%, 18rem);
 }
+/* Pictures of the creator's own, in a row that folds by the column's width. */
+.sp-pictures {
+  display: grid;
+  gap: 0.875rem;
+  align-items: start;
+}
+.sp-pictures-3 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@container (min-width: 520px) {
+  .sp-pictures-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sp-pictures-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.sp-picture {
+  margin: 0;
+}
+.sp-picture img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 1rem;
+  background: var(--st-item);
+  box-shadow:
+    0 0 0 1px var(--st-line),
+    0 14px 30px -24px rgba(11, 17, 25, 0.5);
+}
+.sp-picture a:focus-visible {
+  outline: 3px solid var(--st-accent-text);
+  outline-offset: 3px;
+  border-radius: 1rem;
+}
+/* A countdown to one moment: four numbers, steady in width as they change. */
+.sp-countdown {
+  padding: 1.5rem 1rem;
+  border-radius: 1.25rem;
+  background: var(--st-item);
+  box-shadow: 0 0 0 1px var(--st-line);
+  text-align: center;
+}
+.sp-countdown-units {
+  display: flex;
+  justify-content: center;
+  gap: 0.625rem;
+  margin-top: 1rem;
+}
+.sp-countdown-unit {
+  min-width: 4rem;
+  padding: 0.75rem 0.375rem;
+  border-radius: 1rem;
+  background: var(--st-card);
+  box-shadow: 0 0 0 1px var(--st-line);
+}
+.sp-countdown-number {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.sp-countdown-word {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 .sp-video {
   position: relative;
   aspect-ratio: 16 / 9;

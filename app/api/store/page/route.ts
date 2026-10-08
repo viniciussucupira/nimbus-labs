@@ -1,9 +1,12 @@
 import type { NextRequest } from "next/server";
-import { StoreFullError, isFree, setProductPage } from "@/lib/store";
+import { StoreFullError, imageFolder, isFree, setProductPage } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
 import { guardStoreWrite, text } from "@/lib/store-request";
-import { EMPTY_PAGE, MAX_BLOCKS, MAX_PAGE_BYTES, pageProblem, parsePage } from "@/lib/sales-page";
-import { writePage } from "@/lib/sales-page-store";
+import { EMPTY_PAGE, MAX_BLOCKS, MAX_PAGE_BYTES, pageProblem, parsePage, picturePaths } from "@/lib/sales-page";
+import { claimPictures, readPage, releasePictures, writePage } from "@/lib/sales-page-store";
+import { del } from "@/lib/blob";
+import { imagePaths, ownsImagePath } from "@/lib/product-image";
+import { isStoredPicture } from "@/lib/picture-check";
 
 /** Thirty full blocks as JSON, with room to spare; the record itself is held to MAX_PAGE_BYTES. */
 const MAX_BODY_BYTES = 200_000;
@@ -49,10 +52,40 @@ export async function POST(request: NextRequest) {
 
   const has = page.blocks.length > 0 || page.seoTitle !== "" || page.seoDescription !== "" || page.next !== null;
   try {
+    // The pictures on the page (lib/sales-page.ts, PicturesBlock). What the
+    // browser says it uploaded is never taken at face value: each new one
+    // has to be a file in this store's own picture folder that really is a
+    // picture, not the product's own picture under another name, and not
+    // one another product's page is already showing.
+    const before = store.statsId && product.page ? picturePaths(await readPage(store.statsId, id)) : [];
+    const shown = picturePaths(page);
+    const fresh = shown.filter((path) => !before.includes(path));
+    if (fresh.length > 0) {
+      if (!store.statsId) return Response.json({ ok: false, error: "server_error" }, { status: 500 });
+      const folder = await imageFolder(guarded.ref);
+      const own = new Set(imagePaths(product.image));
+      for (const path of fresh) {
+        if (!ownsImagePath(path, folder) || own.has(path) || !(await isStoredPicture(path))) {
+          return Response.json({ ok: false, error: "pictures" }, { status: 400 });
+        }
+      }
+      const taken = await claimPictures(store.statsId, id, fresh);
+      if (taken.length > 0) {
+        await releasePictures(store.statsId, id, fresh);
+        return Response.json({ ok: false, error: "pictures" }, { status: 400 });
+      }
+    }
+
     const marked = await setProductPage(guarded.ref, id, has);
     if (!marked.ok) return Response.json({ ok: false, error: marked.reason }, { status: 400 });
     if (!marked.store.statsId) return Response.json({ ok: false, error: "server_error" }, { status: 500 });
     await writePage(marked.store.statsId, id, page);
+    // A picture taken off the page is deleted, best effort and only after the
+    // page that no longer shows it is written.
+    const gone = await releasePictures(marked.store.statsId, id, before.filter((path) => !shown.includes(path))).catch(() => [] as string[]);
+    if (gone.length > 0) {
+      await del(gone).catch((error: unknown) => console.error("could not delete pictures taken off a page", error));
+    }
     return Response.json({ ok: true, blocks: page.blocks.length });
   } catch (error) {
     if (error instanceof StoreFullError) return Response.json({ ok: false, error: "store_full" }, { status: 409 });

@@ -40,7 +40,7 @@ import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { renewPath } from "@/lib/membership-access";
 import { LicenceKeyBox } from "@/components/licence-key-box";
 import { reviewable } from "@/lib/review-proof";
-import { takesReviews } from "@/lib/house-store";
+import { isHouseStore, takesReviews } from "@/lib/house-store";
 import { type Review, readReview, reviewId } from "@/lib/reviews";
 import { REVIEW_NOTICES, ReviewForm } from "@/components/review-form";
 import { type SaleRecord, noteSale } from "@/lib/sale-events";
@@ -232,7 +232,9 @@ export default async function ThanksPage({ params, searchParams }: Params) {
               {` from ${store.name} for ${formatMoney(order.amount, order.currency)}, as a gift${gift ? ` for ${gift.to}` : ""}.`}
             </p>
             <p className="st-muted mt-4">
-              {gift
+              {isHouseStore(store)
+                ? "This is the demo store, which sends no email: nobody was written to and nothing was handed over. On a real store the person you named gets one email with your name, your message and a link to open it."
+                : gift
                 ? `We are emailing ${gift.to} now${gift.from ? `, from ${gift.from}` : ""}${gift.message ? ", with your message" : ""}, and a link to open it. It is theirs, on their address; you do not get a copy.`
                 : "It goes to the address you gave, with a link to open it."}
             </p>
@@ -307,10 +309,12 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                   {`Take a place yourself the same way: you paid for ${group.people}, and you are one of them only if you take one.`}
                 </p>
               </>
+            ) : isHouseStore(store) ? (
+              <p className="st-note mt-6 text-sm">This is the demo store, which sends no email, so it makes no link and hands out no places. On a real store this page shows one link to pass on, and the same link is in your receipt: each person opens it, types their own email and has it on their own address.</p>
             ) : (
               <p className="st-note mt-6 text-sm">We could not get your link just now. Refresh this page in a moment; it is also on its way to your email.</p>
             )}
-            {order.email ? <p className="st-muted mt-5 text-sm">{`The same link is in the receipt sent to ${order.email}: keep it, it is how the places are handed out.`}</p> : null}
+            {order.email && !isHouseStore(store) ? <p className="st-muted mt-5 text-sm">{`The same link is in the receipt sent to ${order.email}: keep it, it is how the places are handed out.`}</p> : null}
             <div className="mt-8">
               <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
                 {`Back to ${store.name}`}

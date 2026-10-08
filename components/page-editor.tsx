@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { uploadPresigned } from "@vercel/blob/client";
+import { shrink } from "@/components/product-image-editor";
+import { IMAGE_ACCEPT, MAX_ALT_LENGTH, MAX_SOURCE_BYTES, imagePath, imageUrl } from "@/lib/product-image";
 import { Icon, type IconName } from "@/components/icons";
 import { toast } from "@/components/toast";
 import { AiAssist } from "@/components/ai-assist";
@@ -34,9 +37,17 @@ import {
   MAX_SUBHEADLINE,
   MAX_TEXT,
   MAX_CAPTION,
+  MAX_COUNTDOWN_LABEL,
+  MAX_COUNTDOWN_NOTE,
+  MAX_PAGE_PICTURES,
+  MAX_PICTURES,
+  MAX_PICTURE_CAPTION,
+  PAGE_TEMPLATES,
   PROVIDER_NAMES,
   type PageBlock,
+  type Picture,
   type SalesPage,
+  blocksFromTemplate,
   emptyBlock,
   newBlockId,
   readVideo,
@@ -50,6 +61,8 @@ const MESSAGES: Record<string, string> = {
   hero_first: "The hero can only be the first block: it carries the page's main headline.",
   two_reviews: "Reviews can sit in one place on the page. Remove the second block of them.",
   video: "That video address is not one we can play. Paste a YouTube, Vimeo or Loom link.",
+  pictures: `A picture on the page could not be kept. A page holds up to ${MAX_PAGE_PICTURES} pictures, each shown once: remove the one that was added twice, or add it again.`,
+  countdown: "Give the countdown the moment it runs to, no more than a year away, or remove the block.",
   shape: "Something in the page could not be read. Reload the studio and try again.",
   too_big: "The page is too long to save. Shorten some of the text.",
   next: "After a sign-up, only another product that costs money can be shown.",
@@ -72,7 +85,23 @@ const KIND_ICONS: Record<BlockKind, IconName> = {
   cta: "arrow-right",
   reviews: "star",
   video: "play",
+  pictures: "camera",
+  countdown: "clock",
 };
+
+/** A moment in seconds as the date-and-time field holds it, in the creator's own time zone. */
+function toLocalField(seconds: number): string {
+  if (!seconds) return "";
+  const d = new Date(seconds * 1000);
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`;
+}
+
+/** And back: what the field holds, as a moment in seconds; 0 when it holds nothing readable. */
+function fromLocalField(value: string): number {
+  const at = value ? new Date(value).getTime() : Number.NaN;
+  return Number.isFinite(at) ? Math.floor(at / 1000) : 0;
+}
 
 /** Below this many visitors a share would say more about chance than about the page. */
 const MIN_DEPTH_VISITORS = 30;
@@ -121,8 +150,11 @@ export function PageEditor({
   nextOptions,
   summary,
   reviews = [],
+  folder,
 }: {
   product: EditorProduct;
+  /** The store's own picture folder (lib/product-image.ts), where a page's pictures go. */
+  folder: string;
   initial: SalesPage;
   /** The long description, to start a page from. */
   about: string;
@@ -166,6 +198,22 @@ export function PageEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  // Which template the empty page would start from, and the block being dragged.
+  const templates = PAGE_TEMPLATES.filter((t) => t.free === product.free);
+  const [template, setTemplate] = useState(templates[0]?.id ?? "");
+  const [dragged, setDragged] = useState<number | null>(null);
+  const [over, setOver] = useState<number | null>(null);
+  // The time, for saying a countdown's moment has passed; read off the clock every half minute, never while drawing.
+  const [clock, setClock] = useState(0);
+  useEffect(() => {
+    const read = () => setClock(Date.now());
+    const first = window.setTimeout(read, 0);
+    const timer = window.setInterval(read, 30_000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "", ab: initial.test ? [initial.test.headline, initial.test.sub] : null });
   const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next, ab: testing ? [testHeadline.trim(), testSub.trim()] : null }) !== saved;
@@ -204,8 +252,28 @@ export function PageEditor({
     });
   }
 
+  /** Dropping one block on another puts it in that place; the hero stays on top. */
+  function moveTo(from: number, to: number) {
+    setDrafts((all) => {
+      if (from === to || from < 0 || to < 0 || from >= all.length || to >= all.length) return all;
+      if (all[from].block.kind === "hero" || all[to].block.kind === "hero") return all;
+      const copy = [...all];
+      const [taken] = copy.splice(from, 1);
+      copy.splice(to, 0, taken);
+      return copy;
+    });
+  }
+
   function remove(index: number) {
     setDrafts((all) => all.filter((_, i) => i !== index));
+  }
+
+  /** A first page from a template: its order of blocks, with the product's own title and summary on top. */
+  function startFromTemplate() {
+    const blocks = blocksFromTemplate(template, { title: product.title, summary: product.summary, picture: Boolean(product.picture) });
+    if (blocks.length === 0) return;
+    setDrafts(blocks.map((block) => ({ block, video: "" })));
+    setOpen(blocks[1]?.id ?? blocks[0].id);
   }
 
   /** A first page from what the product already says: hero, description, button, reviews. */
@@ -239,6 +307,13 @@ export function PageEditor({
       setError(MESSAGES.video);
       setBusy(false);
       setOpen(badVideo.id);
+      return;
+    }
+    const badCountdown = page?.blocks.find((b) => b.kind === "countdown" && !b.until);
+    if (badCountdown) {
+      setError(MESSAGES.countdown);
+      setBusy(false);
+      setOpen(badCountdown.id);
       return;
     }
     try {
@@ -562,6 +637,52 @@ export function PageEditor({
           </div>
         );
       }
+      case "pictures": {
+        const elsewhere = drafts.reduce((n, d, i) => (i !== index && d.block.kind === "pictures" ? n + d.block.items.length : n), 0);
+        return (
+          <div className="space-y-4">
+            {field(`${base}-h`, "Heading (optional)", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} placeholder="A look inside" onChange={(e) => change(index, { heading: e.target.value })} />)}
+            <PicturesEditor
+              base={base}
+              productId={product.id}
+              folder={folder}
+              items={block.items}
+              room={Math.min(MAX_PICTURES, MAX_PAGE_PICTURES - elsewhere)}
+              onChange={(items) => change(index, { items })}
+            />
+          </div>
+        );
+      }
+      case "countdown": {
+        const passed = clock > 0 && block.until > 0 && block.until * 1000 <= clock;
+        return (
+          <div className="space-y-4">
+            {field(
+              `${base}-u`,
+              "Counts down to",
+              <input id={`${base}-u`} type="datetime-local" className="field" value={toLocalField(block.until)} aria-describedby={`${base}-uh`} onChange={(e) => change(index, { until: fromLocalField(e.target.value) })} />,
+            )}
+            <p id={`${base}-uh`} className={`-mt-2 text-xs ${passed ? "font-semibold text-danger" : "text-ink-soft"}`}>
+              {passed
+                ? "That moment has passed, so the countdown is no longer shown on the page. Set a new one, or remove the block."
+                : "One moment, typed in your own time zone and shown to each visitor in theirs. It is the same for everybody and never starts again for anyone; once it has passed, the block disappears by itself."}
+            </p>
+            {field(
+              `${base}-h`,
+              "Above the numbers",
+              <input id={`${base}-h`} className="field" maxLength={MAX_COUNTDOWN_LABEL} value={block.heading} placeholder="The launch price ends in" onChange={(e) => change(index, { heading: e.target.value })} />,
+              counter(block.heading, MAX_COUNTDOWN_LABEL),
+            )}
+            {field(
+              `${base}-n`,
+              "What changes then (optional)",
+              <input id={`${base}-n`} className="field" maxLength={MAX_COUNTDOWN_NOTE} value={block.note} placeholder="After that, the price is $49." onChange={(e) => change(index, { note: e.target.value })} />,
+              counter(block.note, MAX_COUNTDOWN_NOTE),
+            )}
+            <p className="text-xs text-ink-soft">Buyers read this as a promise. Count down only to a moment after which something really changes: a sale that ends, doors that close, a session that starts.</p>
+          </div>
+        );
+      }
       case "reviews":
         return (
           <div className="space-y-4">
@@ -593,6 +714,12 @@ export function PageEditor({
         return block.heading || "Reviews";
       case "video":
         return block.heading || (block.video ? `${PROVIDER_NAMES[block.video.provider]} video` : "No video yet");
+      case "pictures":
+        return `${block.heading ? `${block.heading} · ` : ""}${block.items.length} ${block.items.length === 1 ? "picture" : "pictures"}`;
+      case "countdown":
+        return block.until
+          ? `${block.heading ? `${block.heading} · ` : ""}${new Date(block.until * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`
+          : "No moment set yet";
     }
   };
 
@@ -696,6 +823,28 @@ export function PageEditor({
                 <Icon name="sparkle" size={17} />
                 Start from the description
               </button>
+              {templates.length > 0 ? (
+                <div className="mt-6 border-t border-line pt-5">
+                  <label htmlFor="page-template" className="field-label">
+                    Or start from a template
+                  </label>
+                  <div className="mt-1 flex flex-wrap items-end gap-3">
+                    <select id="page-template" className="field min-w-0 flex-1" value={template} onChange={(e) => setTemplate(e.target.value)}>
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={startFromTemplate} className="btn btn-secondary">
+                      Use this template
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-ink-soft">
+                    {`${templates.find((t) => t.id === template)?.hint ?? ""} A template is an order of blocks with their headings: the words are yours to write, and a block you leave empty is not shown.`}
+                  </p>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -729,9 +878,41 @@ export function PageEditor({
               const isOpen = open === block.id;
               const locked = block.kind === "hero";
               return (
-                <li key={block.id} className="rounded-2xl border border-line bg-white">
+                <li
+                  key={block.id}
+                  className={`rounded-2xl border bg-white transition-shadow ${over === index && dragged !== null && dragged !== index && !locked ? "border-violet-brand ring-2 ring-violet-brand/30" : "border-line"} ${dragged === index ? "opacity-60" : ""}`}
+                  onDragOver={(event) => {
+                    if (dragged === null || locked) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    if (over !== index) setOver(index);
+                  }}
+                  onDrop={(event) => {
+                    if (dragged === null || locked) return;
+                    event.preventDefault();
+                    moveTo(dragged, index);
+                    setDragged(null);
+                    setOver(null);
+                  }}
+                >
                   <div className="flex items-center gap-2 p-2 pl-3 sm:gap-3">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-lilac text-violet-deep">
+                    {/* The handle: dragged with a mouse to put the block somewhere else. The arrows beside it do the same from a keyboard or a phone. */}
+                    <span
+                      className={`grid h-9 w-9 shrink-0 place-items-center rounded-full bg-lilac text-violet-deep ${locked ? "" : "cursor-grab active:cursor-grabbing"}`}
+                      draggable={!locked}
+                      title={locked ? undefined : "Drag to move this block"}
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData("text/plain", block.id);
+                        const row = event.currentTarget.closest("li");
+                        if (row) event.dataTransfer.setDragImage(row, 24, 24);
+                        setDragged(index);
+                      }}
+                      onDragEnd={() => {
+                        setDragged(null);
+                        setOver(null);
+                      }}
+                    >
                       <Icon name={KIND_ICONS[block.kind]} size={17} />
                     </span>
                     <button
@@ -1046,6 +1227,138 @@ function TestResults({ productId, running }: { productId: string; running: boole
             : `Still running: no clear winner yet. Each needs at least ${MIN_VIEWS} views and a real difference.`}
       </p>
       <p className="mt-1 text-xs text-ink-soft">Visitors asked for consent before a cookie, as in the EU and UK, see the first headline and are not counted.</p>
+    </div>
+  );
+}
+
+const PICTURE_PROBLEMS: Record<string, string> = {
+  unreadable: "That picture could not be opened. Try a JPEG, PNG or WebP.",
+  source: "That picture is over 30 MB. Pick a smaller one, or a screenshot of it.",
+  too_big: "That picture is still over 1 MB after shrinking. Try a simpler one.",
+  failed: "That picture could not be sent. Check your connection and try again.",
+};
+
+/** The long side a page's picture is shrunk to: sharp across the page's column on any screen. */
+const PAGE_PICTURE_SIDE = 1400;
+
+/**
+ * The pictures of one block: chosen from the creator's device, shrunk in the
+ * browser and sent straight to the store's own picture folder, exactly as a
+ * product's picture is (components/product-image-editor.tsx). They join the
+ * page when it is saved; a picture taken off a saved page is deleted then.
+ */
+function PicturesEditor({
+  base,
+  productId,
+  folder,
+  items,
+  room,
+  onChange,
+}: {
+  base: string;
+  productId: string;
+  folder: string;
+  items: Picture[];
+  /** How many pictures this block may hold, given what the rest of the page holds. */
+  room: number;
+  onChange: (items: Picture[]) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const left = Math.max(0, room - items.length);
+
+  async function choose(files: FileList | null) {
+    if (!files || busy) return;
+    const chosen = [...files].slice(0, left);
+    if (chosen.length === 0) return;
+    setError(null);
+    setBusy(chosen.length);
+    const added: Picture[] = [];
+    try {
+      for (const file of chosen) {
+        if (file.size > MAX_SOURCE_BYTES) {
+          setError(PICTURE_PROBLEMS.source);
+          continue;
+        }
+        let shrunk: Awaited<ReturnType<typeof shrink>>;
+        try {
+          shrunk = await shrink(file, PAGE_PICTURE_SIDE);
+        } catch (thrown) {
+          setError(thrown instanceof Error && thrown.message === "too_big" ? PICTURE_PROBLEMS.too_big : PICTURE_PROBLEMS.unreadable);
+          continue;
+        }
+        const path = imagePath(folder, crypto.randomUUID().replace(/-/g, ""), shrunk.blob.type);
+        try {
+          await uploadPresigned(path, shrunk.blob, {
+            access: "private",
+            handleUploadUrl: "/api/store/image/upload",
+            clientPayload: JSON.stringify({ productId }),
+            contentType: shrunk.blob.type,
+          });
+          added.push({ path, width: shrunk.width, height: shrunk.height, alt: "", caption: "" });
+        } catch {
+          setError(PICTURE_PROBLEMS.failed);
+        }
+        setBusy((n) => Math.max(0, n - 1));
+      }
+    } finally {
+      if (added.length) onChange([...items, ...added]);
+      setBusy(0);
+      if (input.current) input.current.value = "";
+    }
+  }
+
+  const set = (i: number, patch: Partial<Picture>) => onChange(items.map((picture, j) => (j === i ? { ...picture, ...patch } : picture)));
+  const swap = (i: number, by: -1 | 1) => {
+    const to = i + by;
+    if (to < 0 || to >= items.length) return;
+    const copy = [...items];
+    [copy[i], copy[to]] = [copy[to], copy[i]];
+    onChange(copy);
+  };
+
+  return (
+    <div className="space-y-3">
+      <input ref={input} type="file" accept={IMAGE_ACCEPT} multiple className="hidden" aria-hidden="true" tabIndex={-1} onChange={(event) => choose(event.target.files)} />
+      {items.map((picture, i) => (
+        <div key={picture.path} className="flex gap-3 rounded-xl bg-paper p-3 ring-1 ring-line">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageUrl(picture)} alt="" width={picture.width} height={picture.height} className="h-20 w-20 shrink-0 rounded-lg object-cover ring-1 ring-line" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <label htmlFor={`${base}-pc${i}`} className="sr-only">{`A line under picture ${i + 1}`}</label>
+            <input id={`${base}-pc${i}`} className="field" maxLength={MAX_PICTURE_CAPTION} value={picture.caption} placeholder="A line under it (optional)" onChange={(e) => set(i, { caption: e.target.value })} />
+            <label htmlFor={`${base}-pa${i}`} className="sr-only">{`What picture ${i + 1} shows`}</label>
+            <input id={`${base}-pa${i}`} className="field" maxLength={MAX_ALT_LENGTH} value={picture.alt} placeholder="What it shows, for someone who cannot see it" onChange={(e) => set(i, { alt: e.target.value })} />
+          </div>
+          <div className="flex shrink-0 flex-col items-center">
+            <button type="button" onClick={() => swap(i, -1)} disabled={i === 0} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-white hover:text-ink disabled:opacity-30" aria-label={`Move picture ${i + 1} earlier`}>
+              <Icon name="chevron-down" size={16} className="rotate-180" />
+            </button>
+            <button type="button" onClick={() => swap(i, 1)} disabled={i === items.length - 1} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-white hover:text-ink disabled:opacity-30" aria-label={`Move picture ${i + 1} later`}>
+              <Icon name="chevron-down" size={16} />
+            </button>
+            <button type="button" onClick={() => onChange(items.filter((_, j) => j !== i))} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-danger-soft hover:text-danger" aria-label={`Remove picture ${i + 1}`}>
+              <Icon name="close" size={16} />
+            </button>
+          </div>
+        </div>
+      ))}
+      {left > 0 ? (
+        <button type="button" onClick={() => input.current?.click()} disabled={busy > 0} aria-busy={busy > 0} className="btn btn-secondary btn-sm">
+          <Icon name="camera" size={15} />
+          {busy > 0 ? `Sending ${busy} ${busy === 1 ? "picture" : "pictures"}…` : `Add pictures (${items.length} of ${room})`}
+        </button>
+      ) : (
+        <p className="text-xs text-ink-soft">{`This block is full. A block holds ${MAX_PICTURES} pictures and a page ${MAX_PAGE_PICTURES}.`}</p>
+      )}
+      {error ? (
+        <p className="text-xs font-semibold text-danger" role="alert">
+          {error}
+        </p>
+      ) : (
+        <p className="text-xs text-ink-soft">Your own pictures: pages of the book, a screen of the course, the finished result. Each is shrunk before it is sent, shown once, and opens full size when a visitor presses it.</p>
+      )}
     </div>
   );
 }

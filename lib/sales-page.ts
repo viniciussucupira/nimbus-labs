@@ -53,11 +53,20 @@ export const MAX_CTA_NOTE = 120;
 export const MAX_SEO_TITLE = 70;
 /** The line under a video block's player. */
 export const MAX_CAPTION = 300;
+/** Pictures in one block, and on one page: each is at most a megabyte (lib/product-image.ts). */
+export const MAX_PICTURES = 6;
+export const MAX_PAGE_PICTURES = 24;
+export const MAX_PICTURE_CAPTION = 140;
+/** What a countdown says it counts down to, and what it says under the numbers. */
+export const MAX_COUNTDOWN_LABEL = 80;
+export const MAX_COUNTDOWN_NOTE = 200;
+/** No countdown to a moment further away than this: a year is a plan, not a deadline. */
+export const MAX_COUNTDOWN_DAYS = 366;
 export const MAX_SEO_DESCRIPTION = 160;
 /** The most a page's record may weigh, in bytes: well past thirty full blocks. */
 export const MAX_PAGE_BYTES = 120_000;
 
-export type BlockKind = "hero" | "text" | "benefits" | "inside" | "bio" | "faq" | "guarantee" | "cta" | "reviews" | "video";
+export type BlockKind = "hero" | "text" | "benefits" | "inside" | "bio" | "faq" | "guarantee" | "cta" | "reviews" | "video" | "pictures" | "countdown";
 
 export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "hero", label: "Hero", hint: "The big headline at the top, with the product's picture or a video." },
@@ -70,6 +79,8 @@ export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "cta", label: "Button", hint: "A button that goes to the checkout (or the sign-up form)." },
   { kind: "reviews", label: "Reviews", hint: "Where buyers' verified reviews sit on the page." },
   { kind: "video", label: "Video", hint: "A video anywhere on the page — a lesson to try, a walkthrough, a result — with a heading and a line under it." },
+  { kind: "pictures", label: "Pictures", hint: `Up to ${MAX_PICTURES} pictures of your own — pages of the book, a screen of the course, the finished result — each with a line under it.` },
+  { kind: "countdown", label: "Countdown", hint: "Days, hours and minutes to one real moment, the same for every visitor: a launch price ending, doors closing, a live session starting." },
 ];
 
 export type VideoProvider = "youtube" | "vimeo" | "loom";
@@ -105,6 +116,32 @@ export type ReviewsBlock = { id: string; kind: "reviews"; heading: string };
  */
 export type VideoBlock = { id: string; kind: "video"; heading: string; video: Video | null; caption: string };
 
+/**
+ * One picture on a page: a file in the store's own picture folder
+ * (lib/product-image.ts), the words that describe it and a line under it.
+ */
+export type Picture = { path: string; width: number; height: number; alt: string; caption: string };
+
+/**
+ * Pictures of the creator's own, anywhere below the hero (added 7 October
+ * 2026). Measured that day: Kajabi and Hotmart Pages have an image and a
+ * gallery section, and a page that sells a book or a course without one
+ * picture of what is inside is selling blind. Each picture is shrunk in the
+ * creator's browser and served from our own address like a product's
+ * picture, so nothing loads from anywhere else and nothing can carry a script.
+ */
+export type PicturesBlock = { id: string; kind: "pictures"; heading: string; items: Picture[] };
+
+/**
+ * A countdown to one moment (added 7 October 2026). Kajabi, Hotmart Pages,
+ * ClickFunnels and Systeme.io all have one; theirs can also be "evergreen",
+ * restarting for every visitor so that the deadline is never real. This one
+ * cannot: `until` is one moment in time, the same for everybody, and once it
+ * has passed the block is not drawn at all. What changes at that moment is
+ * the creator's to say, in their own words, like the guarantee.
+ */
+export type CountdownBlock = { id: string; kind: "countdown"; heading: string; until: number; note: string };
+
 export type PageBlock =
   | HeroBlock
   | TextBlock
@@ -115,7 +152,9 @@ export type PageBlock =
   | GuaranteeBlock
   | CtaBlock
   | ReviewsBlock
-  | VideoBlock;
+  | VideoBlock
+  | PicturesBlock
+  | CountdownBlock;
 
 export type SalesPage = {
   blocks: PageBlock[];
@@ -281,6 +320,40 @@ export function parseVideo(raw: unknown): Video | null {
   return null;
 }
 
+const PICTURE_PATH = /^images\/[0-9a-f]{24}\/[0-9a-f]{32}\.(webp|jpg)$/;
+
+/** One picture as it was kept, made safe to use; null when it is not one. */
+export function parsePicture(raw: unknown): Picture | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  if (typeof value.path !== "string" || !PICTURE_PATH.test(value.path)) return null;
+  const side = (n: unknown) => (typeof n === "number" && Number.isInteger(n) && n > 0 && n <= 10_000 ? n : 0);
+  const width = side(value.width);
+  const height = side(value.height);
+  if (!width || !height) return null;
+  return { path: value.path, width, height, alt: line(value.alt, 150), caption: line(value.caption, MAX_PICTURE_CAPTION) };
+}
+
+/** The moment a countdown runs to, in seconds: a whole number in a sane range, else 0. */
+function parseUntil(raw: unknown): number {
+  return typeof raw === "number" && Number.isInteger(raw) && raw > 1_600_000_000 && raw < 4_102_444_800 ? raw : 0;
+}
+
+/** Every picture file a page shows, each once: what is kept when the page is saved, and deleted when it is not. */
+export function picturePaths(page: Pick<SalesPage, "blocks">): string[] {
+  const out: string[] = [];
+  for (const block of page.blocks) {
+    if (block.kind !== "pictures") continue;
+    for (const picture of block.items) if (!out.includes(picture.path)) out.push(picture.path);
+  }
+  return out;
+}
+
+/** Whether a countdown still has time on it at `now` (in seconds). One that has run out is not drawn. */
+export function countdownLive(block: Pick<CountdownBlock, "until">, now: number): boolean {
+  return block.until > now;
+}
+
 /** One block, made safe to use; null when it cannot be one. */
 function parseBlock(raw: unknown): PageBlock | null {
   if (!raw || typeof raw !== "object") return null;
@@ -334,6 +407,22 @@ function parseBlock(raw: unknown): PageBlock | null {
       return { id, kind: "reviews", heading };
     case "video":
       return { id, kind: "video", heading, video: parseVideo(value.video), caption: lines(value.caption, MAX_CAPTION) };
+    case "pictures": {
+      const seen = new Set<string>();
+      const items = Array.isArray(value.items)
+        ? value.items
+            .map(parsePicture)
+            .filter((picture): picture is Picture => {
+              if (!picture || seen.has(picture.path)) return false;
+              seen.add(picture.path);
+              return true;
+            })
+            .slice(0, MAX_PICTURES)
+        : [];
+      return { id, kind: "pictures", heading, items };
+    }
+    case "countdown":
+      return { id, kind: "countdown", heading: line(value.heading, MAX_COUNTDOWN_LABEL), until: parseUntil(value.until), note: line(value.note, MAX_COUNTDOWN_NOTE) };
     default:
       return null;
   }
@@ -350,6 +439,7 @@ export function parsePage(raw: unknown): SalesPage {
   const value = raw as Record<string, unknown>;
   const blocks: PageBlock[] = [];
   const seen = new Set<string>();
+  const shown = new Set<string>();
   let reviews = false;
   if (Array.isArray(value.blocks)) {
     for (const entry of value.blocks.slice(0, MAX_BLOCKS * 2)) {
@@ -359,6 +449,11 @@ export function parsePage(raw: unknown): SalesPage {
       if (block.kind === "reviews") {
         if (reviews) continue;
         reviews = true;
+      }
+      // Pictures are counted across the page, and one file is shown once.
+      if (block.kind === "pictures") {
+        block.items = block.items.filter((picture) => !shown.has(picture.path)).slice(0, Math.max(0, MAX_PAGE_PICTURES - shown.size));
+        for (const picture of block.items) shown.add(picture.path);
       }
       seen.add(block.id);
       blocks.push(block);
@@ -389,7 +484,7 @@ function parseTest(raw: unknown, hero: HeroBlock | null): HeadlineTest | null {
 }
 
 /** What is wrong with a page the studio sent, in a word the studio can explain; null when nothing. */
-export type PageProblem = "too_many" | "hero_first" | "two_reviews" | "video" | "shape" | "too_big" | null;
+export type PageProblem = "too_many" | "hero_first" | "two_reviews" | "video" | "pictures" | "countdown" | "shape" | "too_big" | null;
 
 /**
  * The same rules as parsePage, told back rather than quietly applied, so a
@@ -405,7 +500,18 @@ export function pageProblem(raw: { blocks?: unknown }, parsed: SalesPage): PageP
     const value = block && typeof block === "object" ? (block as Record<string, unknown>) : {};
     if (value.kind === "hero" && value.media === "video" && !parseVideo(value.video)) return "video";
     if (value.kind === "video" && !parseVideo(value.video)) return "video";
+    // A countdown with no moment, or one too far away to be a deadline.
+    if (value.kind === "countdown") {
+      const until = parseUntil(value.until);
+      if (!until || until > Date.now() / 1000 + MAX_COUNTDOWN_DAYS * 86_400) return "countdown";
+    }
   }
+  // A picture sent that was not kept: not a picture, a second copy of one, or past what a page holds.
+  const sentPictures = sent.reduce<number>((n, b) => {
+    const items = b && typeof b === "object" && (b as { kind?: unknown }).kind === "pictures" ? (b as { items?: unknown }).items : null;
+    return n + (Array.isArray(items) ? items.length : 0);
+  }, 0);
+  if (sentPictures !== picturePaths(parsed).length) return "pictures";
   if (parsed.blocks.length !== sent.length) return "shape";
   if (JSON.stringify(parsed).length > MAX_PAGE_BYTES) return "too_big";
   return null;
@@ -434,6 +540,10 @@ export function emptyBlock(kind: BlockKind, id = newBlockId()): PageBlock {
       return { id, kind, heading: "Reviews" };
     case "video":
       return { id, kind, heading: "", video: null, caption: "" };
+    case "pictures":
+      return { id, kind, heading: "", items: [] };
+    case "countdown":
+      return { id, kind, heading: "", until: 0, note: "" };
   }
 }
 
@@ -478,4 +588,102 @@ export function blocksFromDraft(draft: DraftCopy, picture: boolean): SalesPage {
   if (draft.faq.length || draft.inside.length) blocks.push({ id: newBlockId(), kind: "cta", label: draft.cta, note: "" });
   blocks.push({ id: newBlockId(), kind: "reviews", heading: "Reviews" });
   return parsePage({ blocks, seoTitle: draft.seoTitle, seoDescription: draft.seoDescription, next: null, test: null });
+}
+
+/**
+ * Pages to start from (added 7 October 2026). Kajabi and Hotmart Pages open
+ * on a gallery of templates; the page here used to open on an empty list, or
+ * on the writing help. A template is only an order of blocks that sells that
+ * kind of product, with its headings and the questions buyers of it ask. It
+ * holds no sentence about the product: the headline and summary are the
+ * product's own, every answer is the creator's to write, and a block left
+ * empty is simply not drawn. Nothing here invents a claim.
+ */
+export type PageTemplate = { id: string; label: string; hint: string; free: boolean };
+
+export const PAGE_TEMPLATES: PageTemplate[] = [
+  { id: "guide", label: "Ebook, guide or templates", hint: "What they get, a look inside, the parts, the questions a buyer of a download asks.", free: false },
+  { id: "course", label: "Course", hint: "A lesson to watch first, what they will be able to do, the lessons, who it is for, about you.", free: false },
+  { id: "coaching", label: "Call or coaching", hint: "What you work on together, how it goes, about you, how the booking works.", free: false },
+  { id: "membership", label: "Membership or community", hint: "What members get, what happens each month, when they are charged and how to cancel.", free: false },
+  { id: "launch", label: "Launch with a deadline", hint: "A countdown to one real moment under the headline, then the offer, the questions and your promise.", free: false },
+  { id: "free", label: "Free download", hint: "What is inside, who it is from, and what happens with their email.", free: true },
+];
+
+type TemplateBlock = Record<string, unknown> & { kind: BlockKind };
+
+const questions = (...asked: string[]) => asked.map((q) => ({ q, a: "" }));
+
+const TEMPLATE_BLOCKS: Record<string, TemplateBlock[]> = {
+  guide: [
+    { kind: "benefits", heading: "What you get" },
+    { kind: "pictures", heading: "A look inside" },
+    { kind: "inside", heading: "What's inside" },
+    { kind: "text", heading: "Who it is for" },
+    { kind: "cta" },
+    { kind: "faq", heading: "Questions", items: questions("What format is it in?", "How do I get it after paying?", "Can I get a refund?") },
+    { kind: "guarantee", heading: "Guarantee" },
+    { kind: "bio" },
+    { kind: "cta" },
+    { kind: "reviews", heading: "Reviews" },
+  ],
+  course: [
+    { kind: "video", heading: "Watch a lesson first" },
+    { kind: "benefits", heading: "What you will be able to do" },
+    { kind: "inside", heading: "The lessons" },
+    { kind: "text", heading: "Who this course is for" },
+    { kind: "bio" },
+    { kind: "cta" },
+    { kind: "faq", heading: "Questions", items: questions("How long do I have access?", "How much time does it take?", "What if it is not for me?") },
+    { kind: "guarantee", heading: "Guarantee" },
+    { kind: "cta" },
+    { kind: "reviews", heading: "Reviews" },
+  ],
+  coaching: [
+    { kind: "benefits", heading: "What we work on" },
+    { kind: "inside", heading: "How it goes" },
+    { kind: "bio" },
+    { kind: "cta" },
+    { kind: "faq", heading: "Questions", items: questions("How do we meet?", "Can I move my booking?", "What should I prepare?") },
+    { kind: "reviews", heading: "Reviews" },
+  ],
+  membership: [
+    { kind: "benefits", heading: "What members get" },
+    { kind: "inside", heading: "What happens each month" },
+    { kind: "text", heading: "Who it is for" },
+    { kind: "cta" },
+    { kind: "faq", heading: "Questions", items: questions("When am I charged?", "Can I cancel at any time?", "What do I get the day I join?") },
+    { kind: "bio" },
+    { kind: "cta" },
+    { kind: "reviews", heading: "Reviews" },
+  ],
+  launch: [
+    { kind: "countdown", heading: "" },
+    { kind: "benefits", heading: "What you get" },
+    { kind: "inside", heading: "What's inside" },
+    { kind: "cta" },
+    { kind: "faq", heading: "Questions", items: questions("What changes when the countdown ends?", "How do I get it after paying?", "Can I get a refund?") },
+    { kind: "guarantee", heading: "Guarantee" },
+    { kind: "cta" },
+    { kind: "reviews", heading: "Reviews" },
+  ],
+  free: [
+    { kind: "benefits", heading: "What is inside" },
+    { kind: "bio" },
+    { kind: "faq", heading: "Questions", items: questions("Is it really free?", "What happens with my email?") },
+  ],
+};
+
+/**
+ * A template's blocks for one product: the hero from the product's own title
+ * and summary (with its picture when it has one), then the template's blocks
+ * with fresh ids. Not read through parsePage, which would drop the questions
+ * still waiting for their answers; the page is held to every rule when it is
+ * saved, like one built by hand.
+ */
+export function blocksFromTemplate(id: string, product: { title: string; summary: string; picture: boolean }): PageBlock[] {
+  const rows = TEMPLATE_BLOCKS[id];
+  if (!rows) return [];
+  const hero: HeroBlock = { id: newBlockId(), kind: "hero", headline: product.title.slice(0, MAX_HEADLINE), sub: product.summary.slice(0, MAX_SUBHEADLINE), media: product.picture ? "picture" : "none", video: null };
+  return [hero, ...rows.map((row) => ({ ...emptyBlock(row.kind), ...row, id: newBlockId() }) as PageBlock)];
 }
