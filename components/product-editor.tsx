@@ -248,7 +248,7 @@ function ProductForm({
         ? PWYW_MESSAGES.call
         : product.plan
           ? PWYW_MESSAGES.plan
-          : product.bump
+          : product.bumps.length
             ? PWYW_MESSAGES.bump
             : null
     : null;

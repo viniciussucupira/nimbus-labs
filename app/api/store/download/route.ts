@@ -9,6 +9,7 @@ import { stampedCopy, wantsStamp } from "@/lib/pdf-stamp";
 import { renewPath } from "@/lib/membership-access";
 import { originFrom } from "@/lib/request-origin";
 import type { ProductFile } from "@/lib/product-file";
+import { BUMP_KEYS } from "@/lib/bundle-rules";
 
 /**
  * Hands the buyer the file they paid for.
@@ -95,23 +96,26 @@ export async function GET(request: NextRequest) {
       return plain(410, "This link has expired, or this purchase is not on it. Ask the store for a new link to your purchases.");
     }
     if (purchase.ended) return toRenew(request, store, { id: purchase.productId });
-    const bumped = request.nextUrl.searchParams.get("item") === "bump";
+    // A product ticked at checkout is asked for by the key its order names it under.
+    const asked = request.nextUrl.searchParams.get("item") ?? "";
+    const bumped = (BUMP_KEYS as readonly string[]).includes(asked) ? purchase.added.find((added) => added.key === asked) ?? null : null;
+    if ((BUMP_KEYS as readonly string[]).includes(asked) && !bumped) return plain(404, "There is nothing to download on this one.");
     // A product of a bundle on this purchase, by its id.
     const pid = request.nextUrl.searchParams.get("pid") ?? "";
     if (pid) {
-      const line = (bumped ? purchase.bumpItems : purchase.items)?.lines.find((l) => l.productId === pid) ?? null;
+      const line = (bumped ? bumped.items : purchase.items)?.lines.find((l) => l.productId === pid) ?? null;
       if (!line || !line.delivery) return plain(404, "There is nothing to download on this one.");
       if (!line.delivery.file) return plain(409, NOT_A_DOWNLOAD);
       const item = await readListing(store, line.productId);
       if (!item) return plain(404, "There is nothing to download on this one.");
       return deliver(item, line.delivery.file, { reference: purchase.reference, email, paidAt: purchase.paidAt });
     }
-    const delivery = bumped ? purchase.bump : purchase.main;
+    const delivery = bumped ? bumped.delivery : purchase.main;
     if (!delivery) return plain(404, "There is nothing to download on this one.");
     if (!delivery.file) {
       return plain(409, "This one is not a download. Open your purchases again and use the link on it.");
     }
-    const owner = await readListing(store, bumped ? purchase.bumpId : purchase.productId);
+    const owner = await readListing(store, bumped ? bumped.id : purchase.productId);
     if (!owner) return serveFile(delivery.file);
     return deliver(owner, delivery.file, { reference: purchase.reference, email, paidAt: purchase.paidAt });
   }
@@ -156,19 +160,22 @@ export async function GET(request: NextRequest) {
     return deliver(wanted, wanted.file, { ...sale, reference: added.reference, paidAt: added.paidAt });
   }
 
-  // The product added at checkout has its own file, asked for by name.
-  if (request.nextUrl.searchParams.get("item") === "bump") {
-    if (!order.bump) return plain(404, "This order has nothing added to it.");
+  // A product added at checkout has its own file, asked for by the key the
+  // order names it under (lib/bundle-rules.ts, BUMP_KEYS).
+  const item = request.nextUrl.searchParams.get("item") ?? "";
+  if ((BUMP_KEYS as readonly string[]).includes(item)) {
+    const added = order.bumps.find((one) => one.key === item);
+    if (!added) return plain(404, "This order has nothing added to it.");
     if (pid) {
-      const inside = pick(order.bump.items, pid);
+      const inside = pick(added.items, pid);
       if (!inside) return plain(404, "The product added to this order has no such part.");
       if (!inside.file) return plain(inside.link ? 409 : 404, inside.link ? NOT_A_DOWNLOAD : "There is no file on this product.");
       return deliver(inside, inside.file, sale);
     }
-    if (!order.bump.file) {
-      return plain(order.bump.link ? 409 : 404, order.bump.link ? "This one is not a download. Open the order page again and use the link on it." : "There is no file on this product.");
+    if (!added.file) {
+      return plain(added.link ? 409 : 404, added.link ? "This one is not a download. Open the order page again and use the link on it." : "There is no file on this product.");
     }
-    return deliver(order.bump.product, order.bump.file, sale);
+    return deliver(added.product, added.file, sale);
   }
 
   // One product of the bundle that was bought, by its id.

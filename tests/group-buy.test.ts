@@ -99,7 +99,7 @@ async function main(): Promise<void> {
 
   part("Its checkout");
   const full = (await readProduct(store, product.id))!;
-  await createCheckout(store, full, "https://marktmorgen.com", "", { group: { id, people: 2 }, bump: true, plan: true, upsellKey: "f".repeat(40), buyerKey: "b".repeat(40) });
+  await createCheckout(store, full, "https://marktmorgen.com", "", { group: { id, people: 2 }, bumps: ["yes"], plan: true, upsellKey: "f".repeat(40), buyerKey: "b".repeat(40) });
   const sent = checkouts[0];
   is("the price, that many times, on one line", [sent.get("line_items[0][quantity]"), sent.get("line_items[0][price_data][unit_amount]")], ["2", "4900"]);
   is("marked", [sent.get("metadata[group]"), sent.get("metadata[people]"), sent.get("payment_intent_data[metadata][group]")], [id, "2", id]);

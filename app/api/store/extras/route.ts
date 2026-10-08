@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { setProductExtras } from "@/lib/store";
-import { MAX_STOCK, parsePlan, parseStock } from "@/lib/product-extras";
+import { MAX_BUMPS, MAX_STOCK, parsePlan, parseStock } from "@/lib/product-extras";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { StoreFullError } from "@/lib/store";
 import { currencyRule, readMoney } from "@/lib/money";
@@ -9,7 +9,9 @@ import { currencyRule, readMoney } from "@/lib/money";
  * Sets or clears a product's limited quantity or its order bump.
  *
  * `{ id, stock: 50 }` or `{ id, stock: null }`;
- * `{ id, bump: { productId, price: "9", pitch } }` or `{ id, bump: null }`;
+ * `{ id, bump: { productId, price: "9", pitch }, slot: 0 }` or `{ id, bump: null, slot: 0 }`:
+ * the box at that place, 0 to 2 (lib/product-extras.ts, MAX_BUMPS); one
+ * past the last adds a box, and taking one away moves the next ones up;
  * `{ id, plan: { payments: 3, interval: "month", price: "110" } }` or `{ id, plan: null }`.
  * The price is read as text, like every other price the studio sends, in the
  * store's own currency (lib/money.ts).
@@ -35,6 +37,9 @@ export async function POST(request: NextRequest) {
     }
   }
   if ("bump" in body) {
+    const slot = body.slot === undefined ? 0 : Number(body.slot);
+    if (!Number.isInteger(slot) || slot < 0 || slot >= MAX_BUMPS) return Response.json({ ok: false, error: "unknown" }, { status: 400 });
+    change.slot = slot;
     if (body.bump === null) change.bump = null;
     else {
       const raw = body.bump && typeof body.bump === "object" ? (body.bump as Record<string, unknown>) : {};

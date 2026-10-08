@@ -21,12 +21,15 @@
  * and so is not in the list of choices the page was given.
  */
 import type { Listing, Product } from "@/lib/store";
-import { bumpPauseWords, bumpState, planPauseWords, planState } from "@/lib/product-extras";
+import { bumpPauseWords, bumpState, bumpStates, planPauseWords, planState } from "@/lib/product-extras";
 import { funnelHealth, stepPauseWords } from "@/lib/funnel";
 
 export type ExtraNotes = {
-  /** Why the box at checkout is not being shown. */
-  bump?: string;
+  /**
+   * Why each box at checkout is not being shown, in the product's order:
+   * null for a box that is. Absent when every box is shown.
+   */
+  bumps?: (string | null)[];
   /** Why the payment plan is not being offered. */
   plan?: string;
   /** The funnel: one line for the whole of it, then one per offer gone dark. */
@@ -47,8 +50,8 @@ export function extraNotes(product: Product, all: Listing[], currency: string): 
   const notes: ExtraNotes = {};
   const title = (id: string) => all.find((p) => p.id === id)?.title ?? "";
 
-  const bump = bumpState(all, product);
-  if (bump && "paused" in bump) notes.bump = bumpPauseWords(bump.paused, title(bump.bump.productId));
+  const boxes = bumpStates(all, product).map((state) => ("paused" in state ? bumpPauseWords(state.paused, title(state.bump.productId)) : null));
+  if (boxes.some(Boolean)) notes.bumps = boxes;
 
   const plan = planState(product);
   if (plan && "paused" in plan) notes.plan = planPauseWords(plan.paused, plan.plan, product.priceCents, currency);
@@ -89,7 +92,7 @@ export function allExtraNotes(products: Product[], all: Listing[], currency: str
   const out: Record<string, ExtraNotes> = {};
   for (const product of products) {
     const notes = extraNotes(product, all, currency);
-    if (notes.bump || notes.plan || notes.funnel) out[product.id] = notes;
+    if (notes.bumps || notes.plan || notes.funnel) out[product.id] = notes;
   }
   return out;
 }
@@ -120,9 +123,10 @@ export function quietedBy(
   for (const product of products) {
     const title = product.title || "A product";
     // A box or an offer that pointed at the product just changed.
-    const bump = product.bump ? bumpState(all, product) : null;
-    if (bump && "paused" in bump && bump.bump.productId === changedId) {
-      say(title, bumpPauseWords(bump.paused, all.find((p) => p.id === changedId)?.title ?? ""));
+    for (const bump of product.bumps) {
+      if (bump.productId !== changedId) continue;
+      const state = bumpState(all, product, bump);
+      if ("paused" in state) say(title, bumpPauseWords(state.paused, all.find((p) => p.id === changedId)?.title ?? ""));
     }
     const funnel = product.funnel ? funnelHealth(all, product) : null;
     for (const { step, why } of funnel?.dark ?? []) {

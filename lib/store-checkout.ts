@@ -24,7 +24,7 @@ import {
 import { isPaidUp } from "@/lib/billing";
 import { livePromotionId } from "@/lib/discount";
 import { StripeError, checkoutClosesAt, onAccount, platformKey } from "@/lib/stripe-account";
-import { activeBump, activePlan, planWords } from "@/lib/product-extras";
+import { type Bump, MAX_BUMPS, activeBumps, activePlan, bumpTargets, planWords } from "@/lib/product-extras";
 import { type CameFrom, hasSource } from "@/lib/came-from";
 import { applyTax, applyTaxDocuments, refusedTaxDocuments, withoutTaxDocuments } from "@/lib/tax";
 import { inTheCurrencyShown, isSettled, onlyInstantMethods, reusableMethod, saveCardForOffers } from "@/lib/instant-pay";
@@ -35,7 +35,7 @@ import { readMoves } from "@/lib/call-records";
 import { applyRecovery, recoveryOn, refusedRecovery, withoutRecovery } from "@/lib/recovery-setting";
 import { isLive, membershipStatus, soldAMembership } from "@/lib/membership-access";
 import { purchaseRefunded } from "@/lib/refunds";
-import { MIN_BUNDLE_ITEMS, bundleFromMeta, bundleMeta, deliverableItems } from "@/lib/bundle-rules";
+import { BUMP_KEYS, type BumpKey, MIN_BUNDLE_ITEMS, bumpsFromMeta, bundleFromMeta, bundleMeta, deliverableItems } from "@/lib/bundle-rules";
 import { type BundleContents, contentsOf } from "@/lib/bundles";
 import { isHouseStore } from "@/lib/house-store";
 
@@ -143,8 +143,12 @@ export async function createCheckout(
   origin: string,
   optionId?: string,
   extras: {
-    /** The buyer ticked the box for the product offered alongside. */
-    bump?: boolean;
+    /**
+     * Which boxes the buyer checked, by the product each offers. "yes" is
+     * the first box, as a page drawn when a product had one box sends it.
+     * What each costs is read from the product, never from here.
+     */
+    bumps?: string[];
     /** A unit of the product is held, so the checkout has to close in time. */
     held?: boolean;
     /**
@@ -203,12 +207,12 @@ export async function createCheckout(
   } = {},
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
-  if (extras.gift) extras = { ...extras, bump: false, plan: false, upsellKey: undefined, group: undefined };
+  if (extras.gift) extras = { ...extras, bumps: [], plan: false, upsellKey: undefined, group: undefined };
   if (extras.group) {
     // Checked again here, where the charge is built: the number of people
     // multiplies the price, so nothing reaches Stripe that the rules refuse.
     if (!GROUP_ID.test(extras.group.id) || !canGroup(product)) throw new Error("This cannot be bought for several people");
-    extras = { ...extras, bump: false, plan: false, upsellKey: undefined, buyerKey: undefined };
+    extras = { ...extras, bumps: [], plan: false, upsellKey: undefined, buyerKey: undefined };
   }
   // A call is booked for a time, through its own door, never bought blind.
   if (product.call) throw new Error("A call is booked, not bought directly");
@@ -283,28 +287,35 @@ export async function createCheckout(
     body.set("line_items[0][price_data][product_data][images][0]", `${origin}${imageUrl(product.image)}`);
   }
 
-  // The product the buyer chose to add, at the price the creator set for it
-  // here — read from the store's record, never from the form.
-  const bump =
-    extras.bump && !membership && !pwyw && product.bump
-      ? activeBump(await readListings(store, [product.bump.productId]), product)
-      : null;
-  // A bundle ticked at checkout: its list is written down the same way.
-  const bumpBundled = bump?.target.bundle ? deliverableItems(bump.target, await readListings(store, bump.target.bundle)) : null;
-  // One that holds too little right now is left off, as a bump that cannot
-  // be handed over always is (lib/product-extras.ts).
-  if (bump && (!bumpBundled || bumpBundled.length >= MIN_BUNDLE_ITEMS)) {
-    if (bumpBundled) {
-      for (const [key, value] of Object.entries(bundleMeta("bump_bundle", bumpBundled.map((p) => p.id)))) body.set(`metadata[${key}]`, value);
+  // The products the buyer chose to add, each at the price the creator set
+  // for it here — read from the store's record, never from the form. Only a
+  // box being shown right now can be checked; anything else the form names
+  // is ignored.
+  const checked = new Set((extras.bumps ?? []).slice(0, MAX_BUMPS + 1));
+  const shown = checked.size && !membership && !pwyw && product.bumps.length ? activeBumps(await readListings(store, bumpTargets(product)), product) : [];
+  if (checked.has("yes") && shown[0]) checked.add(shown[0].target.id);
+  const added: { key: BumpKey; bump: Bump; target: Listing }[] = [];
+  for (const offer of shown) {
+    if (!checked.has(offer.target.id)) continue;
+    // A bundle ticked at checkout: its list is written down the same way.
+    // One that holds too little right now is left off, as a box that cannot
+    // be handed over always is (lib/product-extras.ts).
+    const bundled = offer.target.bundle ? deliverableItems(offer.target, await readListings(store, offer.target.bundle)) : null;
+    if (bundled && bundled.length < MIN_BUNDLE_ITEMS) continue;
+    const key = BUMP_KEYS[added.length];
+    const line = added.length + 1;
+    if (bundled) {
+      for (const [name, value] of Object.entries(bundleMeta(`${key}_bundle`, bundled.map((p) => p.id)))) body.set(`metadata[${name}]`, value);
     }
-    body.set("line_items[1][quantity]", "1");
-    body.set("line_items[1][price_data][currency]", store.currency);
-    body.set("line_items[1][price_data][unit_amount]", String(bump.bump.priceCents));
-    body.set("line_items[1][price_data][product_data][name]", bump.target.title);
-    body.set("metadata[bump]", bump.target.id);
-    body.set("metadata[title]", `${name} + ${bump.target.title}`.slice(0, 480));
-    if (!recurring) body.set("payment_intent_data[metadata][bump]", bump.target.id);
+    body.set(`line_items[${line}][quantity]`, "1");
+    body.set(`line_items[${line}][price_data][currency]`, store.currency);
+    body.set(`line_items[${line}][price_data][unit_amount]`, String(offer.bump.priceCents));
+    body.set(`line_items[${line}][price_data][product_data][name]`, offer.target.title);
+    body.set(`metadata[${key}]`, offer.target.id);
+    if (!recurring) body.set(`payment_intent_data[metadata][${key}]`, offer.target.id);
+    added.push({ key, bump: offer.bump, target: offer.target });
   }
+  if (added.length) body.set("metadata[title]", [name, ...added.map((a) => a.target.title)].join(" + ").slice(0, 480));
 
   // A limited product's unit is held while this checkout is open, so the
   // checkout closes before the hold does. The time is set just before the
@@ -373,19 +384,18 @@ export async function createCheckout(
   // and 30% on the add-on has an ordinary arrangement, and the credit used to
   // be thrown away on the front product's 0% before the bump was ever looked
   // at.
-  const added = body.get("metadata[bump]") && bump ? bump : null;
-  // The affiliate's own share, when the creator set one for them, applies to the add-on too.
-  const addedRate = added ? commissionRate(store.affiliates, added.target.id, extras.via?.own ?? null) : 0;
-  if (extras.via && !recurring && (extras.via.rate > 0 || addedRate > 0)) {
+  // The affiliate's own share, when the creator set one for them, applies to the add-ons too.
+  const addedRates = added.map((a) => commissionRate(store.affiliates, a.target.id, extras.via?.own ?? null));
+  if (extras.via && !recurring && (extras.via.rate > 0 || addedRates.some((rate) => rate > 0))) {
     body.set("metadata[via]", extras.via.aff);
     body.set("metadata[via_rate]", String(extras.via.rate));
     body.set("payment_intent_data[metadata][via]", extras.via.aff);
-    // A bump rides in the same order: its own share, which may be none, is
+    // Each box rides in the same order: its own share, which may be none, is
     // kept beside it, so it earns what the creator set for that product.
-    if (added) {
-      body.set("metadata[bump_cents]", String(added.bump.priceCents));
-      body.set("metadata[bump_rate]", String(addedRate));
-    }
+    added.forEach((a, at) => {
+      body.set(`metadata[${a.key}_cents]`, String(a.bump.priceCents));
+      body.set(`metadata[${a.key}_rate]`, String(addedRates[at]));
+    });
   }
 
   if (membership) {
@@ -547,6 +557,9 @@ export async function createCheckout(
   return { url: session.url, id: session.id };
 }
 
+/** A product added at checkout, as an order hands it over. */
+export type AddedProduct = { key: BumpKey; product: Listing; file: ProductFile | null; link: string | null; items: BundleContents | null };
+
 export type Order =
   | {
       state: "paid";
@@ -568,10 +581,13 @@ export type Order =
        */
       call: { start: number; end: number; buyerTz: string; moves: number } | null;
       /**
-       * The product the buyer added at checkout, with what it delivers — and,
-       * when it is a bundle, the products it hands over (lib/bundles.ts).
+       * The products the buyer added at checkout, in the order of their
+       * boxes, each with what it delivers — and, when it is a bundle, the
+       * products it hands over (lib/bundles.ts). `key` is where the order
+       * names it (lib/bundle-rules.ts, BUMP_KEYS), which the download link
+       * uses to say which one.
        */
-      bump: { product: Listing; file: ProductFile | null; link: string | null; items: BundleContents | null } | null;
+      bumps: AddedProduct[];
       /**
        * When the product bought is a bundle: the products it hands over, from
        * the list written on this order when it was paid (lib/bundle-rules.ts).
@@ -674,12 +690,15 @@ export async function readOrder(
   const handles = saleHandles(store);
   if (!handles.has(metadata?.store ?? "")) return { state: "invalid" };
   const mainList = bundleFromMeta(metadata, "bundle");
-  const bumpList = bundleFromMeta(metadata, "bump_bundle");
-  const [product, added, items, bumpItems] = await Promise.all([
+  const addedMeta = bumpsFromMeta(metadata);
+  const [product, items, ...addedRead] = await Promise.all([
     metadata?.product ? readListing(store, metadata.product) : null,
-    metadata?.bump ? readListing(store, metadata.bump) : null,
     mainList.length ? contentsOf(store, mainList) : null,
-    bumpList.length ? contentsOf(store, bumpList) : null,
+    ...addedMeta.map(async ({ key, id }) => {
+      const list = bundleFromMeta(metadata, `${key}_bundle`);
+      const [listing, inside] = await Promise.all([readListing(store, id), list.length ? contentsOf(store, list) : null]);
+      return { key, listing, inside };
+    }),
   ]);
   if (!product) return { state: "invalid" };
 
@@ -732,7 +751,9 @@ export async function readOrder(
 
   // Delivered as it is now, like the product itself: the offer may since have
   // changed, but what was paid for was this product.
-  const bump = added ? { product: added, file: added.file, link: added.link, items: bumpItems } : null;
+  const bumps: AddedProduct[] = addedRead.flatMap(({ key, listing, inside }) =>
+    listing ? [{ key, product: listing, file: listing.file, link: listing.link, items: inside }] : [],
+  );
 
   let membership: "live" | "ended" | null = null;
   if (soldAMembership(product, { mode: session.mode, metadata })) {
@@ -751,7 +772,7 @@ export async function readOrder(
     group: typeof metadata?.group === "string" && GROUP_ID.test(metadata.group) ? metadata.group : null,
     reference: sessionId,
     call,
-    bump,
+    bumps,
     items,
     created,
     upsellKey: typeof metadata?.upsell_key === "string" ? metadata.upsell_key : null,

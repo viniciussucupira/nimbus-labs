@@ -30,7 +30,7 @@ import { alertCreator } from "@/lib/phone-alerts";
 import { queuePerson } from "@/lib/email-sync";
 import type { Listing, Store } from "@/lib/store";
 import { readListing, readListings } from "@/lib/catalog";
-import { bundleFromMeta } from "@/lib/bundle-rules";
+import { bumpsFromMeta, bundleFromMeta } from "@/lib/bundle-rules";
 import { formatMoney } from "@/lib/money";
 
 /** How long a told sale is remembered: past the day the job looks back over. */
@@ -77,10 +77,11 @@ export function buyerAgreed(record: SaleRecord): boolean {
 async function tell(store: Store, record: SaleRecord, session: string): Promise<void> {
   const meta = record.metadata ?? {};
   // Read by id (lib/catalog.ts), however many products the store has.
-  const inside = [...bundleFromMeta(meta, "bundle"), ...bundleFromMeta(meta, "bump_bundle")];
-  const [product, bump, items] = await Promise.all([
+  const ticked = bumpsFromMeta(meta);
+  const inside = [...bundleFromMeta(meta, "bundle"), ...ticked.flatMap((added) => bundleFromMeta(meta, `${added.key}_bundle`))];
+  const [product, bumps, items] = await Promise.all([
     readListing(store, meta.product),
-    meta.bump ? readListing(store, meta.bump) : Promise.resolve(null),
+    ticked.length ? readListings(store, ticked.map((added) => added.id)) : Promise.resolve([] as Listing[]),
     // A bundle's products go to the email platform as if each were bought on its own.
     inside.length ? readListings(store, inside) : Promise.resolve([] as Listing[]),
   ]);
@@ -94,7 +95,7 @@ async function tell(store: Store, record: SaleRecord, session: string): Promise<
       "sale",
       {
         title: `New sale: ${money(amount, record.currency, store)}`,
-        body: bump ? `${title} + ${bump.title}` : title,
+        body: [title, ...bumps.map((added) => added.title)].join(" + "),
         url: studioAt(store, "#numbers"),
       },
       { seed: session, at },
@@ -109,7 +110,7 @@ async function tell(store: Store, record: SaleRecord, session: string): Promise<
     name: typeof details.name === "string" ? details.name : null,
     products: [
       { id: meta.product ?? "", title },
-      ...(bump ? [{ id: bump.id, title: bump.title }] : []),
+      ...bumps.map((added) => ({ id: added.id, title: added.title })),
       ...items.map((item) => ({ id: item.id, title: item.title })),
     ],
     consent: buyerAgreed(record),

@@ -28,7 +28,7 @@ import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { imageUrl, IMAGE_SIZES, imageSrcSet } from "@/lib/product-image";
 import { type Block, type Piece, aboutBlocks, aboutExcerpt, readAbout } from "@/lib/product-about";
-import { activePlan, planWords } from "@/lib/product-extras";
+import { activePlan, bumpTargets, planWords } from "@/lib/product-extras";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { stockLeft } from "@/lib/stock";
 import { outOfKeys } from "@/lib/licence-keys";
@@ -255,7 +255,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
     pageOf(store, product),
     summaryOf(store.statsId, product.id).catch(() => null),
     // What its order bump offers, drawn in the same box as on the store page.
-    product.bump ? readListings(store, [product.bump.productId]) : Promise.resolve([]),
+    product.bumps.length ? readListings(store, bumpTargets(product)) : Promise.resolve([]),
     // What a bundle holds now, each product as it is today (lib/bundles.ts).
     product.bundle ? offeredItems(store, [product]).then((m) => m.get(product.id) ?? []).catch(() => []) : Promise.resolve(null),
     // How many times it was bought, when the creator chose to say so (lib/sold-count.ts).

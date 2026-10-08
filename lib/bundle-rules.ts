@@ -161,12 +161,35 @@ export function worthWords(items: Pick<Listing, "priceCents">[], priceCents: num
  * Stripe keeps up to 500 characters in one metadata value. Twenty ids of the
  * longest kind need more, so a list is written across up to three keys:
  * "bundle", "bundle_2" and "bundle_3" (and "bump_bundle"… for the product
- * ticked at checkout).
+ * ticked at checkout, "bump2_bundle"… and "bump3_bundle"… for the second and
+ * third box).
  */
 const META_VALUE = 480;
 const META_PARTS = 3;
 
-export type BundleSlot = "bundle" | "bump_bundle";
+/**
+ * The keys a checkout names the products ticked at checkout under, one per
+ * box, in the product's order (lib/product-extras.ts, MAX_BUMPS). The first
+ * is the key every order made when a product had one box carries, so those
+ * read the same as before. Each has its list under `<key>_bundle` when it is
+ * a bundle, and its price and affiliate share under `<key>_cents` and
+ * `<key>_rate`.
+ */
+export const BUMP_KEYS = ["bump", "bump2", "bump3"] as const;
+export type BumpKey = (typeof BUMP_KEYS)[number];
+
+export type BundleSlot = "bundle" | `${BumpKey}_bundle`;
+
+/** The products ticked at checkout, by the key each is under, in order. */
+export function bumpsFromMeta(meta: Record<string, string | undefined> | null | undefined): { key: BumpKey; id: string }[] {
+  if (!meta) return [];
+  const out: { key: BumpKey; id: string }[] = [];
+  for (const key of BUMP_KEYS) {
+    const id = meta[key];
+    if (typeof id === "string" && SAFE_ID.test(id) && !out.some((b) => b.id === id)) out.push({ key, id });
+  }
+  return out;
+}
 
 /** The metadata entries that carry one list, by the key they go under. */
 export function bundleMeta(slot: BundleSlot, ids: string[]): Record<string, string> {
@@ -215,7 +238,13 @@ export function deliveredIds(meta: Record<string, string | undefined> | null | u
   // Bought for several: each place is written down under the address that
   // took it (lib/group-buy.ts), the buyer's own included.
   if (meta?.group) return [];
-  const ids = [meta?.product, meta?.bump, ...bundleFromMeta(meta, "bundle"), ...bundleFromMeta(meta, "bump_bundle")];
+  const added = bumpsFromMeta(meta);
+  const ids = [
+    meta?.product,
+    ...added.map((b) => b.id),
+    ...bundleFromMeta(meta, "bundle"),
+    ...added.flatMap((b) => bundleFromMeta(meta, `${b.key}_bundle`)),
+  ];
   const out: string[] = [];
   for (const id of ids) if (typeof id === "string" && id && !out.includes(id)) out.push(id);
   return out;

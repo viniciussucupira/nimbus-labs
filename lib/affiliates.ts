@@ -77,6 +77,7 @@ import { offerPartnership } from "@/lib/partner-invites";
 import type { Store } from "@/lib/store";
 import { plainAmount } from "@/lib/money";
 import { alertCreator } from "@/lib/phone-alerts";
+import { bumpsFromMeta } from "@/lib/bundle-rules";
 
 /** How long the emailed link to apply or sign in keeps working. */
 export const AFFILIATE_LINK_SECONDS = 24 * 60 * 60;
@@ -1211,15 +1212,22 @@ export async function noteSession(
   // was involved until the code was typed, so the shares are the ones the
   // programme holds now. The affiliate's page says which of the two it was.
   let rate = how === "click" ? Number(meta.via_rate) || 0 : commissionRate(store.affiliates, meta.product ?? "", own);
-  // A bump in the same order earns its own product's share, none when the
-  // creator left that product out: the one rate kept for the sale is the
-  // two shares together, over the whole of it.
-  const bumpCents = Number(meta.bump_cents);
-  const bumpRate = how === "click" ? Number(meta.bump_rate) : commissionRate(store.affiliates, meta.bump ?? "", own);
+  // Each product ticked at checkout earns its own product's share, none when
+  // the creator left that product out: the one rate kept for the sale is the
+  // shares together, each weighed by its part of the whole.
   const subtotal = typeof session.amount_subtotal === "number" ? session.amount_subtotal : 0;
-  if (meta.bump && Number.isFinite(bumpCents) && bumpCents > 0 && Number.isFinite(bumpRate) && subtotal > 0 && base > 0) {
-    const bumpShare = Math.min(1, bumpCents / subtotal);
-    rate = Math.round((rate * (1 - bumpShare) + bumpRate * bumpShare) * 100) / 100;
+  if (subtotal > 0 && base > 0) {
+    let blended = 0;
+    let taken = 0;
+    for (const { key, id } of bumpsFromMeta(meta)) {
+      const cents = Number(meta[`${key}_cents`]);
+      const share = how === "click" ? Number(meta[`${key}_rate`]) : commissionRate(store.affiliates, id, own);
+      if (!Number.isFinite(cents) || cents <= 0 || !Number.isFinite(share)) continue;
+      const part = Math.min(1 - taken, cents / subtotal);
+      blended += share * part;
+      taken += part;
+    }
+    if (taken > 0) rate = Math.round((rate * (1 - taken) + blended) * 100) / 100;
   }
   await writeReferral(store, {
     ref: session.id,

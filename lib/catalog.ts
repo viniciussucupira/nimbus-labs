@@ -44,7 +44,7 @@ import { MAX_LINK_LENGTH } from "@/lib/product-link";
 import { type Recurring, parseRecurring } from "@/lib/product-recurring";
 import { type CallSetup, parseSetup } from "@/lib/call-setup";
 import { COURSE_ID_PATTERN } from "@/lib/course";
-import { type Bump, type Plan, canBeBumped, isOneOff, parseBump, parsePlan, parseStock } from "@/lib/product-extras";
+import { type Bump, type Plan, bumpTargets, canBeBumped, isOneOff, parseBump, parseBumps, parsePlan, parseStock } from "@/lib/product-extras";
 import { type Funnel, funnelFromUpsell, parseFunnel } from "@/lib/funnel";
 import { type PayWhatYouWant, parsePwyw } from "@/lib/pay-what-you-want";
 import { type CheckoutField, parseFields } from "@/lib/checkout-fields";
@@ -142,8 +142,11 @@ export type Product = {
   call: CallSetup | null;
   /** How many can ever be sold, when the creator limits it. Null is no limit. */
   stock: number | null;
-  /** Another product offered in a box at checkout, at a price of its own. */
-  bump: Bump | null;
+  /**
+   * Other products offered in boxes at checkout, each at a price of its own,
+   * up to three (lib/product-extras.ts, MAX_BUMPS), in the order shown.
+   */
+  bumps: Bump[];
   /**
    * What is offered after paying, one offer at a time, each added in one
    * click (lib/funnel.ts). A product saved when there was a single upsell
@@ -317,7 +320,7 @@ type Command = (string | number)[];
 /** Reads one product from what was stored, or null when it is not one. */
 export function parseProduct(entry: unknown): Product | null {
   if (!entry || typeof entry !== "object") return null;
-  const value = entry as Partial<Product> & { upsell?: unknown };
+  const value = entry as Partial<Product> & { upsell?: unknown; bump?: unknown };
   if (typeof value.id !== "string" || !value.id) return null;
   if (typeof value.title !== "string" || !value.title) return null;
   if (typeof value.priceCents !== "number") return null;
@@ -336,7 +339,8 @@ export function parseProduct(entry: unknown): Product | null {
     options: parseOptions(value.options),
     call: parseSetup(value.call),
     stock: parseStock(value.stock),
-    bump: parseBump(value.bump),
+    // A record from when a product offered one box reads as a list of one.
+    bumps: parseBumps(value.bumps, value.bump),
     funnel: parseFunnel(value.funnel) ?? funnelFromUpsell(parseBump(value.upsell)),
     plan: parsePlan(value.plan),
     course: parseCourseRef(value.course),
@@ -382,7 +386,7 @@ export function listingOf(product: Listing): Listing {
     options: product.options,
     call: product.call,
     stock: product.stock,
-    bump: product.bump,
+    bumps: product.bumps,
     plan: product.plan,
     course: product.course,
     podcast: product.podcast ?? null,
@@ -720,7 +724,7 @@ export async function readPage(
   const ids = visible.slice((at - 1) * STORE_PAGE_SIZE, at * STORE_PAGE_SIZE);
   const listings = await readListings(store, ids);
   const onPage = new Set(ids);
-  const targets = listings.flatMap((l) => (l.bump && !onPage.has(l.bump.productId) ? [l.bump.productId] : []));
+  const targets = [...new Set(listings.flatMap((l) => bumpTargets(l).filter((id) => !onPage.has(id))))];
   const related = targets.length ? await readListings(store, targets) : [];
   return { listings, related, page: at, pages };
 }
@@ -844,7 +848,7 @@ export async function studioShelf(
     list.filter((p) => canBeBumped(p)).map((p) => ({ id: p.id, title: p.title, priceCents: p.priceCents }));
   const namesOf = (products: Product[], titles: Map<string, string>) =>
     Object.fromEntries(
-      products.flatMap((p) => (p.bump && titles.has(p.bump.productId) ? [[p.bump.productId, titles.get(p.bump.productId)!]] : [])),
+      products.flatMap((p) => bumpTargets(p).flatMap((id) => (titles.has(id) ? [[id, titles.get(id)!]] : []))),
     );
   if (ids.length <= STUDIO_PAGE_SIZE) {
     const products = await readProducts(store);
@@ -974,8 +978,10 @@ export function headFrom(items: Item[], known: Map<string, Listing>): Listing[] 
   const onPage = new Set(first.map((l) => l.id));
   const targets: Listing[] = [];
   for (const listing of first) {
-    const target = listing.bump ? known.get(listing.bump.productId) : undefined;
-    if (target && present.has(target.id) && !onPage.has(target.id) && !targets.includes(target)) targets.push(target);
+    for (const id of bumpTargets(listing)) {
+      const target = known.get(id);
+      if (target && present.has(target.id) && !onPage.has(target.id) && !targets.includes(target)) targets.push(target);
+    }
   }
   const head: Listing[] = [];
   let bytes = 0;
@@ -1008,8 +1014,8 @@ export async function buildHead(catalog: string, items: Item[], known: Map<strin
   await fill(first);
   await fill(
     first.flatMap((id) => {
-      const target = known.get(id)?.bump?.productId;
-      return target && present.has(target) ? [target] : [];
+      const listing = known.get(id);
+      return listing ? bumpTargets(listing).filter((target) => present.has(target)) : [];
     }),
   );
   return headFrom(items, known);

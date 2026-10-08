@@ -15,6 +15,7 @@ import { readAbout } from "@/lib/product-about";
 import { EMPTY_PAGE, MAX_BLOCKS } from "@/lib/sales-page";
 import { readPage } from "@/lib/sales-page-store";
 import { summaryOf, visibleReviews } from "@/lib/reviews";
+import { bumpTargets } from "@/lib/product-extras";
 import { pageAction, pricePill, productPath } from "@/components/store-product";
 import { PageEditor } from "@/components/page-editor";
 import { AiOn } from "@/components/ai-assist";
@@ -66,7 +67,7 @@ export default async function StudioPagesPage({ searchParams }: Params) {
   const listed = matching.slice(0, NAV_LIMIT);
   if (chosen && !listed.some((p) => p.id === chosen.id)) listed.unshift(chosen);
   // What the selected product offers in the box at checkout, for where its buttons lead.
-  const related = selected?.bump ? await readListings(store, [selected.bump.productId]) : [];
+  const related = selected?.bumps.length ? await readListings(store, bumpTargets(selected)) : [];
   const [page, about, summary, reviews] = selected
     ? await Promise.all([
         selected.page ? readPage(store.statsId, selected.id) : Promise.resolve({ ...EMPTY_PAGE, blocks: [] }),

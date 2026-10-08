@@ -41,7 +41,7 @@ import { listingFinder, readListings, sellsAny, sellsThings } from "@/lib/catalo
 import { paidCalls } from "@/lib/calls";
 import { roomsFor } from "@/lib/call-rooms";
 import type { CallSetup } from "@/lib/call-setup";
-import { bundleFromMeta } from "@/lib/bundle-rules";
+import { type BumpKey, bumpsFromMeta, bundleFromMeta } from "@/lib/bundle-rules";
 import { IMPORTED_REFERENCE, importedFor, importedReference } from "@/lib/imported-purchases";
 
 /** How long the emailed link opens the list. */
@@ -81,6 +81,9 @@ export type PurchaseLine = {
 /** What a bundle on the list hands over, and how many of its products the store no longer has. */
 export type PurchaseItems = { lines: PurchaseLine[]; missing: number };
 
+/** A product ticked at checkout, on a purchase. */
+export type AddedPurchase = { key: BumpKey; id: string; title: string; delivery: Delivery | null; items: PurchaseItems | null };
+
 export type Purchase = {
   /**
    * The Checkout Session, or the one-click payment, that paid for it — or,
@@ -105,18 +108,20 @@ export type Purchase = {
    * says so and offers the way back.
    */
   ended: boolean;
-  /** The product bought, and the one ticked at checkout, as the store lists them. */
+  /** The product bought, as the store lists it. */
   productId: string;
-  bumpId: string | null;
   /** A course opens on its own page rather than as a download. */
   courseProduct: string | null;
   main: Delivery | null;
-  /** The product ticked at checkout, delivered with it. */
-  bump: Delivery | null;
   /** When the product is a bundle: its products, from the list on the order. */
   items: PurchaseItems | null;
-  /** When the product ticked at checkout is a bundle: its products. */
-  bumpItems: PurchaseItems | null;
+  /**
+   * The products ticked at checkout, delivered with it, in the order of
+   * their boxes: each under the key the order names it by
+   * (lib/bundle-rules.ts, BUMP_KEYS), with its file or link, or its
+   * products when it is a bundle.
+   */
+  added: AddedPurchase[];
   /** Given as a gift (lib/gifts.ts): the name of whoever gave it, "someone" when they gave none. */
   giftFrom?: string | null;
   /** A place in a purchase somebody made for several people (lib/group-buy.ts). */
@@ -292,12 +297,10 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
           member: false,
           ended: false,
           productId: product.id,
-          bumpId: null,
           courseProduct: null,
           main: null,
-          bump: null,
           items: null,
-          bumpItems: null,
+          added: [],
           packageBook: state.left > 0 ? `/@${store.handle}/book/${product.id}?pkg=${bought.token}` : null,
           packageLeft: state.left,
           packageExpired: state.expired,
@@ -322,26 +325,29 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
             member: false,
             ended: true,
             productId: product.id,
-            bumpId: null,
             courseProduct: null,
             main: null,
-            bump: null,
             items: null,
-            bumpItems: null,
+            added: [],
           });
           continue;
         }
       }
 
       const { delivery, option } = deliveryOf(product, meta.option);
-      const added = meta.bump ? await find(meta.bump) : null;
-      const bump = added && (added.file || added.link) ? { title: added.title, file: added.file, link: added.link } : null;
       const courseProduct = product.course ? product.id : null;
       const podcastProduct = product.podcast ? product.id : null;
       // A bundle, bought or ticked: its products, from the list on the order.
       const items = await linesOf(find, bundleFromMeta(meta, "bundle"));
-      const bumpItems = added ? await linesOf(find, bundleFromMeta(meta, "bump_bundle")) : null;
-      if (!delivery && !bump && !courseProduct && !podcastProduct && !items && !bumpItems) continue;
+      const added: AddedPurchase[] = [];
+      for (const { key, id: addedId } of bumpsFromMeta(meta)) {
+        const listing = await find(addedId);
+        if (!listing) continue;
+        const delivery = listing.file || listing.link ? { title: listing.title, file: listing.file, link: listing.link } : null;
+        const inside = await linesOf(find, bundleFromMeta(meta, `${key}_bundle`));
+        if (delivery || inside) added.push({ key, id: listing.id, title: listing.title, delivery, items: inside });
+      }
+      if (!delivery && !added.length && !courseProduct && !podcastProduct && !items) continue;
 
       if (typeof session.customer === "string" && CUSTOMER_PATTERN.test(session.customer)) customers.add(session.customer);
       found.set(id, {
@@ -353,7 +359,6 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         member,
         ended: false,
         productId: product.id,
-        bumpId: (bump || bumpItems) && added ? added.id : null,
         courseProduct,
         podcastProduct,
         // A course is its own way in. Bought at one of several prices, the
@@ -361,9 +366,8 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         // here too, for as long as the course is (it used to be on the page
         // after paying only, which closes after three days).
         main: courseProduct && product.options.length === 0 ? null : delivery,
-        bump,
         items,
-        bumpItems,
+        added,
       });
     }
   }
@@ -392,12 +396,10 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         member: false,
         ended: false,
         productId: product.id,
-        bumpId: null,
         courseProduct: null,
         main: product.file || product.link ? { title: product.title, file: product.file, link: product.link } : null,
-        bump: null,
         items,
-        bumpItems: null,
+        added: [],
       });
     }
   }
@@ -429,12 +431,10 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         member: false,
         ended: false,
         productId: product.id,
-        bumpId: null,
         courseProduct,
         main: courseProduct && product.options.length === 0 ? null : delivery,
-        bump: null,
         items,
-        bumpItems: null,
+        added: [],
       });
     }
   }
