@@ -4,7 +4,7 @@
  * (lib/page-facts.ts). Each is read back safely, holds to its limits, and the
  * counted numbers appear only when they are true.
  */
-import { CELL_NO, CELL_YES, MAX_COMPARE_ROWS, MAX_FIT_ITEMS, emptyBlock, parsePage, picturePaths, blocksFromTemplate } from "@/lib/sales-page";
+import { CELL_NO, CELL_YES, MAX_COMPARE_ROWS, MAX_FIT_ITEMS, copyOfPage, emptyBlock, parsePage, picturePaths, blocksFromTemplate } from "@/lib/sales-page";
 import { pageFacts } from "@/lib/page-facts";
 import { done, is, part } from "./check";
 
@@ -76,6 +76,25 @@ part("A picture beside words");
   is("a picture already beside words is not shown twice", pictures?.kind === "pictures" ? pictures.items.length : -1, 1);
   is("anything that is not one of the store's own pictures is not a picture, and a side is left or right", two?.kind === "feature" ? [two.picture, two.side] : null, [null, "left"]);
   is("its picture is one of the page's files, kept when the page is saved", picturePaths(page).length, 2);
+}
+
+part("Another product's page, as a start");
+{
+  const pic = (n: string) => ({ path: `images/${"a".repeat(24)}/${n.repeat(32)}.webp`, width: 1200, height: 800, alt: "", caption: "" });
+  const page = parsePage({
+    blocks: [
+      { id: "hero0001", kind: "hero", headline: "Cut faster", sub: "", media: "picture", video: null },
+      { id: "pics0001", kind: "pictures", heading: "A look inside", items: [pic("b"), pic("c")] },
+      { id: "feat0001", kind: "feature", heading: "Why", body: "Because.", picture: pic("d"), side: "left" },
+    ],
+    seoTitle: "Knife Skills",
+    seoDescription: "Learn to cut.",
+    next: null,
+    test: null,
+  });
+  const copy = copyOfPage(page);
+  is("the same blocks in the same order, each with a fresh id", [copy.blocks.map((b) => b.kind), copy.blocks.every((b, i) => b.id !== page.blocks[i].id)], [["hero", "pictures", "feature"], true]);
+  is("its words kept, its pictures left with it, and how many said", [copy.blocks[2].kind === "feature" ? [copy.blocks[2].body, copy.blocks[2].picture] : null, copy.blocks[1].kind === "pictures" ? copy.blocks[1].items.length : -1, copy.picturesLeft], [["Because.", null], 0, 3]);
 }
 
 part("Templates use them");

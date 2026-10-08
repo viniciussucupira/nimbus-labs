@@ -179,6 +179,7 @@ export function PageEditor({
   traffic = null,
   outline = [],
   asked = [],
+  pagesToCopy = [],
 }: {
   product: EditorProduct;
   /** The store's own picture folder (lib/product-image.ts), where a page's pictures go. */
@@ -205,6 +206,8 @@ export function PageEditor({
   outline?: CourseOutline;
   /** What visitors asked this page's answer box and the page could not answer (lib/answers.ts). */
   asked?: string[];
+  /** The store's other products that have a page of their own, to start this one from. */
+  pagesToCopy?: { id: string; title: string }[];
 }) {
   const router = useRouter();
   const [drafts, setDrafts] = useState<Draft[]>(() => toDrafts(initial));
@@ -357,6 +360,37 @@ export function PageEditor({
     if (blocks.length === 0) return;
     setDrafts(blocks.map((block) => ({ block, video: "" })));
     setOpen(blocks[1]?.id ?? blocks[0].id);
+  }
+
+  const [copyFrom, setCopyFrom] = useState(pagesToCopy[0]?.id ?? "");
+  const [copying, setCopying] = useState(false);
+  const [copyNote, setCopyNote] = useState<string | null>(null);
+
+  /** Another product's page, as a start: its blocks with fresh ids and without its pictures (lib/sales-page.ts, copyOfPage). */
+  async function startFromCopy() {
+    if (!copyFrom || copying) return;
+    setCopying(true);
+    setCopyNote(null);
+    try {
+      const response = await fetch(`/api/store/page?id=${encodeURIComponent(copyFrom)}`, { cache: "no-store" });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; blocks?: PageBlock[]; picturesLeft?: number };
+      if (!data.ok || !data.blocks?.length) {
+        setCopyNote("That page could not be read just now. Try again in a moment.");
+        return;
+      }
+      const blocks = data.blocks;
+      setDrafts(blocks.map((block) => ({ block, video: (block.kind === "hero" || block.kind === "video") && block.video ? videoAddress(block.video) : "" })));
+      setOpen(blocks[0].kind === "hero" ? blocks[0].id : null);
+      const from = pagesToCopy.find((p) => p.id === copyFrom)?.title ?? "the other page";
+      const left = data.picturesLeft ?? 0;
+      toast(
+        `Copied from ${from}. Change what is about that product before you save${left ? `; its ${left === 1 ? "picture stays" : `${left} pictures stay`} with it, so add this product's own` : ""}.`,
+      );
+    } catch {
+      setCopyNote("That page could not be read just now. Try again in a moment.");
+    } finally {
+      setCopying(false);
+    }
   }
 
   /** A first page from what the product already says: hero, description, button, reviews. */
@@ -1091,6 +1125,33 @@ export function PageEditor({
                   <p className="mt-2 text-xs text-ink-soft">
                     {`${templates.find((t) => t.id === template)?.hint ?? ""} A template is an order of blocks with their headings: the words are yours to write, and a block you leave empty is not shown.`}
                   </p>
+                </div>
+              ) : null}
+              {pagesToCopy.length > 0 ? (
+                <div className="mt-6 border-t border-line pt-5">
+                  <label htmlFor="page-copy" className="field-label">
+                    Or start from another product&apos;s page
+                  </label>
+                  <div className="mt-1 flex flex-wrap items-end gap-3">
+                    <select id="page-copy" className="field min-w-0 flex-1" value={copyFrom} onChange={(e) => setCopyFrom(e.target.value)}>
+                      {pagesToCopy.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" onClick={() => void startFromCopy()} className="btn btn-secondary" disabled={copying} aria-busy={copying}>
+                      {copying ? "Copying…" : "Copy its blocks"}
+                    </button>
+                  </div>
+                  <p className="mt-2 text-xs text-ink-soft">
+                    Its blocks in the same order, with their words and videos, for you to change into this product&apos;s. Its pictures stay on its own page. Nothing is saved until you press Save, and the other page does not change.
+                  </p>
+                  {copyNote ? (
+                    <p className="notice notice-error mt-2 text-sm" role="alert">
+                      {copyNote}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>

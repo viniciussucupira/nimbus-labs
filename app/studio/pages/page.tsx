@@ -191,6 +191,7 @@ export default async function StudioPagesPage({ searchParams }: Params) {
               photo={store.photoId ? photoUrl(store.photoId) : null}
               pageHref={productPath(store, selected)}
               nextOptions={isFree(selected) ? products.filter((p) => !isFree(p)).map((p) => ({ id: p.id, title: p.title })) : []}
+              pagesToCopy={products.filter((p) => p.page && p.id !== selected.id).map((p) => ({ id: p.id, title: p.title }))}
               summary={summary && summary.visible + summary.hidden > 0 ? summary : null}
               reviews={reviews}
               lang={store.language}

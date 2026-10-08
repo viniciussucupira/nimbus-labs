@@ -855,3 +855,30 @@ export function blocksFromTemplate(id: string, product: { title: string; summary
   const hero: HeroBlock = { id: newBlockId(), kind: "hero", headline: product.title.slice(0, MAX_HEADLINE), sub: product.summary.slice(0, MAX_SUBHEADLINE), media: product.picture ? "picture" : "none", video: null };
   return [hero, ...rows.map((row) => ({ ...emptyBlock(row.kind), ...row, id: newBlockId() }) as PageBlock)];
 }
+
+/**
+ * Another product's page, as a start for this one (added 8 October 2026):
+ * the same blocks in the same order with fresh ids, its words and videos
+ * kept, and its pictures left out. A picture belongs to the one page that
+ * shows it (lib/sales-page-store.ts, claimPictures) and is deleted with it,
+ * so a copy that pointed at the same files would lose them the day the
+ * first page let them go. Nothing that is the other product's alone comes
+ * across: its search title and line, its headline test, what it shows after
+ * a sign-up. Returns how many pictures were left out, so the editor can say.
+ */
+export function copyOfPage(page: SalesPage): { blocks: PageBlock[]; picturesLeft: number } {
+  let picturesLeft = 0;
+  const blocks = page.blocks.map((block): PageBlock => {
+    const id = newBlockId();
+    if (block.kind === "pictures") {
+      picturesLeft += block.items.length;
+      return { ...block, id, items: [] };
+    }
+    if (block.kind === "feature" && block.picture) {
+      picturesLeft += 1;
+      return { ...block, id, picture: null };
+    }
+    return { ...block, id } as PageBlock;
+  });
+  return { blocks, picturesLeft };
+}

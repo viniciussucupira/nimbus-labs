@@ -1,8 +1,9 @@
 import type { NextRequest } from "next/server";
 import { StoreFullError, imageFolder, isFree, setProductPage } from "@/lib/store";
-import { readListing } from "@/lib/catalog";
+import { productIdFor, readListing } from "@/lib/catalog";
 import { guardStoreWrite, text } from "@/lib/store-request";
-import { EMPTY_PAGE, MAX_BLOCKS, MAX_PAGE_BYTES, pageProblem, parsePage, picturePaths } from "@/lib/sales-page";
+import { EMPTY_PAGE, MAX_BLOCKS, MAX_PAGE_BYTES, copyOfPage, pageProblem, parsePage, picturePaths } from "@/lib/sales-page";
+import { jsonAccess } from "@/lib/studio-route";
 import { claimPictures, readPage, releasePictures, writePage } from "@/lib/sales-page-store";
 import { del } from "@/lib/blob";
 import { imagePaths, ownsImagePath } from "@/lib/product-image";
@@ -90,6 +91,26 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof StoreFullError) return Response.json({ ok: false, error: "store_full" }, { status: 409 });
     console.error("saving a product page failed", error);
+    return Response.json({ ok: false, error: "server_error" }, { status: 500 });
+  }
+}
+
+/**
+ * Another product's page of this store, to start a page from: `?id=<product>`.
+ * Its blocks with fresh ids and without its pictures (lib/sales-page.ts,
+ * copyOfPage); nothing is saved here.
+ */
+export async function GET(request: NextRequest) {
+  const access = await jsonAccess(request, "products");
+  if (access instanceof Response) return access;
+  const id = (request.nextUrl.searchParams.get("id") ?? "").slice(0, 40);
+  const store = access.store;
+  if (!store || !id || productIdFor(store, id) !== id) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
+  try {
+    const copy = copyOfPage(await readPage(store.statsId, id));
+    return Response.json({ ok: true, ...copy }, { headers: { "Cache-Control": "private, no-store" } });
+  } catch (error) {
+    console.error("reading a page to copy failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });
   }
 }
