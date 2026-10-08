@@ -44,7 +44,7 @@
  * with a failure; put back, it passed four times in a row.
  */
 import { spawn } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -81,6 +81,24 @@ try {
   process.exit(2);
 }
 
+/** Stops the app and waits for it to go, so it never leaves its cache half written. */
+async function stop(child) {
+  if (!child?.pid || child.exitCode !== null) return;
+  const gone = new Promise((done) => child.once("exit", done));
+  try {
+    process.kill(-child.pid, "SIGTERM");
+  } catch {
+    return;
+  }
+  const late = setTimeout(() => {
+    try {
+      process.kill(-child.pid, "SIGKILL");
+    } catch {}
+  }, 15_000);
+  await gone;
+  clearTimeout(late);
+}
+
 let failed = 0;
 function is(name, got, want) {
   const same = JSON.stringify(got) === JSON.stringify(want);
@@ -112,14 +130,28 @@ try {
   if (seeded.status !== 0) throw new Error(`the store could not be made:\n${seeded.err}`);
   const { ids, session } = JSON.parse(seeded.out.trim().split("\n").at(-1));
 
-  // The app.
-  app = spawn("npx", ["next", "dev", "-p", String(APP)], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+  // The app. A dev server stopped while writing can leave Turbopack's cache
+  // unreadable, and the next one panics on it; it is only a cache, so it is
+  // put aside once and the app started again.
   let log = "";
-  app.stdout.on("data", (chunk) => (log += chunk));
-  app.stderr.on("data", (chunk) => (log += chunk));
-  const started = Date.now();
+  const start = () => {
+    log = "";
+    app = spawn("npx", ["next", "dev", "-p", String(APP)], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    app.stdout.on("data", (chunk) => (log += chunk));
+    app.stderr.on("data", (chunk) => (log += chunk));
+  };
+  start();
+  let started = Date.now();
+  let retried = false;
   for (;;) {
-    if (Date.now() - started > 180_000) throw new Error(`the app did not start:\n${log.slice(-2000)}`);
+    if (/panicked/.test(log) && !retried) {
+      retried = true;
+      await stop(app);
+      rmSync(join(root, ".next", "dev", "cache"), { recursive: true, force: true });
+      start();
+      started = Date.now();
+    }
+    if (Date.now() - started > 180_000 || /panicked/.test(log)) throw new Error(`the app did not start:\n${log.slice(-2000)}`);
     const up = await fetch(`${LOCAL}/@localshop`).then((r) => r.status === 200).catch(() => false);
     if (up) break;
     await new Promise((wait) => setTimeout(wait, 1500));
@@ -178,6 +210,29 @@ try {
   is("the third", await takes("cy@example.com"), { ...took, left: "1 of 3 places is still open" });
   is("a fourth is told every place is taken, and offered no form", await takes("dee@example.com"), { left: "All 3 places have been taken", form: false });
 
+  part("Two boxes at checkout");
+  await open(page, `${LOCAL}/@localshop/p/${ids["Weeknight Dinners"]}`);
+  const boxes = page.locator('#buy input[name="bump"]');
+  const buy = page.locator('#buy form:has(input[name="bump"]) button[type=submit]');
+  is("each its own box, never checked for the buyer", [await boxes.count(), await boxes.evaluateAll((all) => all.some((box) => box.checked))], [2, false]);
+  is("each says what it adds and for how much", await page.locator("#buy label:has(input[name=bump])").evaluateAll((all) => all.map((l) => l.innerText.split("\n")[0])), ["Add Pantry Checklist for $5", "Add Sunday Baking for $15"]);
+  const says = [await words(buy)];
+  await boxes.nth(1).check();
+  says.push(await words(buy));
+  await boxes.nth(0).check();
+  says.push(await words(buy));
+  await boxes.nth(1).uncheck();
+  says.push(await words(buy));
+  if (process.env.E2E_SHOTS) await page.locator("#buy").screenshot({ path: join(process.env.E2E_SHOTS, "two-boxes.png") });
+  is("the button says the total of what is checked, whichever it is", says, ["Buy for $19", "Buy both for $34", "Buy all three for $39", "Buy both for $24"]);
+  await boxes.nth(1).check();
+  await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), buy.click()]);
+  await page.waitForLoadState("networkidle");
+  const both = services.checkouts().at(-1);
+  is("one payment of all three, each named on the order", [both.amount_total, both.metadata.bump, both.metadata.bump2], [3900, ids["Pantry Checklist"], ids["Sunday Baking"]]);
+  const thanks = await words(page.locator("main"));
+  is("and the page after paying hands each one over", [thanks.includes("You bought Weeknight Dinners, Pantry Checklist, and Sunday Baking"), await page.locator('p.st-label:text-is("Also yours")').count()], [true, 2]);
+
   part("A gift");
   const before = services.emails().length;
   await open(page, `${LOCAL}/@localshop/p/${ids["Sunday Baking"]}`);
@@ -218,6 +273,22 @@ try {
   await studio.waitForTimeout(2500);
   await open(page, `${LOCAL}/@localshop`);
   is("a change there shows on the store", await sectionsOn(page), [["Cookbooks", 2], ["Planning", 1], ["Quick lists", 1], ["Courses", 1]]);
+
+  part("Boxes at checkout, set up in the studio");
+  await studio.locator("button[aria-expanded]", { hasText: "Weeknight Dinners" }).first().click();
+  is("the two boxes, each on its own line", [await studio.getByText("Offers Pantry Checklist for $5 at checkout").isVisible(), await studio.getByText("Offers Sunday Baking for $15 at checkout").isVisible()], [true, true]);
+  await studio.getByRole("button", { name: "Offer one more at checkout (3 of 3)" }).click();
+  const third = studio.locator("form", { has: studio.getByRole("button", { name: "Save the offer" }) });
+  is("a product already in a box is not offered again", await third.locator("select option").evaluateAll((all) => all.map((o) => o.textContent)).then((names) => names.some((n) => n.startsWith("Pantry Checklist") || n.startsWith("Sunday Baking"))), false);
+  await third.locator("select").selectOption({ label: "Meal Planner ($27)" });
+  await third.locator('input[inputmode="decimal"]').fill("10");
+  await third.getByRole("button", { name: "Save the offer" }).click();
+  await studio.getByText("Offers Meal Planner for $10 at checkout").waitFor({ timeout: 30_000 });
+  is("a third saved, and no room for a fourth", await studio.getByRole("button", { name: /Offer one more at checkout/ }).count(), 0);
+  await open(page, `${LOCAL}/@localshop/p/${ids["Weeknight Dinners"]}`);
+  const three = page.locator('#buy input[name="bump"]');
+  for (let i = 0; i < 3; i += 1) await three.nth(i).check();
+  is("on the product's page, three boxes, and the total of all four", [await three.count(), await words(page.locator('#buy form:has(input[name="bump"]) button[type=submit]'))], [3, "Buy all four for $49"]);
 
   part("Selling from the creator's own website");
   const tool = studio.locator("#buy-button");
@@ -312,11 +383,7 @@ try {
   console.error(`\nStopped: ${error?.stack ?? error}`);
 } finally {
   if (browser) await browser.close().catch(() => {});
-  if (app?.pid) {
-    try {
-      process.kill(-app.pid, "SIGTERM");
-    } catch {}
-  }
+  await stop(app);
   await services.close().catch(() => {});
 }
 

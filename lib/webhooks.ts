@@ -55,7 +55,7 @@ import { SafeFetchError, checkUrl, problemWords, safeFetch } from "@/lib/safe-fe
 import { type Store, storeForHandle, saleHandles } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
 import { SITE_URL } from "@/lib/site-url";
-import { bundleFromMeta } from "@/lib/bundle-rules";
+import { type BundleSlot, bumpsFromMeta, bundleFromMeta } from "@/lib/bundle-rules";
 
 export const WEBHOOK_EVENTS = [
   "sale.completed",
@@ -570,7 +570,7 @@ async function fromStripe(store: Store, event: StripeEvent, lookups: { left: num
     const kind = meta.kind === "call" ? "call" : meta.kind === "plan" ? "payment_plan" : membership ? "membership" : "one_time";
     const totals = (object.total_details ?? {}) as { amount_discount?: unknown };
     // A bundle names every product it handed over, from the list on the order.
-    const inside = async (slot: "bundle" | "bump_bundle") => {
+    const inside = async (slot: BundleSlot) => {
       const ids = bundleFromMeta(meta, slot);
       return ids.length ? Promise.all(ids.map((id) => product(id))) : null;
     };
@@ -580,7 +580,13 @@ async function fromStripe(store: Store, event: StripeEvent, lookups: { left: num
       product: await product(meta.product),
       option: meta.option ?? null,
       bundle_items: await inside("bundle"),
-      order_bump: meta.bump ? { ...(await product(meta.bump)), bundle_items: await inside("bump_bundle") } : null,
+      // Every product ticked at checkout, in the order of its boxes; the first
+      // also under its old name, which integrations built before there could
+      // be several still read.
+      ...(await (async () => {
+        const ticked = await Promise.all(bumpsFromMeta(meta).map(async ({ key, id }) => ({ ...(await product(id)), bundle_items: await inside(`${key}_bundle`) })));
+        return { order_bump: ticked[0] ?? null, order_bumps: ticked };
+      })()),
       amount_cents: num(object.amount_total),
       discount_cents: num(totals.amount_discount),
       currency: str(object.currency) ?? "usd",

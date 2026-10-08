@@ -60,7 +60,7 @@ import { parseTiers } from "@/lib/tier-rules";
 import { ENDED_INDEX } from "@/lib/plan-standing";
 import { type Cycle, type Tier, parseCycle, parseTier } from "@/lib/plan";
 import { COMMUNITY_ID } from "@/lib/community-text";
-import { type Bump, type Plan, canBeBumped, isOneOff } from "@/lib/product-extras";
+import { type Bump, MAX_BUMPS, type Plan, bumpTargets, canBeBumped, isOneOff } from "@/lib/product-extras";
 import { type Funnel, type FunnelProblem, funnelProblem } from "@/lib/funnel";
 import { type AffiliateSetting, parseAffiliateSetting } from "@/lib/affiliate-setting";
 import { type ReviewAsk, parseReviewAsk } from "@/lib/review-ask";
@@ -1874,7 +1874,7 @@ export async function ensureListId(email: string): Promise<Store | null> {
 
 export type ExtrasResult =
   | { ok: true; store: Store; product: Product }
-  | { ok: false; reason: "none" | "unknown" | "kind" | "target" | "price" | "sold_with" };
+  | { ok: false; reason: "none" | "unknown" | "kind" | "target" | "price" | "sold_with" | "twice" | "full" | "slot" };
 
 /**
  * Sets or clears a product's limited quantity and its order bump.
@@ -1886,7 +1886,7 @@ export type ExtrasResult =
 /** Whether a product is also sold inside a bundle, in a checkout box or as an offer after paying. */
 async function soldWithOthers(store: Store, id: string): Promise<boolean> {
   const others = (await readListings(store)).filter((p) => p.id !== id);
-  if (others.some((p) => (p.bundle ?? []).includes(id) || p.bump?.productId === id)) return true;
+  if (others.some((p) => (p.bundle ?? []).includes(id) || bumpTargets(p).includes(id))) return true;
   const withFunnel = await readProducts(store, idsOfKind(store, "funnel").filter((other) => other !== id));
   return withFunnel.some((p) => (p.funnel?.steps ?? []).some((step) => step.productId === id));
 }
@@ -1894,9 +1894,13 @@ async function soldWithOthers(store: Store, id: string): Promise<boolean> {
 export async function setProductExtras(
   email: string,
   id: string,
-  change: { stock?: number | null; bump?: Bump | null; plan?: Plan | null },
+  /**
+   * `bump` sets the box at `slot` (0 for the first; one past the last adds a
+   * box), or takes it away when null, moving the ones after it up.
+   */
+  change: { stock?: number | null; bump?: Bump | null; slot?: number; plan?: Plan | null },
 ): Promise<ExtrasResult> {
-  return onProduct<"kind" | "target" | "price" | "sold_with">(
+  return onProduct<"kind" | "target" | "price" | "sold_with" | "twice" | "full" | "slot">(
     email,
     id,
     async (product, store) => {
@@ -1912,16 +1916,26 @@ export async function setProductExtras(
         next.stock = change.stock;
       }
       if (change.bump !== undefined) {
+        const slot = change.slot ?? 0;
+        if (!Number.isInteger(slot) || slot < 0 || slot > product.bumps.length) return { ok: false, reason: "slot" };
         if (change.bump !== null) {
           // The amount a buyer chooses has to be the checkout's only line.
           if (!isOneOff(product) || product.pwyw) return { ok: false, reason: "kind" };
+          if (slot >= MAX_BUMPS) return { ok: false, reason: "full" };
           const target = await readListing(store, change.bump.productId);
           if (!target || target.id === product.id || !canBeBumped(target)) return { ok: false, reason: "target" };
+          // One product, one box: the same thing offered twice is one offer.
+          if (product.bumps.some((other, at) => at !== slot && other.productId === target.id)) return { ok: false, reason: "twice" };
           if (change.bump.priceCents > target.priceCents) return { ok: false, reason: "price" };
           // Stripe's smallest charge in the store's currency (lib/money.ts).
           if (change.bump.priceCents < currencyRule(store.currency).minCharge) return { ok: false, reason: "price" };
+          const bumps = [...product.bumps];
+          bumps[slot] = change.bump;
+          next.bumps = bumps;
+        } else {
+          if (slot >= product.bumps.length) return { ok: false, reason: "slot" };
+          next.bumps = product.bumps.filter((_, at) => at !== slot);
         }
-        next.bump = change.bump;
       }
       if (change.plan !== undefined) {
         if (change.plan !== null) {
@@ -2058,7 +2072,7 @@ export function chargesBelow(products: Product[], currency: Currency): CurrencyS
       out.push({ productId: p.id, title: p.title, what, label, amount });
     if (p.priceCents > 0 && p.priceCents < least) on(p.pwyw ? "minimum" : "price", "", p.priceCents);
     for (const option of p.options) if (option.priceCents > 0 && option.priceCents < least) on("option", option.label, option.priceCents);
-    if (p.bump && p.bump.priceCents < least) on("bump", titles.get(p.bump.productId) ?? "", p.bump.priceCents);
+    for (const bump of p.bumps) if (bump.priceCents < least) on("bump", titles.get(bump.productId) ?? "", bump.priceCents);
     for (const step of p.funnel?.steps ?? []) if (step.priceCents < least) on("offer", titles.get(step.productId) ?? "", step.priceCents);
     if (p.plan && p.plan.amountCents < least) on("plan", "", p.plan.amountCents);
   }
@@ -2101,8 +2115,8 @@ export async function setCurrency(email: string, currency: Currency): Promise<Cu
     }
     const put = rescaled
       ? (await readProducts(store))
-          .filter((p) => p.bump || p.plan || p.funnel || p.pwyw)
-          .map((p) => ({ ...p, bump: null, plan: null, funnel: null, pwyw: null }))
+          .filter((p) => p.bumps.length || p.plan || p.funnel || p.pwyw)
+          .map((p) => ({ ...p, bumps: [], plan: null, funnel: null, pwyw: null }))
       : [];
     return { ok: true, store: await save({ ...store, currency }, { put }) };
   });
@@ -2281,7 +2295,7 @@ export async function addProduct(
       options: [],
       call: null,
       stock: null,
-      bump: null,
+      bumps: [],
       funnel: null,
       plan: null,
       course: null,
@@ -3074,7 +3088,7 @@ export async function addDraftProducts(email: string, drafts: DraftProduct[]): P
         options: [],
         call: null,
         stock: null,
-        bump: null,
+        bumps: [],
         funnel: null,
         plan: null,
         course: null,

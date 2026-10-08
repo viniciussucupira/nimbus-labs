@@ -385,7 +385,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   // What a bundle bought or ticked at checkout hands over, each product as if
   // bought on its own (lib/bundles.ts).
   const bundled: Listing[] =
-    order.state === "paid" ? [...(order.items?.items ?? []), ...(order.bump?.items?.items ?? [])] : [];
+    order.state === "paid" ? [...(order.items?.items ?? []), ...order.bumps.flatMap((added) => added.items?.items ?? [])] : [];
 
   // A course is written down as bought, so the student list and the emails
   // about modules opening know about this student from today — a course in
@@ -487,7 +487,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
           session: sessionId,
           product: order.product,
           // What a bundle held is owned too: it is never offered again.
-          alsoOwned: [...(order.bump ? [order.bump.product.id] : []), ...bundled.map((p) => p.id)],
+          alsoOwned: [...order.bumps.map((added) => added.product.id), ...bundled.map((p) => p.id)],
           // Paid in one go, in the store's currency, with a method a one-click
           // charge can reach again (a saved card, Apple Pay, Google Pay):
           // anything else — Klarna, iDEAL and the like — skips the offers.
@@ -510,7 +510,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
     order.state === "paid" && community !== null && order.membership !== "ended" &&
     [
       order.product.id,
-      ...(order.bump ? [order.bump.product.id] : []),
+      ...order.bumps.map((added) => added.product.id),
       ...bundled.map((p) => p.id),
       ...(funnel?.taken ?? []).flatMap((added) => [added.product.id, ...(added.items?.items ?? []).map((p) => p.id)]),
     ].some(
@@ -532,14 +532,17 @@ export default async function ThanksPage({ params, searchParams }: Params) {
       return "error";
     }
   };
-  const [mainKey, bumpKey, ...takenKeys] =
+  const [mainKey, ...otherKeys] =
     order.state === "paid"
       ? await Promise.all([
           keyOf(order.product, order.reference),
-          order.bump ? keyOf(order.bump.product, order.reference) : Promise.resolve(null),
+          ...order.bumps.map((added) => keyOf(added.product, order.reference)),
           ...(funnel?.taken ?? []).map((added) => keyOf(added.product, added.reference)),
         ])
-      : [null, null];
+      : [null];
+  // The keys of what was ticked at checkout, in the order of the boxes, then those of the offers taken after.
+  const bumpKeys = order.state === "paid" ? otherKeys.slice(0, order.bumps.length) : [];
+  const takenKeys = order.state === "paid" ? otherKeys.slice(order.bumps.length) : [];
   const upsellKey = takenKeys.some((found) => found !== null);
   // The key of each product of a bundle, each its own, under the order (or
   // the offer's own payment) that paid for it.
@@ -547,7 +550,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   if (order.state === "paid") {
     const wanted = [
       ...(order.items?.items ?? []).map((p) => ({ scope: "main", product: p, reference: order.reference })),
-      ...(order.bump?.items?.items ?? []).map((p) => ({ scope: "bump", product: p, reference: order.reference })),
+      ...order.bumps.flatMap((added) => (added.items?.items ?? []).map((p) => ({ scope: added.key, product: p, reference: order.reference }))),
       ...(funnel?.taken ?? []).flatMap((added) =>
         (added.items?.items ?? []).map((p) => ({ scope: added.reference, product: p, reference: added.reference })),
       ),
@@ -571,7 +574,7 @@ export default async function ThanksPage({ params, searchParams }: Params) {
   // form is checked against again when it is sent).
   const toReview =
     order.state === "paid" && sessionId && !booked && !ended && order.amount > 0 && order.email && takesReviews(store)
-      ? [order.product, ...(order.bump ? [order.bump.product] : []), ...bundled]
+      ? [order.product, ...order.bumps.map((added) => added.product), ...bundled]
           .filter(reviewable)
           .filter((p, i, all) => all.findIndex((q) => q.id === p.id) === i)
       : [];
@@ -644,12 +647,12 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                     ? `${order.product.title} (${order.option.label})`
                     : order.product.title}
                 </strong>
-                {order.bump ? (
-                  <>
-                    {" and "}
-                    <strong style={{ color: "var(--st-text)" }}>{order.bump.product.title}</strong>
-                  </>
-                ) : null}{" "}
+                {order.bumps.map((added, at) => (
+                  <span key={added.key}>
+                    {at === order.bumps.length - 1 ? (order.bumps.length > 1 ? ", and " : " and ") : ", "}
+                    <strong style={{ color: "var(--st-text)" }}>{added.product.title}</strong>
+                  </span>
+                ))}{" "}
                 from{" "}
                 {store.name}
                 {order.product.recurring && order.trialDays > 0
@@ -882,30 +885,30 @@ export default async function ThanksPage({ params, searchParams }: Params) {
               {/* What is theirs first — the product, what was ticked at checkout and
                   what was added after paying, each with its key — then the way into
                   the community, and only then the next offer. */}
-              {keyBox(mainKey, bumpKey || upsellKey ? order.product.title : undefined)}
-              {order.bump ? (
-                <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
+              {keyBox(mainKey, bumpKeys.some(Boolean) || upsellKey ? order.product.title : undefined)}
+              {order.bumps.map((added, at) => (
+                <div key={added.key} className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
                   <p className="st-label">Also yours</p>
-                  <p className="mt-1 font-semibold">{order.bump.product.title}</p>
-                  {order.bump.items ? (
-                    contents(order.bump.items, "bump", downloadAt({ item: "bump" }), "Inside it")
-                  ) : order.bump.link ? (
+                  <p className="mt-1 font-semibold">{added.product.title}</p>
+                  {added.items ? (
+                    contents(added.items, added.key, downloadAt({ item: added.key }), "Inside it")
+                  ) : added.link ? (
                     <>
                       <a
-                        href={order.bump.link}
+                        href={added.link}
                         rel="noopener noreferrer nofollow"
                         target="_blank"
                         className="btn st-btn mt-3"
                       >
                         Open it
                       </a>
-                      <p className="st-muted mt-3 break-all text-sm">{order.bump.link}</p>
+                      <p className="st-muted mt-3 break-all text-sm">{added.link}</p>
                     </>
-                  ) : order.bump.file ? (
+                  ) : added.file ? (
                     <a
                       href={`/api/store/download?handle=${encodeURIComponent(store.handle)}&session_id=${encodeURIComponent(
                         sessionId ?? "",
-                      )}&item=bump`}
+                      )}&item=${added.key}`}
                       className="btn st-btn mt-3"
                     >
                       Download it
@@ -915,9 +918,9 @@ export default async function ThanksPage({ params, searchParams }: Params) {
                       {`This one has nothing attached right now. Reply to your order confirmation email to ask ${store.name} for it.`}
                     </p>
                   )}
-                  {keyBox(bumpKey, order.bump.product.title)}
+                  {keyBox(bumpKeys[at] ?? null, added.product.title)}
                 </div>
-              ) : null}
+              ))}
               {funnel?.taken.map((added, index) => (
                 <div
                   key={added.slot || "first"}

@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
   let handle = "";
   let productId = "";
   let optionId = "";
-  let bump = false;
+  // The products whose boxes the buyer checked (lib/product-extras.ts).
+  let bumps: string[] = [];
   let plan = false;
   let news = false;
   // Bought for somebody else (lib/gifts.ts): who, from whom, and a message.
@@ -72,8 +73,8 @@ export async function POST(request: NextRequest) {
     handle = typeof h === "string" ? normaliseHandle(h) : "";
     productId = typeof p === "string" ? p : "";
     optionId = typeof o === "string" ? o : "";
-    // Only a ticked box counts. What the addition costs is read from the store.
-    bump = form.get("bump") === "yes";
+    // Only a ticked box counts. What each addition costs is read from the store.
+    bumps = form.getAll("bump").filter((value): value is string => typeof value === "string" && /^(yes|[a-z0-9]{6,40})$/.test(value)).slice(0, 4);
     // Paying in instalments only when the buyer picked it.
     plan = form.get("pay") === "plan";
     // Only a box the buyer ticked, and only on a store that can write to them.
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
     const buyer = !gift && !group && (product.course || product.bundle) ? newBuyerKey() : null;
     const held = await withStockHold(store, product, (holding) =>
       createCheckout(store, product, linkOrigin(request, store), optionId, {
-        bump,
+        bumps,
         held: holding,
         upsellKey: upsell?.fingerprint,
         plan: inPlan,

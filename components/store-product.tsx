@@ -6,7 +6,7 @@ import { formatMoney } from "@/lib/money";
 import { canSellProduct, fromPriceCents, sellableOptions } from "@/lib/store-checkout";
 import { everyLabel, membershipPrice } from "@/lib/product-recurring";
 import { canGiveProduct } from "@/lib/free";
-import { activeBump, activePlan, planWords } from "@/lib/product-extras";
+import { activeBumps, activePlan, planWords } from "@/lib/product-extras";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { imageUrl, IMAGE_SIZES, imageSrcSet } from "@/lib/product-image";
 import type { PageAction } from "@/components/sales-blocks";
@@ -410,7 +410,8 @@ export function BuyBox({
   const options = sellableOptions(product);
   const every = product.recurring ? ` ${everyLabel(product.recurring.interval)}` : "";
   const soldOut = remaining === 0;
-  const extra = activeBump(related, product);
+  // The boxes at checkout, each checked or not on its own (lib/product-extras.ts).
+  const extras = activeBumps(related, product);
   const plan = activePlan(product);
   const pwyw = activePwyw(product);
   const trial = product.recurring && product.recurring.trialDays > 0 ? product.recurring.trialDays : 0;
@@ -584,11 +585,15 @@ export function BuyBox({
           </div>
         </fieldset>
       ) : null}
-      {extra ? (
-        /* Never ticked for the buyer. What it costs is the creator's price for it here, read on the server. */
-        <label htmlFor={`b-${product.id}`} className="st-option mb-4 !items-start" style={{ borderStyle: "dashed" }}>
+      {extras.map((extra, slot) => (
+        /*
+          Never ticked for the buyer. The form sends which product the box
+          offers and nothing else: what it costs is the creator's price for it
+          here, read on the server.
+        */
+        <label key={extra.target.id} htmlFor={`b-${place}${product.id}-${slot}`} className={`st-option !items-start ${slot === extras.length - 1 ? "mb-4" : "mb-2"}`} style={{ borderStyle: "dashed" }}>
           <span className="flex items-start gap-3">
-            <input id={`b-${product.id}`} type="checkbox" name="bump" value="yes" className="mt-1 h-4 w-4 shrink-0" />
+            <input id={`b-${place}${product.id}-${slot}`} type="checkbox" name="bump" value={extra.target.id} data-bump={slot} className="mt-1 h-4 w-4 shrink-0" />
             <span>
               <span className="block font-bold">{`Add ${extra.target.title} for ${formatMoney(salePrice(extra.bump.priceCents, off), store.currency)}`}</span>
               {extra.target.bundle ? (
@@ -601,7 +606,7 @@ export function BuyBox({
             </span>
           </span>
         </label>
-      ) : null}
+      ))}
       {writes || syncTakesBuyer(store, product.id) ? (
         /* Starts empty, like every box here: buying is not agreeing to more email.
            Offered where the creator writes to their list here, or sends this
@@ -625,20 +630,33 @@ export function BuyBox({
                   ? `Subscribe — ${formatMoney(product.priceCents, store.currency)}${every}`
                   : `Buy for ${formatMoney(salePrice(product.priceCents, off), store.currency)}`}
         </span>
-        {/* With the box ticked, the button says the new total. */}
+        {/*
+          With boxes checked, the button says the new total. One line is
+          written for every combination of boxes, and the stylesheet shows
+          the one that matches what is checked (app/globals.css, "Boxes at
+          checkout"), so it is right with scripts turned off too.
+        */}
         {plan ? <span className="plan-on">{`Start the plan: ${formatMoney(plan.amountCents, store.currency)} today`}</span> : null}
-        {plan && extra ? (
-          <span className="plan-bump-on">
-            {`Start the plan with ${extra.target.title}: ${formatMoney(plan.amountCents + extra.bump.priceCents, store.currency)} today`}
-          </span>
-        ) : null}
-        {extra ? (
-          <span className="bump-on">
-            {options.length > 0
-              ? `Buy it with ${extra.target.title}`
-              : `Buy both for ${formatMoney(salePrice(product.priceCents, off) + salePrice(extra.bump.priceCents, off), store.currency)}`}
-          </span>
-        ) : null}
+        {combinations(extras.length).map((picked) => {
+          const chosen = extras.filter((_, slot) => picked.includes(slot));
+          const added = chosen.reduce((sum, extra) => sum + salePrice(extra.bump.priceCents, off), 0);
+          const code = [0, 1, 2].map((slot) => (picked.includes(slot) ? "1" : "0")).join("");
+          const named = chosen.length === 1 ? chosen[0].target.title : `${chosen.length} added`;
+          return (
+            <span key={code}>
+              {plan ? (
+                <span className={`plan-bump-t pt-${code}`}>
+                  {`Start the plan with ${named}: ${formatMoney(plan.amountCents + chosen.reduce((sum, extra) => sum + extra.bump.priceCents, 0), store.currency)} today`}
+                </span>
+              ) : null}
+              <span className={`bump-t t-${code}`}>
+                {options.length > 0
+                  ? `Buy it with ${named}`
+                  : `Buy ${COUNT_WORDS[chosen.length]} for ${formatMoney(salePrice(product.priceCents, off) + added, store.currency)}`}
+              </span>
+            </span>
+          );
+        })}
       </button>
       {pwyw ? (
         <p className="st-muted mt-2 text-center text-xs">
@@ -683,6 +701,16 @@ function PayPalButton({ store, product, alone }: { store: Store; product: Listin
   );
 }
 
+/** "Buy both", "Buy all three", "Buy all four": the product and the boxes checked. */
+const COUNT_WORDS = ["it", "both", "all three", "all four"] as const;
+
+/** Every set of boxes a buyer can check, the empty one left out: [[0], [1], [0, 1], …]. */
+function combinations(count: number): number[][] {
+  const out: number[][] = [];
+  for (let mask = 1; mask < 1 << count; mask += 1) out.push([0, 1, 2].filter((slot) => mask & (1 << slot)));
+  return out;
+}
+
 /**
  * Where a button on a product's page of blocks leads, by the same rules as
  * the buy box: straight to Stripe's checkout when there is nothing to choose
@@ -720,7 +748,7 @@ export function pageAction(
     return { action: { kind: "none", text: selling ? "Not on sale yet." : "This store cannot take payments yet." }, label: "" };
   }
   const trial = product.recurring && product.recurring.trialDays > 0 ? product.recurring.trialDays : 0;
-  if (sellableOptions(product).length > 0 || activePlan(product) || activeBump(related, product)) {
+  if (sellableOptions(product).length > 0 || activePlan(product) || activeBumps(related, product).length > 0) {
     return { action: { kind: "link", href: "#buy" }, label: trial ? `Start the ${trial}-day free trial` : "Choose and buy" };
   }
   const every = product.recurring ? ` ${everyLabel(product.recurring.interval)}` : "";

@@ -72,7 +72,7 @@ const BUILT = [
   "Members who cancel on their own, on Stripe's own page, without having to write to you",
   "Your numbers: visitors, where they came from, checkouts started and sales for 7, 30 or 90 days or all time, with UTM tags and CSV files of sales, visits and sources — visits counted without cookies, sales read from your own Stripe",
   "Your own Meta, Google, TikTok and Pinterest pixels, told of every page view, checkout, lead and purchase with its amount, and loaded only once a visitor allows it where the law asks for that",
-  "An order bump: another of your products offered in a box the buyer checks at checkout, at your price, never checked for them, and delivered with the first",
+  "Order bumps: up to three of your other products, each in its own box the buyer checks at checkout, at your price, never checked for them, and delivered with the first",
   "A one-click upsell: another product offered on the thank-you page, charged in one press to the card just used, only in the browser that paid, within the hour and once",
   "Funnels: up to five offers after paying, one at a time, each with its own path for yes and for no, charged in one click to the same card",
   "Payment plans: two to twelve weekly or monthly payments on your own Stripe account, the product delivered after the first, and the plan given its end so no buyer is charged after the last payment",

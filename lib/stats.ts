@@ -31,6 +31,7 @@ import type { Listing, Store } from "@/lib/store";
 import { listingFinder, productIds, recordListings } from "@/lib/catalog";
 import { plainAmount } from "@/lib/money";
 import { revenueBySource } from "@/lib/came-from";
+import { bumpsFromMeta } from "@/lib/bundle-rules";
 
 /** Days kept, a little over a year, so a year-on-year look is possible. */
 const TTL_SECONDS = 400 * 86400;
@@ -784,7 +785,7 @@ export async function salesCsv(store: Store, sinceSeconds: number): Promise<{ cs
         sale.product,
         await title(sale.product, meta.title),
         option,
-        meta.bump ? await title(meta.bump, "") : "",
+        (await Promise.all(bumpsFromMeta(meta).map((added) => title(added.id, "")))).filter(Boolean).join(" + "),
         kind,
         plainAmount(sale.cents, sale.currency),
         plainAmount(cents(totals.amount_discount), sale.currency),

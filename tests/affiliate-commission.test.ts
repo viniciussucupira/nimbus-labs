@@ -139,6 +139,14 @@ async function main(): Promise<void> {
     { aff: AFF, rate: 29.33 },
   );
 
+  // Two boxes checked: $7 front at 20%, the $97 add-on at 30% and a $20
+  // second add-on at 10%. Earned: $1.40 + $29.10 + $2.00 = $32.50 of $124.
+  const twoBoxes = order({ via: AFF, via_rate: "20", bump: "addon", bump_cents: "9700", bump_rate: "30", bump2: "extra", bump2_cents: "2000", bump2_rate: "10" });
+  twoBoxes.amount_total = 12_400;
+  twoBoxes.amount_subtotal = 12_400;
+  await noteSession(both, twoBoxes);
+  is("two boxes checked: each earns its own share, weighed by its part of the order", await referral(twoBoxes.id), { aff: AFF, rate: 26.21 });
+
   const frontOnly = order({ via: AFF, via_rate: "20" });
   frontOnly.amount_total = 700;
   frontOnly.amount_subtotal = 700;

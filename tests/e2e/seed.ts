@@ -4,7 +4,7 @@
  * a session for its owner. Written through the same functions the studio
  * uses, into the stand-in database.
  */
-import { addProduct, claimHandle, ensureStatsId, setAnnouncement, setProductImage, setProductLink, setSections, setStripeAccount, setSubscription } from "@/lib/store";
+import { addProduct, claimHandle, ensureStatsId, setAnnouncement, setProductExtras, setProductImage, setProductLink, setSections, setStripeAccount, setSubscription } from "@/lib/store";
 import { openSession } from "@/lib/auth";
 
 const OWNER = "owner@example.com";
@@ -37,6 +37,11 @@ async function main(): Promise<void> {
   // what is checked is the room the card gives it.
   const pictured = await setProductImage(OWNER, ids["Knife Skills"], { path: `images/${"a".repeat(24)}/${"b".repeat(32)}.jpg`, width: 1200, height: 800, alt: "A chef's knife on a board", bytes: 1, small: null });
   if (!pictured.ok) throw new Error("the picture was refused");
+  // Two boxes at checkout on one product, each at a price of its own.
+  for (const [slot, [title, cents, pitch]] of ([["Pantry Checklist", 500, "The list I shop with."], ["Sunday Baking", 1500, "For the weekend."]] as const).entries()) {
+    const boxed = await setProductExtras(OWNER, ids["Weeknight Dinners"], { bump: { productId: ids[title], priceCents: cents, pitch }, slot });
+    if (!boxed.ok) throw new Error(`the box for ${title} was refused: ${boxed.reason}`);
+  }
   const sections = await setSections(OWNER, [
     { title: "Recipe books", at: ids["Weeknight Dinners"] },
     { title: "Planning", at: ids["Meal Planner"] },

@@ -4,7 +4,8 @@
  * An order bump: another of their products, offered at a price of their own
  * choosing in a box the buyer can tick before paying. The box is never ticked
  * for them — an extra charge the buyer did not choose is not a sale, and in
- * Europe it is not allowed either.
+ * Europe it is not allowed either. Up to three per product (MAX_BUMPS), each
+ * its own box, each ticked or not on its own.
  *
  * A limited quantity: the product stops selling once that many have been
  * paid for. The number the page shows is the real one, counted from real
@@ -34,6 +35,19 @@ export type Bump = {
 };
 
 export const MAX_PITCH_LENGTH = 140;
+
+/**
+ * How many boxes one product may offer at checkout.
+ *
+ * Measured before it was built (8 October 2026): Stan allows one per product
+ * ("Right now, you can only add one Order Bump per product", its blog,
+ * updated September 16, 2026); Hotmart and Kajabi allow more than one, and
+ * Hotmart's own advice is to start with one, because several offers at once
+ * lower how many buyers take any. Three is enough to offer a small, a
+ * related and a bigger thing, and few enough that the checkout stays a
+ * checkout.
+ */
+export const MAX_BUMPS = 3;
 export const MAX_STOCK = 100_000;
 /**
  * The lowest any currency lets a single charge be, in its smallest unit: the
@@ -57,6 +71,27 @@ export function parseBump(raw: unknown): Bump | null {
   if (value.priceCents < MIN_BUMP_CENTS || value.priceCents > 10_000_000) return null;
   const pitch = typeof value.pitch === "string" ? value.pitch.replace(/\s+/g, " ").trim().slice(0, MAX_PITCH_LENGTH) : "";
   return { productId: value.productId, priceCents: value.priceCents, pitch };
+}
+
+/**
+ * The boxes a product offers, in its own order. A record saved when a
+ * product could offer one box (`bump`) reads back as a list of that one.
+ * The same product twice is offered once.
+ */
+export function parseBumps(raw: unknown, single?: unknown): Bump[] {
+  const list = Array.isArray(raw) ? raw : single ? [single] : [];
+  const out: Bump[] = [];
+  for (const item of list) {
+    const bump = parseBump(item);
+    if (bump && !out.some((b) => b.productId === bump.productId)) out.push(bump);
+    if (out.length === MAX_BUMPS) break;
+  }
+  return out;
+}
+
+/** The products a product's boxes offer, by id. */
+export function bumpTargets(product: Pick<Listing, "bumps">): string[] {
+  return product.bumps.map((bump) => bump.productId);
 }
 
 /** Whether a product is a plain one-off sale: the only kind these apply to. */
@@ -151,12 +186,7 @@ export function bumpTargetPause(target: Listing): BumpPause | null {
  * rules on purpose: a studio that decides for itself whether an offer is live
  * is a studio that will eventually disagree with the checkout.
  */
-export function bumpState(
-  products: Listing[],
-  product: Listing,
-): { bump: Bump; target: Listing } | { paused: BumpPause; bump: Bump } | null {
-  const bump = product.bump;
-  if (!bump) return null;
+export function bumpState(products: Listing[], product: Listing, bump: Bump): { bump: Bump; target: Listing } | { paused: BumpPause; bump: Bump } {
   // Stripe lets a chosen amount be the only line of its checkout.
   if (!isOneOff(product)) return { paused: "kind", bump };
   if (product.pwyw) return { paused: "pwyw", bump };
@@ -170,10 +200,14 @@ export function bumpState(
   return { bump, target };
 }
 
-/** The bump a buyer may be offered on this product right now, or null. */
-export function activeBump(products: Listing[], product: Listing): { bump: Bump; target: Listing } | null {
-  const state = bumpState(products, product);
-  return state && "target" in state ? state : null;
+/** Every box as it stands, in the product's order. */
+export function bumpStates(products: Listing[], product: Listing): ({ bump: Bump; target: Listing } | { paused: BumpPause; bump: Bump })[] {
+  return product.bumps.map((bump) => bumpState(products, product, bump));
+}
+
+/** The boxes a buyer may be offered on this product right now, in its order. */
+export function activeBumps(products: Listing[], product: Listing): { bump: Bump; target: Listing }[] {
+  return bumpStates(products, product).filter((state): state is { bump: Bump; target: Listing } => "target" in state);
 }
 
 /**

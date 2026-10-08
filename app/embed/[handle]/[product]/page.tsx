@@ -11,6 +11,7 @@ import { outOfKeys } from "@/lib/licence-keys";
 import { isSoon } from "@/lib/waitlist";
 import { sellsInTestMode } from "@/lib/stripe-connect";
 import { summaryOf } from "@/lib/reviews";
+import { bumpTargets } from "@/lib/product-extras";
 import { CARD_COVER_FROM, CARD_HEIGHTS, placeFrom, tagged } from "@/lib/embed-rules";
 import { PriceTag, pageAction, productPath } from "@/components/store-product";
 import { RatingLine } from "@/components/review-list";
@@ -105,7 +106,7 @@ export default async function EmbedCard({ params, searchParams }: Params) {
     isSoon(store, product.id).catch(() => false),
     stockLeft(store, product).catch(() => null),
     outOfKeys(store, product).catch(() => false),
-    product.bump ? readListings(store, [product.bump.productId]).catch(() => []) : Promise.resolve([]),
+    product.bumps.length ? readListings(store, bumpTargets(product)).catch(() => []) : Promise.resolve([]),
     summaryOf(store.statsId, product.id).catch(() => null),
   ]);
   const count = noKeys ? 0 : stock;

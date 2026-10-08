@@ -56,7 +56,7 @@ import { formatMoney } from "@/lib/money";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { purchaseRefunded } from "@/lib/refunds";
 import { scheduleReviewAsk } from "@/lib/review-ask";
-import { bundleFromMeta, deliveredIds } from "@/lib/bundle-rules";
+import { type BundleSlot, bumpsFromMeta, bundleFromMeta, deliveredIds } from "@/lib/bundle-rules";
 
 const SESSION_ID_PATTERN = /^cs_(test|live)_[A-Za-z0-9]{10,200}$/;
 const INTENT_ID_PATTERN = /^pi_[A-Za-z0-9]{10,200}$/;
@@ -181,14 +181,18 @@ export function confirmationFor(
   if (!email) return null;
 
   const option = product.options.find((entry) => entry.id === meta.option) ?? null;
-  const bump = meta.bump ? listings.find((p) => p.id === meta.bump) ?? null : null;
   // What a bundle bought or ticked hands over, from the list on the order.
-  const inside = (slot: "bundle" | "bump_bundle") =>
+  const inside = (slot: BundleSlot) =>
     bundleFromMeta(meta, slot)
       .map((pid) => listings.find((p) => p.id === pid))
       .filter((p): p is Listing => Boolean(p));
   const items = inside("bundle");
-  const bumpItems = bump ? inside("bump_bundle") : [];
+  // Every product ticked at checkout, in the order of its boxes, with what a bundle among them holds.
+  const ticked = bumpsFromMeta(meta).flatMap(({ key, id: tickedId }) => {
+    const listing = listings.find((p) => p.id === tickedId);
+    return listing ? [{ listing, items: inside(`${key}_bundle`) }] : [];
+  });
+  const bumpItems = ticked.flatMap((added) => added.items);
   const plan =
     meta.kind === "plan" && Number(meta.plan_payments) >= 2
       ? { payments: Number(meta.plan_payments), weekly: meta.plan_interval === "week" }
@@ -209,9 +213,9 @@ export function confirmationFor(
   const lines: string[] = [
     `Thank you for buying from ${name}. This is your confirmation.`,
     "",
-    `What you bought: ${title}${bump ? `, with ${bump.title}` : ""}`,
+    `What you bought: ${title}${ticked.length ? `, with ${ticked.map((added) => added.listing.title).join(" and ")}` : ""}`,
     ...(items.length ? [`Inside ${product.title}: ${items.map((p) => p.title).join(", ")}`] : []),
-    ...(bumpItems.length && bump ? [`Inside ${bump.title}: ${bumpItems.map((p) => p.title).join(", ")}`] : []),
+    ...ticked.flatMap((added) => (added.items.length ? [`Inside ${added.listing.title}: ${added.items.map((p) => p.title).join(", ")}`] : [])),
     `Paid: ${paid}`,
     `Order reference: ${id}`,
   ];

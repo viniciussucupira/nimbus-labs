@@ -10,6 +10,8 @@ import { useStudioHref } from "@/components/studio-store-pin";
 import { type Currency, currencyRule, fieldPrefix, formatMoney, moneyField } from "@/lib/money";
 import { useStoreCurrency } from "@/components/store-currency";
 import {
+  type Bump,
+  MAX_BUMPS,
   MAX_PITCH_LENGTH,
   MAX_PLAN_PAYMENTS,
   MAX_STOCK,
@@ -26,6 +28,9 @@ const MESSAGES: Record<string, string> = {
   stock: `Type a whole number from 1 to ${MAX_STOCK.toLocaleString("en-US")}.`,
   target: "Pick another product with one price, no limit on how many can be sold, and a file, a link or a bundle behind it.",
   kind: "This works on one-off paid products only.",
+  twice: "That product is already offered in another box here. Pick a different one.",
+  full: `A product can offer ${MAX_BUMPS} products at checkout at most.`,
+  slot: "The offers here changed in another tab. Reload the page.",
   sold_with: "This product is also sold in a bundle, a checkout box or an offer after paying. Take it out of those first: only its own checkout counts sales against the number.",
   unknown: "That product is no longer in your store. Reload the page.",
   store_full: "Your store is full. Remove something before adding more.",
@@ -91,7 +96,8 @@ export function CheckoutExtras({
   const studioHref = useStudioHref();
   const router = useRouter();
   const currency = useStoreCurrency();
-  const [open, setOpen] = useState<"stock" | "bump" | "plan" | null>(null);
+  // "bump-0" to "bump-2": the box at that place; one past the last adds one.
+  const [open, setOpen] = useState<"stock" | "plan" | `bump-${number}` | null>(null);
   const [stock, setStock] = useState(product.stock ? String(product.stock) : "");
   const candidates = choices.filter((p) => p.id !== product.id);
   const [busy, setBusy] = useState(false);
@@ -103,7 +109,7 @@ export function CheckoutExtras({
   // quiet, because the panel that would have told them is not drawn. So the
   // reason is said on its own, and nothing else is.
   if (!isOneOff(product)) {
-    const orphans = [notes?.bump, notes?.plan, ...(notes?.funnel ?? [])].filter((line): line is string => Boolean(line));
+    const orphans = [...(notes?.bumps ?? []), notes?.plan, ...(notes?.funnel ?? [])].filter((line): line is string => Boolean(line));
     return orphans.length ? <div className="mt-3"><Quiet lines={orphans} /></div> : null;
   }
 
@@ -189,12 +195,35 @@ export function CheckoutExtras({
       {product.pwyw ? (
         // The box does not go on a product whose buyers name the price, so
         // there is no control here — only the reason, when one is stored.
-        <Quiet lines={notes?.bump ? [notes.bump] : []} />
+        <Quiet lines={(notes?.bumps ?? []).filter((line): line is string => Boolean(line))} />
       ) : (
-        <div>
-          <OfferBlock kind="bump" product={product} named={named} candidates={candidates} paused={Boolean(notes?.bump)} busy={busy} open={open === "bump"} onOpen={() => setOpen("bump")} onClose={() => { setOpen(null); setError(null); }} onSend={send} error={open === "bump" ? error : null} />
-          {open === "bump" || !notes?.bump ? null : <Quiet lines={[notes.bump]} />}
-        </div>
+        // One line per box, in the order buyers see them, and one more to add
+        // a box while there is room for it (MAX_BUMPS).
+        [...product.bumps, ...(product.bumps.length < MAX_BUMPS ? [null] : [])].map((current, slot) => {
+          const key = `bump-${slot}` as const;
+          const reason = notes?.bumps?.[slot] ?? null;
+          // A product already offered in another box is not offered in this one.
+          const others = new Set(product.bumps.filter((_, at) => at !== slot).map((bump) => bump.productId));
+          return (
+            <div key={current?.productId ?? "new"}>
+              <OfferBlock
+                owner={product.id}
+                slot={slot}
+                current={current}
+                named={named}
+                candidates={candidates.filter((p) => !others.has(p.id))}
+                paused={Boolean(reason)}
+                busy={busy}
+                open={open === key}
+                onOpen={() => setOpen(key)}
+                onClose={() => { setOpen(null); setError(null); }}
+                onSend={send}
+                error={open === key ? error : null}
+              />
+              {open === key || !reason ? null : <Quiet lines={[reason]} />}
+            </div>
+          );
+        })
       )}
       {product.funnel ? (
         <div>
@@ -228,6 +257,7 @@ export function CheckoutExtras({
 const OFFER_TEXT = {
   bump: {
     add: "Offer another product at checkout",
+    more: (slot: number) => `Offer one more at checkout (${slot + 1} of ${MAX_BUMPS})`,
     on: (title: string, price: string) => `Offers ${title} for ${price} at checkout`,
     // The same line for a box that is set up and not being shown. "Offers
     // Templates for $29.00 at checkout" is simply false then, and printing it
@@ -238,13 +268,14 @@ const OFFER_TEXT = {
     save: "Save the offer",
     saved: "Checkout offer saved.",
     stopped: "Checkout offer stopped.",
-    note: "Buyers see a box above the buy button and check it themselves; it is never checked for them. Both are paid in one checkout and both are delivered on the thank-you page.",
+    note: "Buyers see a box above the buy button and check it themselves; it is never checked for them. Everything checked is paid in one checkout and delivered on the thank-you page. With several boxes, each is checked on its own, in the order set here.",
   },
 } as const;
 
 function OfferBlock({
-  kind,
-  product,
+  owner,
+  slot,
+  current,
   named,
   candidates,
   paused,
@@ -255,8 +286,12 @@ function OfferBlock({
   onSend,
   error,
 }: {
-  kind: "bump";
-  product: Product;
+  /** The product the box is on, so its fields keep ids of their own. */
+  owner: string;
+  /** Which box: 0 for the first. One past the last is a new box. */
+  slot: number;
+  /** What that box offers now, or null for a new one. */
+  current: Bump | null;
   named: Record<string, string>;
   candidates: BumpChoice[];
   /** Whether this box is set up but not being shown (lib/extras-notes.ts). */
@@ -268,9 +303,8 @@ function OfferBlock({
   onSend: (payload: Record<string, unknown>, confirmation: string) => void;
   error: string | null;
 }) {
-  const current = product[kind];
   const currency = useStoreCurrency();
-  const text = OFFER_TEXT[kind];
+  const text = OFFER_TEXT.bump;
   const [target, setTarget] = useState(current?.productId ?? candidates[0]?.id ?? "");
   const [price, setPrice] = useState(current ? moneyField(current.priceCents, currency) : "");
   const [pitch, setPitch] = useState(current?.pitch ?? "");
@@ -278,7 +312,7 @@ function OfferBlock({
     ? { title: named[current.productId] ?? candidates.find((p) => p.id === current.productId)?.title ?? "" }
     : null;
   const link = "text-sm font-bold text-ink-soft underline underline-offset-4 transition hover:text-violet-deep";
-  const id = `${kind}-${product.id}`;
+  const id = `bump-${owner}-${slot}`;
 
   if (open) {
     return (
@@ -286,7 +320,7 @@ function OfferBlock({
         className="rounded-[var(--r-sm)] border border-line bg-white p-4"
         onSubmit={(e) => {
           e.preventDefault();
-          onSend({ [kind]: { productId: target, price: price.trim(), pitch } }, text.saved);
+          onSend({ bump: { productId: target, price: price.trim(), pitch }, slot }, text.saved);
         }}
       >
         {candidates.length === 0 ? (
@@ -354,13 +388,13 @@ function OfferBlock({
         {" \u00b7 "}
         <button type="button" className={link} onClick={onOpen}>Change</button>
         {" \u00b7 "}
-        <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => onSend({ [kind]: null }, text.stopped)}>{text.stop}</button>
+        <button type="button" className={link} aria-busy={busy} disabled={busy} onClick={() => onSend({ bump: null, slot }, text.stopped)}>{text.stop}</button>
       </p>
     );
   }
   return (
     <button type="button" className={`block ${link}`} onClick={onOpen}>
-      {text.add}
+      {slot === 0 ? text.add : text.more(slot)}
     </button>
   );
 }

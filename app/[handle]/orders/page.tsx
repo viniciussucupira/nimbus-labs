@@ -6,7 +6,8 @@ import { type Store, normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { linkHost } from "@/lib/product-link";
-import { type BookedCall, type Delivery, type Purchase, callsFor, canRecover, ordersGrant, purchasesFor } from "@/lib/buyer-orders";
+import { type AddedPurchase, type BookedCall, type Delivery, type Purchase, callsFor, canRecover, ordersGrant, purchasesFor } from "@/lib/buyer-orders";
+import type { BumpKey } from "@/lib/bundle-rules";
 import { readableTime, zoneName } from "@/lib/call-setup";
 import { canMove, icsLink, moveLink } from "@/lib/calls";
 import { VIDEO_ROOM_NOTE, isVideoRoom, roomLabel } from "@/lib/call-rooms";
@@ -65,23 +66,24 @@ function DeliveryButton({
   token: string;
   purchase: Purchase;
   delivery: Delivery;
-  item: "main" | "bump";
+  /** The product bought, or one ticked at checkout by the key its order names it under. */
+  item: "main" | BumpKey;
 }) {
   if (delivery.link) {
     return (
       <span className="block">
         <a href={delivery.link} rel="noopener noreferrer" target="_blank" className="btn st-btn btn-block">
-          {`Open ${item === "bump" ? delivery.title : "it"}`}
+          {`Open ${item !== "main" ? delivery.title : "it"}`}
         </a>
         <span className="st-muted mt-2 block break-all text-xs">{`Kept on ${linkHost(delivery.link)}: ${delivery.link}`}</span>
       </span>
     );
   }
   const query = new URLSearchParams({ handle, ref: purchase.reference, token });
-  if (item === "bump") query.set("item", "bump");
+  if (item !== "main") query.set("item", item);
   return (
     <a href={`/api/store/download?${query}`} className="btn st-btn btn-block">
-      {item === "bump" ? `Download ${delivery.title}` : "Download it"}
+      {item !== "main" ? `Download ${delivery.title}` : "Download it"}
     </a>
   );
 }
@@ -176,9 +178,9 @@ export default async function OrdersPage({ params, searchParams }: Params) {
       // Nothing brought over from another platform was sold here, so no key is given for it.
       if (purchase.ended || purchase.kind === "imported") continue;
       wanted.push({ slot: `${purchase.reference}|main`, productId: purchase.productId, reference: purchase.reference });
-      if (purchase.bumpId) wanted.push({ slot: `${purchase.reference}|bump`, productId: purchase.bumpId, reference: purchase.reference });
+      for (const added of purchase.added) wanted.push({ slot: `${purchase.reference}|${added.key}`, productId: added.id, reference: purchase.reference });
       // Each product of a bundle has its own key, under the same order.
-      for (const line of [...(purchase.items?.lines ?? []), ...(purchase.bumpItems?.lines ?? [])]) {
+      for (const line of [...(purchase.items?.lines ?? []), ...purchase.added.flatMap((added) => added.items?.lines ?? [])]) {
         wanted.push({ slot: `${purchase.reference}|item|${line.productId}`, productId: line.productId, reference: purchase.reference });
       }
     }
@@ -201,9 +203,9 @@ export default async function OrdersPage({ params, searchParams }: Params) {
   // was brought over from another platform: no payment here proves it.
   const inOrder = (purchase: Purchase) => [
     purchase.productId,
-    ...(purchase.bumpId ? [purchase.bumpId] : []),
+    ...purchase.added.map((added) => added.id),
     ...(purchase.items?.lines ?? []).map((line) => line.productId),
-    ...(purchase.bumpItems?.lines ?? []).map((line) => line.productId),
+    ...purchase.added.flatMap((added) => (added.items?.lines ?? []).map((line) => line.productId)),
   ];
   const canReview = new Set(
     email && purchases && takesReviews(store)
@@ -211,16 +213,17 @@ export default async function OrdersPage({ params, searchParams }: Params) {
       : [],
   );
   const reviewableIn = (purchase: Purchase) => purchase.kind !== "imported" && inOrder(purchase).some((id) => canReview.has(id));
-  const contents = (purchase: Purchase, items: PurchaseItems | null, bump: boolean) =>
+  /** A bundle's products: the one bought (`added` null), or one ticked at checkout. */
+  const contents = (purchase: Purchase, items: PurchaseItems | null, added: AddedPurchase | null) =>
     items ? (
       <BundleDelivery
         storeName={store.name}
         missing={items.missing}
-        heading={bump ? `Inside ${purchase.bump?.title ?? "what you added"}` : "What is inside"}
+        heading={added ? `Inside ${added.title}` : "What is inside"}
         lines={items.lines.map((line) => ({
           product: { id: line.productId, title: line.title, link: line.delivery?.link ?? null },
           download: line.delivery?.file
-            ? `/api/store/download?${new URLSearchParams({ handle: store.handle, ref: purchase.reference, token, pid: line.productId, ...(bump ? { item: "bump" } : {}) })}`
+            ? `/api/store/download?${new URLSearchParams({ handle: store.handle, ref: purchase.reference, token, pid: line.productId, ...(added ? { item: added.key } : {}) })}`
             : null,
           course: line.courseProduct ? { href: `/@${store.handle}/course/${line.courseProduct}` } : null,
           keyBox: keyBox(`${purchase.reference}|item|${line.productId}`, line.title),
@@ -379,19 +382,25 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                           {purchase.main ? (
                             <DeliveryButton handle={store.handle} token={token} purchase={purchase} delivery={purchase.main} item="main" />
                           ) : null}
-                          {purchase.bump ? (
-                            <DeliveryButton handle={store.handle} token={token} purchase={purchase} delivery={purchase.bump} item="bump" />
-                          ) : null}
+                          {purchase.added.map((added) =>
+                            added.delivery ? (
+                              <DeliveryButton key={added.key} handle={store.handle} token={token} purchase={purchase} delivery={added.delivery} item={added.key} />
+                            ) : null,
+                          )}
                         </div>
                         {purchase.kind === "imported" && !purchase.giftFrom && !purchase.paidWith && !purchase.place ? (
                           <p className="st-muted mt-3 text-xs leading-relaxed">
                             {`${store.name} moved this here from the platform you bought it on. Nothing was charged here and there is no receipt from this store for it.`}
                           </p>
                         ) : null}
-                        {contents(purchase, purchase.items, false)}
-                        {contents(purchase, purchase.bumpItems, true)}
-                        {keyBox(`${purchase.reference}|main`, keys.has(`${purchase.reference}|bump`) ? purchase.title : undefined)}
-                        {purchase.bump ? keyBox(`${purchase.reference}|bump`, purchase.bump.title) : null}
+                        {contents(purchase, purchase.items, null)}
+                        {purchase.added.map((added) => (
+                          <span key={added.key} className="contents">{contents(purchase, added.items, added)}</span>
+                        ))}
+                        {keyBox(`${purchase.reference}|main`, purchase.added.some((added) => keys.has(`${purchase.reference}|${added.key}`)) ? purchase.title : undefined)}
+                        {purchase.added.map((added) => (
+                          <span key={added.key} className="contents">{keyBox(`${purchase.reference}|${added.key}`, added.title)}</span>
+                        ))}
                         {!purchase.ended && reviewableIn(purchase) ? (
                           <p className="mt-4 text-sm">
                             <Link
@@ -399,7 +408,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                               href={`/@${store.handle}/review?${new URLSearchParams({ token, ref: purchase.reference })}`}
                               className="st-footer-link font-semibold underline underline-offset-4"
                             >
-                              {purchase.bump || purchase.items ? "Review what you bought" : `Review ${purchase.title}`}
+                              {purchase.added.length || purchase.items ? "Review what you bought" : `Review ${purchase.title}`}
                             </Link>
                           </p>
                         ) : null}

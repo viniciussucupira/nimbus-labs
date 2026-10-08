@@ -71,7 +71,7 @@ export function pwywProblem(product: Listing, suggestedCents: number, currency: 
   if (product.options.length > 0) return "options";
   if (product.call) return "call";
   if (product.plan) return "plan";
-  if (product.bump) return "bump";
+  if (product.bumps.length) return "bump";
   if (suggestedCents < product.priceCents || suggestedCents > pwywMaximum(currency)) return "suggested";
   return null;
 }

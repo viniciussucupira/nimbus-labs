@@ -2114,19 +2114,31 @@ a.chip {
     0 16px 36px -14px rgba(11, 17, 25, 0.55);
 }
 
-/* An order bump: the buy button says the total once the box is ticked. */
-.bump-on { display: none; }
-form:has(input[name="bump"]:checked) .bump-on { display: inline; }
-form:has(input[name="bump"]:checked) .bump-off { display: none; }
-/* A payment plan picked: the button says what is charged today. */
-.plan-on { display: none; }
-form:has(input[name="pay"][value="plan"]:checked) .plan-on { display: inline; }
-form:has(input[name="pay"][value="plan"]:checked) .bump-on,
+/*
+   Boxes at checkout (components/store-product.tsx, BuyBox): the buy button
+   says the total of what is checked. Up to three boxes, so a line is written
+   for each combination, named by which boxes it holds (t-101 is the first
+   and the third), and one rule below shows it. A payment plan picked says
+   what is charged today instead: plan-on with no box, pt-… with boxes.
+*/
+.bump-t, .plan-bump-t, .plan-on { display: none; }
+form:has(input[data-bump]:checked) .bump-off { display: none; }
 form:has(input[name="pay"][value="plan"]:checked) .bump-off { display: none; }
-/* Both: the first payment carries the added product too, and says so. */
-.plan-bump-on { display: none; }
-form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked) .plan-bump-on { display: inline; }
-form:has(input[name="pay"][value="plan"]:checked):has(input[name="bump"]:checked) .plan-on { display: none; }
+form:has(input[name="pay"][value="plan"]:checked):not(:has(input[data-bump]:checked)) .plan-on { display: inline; }
+form:not(:has(input[name="pay"][value="plan"]:checked)):has(input[data-bump="0"]:checked):not(:has(input[data-bump="1"]:checked)):not(:has(input[data-bump="2"]:checked)) .t-100 { display: inline; }
+form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:checked):not(:has(input[data-bump="1"]:checked)):not(:has(input[data-bump="2"]:checked)) .pt-100 { display: inline; }
+form:not(:has(input[name="pay"][value="plan"]:checked)):not(:has(input[data-bump="0"]:checked)):has(input[data-bump="1"]:checked):not(:has(input[data-bump="2"]:checked)) .t-010 { display: inline; }
+form:has(input[name="pay"][value="plan"]:checked):not(:has(input[data-bump="0"]:checked)):has(input[data-bump="1"]:checked):not(:has(input[data-bump="2"]:checked)) .pt-010 { display: inline; }
+form:not(:has(input[name="pay"][value="plan"]:checked)):has(input[data-bump="0"]:checked):has(input[data-bump="1"]:checked):not(:has(input[data-bump="2"]:checked)) .t-110 { display: inline; }
+form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:checked):has(input[data-bump="1"]:checked):not(:has(input[data-bump="2"]:checked)) .pt-110 { display: inline; }
+form:not(:has(input[name="pay"][value="plan"]:checked)):not(:has(input[data-bump="0"]:checked)):not(:has(input[data-bump="1"]:checked)):has(input[data-bump="2"]:checked) .t-001 { display: inline; }
+form:has(input[name="pay"][value="plan"]:checked):not(:has(input[data-bump="0"]:checked)):not(:has(input[data-bump="1"]:checked)):has(input[data-bump="2"]:checked) .pt-001 { display: inline; }
+form:not(:has(input[name="pay"][value="plan"]:checked)):has(input[data-bump="0"]:checked):not(:has(input[data-bump="1"]:checked)):has(input[data-bump="2"]:checked) .t-101 { display: inline; }
+form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:checked):not(:has(input[data-bump="1"]:checked)):has(input[data-bump="2"]:checked) .pt-101 { display: inline; }
+form:not(:has(input[name="pay"][value="plan"]:checked)):not(:has(input[data-bump="0"]:checked)):has(input[data-bump="1"]:checked):has(input[data-bump="2"]:checked) .t-011 { display: inline; }
+form:has(input[name="pay"][value="plan"]:checked):not(:has(input[data-bump="0"]:checked)):has(input[data-bump="1"]:checked):has(input[data-bump="2"]:checked) .pt-011 { display: inline; }
+form:not(:has(input[name="pay"][value="plan"]:checked)):has(input[data-bump="0"]:checked):has(input[data-bump="1"]:checked):has(input[data-bump="2"]:checked) .t-111 { display: inline; }
+form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:checked):has(input[data-bump="1"]:checked):has(input[data-bump="2"]:checked) .pt-111 { display: inline; }
 
 /* ------------------------------------------------------------------------
    Product pictures on a store page, in the three card styles, and the

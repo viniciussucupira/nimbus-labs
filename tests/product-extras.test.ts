@@ -10,13 +10,13 @@
  * The only way to find out was to notice the money missing.
  *
  * So what is checked here is that the rule and the reason cannot drift apart:
- * `activeBump` and `bumpState` are one set of rules, and every way an extra can
+ * `activeBumps` and `bumpState` are one set of rules, and every way an extra can
  * go quiet has a sentence naming the product to change.
  */
 import {
   type BumpPause,
   type PlanPause,
-  activeBump,
+  activeBumps,
   activePlan,
   bumpPauseWords,
   bumpState,
@@ -44,7 +44,7 @@ function item(id: string, priceCents: number, over: Partial<Product> = {}): Prod
     bundle: null,
     file: { pathname: `${id}.pdf`, name: `${id}.pdf`, size: 1, url: "" },
     link: null,
-    bump: null,
+    bumps: [],
     plan: null,
     funnel: null,
     fields: [],
@@ -61,24 +61,24 @@ const box = (productId: string, priceCents: number) => ({ productId, priceCents,
 
 /** The reason a box is quiet, or "shown". */
 function why(products: Listing[], product: Listing): BumpPause | "shown" | "none" {
-  const state = bumpState(products, product);
-  if (!state) return "none";
+  if (!product.bumps[0]) return "none";
+  const state = bumpState(products, product, product.bumps[0]);
   return "paused" in state ? state.paused : "shown";
 }
 
 part("A checkout box, and why it is not being shown");
 {
   const addon = item("addon", 9_700);
-  const front = item("front", 700, { bump: box("addon", 2_900) });
+  const front = item("front", 700, { bumps: [box("addon", 2_900)] });
   const all = [front, addon];
 
   is("cheaper than on its own: shown", why(all, front), "shown");
-  is("and activeBump agrees", activeBump(all, front) !== null, true);
+  is("and activeBumps agrees", activeBumps(all, front).length, 1);
 
   // The defect itself: a price cut on the *other* product.
   const cut = [front, item("addon", 1_900)];
   is("the offered product now costs less than the box charges", why(cut, front), "dearer");
-  is("and activeBump agrees", activeBump(cut, front), null);
+  is("and activeBumps agrees", activeBumps(cut, front), []);
   is(
     "the sentence names the product to change",
     bumpPauseWords("dearer", "Templates"),
@@ -92,7 +92,7 @@ part("A checkout box, and why it is not being shown");
 
   is("the same price is still fine", why([front, item("addon", 2_900)], front), "shown");
   is("gone from the store", why([front], front), "gone");
-  is("pointing at itself", why([item("front", 700, { bump: box("front", 500) })], item("front", 700, { bump: box("front", 500) })), "itself");
+  is("pointing at itself", why([item("front", 700, { bumps: [box("front", 500)] })], item("front", 700, { bumps: [box("front", 500)] })), "itself");
   is("the offered product charged monthly", why([front, item("addon", 9_700, { recurring: { interval: "month", trialDays: 0, payments: 0 } })], front), "targetRecurring");
   is("the offered product given away", why([front, item("addon", 0)], front), "targetFree");
   is("the offered product turned into a booking", why([front, item("addon", 9_700, { call: {} as unknown as Product["call"] })], front), "targetCall");
@@ -100,8 +100,8 @@ part("A checkout box, and why it is not being shown");
   is("buyers name the price on the offered product", why([front, item("addon", 9_700, { pwyw: { suggestedCents: 9_700 } })], front), "targetPwyw");
   is("a limited number of the offered product", why([front, item("addon", 9_700, { stock: 20 })], front), "targetLimited");
   is("nothing behind the offered product", why([front, item("addon", 9_700, { file: null })], front), "targetEmpty");
-  is("this product charged monthly", why(all, item("front", 700, { bump: box("addon", 2_900), recurring: { interval: "month", trialDays: 0, payments: 0 } })), "kind");
-  is("buyers name the price here", why(all, item("front", 700, { bump: box("addon", 2_900), pwyw: { suggestedCents: 700 } })), "pwyw");
+  is("this product charged monthly", why(all, item("front", 700, { bumps: [box("addon", 2_900)], recurring: { interval: "month", trialDays: 0, payments: 0 } })), "kind");
+  is("buyers name the price here", why(all, item("front", 700, { bumps: [box("addon", 2_900)], pwyw: { suggestedCents: 700 } })), "pwyw");
   is("no box set up at all", why(all, item("front", 700)), "none");
 
   // Every reason has a sentence, and none of them is empty or a placeholder.
@@ -186,7 +186,7 @@ part("Offers after paying");
 
 part("What a save tells the creator it silenced");
 {
-  const bumped = item("front", 700, { bump: box("addon", 2_900) });
+  const bumped = item("front", 700, { bumps: [box("addon", 2_900)] });
   const cheaper = item("addon", 1_900);
   is(
     "the price cut names the product that lost its box",

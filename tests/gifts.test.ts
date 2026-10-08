@@ -86,7 +86,7 @@ async function main(): Promise<void> {
   is("kept, the address as one", [started.gift.to, started.gift.from, started.gift.message], ["friend@example.com", "Ana", "Happy birthday!\n\nEnjoy."]);
 
   part("Its checkout");
-  await createCheckout(store, (await readProduct(store, product.id))!, "https://marktmorgen.com", "", { gift: started.gift.id, bump: true, plan: true, upsellKey: "f".repeat(40) });
+  await createCheckout(store, (await readProduct(store, product.id))!, "https://marktmorgen.com", "", { gift: started.gift.id, bumps: ["yes"], plan: true, upsellKey: "f".repeat(40) });
   const sent = checkouts[0];
   is("marked as a gift", [sent.get("metadata[gift]"), sent.get("payment_intent_data[metadata][gift]")], [started.gift.id, started.gift.id]);
   is("one payment, nothing added, no offer after", [sent.get("mode"), sent.get("line_items[1][quantity]"), sent.get("metadata[upsell_key]"), sent.get("customer_creation")], ["payment", null, null, null]);
