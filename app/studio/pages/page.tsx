@@ -20,6 +20,8 @@ import { pageAction, pricePill, productPath } from "@/components/store-product";
 import { PageEditor } from "@/components/page-editor";
 import { readPageFacts } from "@/lib/page-facts-read";
 import { readStats } from "@/lib/stats";
+import { readCourse } from "@/lib/course";
+import { missedQuestions } from "@/lib/answers";
 import { AiOn } from "@/components/ai-assist";
 import { aiLeft, isAiConfigured } from "@/lib/ai";
 
@@ -193,6 +195,16 @@ export default async function StudioPagesPage({ searchParams }: Params) {
               reviews={reviews}
               lang={store.language}
               facts={await readPageFacts(store, selected)}
+              outline={
+                selected.course
+                  ? ((await readCourse(selected.course.id).catch(() => null))?.modules ?? []).map((m) => ({ title: m.title, lessons: m.lessons.map((l) => l.title) }))
+                  : []
+              }
+              asked={(await missedQuestions(store, 100).catch(() => []))
+                .filter((row) => row.productId === selected.id)
+                .map((row) => row.question)
+                .filter((q, i, all) => all.indexOf(q) === i)
+                .slice(0, 8)}
               traffic={await readStats(store)
                 .then((stats) => (stats ? { views: stats.windows.d30.viewsByProduct[selected.id] ?? 0, checkouts: stats.windows.d30.checkoutsByProduct[selected.id] ?? 0 } : null))
                 .catch(() => null)}

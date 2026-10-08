@@ -10,6 +10,7 @@ import { toast } from "@/components/toast";
 import { AiAssist } from "@/components/ai-assist";
 import { PageCoach } from "@/components/page-coach";
 import { BlockRewrite } from "@/components/block-rewrite";
+import { type CourseOutline, insideFromCourse } from "@/lib/course-outline-items";
 import { MIN_VIEWS, type Counts, rate, winner } from "@/lib/headline-test-rules";
 import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
@@ -175,6 +176,8 @@ export function PageEditor({
   lang = "en",
   facts = {},
   traffic = null,
+  outline = [],
+  asked = [],
 }: {
   product: EditorProduct;
   /** The store's own picture folder (lib/product-image.ts), where a page's pictures go. */
@@ -197,6 +200,10 @@ export function PageEditor({
   facts?: PageFacts;
   /** Its page's last 30 days: times it was opened, checkouts started. */
   traffic?: { views: number; checkouts: number } | null;
+  /** A course's modules and lessons, by title, to fill "What's inside" from (lib/course-outline-items.ts). */
+  outline?: CourseOutline;
+  /** What visitors asked this page's answer box and the page could not answer (lib/answers.ts). */
+  asked?: string[];
 }) {
   const router = useRouter();
   const [drafts, setDrafts] = useState<Draft[]>(() => toDrafts(initial));
@@ -614,10 +621,24 @@ export function PageEditor({
             />
           </div>
         );
-      case "inside":
+      case "inside": {
+        const fromCourse = outline.length ? insideFromCourse(outline, lang) : [];
         return (
           <div className="space-y-4">
             {field(`${base}-h`, "Heading", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} onChange={(e) => change(index, { heading: e.target.value })} />)}
+            {fromCourse.length ? (
+              <div className="flex flex-wrap items-center gap-3 rounded-xl bg-paper p-3 ring-1 ring-line">
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => change(index, { items: fromCourse })}>
+                  <Icon name="list" size={15} />
+                  {block.items.length ? "Replace with your course's outline" : "Fill from your course's outline"}
+                </button>
+                <span className="text-xs text-ink-soft">
+                  {outline.length === 1
+                    ? `${fromCourse.length} ${fromCourse.length === 1 ? "lesson" : "lessons"}, by their titles in the course.`
+                    : `${fromCourse.length} modules, each with its lessons, as the course shows them.`}
+                </span>
+              </div>
+            ) : null}
             <PairEditor
               base={base}
               first={{ label: "Part", max: MAX_ITEM }}
@@ -629,6 +650,7 @@ export function PageEditor({
             />
           </div>
         );
+      }
       case "bio":
         return (
           <div className="space-y-4">
@@ -1058,6 +1080,7 @@ export function PageEditor({
               }
               onQuestions={addQuestions}
               traffic={traffic}
+              asked={asked}
             />
           ) : null}
 
