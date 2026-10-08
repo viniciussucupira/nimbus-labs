@@ -235,6 +235,13 @@ export type LookColours = {
   accentSoft: string;
   /** The far end of the band across the top of the Colour theme. */
   accent2: string;
+  /**
+   * The wash behind every other section of a sales page set in bands
+   * (lib/sales-page.ts, PageStyle): the creator's colour, faint, and moved
+   * towards the card until the text, the muted text and the coloured links
+   * on it all still read.
+   */
+  band: string;
   dark: boolean;
 };
 
@@ -280,6 +287,12 @@ export function lookColours(look: LookPaint): LookColours {
     (c) => contrast(c, palette.text) >= 7,
   );
 
+  const band = nearestPassing(
+    mix(fill, palette.card, palette.dark ? 0.78 : 0.87),
+    palette.card,
+    (c) => contrast(c, palette.text) >= 7 && contrast(c, palette.muted) >= 4.5 && contrast(c, accentText) >= 4.5,
+  );
+
   // The band behind the name on the Colour theme runs from the fill to a
   // shade of it. The shade moves in the direction that helps the words on it.
   const accent2 = onAccent === WHITE ? mix(fill, BLACK, 0.3) : mix(fill, WHITE, 0.35);
@@ -298,6 +311,7 @@ export function lookColours(look: LookPaint): LookColours {
     accentText,
     accentSoft,
     accent2,
+    band,
     dark: palette.dark,
   };
 }
@@ -319,6 +333,7 @@ export function lookStyle(look: LookPaint): Record<string, string> {
     "--st-accent-text": c.accentText,
     "--st-accent-soft": c.accentSoft,
     "--st-accent-2": c.accent2,
+    "--st-band": c.band,
     colorScheme: c.dark ? "dark" : "light",
   };
 }

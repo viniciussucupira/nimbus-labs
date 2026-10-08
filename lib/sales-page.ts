@@ -277,11 +277,26 @@ export type SalesPage = {
    * did not show.
    */
   test: HeadlineTest | null;
+  /**
+   * How the sections below the hero are set off from each other (added
+   * 8 October 2026): "plain" on the page itself, "bands" every other one on
+   * a wash of the store's colour, "cards" each on a card of its own. Only the
+   * look changes; the words, the order and what is counted stay the same.
+   */
+  style: PageStyle;
 };
+
+export const PAGE_STYLES = ["plain", "bands", "cards"] as const;
+export type PageStyle = (typeof PAGE_STYLES)[number];
+
+/** Whether a section, the `index`-th shown below the hero, sits on a band. */
+export function onBand(style: PageStyle, index: number): boolean {
+  return style === "bands" && index % 2 === 0;
+}
 
 export type HeadlineTest = { id: string; headline: string; sub: string };
 
-export const EMPTY_PAGE: SalesPage = { blocks: [], seoTitle: "", seoDescription: "", next: null, test: null };
+export const EMPTY_PAGE: SalesPage = { blocks: [], seoTitle: "", seoDescription: "", next: null, test: null, style: "plain" };
 
 /** The id of a test of these two versions: the same words, the same id. */
 export function testId(a: { headline: string; sub: string }, b: { headline: string; sub: string }): string {
@@ -617,6 +632,7 @@ export function parsePage(raw: unknown): SalesPage {
     seoDescription: line(value.seoDescription, MAX_SEO_DESCRIPTION),
     next: typeof value.next === "string" && PRODUCT_ID_PATTERN.test(value.next) ? value.next : null,
     test: parseTest(value.test, blocks[0]?.kind === "hero" ? blocks[0] : null),
+    style: (PAGE_STYLES as readonly unknown[]).includes(value.style) ? (value.style as PageStyle) : "plain",
   };
 }
 
@@ -866,7 +882,7 @@ export function blocksFromTemplate(id: string, product: { title: string; summary
  * across: its search title and line, its headline test, what it shows after
  * a sign-up. Returns how many pictures were left out, so the editor can say.
  */
-export function copyOfPage(page: SalesPage): { blocks: PageBlock[]; picturesLeft: number } {
+export function copyOfPage(page: SalesPage): { blocks: PageBlock[]; picturesLeft: number; style: PageStyle } {
   let picturesLeft = 0;
   const blocks = page.blocks.map((block): PageBlock => {
     const id = newBlockId();
@@ -880,5 +896,5 @@ export function copyOfPage(page: SalesPage): { blocks: PageBlock[]; picturesLeft
     }
     return { ...block, id } as PageBlock;
   });
-  return { blocks, picturesLeft };
+  return { blocks, picturesLeft, style: page.style };
 }

@@ -507,7 +507,7 @@ try {
         { id: "feat0001", kind: "feature", heading: "Why it works", body: "Short lessons you can follow at the board.", picture: null, side: "right" },
         { id: "cta00001", kind: "cta", label: "", note: "" },
       ];
-      const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null } }) });
+      const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null, style: "bands" } }) });
       return (await response.json()).ok === true;
     }, ids["Knife Skills"]);
     is("saved from the studio", saved, true);
@@ -519,6 +519,9 @@ try {
     is("ticks and crosses spoken as yes and no", [await page.locator('.sp-compare [role="img"][aria-label="Yes"]').count(), await page.locator('.sp-compare [role="img"][aria-label="No"]').count()], [1, 1]);
     is("the bonus on its card, numbered", [await page.locator(".sp-bonus").count(), /bonus 1/i.test(main)], [1, true]);
     is("no number is shown that the store has not counted", await page.locator(".sp-facts").count(), 0);
+    // Six sections show (the numbers block has none to show yet), so three bands.
+    is("set in bands: every other section shown, from the first", [await page.locator(".sp-style-bands").count(), await page.locator(".sp-band").count()], [1, 3]);
+    is("a band is painted, not see-through", await page.locator(".sp-band > .sp-section").first().evaluate((el) => getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)"), true);
     is("words beside a picture, with no picture yet: the words alone", [await page.locator(".sp-feature").count(), await page.locator(".sp-feature-picture").count(), main.includes("Short lessons you can follow at the board.")], [1, 0, true]);
     if (process.env.E2E_SHOTS) await page.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "new-blocks.png") });
   }
@@ -535,6 +538,17 @@ try {
     await studio.getByRole("button", { name: "Add benefits" }).click();
     is("a missing part is added with one press", await studio.locator("ol > li").count(), before + 1);
     if (process.env.E2E_SHOTS) await studio.locator("#coach-title").locator("xpath=ancestor::section[1]").screenshot({ path: join(process.env.E2E_SHOTS, "page-coach.png") });
+  }
+
+  part("The page's style, chosen in the studio");
+  {
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
+    const picker = studio.getByRole("group", { name: "Page style" });
+    is("the saved style is the one pressed", await picker.getByRole("button", { name: /^Bands/ }).getAttribute("aria-pressed"), "true");
+    await studio.getByRole("button", { name: "Preview", exact: true }).click();
+    await studio.getByRole("group", { name: "Page style" }).getByRole("button", { name: "Cards", exact: true }).click();
+    is("the preview redraws in cards, before anything is saved", [await studio.locator(".sp-style-cards").count(), await studio.locator(".sp-band").count()], [1, 0]);
+    is("and the change waits to be saved", await studio.getByRole("button", { name: "Save the page" }).isEnabled(), true);
   }
 
   part("A page started from another product's page");

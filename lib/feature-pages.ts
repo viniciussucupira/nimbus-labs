@@ -1471,6 +1471,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "features",
         title: "What a page is built from",
         items: [
+          { icon: "layout", title: "Three page styles", body: "Plain, bands or cards: every other section on a soft wash of your store's color, or each section on a card of its own. Switch in the preview and see the page redraw before you save. The colors are checked so every line still reads." },
           { icon: "type", title: "Hero", body: "A headline of up to 120 characters and a line under it, beside the product's picture or a video." },
           { icon: "play", title: "Video that waits", body: "One beside the headline and as many more as the page needs, each in a block of its own with a heading and a line under it. From YouTube, Vimeo or Loom. Nothing from them loads until the visitor presses play, and YouTube plays from its privacy-enhanced address." },
           { icon: "camera", title: "Your own pictures", body: "Pages of the book, a screen of the course, the finished result: up to 6 in a block and 24 on a page, each with a line under it and a description for people who cannot see it. Shrunk in your browser before they are sent, served from our own address, and opened full size with a press." },

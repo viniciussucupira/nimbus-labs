@@ -6,7 +6,7 @@ import { wordsIn } from "@/lib/buyer-words";
 import { DEFAULT_LANGUAGE, LANGUAGES, type LanguageCode } from "@/lib/store-language";
 import { imageUrl } from "@/lib/product-image";
 import { type Piece, aboutBlocks } from "@/lib/product-about";
-import { CELL_NO, CELL_YES, type CtaBlock, type HeroBlock, type PageBlock } from "@/lib/sales-page";
+import { CELL_NO, CELL_YES, type CtaBlock, type HeroBlock, type PageBlock, type PageStyle, onBand } from "@/lib/sales-page";
 import { blockWords } from "@/lib/buyer-words/blocks";
 import type { PageFacts } from "@/lib/page-facts";
 
@@ -546,4 +546,40 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
         </section>
       );
   }
+}
+
+/**
+ * The blocks below the hero, each in its own wrapper, in the page's style
+ * (lib/sales-page.ts, PageStyle). A block with nothing to show takes no place
+ * at all, so the bands of a page set in bands still alternate on what the
+ * reader sees. The wrapper carries the block's id, for how far down the page
+ * was read (components/page-depth.tsx).
+ */
+export function PageSections({
+  blocks,
+  ctx,
+  style,
+  reviewsFor,
+}: {
+  blocks: PageBlock[];
+  ctx: BlockContext;
+  style: PageStyle;
+  /** What stands where the reviews block is, under its heading. */
+  reviewsFor: (heading: string) => ReactNode;
+}) {
+  const shown: { block: PageBlock; view: ReactNode }[] = [];
+  for (const block of blocks) {
+    // BlockView holds no state, so asking it here is drawing it once.
+    const view = BlockView({ block, ctx, reviews: block.kind === "reviews" ? reviewsFor(block.heading) : null });
+    if (view !== null) shown.push({ block, view });
+  }
+  return (
+    <>
+      {shown.map(({ block, view }, index) => (
+        <div key={block.id} data-block={block.id} className={onBand(style, index) ? "sp-block sp-band" : "sp-block"}>
+          {view}
+        </div>
+      ))}
+    </>
+  );
 }
