@@ -41,6 +41,7 @@ import {
   setMemberToken,
 } from "@/lib/community";
 import { holdsTicket } from "@/lib/community-access";
+import { communityWords } from "@/lib/buyer-words/community";
 
 export const COMMUNITY_UNSUB = /^[0-9a-f]{40}$/;
 const QUEUE = "nl:cm:mailq";
@@ -109,8 +110,9 @@ export async function queueAnnouncement(store: Store, config: CommunityConfig, p
   if (!communityId || !canAnnounceByEmail(store)) return { ok: false, reason: "plan" };
   const members = await mailableMembers(communityId);
   if (members.length === 0) return { ok: false, reason: "empty" };
-  const subject = (post.title || `An announcement in ${config.name}`).slice(0, 150);
-  const body = [post.text, "", `Read it, and reply, in ${config.name}:`, postAddress(store, post.id)].join("\n").trim();
+  const w = communityWords(store.language);
+  const subject = (post.title || w.announceSubject(config.name)).slice(0, 150);
+  const body = [post.text, "", w.announceReadIt(config.name), postAddress(store, post.id)].join("\n").trim();
   const job: AnnouncementJob = {
     id: randomBytes(12).toString("hex"),
     community: communityId,
@@ -231,9 +233,9 @@ export async function advanceAnnouncement(
           const r = render(store, job.subject, job.body, null, {
             page: `${SITE_URL}/unsubscribe?c=${token}`,
             oneClick: `${SITE_URL}/api/mail/unsubscribe?c=${token}`,
-            why: `You are getting this because you asked to be emailed ${fromName}'s announcements in ${config.name}.`,
-            label: "Stop the community's emails",
-            after: "in one click: announcements and event reminders. You stay in the community, and keep your RSVPs.",
+            why: communityWords(store.language).announceWhy(fromName, config.name),
+            label: communityWords(store.language).stopLabel,
+            after: communityWords(store.language).stopAfterAnnounce,
           });
           messages.push({ from: fromLine(store), to: member.e, subject: r.subject, text: r.text, html: r.html, replyTo: store.email, headers: r.headers });
         }

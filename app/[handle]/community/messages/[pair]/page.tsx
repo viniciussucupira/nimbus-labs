@@ -6,19 +6,22 @@ import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { CREATOR, readMembers } from "@/lib/community";
 import { communityVisitor } from "@/lib/community-page";
-import { whenWords } from "@/lib/community-text";
 import { MAX_MESSAGE_TEXT, mayMessage, otherIn, thread } from "@/lib/community-dm";
-import { CommunityBar, Face, NOTICES, PostText, authorName } from "@/components/community-parts";
+import { CommunityBar, Face, PostText, authorName, communityNotices, storeWhen } from "@/components/community-parts";
+import { communityWords } from "@/lib/buyer-words/community";
+import { LANGUAGES } from "@/lib/store-language";
 
 type Params = {
   params: Promise<{ handle: string; pair: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export const metadata: Metadata = {
-  title: "Message — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  return { title: `${communityWords(store?.language).messageLink} — Marktmorgen`, robots: { index: false, follow: false } };
+}
 
 const PAIR = /^(creator|[0-9a-f]{12,64})\.(creator|[0-9a-f]{12,64})$/;
 
@@ -54,6 +57,8 @@ export default async function MessageThreadPage({ params, searchParams }: Params
   const talk = (await thread(id, key, pair)) ?? { messages: [], pending: false };
 
   const query = await searchParams;
+  const w = communityWords(store.language);
+  const NOTICES = communityNotices(store.language);
   const notice = NOTICES[typeof query.n === "string" ? query.n : ""] ?? null;
   const members = other === CREATOR ? new Map() : await readMembers(id, [other]);
   const name = authorName(store, other, members);
@@ -64,11 +69,11 @@ export default async function MessageThreadPage({ params, searchParams }: Params
   const canSend = !talk.pending && !refused && (owner || canWrite);
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={LANGUAGES[store.language].locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <CommunityBar store={store} config={config} tab="messages" signedIn messages={config.dm.on} />
       <main id="content" className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <p className="mb-4">
-          <Link href={box} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">Back to messages</Link>
+          <Link href={box} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">{w.backToMessages}</Link>
         </p>
         {notice ? <p className={`cm-flash mb-5 ${notice.tone === "warn" ? "cm-flash-warn" : ""}`} role="status">{notice.text}</p> : null}
 
@@ -76,30 +81,29 @@ export default async function MessageThreadPage({ params, searchParams }: Params
           <Face store={store} author={other} name={name} size={44} />
           <div className="min-w-0">
             <h1 className="font-display truncate text-xl font-semibold tracking-[-0.02em]">{name}</h1>
-            <p className="st-muted text-sm">Private. Only the two of you can read this.</p>
+            <p className="st-muted text-sm">{w.privateTwo}</p>
           </div>
         </header>
 
         {talk.pending ? (
           <div className="st-note mt-5">
-            <p className="font-bold" style={{ color: "var(--st-text)" }}>{`${name} would like to message you`}</p>
+            <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.wouldLike(name)}</p>
             <p className="mt-1 text-sm">
-              You have not replied yet, and nothing is sent until you do. Accepting starts the conversation; declining
-              removes it and stops them asking again.
+              {w.pendingNote}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               <form action="/api/store/community/messages" method="post">
                 <input type="hidden" name="handle" value={store.handle} />
                 <input type="hidden" name="action" value="accept" />
                 <input type="hidden" name="pair" value={pair} />
-                <button type="submit" className="btn st-btn">Accept</button>
+                <button type="submit" className="btn st-btn">{w.accept}</button>
               </form>
               <form action="/api/store/community/messages" method="post">
                 <input type="hidden" name="handle" value={store.handle} />
                 <input type="hidden" name="action" value="decline" />
                 <input type="hidden" name="pair" value={pair} />
                 <button type="submit" className="cm-quiet-link cm-mini cm-danger text-sm font-semibold">
-                  Decline, and hear no more from them
+                  {w.declineForGood}
                 </button>
               </form>
             </div>
@@ -108,11 +112,11 @@ export default async function MessageThreadPage({ params, searchParams }: Params
 
         {talk.messages.length === 0 ? (
           <div className="st-note mt-5 text-center">
-            <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing said yet</p>
+            <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.nothingSaidYet}</p>
             <p className="mt-1 text-sm">
               {config.dm.ask && other !== CREATOR && key !== CREATOR
-                ? `Your first message reaches ${name} as a request. It becomes a conversation if they accept it.`
-                : `Write the first message.`}
+                ? w.firstAsRequest(name)
+                : w.writeFirst}
             </p>
           </div>
         ) : null}
@@ -125,7 +129,7 @@ export default async function MessageThreadPage({ params, searchParams }: Params
                 <div className={`cm-dm-bubble ${mine ? "cm-dm-mine" : ""}`}>
                   <PostText text={message.text} className="text-[0.9375rem]" />
                   <p className="st-muted mt-1 text-xs font-semibold">
-                    <time dateTime={new Date(message.at * 1000).toISOString()}>{whenWords(message.at)}</time>
+                    <time dateTime={new Date(message.at * 1000).toISOString()}>{storeWhen(store, message.at)}</time>
                   </p>
                 </div>
               </li>
@@ -138,27 +142,27 @@ export default async function MessageThreadPage({ params, searchParams }: Params
             <input type="hidden" name="handle" value={store.handle} />
             <input type="hidden" name="action" value="send" />
             <input type="hidden" name="to" value={other} />
-            <label htmlFor="dm-text" className="sr-only">{`Write to ${name}`}</label>
+            <label htmlFor="dm-text" className="sr-only">{w.writeTo(name)}</label>
             <textarea
               id="dm-text"
               name="text"
               required
               rows={3}
               maxLength={MAX_MESSAGE_TEXT}
-              placeholder={`Write to ${name}…`}
+              placeholder={w.writeToPlaceholder(name)}
               className="st-field resize-y"
             />
             <div className="mt-3 flex justify-end">
-              <button type="submit" className="btn st-btn">Send</button>
+              <button type="submit" className="btn st-btn">{w.send}</button>
             </div>
           </form>
         ) : talk.pending ? null : (
           <p className="st-muted mt-6 text-sm">
             {refused
-              ? "Messages are not open between the two of you right now."
+              ? w.notOpenBetween
               : viewer.member?.muted
                 ? NOTICES.muted.text
-                : "You cannot write here right now."}
+                : w.cannotWriteNow}
           </p>
         )}
       </main>

@@ -6,19 +6,22 @@ import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { CREATOR, readMembers } from "@/lib/community";
 import { communityVisitor } from "@/lib/community-page";
-import { whenWords } from "@/lib/community-text";
 import { type Conversation, inbox } from "@/lib/community-dm";
-import { CommunityBar, Face, NOTICES, authorName } from "@/components/community-parts";
+import { CommunityBar, Face, authorName, communityNotices, storeWhen } from "@/components/community-parts";
+import { communityWords } from "@/lib/buyer-words/community";
+import { LANGUAGES } from "@/lib/store-language";
 
 type Params = {
   params: Promise<{ handle: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export const metadata: Metadata = {
-  title: "Messages — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  return { title: `${communityWords(store?.language).tabMessages} — Marktmorgen`, robots: { index: false, follow: false } };
+}
 
 /**
  * Somebody's own messages: the conversations they are in, and the requests
@@ -44,7 +47,8 @@ export default async function MessagesPage({ params, searchParams }: Params) {
 
   const id = store.community.id;
   const query = await searchParams;
-  const notice = NOTICES[typeof query.n === "string" ? query.n : ""] ?? null;
+  const w = communityWords(store.language);
+  const notice = communityNotices(store.language)[typeof query.n === "string" ? query.n : ""] ?? null;
   const [talks, asks] = await Promise.all([inbox(id, key), inbox(id, key, true)]);
   const people = [...talks, ...asks].map((c) => c.other).filter((who) => who !== CREATOR);
   const members = await readMembers(id, people);
@@ -59,14 +63,14 @@ export default async function MessagesPage({ params, searchParams }: Params) {
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-x-2">
                 <span className="truncate font-bold">{nameOf(c.other)}</span>
-                {c.unread ? <span className="cm-badge cm-badge-accent">New</span> : null}
+                {c.unread ? <span className="cm-badge cm-badge-accent">{w.newBadge}</span> : null}
               </span>
               <span className="st-muted block truncate text-sm">
-                {c.last ? `${c.last.a === key ? "You: " : ""}${c.last.text}` : "No messages"}
+                {c.last ? `${c.last.a === key ? w.youColon : ""}${c.last.text}` : w.noMessages}
               </span>
             </span>
             <time className="st-muted shrink-0 text-xs font-semibold" dateTime={new Date(c.at * 1000).toISOString()}>
-              {whenWords(c.at)}
+              {storeWhen(store, c.at)}
             </time>
           </Link>
           {request ? (
@@ -75,14 +79,14 @@ export default async function MessagesPage({ params, searchParams }: Params) {
                 <input type="hidden" name="handle" value={store.handle} />
                 <input type="hidden" name="action" value="accept" />
                 <input type="hidden" name="pair" value={c.pair} />
-                <button type="submit" className="cm-pill">Accept</button>
+                <button type="submit" className="cm-pill">{w.accept}</button>
               </form>
               <form action="/api/store/community/messages" method="post">
                 <input type="hidden" name="handle" value={store.handle} />
                 <input type="hidden" name="action" value="decline" />
                 <input type="hidden" name="pair" value={c.pair} />
                 <button type="submit" className="cm-quiet-link cm-mini cm-danger text-xs font-semibold">
-                  Decline, and hear no more from them
+                  {w.declineForGood}
                 </button>
               </form>
             </div>
@@ -93,45 +97,44 @@ export default async function MessagesPage({ params, searchParams }: Params) {
   );
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={LANGUAGES[store.language].locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <CommunityBar store={store} config={config} tab="messages" signedIn messages={config.dm.on} />
       <main id="content" className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <p className="mb-4">
-          <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">Back to the feed</Link>
+          <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">{w.backToFeed}</Link>
         </p>
         {notice ? <p className={`cm-flash mb-5 ${notice.tone === "warn" ? "cm-flash-warn" : ""}`} role="status">{notice.text}</p> : null}
 
-        <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">Messages</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">{w.tabMessages}</h1>
         <p className="st-muted mt-1 text-sm">
           {owner
-            ? `Private, between you and one member. Nobody else here can read them — and neither can we.`
-            : `Private, between you and one other person. ${store.name} cannot read a conversation they are not in.`}
+            ? w.dmOwnerNote
+            : w.dmMemberNote(store.name)}
         </p>
 
         {asks.length ? (
           <section aria-labelledby="asks-title" className="mt-7">
             <h2 id="asks-title" className="text-lg font-semibold">
-              {`${asks.length} ${asks.length === 1 ? "person wants" : "people want"} to message you`}
+              {w.wantToMessage(asks.length)}
             </h2>
             <p className="st-muted mt-1 text-sm">
-              Nothing here counts as a conversation until you accept it. Decline and it goes, and that person cannot ask
-              again.
+              {w.requestsNote}
             </p>
             {list(asks, true)}
           </section>
         ) : null}
 
         <section aria-labelledby="talks-title" className="mt-7">
-          <h2 id="talks-title" className="text-lg font-semibold">Your conversations</h2>
+          <h2 id="talks-title" className="text-lg font-semibold">{w.yourConversations}</h2>
           {talks.length === 0 ? (
             <div className="st-note mt-3 text-center">
-              <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing here yet</p>
+              <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.nothingHereYet}</p>
               <p className="mt-1 text-sm">
                 {owner
-                  ? "Open a member's name in the members list to write to them."
+                  ? w.openMemberName
                   : config.dm.between
-                    ? "Open somebody's name in the members list to write to them."
-                    : `Only ${store.name} can be written to here, from their name in the members list.`}
+                    ? w.openSomebodyName
+                    : w.onlyStoreWritten(store.name)}
               </p>
             </div>
           ) : (

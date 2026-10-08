@@ -6,7 +6,9 @@ import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { communityVisitor } from "@/lib/community-page";
 import { type CommunityEvent, eventClock, mayAttend, pastEvents, rsvpNumbers, upcomingEvents } from "@/lib/community-events";
-import { CommunityBar, NOTICES } from "@/components/community-parts";
+import { CommunityBar, communityNotices } from "@/components/community-parts";
+import { communityWords } from "@/lib/buyer-words/community";
+import { LANGUAGES } from "@/lib/store-language";
 import { EventCard } from "@/components/community-events";
 
 type Params = {
@@ -14,10 +16,12 @@ type Params = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export const metadata: Metadata = {
-  title: "Events — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  return { title: `${communityWords(store?.language).eventsTitle} — Marktmorgen`, robots: { index: false, follow: false } };
+}
 
 /** Past events on one page. */
 const PAST_PAGE = 12;
@@ -36,7 +40,8 @@ export default async function CommunityEventsPage({ params, searchParams }: Para
   if (viewer.state !== "in") redirect(home);
   const id = store.community.id;
   const query = await searchParams;
-  const notice = NOTICES[typeof query.n === "string" ? query.n : ""] ?? null;
+  const w = communityWords(store.language);
+  const notice = communityNotices(store.language)[typeof query.n === "string" ? query.n : ""] ?? null;
   const beforeRaw = typeof query.before === "string" ? Number(query.before) : NaN;
   const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : null;
   const now = eventClock();
@@ -72,30 +77,26 @@ export default async function CommunityEventsPage({ params, searchParams }: Para
   );
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={LANGUAGES[store.language].locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <CommunityBar store={store} config={viewer.config} tab="events" signedIn />
       <main id="content" className="mx-auto max-w-3xl px-4 pb-16 pt-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h1 className="font-display text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">{before ? "Past events" : "Events"}</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">{before ? w.pastEvents : w.eventsTitle}</h1>
           {viewer.owner ? (
-            <Link href={store.sid ? `/studio/community?store=${store.sid}#events` : "/studio/community#events"} className="cm-pill">Schedule in the studio</Link>
+            <Link href={store.sid ? `/studio/community?store=${store.sid}#events` : "/studio/community#events"} className="cm-pill">{w.scheduleInStudio}</Link>
           ) : null}
         </div>
         {notice ? <p className={`cm-flash mt-4 ${notice.tone === "warn" ? "cm-flash-warn" : ""}`} role="status">{notice.text}</p> : null}
 
         {!before ? (
           <section aria-labelledby="ev-coming" className="mt-6">
-            <h2 id="ev-coming" className="st-label text-xs uppercase tracking-[0.08em]">Coming up</h2>
+            <h2 id="ev-coming" className="st-label text-xs uppercase tracking-[0.08em]">{w.comingUp}</h2>
             {upcoming.length ? (
               <ul className="mt-3 space-y-3">{upcoming.map(card)}</ul>
             ) : (
               <div className="st-note mt-3 text-center">
-                <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing scheduled yet</p>
-                <p className="mt-1 text-sm">
-                  {viewer.owner
-                    ? "Schedule a live event in the studio: members RSVP here, get reminder emails if they asked for them, and join from this page."
-                    : `When ${store.name} schedules a live event, it shows up here.`}
-                </p>
+                <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.nothingScheduled}</p>
+                <p className="mt-1 text-sm">{viewer.owner ? w.ownerScheduleNote : w.whenScheduled(store.name)}</p>
               </div>
             )}
           </section>
@@ -103,11 +104,11 @@ export default async function CommunityEventsPage({ params, searchParams }: Para
 
         {past.events.length || before ? (
           <section aria-labelledby="ev-past" className="mt-10">
-            <h2 id="ev-past" className="st-label text-xs uppercase tracking-[0.08em]">{before ? "Older" : "Past events"}</h2>
-            {past.events.length ? <ul className="mt-3 space-y-3">{past.events.map(card)}</ul> : <p className="st-muted mt-3 text-sm">That is everything.</p>}
+            <h2 id="ev-past" className="st-label text-xs uppercase tracking-[0.08em]">{before ? w.olderLabel : w.pastEvents}</h2>
+            {past.events.length ? <ul className="mt-3 space-y-3">{past.events.map(card)}</ul> : <p className="st-muted mt-3 text-sm">{w.thatIsEverything}</p>}
             {past.next ? (
               <p className="mt-6 text-center">
-                <Link href={`${home}/events?before=${past.next}`} className="cm-pill cm-pill-wide">Older events</Link>
+                <Link href={`${home}/events?before=${past.next}`} className="cm-pill cm-pill-wide">{w.olderEvents}</Link>
               </p>
             ) : null}
           </section>

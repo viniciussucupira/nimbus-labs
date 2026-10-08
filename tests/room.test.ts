@@ -67,7 +67,18 @@ async function main(): Promise<void> {
   const page = readFileSync(join(process.cwd(), "components/community-room.tsx"), "utf8");
   is("the page asks nothing while its tab is in the background", /if \(document\.hidden\) return IDLE_MS;/.test(page), true);
   is("what it asks every few seconds is the shared route, without saying who it is", [/\/api\/store\/community\/chat\/new\?c=/.test(page), /credentials: "omit"/.test(page)], [true, true]);
-  is("and it says how often it asks, from the same figures", /every \$\{LIVE_MS \/ 1000\} seconds while people are talking and every \$\{IDLE_MS \/ 1000\} while the room is quiet/.test(page), true);
+  // The sentence is in the store's language (lib/buyer-words/community.ts); its numbers are these figures, handed over by the page.
+  const chatPage = readFileSync(join(process.cwd(), "app/[handle]/community/chat/page.tsx"), "utf8");
+  const roomWordsSource = readFileSync(join(process.cwd(), "lib/buyer-words/community.ts"), "utf8");
+  is(
+    "and it says how often it asks, from the same figures",
+    [
+      /live: LIVE_MS \/ 1000, idle: IDLE_MS \/ 1000, away: AWAY_AFTER_MS \/ 60_000/.test(chatPage),
+      /every \$\{n\} seconds while people are talking and every \$\{more\} while the room is quiet/.test(roomWordsSource),
+      /t\.paceNote/.test(page),
+    ],
+    [true, true, true],
+  );
 
   part("The pass");
   const t0 = Date.UTC(2026, 9, 20, 12, 3, 0);
@@ -152,7 +163,7 @@ async function main(): Promise<void> {
   is("nothing more is counted", (await trafficIn(free, month)).parts, before);
   is("its creator is still never refused", leave(await grantRoom(unpaid, OTHER, { key: "creator", owner: true }, false, false, t1)).ms, GRANT_MS);
   is("a store that pays is never refused, whatever it has had", leave(await grantRoom(paid, ROOM, { key: "c3c3c3c3c3c3", owner: false }, false, false, t1)).ms, GRANT_MS);
-  is("the page of a resting room has a button and asks nothing by itself", [/Check for new messages/.test(page), /pace === "stopped" \|\| restingNow\.current\) return IDLE_MS;/.test(page)], [true, true]);
+  is("the page of a resting room has a button and asks nothing by itself", [/t\.checkNew/.test(page) && /checkNew: "Check for new messages"/.test(roomWordsSource), /pace === "stopped" \|\| restingNow\.current\) return IDLE_MS;/.test(page)], [true, true]);
 
   part("What it is counted as is what it can cost, and a little over");
   const part$ = visitCost() / PARTS_PER_VISIT;

@@ -54,12 +54,14 @@ import { holdsTicket } from "@/lib/community-access";
 import { tokenFor } from "@/lib/community-mail";
 import { alertCreator } from "@/lib/phone-alerts";
 import { JOIN_EARLY_MINUTES } from "@/lib/community-text";
+import { communityWords } from "@/lib/buyer-words/community";
+import { LANGUAGES, parseLanguage } from "@/lib/store-language";
 import {
   type CommunityEvent,
   EVENT_QUEUE,
   eventAddress,
-  eventTime,
-  lengthWords,
+  eventTimeIn,
+  lengthIn,
   mayAttend,
   readEvent,
   rsvpList,
@@ -214,58 +216,47 @@ function escapeHtml(text: string): string {
 }
 
 /** A notice's email, which is not a list email: no way to stop it, just why it came. */
-function noticeHtml(body: string, why: string): string {
-  return `<!doctype html><html><body style="margin:0;padding:0;background:#f7f5f0">
+function noticeHtml(body: string, why: string, lang: string, sent: string): string {
+  return `<!doctype html><html lang="${escapeHtml(lang)}"><body style="margin:0;padding:0;background:#f7f5f0">
 <div style="max-width:560px;margin:0 auto;padding:32px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1c1917">
 <div style="background:#ffffff;border-radius:16px;padding:28px 24px">${bodyHtml(body)}</div>
 <div style="padding:20px 8px 0;font-size:13px;line-height:1.5;color:#57534e">
 <p style="margin:0 0 8px">${escapeHtml(why)}</p>
-<p style="margin:0">Sent with Marktmorgen.</p>
+<p style="margin:0">${escapeHtml(sent)}</p>
 </div></div></body></html>`;
 }
 
 /** What one kind of email says. The event's own words are the creator's; the rest is ours. */
 export function eventMailWords(
-  store: Pick<Store, "handle" | "name">,
+  store: Pick<Store, "handle" | "name"> & Partial<Pick<Store, "language">>,
   config: Pick<CommunityConfig, "name">,
   event: CommunityEvent,
   job: Pick<EventMailJob, "kind" | "was" | "wasMinutes">,
 ): { subject: string; body: string; why: string } {
+  // In the store's language, like every page its members read.
+  const tongue = { language: parseLanguage(store.language) };
+  const w = communityWords(tongue.language);
   const page = eventAddress(store, event.id);
-  const when = `${eventTime(event)}, ${lengthWords(event.minutes)}`;
+  const when = `${eventTimeIn(tongue, event)}, ${lengthIn(tongue, event.minutes)}`;
   if (job.kind === "cancelled") {
     return {
-      subject: `Canceled: ${event.title}`,
-      body: [
-        `${store.name} has canceled "${event.title}", the live event in ${config.name} planned for ${eventTime(event)}.`,
-        "There is nothing for you to do: your RSVP is canceled with it.",
-        `Everything else in ${config.name} is where it was: ${SITE_URL}/@${store.handle}/community/events`,
-      ].join("\n\n"),
-      why: `You are getting this because you RSVP'd to this event in ${config.name}. It is sent once.`,
+      subject: w.evCanceledSubject(event.title),
+      body: w.evCanceledBody(store.name, event.title, config.name, eventTimeIn(tongue, event), `${SITE_URL}/@${store.handle}/community/events`),
+      why: w.evWhyOnce(config.name),
     };
   }
   if (job.kind === "moved") {
-    const wasWhen = `${eventTime({ start: job.was, tz: event.tz })}, ${lengthWords(job.wasMinutes || event.minutes)}`;
+    const wasWhen = `${eventTimeIn(tongue, { start: job.was, tz: event.tz })}, ${lengthIn(tongue, job.wasMinutes || event.minutes)}`;
     return {
-      subject: `New time: ${event.title}`,
-      body: [
-        `${store.name} has moved "${event.title}", the live event in ${config.name}.`,
-        `Was: ${wasWhen}\nNow: ${when}`,
-        `You are still on the list. If the new time does not work for you, cancel your RSVP on the event page, so somebody else can have the place:\n${page}`,
-      ].join("\n\n"),
-      why: `You are getting this because you RSVP'd to this event in ${config.name}. It is sent once for each change of time.`,
+      subject: w.evMovedSubject(event.title),
+      body: w.evMovedBody(store.name, event.title, config.name, wasWhen, when, page),
+      why: w.evWhyMoved(config.name),
     };
   }
-  const soon = job.kind === "24" ? "tomorrow" : "in an hour";
   return {
-    subject: `${job.kind === "24" ? "Tomorrow" : "In 1 hour"}: ${event.title}`,
-    body: [
-      `A reminder: "${event.title}", a live event in ${config.name}, starts ${soon}.`,
-      when,
-      `Join from the event page. The way in shows there ${JOIN_EARLY_MINUTES} minutes before the start:\n${page}`,
-      "If you can no longer make it, cancel your RSVP on the same page.",
-    ].join("\n\n"),
-    why: `You are getting this because you RSVP'd to this event and asked to be emailed by ${config.name}.`,
+    subject: w.evReminderSubject(job.kind === "24", event.title),
+    body: w.evReminderBody(job.kind === "24", event.title, config.name, when, JOIN_EARLY_MINUTES, page),
+    why: w.evWhyReminder(config.name),
   };
 }
 
@@ -338,8 +329,8 @@ export async function advanceEventJob(
               page: `${SITE_URL}/unsubscribe?c=${token}`,
               oneClick: `${SITE_URL}/api/mail/unsubscribe?c=${token}`,
               why: words.why,
-              label: "Stop the community's emails",
-              after: "in one click. You stay in the community, and keep your RSVPs.",
+              label: communityWords(store.language).stopLabel,
+              after: communityWords(store.language).stopAfterEvents,
             });
             messages.push({ from: storeSender(store), to: member.e, subject: r.subject, text: r.text, html: r.html, replyTo: store.email, headers: r.headers });
           } else {
@@ -347,8 +338,8 @@ export async function advanceEventJob(
               from: storeSender(store),
               to: member.e,
               subject: words.subject.slice(0, 150),
-              text: `${words.body}\n\n—\n${words.why}\nSent with Marktmorgen.`,
-              html: noticeHtml(words.body, words.why),
+              text: `${words.body}\n\n—\n${words.why}\n${communityWords(store.language).mailSentWith}`,
+              html: noticeHtml(words.body, words.why, LANGUAGES[parseLanguage(store.language)].locale, communityWords(store.language).mailSentWith),
               replyTo: store.email,
             });
           }

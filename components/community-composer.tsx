@@ -6,18 +6,10 @@ import { shrink } from "@/components/product-image-editor";
 import { IMAGE_ACCEPT, MAX_ALT_LENGTH, MAX_SOURCE_BYTES } from "@/lib/product-image";
 import { MAX_POST_TEXT, MAX_POST_TITLE } from "@/lib/community-text";
 import { MAX_POLL_DAYS, MAX_POLL_OPTIONS, MAX_POLL_OPTION_TEXT, MIN_POLL_OPTIONS } from "@/lib/community-polls";
+import type { ComposerWords } from "@/lib/buyer-words/community";
 
 /** `locked`: opens for posting at a level this member has not reached (lib/community-points.ts). */
 type SpaceChoice = { id: string; name: string; creatorOnly: boolean; locked?: boolean };
-
-const MESSAGES: Record<string, string> = {
-  unreadable: "That picture could not be opened. Try a JPEG, PNG or WebP.",
-  source: "That picture is over 30 MB. Pick a smaller one, or a screenshot of it.",
-  too_big: "That picture is still over 1 MB after shrinking. Try a simpler one.",
-  slow: "That is a lot of pictures in an hour. Wait a little, then try again.",
-  signed_out: "You are signed out here, or cannot post right now. Reload the page.",
-  server_error: "The picture could not be sent. Try again in a moment.",
-};
 
 const noSubscription = () => () => {};
 
@@ -44,7 +36,10 @@ export function CommunityComposer({
   canEmail,
   reach,
   named,
+  words,
 }: {
+  /** Everything it says, in the store's language (lib/buyer-words/community.ts, composerWords). */
+  words: ComposerWords;
   handle: string;
   folder: string;
   spaces: SpaceChoice[];
@@ -55,6 +50,7 @@ export function CommunityComposer({
   reach: number;
   named: boolean;
 }) {
+  const MESSAGES = words.errors;
   const open = spaces.filter((s) => owner || (!s.creatorOnly && !s.locked));
   const initial = open.find((s) => s.id === current)?.id ?? open[0]?.id ?? "";
   const [space, setSpace] = useState(initial);
@@ -155,22 +151,22 @@ export function CommunityComposer({
           <input type="hidden" name="img_h" value={image.h} />
         </>
       ) : null}
-      <h2 id="composer-title" className="text-base font-bold">{owner ? "Write to your community" : "Start a post"}</h2>
+      <h2 id="composer-title" className="text-base font-bold">{owner ? words.writeToCommunity : words.startPost}</h2>
       {!owner && !named ? (
         <p className="st-muted mt-1 text-sm">
-          {"Posts carry the name you choose under "}
-          <a href={`/@${handle}/community/you`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>You</a>
-          {", never your email address."}
+          {words.nameUnderBefore}
+          <a href={`/@${handle}/community/you`} className="font-semibold underline underline-offset-4" style={{ color: "var(--st-text)" }}>{words.you}</a>
+          {words.nameUnderAfter}
         </p>
       ) : null}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem]">
         <div>
-          <label htmlFor="post-title" className="sr-only">Title, if you want one</label>
-          <input id="post-title" name="title" maxLength={MAX_POST_TITLE} placeholder="Title (optional)" className="st-field" autoComplete="off" />
+          <label htmlFor="post-title" className="sr-only">{words.titleLabel}</label>
+          <input id="post-title" name="title" maxLength={MAX_POST_TITLE} placeholder={words.titlePlaceholder} className="st-field" autoComplete="off" />
         </div>
         <div>
-          <label htmlFor="post-space" className="sr-only">Space</label>
+          <label htmlFor="post-space" className="sr-only">{words.space}</label>
           <select id="post-space" name="space" value={space} onChange={(e) => setSpace(e.target.value)} className="st-field">
             {open.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
@@ -178,7 +174,7 @@ export function CommunityComposer({
           </select>
         </div>
       </div>
-      <label htmlFor="post-text" className="sr-only">What you want to say</label>
+      <label htmlFor="post-text" className="sr-only">{words.whatToSay}</label>
       <textarea
         id="post-text"
         name="text"
@@ -186,25 +182,25 @@ export function CommunityComposer({
         maxLength={MAX_POST_TEXT}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={owner ? "Share news, a question, a win…" : "Ask, share a win, say hello…"}
+        placeholder={owner ? words.ownerPlaceholder : words.memberPlaceholder}
         className="st-field mt-3 min-h-[7rem] resize-y"
         aria-describedby="post-count"
       />
       {poll ? (
         <div className="cm-poll-build mt-3">
-          <p className="text-sm font-bold">Answers</p>
-          <p className="st-muted mt-0.5 text-xs">The question goes in the title. Empty answers are left out.</p>
+          <p className="text-sm font-bold">{words.answers}</p>
+          <p className="st-muted mt-0.5 text-xs">{words.answersNote}</p>
           <ul className="mt-2 space-y-2">
             {options.map((one, i) => (
               <li key={i} className="flex items-center gap-2">
-                <label htmlFor={`poll-option-${i}`} className="sr-only">{`Answer ${i + 1}`}</label>
+                <label htmlFor={`poll-option-${i}`} className="sr-only">{words.answerN.replace("{n}", String(i + 1))}</label>
                 <input
                   id={`poll-option-${i}`}
                   name="poll_option"
                   value={one}
                   maxLength={MAX_POLL_OPTION_TEXT}
                   onChange={(e) => setOptions(options.map((o, j) => (j === i ? e.target.value : o)))}
-                  placeholder={`Answer ${i + 1}`}
+                  placeholder={words.answerN.replace("{n}", String(i + 1))}
                   className="st-field min-w-0 flex-1 !min-h-11 !py-2 text-sm"
                   autoComplete="off"
                 />
@@ -214,7 +210,7 @@ export function CommunityComposer({
                     className="cm-quiet-link cm-mini text-xs font-semibold"
                     onClick={() => setOptions(options.filter((_, j) => j !== i))}
                   >
-                    Remove
+                    {words.remove}
                   </button>
                 ) : null}
               </li>
@@ -222,23 +218,23 @@ export function CommunityComposer({
           </ul>
           {options.length < MAX_POLL_OPTIONS ? (
             <button type="button" className="cm-pill mt-2" onClick={() => setOptions([...options, ""])}>
-              Add an answer
+              {words.addAnswer}
             </button>
           ) : (
-            <p className="st-muted mt-2 text-xs">{`${MAX_POLL_OPTIONS} answers is the most a poll can hold.`}</p>
+            <p className="st-muted mt-2 text-xs">{words.mostAnswers}</p>
           )}
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="poll_multi" value="1" checked={multi} onChange={(e) => setMulti(e.target.checked)} className="h-4 w-4" />
-              <span>Let people pick more than one</span>
+              <span>{words.pickMoreThanOne}</span>
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" name="poll_quiet" value="1" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} className="h-4 w-4" />
-              <span>Hide the count until it closes</span>
+              <span>{words.hideCount}</span>
             </label>
           </div>
           <label htmlFor="poll-days" className="mt-3 block text-sm">
-            <span className="font-semibold">Closes after</span>
+            <span className="font-semibold">{words.closesAfter}</span>
             <span className="mt-1 flex items-center gap-2">
               <input
                 id="poll-days"
@@ -249,16 +245,18 @@ export function CommunityComposer({
                 max={MAX_POLL_DAYS}
                 value={days}
                 onChange={(e) => setDays(e.target.value)}
-                placeholder="never"
+                placeholder={words.never}
                 className="st-field !min-h-11 !py-2 w-28 text-sm"
               />
-              <span className="st-muted text-xs">days. Leave it empty and it stays open.</span>
+              <span className="st-muted text-xs">{words.daysEmptyOpen}</span>
             </span>
           </label>
         </div>
       ) : null}
       <p id="post-count" className="st-muted mt-1 text-right text-xs" aria-live="polite">
-        {left < 500 ? `${left} characters left` : "Web addresses become links."}
+        {left < 500
+          ? (words.charactersLeft.singular.includes(left) ? words.charactersLeft.one : words.charactersLeft.many).replace("{n}", String(left))
+          : words.addressesBecomeLinks}
       </p>
 
       {image ? (
@@ -266,40 +264,36 @@ export function CommunityComposer({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={image.preview} alt="" width={image.w} height={image.h} className="h-20 w-20 shrink-0 rounded-xl object-cover" style={{ boxShadow: "0 0 0 1px var(--st-line)" }} />
           <div className="min-w-0 flex-1">
-            <label htmlFor="post-alt" className="st-label text-sm">What the picture shows</label>
-            <input id="post-alt" name="img_alt" maxLength={MAX_ALT_LENGTH} value={alt} onChange={(e) => setAlt(e.target.value)} placeholder="For people who cannot see it" className="st-field mt-1" />
+            <label htmlFor="post-alt" className="st-label text-sm">{words.pictureShows}</label>
+            <input id="post-alt" name="img_alt" maxLength={MAX_ALT_LENGTH} value={alt} onChange={(e) => setAlt(e.target.value)} placeholder={words.pictureFor} className="st-field mt-1" />
             <button type="button" className="cm-quiet-link mt-2 inline-flex min-h-11 items-center text-sm font-semibold underline underline-offset-4" onClick={() => setImage(null)}>
-              Remove the picture
+              {words.removePicture}
             </button>
           </div>
         </div>
       ) : null}
       {busy ? (
         <div className="mt-3" role="status">
-          <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--st-accent-soft)" }} role="progressbar" aria-label="Sending the picture" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
+          <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--st-accent-soft)" }} role="progressbar" aria-label={words.sendingPicture} aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
             <div className="h-full rounded-full" style={{ width: `${Math.max(percent, 4)}%`, background: "var(--st-accent)" }} />
           </div>
-          <p className="st-muted mt-1 text-sm">Shrinking and sending the picture…</p>
+          <p className="st-muted mt-1 text-sm">{words.shrinkingPicture}</p>
         </div>
       ) : null}
       {error ? <p className="cm-alert mt-3" role="alert">{error}</p> : null}
 
       {owner ? (
         <fieldset className="mt-4 space-y-2">
-          <legend className="sr-only">Announcement</legend>
+          <legend className="sr-only">{words.announcement}</legend>
           <label className="flex min-h-11 items-start gap-2 text-sm">
             <input type="checkbox" name="kind" value="announcement" checked={announce} onChange={(e) => setAnnounce(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0" />
-            <span>Mark it as an announcement</span>
+            <span>{words.markAnnouncement}</span>
           </label>
           {announce ? (
             <label className={`flex min-h-11 items-start gap-2 text-sm ${canEmail && reach > 0 ? "" : "st-muted"}`}>
               <input type="checkbox" name="email" value="1" disabled={!canEmail || reach === 0} className="mt-0.5 h-5 w-5 shrink-0" />
               <span>
-                {!canEmail
-                  ? "Emailing announcements is part of Pro, once your email settings are filled in."
-                  : reach === 0
-                    ? "Nobody has asked for announcement emails yet."
-                    : `Also email it to the ${reach} ${reach === 1 ? "member" : "members"} who asked for announcements (counts toward your monthly emails)`}
+                {!canEmail ? words.emailNeedsPro : reach === 0 ? words.nobodyAskedEmails : words.alsoEmail}
               </span>
             </label>
           ) : null}
@@ -316,7 +310,7 @@ export function CommunityComposer({
                 <circle cx="9" cy="10" r="1.8" />
                 <path d="m4 18 5-5 4 4 3-3 4 4" strokeLinejoin="round" />
               </svg>
-              {image ? "One picture per post" : "Add a picture"}
+              {image ? words.onePicture : words.addPicture}
             </button>
           </>
         ) : (
@@ -324,10 +318,10 @@ export function CommunityComposer({
         )}
         <label className="flex items-center gap-2 text-sm font-semibold">
           <input type="checkbox" name="poll" value="1" checked={poll} onChange={(e) => setPoll(e.target.checked)} className="h-4 w-4" />
-          <span>Ask a poll</span>
+          <span>{words.askPoll}</span>
         </label>
         <button type="submit" className="btn st-btn" disabled={busy || sent} aria-busy={sent}>
-          {announce ? "Post the announcement" : "Post"}
+          {announce ? words.postAnnouncement : words.post}
         </button>
       </div>
     </form>

@@ -31,6 +31,7 @@ import { communityViewer, maySeeSpace } from "@/lib/community-access";
 import { MAX_POLL_DAYS, parsePoll, vote } from "@/lib/community-polls";
 import { mentionsIn, whoIs } from "@/lib/community-mentions";
 import { tell } from "@/lib/community-notify";
+import { communityWords } from "@/lib/buyer-words/community";
 import { checkCommunityImage } from "@/lib/community-image";
 import { blobImages, dropCommunityImage, noteCommunityUpload, takeCommunityUpload } from "@/lib/community-files";
 import { advanceAnnouncement, queueAnnouncement } from "@/lib/community-mail";
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
           id,
           [...named.values()],
           { kind: "mention", post: made.post.id, comment: "", by: key, words: title || text },
-          { handle: store.handle, who: owner ? store.name : viewer.member?.n || "Somebody" },
+          { handle: store.handle, who: owner ? store.name : viewer.member?.n || communityWords(store.language).somebody, language: store.language },
         );
       }
       if (announce && form.get("email") === "1") {
@@ -256,8 +257,8 @@ export async function POST(request: NextRequest) {
         // The name a phone shows: the creator's store name, or the name this
         // member chose. Never an address, and never "a member" on a phone —
         // a notification nobody can place is a notification nobody opens.
-        const doer = owner ? store.name : viewer.member?.n || "Somebody";
-        const phone = { handle: store.handle, who: doer };
+        const doer = owner ? store.name : viewer.member?.n || communityWords(store.language).somebody;
+        const phone = { handle: store.handle, who: doer, language: store.language };
         await tell(id, [post.a], { kind: "reply", post: post.id, comment: made.comment.id, by: key, words: text }, phone);
         if (above && above.a !== post.a) {
           await tell(id, [above.a], { kind: "answer", post: post.id, comment: made.comment.id, by: key, words: text }, phone);

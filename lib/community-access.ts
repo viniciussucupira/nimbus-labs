@@ -48,6 +48,7 @@ import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
+import { communityWords } from "@/lib/buyer-words/community";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { onAccount } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
@@ -417,18 +418,8 @@ export async function requestCommunityLink(input: {
   const sent = await sendEmail({
     from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
     to: normaliseEmail(raw),
-    subject: `Your way into ${config.name}`.slice(0, 200),
-    text: [
-      `Here is your way into ${config.name}:`,
-      "",
-      link,
-      "",
-      "Open it on the phone or computer you want to use. That device then stays let in for 90 days. No password to make or remember.",
-      "",
-      "The link works for one hour. If you did not ask for it, ignore this email; nothing happens unless the link is used.",
-      "",
-      `Sent by Marktmorgen on behalf of ${store.name}.`,
-    ].join("\n"),
+    subject: communityWords(store.language).linkSubject(config.name).slice(0, 200),
+    text: communityWords(store.language).linkBody(config.name, link, store.name),
   });
   return sent ? "sent" : "error";
 }

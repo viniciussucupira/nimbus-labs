@@ -21,6 +21,7 @@ import { COURSES_WORDS } from "@/lib/buyer-words/courses";
 import { MEMBERSHIP_WORDS } from "@/lib/buyer-words/membership";
 import { GIVING_WORDS } from "@/lib/buyer-words/giving";
 import { AFFILIATES_WORDS } from "@/lib/buyer-words/affiliates";
+import { COMMUNITY_WORDS } from "@/lib/buyer-words/community";
 import { addProduct, claimHandle, ensureStatsId, setLanguage, setProductLink, setStripeAccount, setSubscription, storeForEmail } from "@/lib/store";
 import { readProduct } from "@/lib/catalog";
 import { createCheckout } from "@/lib/store-checkout";
@@ -72,10 +73,19 @@ const SAME: Record<string, Record<string, string[]>> = {
   membership: { fr: ["fromName"], nl: ["fromName"], pt: ["fromName"] },
   // "Label: link".
   affiliates: { es: ["doorText"], de: ["doorText"], it: ["doorText"], nl: ["doorText"], pt: ["doorText"] },
+  // Words the languages took from English: Community, Feed, Level, Post, Messages, likes, studio; "7 h 7 min", "7 pts".
+  community: {
+    es: ["lengthHoursMinutes", "pts"],
+    fr: ["tabMessages", "tabMessagesWaiting", "studio", "messageLink"],
+    de: ["pageTitle", "tabFeed", "levelBadge"],
+    it: ["pageTitle", "studio", "postPageTitle", "lengthHoursMinutes"],
+    nl: ["pageTitle", "likes", "studio"],
+    pt: ["lengthHoursMinutes", "pts"],
+  },
 };
 
 const NUMBERS = new Set(["count", "n", "dates", "minutes", "seats", "episodes", "lessons", "sessions", "days", "trialDays", "payments", "page", "pages", "stars", "boxes", "least", "most", "percent", "more", "hours", "people", "left", "total", "done", "places", "weeks", "months"]);
-const BOOLEANS = new Set(["plan", "alone", "untilCancel", "stripe", "paypal"]);
+const BOOLEANS = new Set(["plan", "alone", "untilCancel", "stripe", "paypal", "tomorrow", "oneWord"]);
 const isBoolean = (p: string) => BOOLEANS.has(p) || /^(is|has|with)[A-Z]/.test(p);
 
 /** Calls a word with arguments it can be told apart by: names in «», numbers, booleans both ways. */
@@ -97,6 +107,7 @@ function sayAll(words: Record<string, unknown>, english: Record<string, unknown>
           if (isBoolean(p)) return true;
           if (p === "interval") return "month";
           if (p === "unit") return "hour";
+          if (p === "kind") return "post";
           const name = `\u00ab${key}${i}\u00bb`;
           names.push(name);
           return name;
@@ -132,6 +143,7 @@ async function main(): Promise<void> {
     ["membership", (code) => MEMBERSHIP_WORDS[code]],
     ["giving", (code) => GIVING_WORDS[code]],
     ["affiliates", (code) => AFFILIATES_WORDS[code]],
+    ["community", (code) => COMMUNITY_WORDS[code]],
   ];
   for (const [area, wordsOf] of AREAS) {
     const englishWords = wordsOf("en");

@@ -68,6 +68,8 @@ import { holdsAnyOf } from "@/lib/community-access";
 import { type CommunityConfig, newItemId } from "@/lib/community";
 import { LockBusyError, setIfHeld, withLock } from "@/lib/redis-lock";
 import { indexEvent, unindexEvent } from "@/lib/community-index";
+import { communityWords } from "@/lib/buyer-words/community";
+import { LANGUAGES } from "@/lib/store-language";
 import {
   EVENT_LENGTHS,
   EVENT_WRITES_PER_HOUR,
@@ -679,6 +681,20 @@ export function eventAddress(store: Pick<Store, "handle">, eventId: string): str
 /** "Tuesday, October 6, 6:00 PM (EDT)" in the event's own time zone. */
 export function eventTime(event: Pick<CommunityEvent, "start" | "tz">): string {
   return `${readableTime(event.start, event.tz)} (${zoneName(event.start, event.tz)})`;
+}
+
+/** "Tuesday, October 6 at 3:00 PM (EDT)", in the event's zone and the store's language. */
+export function eventTimeIn(store: Pick<Store, "language">, event: Pick<CommunityEvent, "start" | "tz">): string {
+  const locale = LANGUAGES[store.language].locale;
+  return `${readableTime(event.start, event.tz, locale)} (${zoneName(event.start, event.tz, locale)})`;
+}
+
+/** Its length, as people say it: "45 minutes", "1 hour", "1 h 30 min", in the store's language. */
+export function lengthIn(store: Pick<Store, "language">, minutes: number): string {
+  const w = communityWords(store.language);
+  if (minutes < 60) return w.lengthMinutes(minutes);
+  if (minutes % 60 === 0) return w.lengthHours(minutes / 60);
+  return w.lengthHoursMinutes(Math.floor(minutes / 60), minutes % 60);
 }
 
 /** The date and time fields the studio's form starts from, for an event. */

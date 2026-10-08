@@ -16,15 +16,27 @@ import { useRouter } from "next/navigation";
 const noop = () => () => {};
 
 /** "Your time: Tue, Oct 6, 3:00 PM", when the reader's zone is not the event's. Nothing before the page runs. */
-export function LocalTime({ ms, tz }: { ms: number; tz: string }) {
+export function LocalTime({
+  ms,
+  tz,
+  locale = "en-US",
+  template = "Your time: {time}",
+}: {
+  ms: number;
+  tz: string;
+  /** How the store's language writes a date (lib/store-language.ts). */
+  locale?: string;
+  /** "Your time: {time}", in the store's language. */
+  template?: string;
+}) {
   const words = useSyncExternalStore(
     noop,
     () => {
       try {
         const own = Intl.DateTimeFormat().resolvedOptions().timeZone;
         if (!own || own === tz) return "";
-        const text = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(ms));
-        return `Your time: ${text}`;
+        const text = new Intl.DateTimeFormat(locale, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(new Date(ms));
+        return template.replace("{time}", text);
       } catch {
         return "";
       }
@@ -56,7 +68,22 @@ export function DoorTimer({ at }: { at: number[] }) {
  * it in a tab of its own instead. Nothing is loaded from Jitsi until the
  * reader presses Join: the page alone never turns a camera on.
  */
-export function RoomEmbed({ room, title, name, note }: { room: string; title: string; name: string; note: string }) {
+const ENGLISH_ROOM = { leave: "Leave the room here", join: "Join here", newTab: "Open in a new tab", title: "" };
+
+export function RoomEmbed({
+  room,
+  title,
+  name,
+  note,
+  words = ENGLISH_ROOM,
+}: {
+  room: string;
+  title: string;
+  name: string;
+  note: string;
+  /** In the store's language; `title` is the frame's whole label. */
+  words?: { leave: string; join: string; newTab: string; title: string };
+}) {
   const [joined, setJoined] = useState(false);
   // The name goes in the part of the address after "#", which the browser
   // keeps to itself: Jitsi's page reads it, its server never sees it.
@@ -67,7 +94,7 @@ export function RoomEmbed({ room, title, name, note }: { room: string; title: st
         <div className="ev-room">
           <iframe
             src={src}
-            title={`${title}: the video room`}
+            title={words.title || `${title}: the video room`}
             allow="camera; microphone; display-capture; fullscreen; autoplay; clipboard-write"
             allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
@@ -77,15 +104,15 @@ export function RoomEmbed({ room, title, name, note }: { room: string; title: st
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {joined ? (
           <button type="button" className="cm-pill" onClick={() => setJoined(false)}>
-            Leave the room here
+            {words.leave}
           </button>
         ) : (
           <button type="button" className="btn st-btn" onClick={() => setJoined(true)}>
-            Join here
+            {words.join}
           </button>
         )}
         <a href={room} target="_blank" rel="noopener noreferrer" className={joined ? "cm-pill" : "cm-pill cm-pill-wide"}>
-          Open in a new tab
+          {words.newTab}
         </a>
       </div>
       <p className="st-muted mt-3 text-sm">{note}</p>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { type ChatRefusal, MAX_CHAT_TEXT, refusalWords } from "@/lib/community-chat";
+import { type ChatRefusal, MAX_CHAT_TEXT } from "@/lib/community-chat";
 import { AWAY_AFTER_MS, IDLE_MS, LIVE_MS, type Pace, askEvery, paceFor } from "@/lib/chat-pace";
+import type { RoomWords } from "@/lib/buyer-words/community";
 
 type Message = { i: number; a: string; text: string; at: number; n?: string };
 /** Leave to ask the shared route, as the server hands it (lib/chat-grant.ts). */
@@ -56,6 +57,7 @@ export function CommunityRoom({
   leave,
   resting: firstResting,
   quiet,
+  words: t,
 }: {
   handle: string;
   /** The community's id: what the shared route is asked about. */
@@ -79,6 +81,8 @@ export function CommunityRoom({
   resting: boolean;
   /** Seconds since the room was last spoken in when the page was drawn; -1 for a room nobody has spoken in. */
   quiet: number;
+  /** Everything it says, in the store's language (lib/buyer-words/community.ts). */
+  words: RoomWords;
 }) {
   const [messages, setMessages] = useState<Message[]>(first);
   const [names, setNames] = useState<Record<string, string>>(firstNames);
@@ -296,7 +300,12 @@ export function CommunityRoom({
         // Every reason has its own sentence, in one place beside the refusals
         // themselves (lib/community-chat.ts). Anything unrecognised is the
         // honest generic one rather than a guess.
-        setError(refusalWords(isRefusal(data.error) ? data.error : "unknown", slow, data.wait));
+        const reason = isRefusal(data.error) ? data.error : "unknown";
+        setError(
+          reason === "slow"
+            ? t.slowRefusal.replace("{n}", String(slow)).replace("{more}", String(data.wait ?? slow))
+            : t.refusals[reason] ?? t.refusals.unknown,
+        );
         return;
       }
       // Not the cursor: somebody else may have spoken just before, and their
@@ -310,7 +319,7 @@ export function CommunityRoom({
       atBottom.current = true;
     } catch {
       setText(words);
-      setError("That did not send. Try again in a moment.");
+      setError(t.refusals.unknown);
     } finally {
       setSending(false);
     }
@@ -328,12 +337,12 @@ export function CommunityRoom({
       });
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean };
       if (!data.ok) {
-        setError("That message could not be removed.");
+        setError(t.removeFailed);
         return;
       }
       setMessages((held) => held.filter((m) => m.i !== i));
     } catch {
-      setError("That message could not be removed.");
+      setError(t.removeFailed);
     }
   }
 
@@ -349,18 +358,18 @@ export function CommunityRoom({
       });
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean };
       if (!data.ok) {
-        setError("The room could not be emptied.");
+        setError(t.emptyFailed);
         return;
       }
       setMessages([]);
       setEmptying(false);
     } catch {
-      setError("The room could not be emptied.");
+      setError(t.emptyFailed);
     }
   }
 
   const when = (at: number) =>
-    new Date(at * 1000).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    new Date(at * 1000).toLocaleTimeString(t.locale, { hour: "numeric", minute: "2-digit" });
 
   return (
     <div className="mt-5">
@@ -373,7 +382,7 @@ export function CommunityRoom({
         }}
       >
         {messages.length === 0 ? (
-          <li className="st-muted p-4 text-center text-sm">Nothing said yet.</li>
+          <li className="st-muted p-4 text-center text-sm">{t.nothingSaid}</li>
         ) : (
           messages.map((message) => {
             const mine = message.a === me;
@@ -381,7 +390,7 @@ export function CommunityRoom({
               <li key={message.i} className={`flex ${mine ? "justify-end" : "justify-start"} px-3 py-1`}>
                 <div className={`cm-dm-bubble ${mine ? "cm-dm-mine" : ""}`}>
                   {!mine ? (
-                    <p className="text-xs font-bold">{names[message.a] ?? "A member"}</p>
+                    <p className="text-xs font-bold">{names[message.a] ?? t.aMember}</p>
                   ) : null}
                   <p className="cm-text text-[0.9375rem]">{message.text}</p>
                   <p className="st-muted mt-0.5 flex items-center justify-end gap-2 text-[0.6875rem] font-semibold">
@@ -391,7 +400,7 @@ export function CommunityRoom({
                         className="cm-quiet-link cm-mini cm-danger"
                         onClick={() => void remove(message.i)}
                       >
-                        Remove
+                        {t.remove}
                       </button>
                     ) : null}
                     <span>{when(message.at)}</span>
@@ -405,23 +414,23 @@ export function CommunityRoom({
 
       {canWrite && (!creatorOnly || owner) ? (
         <form onSubmit={send} className="mt-3">
-          <label htmlFor="room-text" className="sr-only">Say something</label>
+          <label htmlFor="room-text" className="sr-only">{t.sayLabel}</label>
           <div className="flex gap-2">
             <input
               id="room-text"
               value={text}
               onChange={(e) => setText(e.target.value)}
               maxLength={MAX_CHAT_TEXT}
-              placeholder="Say something…"
+              placeholder={t.sayPlaceholder}
               className="st-field min-w-0 flex-1 !min-h-[44px] !py-2"
               autoComplete="off"
             />
-            <button type="submit" className="btn st-btn" disabled={sending || !text.trim()}>Send</button>
+            <button type="submit" className="btn st-btn" disabled={sending || !text.trim()}>{t.send}</button>
           </div>
         </form>
       ) : (
         <p className="st-muted mt-3 text-sm">
-          {creatorOnly && !owner ? "Only the creator writes in this room." : "You can read here, but not write."}
+          {creatorOnly && !owner ? t.refusals.creatorOnly : t.refusals.muted}
         </p>
       )}
 
@@ -431,15 +440,15 @@ export function CommunityRoom({
         <p className="mt-3">
           {emptying ? (
             <span className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-semibold">Empty the room, for everybody?</span>
-              <button type="button" className="cm-pill cm-danger" onClick={() => void empty()}>Yes, empty it</button>
+              <span className="font-semibold">{t.emptyConfirm}</span>
+              <button type="button" className="cm-pill cm-danger" onClick={() => void empty()}>{t.yesEmpty}</button>
               <button type="button" className="cm-quiet-link cm-mini text-xs font-semibold" onClick={() => setEmptying(false)}>
-                Keep it
+                {t.keepIt}
               </button>
             </span>
           ) : (
             <button type="button" className="cm-quiet-link cm-mini text-xs font-semibold" onClick={() => setEmptying(true)}>
-              Empty the room
+              {t.emptyRoom}
             </button>
           )}
         </p>
@@ -448,24 +457,24 @@ export function CommunityRoom({
       {resting ? (
         <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
           <button type="button" className="cm-pill" onClick={() => void check()} disabled={checking}>
-            {checking ? "Checking…" : "Check for new messages"}
+            {checking ? t.checking : t.checkNew}
           </button>
-          <span className="st-muted">This room is not checking by itself for now.</span>
+          <span className="st-muted">{t.notChecking}</span>
         </p>
       ) : away ? (
         <p className="st-muted mt-3 text-sm" role="status">
-          Paused while you were away. It starts again as soon as you touch the page.
+          {t.paused}
         </p>
       ) : null}
 
       <p className="st-muted mt-3 text-xs">
         {[
           resting
-            ? "New messages are shown when you press the button, or send one."
-            : `This page checks for new messages every ${LIVE_MS / 1000} seconds while people are talking and every ${IDLE_MS / 1000} while the room is quiet. It stops while it is in the background or has not been touched for ${AWAY_AFTER_MS / 60_000} minutes.`,
-          slow > 0 ? `One message every ${slow} seconds.` : "",
-          links ? "" : "Web addresses are not written here.",
-          `The last ${500} messages are kept.`,
+            ? t.restingNote
+            : t.paceNote,
+          slow > 0 ? t.slowNote.replace("{n}", String(slow)) : "",
+          links ? "" : t.noLinksNote,
+          t.keptNote,
         ]
           .filter(Boolean)
           .join(" ")}

@@ -6,25 +6,22 @@ import { normaliseHandle, storeForPage } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { readMembers } from "@/lib/community";
 import { communityVisitor } from "@/lib/community-page";
-import { whenWords } from "@/lib/community-text";
 import { type Notice, markSeen, noticesFor } from "@/lib/community-notify";
 import { requestCount } from "@/lib/community-dm";
 import { canPush, deviceCount, publicKey } from "@/lib/community-push";
 import { CommunityPushToggle } from "@/components/community-push-toggle";
-import { CommunityBar, Face, authorName } from "@/components/community-parts";
+import { CommunityBar, Face, authorName, storeWhen } from "@/components/community-parts";
+import { communityWords } from "@/lib/buyer-words/community";
+import { LANGUAGES } from "@/lib/store-language";
 
 type Params = { params: Promise<{ handle: string }> };
 
-export const metadata: Metadata = {
-  title: "What happened — Marktmorgen",
-  robots: { index: false, follow: false },
-};
-
-const WHAT: Record<Notice["kind"], (who: string) => string> = {
-  reply: (who) => `${who} answered your post`,
-  answer: (who) => `${who} answered your comment`,
-  mention: (who) => `${who} named you`,
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  const decoded = decodeURIComponent(handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
+  return { title: `${communityWords(store?.language).whatHappened} — Marktmorgen`, robots: { index: false, follow: false } };
+}
 
 /**
  * What happened to this person: somebody answered their post, answered their
@@ -51,6 +48,8 @@ export default async function NotificationsPage({ params }: Params) {
 
   const id = store.community.id;
   const { config, key } = viewer;
+  const w = communityWords(store.language);
+  const WHAT: Record<Notice["kind"], (who: string) => string> = { reply: w.whatReply, answer: w.whatAnswer, mention: w.whatMention };
   const { notices } = await noticesFor(id, key);
   const members = await readMembers(id, notices.map((n) => n.by));
   const waiting = config.dm.on ? await requestCount(id, key) : 0;
@@ -60,30 +59,30 @@ export default async function NotificationsPage({ params }: Params) {
   await markSeen(id, key);
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={LANGUAGES[store.language].locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen`} style={lookStyle(store.look) as React.CSSProperties}>
       <CommunityBar store={store} config={config} tab={null} signedIn messages={config.dm.on} requests={waiting} />
       <main id="content" className="mx-auto max-w-2xl px-4 pb-16 pt-6">
         <p className="mb-4">
-          <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">Back to the feed</Link>
+          <Link href={home} className="cm-quiet-link text-sm font-semibold underline underline-offset-4">{w.backToFeed}</Link>
         </p>
-        <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">What happened</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-[-0.02em]">{w.whatHappened}</h1>
         <p className="st-muted mt-1 text-sm">
-          Only things that happened to you: somebody answered your post, answered your comment, or named you with an @.
+          {w.whatHappenedNote}
         </p>
 
-        <CommunityPushToggle handle={store.handle} publicKey={publicKey()} devices={devices} />
+        <CommunityPushToggle handle={store.handle} publicKey={publicKey()} devices={devices} words={w.push} />
 
         {notices.length === 0 ? (
           <div className="st-note mt-6 text-center">
-            <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing yet</p>
+            <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.nothingYet}</p>
             <p className="mt-1 text-sm">
               {/* The creator has no member record and no chosen name: their
                   handle is @creator, in every community, always. */}
               {viewer.owner
-                ? "When somebody answers you or writes @creator, it shows up here."
+                ? w.whenNamed("creator")
                 : viewer.member?.h
-                  ? `When somebody answers you or writes @${viewer.member.h}, it shows up here.`
-                  : "Choose a name on your own page, and people will be able to name you with an @."}
+                  ? w.whenNamed(viewer.member.h)
+                  : w.chooseNameToBeNamed}
             </p>
           </div>
         ) : (
@@ -102,7 +101,7 @@ export default async function NotificationsPage({ params }: Params) {
                       {notice.words ? <span className="st-muted block truncate text-sm">{notice.words}</span> : null}
                     </span>
                     <time className="st-muted shrink-0 text-xs font-semibold" dateTime={new Date(notice.at * 1000).toISOString()}>
-                      {whenWords(notice.at)}
+                      {storeWhen(store, notice.at)}
                     </time>
                   </Link>
                 </li>
