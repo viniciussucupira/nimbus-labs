@@ -17,6 +17,7 @@ import {
   embedPlace,
   tagged,
 } from "@/lib/embed-rules";
+import { productSegment } from "@/lib/product-slug";
 
 type Kind = "card" | "button";
 
@@ -179,7 +180,7 @@ export function BuyButtonEditor({
               style={{ display: "block", width: "100%", maxWidth: CARD_WIDTH, height, border: 0, borderRadius: 24 }}
             />
           ) : (
-            <a href={tagged(`/@${handle}/p/${product.id}`, place)} target="_blank" rel="noopener" style={buttonStyle(fill, onFill)}>
+            <a href={tagged(`/@${handle}/p/${productSegment(product)}`, place)} target="_blank" rel="noopener" style={buttonStyle(fill, onFill)}>
               {words}
             </a>
           )}
@@ -195,7 +196,7 @@ export function BuyButtonEditor({
           <Icon name={copied ? "check" : "window"} size={15} />
           {copied ? "Copied" : "Copy the code"}
         </button>
-        <a href={kind === "card" ? embedPath(handle, product.id) : `/@${handle}/p/${product.id}`} target="_blank" rel="noopener" className="btn btn-secondary btn-sm">
+        <a href={kind === "card" ? embedPath(handle, product.id) : `/@${handle}/p/${productSegment(product)}`} target="_blank" rel="noopener" className="btn btn-secondary btn-sm">
           <Icon name="external" size={15} />
           {kind === "card" ? "Open the card" : "Open where it leads"}
         </a>

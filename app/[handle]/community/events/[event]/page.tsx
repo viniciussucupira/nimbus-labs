@@ -25,6 +25,7 @@ import { LANGUAGES } from "@/lib/store-language";
 import { DateLeaf, eventTimeIn, eventWhenIn, lengthIn, placesWords } from "@/components/community-events";
 import { DoorTimer, LocalTime, RoomEmbed } from "@/components/community-event-room";
 import { VideoEmbed } from "@/components/video-embed";
+import { productSegment } from "@/lib/product-slug";
 
 type Params = {
   params: Promise<{ handle: string; event: string }>;
@@ -136,7 +137,7 @@ export default async function CommunityEventPage({ params, searchParams }: Param
                 <ul className="mt-2 space-y-2">
                   {forProducts.map((p) => (
                     <li key={p.id}>
-                      <Link href={`/@${store.handle}/p/${p.id}`} className="cm-row">
+                      <Link href={`/@${store.handle}/p/${productSegment(p)}`} className="cm-row">
                         <span className="min-w-0 break-words font-semibold">{p.title}</span>
                         <span className="st-muted shrink-0 text-sm">{p.kind}</span>
                       </Link>

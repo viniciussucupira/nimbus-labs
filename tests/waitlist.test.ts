@@ -21,6 +21,7 @@ import { launchBody } from "@/lib/waitlist-rules";
 import { leadsKey } from "@/lib/contacts";
 import { store as redis } from "./redis-stub";
 import { done, is, part } from "./check";
+import { productSegment } from "@/lib/product-slug";
 
 type Sent = { to: string[]; subject: string; text: string; headers?: Record<string, string> };
 const single: Sent[] = [];
@@ -100,7 +101,7 @@ async function main(): Promise<void> {
   is("one batch, to the confirmed who stayed", [sent, batches.length, batches[0]?.map((m) => m.to[0])], [2, 1, ["dana@example.com", "hal@example.com"]]);
   const email = batches[0][0];
   is("its subject", email.subject, "The Bread Book is out");
-  is("its link and price", email.text.includes(`/@harbor/p/${product.id}`) && email.text.includes("$39"), true);
+  is("its link and price", email.text.includes(`/@harbor/p/${productSegment(product)}`) && email.text.includes("$39"), true);
   is("the note", email.text.includes("Thank you for waiting."), true);
   is("the postal address", email.text.includes("1 Main St, Portland, OR 97201"), true);
   is("a one-click way out", Boolean(email.headers?.["List-Unsubscribe"]), true);

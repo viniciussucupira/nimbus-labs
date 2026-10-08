@@ -591,6 +591,20 @@ try {
     ], ["true", before, true]);
   }
 
+  part("A product's address in words");
+  {
+    await open(page, `${LOCAL}/@localshop`);
+    const href = await page.locator(`a[href*="/p/knife-skills-${ids["Knife Skills"]}"]`).first().getAttribute("href");
+    is("the store links each product by its title's words and id", href, `/@localshop/p/knife-skills-${ids["Knife Skills"]}`);
+    const response = await page.goto(`${LOCAL}${href}`, { waitUntil: "networkidle" });
+    const canonical = await page.locator('link[rel="canonical"]').getAttribute("href");
+    is("that address opens the page, and names itself as the one to keep", [response.status(), canonical.endsWith(`/@localshop/p/knife-skills-${ids["Knife Skills"]}`)], [200, true]);
+    const old = await page.goto(`${LOCAL}/@localshop/p/${ids["Knife Skills"]}`, { waitUntil: "networkidle" });
+    is("an address shared before still opens the page, pointing search engines to the new one", [old.status(), (await page.locator('link[rel="canonical"]').getAttribute("href")).endsWith(`/p/knife-skills-${ids["Knife Skills"]}`)], [200, true]);
+    const renamed = await page.goto(`${LOCAL}/@localshop/p/knife-basics-${ids["Knife Skills"]}`, { waitUntil: "networkidle" });
+    is("and so does one with the words of an older title", [renamed.status(), (await words(page.locator("h1"))).length > 0], [200, true]);
+  }
+
   part("Blocks added where they go, from a gallery");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);

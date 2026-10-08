@@ -24,7 +24,7 @@ import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { cache } from "react";
 import { type Listing, type Store, isFree, normaliseHandle, storeForPage } from "@/lib/store";
 import { moneyField } from "@/lib/money";
-import { readListing, readListings } from "@/lib/catalog";
+import { productIdFromAddress, readListing, readListings } from "@/lib/catalog";
 import { canSell, canSellProduct, sellableOptions } from "@/lib/store-checkout";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
@@ -55,6 +55,7 @@ import { StoreResting } from "@/components/store-resting";
 import { JsonLd } from "@/components/structured-data";
 import { offeredItems } from "@/lib/bundles";
 import { MIN_BUNDLE_ITEMS } from "@/lib/bundle-rules";
+import { productSegment } from "@/lib/product-slug";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -87,7 +88,8 @@ const load = cache(async (raw: string, id: string): Promise<{ store: Store; prod
   const asked = normaliseHandle(decoded);
   const store = await storeForPage(asked);
   if (!store) return null;
-  const product = await readListing(store, id);
+  // The id alone, or the title's words with the id at the end (lib/product-slug.ts).
+  const product = await readListing(store, productIdFromAddress(store, id) ?? id);
   // A draft has no page until the creator publishes it.
   return product && !product.hidden ? { store, product, asked } : null;
 });
@@ -108,7 +110,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const ownDomain = store.domain?.liveAt && canUseDomain(store) ? `https://${store.domain.name}` : null;
   // On the creator's own domain the page's address is the short one, /p/<id>,
   // which the proxy serves there (proxy.ts), as the store page's is "/".
-  const canonical = ownDomain ? `${ownDomain}/p/${encodeURIComponent(product.id)}` : productPath(store, product);
+  const canonical = ownDomain ? `${ownDomain}/p/${productSegment(product)}` : productPath(store, product);
   // The picture a shared link unfolds into is drawn from the product's own
   // picture by opengraph-image.tsx beside this page.
   return {
@@ -319,7 +321,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const built = page.blocks.length > 0;
   // A product with any review — even only hidden ones — says so on its page.
   const anyReviews = summary !== null && summary.visible + summary.hidden > 0;
-  const reviewsHref = `/@${store.handle}/p/${product.id}/reviews`;
+  const reviewsHref = `${productPath(store, product)}/reviews`;
   const reviewsPart = (heading: string): ReactNode =>
     anyReviews && summary ? (
       <ReviewsSection

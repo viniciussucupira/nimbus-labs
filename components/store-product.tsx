@@ -17,6 +17,7 @@ import { payPalPrice, paypalReady } from "@/lib/paypal-sales";
 import { comparable, startingOption } from "@/lib/product-option";
 import { DEFAULT_PEOPLE, MAX_PEOPLE, MIN_PEOPLE } from "@/lib/group-rules";
 import { givableOptions } from "@/lib/gift-rules";
+import { productSegment } from "@/lib/product-slug";
 
 /**
  * How many price options are drawn as cards before they become a list to pick
@@ -34,7 +35,7 @@ const LIST_ABOVE = 6;
  * would send dozens of them from one visit that opens none.
  */
 export function productPath(store: Store, product: Listing): string {
-  return `/@${store.handle}/p/${product.id}`;
+  return `/@${store.handle}/p/${productSegment(product)}`;
 }
 
 /** The figure on the price pill: "$27", "from €9 a month", "¥500+", "Free", in the store's currency and language. */

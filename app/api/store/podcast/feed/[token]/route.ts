@@ -11,6 +11,7 @@ import { photoUrl } from "@/lib/photo-limits";
 import { SITE_URL } from "@/lib/site-url";
 import { coursesWords } from "@/lib/buyer-words/courses";
 import { LANGUAGES, parseLanguage } from "@/lib/store-language";
+import { productSegment } from "@/lib/product-slug";
 
 /**
  * Kept by the CDN, under the feed's own secret address, for a few hours: a
@@ -53,7 +54,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     // The store's language (lib/store-language.ts), as RSS writes one.
     language: LANGUAGES[parseLanguage(store.language)].locale.toLowerCase(),
     author: store.name,
-    page: `${SITE_URL}/@${store.handle}/p/${product.id}`,
+    page: `${SITE_URL}/@${store.handle}/p/${productSegment(product)}`,
     image: product.image ? `${SITE_URL}${imageUrl(product.image)}` : store.photoId ? `${SITE_URL}${photoUrl(store.photoId)}` : null,
     episodes: podcast?.episodes ?? [],
     audio: (e) => `${base}/${e.id}.${e.contentType === "audio/mp4" ? "m4a" : "mp3"}`,

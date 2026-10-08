@@ -35,6 +35,7 @@
  * store record replaced, in one write. Until that write lands the old record
  * is the store, complete, and doing it again writes the same records.
  */
+import { idInSegment } from "@/lib/product-slug";
 import { type CallPackage, parseCallPackage } from "@/lib/call-package-rules";
 import { type PodcastRef, parsePodcastRef } from "@/lib/podcast-rules";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
@@ -549,6 +550,15 @@ export function productIdFor(store: Store, id: string): string | null {
     if (item.id === id || item.options.includes(id)) return item.id;
   }
   return null;
+}
+
+/**
+ * The product a page address names (lib/product-slug.ts): its id alone, or
+ * its title's words with the id at the end. Read from the store record, so
+ * finding it costs nothing more than the visit already does.
+ */
+export function productIdFromAddress(store: Store, segment: string): string | null {
+  return idInSegment(segment, (id) => store.catalog.items.some((item) => item.id === id));
 }
 
 /** Every id in use: products and their options. */

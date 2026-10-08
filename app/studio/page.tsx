@@ -112,6 +112,7 @@ import { StudioStorePin } from "@/components/studio-store-pin";
 import { PasskeyManager } from "@/components/passkey-manager";
 import { ResendPurchase } from "@/components/resend-purchase";
 import { LeaveTeam } from "@/components/team-manager";
+import { productSegment } from "@/lib/product-slug";
 
 export const metadata: Metadata = {
   title: "Your account — Marktmorgen",
@@ -985,7 +986,7 @@ export default async function StudioPage({
                     <ul className="mt-4 divide-y divide-line">
                       {(shelf?.products ?? []).map((product) => (
                         <li key={product.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5">
-                          <Link href={`/@${store.handle}/p/${product.id}`} className="min-w-0 break-words font-semibold text-ink underline-offset-4 hover:underline">
+                          <Link href={`/@${store.handle}/p/${productSegment(product)}`} className="min-w-0 break-words font-semibold text-ink underline-offset-4 hover:underline">
                             {product.title}
                           </Link>
                           <span className="shrink-0 text-sm tabular-nums text-ink-soft">
