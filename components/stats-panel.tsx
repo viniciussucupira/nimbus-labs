@@ -22,6 +22,9 @@ const SOURCE_NAMES: Record<string, string> = {
   bing: "Bing",
   duckduckgo: "DuckDuckGo",
   email: "Email",
+  whatsapp: "WhatsApp",
+  qr: "QR code",
+  device: "Shared from a phone",
   direct: "Direct, or an app that hides it",
 };
 
@@ -277,7 +280,7 @@ export function StatsPanel({ data, canExport = true }: { data: StatsData; canExp
               {data.revenueBySource.map((row) => (
                 <tr key={row.source} className="border-b border-line/60">
                   <th scope="row" className="py-1 pr-3 font-medium text-ink">
-                    {row.source === "direct" ? "No tag on the link" : row.source}
+                    {row.source === "direct" ? "No tag on the link" : SOURCE_NAMES[row.source] ?? row.source}
                   </th>
                   <td className="py-1 text-right tabular-nums">{count(row.sales)}</td>
                   <td className="py-1 text-right font-semibold tabular-nums text-ink">{money(row.cents)}</td>
