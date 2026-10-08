@@ -163,8 +163,34 @@ export function HeroView({ block, ctx, pill, rating }: { block: HeroBlock; ctx: 
   const video = block.media === "video" ? block.video : null;
   const picture = block.media === "picture" ? ctx.picture : null;
   const hasMedia = Boolean(video || picture);
+  // A picture behind the words needs a picture; a video is centred instead (lib/sales-page.ts, HeroLayout).
+  const layout = block.layout === "cover" ? (picture ? "cover" : "centered") : block.layout ?? "split";
+  const button = block.button ? (
+    <div className="sp-hero-button">
+      <ActionButton ctx={ctx} label="" large />
+    </div>
+  ) : null;
+  if (layout === "cover" && picture) {
+    return (
+      <header className="sp-hero sp-hero-cover">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={picture.src} alt={picture.alt} width={picture.width} height={picture.height} fetchPriority="high" className="sp-hero-cover-img" />
+        <div className="sp-hero-words">
+          <div className="flex flex-wrap items-center gap-2">
+            {pill}
+            {rating}
+          </div>
+          <h1 className="font-display mt-4 text-[2.1rem] font-semibold leading-[1.08] tracking-[-0.025em] sm:text-5xl">
+            {block.headline || ctx.productTitle}
+          </h1>
+          {block.sub ? <p className="mt-4 whitespace-pre-line text-lg leading-relaxed sm:text-xl">{block.sub}</p> : null}
+          {button}
+        </div>
+      </header>
+    );
+  }
   return (
-    <header className={`sp-hero ${hasMedia ? "sp-hero-split" : ""}`}>
+    <header className={`sp-hero ${hasMedia && layout === "split" ? "sp-hero-split" : ""} ${layout === "centered" ? "sp-hero-centered" : ""}`}>
       <div className="sp-hero-words">
         <div className="flex flex-wrap items-center gap-2">
           {pill}
@@ -174,6 +200,7 @@ export function HeroView({ block, ctx, pill, rating }: { block: HeroBlock; ctx: 
           {block.headline || ctx.productTitle}
         </h1>
         {block.sub ? <p className="st-muted mt-4 whitespace-pre-line text-lg leading-relaxed sm:text-xl">{block.sub}</p> : null}
+        {button}
       </div>
       {video ? (
         <div className="sp-hero-media">

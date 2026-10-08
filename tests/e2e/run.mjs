@@ -512,7 +512,7 @@ try {
   {
     const saved = await studio.evaluate(async (id) => {
       const blocks = [
-        { id: "hero0001", kind: "hero", headline: "Cut faster, safely", sub: "Ten short lessons.", media: "none", video: null },
+        { id: "hero0001", kind: "hero", headline: "Cut faster, safely", sub: "Ten short lessons.", media: "picture", video: null, layout: "cover", button: true },
         { id: "fact0001", kind: "facts", heading: "By the numbers", show: ["lessons", "buyers", "rating"] },
         { id: "fit00001", kind: "fit", heading: "Is it for you?", yesLabel: "", noLabel: "", yes: ["You cook every day", "You fear the knife"], no: ["You are a trained chef"] },
         { id: "step0001", kind: "steps", heading: "How it works", items: [{ title: "Pay", detail: "" }, { title: "Watch a lesson a day", detail: "Ten minutes each." }, { title: "Cook with confidence", detail: "" }] },
@@ -528,6 +528,14 @@ try {
     is("saved from the studio", saved, true);
     await open(page, `${LOCAL}/@localshop/p/${ids["Knife Skills"]}`);
     const main = await words(page.locator("main"));
+    const hero = page.locator("header.sp-hero");
+    is("the product's picture behind the words, with a button under them", [
+      await hero.evaluate((el) => el.classList.contains("sp-hero-cover")),
+      await hero.locator("h1").innerText(),
+      await hero.locator("img.sp-hero-cover-img").count(),
+      await hero.locator('form[action="/api/store/checkout"] button').count(),
+      await hero.locator("h1").evaluate((el) => getComputedStyle(el).color),
+    ], [true, "Cut faster, safely", 1, 1, "rgb(255, 255, 255)"]);
     is("who it is for, with the heading written for the creator", [main.includes("This is for you if"), main.includes("You fear the knife"), main.includes("This is not for you if")], [true, true, true]);
     is("the steps, numbered", await page.locator(".sp-step").count(), 3);
     is("the comparison, its other column named for the creator", [await page.locator('[data-block="comp0001"] .sp-compare tbody tr').count(), main.includes("Another way")], [2, true]);

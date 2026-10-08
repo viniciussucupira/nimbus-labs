@@ -111,7 +111,7 @@ export function coachChecks(input: CoachInput): CoachCheck[] {
       id: "early-button",
       label: free ? "The sign-up form within reach" : "A button near the top",
       why: "Some visitors arrive ready. Make them scroll past five sections to pay and some of them leave first.",
-      done: free ? true : ctas.some((i) => i <= 3),
+      done: free ? true : Boolean(hero?.button) || ctas.some((i) => i <= 3),
       weight: 3,
       add: free ? undefined : "cta",
     },
