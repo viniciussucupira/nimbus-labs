@@ -510,9 +510,13 @@ export function lengthAt(setup: CallSetup, start: number): number | null {
   return setup.minutes * 60_000;
 }
 
-/** A time as a person reads it, in a given zone: "Tuesday, October 6, 9:30 AM". */
-export function readableTime(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+/**
+ * A time as a person reads it, in a given zone: "Tuesday, October 6, 9:30 AM".
+ * In English unless given a buyer's store's locale (lib/store-language.ts,
+ * LANGUAGES[code].locale): "martes, 6 de octubre, 9:30".
+ */
+export function readableTime(ms: number, tz: string, locale = "en-US"): string {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: tz,
     weekday: "long",
     month: "long",
@@ -522,9 +526,9 @@ export function readableTime(ms: number, tz: string): string {
   }).format(new Date(ms));
 }
 
-/** The zone's short name at that instant, e.g. "EDT" or "GMT+1". */
-export function zoneName(ms: number, tz: string): string {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" }).formatToParts(new Date(ms));
+/** The zone's short name at that instant, e.g. "EDT" or "GMT+1"; in a store's locale, "MESZ" for German. */
+export function zoneName(ms: number, tz: string, locale = "en-US"): string {
+  const parts = new Intl.DateTimeFormat(locale, { timeZone: tz, timeZoneName: "short" }).formatToParts(new Date(ms));
   return parts.find((p) => p.type === "timeZoneName")?.value ?? tz;
 }
 

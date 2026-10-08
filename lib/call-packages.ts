@@ -25,10 +25,12 @@ import { isConfirmed } from "@/lib/calls";
 import { inTheCurrencyShown, isSettled, onlyInstantMethods } from "@/lib/instant-pay";
 import { purchaseRefunded } from "@/lib/refunds";
 import { sendEmail } from "@/lib/email";
-import { formatMoney } from "@/lib/money";
 import { applyTax, applyTaxDocuments, openKeepingTheSale } from "@/lib/tax";
 import { withLock } from "@/lib/redis-lock";
-import { type CallPackage, packageLimitWords } from "@/lib/call-package-rules";
+import type { CallPackage } from "@/lib/call-package-rules";
+import { LANGUAGES, parseLanguage } from "@/lib/store-language";
+import { speechFor, wordsIn } from "@/lib/buyer-words";
+import { bookingWords } from "@/lib/buyer-words/booking";
 import type { Listing, Store } from "@/lib/store";
 
 export const PACKAGE_TOKEN = /^[0-9a-f]{48}$/;
@@ -100,15 +102,17 @@ export async function packageState(bought: Bought, at = now()): Promise<PackageS
 /** Opens the checkout that buys a package, on the creator's own account. */
 /** The checkout that buys a package, as Stripe is sent it. */
 export function packageCheckoutBody(store: Store, product: Listing, pkg: CallPackage, origin: string): URLSearchParams {
-  const name = `${product.title} — ${pkg.sessions} sessions`;
+  // Stripe's page, and what it lists, in the store's language (lib/store-language.ts).
+  const b = bookingWords(store.language);
+  const name = b.packageName(product.title, pkg.sessions);
   const body = new URLSearchParams({
     mode: "payment",
-    locale: "en",
+    locale: LANGUAGES[parseLanguage(store.language)].stripe,
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": store.currency,
     "line_items[0][price_data][unit_amount]": String(pkg.priceCents),
     "line_items[0][price_data][product_data][name]": name.slice(0, 250),
-    "line_items[0][price_data][product_data][description]": `${pkg.sessions} sessions, each booked when you like. ${packageLimitWords(pkg)}.`,
+    "line_items[0][price_data][product_data][description]": b.packageDescription(pkg.sessions, wordsIn(parseLanguage(store.language)).packageLimit(pkg.days)),
     "metadata[store]": store.handle,
     "metadata[product]": product.id,
     "metadata[title]": name.slice(0, 480),
@@ -177,24 +181,28 @@ export async function recordPackage(input: { store: Store; session: Session; pro
   await redisPipeline([["SET", tokenKey(token), checkout, ...keep(bought)]]);
   const amount = typeof session.amount_total === "number" ? session.amount_total : 0;
   const currency = typeof session.currency === "string" && session.currency ? session.currency : store.currency;
+  // In the store's language (lib/buyer-words/booking.ts), with the amount and
+  // the date written its way, in the currency actually paid.
+  const b = bookingWords(store.language);
+  const said = speechFor(store.language, currency);
   await sendEmail({
     from: input.from,
     to: email,
-    subject: `Your ${total} sessions: ${product.title}`.slice(0, 200),
+    subject: b.packageSubject(total, product.title).slice(0, 200),
     text: [
-      `Thank you for buying from ${store.name}. This is your confirmation.`,
+      b.packageThanks(store.name),
       "",
-      `What you bought: ${product.title}, ${total} sessions`,
-      `Paid: ${formatMoney(amount, currency)}`,
-      `Order reference: ${checkout}`,
-      bought.until ? `Book them by: ${new Date(bought.until * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" })}` : "No time limit to book them.",
+      b.packageWhat(product.title, total),
+      b.packagePaid(said.money(amount)),
+      b.packageReference(checkout),
+      bought.until ? b.packageBookByDate(said.date(bought.until * 1000)) : b.packageNoLimit,
       "",
-      "Book each session, whenever you like, here:",
+      b.packageBookHere,
       `${base}/book/${product.id}?pkg=${token}`,
       "",
-      "Keep this email: that link is how you book the rest. Each one gets its own confirmation, reminders and meeting link, and can be moved like any booking.",
+      b.packageKeep,
       "",
-      `Charged by ${store.name} on their own Stripe account. Questions go to ${store.name} by replying to this email.`,
+      b.packageCharged(store.name),
     ].join("\n"),
     replyTo: store.email,
     idempotencyKey: `nimbus-package:${checkout}`,
@@ -203,12 +211,13 @@ export async function recordPackage(input: { store: Store; session: Session; pro
 }
 
 /** The coupon that makes one session of a package free: all of it, once, for one checkout. */
-export function sessionCouponBody(checkout: string): URLSearchParams {
+export function sessionCouponBody(checkout: string, language: unknown = "en"): URLSearchParams {
   return new URLSearchParams({
     percent_off: "100",
     duration: "once",
     max_redemptions: "1",
-    name: "Session from a package",
+    // Shown on Stripe's page, so in the store's language (lib/buyer-words/booking.ts).
+    name: bookingWords(language).packageCoupon,
     "metadata[made_by]": "nimbus-labs",
     "metadata[purpose]": "call-package",
     "metadata[package]": checkout,
@@ -235,7 +244,7 @@ export async function prepareSession(store: Store, token: string, origin: string
     const session = await onAccount("GET", store.stripeAccountId, `/checkout/sessions/${encodeURIComponent(found.checkout)}?expand[]=payment_intent.latest_charge`);
     if (!isSettled(session)) return { ok: false, reason: "gone" };
     if (await purchaseRefunded(store.stripeAccountId, session)) return { ok: false, reason: "refunded" };
-    const coupon = await onAccount("POST", store.stripeAccountId, "/coupons", sessionCouponBody(found.checkout));
+    const coupon = await onAccount("POST", store.stripeAccountId, "/coupons", sessionCouponBody(found.checkout, store.language));
     const id = typeof coupon.id === "string" ? coupon.id : "";
     if (!id) return { ok: false, reason: "error" };
     return {

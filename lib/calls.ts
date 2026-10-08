@@ -74,6 +74,8 @@ import { VIDEO_ROOM_NOTE, isVideoRoom, roomOf } from "@/lib/call-rooms";
 import { alertCreator } from "@/lib/phone-alerts";
 import { callMeeting, callMoved, linkUpdates } from "@/lib/meet-links";
 import type { MeetRecord } from "@/lib/meet-records";
+import { LANGUAGES, parseLanguage } from "@/lib/store-language";
+import { type BookingWords, bookingWords } from "@/lib/buyer-words/booking";
 
 /** How far back Stripe is read for paid bookings. Longer than any horizon. */
 const LOOKBACK_DAYS = 120;
@@ -529,12 +531,15 @@ export function callCheckoutBody(input: {
 }): URLSearchParams {
   const { store, product, start, end, buyerTz, origin } = input;
   const pkg = input.fromPackage;
-  // Said in the buyer's own time zone: they are the one reading Stripe's page.
-  const when = `${readableTime(start, buyerTz)} (${zoneName(start, buyerTz)})`;
+  // Said in the buyer's own time zone: they are the one reading Stripe's page,
+  // in the store's language (lib/store-language.ts). The same title is kept
+  // on the sale, as what the buyer saw.
+  const lang = LANGUAGES[parseLanguage(store.language)];
+  const when = `${readableTime(start, buyerTz, lang.locale)} (${zoneName(start, buyerTz, lang.locale)})`;
   const name = `${product.title} \u2014 ${when}`;
   const body = new URLSearchParams({
     mode: "payment",
-    locale: "en",
+    locale: lang.stripe,
     "line_items[0][quantity]": "1",
     // In the store's own currency (lib/money.ts), like every price it has.
     "line_items[0][price_data][currency]": store.currency,
@@ -875,36 +880,38 @@ async function tellMoved(input: {
   const video = isVideoRoom(room);
   // A link replaced after a failure counts too, so this file replaces every one sent before.
   const sequence = moves + (await linkUpdates(store.callsId, { session, product: product.id, start }));
-  const invite = (note: string) =>
+  const invite = (note: string, words?: BookingWords) =>
     Buffer.from(
-      callInvite({ uid: session, start, end, title: product.title, storeName: store.name, room, note, sequence }),
+      callInvite({ uid: session, start, end, title: product.title, storeName: store.name, room, note, sequence, words }),
     ).toString("base64");
   const at = (ms: number, tz: string) => `${readableTime(ms, tz)} (${zoneName(ms, tz)})`;
 
   if (email) {
+    // The buyer's email speaks the store's language (lib/buyer-words/booking.ts).
+    const b = bookingWords(store.language);
+    const locale = LANGUAGES[parseLanguage(store.language)].locale;
+    const buyerAt = (ms: number) => `${readableTime(ms, buyerTz, locale)} (${zoneName(ms, buyerTz, locale)})`;
     const again = canMove(setup, start, moves);
     await sendEmail({
       from: storeSender(store),
       to: email,
-      subject: `Moved: ${product.title} with ${store.name}`,
+      subject: b.movedSubject(product.title, store.name),
       text: [
-        `Your booking with ${store.name} has moved.`,
+        b.movedHead(store.name),
         "",
-        `${product.title}, ${Math.round((end - start) / 60_000)} minutes`,
-        `Now: ${at(start, buyerTz)}`,
-        `Was: ${at(from.start, buyerTz)}`,
+        b.titleLength(product.title, Math.round((end - start) / 60_000)),
+        b.nowAt(buyerAt(start)),
+        b.wasAt(buyerAt(from.start)),
         "",
-        room ? `Join here at the new time: ${room}` : `${store.name} will send you the link to join before the call.`,
-        ...(video ? [VIDEO_ROOM_NOTE] : []),
+        room ? b.joinAtNewTime(room) : b.willSendLink(store.name),
+        ...(video ? [b.videoRoomNote] : []),
         "",
-        "The calendar file attached has the new time. If your calendar still shows the old one as well, delete the old one.",
-        again
-          ? `To move it again: ${moveLink(origin, store, product.id, session)} (you can move a booking ${MAX_MOVES} times in all).`
-          : `This booking cannot be moved again from the link. To change it, reply to this email; the reply goes to ${store.name}.`,
-        `To cancel, reply to this email; the reply goes to ${store.name}.`,
+        b.newTimeAttached,
+        again ? b.moveAgainLink(moveLink(origin, store, product.id, session), MAX_MOVES) : b.cannotMoveAgain(store.name),
+        b.toCancel(store.name),
       ].join("\n"),
       replyTo: store.email,
-      attachments: [{ filename: "call.ics", content: invite(room ? `Join: ${room}${video ? `\n\n${VIDEO_ROOM_NOTE}` : ""}` : `${store.name} will send the link to join.`) }],
+      attachments: [{ filename: "call.ics", content: invite(buyerNote(b, store, room), b) }],
     });
   }
 
@@ -943,7 +950,10 @@ export function callInvite(input: {
   room: string | null;
   note: string;
   sequence?: number;
+  /** The buyer's file speaks the store's language (lib/buyer-words/booking.ts); the creator's, English. */
+  words?: BookingWords;
 }): string {
+  const words = input.words ?? bookingWords("en");
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -956,19 +966,27 @@ export function callInvite(input: {
     `SEQUENCE:${input.sequence ?? 0}`,
     `DTSTART:${icsTime(input.start)}`,
     `DTEND:${icsTime(input.end)}`,
-    `SUMMARY:${icsText(`${input.title} with ${input.storeName}`)}`,
+    `SUMMARY:${icsText(words.icsSummary(input.title, input.storeName))}`,
     `DESCRIPTION:${icsText(input.note)}`,
     ...(input.room ? [`LOCATION:${icsText(input.room)}`, `URL:${input.room}`] : []),
     "STATUS:CONFIRMED",
     "BEGIN:VALARM",
     "TRIGGER:-PT15M",
     "ACTION:DISPLAY",
-    `DESCRIPTION:${icsText(`${input.title} in 15 minutes`)}`,
+    `DESCRIPTION:${icsText(words.icsAlarm(input.title))}`,
     "END:VALARM",
     "END:VEVENT",
     "END:VCALENDAR",
   ];
   return `${lines.map(fold).join("\r\n")}\r\n`;
+}
+
+/**
+ * What a buyer's calendar file says about joining, in the store's language:
+ * the link, and the note on a video room made here, or that the link will come.
+ */
+export function buyerNote(words: BookingWords, store: Store, room: string | null): string {
+  return room ? `${words.icsJoin(room)}${isVideoRoom(room) ? `\n\n${words.videoRoomNote}` : ""}` : words.icsWillSend(store.name);
 }
 
 /** Where a calendar file for a booking can be fetched again, from an email. */
@@ -1066,50 +1084,43 @@ export async function confirmBooking(input: {
   // Made here, the first time it is needed, when the product makes rooms.
   const room = await roomOf(store.callsId, { product: product.id, setup, session, start, end });
   const video = isVideoRoom(room);
-  const invite = (note: string) =>
+  const invite = (note: string, words?: BookingWords) =>
     Buffer.from(
-      callInvite({ uid: session, start, end, title: product.title, storeName: store.name, room, note, sequence: (input.moves ?? 0) + (meeting?.updates ?? 0) }),
+      callInvite({ uid: session, start, end, title: product.title, storeName: store.name, room, note, sequence: (input.moves ?? 0) + (meeting?.updates ?? 0), words }),
     ).toString("base64");
   const minutes = Math.round((end - start) / 60_000);
-  const what = setup.kind === "live" ? "Your seat" : setup.seats > 1 ? "Your place in the group call" : "Your call";
 
   if (buyerEmail) {
+    // The buyer's email speaks the store's language (lib/buyer-words/booking.ts).
+    const b = bookingWords(store.language);
+    const locale = LANGUAGES[parseLanguage(store.language)].locale;
+    const hours = Math.max(setup.noticeHours, 1);
     await sendEmail({
       from: storeSender(store),
       to: buyerEmail,
-      subject: `Booked: ${product.title} with ${store.name}`,
+      subject: b.bookedSubject(product.title, store.name),
       text: [
-        `${what} with ${store.name} is booked.`,
+        setup.kind === "live" ? b.seatBooked(store.name) : setup.seats > 1 ? b.groupBooked(store.name) : b.callBooked(store.name),
         "",
-        `${product.title}, ${minutes} minutes`,
-        `${readableTime(start, buyerTz)} (${zoneName(start, buyerTz)})`,
+        b.titleLength(product.title, minutes),
+        `${readableTime(start, buyerTz, locale)} (${zoneName(start, buyerTz, locale)})`,
         "",
-        room
-          ? `Join here at that time: ${room}`
-          : `${store.name} will send you the link to join before the call.`,
-        ...(video ? [VIDEO_ROOM_NOTE] : []),
+        room ? b.joinAtThatTime(room) : b.willSendLink(store.name),
+        ...(video ? [b.videoRoomNote] : []),
         "",
         // The reminders planned above: each only while it is at least an hour away (lib/call-records.ts).
-        `The calendar file attached adds it to your calendar.${
-          start - Date.now() >= 25 * 3600_000
-            ? " You will get a reminder a day before and an hour before."
-            : start - Date.now() >= 2 * 3600_000
-              ? " You will get a reminder an hour before."
-              : ""
+        `${b.calendarAttached}${
+          start - Date.now() >= 25 * 3600_000 ? b.remindDayHour : start - Date.now() >= 2 * 3600_000 ? b.remindHour : ""
         }`,
-        ...(canMove(setup, start, input.moves ?? 0)
-          ? [
-              `To move it to another time yourself, up to ${Math.max(setup.noticeHours, 1)} ${Math.max(setup.noticeHours, 1) === 1 ? "hour" : "hours"} before it starts: ${moveLink(origin, store, product.id, session)}`,
-            ]
-          : []),
-        `To cancel, reply to this email; the reply goes to ${store.name}.`,
+        ...(canMove(setup, start, input.moves ?? 0) ? [b.moveYourself(hours, moveLink(origin, store, product.id, session))] : []),
+        b.toCancel(store.name),
         "",
-        `${store.name}: ${origin}/@${store.handle}`,
+        `${store.name}${b.colon}${origin}/@${store.handle}`,
       ].join("\n"),
       // Replies reach the creator, which the studio tells them before they
       // offer a single call.
       replyTo: store.email,
-      attachments: [{ filename: "call.ics", content: invite(room ? `Join: ${room}${video ? `\n\n${VIDEO_ROOM_NOTE}` : ""}` : `${store.name} will send the link to join.`) }],
+      attachments: [{ filename: "call.ics", content: invite(buyerNote(b, store, room), b) }],
     });
   }
 
@@ -1196,28 +1207,31 @@ export async function tellNewLink(input: {
   const setup = product.call;
   const name = meeting.provider === "google" ? "Google Meet" : "Zoom";
   let told = 0;
+  // The buyers' emails speak the store's language (lib/buyer-words/booking.ts).
+  const b = bookingWords(store.language);
+  const locale = LANGUAGES[parseLanguage(store.language)].locale;
   for (const call of people) {
     if (!call.email) continue;
     const tz = isTimeZone(call.buyerTz) ? call.buyerTz : setup.tz;
-    const note = `Join: ${meeting.link}`;
+    const note = b.icsJoin(meeting.link);
     const invite = Buffer.from(
-      callInvite({ uid: call.session, start: call.start, end: call.end, title: product.title, storeName: store.name, room: meeting.link, note, sequence: call.moves + meeting.updates }),
+      callInvite({ uid: call.session, start: call.start, end: call.end, title: product.title, storeName: store.name, room: meeting.link, note, sequence: call.moves + meeting.updates, words: b }),
     ).toString("base64");
     const sent = await sendEmail({
       from: storeSender(store),
       to: call.email,
-      subject: `New link to join: ${product.title} with ${store.name}`,
+      subject: b.newLinkSubject(product.title, store.name),
       text: [
-        `The link to join ${product.title} with ${store.name} has changed. The time has not.`,
+        b.newLinkHead(product.title, store.name),
         "",
-        `${readableTime(call.start, tz)} (${zoneName(call.start, tz)})`,
+        `${readableTime(call.start, tz, locale)} (${zoneName(call.start, tz, locale)})`,
         "",
-        `Join here at that time, on ${name}: ${meeting.link}`,
-        ...(previous ? [`The link you were sent before (${previous}) is no longer the one to use.`] : []),
+        b.joinOn(name, meeting.link),
+        ...(previous ? [b.oldLink(previous)] : []),
         "",
-        "The calendar file attached replaces the one sent before.",
-        `${store.name}: ${origin}/@${store.handle}`,
-        `To cancel, reply to this email; the reply goes to ${store.name}.`,
+        b.replacesFile,
+        `${store.name}${b.colon}${origin}/@${store.handle}`,
+        b.toCancel(store.name),
       ].join("\n"),
       replyTo: store.email,
       attachments: [{ filename: "call.ics", content: invite }],
