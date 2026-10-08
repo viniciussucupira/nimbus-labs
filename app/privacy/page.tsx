@@ -255,6 +255,22 @@ export default function PrivacyPage() {
           given is kept under the recipient&apos;s address, like a purchase of
           their own.
         </p>
+        <p id="buyer-questions">
+          <strong className="text-black">Questions on a product&apos;s page.</strong>{" "}
+          Some stores answer questions on their product pages. If you type
+          one, your question and what that page already says in public are
+          sent to a model run by Anthropic, which writes the answer; nothing
+          about you goes with it, and the box says the answer is automatic.
+          We keep the answer for a day, so the same question about the same
+          page is not asked twice. When the page could not answer, we keep
+          the question, the product and the day for up to about four months
+          and show them to the store&apos;s creator, so they can see what
+          their page is missing; we do not keep who asked. The network
+          address your browser connects from is used, for up to a day, only
+          to limit how many questions come from one place. Leave personal
+          details out of a question: it is read by the model and may be read
+          by the creator.
+        </p>
         <p id="team-places">
           <strong className="text-black">Bought for several people.</strong>{" "}
           When somebody buys a product for several people, they get a link to
@@ -1056,7 +1072,10 @@ export default function PrivacyPage() {
             Outreach email it receives what the creator typed, the
             creator&apos;s name, the names of their products, and the name and
             description a business gives itself on its own website; never
-            the address the email is for;
+            the address the email is for. Where a store answers questions on
+            its product pages, it also receives the question a visitor typed
+            and what that product&apos;s page already says in public, and
+            nothing about who asked;
           </li>
           <li>
             <strong className="text-black">Unsplash</strong>, which serves the

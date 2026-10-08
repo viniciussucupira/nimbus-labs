@@ -60,6 +60,7 @@ import {
   setProductAbout,
   setProductDisplay,
   setProductFile,
+  setAnswers,
   setProductImage,
   setStripeAccount,
   setSubscription,
@@ -92,6 +93,16 @@ export const DEMO_STORE = {
     query: "fm=webp&fit=crop&crop=faces&w=480&h=480&q=75",
   },
   link: { title: "Open a store like this one", url: `${SITE_URL}/` },
+  /**
+   * Visitors' questions about the product are answered from its page
+   * (lib/answers.ts), so anybody looking at the demo can try the box a
+   * creator would switch on. What it is told beyond the page is only this.
+   */
+  answers: {
+    on: true,
+    facts:
+      "This is a demo store made by Marktmorgen. Jenny is a fictional cook. The checkout runs in Stripe's test mode: no real money moves and no real card is charged. Pay with the test card 4242 4242 4242 4242, any future date and any CVC. The file you get is a real PDF. Because nothing is charged, there is nothing to refund.",
+  },
 } as const;
 
 /** One product, with two prices, each handing over its own file. */
@@ -291,6 +302,11 @@ async function ensureStore(pending: string[]): Promise<Store | null> {
     const done = await setSubscription(REF, { active: true, tier: "creator", cycle: "month", subscriptionId: null, customerId: null, trialEnds: 0 });
     if (done) store = done;
     else pending.push(refused("plan", "refused"));
+  }
+  if (store.answers.on !== DEMO_STORE.answers.on || store.answers.facts !== DEMO_STORE.answers.facts) {
+    const done = await setAnswers(REF, { ...DEMO_STORE.answers });
+    if (done) store = done;
+    else pending.push(refused("answers", "refused"));
   }
   if (!store.links.some((link) => link.url === DEMO_STORE.link.url && link.title === DEMO_STORE.link.title)) {
     const same = store.links.find((link) => link.url === DEMO_STORE.link.url);

@@ -177,7 +177,7 @@ async function main(): Promise<void> {
   is("someone new takes one", (await take(tokenFor("eve@example.com"))).outcome, "taken");
 
   part("A link cannot be used to fill inboxes");
-  let answers: string[] = [];
+  const answers: string[] = [];
   for (let i = 0; i < 25; i += 1) answers.push(await askOther(`flood${i}@example.com`));
   is("it stops sending after a generous number a day", [answers.filter((a) => a === "sent").length < 25, answers.at(-1)], [true, "slow"]);
 
