@@ -1,0 +1,234 @@
+/**
+ * The site itself, run on this computer and used in a real browser, from a
+ * product's page to the email that opens what was bought.
+ *
+ *   npm run test:local
+ *
+ * Why it exists (7 October 2026). The unit tests call the code that hands a
+ * purchase over; none of them goes through the door a buyer does. That is how
+ * a paid gift went undelivered: every function it was made of was tested and
+ * the path between them was not. And two things shipped that week — sections
+ * on a store, and a purchase for several people — could only be looked at on
+ * a store with products that can sell, which production does not have yet.
+ *
+ * What runs: the real app (`next dev`), unchanged, pointed at one local
+ * stand-in for its database, for Stripe and for the email sender
+ * (tests/e2e/services.mjs), through the addresses the code already accepts
+ * for exactly this (STRIPE_CONNECT_API_BASE, RESEND_API_BASE, and the
+ * database's own). No card is typed and no real service is reached. What it
+ * cannot show is Stripe's own page: a checkout that is opened comes back
+ * paid.
+ *
+ * What is checked, in a browser:
+ *
+ *   - the store page: its sections over the right products, and its line of
+ *     news leading to a product;
+ *   - a purchase for three people: the price times three, the link on the
+ *     page after paying and in the receipt, three people each asking for a
+ *     place and opening it from their own email, the product on each one's
+ *     list of purchases, and a fourth person told every place is taken;
+ *   - a gift: both emails, and the product on the recipient's list as a gift;
+ *   - the studio: the sections as saved, a change to them showing on the
+ *     store, and the sale named for what it was.
+ *
+ * It needs a browser driver (Playwright) on the machine; it is not part of
+ * `npm test`, which runs anywhere. It takes about a minute.
+ *
+ * Checked against itself the day it was written: with the function that
+ * finds a gift's product made to find nothing (the defect above), it stops
+ * with a failure; put back, it passed four times in a row.
+ */
+import { spawn } from "node:child_process";
+import { mkdtempSync } from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
+import { startServices } from "./services.mjs";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = resolve(here, "../..");
+const SERVICES = 4477;
+const APP = 3100;
+const LOCAL = `http://localhost:${APP}`;
+const FAKE = `http://127.0.0.1:${SERVICES}`;
+/** Links in emails and on pages are written for the site's real address; here they are opened on this computer. */
+const local = (url) => url.replace("https://marktmorgen.com", LOCAL);
+
+const env = {
+  ...process.env,
+  UPSTASH_REDIS_REST_URL: FAKE,
+  UPSTASH_REDIS_REST_TOKEN: "local",
+  STRIPE_SECRET_KEY: "sk_test_local_only_a_stand_in_0000",
+  STRIPE_CONNECT_API_BASE: FAKE,
+  RESEND_API_KEY: "re_local_only_a_stand_in",
+  RESEND_API_BASE: FAKE,
+  NEXT_TELEMETRY_DISABLED: "1",
+};
+
+let chromium;
+try {
+  const require = createRequire(join(root, "package.json"));
+  ({ chromium } = require("playwright"));
+} catch {
+  console.error("This needs Playwright on the machine (npm i -g playwright). Nothing was run.");
+  process.exit(2);
+}
+
+let failed = 0;
+function is(name, got, want) {
+  const same = JSON.stringify(got) === JSON.stringify(want);
+  console.log(`  ${same ? "ok  " : "FAIL"}  ${name}`);
+  if (!same) {
+    failed += 1;
+    console.log(`        expected ${JSON.stringify(want)}\n        got      ${JSON.stringify(got)}`);
+  }
+}
+const part = (name) => console.log(`\n${name}`);
+const words = async (locator) => (await locator.innerText()).replace(/\s+/g, " ").trim();
+
+const services = await startServices(SERVICES);
+let app = null;
+let browser = null;
+try {
+  // The store, written through the studio's own functions.
+  const out = mkdtempSync(join(tmpdir(), "nimbus-e2e-seed-"));
+  const seedFile = join(out, "seed.cjs");
+  await build({ entryPoints: [join(here, "seed.ts")], bundle: true, platform: "node", format: "cjs", outfile: seedFile, logLevel: "error", alias: { "@": root } });
+  // Not spawnSync: the stand-in database it writes to is served by this very process.
+  const seeded = await new Promise((done) => {
+    const child = spawn(process.execPath, [seedFile], { env, stdio: ["ignore", "pipe", "pipe"] });
+    const said = { out: "", err: "" };
+    child.stdout.on("data", (chunk) => (said.out += chunk));
+    child.stderr.on("data", (chunk) => (said.err += chunk));
+    child.on("close", (status) => done({ status, ...said }));
+  });
+  if (seeded.status !== 0) throw new Error(`the store could not be made:\n${seeded.err}`);
+  const { ids, session } = JSON.parse(seeded.out.trim().split("\n").at(-1));
+
+  // The app.
+  app = spawn("npx", ["next", "dev", "-p", String(APP)], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+  let log = "";
+  app.stdout.on("data", (chunk) => (log += chunk));
+  app.stderr.on("data", (chunk) => (log += chunk));
+  const started = Date.now();
+  for (;;) {
+    if (Date.now() - started > 180_000) throw new Error(`the app did not start:\n${log.slice(-2000)}`);
+    const up = await fetch(`${LOCAL}/@localshop`).then((r) => r.status === 200).catch(() => false);
+    if (up) break;
+    await new Promise((wait) => setTimeout(wait, 1500));
+  }
+
+  browser = await chromium.launch(process.env.PLAYWRIGHT_BROWSERS_PATH ? { executablePath: join(process.env.PLAYWRIGHT_BROWSERS_PATH, "chromium") } : {}).catch(() => chromium.launch());
+  const context = await browser.newContext({ viewport: { width: 430, height: 900 } });
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(String(error)));
+  const open = (target, url) => target.goto(url, { waitUntil: "networkidle", timeout: 120_000 });
+  const sectionsOn = (target) =>
+    target.$$eval("main section[aria-label]", (all) => all.map((s) => [s.querySelector("h2")?.textContent ?? "", s.querySelectorAll("ul > li").length]));
+
+  part("The store page");
+  await open(page, `${LOCAL}/@localshop`);
+  is("its sections, each over its own products", await sectionsOn(page), [["Recipe books", 2], ["Planning", 2], ["Courses", 1]]);
+  is("its line of news, leading to the product it names", [await words(page.locator(".st-announce")), await page.locator(".st-announce a").getAttribute("href")], ["New: Knife Skills, ten short lessons →", `/@localshop/p/${ids["Knife Skills"]}`]);
+  is("every product can be bought", await page.locator('form[action="/api/store/checkout"]').count(), 5);
+
+  part("A purchase for three people");
+  await open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`);
+  await page.locator("#group summary").click();
+  is("offered under the buy box, at the price for each", await words(page.locator("#group button[type=submit]")), "Buy for your team — $27 per person");
+  await page.fill('#group input[name="people"]', "3");
+  await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), page.locator("#group button[type=submit]").click()]);
+  await page.waitForLoadState("networkidle");
+  is("paid: the price, three times", [await words(page.locator("h1")), (await words(page.locator("main"))).includes("for 3 people, for $81.")], ["Your 3 places are ready", true]);
+  const link = await page.locator("#group-link").inputValue();
+  is("the link to pass on is on the page", /\/@localshop\/group\/grp_[0-9a-f]{24}$/.test(link), true);
+  const receipt = services.emails().at(-1);
+  is("and in the buyer's receipt", [[].concat(receipt.to)[0], receipt.subject, receipt.text.includes(link)], ["buyer@example.com", "Your 3 places: Meal Planner", true]);
+
+  const takes = async (address) => {
+    const person = await context.newPage();
+    await open(person, local(link));
+    const left = (await words(person.locator("main"))).match(/(\d of \d places? (?:is|are) still open|All \d places have been taken)/)?.[1] ?? "";
+    if ((await person.locator('input[name="email"]').count()) === 0) {
+      await person.close();
+      return { left, form: false };
+    }
+    await person.fill('input[name="email"]', address);
+    await Promise.all([person.waitForURL(/status=sent/, { timeout: 60_000 }), person.locator("button[type=submit]").click()]);
+    const mail = services.emails().filter((email) => [].concat(email.to).includes(address)).at(-1);
+    const emailed = mail?.text.match(/https:\/\/\S+\?take=[0-9a-f]{64}/)?.[0] ?? "";
+    await open(person, local(emailed));
+    const said = await words(person.locator("h1"));
+    await open(person, local((await person.locator('a:has-text("Open it")').getAttribute("href")) ?? ""));
+    const list = await words(person.locator("main"));
+    await person.close();
+    return { left, form: true, mail: mail?.subject, said, owns: list.includes("Meal Planner") && list.includes("A place somebody bought for you") };
+  };
+  const took = { left: "", form: true, mail: "Take your place in Meal Planner", said: "The place is yours", owns: true };
+  is("the first person: asks, opens their email, has it", await takes("ana@example.com"), { ...took, left: "3 of 3 places are still open" });
+  is("the second", await takes("ben@example.com"), { ...took, left: "2 of 3 places are still open" });
+  is("the third", await takes("cy@example.com"), { ...took, left: "1 of 3 places is still open" });
+  is("a fourth is told every place is taken, and offered no form", await takes("dee@example.com"), { left: "All 3 places have been taken", form: false });
+
+  part("A gift");
+  const before = services.emails().length;
+  await open(page, `${LOCAL}/@localshop/p/${ids["Sunday Baking"]}`);
+  await page.locator("#gift summary").click();
+  await page.fill('#gift input[name="gift_to"]', "friend@example.com");
+  await page.fill('#gift input[name="gift_from"]', "Ana");
+  await page.fill('#gift textarea[name="gift_message"]', "Happy birthday!");
+  await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), page.locator("#gift button[type=submit]").click()]);
+  is("paid, and the page says where it went", await words(page.locator("h1")), "Your gift is on its way");
+  // The gift is handed over once the page has been sent: its emails follow by a moment.
+  let sent = [];
+  for (let i = 0; i < 40 && sent.length < 2; i += 1) {
+    await new Promise((wait) => setTimeout(wait, 500));
+    sent = services.emails().slice(before);
+  }
+  is("one email each: the recipient and the buyer", sent.map((email) => [[].concat(email.to)[0], email.subject]), [["friend@example.com", "Ana sent you a gift: Sunday Baking"], ["buyer@example.com", "Your gift is on its way: Sunday Baking"]]);
+  const gift = sent.find((email) => [].concat(email.to)[0] === "friend@example.com");
+  is("with the buyer's message", gift?.text.includes("Happy birthday!"), true);
+  await open(page, local(gift?.text.match(/https:\/\/\S+\/orders\?token=[0-9a-f]+/)?.[0] ?? ""));
+  const given = await words(page.locator("main"));
+  is("the recipient opens it from their email, as a gift", [given.includes("Sunday Baking"), given.includes("A gift from Ana")], [true, true]);
+
+  part("The studio");
+  const wide = await browser.newContext({ viewport: { width: 1200, height: 900 } });
+  await wide.addCookies([{ name: "nl_session", value: session, url: LOCAL }]);
+  const studio = await wide.newPage();
+  studio.on("pageerror", (error) => errors.push(String(error)));
+  await open(studio, `${LOCAL}/studio`);
+  const card = studio.locator(".card", { has: studio.locator('p:text-is("Sections and news on your store")') });
+  const headings = card.locator('input[placeholder="For example: Courses"]');
+  is("the sections as they were saved", await headings.evaluateAll((all) => all.map((input) => input.value)), ["Recipe books", "Planning", "Courses"]);
+  is("the sale is named for what it was", (await studio.locator("body").innerText()).includes("Meal Planner (for 3 people)"), true);
+  await headings.first().fill("Cookbooks");
+  await card.locator('button:has-text("Add a section")').click();
+  await headings.last().fill("Quick lists");
+  await card.locator("ul select").last().selectOption({ label: "Pantry Checklist" });
+  await card.locator('button:has-text("Save sections")').click();
+  await studio.waitForTimeout(2500);
+  await open(page, `${LOCAL}/@localshop`);
+  is("a change there shows on the store", await sectionsOn(page), [["Cookbooks", 2], ["Planning", 1], ["Quick lists", 1], ["Courses", 1]]);
+
+  part("Nothing went wrong on the way");
+  is("no page threw an error", errors, []);
+  is("nothing was asked of a service with no stand-in", services.unknown(), []);
+} catch (error) {
+  failed += 1;
+  console.error(`\nStopped: ${error?.stack ?? error}`);
+} finally {
+  if (browser) await browser.close().catch(() => {});
+  if (app?.pid) {
+    try {
+      process.kill(-app.pid, "SIGTERM");
+    } catch {}
+  }
+  await services.close().catch(() => {});
+}
+
+console.log(failed ? `\n${failed} failing.` : "\nEverything passing.");
+process.exit(failed ? 1 : 0);
