@@ -207,9 +207,7 @@ export async function createCheckout(
   if (extras.group) {
     // Checked again here, where the charge is built: the number of people
     // multiplies the price, so nothing reaches Stripe that the rules refuse.
-    if (!GROUP_ID.test(extras.group.id) || !canGroup(product) || !payable(product.priceCents, extras.group.people)) {
-      throw new Error("This cannot be bought for several people");
-    }
+    if (!GROUP_ID.test(extras.group.id) || !canGroup(product)) throw new Error("This cannot be bought for several people");
     extras = { ...extras, bump: false, plan: false, upsellKey: undefined, buyerKey: undefined };
   }
   // A call is booked for a time, through its own door, never bought blind.
@@ -239,6 +237,7 @@ export async function createCheckout(
   const name = plan ? `${baseName} (${planWords(plan, store.currency)})` : baseName;
   // Bought for several: the same price, that many times, on one line.
   const people = extras.group ? extras.group.people : 1;
+  if (extras.group && !payable(priceCents, people)) throw new Error("This cannot be bought for several people");
   // The buyer names the amount on Stripe's page, from the creator's floor up.
   // Only a single one-off line can carry that, which activePwyw has checked.
   const pwyw = !chosen && !plan && !membership ? activePwyw(product) : null;

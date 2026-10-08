@@ -23,7 +23,7 @@ import { bundleFromMeta } from "@/lib/bundle-rules";
 import { onAccount } from "@/lib/stripe-account";
 import { formatMoney } from "@/lib/money";
 import { type Listing, type Store, setPastBuyers, storeRef } from "@/lib/store";
-import { GIFT_ID, GIFT_KEPT_SECONDS, GIFT_PENDING_SECONDS, MAX_GIFT_FROM, MAX_GIFT_MESSAGE, canGift } from "@/lib/gift-rules";
+import { GIFT_ID, GIFT_KEPT_SECONDS, GIFT_PENDING_SECONDS, MAX_GIFT_FROM, MAX_GIFT_MESSAGE, canGift, givenOption } from "@/lib/gift-rules";
 
 export type Gift = {
   id: string;
@@ -31,6 +31,8 @@ export type Gift = {
   s: string;
   /** The product. */
   p: string;
+  /** For a product with price options: the one that was chosen. */
+  o?: string;
   /** The recipient's address. */
   to: string;
   /** The name the buyer gave, shown to the recipient; may be empty. */
@@ -74,18 +76,24 @@ async function saveGift(gift: Gift, seconds: number): Promise<void> {
 }
 
 export type GiftInput = { to: unknown; from: unknown; message: unknown };
-export type NewGift = { ok: true; gift: Gift } | { ok: false; reason: "email" | "product" | "unavailable" };
+export type NewGift = { ok: true; gift: Gift } | { ok: false; reason: "email" | "product" | "option" | "unavailable" };
 
-/** Writes down who a gift is for, before its checkout opens. */
-export async function startGift(store: Store, product: Listing, input: GiftInput): Promise<NewGift> {
+/**
+ * Writes down who a gift is for, before its checkout opens. For a product
+ * with price options, `optionId` names the one being given.
+ */
+export async function startGift(store: Store, product: Listing, input: GiftInput, optionId: unknown = ""): Promise<NewGift> {
   if (!store.statsId || !isRedisConfigured()) return { ok: false, reason: "unavailable" };
   if (!canGift(product)) return { ok: false, reason: "product" };
+  const chosen = givenOption(product, optionId);
+  if (!chosen.ok) return { ok: false, reason: "option" };
   const raw = typeof input.to === "string" ? input.to.trim() : "";
   if (!raw || raw.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(raw)) return { ok: false, reason: "email" };
   const gift: Gift = {
     id: newGiftId(),
     s: store.statsId,
     p: product.id,
+    ...(chosen.option ? { o: chosen.option.id } : {}),
     to: normaliseEmail(raw),
     from: cleanLine(input.from, MAX_GIFT_FROM),
     message: cleanText(input.message, MAX_GIFT_MESSAGE),
@@ -106,9 +114,9 @@ type Session = {
 };
 
 /** What a paid gift checkout gives, and to whom: the product, and a bundle's products. */
-function grantsOf(session: Session, gift: Gift): { email: string; productId: string; items: string[] | null } {
+function grantsOf(session: Session, gift: Gift): { email: string; productId: string; items: string[] | null; option: string | null } {
   const items = bundleFromMeta(session.metadata ?? null, "bundle");
-  return { email: gift.to, productId: gift.p, items: items.length ? items : null };
+  return { email: gift.to, productId: gift.p, items: items.length ? items : null, option: gift.o ?? null };
 }
 
 export type GiftOutcome = "given" | "already" | "skip";
@@ -156,13 +164,16 @@ export async function deliverGift(input: {
   ]);
 
   const who = gift.from || "Someone";
+  // Given at one of the product's prices: named with it, as on the receipt.
+  const label = gift.o ? product.options.find((o) => o.id === gift.o)?.label ?? "" : "";
+  const title = label ? `${product.title} (${label})` : product.title;
   const link = (await input.ordersLink(gift.to)) ?? `${base}/orders`;
   await sendEmail({
     from: input.from,
     to: gift.to,
-    subject: `${who} sent you a gift: ${product.title}`.slice(0, 200),
+    subject: `${who} sent you a gift: ${title}`.slice(0, 200),
     text: [
-      `${who} bought you ${product.title} from ${store.name}.`,
+      `${who} bought you ${title} from ${store.name}.`,
       ...(gift.message ? ["", "Their message:", gift.message] : []),
       "",
       "It is yours, on this email address. Open it here:",
@@ -182,11 +193,11 @@ export async function deliverGift(input: {
     await sendEmail({
       from: input.from,
       to: buyer,
-      subject: `Your gift is on its way: ${product.title}`.slice(0, 200),
+      subject: `Your gift is on its way: ${title}`.slice(0, 200),
       text: [
         `Thank you for buying from ${store.name}. This is your receipt.`,
         "",
-        `A gift: ${product.title}`,
+        `A gift: ${title}`,
         `For: ${gift.to}`,
         `Paid: ${formatMoney(amount, currency)}`,
         `Order reference: ${sessionId}`,

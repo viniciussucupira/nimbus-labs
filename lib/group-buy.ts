@@ -31,6 +31,7 @@ import { bundleFromMeta } from "@/lib/bundle-rules";
 import { onAccount } from "@/lib/stripe-account";
 import { formatMoney } from "@/lib/money";
 import { type Listing, type Store, setPastBuyers, storeRef } from "@/lib/store";
+import { givenOption } from "@/lib/gift-rules";
 import {
   GROUP_ID,
   GROUP_KEPT_SECONDS,
@@ -49,6 +50,8 @@ export type Group = {
   s: string;
   /** The product. */
   p: string;
+  /** For a product with price options: the one that was chosen for everyone. */
+  o?: string;
   /** How many people it was bought for. */
   people: number;
   at: number;
@@ -113,16 +116,21 @@ export async function placesTaken(id: string): Promise<number> {
   return Number.isFinite(taken) && taken > 0 ? Math.floor(taken) : 0;
 }
 
-export type NewGroup = { ok: true; group: Group } | { ok: false; reason: "people" | "product" | "amount" | "unavailable" };
+export type NewGroup = { ok: true; group: Group } | { ok: false; reason: "people" | "product" | "option" | "amount" | "unavailable" };
 
-/** Writes down how many people a purchase is for, before its checkout opens. */
-export async function startGroup(store: Store, product: Listing, people: unknown): Promise<NewGroup> {
+/**
+ * Writes down how many people a purchase is for, before its checkout opens.
+ * For a product with price options, `optionId` names the one everybody gets.
+ */
+export async function startGroup(store: Store, product: Listing, people: unknown, optionId: unknown = ""): Promise<NewGroup> {
   if (!store.statsId || !isRedisConfigured()) return { ok: false, reason: "unavailable" };
   if (!canGroup(product)) return { ok: false, reason: "product" };
+  const chosen = givenOption(product, optionId);
+  if (!chosen.ok) return { ok: false, reason: "option" };
   const count = readPeople(people);
   if (count === null) return { ok: false, reason: "people" };
-  if (!payable(product.priceCents, count)) return { ok: false, reason: "amount" };
-  const group: Group = { id: newGroupId(), s: store.statsId, p: product.id, people: count, at: now() };
+  if (!payable(chosen.option ? chosen.option.priceCents : product.priceCents, count)) return { ok: false, reason: "amount" };
+  const group: Group = { id: newGroupId(), s: store.statsId, p: product.id, ...(chosen.option ? { o: chosen.option.id } : {}), people: count, at: now() };
   await saveGroup(group, GROUP_PENDING_SECONDS);
   return { ok: true, group };
 }
@@ -136,6 +144,12 @@ type Session = {
   metadata?: Record<string, string> | null;
   customer_details?: { email?: unknown } | null;
 };
+
+/** What a purchase for several is of, by name: the product, with the price option chosen when it has them. */
+export function groupTitle(product: Listing, group: Pick<Group, "o">): string {
+  const label = group.o ? product.options.find((o) => o.id === group.o)?.label ?? "" : "";
+  return label ? `${product.title} (${label})` : product.title;
+}
 
 /** The page that hands out a purchase's places. */
 export function groupLink(base: string, id: string): string {
@@ -197,6 +211,7 @@ async function sendReceipt(input: {
   idempotencyKey?: string;
 }): Promise<boolean> {
   const { store, session, product, group } = input;
+  const title = groupTitle(product, group);
   const buyer = typeof session.customer_details?.email === "string" ? session.customer_details.email : "";
   if (!buyer) return false;
   const amount = typeof session.amount_total === "number" ? session.amount_total : product.priceCents * group.people;
@@ -204,18 +219,18 @@ async function sendReceipt(input: {
   return sendEmail({
     from: input.from,
     to: buyer,
-    subject: `Your ${group.people} places: ${product.title}`.slice(0, 200),
+    subject: `Your ${group.people} places: ${title}`.slice(0, 200),
     text: [
       input.lead,
       "",
-      `${product.title}, for ${peopleWords(group.people)}`,
+      `${title}, for ${peopleWords(group.people)}`,
       `Paid: ${formatMoney(amount, currency)}`,
       `Order reference: ${group.session ?? ""}`,
       "",
       "Pass this link on to the people it is for:",
       groupLink(input.base, group.id),
       "",
-      `Each person opens it and types their own email address. They get a link in their inbox, and opening it puts ${product.title} on that address, as if they had bought it. Take a place yourself the same way: you paid for ${group.people}, and you are one of them only if you take one.`,
+      `Each person opens it and types their own email address. They get a link in their inbox, and opening it puts ${title} on that address, as if they had bought it. Take a place yourself the same way: you paid for ${group.people}, and you are one of them only if you take one.`,
       "",
       "Keep this email: the link is how the places are handed out, and the page it opens shows how many are left. A full refund takes every place back.",
       "",
@@ -280,6 +295,7 @@ export async function askPlace(input: {
   const raw = typeof input.email === "string" ? input.email.trim() : "";
   if (!raw || raw.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(raw)) return "email";
   const email = normaliseEmail(raw);
+  const title = groupTitle(product, group);
 
   const [held, takenRaw] = await redisPipeline([
     ["HEXISTS", membersKey(group.id), addressHash(email)],
@@ -300,9 +316,9 @@ export async function askPlace(input: {
     const sent = await sendEmail({
       from: input.from,
       to: email,
-      subject: `Your place in ${product.title}`.slice(0, 200),
+      subject: `Your place in ${title}`.slice(0, 200),
       text: [
-        `You already took your place in ${product.title} from ${store.name}. Open it here:`,
+        `You already took your place in ${title} from ${store.name}. Open it here:`,
         link,
         "",
         `That link works for 24 hours. After that, go to ${base}/orders, type this address, and a new one comes right away.`,
@@ -320,14 +336,14 @@ export async function askPlace(input: {
   const sent = await sendEmail({
     from: input.from,
     to: email,
-    subject: `Take your place in ${product.title}`.slice(0, 200),
+    subject: `Take your place in ${title}`.slice(0, 200),
     text: [
-      `Somebody bought ${product.title} from ${store.name} for ${peopleWords(group.people)} and passed the link on. This address was typed on it to take one of the places.`,
+      `Somebody bought ${title} from ${store.name} for ${peopleWords(group.people)} and passed the link on. This address was typed on it to take one of the places.`,
       "",
       "Open this link to take it:",
       `${groupLink(base, group.id)}?take=${token}`,
       "",
-      `It puts ${product.title} on this email address, as if you had bought it. Nothing is charged to you. The link works for 24 hours, and the place is yours once it is opened, while one is still free.`,
+      `It puts ${title} on this email address, as if you had bought it. Nothing is charged to you. The link works for 24 hours, and the place is yours once it is opened, while one is still free.`,
       "",
       "If you did not ask for this, ignore this email: nothing happens unless the link is opened.",
       "",
@@ -387,7 +403,7 @@ export async function takePlace(input: {
     ["EXPIRE", takenKey(group.id), GROUP_KEPT_SECONDS],
   ]);
 
-  const [given] = await grantImported(group.s, groupJob(group.id), [{ email, productId: group.p, items: group.items ?? null }], at);
+  const [given] = await grantImported(group.s, groupJob(group.id), [{ email, productId: group.p, items: group.items ?? null, option: group.o ?? null }], at);
   if (!given) {
     // It reached this address another way in the same instant.
     await giveBack();

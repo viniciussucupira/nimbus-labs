@@ -16,6 +16,7 @@ import { MIN_BUNDLE_ITEMS, worthWords } from "@/lib/bundle-rules";
 import { payPalPrice, paypalReady } from "@/lib/paypal-sales";
 import { comparable, startingOption } from "@/lib/product-option";
 import { DEFAULT_PEOPLE, MAX_PEOPLE, MIN_PEOPLE } from "@/lib/group-rules";
+import { givableOptions } from "@/lib/gift-rules";
 
 /**
  * How many price options are drawn as cards before they become a list to pick
@@ -193,8 +194,32 @@ export function PackageOffer({ store, product }: { store: Store; product: Listin
   );
 }
 
+/**
+ * Which of a product's prices is being bought for somebody else: a list to
+ * pick from, each with its price, opened on the creator's pick. Nothing for
+ * a product sold at one price. The price charged is read on the server from
+ * the option's id, never from this list.
+ */
+function GivenOptionPicker({ store, product, each = false }: { store: Store; product: Listing; each?: boolean }) {
+  const options = givableOptions(product);
+  if (options.length === 0) return null;
+  return (
+    <label className="block">
+      <span className="st-label">Which one</span>
+      <select className="st-field mt-2" name="option" required defaultValue={(startingOption(options) ?? options[0]).id}>
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {`${option.label} — ${formatMoney(option.priceCents, store.currency)}${each ? " per person" : ""}`}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 const GIFT_PROBLEMS: Record<string, string> = {
   email: "That does not look like an email address. Check the recipient's address and try again.",
+  option: "Choose which one to give, then try again. Nothing was charged.",
   product: "This can no longer be bought as a gift.",
   unavailable: "Gifts are not available right now. Nothing was charged.",
 };
@@ -216,6 +241,7 @@ export function GiftBox({ store, product, problem = "" }: { store: Store; produc
         {problem && GIFT_PROBLEMS[problem] ? (
           <p className="st-note text-sm" role="alert">{GIFT_PROBLEMS[problem]}</p>
         ) : null}
+        <GivenOptionPicker store={store} product={product} />
         <label className="block">
           <span className="st-label">Their email</span>
           <input className="st-field mt-2" type="email" name="gift_to" required maxLength={254} autoComplete="off" placeholder="friend@example.com" />
@@ -229,7 +255,7 @@ export function GiftBox({ store, product, problem = "" }: { store: Store; produc
           <textarea className="st-field mt-2" name="gift_message" rows={3} maxLength={500} />
         </label>
         <button type="submit" className="btn st-btn btn-block">
-          {`Buy as a gift — ${formatMoney(salePrice(product.priceCents, offNow(store, product)), store.currency)}`}
+          {product.options.length > 0 ? "Buy as a gift" : `Buy as a gift — ${formatMoney(salePrice(product.priceCents, offNow(store, product)), store.currency)}`}
         </button>
         <p className="st-muted text-xs">
           {`You pay on Stripe's page. Right after, they get one email from ${store.name} with your name, your message and a link to open it on their own address. You get the receipt, not a copy.`}
@@ -241,6 +267,7 @@ export function GiftBox({ store, product, problem = "" }: { store: Store; produc
 
 const GROUP_PROBLEMS: Record<string, string> = {
   people: `Type how many people, from ${MIN_PEOPLE} to ${MAX_PEOPLE}. Nothing was charged.`,
+  option: "Choose which one to buy for everyone, then try again. Nothing was charged.",
   amount: "That many at this price is more than one payment can carry. Try fewer people, or buy twice. Nothing was charged.",
   product: "This can no longer be bought for several people.",
   unavailable: "Buying for several people is not available right now. Nothing was charged.",
@@ -266,6 +293,7 @@ export function GroupBox({ store, product, problem = "" }: { store: Store; produ
         {problem && GROUP_PROBLEMS[problem] ? (
           <p className="st-note text-sm" role="alert">{GROUP_PROBLEMS[problem]}</p>
         ) : null}
+        <GivenOptionPicker store={store} product={product} each />
         <label className="block">
           <span className="st-label">How many people</span>
           <input
@@ -281,7 +309,7 @@ export function GroupBox({ store, product, problem = "" }: { store: Store; produ
           />
         </label>
         <button type="submit" className="btn st-btn btn-block">
-          {`Buy for your team — ${each} per person`}
+          {product.options.length > 0 ? "Buy for your team" : `Buy for your team — ${each} per person`}
         </button>
         <p className="st-muted text-xs">
           {`You pay once on Stripe's page, where the total is shown before you pay. Right after, you get one link to pass on: each person opens it, types their own email and has it on their own address. You take a place the same way.`}
