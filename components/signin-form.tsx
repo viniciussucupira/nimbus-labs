@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { initBotId } from "botid/client/core";
 import { Icon } from "@/components/icons";
 
 type State =
@@ -16,7 +17,28 @@ const MESSAGES: Record<string, string> = {
   unavailable:
     "Logging in is not switched on yet, so nothing was sent. Write to us and we will tell you when it is.",
   server_error: "Something went wrong on our side. Try again in a moment.",
+  unconfirmed:
+    "We could not confirm this browser, so nothing was sent. Reload the page and try again. If it keeps happening, write to support@marktmorgen.com.",
 };
+
+/**
+ * The browser's own fetch, kept from before the challenge below wraps it.
+ *
+ * The form emails whatever address is typed into it, so the server asks the
+ * host whether a person's browser sent the request (lib/bot-check.ts). The
+ * host's answer needs a challenge solved here: this wraps fetch so that the
+ * one request to /api/auth/request carries the solution, and loads the
+ * challenge only when that request is made. If the challenge cannot load,
+ * the request goes out unwrapped and the server says what happened, rather
+ * than the form failing with no reason given.
+ */
+let plainFetch: typeof fetch | null = null;
+
+function startChallenge() {
+  if (plainFetch || process.env.NODE_ENV !== "production") return;
+  plainFetch = window.fetch.bind(window);
+  initBotId({ protect: [{ path: "/api/auth/request", method: "POST" }] });
+}
 
 /** The shape of an address, checked as the person types; the server checks it again. */
 const LOOKS_LIKE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -28,6 +50,8 @@ export function SignInForm() {
   const [state, setState] = useState<State>({ kind: "idle" });
   const [touched, setTouched] = useState(false);
   const [wait, setWait] = useState(0);
+
+  useEffect(startChallenge, []);
 
   // The count before "Send it again" opens, one second at a time.
   useEffect(() => {
@@ -46,10 +70,15 @@ export function SignInForm() {
     setState({ kind: "sending" });
 
     try {
-      const response = await fetch("/api/auth/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, website }),
+      const ask = (how: typeof fetch) =>
+        how("/api/auth/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, website }),
+        });
+      const response = await ask(fetch).catch((error: unknown) => {
+        if (!plainFetch) throw error;
+        return ask(plainFetch);
       });
       const data = (await response.json()) as { ok?: boolean; error?: string };
       if (data.ok) {

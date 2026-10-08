@@ -9,6 +9,7 @@ import {
   withinRateLimit,
 } from "@/lib/auth";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
+import { isAutomated } from "@/lib/bot-check";
 
 const MAX_BODY_BYTES = 2_000;
 
@@ -60,6 +61,14 @@ export async function POST(request: NextRequest) {
   try {
     if (!(await withinRateLimit(ip))) {
       return Response.json({ ok: false, error: "rate_limited" }, { status: 429 });
+    }
+    // A program typing other people's addresses into this form would send
+    // each of them an email nobody asked for (lib/bot-check.ts). It is told
+    // so plainly, whatever the address: the answer depends on the browser
+    // alone, so it says nothing about who has an account.
+    if (await isAutomated()) {
+      console.warn("sign-in refused: the browser could not be confirmed");
+      return Response.json({ ok: false, error: "unconfirmed" }, { status: 403 });
     }
     // The counter above bounds one machine. This one bounds one inbox, so a
     // flood sent from many machines cannot bury a creator in sign-in emails.

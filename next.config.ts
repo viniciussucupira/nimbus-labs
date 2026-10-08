@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withBotId } from "botid/next/config";
 import { staticPolicy } from "./lib/csp";
 
 const nextConfig: NextConfig = {
@@ -155,4 +156,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/*
+ * withBotId adds the two addresses the sign-in form's challenge is fetched
+ * from, on this site's own name (lib/bot-check.ts), and nothing else.
+ */
+export default withBotId(nextConfig);
