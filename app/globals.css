@@ -2022,6 +2022,31 @@ a.chip {
   border-color: var(--st-accent-text);
   box-shadow: 0 0 0 3px var(--st-accent-soft);
 }
+/* The creator's one line of news, across the top of their store page. */
+.st-announce {
+  padding: 0.75rem 1rem;
+  background: var(--st-accent-soft);
+  color: var(--st-text);
+  text-align: center;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.st-announce a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+/* A heading over one of the store's sections. */
+.st-section-title {
+  margin-bottom: 0.875rem;
+  padding-inline: 0.25rem;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--st-text);
+}
 .st-note {
   border-radius: 1.25rem;
   border: 1px dashed var(--st-line-strong);

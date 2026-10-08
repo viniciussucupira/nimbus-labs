@@ -110,7 +110,9 @@ import {
   readProducts,
   runWrites,
   usedIds,
+  hasProduct,
 } from "@/lib/catalog";
+import { type Announcement, type StoreSection, parseAnnouncement, parseSections, sectionsWithout } from "@/lib/store-sections";
 
 // What the rest of the site has always imported from here.
 export { MAX_PRODUCTS, MAX_SUMMARY_LENGTH, MAX_TITLE_LENGTH, StoreFullError };
@@ -465,6 +467,14 @@ export type Store = {
    */
   exitOffer: string | null;
   /**
+   * Headings among the products on the store page, each starting at one
+   * product (lib/store-sections.ts). Empty on every store written before
+   * they existed, which is one unbroken list as it always was.
+   */
+  sections: StoreSection[];
+  /** One line of the creator's own news across the top of the store page, or null. */
+  announcement: Announcement | null;
+  /**
    * Whether buyers who agree to hear from the creator are sent on to the
    * creator's own email platform (lib/email-sync.ts), and for which products.
    * Only this much is kept here, so a store page can offer the box without
@@ -705,6 +715,8 @@ function parseStore(raw: unknown): Store | null {
       // Stores written before reviews existed have none.
       reviewed: value.reviewed === true,
       exitOffer: typeof value.exitOffer === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(value.exitOffer) ? value.exitOffer : null,
+      sections: parseSections(value.sections),
+      announcement: parseAnnouncement(value.announcement),
       // Stores written before either existed send nothing anywhere.
       emailSync: parseEmailSyncRef(value.emailSync),
       phoneSales: value.phoneSales === true,
@@ -867,6 +879,8 @@ async function freshStore(fields: {
     reviewAsk: parseReviewAsk(null),
     reviewed: false,
     exitOffer: null,
+    sections: [],
+    announcement: null,
     emailSync: null,
     phoneSales: false,
     pastBuyers: false,
@@ -2382,7 +2396,14 @@ export async function removeProduct(
       const left = (p.bundle ?? []).filter((item) => item !== id);
       return { ...p, bundle: left.length ? left : null };
     });
-    const next = await save(store, { drop: [id], put });
+    // A section that started at it starts at the next product now, and a line
+    // of news that led to it leads nowhere (lib/store-sections.ts).
+    const tidied: Store = {
+      ...store,
+      sections: sectionsWithout(store.sections, productIds(store), id),
+      announcement: store.announcement?.product === id ? { ...store.announcement, product: null } : store.announcement,
+    };
+    const next = await save(tidied, { drop: [id], put });
     return { ok: true as const, store: next, product };
   });
   return result ?? { ok: false, reason: "none" };
@@ -3088,6 +3109,33 @@ export async function setPayPalSeller(email: string, merchant: string | null): P
 }
 
 export type ExitOfferResult = { ok: true; store: Store } | { ok: false; reason: "none" | "unknown" | "not_free" };
+
+export type SectionsResult = { ok: true; store: Store } | { ok: false; reason: "none" | "unknown" };
+
+/**
+ * Sets the store page's sections: all of them at once, in the order sent.
+ * Each has to start at a product this store still has; one that does not is
+ * refused by name rather than quietly dropped, so the studio never says
+ * "saved" about a heading that was not kept.
+ */
+export async function setSections(email: string, raw: unknown): Promise<SectionsResult> {
+  const result = await withStore<SectionsResult>(email, async (store, save) => {
+    const sections = parseSections(raw);
+    if (sections.some((section) => !hasProduct(store, section.at))) return { ok: false, reason: "unknown" };
+    return { ok: true, store: await save({ ...store, sections }) };
+  });
+  return result ?? { ok: false, reason: "none" };
+}
+
+/** Sets the line of news across the top of the store page, or takes it away (null or empty). */
+export async function setAnnouncement(email: string, raw: unknown): Promise<SectionsResult> {
+  const result = await withStore<SectionsResult>(email, async (store, save) => {
+    const announcement = parseAnnouncement(raw);
+    if (announcement?.product && !hasProduct(store, announcement.product)) return { ok: false, reason: "unknown" };
+    return { ok: true, store: await save({ ...store, announcement }) };
+  });
+  return result ?? { ok: false, reason: "none" };
+}
 
 /**
  * Chooses the free product offered to a visitor about to leave, or none

@@ -7,7 +7,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 import { type Listing, normaliseHandle, storeForPage } from "@/lib/store";
-import { readPage, sellsAny, visibleCount } from "@/lib/catalog";
+import { KIND, readPage, sellsAny, visibleCount } from "@/lib/catalog";
+import { groupBySection } from "@/lib/store-sections";
 import { offeredItems } from "@/lib/bundles";
 import { canSell, canSellProduct } from "@/lib/store-checkout";
 import { linkHost } from "@/lib/product-link";
@@ -177,6 +178,15 @@ export default async function StorePage({ params, searchParams }: Params) {
   // What the store lists: drafts are left off (lib/catalog.ts).
   const total = visibleCount(store);
 
+  // The page's products cut into the creator's sections (lib/store-sections.ts),
+  // from the store's own index: no read, and one list as before when there are none.
+  const index = store.catalog.items.map((item) => ({ id: item.id, hidden: (item.kind & KIND.hidden) !== 0 }));
+  const groups = groupBySection(listings, index, store.sections);
+  const position = new Map(listings.map((product, i) => [product.id, i]));
+  // The creator's line of news, leading to one of their published products when they chose one.
+  const news = store.announcement;
+  const newsHref = news?.product && index.some((item) => item.id === news.product && !item.hidden) ? `/@${store.handle}/p/${news.product}` : null;
+
   const bold = store.look.theme === "bold";
   // A member can always find the way out, even when the store cannot sell
   // right now: stopping a charge must never depend on the store being open.
@@ -214,6 +224,18 @@ export default async function StorePage({ params, searchParams }: Params) {
       style={lookStyle(store.look) as React.CSSProperties}
     >
       <main id="content" className="relative">
+        {news ? (
+          <p className="st-announce">
+            {newsHref ? (
+              <Link href={newsHref} prefetch={false}>
+                {news.text}
+                <span aria-hidden="true">{" \u2192"}</span>
+              </Link>
+            ) : (
+              news.text
+            )}
+          </p>
+        ) : null}
         <section className={bold ? "st-band" : undefined}>
           <div className={`mx-auto max-w-xl px-4 text-center ${bold ? "pb-12 pt-14 sm:pt-20" : "pb-2 pt-14 sm:pt-20"}`}>
             {store.photoId ? (
@@ -270,27 +292,37 @@ export default async function StorePage({ params, searchParams }: Params) {
                   <span className="st-muted mt-1 block text-sm font-normal">Prices below already show it; no code needed.</span>
                 </p>
               ) : null}
-              <ul className="space-y-4">
-                {listings.map((product, index) => (
-                  <ProductCard
-                    eager={index < 3 && page === 1}
-                    first={index === 0 && page === 1}
-                    key={product.id}
-                    store={store}
-                    product={product}
-                    related={known}
-                    // A count is only worth showing where the product can be bought.
-                    remaining={left.has(product.id) && canSellProduct(store, product) ? left.get(product.id)! : null}
-                    writes={writes}
-                    selling={selling}
-                    manageable={manageable}
-                    rating={rated.get(product.id) ?? null}
-                    bundleItems={bundleItems.get(product.id) ?? null}
-                    soon={soon.has(product.id)}
-                    sold={soldWords(soldCounts?.byProduct[product.id])}
-                  />
-                ))}
-              </ul>
+              {groups.map((group, g) => (
+                <section key={group.products[0].id} className={g > 0 ? "mt-10" : undefined} aria-label={group.title ?? undefined}>
+                  {group.title ? (
+                    <h2 className="st-section-title">
+                      {group.title}
+                      {group.continued ? <span className="st-muted font-normal"> (continued)</span> : null}
+                    </h2>
+                  ) : null}
+                  <ul className="space-y-4">
+                    {group.products.map((product) => (
+                      <ProductCard
+                        eager={(position.get(product.id) ?? 9) < 3 && page === 1}
+                        first={position.get(product.id) === 0 && page === 1}
+                        key={product.id}
+                        store={store}
+                        product={product}
+                        related={known}
+                        // A count is only worth showing where the product can be bought.
+                        remaining={left.has(product.id) && canSellProduct(store, product) ? left.get(product.id)! : null}
+                        writes={writes}
+                        selling={selling}
+                        manageable={manageable}
+                        rating={rated.get(product.id) ?? null}
+                        bundleItems={bundleItems.get(product.id) ?? null}
+                        soon={soon.has(product.id)}
+                        sold={soldWords(soldCounts?.byProduct[product.id])}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))}
 
               {/*
                 A long store, a page at a time: plain links, so every page has

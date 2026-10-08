@@ -53,6 +53,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "user", title: "You, at the top", body: "Your photo, your name and a line about you, on every theme — not locked behind one." },
           { icon: "file", title: "Up to 2,000 products", body: "Each with its price, what the buyer gets and the button that buys it, in the order you choose, and up to 100 links beside them. A long store shows 24 products a page, and your studio finds any product by name." },
+          { icon: "list", title: "Sections, and a line of news", body: "Cut a long store into up to 20 sections with a heading over each: a section starts at the product you pick, and moving that product moves its heading. Across the top, one line of your own news of up to 120 characters, which can lead to one of your products." },
           { icon: "camera", title: "A picture on each product", body: "Shown three ways, product by product: small beside the title, beside the title and the summary, or across the top of the card." },
           { icon: "music", title: "A private podcast", body: "Sell a show as a product, once or as a membership. Each buyer gets a feed of their own for Apple Podcasts, Overcast, Pocket Casts or most other apps, and new episodes arrive in it like any show's. A refund, or a membership that ends, stops every episode from playing for that buyer within minutes, and podcast directories are told to keep out." },
           { icon: "gift", title: "Buy it as a gift", body: "Under the buy button on a product's page, a buyer can give it instead: the recipient's email, their own name and a message. They pay on Stripe's page; the recipient gets one email and opens it on their own address — its download, its course, the community it opens — and a full refund takes it back. For products bought once that hand over a file, a link, a course or a bundle, at any of their price options." },
@@ -85,7 +86,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           "There is one layout: you choose the theme, the color and the order, not the arrangement of blocks on the page.",
           "Up to 2,000 products and 100 links per store. Stan says unlimited; we say the number we can stand behind.",
-          "No categories, and no search on the store page itself: buyers page through 24 products at a time. Search is in your studio.",
+          "No search on the store page itself: buyers page through 24 products at a time, under the section headings you set. Search is in your studio.",
           "No custom code on the page, and the store cannot be embedded in another website.",
           "Buyers pay through Stripe, with the ways to pay your own Stripe account has on. Do not count on PayPal: Stripe offers it only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein, and its documentation, read on September 28, 2026, lists it as not supported for direct charges, which is how every sale here is charged.",
         ],
