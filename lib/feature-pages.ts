@@ -1486,6 +1486,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "ladder", title: "How it works", body: "Up to 8 numbered steps joined into one path, from the moment they pay to the result." },
           { icon: "scale", title: "A comparison table", body: "Up to 12 rows: your product beside another way of getting there, with ticks, crosses or a few words in each cell, the way a buyer weighs a decision." },
           { icon: "gift", title: "Bonuses", body: "Up to 8 extras that come with it, each on its own numbered card. No made-up “worth $497” beside them, on purpose." },
+          { icon: "basket", title: "Another of your products", body: "A card for the course beside the ebook, or the next step after the free guide: its picture, name and price as they are today, and a link to its own page, with a line about why it goes well with this one." },
           { icon: "chart", title: "By the numbers, counted for you", body: "Lessons, episodes, products in a bundle, a call's length, how many times it was bought and the average rating, drawn as big figures. Every number is counted by your store and stays up to date by itself; none can be typed, so none can be wrong." },
           { icon: "user", title: "Text, and about you", body: "A heading and paragraphs in your own words, and who made it, with your store photo." },
           { icon: "chat", title: "Questions", body: "Up to 15 questions and answers that open and close." },

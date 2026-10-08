@@ -58,6 +58,7 @@ import { MIN_BUNDLE_ITEMS } from "@/lib/bundle-rules";
 import { productSegment } from "@/lib/product-slug";
 import { breadcrumbData, faqData } from "@/lib/page-structured-data";
 import { PictureViewer } from "@/components/picture-viewer";
+import { featuredCards } from "@/lib/featured-cards";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -538,6 +539,10 @@ export default async function ProductPage({ params, searchParams }: Params) {
       sold: soldCount && soldCount >= SHOWN_FROM ? soldCount : null,
       reviews: summary,
     }),
+    // Other products the page shows as cards, from what the store record holds (lib/featured-cards.ts).
+    featured: page.blocks.some((block) => block.kind === "product")
+      ? featuredCards(store, product.id, page.blocks.flatMap((block) => (block.kind === "product" && block.product ? [block.product] : [])))
+      : undefined,
   };
   const [first, ...others] = page.blocks;
   const firstHero = first?.kind === "hero" ? first : null;
