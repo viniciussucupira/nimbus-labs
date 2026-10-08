@@ -45,7 +45,7 @@ import { EMPTY_PAGE, type SalesPage } from "@/lib/sales-page";
 import { readPage } from "@/lib/sales-page-store";
 import { type Summary, REVIEWS_ON_PAGE, average, showsRating, summaryOf, visibleReviews } from "@/lib/reviews";
 import { BuyBox, GiftBox, GroupBox, PriceTag, ProductFacts, pageAction, productPath, saleNow } from "@/components/store-product";
-import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
+import { type BlockContext, HeroView, PageSections } from "@/components/sales-blocks";
 import { pageFacts } from "@/lib/page-facts";
 import { LANGUAGES } from "@/lib/store-language";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
@@ -563,7 +563,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
   );
 
   return shell(
-    <div className="sp-body sp-wide">
+    <div className={`sp-body sp-wide sp-style-${page.style}`}>
       {storeChip}
       <div className="mt-8">
         {hero ? (
@@ -584,12 +584,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
         )}
       </div>
       {free ? buySection : null}
-      {rest.map((block) => (
-        // Marked so the page can say how far down it was read (components/page-depth.tsx).
-        <div key={block.id} data-block={block.id}>
-          <BlockView block={block} ctx={ctx} reviews={block.kind === "reviews" ? reviewsPart(block.heading) : null} />
-        </div>
-      ))}
+      <PageSections blocks={rest} ctx={ctx} style={page.style} reviewsFor={reviewsPart} />
       <PageDepth handle={store.handle} product={product.id} />
       {free ? null : buySection}
       {payments}

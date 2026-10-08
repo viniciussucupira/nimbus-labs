@@ -9,10 +9,11 @@ import { Icon, type IconName } from "@/components/icons";
 import { toast } from "@/components/toast";
 import { AiAssist } from "@/components/ai-assist";
 import { PageCoach } from "@/components/page-coach";
+import { PageStylePicker } from "@/components/page-style-picker";
 import { BlockRewrite } from "@/components/block-rewrite";
 import { type CourseOutline, insideFromCourse } from "@/lib/course-outline-items";
 import { MIN_VIEWS, type Counts, rate, winner } from "@/lib/headline-test-rules";
-import { type BlockContext, BlockView, HeroView } from "@/components/sales-blocks";
+import { type BlockContext, HeroView, PageSections } from "@/components/sales-blocks";
 import { RatingLine, ReviewsSection } from "@/components/review-list";
 import { type StoreLook, lookStyle } from "@/lib/store-look";
 import type { Review, Summary } from "@/lib/review-summary";
@@ -56,7 +57,9 @@ import {
   FACT_KEYS,
   type CompareRow,
   type FactKey,
+  PAGE_STYLES,
   PAGE_TEMPLATES,
+  type PageStyle,
   PROVIDER_NAMES,
   type PageBlock,
   type Picture,
@@ -214,6 +217,7 @@ export function PageEditor({
   const [seoTitle, setSeoTitle] = useState(initial.seoTitle);
   const [seoDescription, setSeoDescription] = useState(initial.seoDescription);
   const [next, setNext] = useState(initial.next ?? "");
+  const [style, setStyle] = useState<PageStyle>(initial.style);
   // How far down the saved page visitors read (lib/page-depth.ts), shown on each block.
   const [reach, setReach] = useState<{ shares: Record<string, number>; visitors: number } | null>(null);
   useEffect(() => {
@@ -256,8 +260,8 @@ export function PageEditor({
     };
   }, []);
 
-  const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "", ab: initial.test ? [initial.test.headline, initial.test.sub] : null });
-  const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next, ab: testing ? [testHeadline.trim(), testSub.trim()] : null }) !== saved;
+  const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "", y: initial.style, ab: initial.test ? [initial.test.headline, initial.test.sub] : null });
+  const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next, y: style, ab: testing ? [testHeadline.trim(), testSub.trim()] : null }) !== saved;
   const hasHero = drafts[0]?.block.kind === "hero";
   const hasReviews = drafts.some((d) => d.block.kind === "reviews");
   const addable = BLOCK_KINDS.filter((k) => (k.kind === "hero" ? !hasHero : k.kind === "reviews" ? !hasReviews : true));
@@ -373,7 +377,7 @@ export function PageEditor({
     setCopyNote(null);
     try {
       const response = await fetch(`/api/store/page?id=${encodeURIComponent(copyFrom)}`, { cache: "no-store" });
-      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; blocks?: PageBlock[]; picturesLeft?: number };
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; blocks?: PageBlock[]; picturesLeft?: number; style?: PageStyle };
       if (!data.ok || !data.blocks?.length) {
         setCopyNote("That page could not be read just now. Try again in a moment.");
         return;
@@ -381,6 +385,7 @@ export function PageEditor({
       const blocks = data.blocks;
       setDrafts(blocks.map((block) => ({ block, video: (block.kind === "hero" || block.kind === "video") && block.video ? videoAddress(block.video) : "" })));
       setOpen(blocks[0].kind === "hero" ? blocks[0].id : null);
+      if (data.style && (PAGE_STYLES as readonly string[]).includes(data.style)) setStyle(data.style);
       const from = pagesToCopy.find((p) => p.id === copyFrom)?.title ?? "the other page";
       const left = data.picturesLeft ?? 0;
       toast(
@@ -413,6 +418,7 @@ export function PageEditor({
       next: product.free && next ? next : null,
       // The id is the server's to give (lib/sales-page.ts, parseTest).
       test: testing && testHeadline.trim() ? { id: "", headline: testHeadline.trim(), sub: testSub.trim() } : null,
+      style,
     };
   }
 
@@ -1045,7 +1051,7 @@ export function PageEditor({
 
       {view === "preview" ? (
         <div className="mt-5">
-          <div className="mb-3 flex items-center gap-2 text-sm">
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
             <span className="text-ink-soft">Width:</span>
             {[false, true].map((w) => (
               <button
@@ -1060,12 +1066,16 @@ export function PageEditor({
             ))}
             {dirty ? <span className="ml-auto text-xs font-semibold text-ink-soft">Showing unsaved changes</span> : null}
           </div>
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-ink-soft">Style:</span>
+            <PageStylePicker value={style} onChange={setStyle} compact />
+          </div>
           <div className="overflow-hidden rounded-2xl ring-1 ring-line">
             <div
               className={`st-page st-theme-${look.theme} mx-auto overflow-hidden`}
               style={{ ...(lookStyle(look) as React.CSSProperties), maxWidth: wide ? "100%" : 390 }}
             >
-              <div className={`sp-body mx-auto ${wide ? "max-w-3xl" : ""} px-4 pb-12 pt-8`}>
+              <div className={`sp-body sp-style-${style} mx-auto ${wide ? "max-w-3xl" : ""} px-4 pb-12 pt-8`}>
                 {drafts.length === 0 ? (
                   <p className="st-note text-sm">Add a block and it appears here, in your store&apos;s look.</p>
                 ) : (
@@ -1082,9 +1092,12 @@ export function PageEditor({
                       </header>
                     )}
                     {product.free ? buyPreview : null}
-                    {preview.rest.map((block) => (
-                      <BlockView key={block.id} block={block} ctx={ctx} reviews={block.kind === "reviews" ? reviewsPart(block.heading) ?? <p className="st-note text-sm">Buyers&apos; reviews appear here once somebody who paid writes one.</p> : null} />
-                    ))}
+                    <PageSections
+                      blocks={preview.rest}
+                      ctx={ctx}
+                      style={style}
+                      reviewsFor={(heading) => reviewsPart(heading) ?? <p className="st-note text-sm">Buyers&apos; reviews appear here once somebody who paid writes one.</p>}
+                    />
                     {product.free ? null : buyPreview}
                     {!preview.placed && summary ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}
                   </>
@@ -1331,6 +1344,12 @@ export function PageEditor({
             )}
           </div>
 
+          <div className="mt-6 rounded-2xl bg-paper p-4 ring-1 ring-line sm:p-5">
+            <p className="field-label">Page style</p>
+            <p className="text-xs text-ink-soft">How the sections are set apart, in your store&apos;s colors. Switch to Preview to see it on this page.</p>
+            <PageStylePicker value={style} onChange={setStyle} />
+          </div>
+
           {product.free ? (
             <div className="mt-6 rounded-2xl bg-paper p-4 ring-1 ring-line sm:p-5">
               <label htmlFor="next-product" className="field-label">
@@ -1392,6 +1411,7 @@ export function PageEditor({
               setSeoTitle(initial.seoTitle);
               setSeoDescription(initial.seoDescription);
               setNext(initial.next ?? "");
+              setStyle(initial.style);
               setError(null);
             }}
           >

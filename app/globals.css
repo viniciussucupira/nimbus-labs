@@ -2279,6 +2279,49 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:check
 .sp-section {
   margin-top: 3.5rem;
 }
+/* The page's style (lib/sales-page.ts, PageStyle), on .sp-body. Each block
+   below the hero sits in a .sp-block. "bands": every other section on a
+   faint wash of the store's colour (.sp-band), whose contrast with the text,
+   the muted text and the links lib/store-look.ts has already checked.
+   "cards": each section on a card of its own, with what was a card inside it
+   moved to the item colour so it still stands out. */
+.sp-style-bands .sp-block > .sp-section {
+  margin-top: 2.75rem;
+}
+.sp-style-bands .sp-band > .sp-section {
+  background: var(--st-band, var(--st-accent-soft));
+  border-radius: 1.75rem;
+  padding: 2.25rem 1.25rem;
+  margin-inline: -0.5rem;
+}
+.sp-style-cards .sp-block > .sp-section {
+  background: var(--st-card);
+  border: 1px solid var(--st-line);
+  border-radius: 1.5rem;
+  padding: 1.75rem 1.25rem;
+  margin-top: 1.5rem;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 12px 32px -18px rgb(0 0 0 / 0.18);
+}
+.sp-style-cards .sp-block > .sp-section > * {
+  --st-card: var(--st-item);
+}
+@container (min-width: 700px) {
+  .sp-style-bands .sp-band > .sp-section {
+    padding: 3rem 2.5rem;
+    margin-inline: -1.5rem;
+  }
+  .sp-style-cards .sp-block > .sp-section {
+    padding: 2.25rem;
+  }
+}
+@media (min-width: 1100px) {
+  .sp-wide.sp-style-bands .sp-band > .sp-section {
+    margin-inline: -3rem;
+    padding-inline: 3rem;
+  }
+}
 .sp-benefit {
   display: flex;
   align-items: flex-start;

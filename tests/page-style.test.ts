@@ -1,0 +1,71 @@
+/**
+ * A sales page's style (lib/sales-page.ts, PageStyle). What is checked:
+ *
+ *   - a page keeps a style it knows and falls back to "plain" for anything
+ *     else, so an old page or a hand-made request still draws;
+ *   - a page started from another product's page takes its style with it;
+ *   - in bands, the first section shown below the hero is on a band and they
+ *     alternate from there;
+ *   - the band's colour, for every theme and every preset colour and some
+ *     colours of a creator's own, keeps the text at 7:1 and the muted text
+ *     and the coloured links at 4.5:1 — a style never costs anyone reading;
+ *   - the stylesheet draws each style the page and the preview ask for.
+ */
+import { readFileSync } from "node:fs";
+import { ACCENTS, THEMES, contrast, lookColours, lookStyle } from "@/lib/store-look";
+import { EMPTY_PAGE, PAGE_STYLES, copyOfPage, onBand, parsePage } from "@/lib/sales-page";
+import { done, is, part } from "./check";
+
+async function main() {
+  part("The style a page keeps");
+  is("an empty page is plain", EMPTY_PAGE.style, "plain");
+  is("a page saved before styles is plain", parsePage({ blocks: [] }).style, "plain");
+  for (const style of PAGE_STYLES) is(`"${style}" is kept`, parsePage({ blocks: [], style }).style, style);
+  is("an unknown style is plain", parsePage({ blocks: [], style: "neon" }).style, "plain");
+  is("a style that is not a word is plain", parsePage({ blocks: [], style: { bands: true } }).style, "plain");
+
+  part("Starting from another page");
+  const other = parsePage({ blocks: [{ id: "b1", kind: "text", heading: "Why", body: "Because." }], style: "cards" });
+  is("the copy takes the style", copyOfPage(other).style, "cards");
+
+  part("Bands alternate on what is shown");
+  is("bands: first, third and fifth on a band", [0, 1, 2, 3, 4].map((i) => onBand("bands", i)), [true, false, true, false, true]);
+  is("plain: none", [0, 1, 2].map((i) => onBand("plain", i)), [false, false, false]);
+  is("cards: none", [0, 1, 2].map((i) => onBand("cards", i)), [false, false, false]);
+
+  part("The band reads, in every look");
+  const accents = [...ACCENTS.map((a) => a.hex), "#ffff00", "#00ffff", "#ffffff", "#000000", "#7f7f7f", "#ff00ff"];
+  let worst = { text: 99, muted: 99, link: 99 };
+  for (const theme of THEMES) {
+    for (const accent of accents) {
+      const c = lookColours({ theme: theme.id, accent });
+      worst = {
+        text: Math.min(worst.text, contrast(c.band, c.text)),
+        muted: Math.min(worst.muted, contrast(c.band, c.muted)),
+        link: Math.min(worst.link, contrast(c.band, c.accentText)),
+      };
+    }
+  }
+  is("text on a band, at least 7:1", worst.text >= 7, true);
+  is("muted text on a band, at least 4.5:1", worst.muted >= 4.5, true);
+  is("links on a band, at least 4.5:1", worst.link >= 4.5, true);
+  const violet = lookColours({ theme: "light", accent: "#5a36ee" });
+  is("the band is not the card: it can be seen", violet.band !== violet.card, true);
+  is("the page is given the band", lookStyle({ theme: "light", accent: "#5a36ee" })["--st-band"], violet.band);
+
+  part("The stylesheet draws each style");
+  const css = readFileSync("app/globals.css", "utf8");
+  is("bands are drawn", css.includes(".sp-style-bands .sp-band > .sp-section"), true);
+  is("cards are drawn", css.includes(".sp-style-cards .sp-block > .sp-section"), true);
+  const page = readFileSync("app/[handle]/p/[product]/page.tsx", "utf8");
+  is("the live page carries its style", page.includes("sp-style-${page.style}"), true);
+  const editor = readFileSync("components/page-editor.tsx", "utf8");
+  is("the preview carries the style being edited", editor.includes("sp-style-${style}"), true);
+
+  done();
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
