@@ -265,7 +265,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
           revoked: words.keyRevoked(store.name),
           yours: words.keyYours,
           waiting: words.keyWaiting(store.name),
-          notShown: words.keyNotShown,
+          failed: words.keyNotShown,
         }}
       />
     );

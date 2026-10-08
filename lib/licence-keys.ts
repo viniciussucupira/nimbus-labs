@@ -60,6 +60,7 @@ import { StripeError, onAccount } from "@/lib/stripe-account";
 import { refundedInFull } from "@/lib/refunds";
 import { readListing, sellsAny } from "@/lib/catalog";
 import { deliveredIds } from "@/lib/bundle-rules";
+import { givingWords } from "@/lib/buyer-words/giving";
 import {
   MAX_PREFIX_LENGTH,
   MIN_GROUPS,
@@ -705,20 +706,21 @@ async function serveWaiting(store: Store, product: Listing, origin: string): Pro
     if (given?.state !== "issued") break;
     served += 1;
     if (!email) continue;
+    const g = givingWords(store.language);
     await sendEmail({
       from: `"${displayName(store.name)}" <${senderAddress()}>`,
       to: email,
       replyTo: store.email,
-      subject: `Your license key for ${product.title}`.slice(0, 200),
+      subject: g.keyLabelFor(product.title).slice(0, 200),
       text: [
-        `Your license key for ${product.title} is ready:`,
+        g.keyReady(product.title),
         "",
         given.key,
         "",
-        `Thank you for waiting. It is also on your list of purchases: ${origin}/@${store.handle}/orders`,
-        `Order reference: ${reference}`,
+        g.keyThanks(`${origin}/@${store.handle}/orders`),
+        g.orderRef(reference),
         "",
-        `Questions? Reply to this email and it reaches ${store.name}.`,
+        g.keyQuestions(store.name),
       ].join("\n"),
       idempotencyKey: `nimbus-key:${store.statsId}:${product.id}:${reference}`,
     }).catch((error) => console.error("emailing a waiting buyer their key failed", error));

@@ -3,30 +3,29 @@
 import { useState } from "react";
 
 /**
- * Everything the box says, in the store's language (lib/buyer-words/orders.ts),
- * with the product's title and the store's name already in.
+ * What the box says, in the store's language, with the store's name and the
+ * product's title already in (lib/buyer-words/giving.ts, licenceKeyBoxWords).
  */
-export type KeyBoxWords = {
-  /** "Your license key", or "Your license key for {title}" when a title is given. */
+export type LicenceKeyWords = {
   label: string;
   copy: string;
   copied: string;
-  revoked: string;
   yours: string;
+  revoked: string;
   waiting: string;
-  notShown: string;
+  failed: string;
 };
 
-/** The box's words in English, for a page that passes none. */
-function englishWords(title: string | undefined, storeName: string): KeyBoxWords {
+/** Today's English, for a page that passes no words. */
+function english(storeName: string, title?: string): LicenceKeyWords {
   return {
     label: title ? `Your license key for ${title}` : "Your license key",
     copy: "Copy",
     copied: "Copied",
-    revoked: `${storeName} has marked this key as no longer valid. If you think that is a mistake, reply to your order confirmation email and it reaches them.`,
     yours: "It is yours alone: nobody else is given this key. It is also in your confirmation email and on your list of purchases.",
+    revoked: `${storeName} has marked this key as no longer valid. If you think that is a mistake, reply to your order confirmation email and it reaches them.`,
     waiting: `Your payment went through just as ${storeName}'s keys ran out, so yours is not ready yet. They have been told, and it is emailed to you the moment they add more. It also appears here and on your list of purchases.`,
-    notShown: "Your key could not be shown just now. Refresh the page in a moment; it is kept for you.",
+    failed: "Your key could not be shown just now. Refresh the page in a moment; it is kept for you.",
   };
 }
 
@@ -41,7 +40,7 @@ export function LicenceKeyBox({
   revoked = false,
   waiting = false,
   storeName,
-  words: given,
+  words,
 }: {
   /** The product the key is for, when more than one key is on the page. */
   title?: string;
@@ -50,15 +49,15 @@ export function LicenceKeyBox({
   /** Paid while the creator's keys ran out: the key is emailed when they add more. */
   waiting?: boolean;
   storeName: string;
-  /** Said in the store's language; English when not given. */
-  words?: KeyBoxWords;
+  /** Everything the box says, in the store's language; English when left out. */
+  words?: LicenceKeyWords;
 }) {
   const [copied, setCopied] = useState(false);
-  const words = given ?? englishWords(title, storeName);
+  const said = words ?? english(storeName, title);
 
   return (
     <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line-strong)", background: "var(--st-item)" }}>
-      <p className="st-label">{words.label}</p>
+      <p className="st-label">{said.label}</p>
       {value ? (
         <>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
@@ -92,20 +91,16 @@ export function LicenceKeyBox({
                   }
                 }}
               >
-                <span aria-live="polite">{copied ? words.copied : words.copy}</span>
+                <span aria-live="polite">{copied ? said.copied : said.copy}</span>
               </button>
             )}
           </div>
-          <p className="st-muted mt-2 text-sm">
-            {revoked ? words.revoked : words.yours}
-          </p>
+          <p className="st-muted mt-2 text-sm">{revoked ? said.revoked : said.yours}</p>
         </>
       ) : waiting ? (
-        <p className="st-muted mt-2 text-sm">
-          {words.waiting}
-        </p>
+        <p className="st-muted mt-2 text-sm">{said.waiting}</p>
       ) : (
-        <p className="st-muted mt-2 text-sm">{words.notShown}</p>
+        <p className="st-muted mt-2 text-sm">{said.failed}</p>
       )}
     </div>
   );

@@ -32,6 +32,8 @@ import { onAccount } from "@/lib/stripe-account";
 import { formatMoney } from "@/lib/money";
 import { type Listing, type Store, setPastBuyers, storeRef } from "@/lib/store";
 import { givenOption } from "@/lib/gift-rules";
+import { speech } from "@/lib/buyer-words";
+import { givingWords } from "@/lib/buyer-words/giving";
 import {
   GROUP_ID,
   GROUP_KEPT_SECONDS,
@@ -193,7 +195,7 @@ export async function settleGroup(input: {
     ["DEL", `${groupKey(id)}:settling`],
   ]);
 
-  await sendReceipt({ ...input, group: paid, lead: `Thank you for buying from ${store.name}. This is your receipt.`, idempotencyKey: `nimbus-group-receipt:${group.id}` }).catch((error) =>
+  await sendReceipt({ ...input, group: paid, lead: givingWords(store.language).thanksReceipt(store.name), idempotencyKey: `nimbus-group-receipt:${group.id}` }).catch((error) =>
     console.error("a receipt for several people failed", error),
   );
   return "settled";
@@ -216,25 +218,26 @@ async function sendReceipt(input: {
   if (!buyer) return false;
   const amount = typeof session.amount_total === "number" ? session.amount_total : product.priceCents * group.people;
   const currency = typeof session.currency === "string" && session.currency ? session.currency : store.currency;
+  const g = givingWords(store.language);
   return sendEmail({
     from: input.from,
     to: buyer,
-    subject: `Your ${group.people} places: ${title}`.slice(0, 200),
+    subject: g.groupReceiptSubject(group.people, title).slice(0, 200),
     text: [
       input.lead,
       "",
-      `${title}, for ${peopleWords(group.people)}`,
-      `Paid: ${formatMoney(amount, currency)}`,
-      `Order reference: ${group.session ?? ""}`,
+      g.forWho(title, peopleWords(group.people, store.language)),
+      g.paidLine(formatMoney(amount, currency, speech(store).lang.locale)),
+      g.orderRef(group.session ?? ""),
       "",
-      "Pass this link on to the people it is for:",
+      g.passLinkOn,
       groupLink(input.base, group.id),
       "",
-      `Each person opens it and types their own email address. They get a link in their inbox, and opening it puts ${title} on that address, as if they had bought it. Take a place yourself the same way: you paid for ${group.people}, and you are one of them only if you take one.`,
+      g.eachPerson(title, group.people),
       "",
-      "Keep this email: the link is how the places are handed out, and the page it opens shows how many are left. A full refund takes every place back.",
+      g.keepEmail,
       "",
-      `Charged by ${store.name} on their own Stripe account. Questions go to ${store.name} by replying to this email.`,
+      g.chargedBy(store.name),
     ].join("\n"),
     replyTo: store.email,
     ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
@@ -249,7 +252,7 @@ async function sendReceipt(input: {
 export async function resendGroupReceipt(input: { store: Store; session: Session; product: Listing; base: string; from: string }): Promise<boolean> {
   const group = await openGroup(input.store, input.session.metadata?.group ?? "");
   if (!group || group.p !== input.product.id) return false;
-  return sendReceipt({ ...input, group, lead: `${input.store.name} asked us to send you this again. It is a copy of your receipt.` });
+  return sendReceipt({ ...input, group, lead: givingWords(input.store.language).resentReceipt(input.store.name) });
 }
 
 type Member = { e: string; at: number };
@@ -296,6 +299,7 @@ export async function askPlace(input: {
   if (!raw || raw.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(raw)) return "email";
   const email = normaliseEmail(raw);
   const title = groupTitle(product, group);
+  const g = givingWords(store.language);
 
   const [held, takenRaw] = await redisPipeline([
     ["HEXISTS", membersKey(group.id), addressHash(email)],
@@ -316,16 +320,16 @@ export async function askPlace(input: {
     const sent = await sendEmail({
       from: input.from,
       to: email,
-      subject: `Your place in ${title}`.slice(0, 200),
+      subject: g.placeAgainSubject(title).slice(0, 200),
       text: [
-        `You already took your place in ${title} from ${store.name}. Open it here:`,
+        g.placeAgainLead(title, store.name),
         link,
         "",
-        `That link works for 24 hours. After that, go to ${base}/orders, type this address, and a new one comes right away.`,
+        g.link24(`${base}/orders`),
         "",
-        "If you did not ask for this, ignore this email.",
+        g.ignoreThis,
         "",
-        `Sent by Marktmorgen on behalf of ${store.name}. Nothing was charged to you.`,
+        g.sentByNothing(store.name),
       ].join("\n"),
     }).catch(() => false);
     return sent ? "sent" : "unavailable";
@@ -336,18 +340,18 @@ export async function askPlace(input: {
   const sent = await sendEmail({
     from: input.from,
     to: email,
-    subject: `Take your place in ${title}`.slice(0, 200),
+    subject: g.takePlaceSubject(title).slice(0, 200),
     text: [
-      `Somebody bought ${title} from ${store.name} for ${peopleWords(group.people)} and passed the link on. This address was typed on it to take one of the places.`,
+      g.takePlaceLead(title, store.name, peopleWords(group.people, store.language)),
       "",
-      "Open this link to take it:",
+      g.openToTake,
       `${groupLink(base, group.id)}?take=${token}`,
       "",
-      `It puts ${title} on this email address, as if you had bought it. Nothing is charged to you. The link works for 24 hours, and the place is yours once it is opened, while one is still free.`,
+      g.takePlaceNote(title),
       "",
-      "If you did not ask for this, ignore this email: nothing happens unless the link is opened.",
+      g.ignoreUnlessOpened,
       "",
-      `Sent by Marktmorgen on behalf of ${store.name}.`,
+      g.sentBy(store.name),
     ].join("\n"),
   }).catch(() => false);
   return sent ? "sent" : "unavailable";
