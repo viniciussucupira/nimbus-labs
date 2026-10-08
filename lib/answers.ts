@@ -192,17 +192,24 @@ export async function answerQuestion(input: {
   } catch (error) {
     console.error("answering a visitor's question failed", error);
   }
-  const json = text ? jsonIn(text) : null;
-  if (!json || typeof json.known !== "boolean") {
+  if (text === null) {
+    // No answer came at all: the store is not counted one.
     await redisPipeline([["DECR", key]]).catch(() => {});
     return { ok: false, reason: "failed" };
   }
-  const said = typeof json.answer === "string" ? json.answer.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_ANSWER) : "";
-  const known = json.known === true && said !== "";
+  // The model answered, but not in the shape asked for: what it does when a
+  // "question" was really an attempt to give it orders, and now and then by
+  // accident. Nothing it said is shown. The visitor is told what is true —
+  // the page does not answer that — and the question is not put on the
+  // creator's list, which is for what a page is missing.
+  const json = jsonIn(text);
+  const shaped = json !== null && typeof json.known === "boolean";
+  const said = shaped && typeof json.answer === "string" ? json.answer.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_ANSWER) : "";
+  const known = shaped && json.known === true && said !== "";
   const answer = known ? said : unknownWords(store.name);
 
   const commands: (string | number)[][] = [["SET", answerKey(hash), JSON.stringify({ answer, known }), "EX", ANSWER_KEPT_SECONDS]];
-  if (!known) {
+  if (!known && shaped) {
     // What the page could not answer, for the creator: the question, the product and the day. Never who asked.
     commands.push(
       ["LPUSH", missedKey(store.statsId), JSON.stringify({ p: product.id, q: question, at: Math.floor(now / 1000) })],
