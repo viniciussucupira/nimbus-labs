@@ -257,6 +257,32 @@ try {
     await tool.screenshot({ path: join(process.env.E2E_SHOTS, "studio-card.png") });
   }
   const [tab] = await Promise.all([context.waitForEvent("page"), framed.locator("button[type=submit]").click()]);
+  // Whatever the frame's height, the summary shows whole lines only and the
+  // button is inside the frame.
+  const knife = ids["Knife Skills"];
+  const frames = [260, 420, 300, 520].map((height) => `<iframe src="${LOCAL}/embed/localshop/${knife}" style="width:400px;height:${height}px;border:0"></iframe>`);
+  const fits = await context.newPage();
+  await open(fits, `${FAKE}/site?code=${encodeURIComponent(frames.join(""))}`);
+  const shapes = [];
+  for (const frame of fits.frames().filter((one) => one !== fits.mainFrame())) {
+    await frame.locator(".em-sum").waitFor();
+    shapes.push(
+      await frame.evaluate(() => {
+        const summary = document.querySelector(".em-sum");
+        const button = document.querySelector("button[type=submit]");
+        const line = parseFloat(getComputedStyle(summary).lineHeight);
+        const shown = summary.getBoundingClientRect().height;
+        return {
+          wholeLines: Math.abs(shown / line - Math.round(shown / line)) < 0.05 && Math.round(shown / line) >= 1,
+          notCut: summary.getBoundingClientRect().bottom <= summary.parentElement.getBoundingClientRect().bottom + 0.5,
+          buttonInside: button.getBoundingClientRect().bottom <= window.innerHeight,
+        };
+      }),
+    );
+  }
+  if (process.env.E2E_SHOTS) await fits.screenshot({ path: join(process.env.E2E_SHOTS, "card-heights.png"), fullPage: true });
+  await fits.close();
+  is("in a frame of any height, the summary keeps whole lines and the button stays in view", shapes, Array(4).fill({ wholeLines: true, notCut: true, buttonInside: true }));
   tab.on("pageerror", (error) => errors.push(String(error)));
   await tab.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 });
   is("the button opens the checkout in a new tab, and the blog stays as it was", [site.url().startsWith(FAKE), /\/@localshop\/thanks\?session_id=/.test(tab.url())], [true, true]);

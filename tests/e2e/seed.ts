@@ -14,7 +14,8 @@ const PRODUCTS = [
   ["Sunday Baking", "Twelve loaves and cakes for a slow morning.", "24"],
   ["Meal Planner", "A week of meals and one grocery list.", "27"],
   ["Pantry Checklist", "What to keep in the cupboard, on one page.", "9"],
-  ["Knife Skills", "Ten short lessons on cutting safely and fast.", "49"],
+  // A long summary, so the card pasted into a website has to cut it at a whole line.
+  ["Knife Skills", "Ten short lessons on cutting safely and fast: holding the knife, the claw grip, onions without tears, herbs, a whole chicken, and keeping the edge sharp at home.", "49"],
 ] as const;
 
 async function main(): Promise<void> {
