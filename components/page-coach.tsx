@@ -48,6 +48,7 @@ export function PageCoach({
   onTest,
   onFit,
   onQuestions,
+  traffic = null,
 }: {
   productId: string;
   productTitle: string;
@@ -62,6 +63,8 @@ export function PageCoach({
   onTest: (headline: string, sub: string) => void;
   onFit: (yes: string[], no: string[]) => void;
   onQuestions: (items: { q: string; a: string }[]) => void;
+  /** The last 30 days of the product's page: times it was opened, and checkouts started (lib/stats.ts). */
+  traffic?: { views: number; checkouts: number } | null;
 }) {
   const ai = useContext(AiOn);
   const [open, setOpen] = useState(false);
@@ -149,6 +152,13 @@ export function PageCoach({
           {open ? "Hide" : "See what to improve"}
         </button>
       </div>
+
+      {traffic && traffic.views > 0 ? (
+        <p className="mt-3 text-sm text-ink-soft">
+          <span className="font-semibold text-ink">Last 30 days: </span>
+          {`this page was opened ${traffic.views} ${traffic.views === 1 ? "time" : "times"}, and ${traffic.checkouts} ${traffic.checkouts === 1 ? "checkout was" : "checkouts were"} started${traffic.checkouts <= traffic.views ? ` — ${Math.round((traffic.checkouts / traffic.views) * 100)} for every 100 views` : ", some of them from your store's front page"}.`}
+        </p>
+      ) : null}
 
       {drop ? (
         <p className="notice notice-warn mt-4 text-sm" role="status">

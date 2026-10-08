@@ -529,6 +529,21 @@ try {
     if (process.env.E2E_SHOTS) await studio.locator("#coach-title").locator("xpath=ancestor::section[1]").screenshot({ path: join(process.env.E2E_SHOTS, "page-coach.png") });
   }
 
+  part("Each product's page views, in the studio's numbers");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const table = studio.locator("table", { has: studio.locator('caption:text-is("What you sell, best first")') });
+    is("a column for its page's views, beside its checkouts", await table.locator('th:text-is("Page views")').count(), 1);
+    // The counting itself is held by tests/product-views.test.ts: this browser
+    // calls itself headless, and a store's numbers leave out what robots open.
+  }
+
+  part("Logging in is not starting a store");
+  await open(page, `${LOCAL}/signin?to=login`);
+  is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);
+  await open(page, `${LOCAL}/signin`);
+  is("pressed Start your store: they say start", [await words(page.locator("h1")), await page.title()], ["Start your store", "Start your store — Marktmorgen"]);
+
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);
   is("and no page's own policy refused anything on it", [...new Set(policyRefusals)], []);

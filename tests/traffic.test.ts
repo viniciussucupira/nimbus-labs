@@ -367,13 +367,23 @@ async function main(): Promise<void> {
     const store = (await storeForHandle("joy"))!;
     await withinLimit("hit", `${ip}|${store.handle}`, 120, 600);
     await countVisit(asking(ip), store);
+    // A product's own page also counts its visitor for that product, once a day (lib/stats.ts).
+    await countHit(asking(ip), store, { kind: "product", id: product.id });
   };
-  is("and saying it was opened is too", (await counted(() => countLater("192.0.2.50"))) <= COMMANDS.laterCount, true);
+  // Somebody before them today: the product's first visitor of the day also gives the day's record its end, once.
+  await countLater("192.0.2.52");
+  const laterCount = await counted(() => countLater("192.0.2.51"));
+  is("and saying it was opened is too, with the product's own visitor", laterCount <= COMMANDS.laterCount, true);
   is("the visit this is all worked out for is a heavy one", [PAGES_PER_VISIT, STATIC_FILES, visitCost() > 0.0002, visitCost() < 0.0003], [3, 13, true, true]);
 
   part("Where it is counted, and where a store rests");
   const hit = read("app/api/store/hit/route.ts");
-  is("the front page's count is a visit too, and any other page's is only that", [/kind === "v"[\s\S]*?countVisit\(request, store\)/.test(hit), /kind === "p"\) \{[\s\S]*?await countVisit\(request, store\);\s*\} else if/.test(hit)], [true, true]);
+  // Any other page's is one visit, and on a product's own page that product's visitor too
+  // (lib/stats.ts, kind "product"), which is a figure for the creator and no second visit.
+  is("the front page's count is a visit too, and any other page's is only that", [
+    /kind === "v"[\s\S]*?countVisit\(request, store\)/.test(hit),
+    /kind === "p"\) \{[\s\S]*?await countVisit\(request, store\);(?:(?!countVisit)[\s\S])*?kind: "product"[\s\S]*?\} else if/.test(hit),
+  ], [true, true]);
   const beacon = read("components/store-beacon.tsx");
   is("a page other than the front one says only that it was opened", [/k: "p"/.test(beacon), /front = true/.test(beacon)], [true, true]);
   for (const page of ["app/[handle]/p/[product]/page.tsx", "app/[handle]/book/[product]/page.tsx", "app/[handle]/free/page.tsx", "app/[handle]/waitlist/page.tsx"]) {

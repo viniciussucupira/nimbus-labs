@@ -792,7 +792,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { icon: "download", title: "Sales as a file", body: "Every paid sale for the last 30 or 90 days or all time, read from your Stripe account, as a CSV. Up to 5,000 sales in one file, and it says so when there are more." },
           { icon: "chart", title: "Visits and sources as files", body: "Your visits day by day, and where visitors came from, as CSV files." },
-          { icon: "target", title: "Every product on its own line", body: "Each product's checkouts started, sales and revenue, side by side, for each window." },
+          { icon: "target", title: "Every product on its own line", body: "Each product's page views, checkouts started, sales and revenue side by side for each window, with how many sales every 100 views of its page brought. No cookie." },
         ],
       },
       {

@@ -8,6 +8,7 @@ import { coachChecks, steepestDrop } from "@/lib/page-coach";
 import { readPageFacts } from "@/lib/page-facts-read";
 import { readDepth, reachShares } from "@/lib/page-depth";
 import { LANGUAGES } from "@/lib/store-language";
+import { readStats } from "@/lib/stats";
 import { isFree } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
 import { readAbout } from "@/lib/product-about";
@@ -89,11 +90,15 @@ export async function POST(request: NextRequest) {
       .map((c) => c.label);
     const reach = reachShares(page.blocks.map((b) => b.id), depth.stopped, depth.visitors);
     const drop = steepestDrop(page.blocks, reach);
+    const stats = await readStats(store).catch(() => null);
+    const views = stats?.windows.d30.viewsByProduct[product.id] ?? 0;
+    const started = stats?.windows.d30.checkoutsByProduct[product.id] ?? 0;
+    const traffic = views >= 30 ? ` In the last 30 days, this page was opened ${views} times and ${started} checkouts were started.` : "";
     return answer(
       reviewPage(store, {
         facts: factsFor(store, product, about, page),
         missing,
-        drop: drop ? `${drop.lost} of every 100 readers stop before the "${drop.kind}" section, out of ${depth.visitors} counted.` : "",
+        drop: `${drop ? `${drop.lost} of every 100 readers stop before the "${drop.kind}" section, out of ${depth.visitors} counted.` : ""}${traffic}`.trim(),
         language: LANGUAGES[store.language].english,
         free: isFree(product),
         notes,

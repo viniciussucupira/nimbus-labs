@@ -56,9 +56,12 @@ export async function POST(request: NextRequest) {
     // And toward the visits the store's plan covers (lib/traffic.ts).
     await countVisit(request, store);
   } else if (kind === "p") {
-    // Another page of the store was opened: no figure in the store's own
-    // stats, which count its front page, but a visit all the same.
+    // Another page of the store was opened: a visit all the same. On a
+    // product's own page, a person counted for that product too, once a day
+    // (lib/stats.ts): what its checkouts and sales are measured against.
     await countVisit(request, store);
+    const product = read("p", 40);
+    if (product && productIdFor(store, product) === product) await countHit(request, store, { kind: "product", id: product });
   } else if (kind === "l") {
     const id = read("id", 40);
     if (store.links.some((link) => link.id === id)) await countHit(request, store, { kind: "link", id });

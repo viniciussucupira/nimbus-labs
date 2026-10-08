@@ -422,7 +422,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
         {w.everythingFrom(store.name)}
       </Link>
-      <StoreTracking store={store} presence />
+      <StoreTracking store={store} presence product={product.id} />
     </div>
   );
 

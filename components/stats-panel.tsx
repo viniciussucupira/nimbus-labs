@@ -141,10 +141,10 @@ export function StatsPanel({ data, canExport = true }: { data: StatsData; canExp
     .map((product) => {
       const row = product[range];
       const sold = range === "all" ? allSales?.byProduct[product.id] ?? { sales: 0, cents: 0 } : row;
-      return { id: product.id, title: product.title, checkouts: row.checkouts, sales: sold.sales, cents: sold.cents };
+      return { id: product.id, title: product.title, views: row.views, checkouts: row.checkouts, sales: sold.sales, cents: sold.cents };
     })
     .sort((a, b) => b.cents - a.cents || b.sales - a.sales || b.checkouts - a.checkouts);
-  const shownProducts = products.filter((p) => p.checkouts || p.sales).length ? products.filter((p) => p.checkouts || p.sales) : products;
+  const shownProducts = products.filter((p) => p.views > 0 || p.checkouts || p.sales).length ? products.filter((p) => p.views > 0 || p.checkouts || p.sales) : products;
   const sources = data.sources[range];
   const mediums = data.mediums[range];
   const campaigns = data.campaigns[range];
@@ -323,11 +323,17 @@ export function StatsPanel({ data, canExport = true }: { data: StatsData; canExp
             <thead>
               <tr className="text-ink-mute">
                 <th scope="col" className="py-1.5 font-semibold">Product</th>
+                <th scope="col" className="whitespace-nowrap py-1.5 pl-3 text-right font-semibold" title="Times the product's own page was opened">
+                  Page views
+                </th>
                 <th scope="col" className="whitespace-nowrap py-1.5 pl-3 text-right font-semibold">Checkouts</th>
                 <th scope="col" className="whitespace-nowrap py-1.5 pl-3 text-right font-semibold">Sales</th>
                 <th scope="col" className="whitespace-nowrap py-1.5 pl-3 text-right font-semibold">Revenue</th>
                 <th scope="col" className="whitespace-nowrap py-1.5 pl-3 text-right font-semibold" title="Sales for every 100 checkouts started">
                   Paid
+                </th>
+                <th scope="col" className="whitespace-nowrap py-1.5 pl-3 text-right font-semibold" title="Sales for every 100 times its page was opened">
+                  Bought
                 </th>
               </tr>
             </thead>
@@ -338,17 +344,21 @@ export function StatsPanel({ data, canExport = true }: { data: StatsData; canExp
                     {index < 3 && product.cents > 0 ? <span className="mr-1.5 tabular-nums text-violet-deep">{index + 1}.</span> : null}
                     {product.title}
                   </td>
+                  <td className="py-1.5 pl-3 text-right tabular-nums">{product.views < 0 ? "—" : count(product.views)}</td>
                   <td className="py-1.5 pl-3 text-right tabular-nums">{count(product.checkouts)}</td>
                   <td className="py-1.5 pl-3 text-right tabular-nums">{salesHere ? count(product.sales) : "—"}</td>
                   <td className="py-1.5 pl-3 text-right tabular-nums">{salesHere ? money(product.cents) : "—"}</td>
                   <td className="py-1.5 pl-3 text-right tabular-nums">{salesHere ? rate(product.sales, product.checkouts) : "—"}</td>
+                  <td className="py-1.5 pl-3 text-right tabular-nums">{salesHere && product.views > 0 && product.views >= product.sales ? rate(product.sales, product.views) : "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="mt-2 text-xs text-ink-soft">
-            Paid is sales for every 100 checkouts started. A free product&apos;s checkouts are the addresses asked for, and
-            it has no sales.
+            Page views are the times the product&apos;s own page was opened, counted from October 8, 2026, for 7, 30 and 90 days.
+            Paid is sales for every 100 checkouts started; Bought is sales for every 100 page views, and is left out while a
+            product sells more than its page is visited, as when buyers pay from your store&apos;s front page. A free product&apos;s
+            checkouts are the addresses asked for, and it has no sales.
           </p>
         </div>
       ) : null}

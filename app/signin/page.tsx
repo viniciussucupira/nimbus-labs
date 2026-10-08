@@ -11,12 +11,26 @@ import { PLANS_ON_SALE } from "@/lib/opening";
 import { formatMoney } from "@/lib/money";
 import { INVITE_BONUS_CENTS, INVITE_HOLD_DAYS } from "@/lib/creator-invite-rules";
 
-export const metadata: Metadata = {
-  title: "Start your store — Marktmorgen",
-  description:
-    "Start a Marktmorgen store, or open the one you have, with a link sent to your email. No password to invent.",
-  robots: { index: false, follow: false },
-};
+/** Somebody who came back to a store they have: by Log in, or sent here to log in again. */
+const RETURNING_STATUSES = new Set(["reauth", "out", "out-everywhere"]);
+function isReturning(params: { [key: string]: string | string[] | undefined }): boolean {
+  return params.to === "login" || (typeof params.status === "string" && RETURNING_STATUSES.has(params.status));
+}
+
+/** The tab says what the page says: a creator who pressed Log in is not shown "Start your store" there either. */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+  const returning = isReturning(await searchParams);
+  return {
+    title: returning ? "Log in to your store — Marktmorgen" : "Start your store — Marktmorgen",
+    description:
+      "Start a Marktmorgen store, or open the one you have, with a link sent to your email. No password to invent.",
+    robots: { index: false, follow: false },
+  };
+}
 
 const NOTICES: Record<string, { title: string; body: string; tone?: "success" }> = {
   "invite-accepted": {
@@ -104,7 +118,7 @@ export default async function SignInPage({
   // greets them that way, rather than with "Start your store", which reads as
   // if they had pressed the wrong thing. The form, the link and what it opens
   // are the same either way.
-  const returning = params.to === "login";
+  const returning = isReturning(params);
   const confirmation = Object.hasOwn(TOASTS, status) ? TOASTS[status] : null;
 
   /*

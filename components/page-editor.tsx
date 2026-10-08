@@ -173,6 +173,7 @@ export function PageEditor({
   folder,
   lang = "en",
   facts = {},
+  traffic = null,
 }: {
   product: EditorProduct;
   /** The store's own picture folder (lib/product-image.ts), where a page's pictures go. */
@@ -193,6 +194,8 @@ export function PageEditor({
   lang?: LanguageCode;
   /** The numbers the store has counted for this product (lib/page-facts.ts). */
   facts?: PageFacts;
+  /** Its page's last 30 days: times it was opened, checkouts started. */
+  traffic?: { views: number; checkouts: number } | null;
 }) {
   const router = useRouter();
   const [drafts, setDrafts] = useState<Draft[]>(() => toDrafts(initial));
@@ -1053,6 +1056,7 @@ export function PageEditor({
                 insertNear({ ...(emptyBlock("fit") as Extract<PageBlock, { kind: "fit" }>), yes: yes.slice(0, MAX_FIT_ITEMS), no: no.slice(0, MAX_FIT_ITEMS) }, ["benefits", "inside", "steps"])
               }
               onQuestions={addQuestions}
+              traffic={traffic}
             />
           ) : null}
 
