@@ -8,9 +8,8 @@ import { photoUrl } from "@/lib/photo-limits";
 import { linkHost } from "@/lib/product-link";
 import { type AddedPurchase, type BookedCall, type Delivery, type Purchase, callsFor, canRecover, ordersGrant, purchasesFor } from "@/lib/buyer-orders";
 import type { BumpKey } from "@/lib/bundle-rules";
-import { readableTime, zoneName } from "@/lib/call-setup";
 import { canMove, icsLink, moveLink } from "@/lib/calls";
-import { VIDEO_ROOM_NOTE, isVideoRoom, roomLabel } from "@/lib/call-rooms";
+import { isVideoRoom, roomKind } from "@/lib/call-rooms";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { renewPath } from "@/lib/membership-access";
 import { LicenceKeyBox } from "@/components/licence-key-box";
@@ -19,41 +18,44 @@ import { reviewable } from "@/lib/review-proof";
 import { takesReviews } from "@/lib/house-store";
 import { type PurchaseItems } from "@/lib/buyer-orders";
 import { BundleDelivery } from "@/components/bundle-delivery";
-
-export const metadata: Metadata = {
-  title: "Your purchases — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+import { speech } from "@/lib/buyer-words";
+import { type OrdersWords, ordersWords } from "@/lib/buyer-words/orders";
 
 type Params = {
   params: Promise<{ handle: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const NOTICES: Record<string, { title: string; body: string }> = {
-  email: {
-    title: "That does not look like an email address",
-    body: "Check it and try again. Use the address you paid with: the one you typed at checkout.",
-  },
-  limited: {
-    title: "Too many requests for now",
-    body: "To keep this form from being used to flood somebody's inbox, it takes a limited number of requests an hour. Try again in an hour.",
-  },
-  unavailable: {
-    title: "This store cannot look up purchases right now",
-    body: "Its payments are not connected to Stripe right now. Reply to the order confirmation you were emailed when you paid, and it reaches the store.",
-  },
-  error: {
-    title: "Something went wrong on our side",
-    body: "Nothing was changed. Try again in a moment.",
-  },
-  expired: {
-    title: "This link has expired",
-    body: "A link to your purchases works for 24 hours. Ask for a new one below; it takes a few seconds.",
-  },
-};
+export async function generateMetadata({ params }: Pick<Params, "params">): Promise<Metadata> {
+  const { handle: raw } = await params;
+  const decoded = decodeURIComponent(raw);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)) : null;
+  return {
+    title: `${ordersWords(store?.language).pageTitle} — Marktmorgen`,
+    robots: { index: false, follow: false },
+  };
+}
 
-const DATE = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+/**
+ * A time as a person reads it, in their own zone and the store's language:
+ * "Tuesday, October 6, 9:30 AM" (as lib/call-setup.ts, readableTime, says it in English).
+ */
+function readableTime(ms: number, tz: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    timeZone: tz,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(ms));
+}
+
+/** The zone's short name at that instant, e.g. "EDT" or "GMT+1", as the store's language writes it. */
+function zoneName(ms: number, tz: string, locale: string): string {
+  const parts = new Intl.DateTimeFormat(locale, { timeZone: tz, timeZoneName: "short" }).formatToParts(new Date(ms));
+  return parts.find((p) => p.type === "timeZoneName")?.value ?? tz;
+}
 
 function DeliveryButton({
   handle,
@@ -61,6 +63,7 @@ function DeliveryButton({
   purchase,
   delivery,
   item,
+  words,
 }: {
   handle: string;
   token: string;
@@ -68,14 +71,15 @@ function DeliveryButton({
   delivery: Delivery;
   /** The product bought, or one ticked at checkout by the key its order names it under. */
   item: "main" | BumpKey;
+  words: OrdersWords;
 }) {
   if (delivery.link) {
     return (
       <span className="block">
         <a href={delivery.link} rel="noopener noreferrer" target="_blank" className="btn st-btn btn-block">
-          {`Open ${item !== "main" ? delivery.title : "it"}`}
+          {item !== "main" ? words.openTitle(delivery.title) : words.openIt}
         </a>
-        <span className="st-muted mt-2 block break-all text-xs">{`Kept on ${linkHost(delivery.link)}: ${delivery.link}`}</span>
+        <span className="st-muted mt-2 block break-all text-xs">{words.keptOn(linkHost(delivery.link), delivery.link)}</span>
       </span>
     );
   }
@@ -83,7 +87,7 @@ function DeliveryButton({
   if (item !== "main") query.set("item", item);
   return (
     <a href={`/api/store/download?${query}`} className="btn st-btn btn-block">
-      {item !== "main" ? `Download ${delivery.title}` : "Download it"}
+      {item !== "main" ? words.downloadTitle(delivery.title) : words.downloadIt}
     </a>
   );
 }
@@ -92,32 +96,33 @@ function DeliveryButton({
  * A call still to come: when, in the buyer's own time zone, where to join,
  * and the calendar file and the way to move it, as in the booking email.
  */
-function BookedCallCard({ call, store }: { call: BookedCall; store: Store }) {
+function BookedCallCard({ call, store, words }: { call: BookedCall; store: Store; words: OrdersWords }) {
   const video = isVideoRoom(call.room);
   const minutes = Math.round((call.end - call.start) / 60_000);
+  const locale = speech(store).lang.locale;
   return (
     <li className="rounded-2xl p-5" style={{ border: "1px solid var(--st-line)" }}>
       <p className="font-semibold">{call.title}</p>
       <p className="mt-1 text-sm font-semibold" style={{ color: "var(--st-text)" }}>
-        {readableTime(call.start, call.buyerTz)}
+        {readableTime(call.start, call.buyerTz, locale)}
       </p>
-      <p className="st-muted text-sm">{`${zoneName(call.start, call.buyerTz)} \u00b7 ${minutes} minutes`}</p>
+      <p className="st-muted text-sm">{words.callLength(zoneName(call.start, call.buyerTz, locale), minutes)}</p>
       <div className="mt-4 space-y-3">
         {call.room ? (
           <a href={call.room} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn btn-block">
-            {roomLabel(call.room)}
+            {words.roomLabels[roomKind(call.room)]}
           </a>
         ) : (
-          <p className="st-muted text-sm">{`${store.name} sends you the link to join before the call.`}</p>
+          <p className="st-muted text-sm">{words.linkBeforeCall(store.name)}</p>
         )}
-        {video ? <p className="st-muted text-xs leading-relaxed">{VIDEO_ROOM_NOTE}</p> : null}
+        {video ? <p className="st-muted text-xs leading-relaxed">{words.videoRoomNote}</p> : null}
         <a href={icsLink("", store, call.session)} className="btn btn-secondary btn-block">
-          Add it to your calendar
+          {words.addToCalendar}
         </a>
         {canMove(call.setup, call.start, call.moves) ? (
           <p className="text-center text-sm">
             <a href={moveLink("", store, call.productId, call.session)} className="st-footer-link font-semibold">
-              Move it to another time
+              {words.moveCall}
             </a>
           </p>
         ) : null}
@@ -140,6 +145,8 @@ export default async function OrdersPage({ params, searchParams }: Params) {
   if (!decoded.startsWith("@")) notFound();
   const store = await storeForPage(normaliseHandle(decoded));
   if (!store) notFound();
+  const said = speech(store);
+  const words = ordersWords(store.language);
 
   const query = await searchParams;
   const token = typeof query.token === "string" ? query.token : "";
@@ -158,7 +165,9 @@ export default async function OrdersPage({ params, searchParams }: Params) {
       failed = true;
     }
   }
+  const NOTICES = words.notices;
   const notice = token && !email ? NOTICES.expired : failed ? NOTICES.error : NOTICES[status] ?? null;
+  const on = (seconds: number) => said.date(seconds * 1000);
 
   // A private podcast opens as this address's own feed (lib/podcast-access.ts).
   const feeds = new Map<string, string>();
@@ -219,7 +228,16 @@ export default async function OrdersPage({ params, searchParams }: Params) {
       <BundleDelivery
         storeName={store.name}
         missing={items.missing}
-        heading={added ? `Inside ${added.title}` : "What is inside"}
+        heading={added ? words.insideTitle(added.title) : words.whatIsInside}
+        words={{
+          openCourse: words.openCourse,
+          startCourse: words.startCourse,
+          openIt: words.openIt,
+          keptOn: words.keptOn("{host}", "{link}"),
+          downloadIt: words.downloadIt,
+          nothingAttached: words.nothingAttached(store.name),
+          missing: items.missing > 0 ? words.bundleMissing(items.missing, store.name) : null,
+        }}
         lines={items.lines.map((line) => ({
           product: { id: line.productId, title: line.title, link: line.delivery?.link ?? null },
           download: line.delivery?.file
@@ -240,6 +258,15 @@ export default async function OrdersPage({ params, searchParams }: Params) {
         value={found !== "error" && found.state === "issued" ? found.key : null}
         revoked={found !== "error" && found.state === "issued" && found.revoked}
         waiting={found !== "error" && found.state === "waiting"}
+        words={{
+          label: title ? words.yourKeyFor(title) : words.yourKey,
+          copy: words.copy,
+          copied: words.copied,
+          revoked: words.keyRevoked(store.name),
+          yours: words.keyYours,
+          waiting: words.keyWaiting(store.name),
+          notShown: words.keyNotShown,
+        }}
       />
     );
   };
@@ -249,12 +276,12 @@ export default async function OrdersPage({ params, searchParams }: Params) {
       <input type="hidden" name="handle" value={store.handle} />
       <div aria-hidden="true" className="hidden">
         <label>
-          Leave this empty
+          {said.w.leaveEmpty}
           <input type="text" name="website" tabIndex={-1} autoComplete="off" />
         </label>
       </div>
       <label htmlFor="orders-email" className="st-label">
-        The email you paid with
+        {words.emailYouPaidWith}
       </label>
       <input
         id="orders-email"
@@ -263,20 +290,19 @@ export default async function OrdersPage({ params, searchParams }: Params) {
         required
         maxLength={254}
         autoComplete="email"
-        placeholder="you@example.com"
+        placeholder={said.w.emailPlaceholder}
         className="st-field"
       />
       <button type="submit" className="btn st-btn btn-block">
-        Email me my purchases
+        {words.emailMe}
       </button>
-      <p className="st-muted text-sm">
-        {`If that address bought something from ${store.name}, a link to all of it usually arrives within a minute and works for 24 hours. We say the same thing whether or not it did, so nobody can use this page to find out who bought what.`}
-      </p>
+      <p className="st-muted text-sm">{words.formNote(store.name)}</p>
     </form>
   );
 
   return (
     <div
+      lang={said.lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
@@ -297,29 +323,25 @@ export default async function OrdersPage({ params, searchParams }: Params) {
           {email && purchases ? (
             <>
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">
-                Your purchases
+                {words.pageTitle}
               </h1>
               {calls.length > 0 ? (
                 <section aria-labelledby="calls-title" className="mt-6">
                   <h2 id="calls-title" className="font-display text-xl font-semibold">
-                    {calls.length === 1 ? "Your booked call" : "Your booked calls"}
+                    {words.bookedCalls(calls.length)}
                   </h2>
                   <ul className="mt-4 space-y-4">
                     {calls.map((call) => (
-                      <BookedCallCard key={call.session} call={call} store={store} />
+                      <BookedCallCard key={call.session} call={call} store={store} words={words} />
                     ))}
                   </ul>
                 </section>
               ) : null}
               {purchases.length === 0 && calls.length > 0 ? null : purchases.length === 0 ? (
-                <p className="st-muted mt-4 text-lg leading-relaxed">
-                  {`There is nothing to open here anymore. A purchase that was refunded in full is no longer listed. If something is missing, reply to the order confirmation you were emailed when you paid, and it reaches ${store.name}.`}
-                </p>
+                <p className="st-muted mt-4 text-lg leading-relaxed">{words.nothingToOpen(store.name)}</p>
               ) : (
                 <>
-                  <p className="st-muted mt-4 leading-relaxed">
-                    {`Everything ${store.name} sold to this address that can be opened again, newest first. Open or download any of it again whenever you need it.`}
-                  </p>
+                  <p className="st-muted mt-4 leading-relaxed">{words.everythingSold(store.name)}</p>
                   <ul className="mt-7 space-y-4">
                     {purchases.map((purchase) => (
                       <li key={purchase.reference} className="rounded-2xl p-5" style={{ border: "1px solid var(--st-line)" }}>
@@ -327,19 +349,23 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                         <p className="st-muted mt-1 text-sm">
                           {[
                             purchase.option,
-                            purchase.member ? "Membership, still running" : null,
-                            purchase.ended ? "Membership, ended" : null,
-                            purchase.kind === "upsell" ? "Added after paying" : null,
+                            purchase.member ? words.memberRunning : null,
+                            purchase.ended ? words.memberEnded : null,
+                            purchase.kind === "upsell" ? words.addedAfterPaying : null,
                             purchase.kind === "imported" && purchase.giftFrom
-                              ? `A gift from ${purchase.giftFrom}${purchase.paidAt ? `, on ${DATE.format(new Date(purchase.paidAt * 1000))}` : ""}`
+                              ? words.giftFrom(
+                                  // lib/gifts.ts names a giver who gave no name "someone".
+                                  purchase.giftFrom === "someone" ? words.someone : purchase.giftFrom,
+                                  purchase.paidAt ? on(purchase.paidAt) : "",
+                                )
                               : purchase.place
-                              ? `A place somebody bought for you${purchase.paidAt ? `, taken on ${DATE.format(new Date(purchase.paidAt * 1000))}` : ""}`
+                              ? words.placeFor(purchase.paidAt ? on(purchase.paidAt) : "")
                               : purchase.paidWith === "paypal"
-                              ? `Bought on ${DATE.format(new Date(purchase.paidAt * 1000))}, paid with PayPal`
+                              ? words.boughtWithPayPal(on(purchase.paidAt))
                               : purchase.kind === "imported"
-                              ? `Brought over from another platform${purchase.paidAt ? ` on ${DATE.format(new Date(purchase.paidAt * 1000))}` : ""}`
+                              ? words.broughtOver(purchase.paidAt ? on(purchase.paidAt) : "")
                               : purchase.paidAt
-                                ? `Bought on ${DATE.format(new Date(purchase.paidAt * 1000))}`
+                                ? words.boughtOn(on(purchase.paidAt))
                                 : null,
                           ]
                             .filter(Boolean)
@@ -348,50 +374,46 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                         <div className="mt-4 space-y-3">
                           {purchase.ended ? (
                             <>
-                              <p className="st-muted text-sm">
-                                This membership is no longer running, so what it gave you access to is closed now. Renew it and everything opens again right away.
-                              </p>
+                              <p className="st-muted text-sm">{words.endedNote}</p>
                               <Link href={renewPath(store, { id: purchase.productId })} className="btn st-btn btn-block">
-                                Renew your membership
+                                {words.renew}
                               </Link>
                             </>
                           ) : null}
                           {purchase.courseProduct ? (
                             <Link href={`/@${store.handle}/course/${purchase.courseProduct}`} className="btn st-btn btn-block">
-                              Open the course
+                              {words.openCourse}
                             </Link>
                           ) : null}
                           {typeof purchase.packageLeft === "number" ? (
                             purchase.packageBook ? (
                               <Link href={purchase.packageBook} className="btn st-btn btn-block">
-                                {`Book a session (${purchase.packageLeft} left)`}
+                                {words.bookSession(purchase.packageLeft)}
                               </Link>
                             ) : (
-                              <p className="st-muted text-sm">{purchase.packageExpired ? "The time to book this package's sessions has passed." : "Every session of this package is booked."}</p>
+                              <p className="st-muted text-sm">{purchase.packageExpired ? words.packageExpired : words.packageAllBooked}</p>
                             )
                           ) : null}
                           {purchase.podcastProduct && feeds.has(purchase.podcastProduct) ? (
                             <Link href={`/@${store.handle}/podcast/${purchase.podcastProduct}?t=${feeds.get(purchase.podcastProduct)}`} className="btn st-btn btn-block">
-                              Add the podcast to your app
+                              {words.addPodcast}
                             </Link>
                           ) : null}
                           {/* A course or podcast bought at one of several prices: what that price includes besides the way in. */}
                           {purchase.main && purchase.option && (purchase.courseProduct || purchase.podcastProduct) ? (
-                            <p className="st-label">{`Also in ${purchase.option}`}</p>
+                            <p className="st-label">{words.alsoIn(purchase.option)}</p>
                           ) : null}
                           {purchase.main ? (
-                            <DeliveryButton handle={store.handle} token={token} purchase={purchase} delivery={purchase.main} item="main" />
+                            <DeliveryButton handle={store.handle} token={token} purchase={purchase} delivery={purchase.main} item="main" words={words} />
                           ) : null}
                           {purchase.added.map((added) =>
                             added.delivery ? (
-                              <DeliveryButton key={added.key} handle={store.handle} token={token} purchase={purchase} delivery={added.delivery} item={added.key} />
+                              <DeliveryButton key={added.key} handle={store.handle} token={token} purchase={purchase} delivery={added.delivery} item={added.key} words={words} />
                             ) : null,
                           )}
                         </div>
                         {purchase.kind === "imported" && !purchase.giftFrom && !purchase.paidWith && !purchase.place ? (
-                          <p className="st-muted mt-3 text-xs leading-relaxed">
-                            {`${store.name} moved this here from the platform you bought it on. Nothing was charged here and there is no receipt from this store for it.`}
-                          </p>
+                          <p className="st-muted mt-3 text-xs leading-relaxed">{words.importedNote(store.name)}</p>
                         ) : null}
                         {contents(purchase, purchase.items, null)}
                         {purchase.added.map((added) => (
@@ -408,30 +430,24 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                               href={`/@${store.handle}/review?${new URLSearchParams({ token, ref: purchase.reference })}`}
                               className="st-footer-link font-semibold underline underline-offset-4"
                             >
-                              {purchase.added.length || purchase.items ? "Review what you bought" : `Review ${purchase.title}`}
+                              {purchase.added.length || purchase.items ? words.reviewAll : words.reviewTitle(purchase.title)}
                             </Link>
                           </p>
                         ) : null}
                       </li>
                     ))}
                   </ul>
-                  <p className="st-muted mt-6 text-sm">
-                    This page works for 24 hours from the email. After that, open it again and ask for a new link whenever you need one.
-                  </p>
+                  <p className="st-muted mt-6 text-sm">{words.worksFor24}</p>
                 </>
               )}
             </>
           ) : status === "sent" ? (
             <>
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">
-                Check your inbox
+                {words.checkInbox}
               </h1>
-              <p className="st-muted mt-4 text-lg leading-relaxed">
-                {`If that address bought something from ${store.name}, the link is on its way. It comes from ${store.name} via Marktmorgen and usually arrives within a minute. If it is not there, look in spam.`}
-              </p>
-              <p className="st-muted mt-4 text-sm">
-                Nothing arrived? You may have paid with a different address: the one you typed at checkout. Try that one below.
-              </p>
+              <p className="st-muted mt-4 text-lg leading-relaxed">{words.sentBody(store.name)}</p>
+              <p className="st-muted mt-4 text-sm">{words.nothingArrived}</p>
               {available ? form : null}
             </>
           ) : (
@@ -443,12 +459,10 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                 </div>
               ) : null}
               <h1 className="font-display text-3xl font-semibold leading-tight tracking-[-0.02em]">
-                Get what you bought again
+                {words.getAgainTitle}
               </h1>
               <p className="st-muted mt-4 text-lg leading-relaxed">
-                {available
-                  ? `Lost a download, or got a new phone? Type the email you paid ${store.name} with, and we will email you a link to everything you bought here. No account and no password.`
-                  : `${store.name} cannot take payments through Stripe right now, so there is nothing to look up from here. Reply to the order confirmation you were emailed when you paid, and it reaches them.`}
+                {available ? words.getAgainIntro(store.name) : words.cannotLookUp(store.name)}
               </p>
               {available ? form : null}
             </>
@@ -457,7 +471,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
 
         <div className="mt-8 text-center">
           <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-            {`Back to ${store.name}`}
+            {said.w.backTo(store.name)}
           </Link>
         </div>
       </main>

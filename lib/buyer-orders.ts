@@ -43,6 +43,7 @@ import { roomsFor } from "@/lib/call-rooms";
 import type { CallSetup } from "@/lib/call-setup";
 import { type BumpKey, bumpsFromMeta, bundleFromMeta } from "@/lib/bundle-rules";
 import { IMPORTED_REFERENCE, importedFor, importedReference } from "@/lib/imported-purchases";
+import { ordersWords } from "@/lib/buyer-words/orders";
 
 /** How long the emailed link opens the list. */
 export const ORDERS_LINK_SECONDS = 24 * 60 * 60;
@@ -291,7 +292,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         found.set(id, {
           reference: id,
           kind: "sale",
-          title: `${product.title}, ${bought.total} sessions`,
+          title: ordersWords(store.language).packageTitle(product.title, bought.total),
           option: null,
           paidAt: typeof session.created === "number" ? session.created : 0,
           member: false,
@@ -513,33 +514,39 @@ export async function requestOrdersLink(input: {
   const name = store.name;
   const count = purchases.length + calls.length;
   const link = `${origin}/@${store.handle}/orders?token=${token}`;
+  const words = ordersWords(store.language);
   const sent = await sendEmail({
-    from: `"${displayName(name)} via Marktmorgen" <${senderAddress()}>`,
+    from: `"${words.ordersFrom(displayName(name))}" <${senderAddress()}>`,
     to: email,
-    subject: `What you bought from ${name}`,
+    subject: words.ordersSubject(name),
     text: [
-      `You asked for what you bought from ${name}. ${count === 1 ? "Here it is" : `Here are all ${count}`}, ready to open again:`,
+      words.ordersIntro(name, count),
       "",
       link,
       "",
-      "The link works for 24 hours, on any device. After that, ask again from the store and a new one comes right away.",
+      words.ordersLinkNote,
       "",
-      "If you did not ask for this, ignore this email; nothing happens unless the link is opened.",
+      words.ordersIgnore,
       "",
-      `Sent by Marktmorgen on behalf of ${name}. ${chargedLine(name, purchases)}`,
+      `${words.ordersSentBy(name)} ${chargedLine(name, purchases, store.language)}`,
     ].join("\n"),
   });
   return sent ? "sent" : "error";
 }
 
-/** Who charged what, in one sentence, for the email that sends the list of purchases. */
-export function chargedLine(name: string, purchases: Pick<Purchase, "kind" | "giftFrom" | "paidWith" | "place">[]): string {
+/**
+ * Who charged what, in one sentence, for the email that sends the list of
+ * purchases: in the store's language, English when none is given.
+ */
+export function chargedLine(
+  name: string,
+  purchases: Pick<Purchase, "kind" | "giftFrom" | "paidWith" | "place">[],
+  language?: unknown,
+): string {
   const brought = purchases.some((p) => p.kind === "imported" && !p.giftFrom && !p.paidWith && !p.place);
   const paypal = purchases.some((p) => p.paidWith === "paypal");
-  const where = paypal ? `on their own Stripe or PayPal account` : `on their own Stripe account`;
-  return brought
-    ? `What you bought here was charged by ${name} ${where}; what ${name} brought over from another platform was not charged again.`
-    : `Every purchase was charged by ${name} ${where}.`;
+  const words = ordersWords(language);
+  return brought ? words.chargedBrought(name, paypal) : words.chargedAll(name, paypal);
 }
 
 /**

@@ -10,6 +10,7 @@ import { renewPath } from "@/lib/membership-access";
 import { originFrom } from "@/lib/request-origin";
 import type { ProductFile } from "@/lib/product-file";
 import { BUMP_KEYS } from "@/lib/bundle-rules";
+import { ordersWords } from "@/lib/buyer-words/orders";
 
 /**
  * Hands the buyer the file they paid for.
@@ -29,14 +30,15 @@ import { BUMP_KEYS } from "@/lib/bundle-rules";
  */
 export const maxDuration = 60;
 
-const MESSAGES = {
-  unpaid: [402, "This order has not been paid."],
-  processing: [402, "This payment is still being confirmed by the bank. Try again once it clears."],
-  expired: [410, "This download link has expired."],
-  invalid: [404, "We could not find this order."],
-  unavailable: [503, "This store cannot take payments yet."],
-  error: [502, "We could not check this order right now. Please try again."],
-  refunded: [410, "This order was refunded in full, so its download is closed."],
+/** The status of each answer to an order that is not paid; its words are the store's (lib/buyer-words/orders.ts). */
+const STATUSES = {
+  unpaid: 402,
+  processing: 402,
+  expired: 410,
+  invalid: 404,
+  unavailable: 503,
+  error: 502,
+  refunded: 410,
 } as const;
 
 /** The file, stamped with its buyer's email when the product asks for it. */
@@ -61,8 +63,6 @@ function pick(items: { items: Listing[] } | null | undefined, pid: string): List
   return items.items.find((p) => p.id === pid) ?? null;
 }
 
-const NOT_A_DOWNLOAD = "This one is not a download. Open your purchases again and use the link on it.";
-
 function toRenew(request: NextRequest, store: Store, product: Pick<Listing, "id">): Response {
   return new Response(null, {
     status: 303,
@@ -78,6 +78,8 @@ export async function GET(request: NextRequest) {
 
   const store = await storeForHandle(handle);
   if (!store) return plain(404, "We could not find this store.");
+  // Told in the store's own language from here on.
+  const say = ordersWords(store.language).downloadProblems;
 
   // Asked for again from the emailed list of purchases: the link's address
   // must still have paid for this one, by Stripe's account of it right now.
@@ -90,30 +92,30 @@ export async function GET(request: NextRequest) {
       email = await ordersGrant(store, token);
     } catch (error) {
       console.error("looking up a purchase failed", error);
-      return plain(502, "We could not check this purchase right now. Please try again.");
+      return plain(502, say.purchaseCheckFailed);
     }
     if (!purchase) {
-      return plain(410, "This link has expired, or this purchase is not on it. Ask the store for a new link to your purchases.");
+      return plain(410, say.linkExpired);
     }
     if (purchase.ended) return toRenew(request, store, { id: purchase.productId });
     // A product ticked at checkout is asked for by the key its order names it under.
     const asked = request.nextUrl.searchParams.get("item") ?? "";
     const bumped = (BUMP_KEYS as readonly string[]).includes(asked) ? purchase.added.find((added) => added.key === asked) ?? null : null;
-    if ((BUMP_KEYS as readonly string[]).includes(asked) && !bumped) return plain(404, "There is nothing to download on this one.");
+    if ((BUMP_KEYS as readonly string[]).includes(asked) && !bumped) return plain(404, say.nothingToDownload);
     // A product of a bundle on this purchase, by its id.
     const pid = request.nextUrl.searchParams.get("pid") ?? "";
     if (pid) {
       const line = (bumped ? bumped.items : purchase.items)?.lines.find((l) => l.productId === pid) ?? null;
-      if (!line || !line.delivery) return plain(404, "There is nothing to download on this one.");
-      if (!line.delivery.file) return plain(409, NOT_A_DOWNLOAD);
+      if (!line || !line.delivery) return plain(404, say.nothingToDownload);
+      if (!line.delivery.file) return plain(409, say.notADownloadPurchases);
       const item = await readListing(store, line.productId);
-      if (!item) return plain(404, "There is nothing to download on this one.");
+      if (!item) return plain(404, say.nothingToDownload);
       return deliver(item, line.delivery.file, { reference: purchase.reference, email, paidAt: purchase.paidAt });
     }
     const delivery = bumped ? bumped.delivery : purchase.main;
-    if (!delivery) return plain(404, "There is nothing to download on this one.");
+    if (!delivery) return plain(404, say.nothingToDownload);
     if (!delivery.file) {
-      return plain(409, "This one is not a download. Open your purchases again and use the link on it.");
+      return plain(409, say.notADownloadPurchases);
     }
     const owner = await readListing(store, bumped ? bumped.id : purchase.productId);
     if (!owner) return serveFile(delivery.file);
@@ -123,15 +125,14 @@ export async function GET(request: NextRequest) {
   const sessionId = request.nextUrl.searchParams.get("session_id") ?? "";
   const order = await readOrder(store, sessionId || undefined);
   if (order.state !== "paid") {
-    const [status, message] = MESSAGES[order.state];
-    return plain(status, message);
+    return plain(STATUSES[order.state], say[order.state]);
   }
   // A membership that has ended hands nothing over any more.
   if (order.membership === "ended") return toRenew(request, store, order.product);
   // A gift is its recipient's, opened from their own email (lib/gifts.ts).
-  if (order.gift) return plain(403, "This was a gift: it opens from the email sent to the person it is for.");
+  if (order.gift) return plain(403, say.gift);
   // Bought for several: each person opens it from their own place (lib/group-buy.ts).
-  if (order.group) return plain(403, "This was bought for several people: each one opens it from the link in the receipt.");
+  if (order.group) return plain(403, say.group);
   const sale = { reference: order.reference, email: order.email, paidAt: order.created };
   const pid = request.nextUrl.searchParams.get("pid") ?? "";
 
@@ -143,19 +144,19 @@ export async function GET(request: NextRequest) {
       request.nextUrl.searchParams.get("session_id") ?? "",
       request.nextUrl.searchParams.get("step") ?? "",
     );
-    if (!added) return plain(404, "This order has nothing added to it.");
+    if (!added) return plain(404, say.nothingAdded);
     const inside = pid ? pick(added.items, pid) : null;
-    if (pid && !inside) return plain(404, "This added product has no such part.");
+    if (pid && !inside) return plain(404, say.addedNoPart);
     // Its own payment, refunded in full since, hands nothing over any more.
     try {
-      if (await offerRefunded(store, added.reference)) return plain(410, "This added product was refunded in full, so its download is closed.");
+      if (await offerRefunded(store, added.reference)) return plain(410, say.addedRefunded);
     } catch (error) {
       console.error("checking an added product failed", error);
-      return plain(502, "We could not check this order right now. Please try again.");
+      return plain(502, say.error);
     }
     const wanted = inside ?? added.product;
     if (!wanted.file) {
-      return plain(wanted.link ? 409 : 404, wanted.link ? "This one is not a download. Open the order page again and use the link on it." : "There is no file on this product.");
+      return plain(wanted.link ? 409 : 404, wanted.link ? say.notADownloadOrder : say.noFile);
     }
     return deliver(wanted, wanted.file, { ...sale, reference: added.reference, paidAt: added.paidAt });
   }
@@ -165,15 +166,15 @@ export async function GET(request: NextRequest) {
   const item = request.nextUrl.searchParams.get("item") ?? "";
   if ((BUMP_KEYS as readonly string[]).includes(item)) {
     const added = order.bumps.find((one) => one.key === item);
-    if (!added) return plain(404, "This order has nothing added to it.");
+    if (!added) return plain(404, say.nothingAdded);
     if (pid) {
       const inside = pick(added.items, pid);
-      if (!inside) return plain(404, "The product added to this order has no such part.");
-      if (!inside.file) return plain(inside.link ? 409 : 404, inside.link ? NOT_A_DOWNLOAD : "There is no file on this product.");
+      if (!inside) return plain(404, say.addedToOrderNoPart);
+      if (!inside.file) return plain(inside.link ? 409 : 404, inside.link ? say.notADownloadPurchases : say.noFile);
       return deliver(inside, inside.file, sale);
     }
     if (!added.file) {
-      return plain(added.link ? 409 : 404, added.link ? "This one is not a download. Open the order page again and use the link on it." : "There is no file on this product.");
+      return plain(added.link ? 409 : 404, added.link ? say.notADownloadOrder : say.noFile);
     }
     return deliver(added.product, added.file, sale);
   }
@@ -181,8 +182,8 @@ export async function GET(request: NextRequest) {
   // One product of the bundle that was bought, by its id.
   if (request.nextUrl.searchParams.get("item") === "bundle") {
     const inside = pick(order.items, pid);
-    if (!inside) return plain(404, "This order has no such product in it.");
-    if (!inside.file) return plain(inside.link ? 409 : 404, inside.link ? NOT_A_DOWNLOAD : "There is no file on this product.");
+    if (!inside) return plain(404, say.noSuchProduct);
+    if (!inside.file) return plain(inside.link ? 409 : 404, inside.link ? say.notADownloadPurchases : say.noFile);
     return deliver(inside, inside.file, sale);
   }
 
@@ -194,12 +195,9 @@ export async function GET(request: NextRequest) {
     // A product that delivers a link has nothing here to send. The buyer is
     // told where it actually is rather than that their purchase is missing.
     if (order.link) {
-      return plain(
-        409,
-        "This product is not a download. Open the order page again and use the link on it.",
-      );
+      return plain(409, say.productNotADownload);
     }
-    return plain(404, "There is no file on this product.");
+    return plain(404, say.noFile);
   }
 
   return deliver(order.product, file, sale);

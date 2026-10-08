@@ -45,14 +45,14 @@ import { StripeError, onAccount } from "@/lib/stripe-account";
 import { isSettled } from "@/lib/instant-pay";
 import { canUseDomain } from "@/lib/domains";
 import { canManage } from "@/lib/membership-manage";
-import { everyLabel } from "@/lib/product-recurring";
 import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-account";
 import { SITE_URL } from "@/lib/site-url";
 import { creatorAddress } from "@/lib/mail-from";
 import type { Listing, Store } from "@/lib/store";
 import { listingsNamed, readListing, recordListings } from "@/lib/catalog";
 import { recordEnrollment } from "@/lib/learn";
-import { formatMoney } from "@/lib/money";
+import { speechFor } from "@/lib/buyer-words";
+import { ordersWords } from "@/lib/buyer-words/orders";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
 import { purchaseRefunded } from "@/lib/refunds";
 import { scheduleReviewAsk } from "@/lib/review-ask";
@@ -143,9 +143,9 @@ export function canConfirm(store: Store): boolean {
   );
 }
 
-/** An amount in the currency it was charged in (lib/money.ts). */
-function money(cents: number, currency: string): string {
-  return formatMoney(cents, currency);
+/** How a store speaks in an email about money charged in this currency (lib/buyer-words). */
+function speaking(store: Pick<Store, "language">, currency: string) {
+  return speechFor(store.language, currency);
 }
 
 export type Confirmation = { to: string; subject: string; text: string };
@@ -209,88 +209,61 @@ export function confirmationFor(
   const trialDays = product.recurring ? wholeNumber(meta.trial_days) : 0;
   const endsAfter = product.recurring ? wholeNumber(meta.ends_after) : 0;
 
-  const paid = paidLine(product, amount, currency, plan, trialDays, endsAfter);
+  const words = ordersWords(store.language);
+  const said = speaking(store, currency);
+  /** "A and B", "A, B and C" said the language's way. */
+  const listed = (titles: string[]) => titles.reduce((all, one) => words.and(all, one));
+
+  const paid = paidLine(store, product, amount, currency, plan, trialDays, endsAfter);
   const lines: string[] = [
-    `Thank you for buying from ${name}. This is your confirmation.`,
+    words.confirmIntro(name),
     "",
-    `What you bought: ${title}${ticked.length ? `, with ${ticked.map((added) => added.listing.title).join(" and ")}` : ""}`,
-    ...(items.length ? [`Inside ${product.title}: ${items.map((p) => p.title).join(", ")}`] : []),
-    ...ticked.flatMap((added) => (added.items.length ? [`Inside ${added.listing.title}: ${added.items.map((p) => p.title).join(", ")}`] : [])),
-    `Paid: ${paid}`,
-    `Order reference: ${id}`,
+    words.whatYouBought(title, ticked.length ? listed(ticked.map((added) => added.listing.title)) : ""),
+    ...(items.length ? [words.insideOf(product.title, items.map((p) => p.title).join(", "))] : []),
+    ...ticked.flatMap((added) => (added.items.length ? [words.insideOf(added.listing.title, added.items.map((p) => p.title).join(", "))] : [])),
+    words.paid(paid),
+    words.orderReference(id),
   ];
 
   if (plan) {
-    lines.push(
-      "",
-      `This was the first of ${plan.payments} ${plan.weekly ? "weekly" : "monthly"} payments. The other ${plan.payments - 1} are charged to the same card on ${name}'s own Stripe account, and they stop by themselves after the last one.`,
-    );
+    lines.push("", words.planNote(plan.payments, plan.weekly, plan.payments - 1, name));
   }
 
   lines.push("");
   if (product.podcast) {
-    lines.push(
-      `Add the podcast to your app: ${base}/podcast/${product.id}`,
-      "",
-      `Type ${email} on that page and a link to your own private feed comes right away. It works in Apple Podcasts, Overcast, Pocket Casts and most other podcast apps, for as long as you have it.`,
-    );
+    lines.push(words.addPodcastAt(`${base}/podcast/${product.id}`), "", words.podcastNote(email));
   } else if (product.course) {
-    lines.push(
-      `Start the course: ${base}/course/${product.id}`,
-      "",
-      `If you pressed "Start the course" after paying, it opens right away on that device. Anywhere else, the course page asks for your email: type ${email}, and a link that lets that device in usually arrives within a minute. There is no password to make.`,
-    );
+    lines.push(words.startCourseAt(`${base}/course/${product.id}`), "", words.courseNote(email));
   } else {
-    lines.push(
-      `Open what you bought: ${base}/thanks?session_id=${id}`,
-      "",
-      `That page has your download or your link for the next 3 days. After that it is not lost: open ${base}/orders, type ${email}, and a link to everything you bought from ${name} is emailed to you, at any time.`,
-    );
+    lines.push(words.openWhatYouBought(`${base}/thanks?session_id=${id}`), "", words.threeDays(`${base}/orders`, email, name));
   }
   // A course inside a bundle opens on its own page, as one bought on its own does.
   const courses = [...items, ...bumpItems].filter((p) => p.course);
   for (const course of courses) {
-    lines.push("", `Start ${course.title}: ${base}/course/${course.id}`);
+    lines.push("", words.startTitleAt(course.title, `${base}/course/${course.id}`));
   }
   if (courses.length) {
-    lines.push("", `A course you started after paying opens right away on that device. Anywhere else, its page asks for your email: type ${email}, and a link that lets that device in usually arrives within a minute.`);
+    lines.push("", words.bundleCourseNote(email));
   }
 
   for (const line of keys) {
-    const label = keys.length > 1 ? `Your license key for ${line.title}` : "Your license key";
-    lines.push(
-      "",
-      line.key.state === "issued"
-        ? `${label}: ${line.key.key}`
-        : `${label}: on its way. ${name}'s keys ran out just as you paid; it is emailed to you the moment they add more.`,
-    );
+    const label = keys.length > 1 ? words.yourKeyFor(line.title) : words.yourKey;
+    lines.push("", line.key.state === "issued" ? words.keyIssued(label, line.key.key) : words.keyOnItsWay(label, name));
   }
 
   if (product.recurring) {
-    const every = everyLabel(product.recurring.interval);
     if (trialDays > 0) {
       const firstCents = option ? option.priceCents : product.priceCents;
-      const tax = store.tax.enabled && !store.tax.included ? " plus any sales tax" : "";
-      const firstOn = new Date((created + trialDays * 86400) * 1000).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-        timeZone: "UTC",
-      });
-      lines.push(
-        "",
-        `Nothing was charged today. Your first payment of ${money(firstCents, currency)}${tax} is taken when the ${trialDays}-day trial ends, on ${firstOn}, from the card you gave. Cancel before then and you are not charged at all.`,
-      );
+      const tax = store.tax.enabled && !store.tax.included;
+      const firstOn = said.date((created + trialDays * 86400) * 1000);
+      lines.push("", words.trialCharge(said.money(firstCents), tax, trialDays, firstOn));
     }
-    const schedule =
-      endsAfter > 0
-        ? `This renews once ${every} for ${endsAfter} payments in all and then ends by itself.`
-        : `This renews once ${every} until you cancel it.`;
+    const schedule = words.renews(product.recurring.interval, endsAfter);
     lines.push(
       "",
       canManage(store)
-        ? `${schedule} To manage or cancel it yourself${endsAfter > 0 ? " before that" : ""}, at any time and without writing to anyone, open ${base}/manage and type ${email}.`
-        : `${schedule} To cancel${endsAfter > 0 ? " before that" : ""}, reply to this email and it reaches ${name}.`,
+        ? `${schedule} ${words.manageAt(endsAfter > 0, `${base}/manage`, email)}`
+        : `${schedule} ${words.cancelByReply(endsAfter > 0, name)}`,
     );
   }
 
@@ -298,23 +271,14 @@ export function confirmationFor(
   // (lib/affiliates.ts, joinAsBuyer): the order is the proof, so the email
   // that carries it can offer the link.
   if (store.affiliates.enabled && store.affiliates.buyers && store.statsId && amount > 0) {
-    lines.push(
-      "",
-      `Earn ${store.affiliates.percent}% by sharing ${name}: get your own link, without applying, at ${base}/affiliates?order=${id}`,
-    );
+    lines.push("", words.earnBySharing(store.affiliates.percent, name, `${base}/affiliates?order=${id}`));
   }
 
-  lines.push(
-    "",
-    `${name}: ${base}`,
-    "",
-    `Questions about this order? Reply to this email and it reaches ${name}.`,
-    `The payment went to ${name}, on their own Stripe account. Marktmorgen sent this email for them.`,
-  );
+  lines.push("", words.storeAt(name, base), "", words.questions(name), words.paymentWent(name));
 
   return {
     to: email,
-    subject: `Your order from ${name}: ${product.title}`.slice(0, 200),
+    subject: words.confirmSubject(name, product.title).slice(0, 200),
     text: lines.join("\n"),
   };
 }
@@ -326,6 +290,7 @@ function wholeNumber(raw: string | undefined): number {
 }
 
 function paidLine(
+  store: Pick<Store, "language">,
   product: Listing,
   amount: number,
   currency: string,
@@ -333,14 +298,16 @@ function paidLine(
   trialDays: number,
   endsAfter: number,
 ): string {
-  if (trialDays > 0 && amount === 0) return `${money(0, currency)} today. Your ${trialDays}-day free trial has started.`;
-  if (amount === 0) return `${money(0, currency)}. A discount code covered the whole price.`;
-  if (plan) return `${money(amount, currency)} today`;
+  const words = ordersWords(store.language);
+  const { w, money } = speaking(store, currency);
+  if (trialDays > 0 && amount === 0) return words.trialStarted(money(0), trialDays);
+  if (amount === 0) return words.discountCovered(money(0));
+  if (plan) return w.today(money(amount));
   if (product.recurring) {
-    const every = `${money(amount, currency)} ${everyLabel(product.recurring.interval)}`;
-    return endsAfter > 0 ? `${every}, ${endsAfter} payments in all` : every;
+    const every = `${money(amount)} ${w.every(product.recurring.interval)}`;
+    return endsAfter > 0 ? words.paymentsInAll(every, endsAfter) : every;
   }
-  return money(amount, currency);
+  return money(amount);
 }
 
 export type ConfirmOutcome = "sent" | "already" | "skip" | "failed";
@@ -495,36 +462,28 @@ export function offerConfirmationFor(store: Store, offer: TakenOffer, key: SaleK
   if (!INTENT_ID_PATTERN.test(offer.reference) || !SESSION_ID_PATTERN.test(offer.parent) || !offer.email) return null;
   const name = store.name;
   const base = storeBase(store);
+  const words = ordersWords(store.language);
+  const { money } = speaking(store, offer.currency);
   const lines: string[] = [
-    `You added something to your order from ${name}. This is your confirmation.`,
+    words.offerIntro(name),
     "",
-    `What you added: ${offer.product.title}`,
-    ...(offer.items?.length ? [`Inside it: ${offer.items.map((p) => p.title).join(", ")}`] : []),
-    `Paid: ${money(offer.amountCents, offer.currency)}, charged once to the card you had just paid with`,
-    `Reference: ${offer.reference}`,
+    words.whatYouAdded(offer.product.title),
+    ...(offer.items?.length ? [words.insideIt(offer.items.map((p) => p.title).join(", "))] : []),
+    words.paidOnce(money(offer.amountCents)),
+    words.reference(offer.reference),
     "",
-    `Open it: ${base}/thanks?session_id=${offer.parent}`,
+    words.openItAt(`${base}/thanks?session_id=${offer.parent}`),
     "",
-    `That page has it, beside what you bought first, for the next 3 days. After that it is not lost: open ${base}/orders, type ${offer.email}, and a link to everything you bought from ${name} is emailed to you, at any time.`,
+    words.offerThreeDays(`${base}/orders`, offer.email, name),
   ];
   for (const line of [...(key ? [{ title: offer.product.title, key }] : []), ...keys]) {
-    lines.push(
-      "",
-      line.key.state === "issued"
-        ? `Your license key for ${line.title}: ${line.key.key}`
-        : `Your license key for ${line.title}: on its way. ${name}'s keys ran out just as you paid; it is emailed to you the moment they add more.`,
-    );
+    const label = words.yourKeyFor(line.title);
+    lines.push("", line.key.state === "issued" ? words.keyIssued(label, line.key.key) : words.keyOnItsWay(label, name));
   }
-  lines.push(
-    "",
-    `${name}: ${base}`,
-    "",
-    `Questions about this order? Reply to this email and it reaches ${name}.`,
-    `The payment went to ${name}, on their own Stripe account. Marktmorgen sent this email for them.`,
-  );
+  lines.push("", words.storeAt(name, base), "", words.questions(name), words.paymentWent(name));
   return {
     to: offer.email,
-    subject: `Added to your order from ${name}: ${offer.product.title}`.slice(0, 200),
+    subject: words.offerSubject(name, offer.product.title).slice(0, 200),
     text: lines.join("\n"),
   };
 }
@@ -656,7 +615,7 @@ export async function resendPurchase(store: Store, sessionId: string): Promise<R
     from: fromStore(store),
     to: letter.to,
     subject: letter.subject,
-    text: [`${senderName(store.name)} asked us to send you this again. It is a copy of your confirmation.`, "", letter.text].join("\n"),
+    text: [ordersWords(store.language).copyNote(senderName(store.name)), "", letter.text].join("\n"),
     replyTo: store.email,
   });
   return sent ? "sent" : "failed";
