@@ -134,7 +134,22 @@ export type HeroBlock = {
   /** What sits beside the words: the product's picture, a video, or nothing. */
   media: "picture" | "video" | "none";
   video: Video | null;
+  /**
+   * How the words and the picture sit (added 8 October 2026): side by side
+   * (left unsaid), centred with the picture under them, or the picture
+   * behind the words, darkened so they read on any picture. A video is
+   * never behind the words: there it is centred.
+   */
+  layout?: HeroLayout;
+  /** A button under the words, leading where every button on the page leads. */
+  button?: boolean;
 };
+export type HeroLayout = "split" | "centered" | "cover";
+export const HERO_LAYOUTS: { value: HeroLayout; label: string }[] = [
+  { value: "split", label: "Side by side" },
+  { value: "centered", label: "Centered" },
+  { value: "cover", label: "Picture behind the words" },
+];
 export type TextBlock = { id: string; kind: "text"; heading: string; body: string };
 export type BenefitsBlock = { id: string; kind: "benefits"; heading: string; items: string[] };
 export type InsideItem = { title: string; detail: string };
@@ -547,7 +562,10 @@ function parseBlock(raw: unknown): PageBlock | null {
     case "hero": {
       const video = parseVideo(value.video);
       const media = value.media === "video" && video ? "video" : value.media === "none" ? "none" : "picture";
-      return { id, kind: "hero", headline: line(value.headline, MAX_HEADLINE), sub: lines(value.sub, MAX_SUBHEADLINE), media, video };
+      const hero: HeroBlock = { id, kind: "hero", headline: line(value.headline, MAX_HEADLINE), sub: lines(value.sub, MAX_SUBHEADLINE), media, video };
+      if (value.layout === "centered" || value.layout === "cover") hero.layout = value.layout;
+      if (value.button === true) hero.button = true;
+      return hero;
     }
     case "text":
       return { id, kind: "text", heading, body: lines(value.body, MAX_TEXT) };

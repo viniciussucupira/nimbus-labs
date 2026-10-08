@@ -2270,6 +2270,71 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:check
     margin-top: 0;
   }
 }
+/* The hero's other layouts (lib/sales-page.ts, HeroLayout). */
+.sp-hero-button {
+  margin-top: 1.75rem;
+}
+.sp-hero-centered {
+  text-align: center;
+}
+.sp-hero-centered .sp-hero-words > .flex {
+  justify-content: center;
+}
+.sp-hero-centered .sp-hero-words > p {
+  max-width: 40rem;
+  margin-inline: auto;
+}
+.sp-hero-centered .sp-hero-media {
+  margin-top: 2.25rem;
+}
+/* The picture behind the words: darkened most at the bottom, where the
+   words are, and at least 55% everywhere, so white text reads at 4.5:1 or
+   better on any picture — even a white one is no lighter than #737373. */
+.sp-hero-cover {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  min-height: 28rem;
+  padding: 2rem 1.25rem;
+  border-radius: 1.75rem;
+  overflow: hidden;
+  color: #fff;
+  background: #1d1a2e;
+}
+.sp-hero-cover-img {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sp-hero-cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.78) 0%, rgb(0 0 0 / 0.66) 45%, rgb(0 0 0 / 0.55) 100%);
+}
+.sp-hero-cover .sp-hero-words {
+  max-width: 44rem;
+}
+.sp-hero-cover .st-muted,
+.sp-hero-cover a {
+  color: rgb(255 255 255 / 0.92);
+}
+@container (min-width: 700px) {
+  .sp-hero-cover {
+    min-height: 34rem;
+    padding: 3.5rem 3rem;
+  }
+}
+@media (min-width: 1100px) {
+  .sp-wide .sp-hero-cover {
+    margin-inline: -3rem;
+  }
+}
 /* On a wide screen the live page's hero reaches past the text column. */
 @media (min-width: 1100px) {
   .sp-wide .sp-hero-split {

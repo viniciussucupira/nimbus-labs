@@ -62,6 +62,7 @@ import {
   PAGE_STYLES,
   BLOCK_SHOWS,
   MAX_PICKED_REVIEWS,
+  HERO_LAYOUTS,
   MAX_PRODUCT_NOTE,
   PAGE_TEMPLATES,
   type PageStyle,
@@ -659,6 +660,57 @@ export function PageEditor({
               </div>
               {!product.picture ? <p className="mt-1 text-xs text-ink-soft">Give the product a picture in the studio and it can go here.</p> : null}
             </fieldset>
+            <fieldset>
+              <legend className="field-label">Layout</legend>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {HERO_LAYOUTS.map((option) => {
+                  const on = (block.layout ?? "split") === option.value;
+                  const off = option.value === "cover" && !(block.media === "picture" && product.picture);
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={on}
+                      disabled={off}
+                      onClick={() =>
+                        setDrafts((all) =>
+                          all.map((d, i) => {
+                            if (i !== index || d.block.kind !== "hero") return d;
+                            const next = { ...d.block };
+                            if (option.value === "split") delete next.layout;
+                            else next.layout = option.value;
+                            return { ...d, block: next };
+                          }),
+                        )
+                      }
+                      className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold ring-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${on ? "bg-lilac text-violet-ink ring-violet-brand/40" : "bg-white text-ink-soft ring-line hover:text-ink"}`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1 text-xs text-ink-soft">The picture behind the words needs the product&apos;s picture beside them; it is darkened so the words read on any picture.</p>
+            </fieldset>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-semibold text-ink">
+              <input
+                type="checkbox"
+                className="h-5 w-5"
+                checked={Boolean(block.button)}
+                onChange={(e) =>
+                  setDrafts((all) =>
+                    all.map((d, i) => {
+                      if (i !== index || d.block.kind !== "hero") return d;
+                      const next = { ...d.block };
+                      if (e.target.checked) next.button = true;
+                      else delete next.button;
+                      return { ...d, block: next };
+                    }),
+                  )
+                }
+              />
+              A button under the headline
+            </label>
             {block.media === "video" ? (
               <div>
                 {field(
