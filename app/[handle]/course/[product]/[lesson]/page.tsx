@@ -18,16 +18,49 @@ import { LessonComments } from "@/components/lesson-comments";
 import { commenterName, commentsOn, lessonComments } from "@/lib/lesson-comments";
 import { CREATOR_AUTHOR, SHOWN_THREADS, commentClock, threadsFor } from "@/lib/lesson-comments-rules";
 import { videoLimitFor } from "@/lib/plan-standing";
+import { speech } from "@/lib/buyer-words";
+import { type CoursesWords, coursesWords } from "@/lib/buyer-words/courses";
+import type { LanguageCode } from "@/lib/store-language";
 
 type Params = {
   params: Promise<{ handle: string; product: string; lesson: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export const metadata: Metadata = {
-  title: "Lesson — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+/** The tab's title, in the store's language. */
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { handle } = await params;
+  let language: unknown;
+  try {
+    const decoded = decodeURIComponent(handle);
+    language = decoded.startsWith("@") ? (await storeForPage(normaliseHandle(decoded)))?.language : undefined;
+  } catch {
+    language = undefined;
+  }
+  return {
+    title: coursesWords(language).metaLesson,
+    robots: { index: false, follow: false },
+  };
+}
+
+/**
+ * A download's size, "1.5 MB", the way lib/product-file.ts readableSize says
+ * it, in the store's language: its decimal comma, and French's "Mo".
+ */
+function sizeIn(language: LanguageCode, locale: string, w: CoursesWords, bytes: number): string {
+  if (language === "en") return readableSize(bytes);
+  const one = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const gb = 1024 * 1024 * 1024;
+  if (bytes >= gb) {
+    const size = bytes / gb;
+    // "5 GB" rather than "5.0 GB", as readableSize says it.
+    const whole = Number(size.toFixed(1)) % 1 === 0;
+    return `${whole ? new Intl.NumberFormat(locale).format(Number(size.toFixed(1))) : one.format(size)} ${w.sizeUnits.gb}`;
+  }
+  if (bytes >= 1024 * 1024) return `${one.format(bytes / (1024 * 1024))} ${w.sizeUnits.mb}`;
+  if (bytes >= 1024) return `${new Intl.NumberFormat(locale).format(Math.round(bytes / 1024))} ${w.sizeUnits.kb}`;
+  return w.bytes(bytes, new Intl.NumberFormat(locale).format(bytes));
+}
 
 /** One lesson: its video, its text, its downloads, and the way on. */
 export default async function LessonPage({ params, searchParams }: Params) {
@@ -42,6 +75,8 @@ export default async function LessonPage({ params, searchParams }: Params) {
   const base = `/@${store.handle}/course/${product.id}`;
   const found = course ? findLesson(course, lessonId) : null;
   if (!course || !found) redirect(base);
+  const said = speech(store);
+  const w = coursesWords(store.language);
 
   const access = await courseAccess(store, product, await cookies());
   const open = access.state === "open" && isOpen(course, found.unit, access.start);
@@ -97,24 +132,25 @@ export default async function LessonPage({ params, searchParams }: Params) {
 
   return (
     <div
+      lang={said.lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
       <main id="content" className="relative mx-auto max-w-5xl px-4 py-8 sm:py-12">
         <p className="text-sm">
           <Link href={base} className="st-footer-link font-semibold">{product.title}</Link>
-          <span className="st-muted">{` · Module ${moduleNumber}: ${unit.title}`}</span>
+          <span className="st-muted">{w.crumb(moduleNumber, unit.title)}</span>
         </p>
 
         <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
           <article className="st-card min-w-0 p-5 sm:p-8">
             <h1 className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">{lesson.title}</h1>
             {!open ? (
-              <p className="st-muted mt-2 text-sm font-semibold">Free preview</p>
+              <p className="st-muted mt-2 text-sm font-semibold">{w.freePreview}</p>
             ) : null}
             {query.held === "1" && mustPass ? (
               <p className="st-note mt-4 text-sm" role="status">
-                <strong>Pass this lesson&apos;s quiz to go on.</strong> The lessons after it open as soon as you do.
+                <strong>{w.heldStrong}</strong>{` ${w.heldRest}`}
               </p>
             ) : null}
 
@@ -155,16 +191,16 @@ export default async function LessonPage({ params, searchParams }: Params) {
                 </div>
               ) : video?.kind === "preparing" ? (
                 <p className="st-note mt-6" role="status">
-                  <strong>This lesson&apos;s video is being prepared.</strong> It plays here as soon as it is ready; refresh the page in a few minutes.
+                  <strong>{w.preparingStrong}</strong>{` ${w.preparingRest}`}
                 </p>
               ) : video?.kind === "paused" ? (
                 <p className="st-note mt-6" role="status">
-                  <strong>This video is paused for now.</strong>{` ${store.name} has no paid plan, and its videos have been watched for all the hours a store without one has this month. It plays again as soon as the store's plan is paid, or when the month turns. The rest of the lesson is here as usual.`}
+                  <strong>{w.pausedStrong}</strong>{` ${w.pausedRest(store.name)}`}
                 </p>
               ) : video?.kind === "failed" ? (
-                <p className="st-note mt-6">{`This lesson's video could not be prepared. ${store.name} has to upload it again.`}</p>
+                <p className="st-note mt-6">{w.videoFailed(store.name)}</p>
               ) : (
-                <p className="st-note mt-6">The video could not be loaded just now. Refresh the page in a moment.</p>
+                <p className="st-note mt-6">{w.videoNotLoaded}</p>
               )
             ) : null}
 
@@ -176,13 +212,13 @@ export default async function LessonPage({ params, searchParams }: Params) {
 
             {lesson.link ? (
               <a href={lesson.link} target="_blank" rel="noopener noreferrer nofollow" className="btn st-btn mt-6">
-                {`Open ${linkHost(lesson.link)}`}
+                {w.openSite(linkHost(lesson.link))}
               </a>
             ) : null}
 
             {lesson.files.length ? (
               <div className="mt-6 rounded-2xl px-5 py-4" style={{ border: "1px solid var(--st-line)" }}>
-                <p className="st-label">Downloads</p>
+                <p className="st-label">{w.downloads}</p>
                 <ul className="mt-2 space-y-2">
                   {lesson.files.map((file, i) => (
                     <li key={file.pathname} className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
@@ -193,7 +229,7 @@ export default async function LessonPage({ params, searchParams }: Params) {
                       >
                         {file.name}
                       </a>
-                      <span className="st-muted">{readableSize(file.bytes)}</span>
+                      <span className="st-muted">{sizeIn(said.lang.code, said.lang.locale, w, file.bytes)}</span>
                     </li>
                   ))}
                 </ul>
@@ -201,7 +237,7 @@ export default async function LessonPage({ params, searchParams }: Params) {
             ) : null}
 
             {!lesson.video && !body && !lesson.link && lesson.files.length === 0 && !quiz ? (
-              <p className="st-muted mt-6">This lesson has nothing in it yet.</p>
+              <p className="st-muted mt-6">{w.emptyLesson}</p>
             ) : null}
 
             {quiz ? (
@@ -213,12 +249,13 @@ export default async function LessonPage({ params, searchParams }: Params) {
                 hidden={{ handle: store.handle, product: product.id, lesson: lesson.id }}
                 storeName={store.name}
                 justMarked={query.quiz === "marked"}
+                language={store.language}
               />
             ) : null}
 
             <div className="mt-8 flex flex-wrap items-center gap-3 border-t pt-6" style={{ borderColor: "var(--st-line)" }}>
               {student && open && mustPass ? (
-                <p className="st-muted text-sm font-semibold">Pass the quiz above to finish this lesson and open the next.</p>
+                <p className="st-muted text-sm font-semibold">{w.passAbove}</p>
               ) : student && open ? (
                 <form action="/api/store/course/progress" method="post" className="flex flex-wrap items-center gap-3">
                   <input type="hidden" name="handle" value={store.handle} />
@@ -226,35 +263,35 @@ export default async function LessonPage({ params, searchParams }: Params) {
                   <input type="hidden" name="lesson" value={lesson.id} />
                   {isDone ? (
                     <>
-                      <span className="text-sm font-semibold" style={{ color: "var(--st-text)" }}>✓ Done</span>
+                      <span className="text-sm font-semibold" style={{ color: "var(--st-text)" }}>{w.doneMark}</span>
                       <input type="hidden" name="done" value="0" />
-                      <button type="submit" className="st-footer-link text-sm font-semibold">Mark as not done</button>
+                      <button type="submit" className="st-footer-link text-sm font-semibold">{w.markNotDone}</button>
                     </>
                   ) : (
                     <>
                       <input type="hidden" name="done" value="1" />
                       <input type="hidden" name="next" value={next?.lesson.id ?? ""} />
-                      <button type="submit" className="btn st-btn">{next ? "Mark as done and continue" : "Mark as done"}</button>
+                      <button type="submit" className="btn st-btn">{next ? w.markDoneNext : w.markDone}</button>
                     </>
                   )}
                 </form>
               ) : null}
               {next && (isDone || !student || !open) ? (
-                <Link href={`${base}/${next.lesson.id}`} className="btn st-btn">Next lesson</Link>
+                <Link href={`${base}/${next.lesson.id}`} className="btn st-btn">{w.nextLesson}</Link>
               ) : null}
               {previous ? (
-                <Link href={`${base}/${previous.lesson.id}`} className="st-footer-link text-sm font-semibold">Previous lesson</Link>
+                <Link href={`${base}/${previous.lesson.id}`} className="st-footer-link text-sm font-semibold">{w.previousLesson}</Link>
               ) : null}
             </div>
           </article>
 
           <aside className="st-card h-fit p-5 sm:p-6 lg:row-span-2">
-            <p className="st-label">In this course</p>
+            <p className="st-label">{w.inThisCourse}</p>
             <div className="mt-3">
-              <CourseOutline course={course} base={base} start={start} done={done} current={lesson.id} held={held} />
+              <CourseOutline course={course} base={base} start={start} done={done} current={lesson.id} held={held} language={store.language} />
             </div>
             {!open ? (
-              <Link href={base} className="btn st-btn btn-block mt-5">Get the whole course</Link>
+              <Link href={base} className="btn st-btn btn-block mt-5">{w.getWhole}</Link>
             ) : null}
           </aside>
 
@@ -268,6 +305,8 @@ export default async function LessonPage({ params, searchParams }: Params) {
                 myName={myName}
                 notice={typeof query.c === "string" ? query.c : ""}
                 now={commentClock()}
+                language={store.language}
+                namePlaceholder={said.w.namePlaceholder}
               />
             </div>
           ) : null}

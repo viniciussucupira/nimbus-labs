@@ -16,6 +16,7 @@ import { redisPipeline } from "@/lib/redis";
 import { courseSender, studentEmail } from "@/lib/learn";
 import { CREATOR_AUTHOR, type LessonComment } from "@/lib/lesson-comments-rules";
 import type { Listing, Store } from "@/lib/store";
+import { coursesWords } from "@/lib/buyer-words/courses";
 
 const MAIL_GAP_SECONDS = 3_600;
 
@@ -56,21 +57,23 @@ export async function tellStudent(input: {
   const [fresh] = await redisPipeline([["SET", `nl:lc:${courseId}:mail:${parent.by}:${parent.lesson}`, "1", "NX", "EX", MAIL_GAP_SECONDS]]);
   if (fresh === null) return false;
   const link = `${origin}/@${store.handle}/course/${product.id}/${parent.lesson}#c-${reply.id}`;
+  // To the student, in the store's language (lib/buyer-words/courses.ts).
+  const w = coursesWords(store.language);
   return sendEmail({
     from: courseSender(store),
     to,
-    subject: `${store.name} answered your comment`.slice(0, 200),
+    subject: w.answeredSubject(store.name).slice(0, 200),
     text: [
-      `${store.name} answered what you wrote under “${lessonTitle}” in ${product.title}:`,
+      w.answeredLead(store.name, lessonTitle, product.title),
       "",
       excerpt(reply.text, 1_500),
       "",
-      "Read it, and answer, under the lesson:",
+      w.answeredRead,
       link,
       "",
-      "You get this email because you commented on this lesson, and only when the creator answers you, at most once an hour for each lesson.",
+      w.answeredWhy,
       "",
-      `Sent by Marktmorgen on behalf of ${store.name}.`,
+      w.sentBy(store.name),
     ].join("\n"),
   });
 }

@@ -37,6 +37,7 @@ import { holdsProducts } from "@/lib/community-access";
 import { sendEmail } from "@/lib/email";
 import { withinLimit } from "@/lib/request-guard";
 import { FEED_TOKEN } from "@/lib/podcast-rules";
+import { coursesWords } from "@/lib/buyer-words/courses";
 import type { Listing, Store } from "@/lib/store";
 
 const sha = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -135,18 +136,20 @@ export async function sendFeedLink(input: { store: Store; product: Listing; emai
   if (!(await mayListen(store, product.id, raw))) return "sent";
   const token = await feedToken(store, product.id, raw);
   if (!token) return "error";
+  // In the store's language (lib/buyer-words/courses.ts).
+  const w = coursesWords(store.language);
   const sent = await sendEmail({
     from: input.from,
     to: normaliseEmail(raw),
-    subject: `Your private podcast: ${product.title}`.slice(0, 200),
+    subject: w.podcastSubject(product.title).slice(0, 200),
     text: [
-      `Here is your own feed of ${product.title}, from ${store.name}:`,
+      w.podcastLead(product.title, store.name),
       "",
       `${input.base}/podcast/${product.id}?t=${token}`,
       "",
-      "Open it on your phone and choose your podcast app; new episodes then arrive in it like any show's. The feed is yours alone: please do not share it. It keeps working for as long as you have the podcast.",
+      w.podcastBody,
       "",
-      `Sent by Marktmorgen on behalf of ${store.name}.`,
+      w.sentBy(store.name),
     ].join("\n"),
   });
   return sent ? "sent" : "error";

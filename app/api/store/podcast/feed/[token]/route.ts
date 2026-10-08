@@ -9,6 +9,8 @@ import { feedXml } from "@/lib/podcast-rules";
 import { imageUrl } from "@/lib/product-image";
 import { photoUrl } from "@/lib/photo-limits";
 import { SITE_URL } from "@/lib/site-url";
+import { coursesWords } from "@/lib/buyer-words/courses";
+import { LANGUAGES, parseLanguage } from "@/lib/store-language";
 
 /**
  * Kept by the CDN, under the feed's own secret address, for a few hours: a
@@ -47,7 +49,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   const base = `${SITE_URL}/api/store/podcast/play/${token}`;
   const body = feedXml({
     title: product.title,
-    summary: allowed ? product.summary : `Your access to ${product.title} has ended. It opens again if you buy it again from ${store.name}.`,
+    summary: allowed ? product.summary : coursesWords(store.language).feedEnded(product.title, store.name),
+    // The store's language (lib/store-language.ts), as RSS writes one.
+    language: LANGUAGES[parseLanguage(store.language)].locale.toLowerCase(),
     author: store.name,
     page: `${SITE_URL}/@${store.handle}/p/${product.id}`,
     image: product.image ? `${SITE_URL}${imageUrl(product.image)}` : store.photoId ? `${SITE_URL}${photoUrl(store.photoId)}` : null,

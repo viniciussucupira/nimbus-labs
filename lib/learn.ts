@@ -31,6 +31,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { fileUrl } from "@/lib/file-store";
 import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, SESSION_COOKIE, emailForSession, normaliseEmail } from "@/lib/auth";
 import { NIMBUS_FROM, sendEmail } from "@/lib/email";
+import { coursesWords } from "@/lib/buyer-words/courses";
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
 import { earnedCourses } from "@/lib/community-points";
 import { onAccount } from "@/lib/stripe-account";
@@ -608,21 +609,13 @@ export async function sendCourseLink(store: Store, product: Listing, email: stri
   const grant: LinkGrant = { e: normaliseEmail(email), k: storeKey(store), h: store.handle, p: product.id };
   await redisPipeline([["SET", linkKey(token), JSON.stringify(grant), "EX", LINK_SECONDS]]);
   const link = `${origin}/api/store/course/open?token=${token}`;
+  // In the store's language (lib/buyer-words/courses.ts).
+  const w = coursesWords(store.language);
   return sendEmail({
     from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
-    subject: `Your course: ${product.title}`.slice(0, 200),
-    text: [
-      `Here is your way into ${product.title}:`,
-      "",
-      link,
-      "",
-      "Open it on the phone or computer you want to learn on. That device then stays let in for 90 days, and every course you bought from this store opens on it. No password to make or remember.",
-      "",
-      "The link works for one hour. If you did not ask for it, ignore this email; nothing happens unless the link is used.",
-      "",
-      `Sent by Marktmorgen on behalf of ${store.name}.`,
-    ].join("\n"),
+    subject: w.courseSubject(product.title).slice(0, 200),
+    text: [w.courseLead(product.title), "", link, "", w.courseDevice, "", w.courseHour, "", w.sentBy(store.name)].join("\n"),
   });
 }
 
@@ -701,18 +694,21 @@ export async function sendDripEmails(
 }
 
 async function sendDripEmail(store: Store, product: Listing, unit: CourseModule, email: string, origin: string): Promise<boolean> {
+  // In the store's language (lib/buyer-words/courses.ts); the button it
+  // names is the course page's own.
+  const w = coursesWords(store.language);
   return sendEmail({
     from: `"${displayName(store.name)} via Marktmorgen" <${senderAddress()}>`,
     to: email,
-    subject: `Now open in ${product.title}: ${unit.title}`.slice(0, 200),
+    subject: w.dripSubject(product.title, unit.title).slice(0, 200),
     text: [
-      `${unit.title} is now open in ${product.title}, with ${unit.lessons.length} ${unit.lessons.length === 1 ? "lesson" : "lessons"}.`,
+      w.dripLead(unit.title, product.title, unit.lessons.length),
       "",
       `${origin}/@${store.handle}/course/${product.id}`,
       "",
-      "If that page asks who you are, type this email address and press \"Send me the link\": a link to let that device in comes here.",
+      w.dripHow(w.sendLink),
       "",
-      `Sent by Marktmorgen on behalf of ${store.name}, because you are taking this course.`,
+      w.dripSentBy(store.name),
     ].join("\n"),
   });
 }
