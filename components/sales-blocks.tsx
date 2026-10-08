@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Icon } from "@/components/icons";
 import { VideoEmbed } from "@/components/video-embed";
 import { Countdown } from "@/components/countdown";
+import { wordsIn } from "@/lib/buyer-words";
+import { DEFAULT_LANGUAGE, LANGUAGES, type LanguageCode } from "@/lib/store-language";
 import { imageUrl } from "@/lib/product-image";
 import { type Piece, aboutBlocks } from "@/lib/product-about";
 import type { CtaBlock, HeroBlock, PageBlock } from "@/lib/sales-page";
@@ -43,6 +45,8 @@ export type BlockContext = {
    * numbers. Left out in the studio, where the browser's own clock is used.
    */
   now?: number;
+  /** The store's language (lib/store-language.ts), for the words the blocks add themselves. */
+  lang?: LanguageCode;
 };
 
 function Line({ pieces, preview }: { pieces: Piece[]; preview?: boolean }) {
@@ -248,7 +252,7 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
               </span>
             ) : null}
             <div className="min-w-0">
-              <Heading text={block.heading || `About ${ctx.storeName}`} />
+              <Heading text={block.heading || wordsIn(ctx.lang ?? DEFAULT_LANGUAGE).aboutStore(ctx.storeName)} />
               <PlainText text={block.body} preview={ctx.preview} className="mt-3" />
             </div>
           </div>
@@ -281,7 +285,7 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
               <Icon name="shield" size={24} />
             </span>
             <div className="min-w-0">
-              <Heading text={block.heading || "Guarantee"} />
+              <Heading text={block.heading || wordsIn(ctx.lang ?? DEFAULT_LANGUAGE).guarantee} />
               <PlainText text={block.body} preview={ctx.preview} className="mt-2" />
             </div>
           </div>
@@ -323,7 +327,7 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
                     image
                   ) : (
                     /* The whole picture, in its own tab: a page of a book is read, not glanced at. */
-                    <a href={imageUrl(picture)} target="_blank" rel="noopener noreferrer" aria-label={picture.alt ? `${picture.alt}, full size` : "Open this picture full size"}>
+                    <a href={imageUrl(picture)} target="_blank" rel="noopener noreferrer" aria-label={picture.alt ? wordsIn(ctx.lang ?? DEFAULT_LANGUAGE).fullSize(picture.alt) : wordsIn(ctx.lang ?? DEFAULT_LANGUAGE).openFullSize}>
                       {image}
                     </a>
                   )}
@@ -339,7 +343,17 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
       if (!block.until || (ctx.now !== undefined && block.until <= ctx.now)) return null;
       return (
         <section className="sp-section">
-          <Countdown until={block.until} now={ctx.now} heading={block.heading} note={block.note} />
+          <Countdown
+            until={block.until}
+            now={ctx.now}
+            heading={block.heading}
+            note={block.note}
+            words={{
+              units: wordsIn(ctx.lang ?? DEFAULT_LANGUAGE).countdownUnits,
+              until: wordsIn(ctx.lang ?? DEFAULT_LANGUAGE).until("{when}"),
+              locale: LANGUAGES[ctx.lang ?? DEFAULT_LANGUAGE].locale,
+            }}
+          />
         </section>
       );
   }

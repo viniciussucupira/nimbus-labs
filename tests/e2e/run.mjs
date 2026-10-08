@@ -434,6 +434,32 @@ try {
     await visit.close();
   }
 
+  part("The store in Spanish");
+  const setLanguage = (language) =>
+    studio.evaluate(async (language) => {
+      const response = await fetch("/api/store/language", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ language }) });
+      return response.status;
+    }, language);
+  is("a language there is not is refused", await setLanguage("tlh"), 400);
+  is("Spanish is taken", await setLanguage("es"), 200);
+  {
+    const { visit, there } = await asBuyerFrom("US");
+    is("the page says it is Spanish", await there.locator(".st-page[lang]").first().getAttribute("lang"), "es-ES");
+    const box = await words(there.locator("#buy"));
+    is("the buy button is in Spanish, with the price written the Spanish way", box.includes("Comprar por 9\u00a0US$") || box.includes("Comprar por 9 US$"), true);
+    is("and nothing in the box is left in English", /\b(Buy|Pay|Subscribe|Choose)\b/.test(box), false);
+    if (process.env.E2E_SHOTS) await there.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "spanish-product.png") });
+    await open(there, `${LOCAL}/@localshop`);
+    const front = await words(there.locator("main"));
+    is("the store page too", front.includes("Hecho con Marktmorgen") || front.includes("Comprar por"), true);
+    if (process.env.E2E_SHOTS) await there.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "spanish-store.png") });
+    await open(there, `${LOCAL}/@localshop/p/${ids["Pantry Checklist"]}`);
+    await Promise.all([there.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), there.locator('#buy form[action="/api/store/checkout"] button[type=submit]').first().click()]);
+    is("Stripe's page is asked to speak Spanish", services.checkouts().at(-1).locale, "es");
+    await visit.close();
+  }
+  is("and back to English", await setLanguage("en"), 200);
+
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);
   is("nothing was asked of a service with no stand-in", services.unknown(), []);

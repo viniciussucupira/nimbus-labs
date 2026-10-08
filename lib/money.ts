@@ -123,12 +123,12 @@ export function toMajor(amount: number, currency: string): number {
 
 const formatters = new Map<string, Intl.NumberFormat>();
 
-function formatter(code: string, digits: number, whole: boolean): Intl.NumberFormat | null {
-  const key = `${code}|${whole ? 0 : digits}`;
+function formatter(code: string, digits: number, whole: boolean, locale: string): Intl.NumberFormat | null {
+  const key = `${locale}|${code}|${whole ? 0 : digits}`;
   let found = formatters.get(key);
   if (!found) {
     try {
-      found = new Intl.NumberFormat("en-US", {
+      found = new Intl.NumberFormat(locale, {
         style: "currency",
         currency: code,
         minimumFractionDigits: whole ? 0 : digits,
@@ -148,13 +148,17 @@ function formatter(code: string, digits: number, whole: boolean): Intl.NumberFor
  * written on a page; anything else keeps both decimals. The symbols are the
  * ones American English gives, which never leave two currencies looking the
  * same: a Canadian price reads "CA$", never a bare "$".
+ *
+ * A store that speaks another language (lib/store-language.ts) passes its
+ * locale, and the amount is written that language's way: "27 $" in German,
+ * "27 US$" in Spanish.
  */
-export function formatMoney(amount: number, currency: string): string {
+export function formatMoney(amount: number, currency: string, locale = "en-US"): string {
   const code = (currency || DEFAULT_CURRENCY).toUpperCase();
   const digits = decimalsOf(code);
   const major = toMajor(amount, code);
   const whole = Number.isInteger(major);
-  const found = formatter(code, digits, whole);
+  const found = formatter(code, digits, whole, locale) ?? formatter(code, digits, whole, "en-US");
   if (found) return found.format(major);
   return `${major.toFixed(whole ? 0 : digits)} ${code}`;
 }

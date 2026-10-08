@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { Stars } from "@/components/review-stars";
-import { type Review, type Summary, average, averageText, hiddenLine, showsRating } from "@/lib/review-summary";
+import { type Review, type Summary, average, showsRating } from "@/lib/review-summary";
+import { speechFor } from "@/lib/buyer-words";
+import { DEFAULT_LANGUAGE, type LanguageCode } from "@/lib/store-language";
 
-const DATE = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+/**
+ * The store's words for its reviews, in its language (lib/store-language.ts).
+ * Currency plays no part here, so any will do.
+ */
+const said = (lang: LanguageCode) => speechFor(lang, "usd");
 
 /** "12 verified reviews". */
-export function countWords(count: number): string {
-  return `${count.toLocaleString("en-US")} verified ${count === 1 ? "review" : "reviews"}`;
+export function countWords(count: number, lang: LanguageCode = DEFAULT_LANGUAGE): string {
+  const { w, num } = said(lang);
+  return w.verifiedReviews(count, num(count));
 }
 
 /**
@@ -14,16 +21,28 @@ export function countWords(count: number): string {
  * stars, the average and how many — only when lib/reviews.ts says a page may
  * show them.
  */
-export function RatingLine({ summary, href, className = "" }: { summary: Summary; href?: string; className?: string }) {
+export function RatingLine({
+  summary,
+  href,
+  className = "",
+  lang = DEFAULT_LANGUAGE,
+}: {
+  summary: Summary;
+  href?: string;
+  className?: string;
+  lang?: LanguageCode;
+}) {
   if (!showsRating(summary)) return null;
+  const { w, num } = said(lang);
+  const shown = average(summary).toLocaleString(said(lang).lang.locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const body = (
     <>
-      <Stars value={average(summary)} size={15} label={`Rated ${averageText(summary)} out of 5 from ${countWords(summary.count)}`} />
+      <Stars value={average(summary)} size={15} label={w.ratedFrom(shown, countWords(summary.count, lang))} />
       <span className="font-bold tabular-nums" aria-hidden="true">
-        {averageText(summary)}
+        {shown}
       </span>
       <span className="st-muted" aria-hidden="true">
-        {`(${summary.count.toLocaleString("en-US")})`}
+        {`(${num(summary.count)})`}
       </span>
     </>
   );
@@ -37,28 +56,29 @@ export function RatingLine({ summary, href, className = "" }: { summary: Summary
 }
 
 /** One review as the page shows it: stars, the name the buyer chose, what they wrote, and any answer. */
-export function ReviewItem({ review, storeName }: { review: Review; storeName: string }) {
+export function ReviewItem({ review, storeName, lang = DEFAULT_LANGUAGE }: { review: Review; storeName: string; lang?: LanguageCode }) {
+  const { w, date } = said(lang);
   return (
     <li className="rv-item">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <Stars value={review.rating} size={16} label={`${review.rating} out of 5 stars`} />
-        <span className="font-semibold">{review.name || "Verified buyer"}</span>
+        <Stars value={review.rating} size={16} label={w.starsOutOf5(review.rating)} />
+        <span className="font-semibold">{review.name || w.verifiedBuyer}</span>
         <span className="rv-badge">
           <svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          Verified purchase
+          {w.verifiedPurchase}
         </span>
-        {review.refunded ? <span className="rv-badge rv-badge-muted">Refunded, not counted</span> : null}
+        {review.refunded ? <span className="rv-badge rv-badge-muted">{w.refundedNotCounted}</span> : null}
       </div>
       <p className="st-muted mt-1 text-xs">
-        {DATE.format(new Date(review.createdAt))}
-        {review.editedAt ? ` · edited ${DATE.format(new Date(review.editedAt))}` : ""}
+        {date(review.createdAt)}
+        {review.editedAt ? w.edited(date(review.editedAt)) : ""}
       </p>
       {review.text ? <p className="mt-3 whitespace-pre-line leading-relaxed [overflow-wrap:anywhere]">{review.text}</p> : null}
       {review.reply ? (
         <div className="rv-reply">
-          <p className="text-sm font-bold">{`Reply from ${storeName}`}</p>
+          <p className="text-sm font-bold">{w.replyFrom(storeName)}</p>
           <p className="mt-1 whitespace-pre-line text-[0.9375rem] leading-relaxed [overflow-wrap:anywhere]">{review.reply.text}</p>
         </div>
       ) : null}
@@ -78,6 +98,7 @@ export function ReviewsSection({
   productTitle,
   moreHref,
   preview = false,
+  lang = DEFAULT_LANGUAGE,
 }: {
   heading: string;
   summary: Summary;
@@ -87,33 +108,37 @@ export function ReviewsSection({
   /** Where the rest are, when there are more than these. */
   moreHref: string | null;
   preview?: boolean;
+  /** The store's language (lib/store-language.ts). */
+  lang?: LanguageCode;
 }) {
   const rated = showsRating(summary);
-  const hidden = hiddenLine(summary);
+  const { w, num } = said(lang);
+  const hidden = summary.hidden ? w.hiddenByCreator(summary.hidden) : "";
+  const shown = average(summary).toLocaleString(said(lang).lang.locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   return (
     <div id="reviews" className="scroll-mt-6">
-      <h2 className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-[1.75rem]">{heading || "Reviews"}</h2>
+      <h2 className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-[1.75rem]">{heading || w.reviews}</h2>
       {rated ? (
         <div className="rv-summary mt-5">
           <div>
-            <p className="font-display text-5xl font-semibold leading-none tabular-nums">{averageText(summary)}</p>
+            <p className="font-display text-5xl font-semibold leading-none tabular-nums">{shown}</p>
             <div className="mt-2">
-              <Stars value={average(summary)} size={18} />
+              <Stars value={average(summary)} size={18} label={w.ratedOutOf5(shown)} />
             </div>
-            <p className="st-muted mt-2 text-sm font-semibold">{countWords(summary.count)}</p>
+            <p className="st-muted mt-2 text-sm font-semibold">{countWords(summary.count, lang)}</p>
           </div>
-          <ul className="rv-dist" aria-label="How the stars are spread">
+          <ul className="rv-dist" aria-label={w.starsSpread}>
             {[5, 4, 3, 2, 1].map((stars) => {
               const n = summary.dist[stars - 1];
               const share = summary.count ? Math.round((n / summary.count) * 100) : 0;
               return (
                 <li key={stars} className="flex items-center gap-2 text-sm">
-                  <span className="w-12 shrink-0 tabular-nums">{`${stars} star${stars === 1 ? "" : "s"}`}</span>
+                  <span className="w-12 shrink-0 tabular-nums">{w.starLabel(stars)}</span>
                   <span className="rv-bar" aria-hidden="true">
                     <span style={{ width: `${share}%` }} />
                   </span>
                   <span className="st-muted w-10 shrink-0 text-right tabular-nums">{`${share}%`}</span>
-                  <span className="sr-only">{`${n} ${n === 1 ? "review" : "reviews"}`}</span>
+                  <span className="sr-only">{w.reviewCount(n)}</span>
                 </li>
               );
             })}
@@ -121,11 +146,11 @@ export function ReviewsSection({
         </div>
       ) : null}
       <p className="st-muted mt-4 text-sm">
-        {`Only people who bought ${productTitle} here can review it, and every review is checked against its order. ${storeName} can reply and can hide a review, but cannot change one; hidden reviews still count in the average.`}
+        {w.reviewRules(productTitle, storeName)}
       </p>
       {hidden || summary.refunded ? (
         <p className="mt-2 text-sm font-semibold">
-          {[hidden, summary.refunded ? `${summary.refunded} from refunded ${summary.refunded === 1 ? "order" : "orders"}, not counted` : ""]
+          {[hidden, summary.refunded ? w.refundedOrders(summary.refunded) : ""]
             .filter(Boolean)
             .join(" · ")}
         </p>
@@ -133,16 +158,16 @@ export function ReviewsSection({
       {reviews.length > 0 ? (
         <ul className="mt-6 space-y-3">
           {reviews.map((review) => (
-            <ReviewItem key={review.id} review={review} storeName={storeName} />
+            <ReviewItem key={review.id} review={review} storeName={storeName} lang={lang} />
           ))}
         </ul>
       ) : preview ? (
-        <p className="st-note mt-6 text-sm">Buyers&apos; reviews appear here once somebody who paid writes one.</p>
+        <p className="st-note mt-6 text-sm">{w.noReviewsYet}</p>
       ) : null}
       {moreHref ? (
         <p className="mt-5">
           <Link prefetch={false} href={moreHref} className="st-footer-link text-sm font-semibold underline underline-offset-4">
-            {`See all ${summary.visible.toLocaleString("en-US")} reviews`}
+            {w.seeAllReviews(num(summary.visible))}
           </Link>
         </p>
       ) : null}

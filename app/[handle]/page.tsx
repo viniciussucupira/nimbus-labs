@@ -1,7 +1,8 @@
 import { after } from "next/server";
 import { forVisitor } from "@/lib/visitor";
-import { sellsThroughPayPal, takenBy } from "@/lib/paypal-sales";
-import { endsWords, saleClock, saleRunning } from "@/lib/store-sale";
+import { sellsThroughPayPal } from "@/lib/paypal-sales";
+import { saleClock, saleRunning } from "@/lib/store-sale";
+import { endsLine, speech } from "@/lib/buyer-words";
 import { soonProducts } from "@/lib/waitlist";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -30,7 +31,7 @@ import { canWrite } from "@/lib/mail";
 import { canUseDomain } from "@/lib/domains";
 import { SITE_URL } from "@/lib/site-url";
 import { summaries } from "@/lib/reviews";
-import { readSoldCounts, refreshSoldCounts, soldWords, stale } from "@/lib/sold-count";
+import { SHOWN_FROM, readSoldCounts, refreshSoldCounts, stale } from "@/lib/sold-count";
 import { readAllTimeSales } from "@/lib/stats";
 import { isResting } from "@/lib/traffic";
 import { StoreResting } from "@/components/store-resting";
@@ -38,33 +39,6 @@ import { StoreResting } from "@/components/store-resting";
 type Params = {
   params: Promise<{ handle: string }>;
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
-};
-
-const NOTICES: Record<string, { title: string; body: string }> = {
-  soldout: {
-    title: "That one just sold out",
-    body: "The last one went a moment before you pressed buy. Nothing was charged.",
-  },
-  busy: {
-    title: "Someone else is buying that right now",
-    body: "Nothing was charged. Press buy again in a moment.",
-  },
-  slow: {
-    title: "That was a lot of tries in a few minutes",
-    body: "Nothing was charged. Wait a few minutes, then press buy again.",
-  },
-  error: {
-    title: "The payment page could not be opened",
-    body: "Nothing was charged. Try again in a moment.",
-  },
-  "paypal-declined": {
-    title: "PayPal did not take the payment",
-    body: "Nothing was charged. Try again with another card or account in PayPal, or pay with a card here.",
-  },
-  "paypal-error": {
-    title: "That PayPal payment could not be matched to this store",
-    body: "Nothing was handed over for it. If PayPal shows money taken, write to the store by replying to PayPal's receipt.",
-  },
 };
 
 /**
@@ -95,7 +69,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   return {
     title: `${store.name} — Marktmorgen`,
-    description: store.bio || `The store of ${store.name} on Marktmorgen.`,
+    description: store.bio || speech(store).w.storeDescription(store.name),
     ...(ownDomain ? { alternates: { canonical: ownDomain } } : {}),
     // An empty store has nothing to offer a search engine yet. One with
     // something on it does, so it stops hiding the moment it has. A page of
@@ -109,7 +83,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       ? {
           openGraph: {
             title: store.name,
-            description: store.bio || `The store of ${store.name} on Marktmorgen.`,
+            description: store.bio || speech(store).w.storeDescription(store.name),
             images: [{ url: photoUrl(store.photoId), width: 480, height: 480, alt: store.name }],
           },
           twitter: { card: "summary" },
@@ -127,13 +101,16 @@ function pageHref(handle: string, page: number, ownDomain: boolean): string {
 export default async function StorePage({ params, searchParams }: Params) {
   const { handle } = await params;
   const query = searchParams ? await searchParams : {};
-  const notice = NOTICES[typeof query.status === "string" ? query.status : ""] ?? null;
   const asking = typeof query.page === "string" && /^\d{1,4}$/.test(query.page) ? Number(query.page) : 1;
   const found = await load(handle);
   if (!found) notFound();
   const { asked } = found;
   // With the visitor's country, for a fair price for it (lib/fair-price.ts).
   const store = await forVisitor(found.store);
+  const { w, num } = speech(store);
+  const notice = w.notices[typeof query.status === "string" ? query.status : ""] ?? null;
+  // "Bought 120 times", when the creator shows it and it is worth saying (lib/sold-count.ts).
+  const soldLine = (count: number | undefined) => (count && count >= SHOWN_FROM ? w.bought(num(count)) : null);
 
   // Reached on the creator's own domain (proxy.ts says which): it serves the
   // store only while it is this store's and the store is on Pro. Otherwise the
@@ -223,6 +200,7 @@ export default async function StorePage({ params, searchParams }: Params) {
 
   return (
     <div
+      lang={speech(store).lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
@@ -279,11 +257,8 @@ export default async function StorePage({ params, searchParams }: Params) {
 
           {total === 0 && store.links.length === 0 ? (
             <div className="st-note text-center">
-              <p className="font-bold" style={{ color: "var(--st-text)" }}>Nothing here yet</p>
-              <p className="mt-2 text-sm">
-                This page is open but empty. When {store.name} adds something,
-                it shows up here.
-              </p>
+              <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.nothingYet}</p>
+              <p className="mt-2 text-sm">{w.nothingYetBody(store.name)}</p>
             </div>
           ) : null}
 
@@ -291,8 +266,8 @@ export default async function StorePage({ params, searchParams }: Params) {
             <>
               {saleRunning(store.sale, saleClock()) ? (
                 <p className="st-card mb-4 px-5 py-4 text-center font-semibold" style={{ color: "var(--st-accent-text)" }} role="status">
-                  {`${store.sale.name ? `${store.sale.name}: ` : ""}${store.sale.percent}% off the products with the old price crossed out · ${endsWords(store.sale.ends, saleClock())}`}
-                  <span className="st-muted mt-1 block text-sm font-normal">Prices below already show it; no code needed.</span>
+                  {w.saleBanner(store.sale.name, store.sale.percent, endsLine(store, store.sale.ends))}
+                  <span className="st-muted mt-1 block text-sm font-normal">{w.saleBannerNote}</span>
                 </p>
               ) : null}
               {groups.map((group, g) => (
@@ -300,7 +275,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                   {group.title ? (
                     <h2 className="st-section-title">
                       {group.title}
-                      {group.continued ? <span className="st-muted font-normal"> (continued)</span> : null}
+                      {group.continued ? <span className="st-muted font-normal">{w.continued}</span> : null}
                     </h2>
                   ) : null}
                   <ul className="space-y-4">
@@ -320,7 +295,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                         rating={rated.get(product.id) ?? null}
                         bundleItems={bundleItems.get(product.id) ?? null}
                         soon={soon.has(product.id)}
-                        sold={soldWords(soldCounts?.byProduct[product.id])}
+                        sold={soldLine(soldCounts?.byProduct[product.id])}
                       />
                     ))}
                   </ul>
@@ -333,27 +308,27 @@ export default async function StorePage({ params, searchParams }: Params) {
                 shared. The count says how far the list goes.
               */}
               {pages > 1 ? (
-                <nav aria-label="Pages of products" className="st-pager mt-6">
+                <nav aria-label={w.pagesOfProducts} className="st-pager mt-6">
                   {page > 1 ? (
                     <Link href={pageHref(store.handle, page - 1, reachedOn !== null)} rel="prev" className="st-card st-link-card st-pager-link">
-                      <span aria-hidden="true">&larr;</span> Previous
+                      <span aria-hidden="true">&larr;</span> {w.previous}
                     </Link>
                   ) : (
                     <span className="st-pager-link st-pager-off" aria-hidden="true">
-                      <span>&larr;</span> Previous
+                      <span>&larr;</span> {w.previous}
                     </span>
                   )}
                   <p className="st-muted text-center text-sm font-semibold" aria-current="page">
-                    {`Page ${page} of ${pages}`}
-                    <span className="block text-xs font-normal">{`${total.toLocaleString("en-US")} products`}</span>
+                    {w.pageOf(page, pages)}
+                    <span className="block text-xs font-normal">{w.products(total, num(total))}</span>
                   </p>
                   {page < pages ? (
                     <Link href={pageHref(store.handle, page + 1, reachedOn !== null)} rel="next" className="st-card st-link-card st-pager-link">
-                      Next <span aria-hidden="true">&rarr;</span>
+                      {w.next} <span aria-hidden="true">&rarr;</span>
                     </Link>
                   ) : (
                     <span className="st-pager-link st-pager-off" aria-hidden="true">
-                      Next <span>&rarr;</span>
+                      {w.next} <span>&rarr;</span>
                     </span>
                   )}
                 </nav>
@@ -369,26 +344,13 @@ export default async function StorePage({ params, searchParams }: Params) {
                 <DemoNote full />
               ) : rehearsal ? (
                 <p className="st-note mt-6 text-sm">
-                  <strong>
-                    This checkout is running in Stripe&apos;s test mode.
-                  </strong>{" "}
-                  No real money moves through it and no real card is charged,
-                  so do not put a card you own into it. Once it goes live,
-                  payment is taken by Stripe on {store.name}&apos;s own account:
-                  Marktmorgen never holds the money and takes none of it.
+                  <strong>{w.testModeTitle}</strong> {w.testModeBody} {w.testModeLater(store.name)}
                 </p>
               ) : selling || byPayPal ? (
-                <p className="st-muted mt-6 text-center text-sm">
-                  Payment is taken by {takenBy(selling, byPayPal)} on {store.name}&apos;s own account.
-                  Marktmorgen never holds the money and takes none of it.
-                </p>
+                <p className="st-muted mt-6 text-center text-sm">{w.paidBy(w.takenBy(selling, byPayPal), store.name)}</p>
               ) : (
                 <p className="st-note mt-6 text-sm">
-                  <strong>
-                    This store cannot take payments yet.
-                  </strong>{" "}
-                  The prices above are real, but nothing here can charge a card.
-                  To buy, write to {store.name} directly.
+                  <strong>{w.noPaymentsTitle}</strong> {w.noPaymentsBody(store.name)}
                 </p>
               )}
             </>
@@ -430,8 +392,8 @@ export default async function StorePage({ params, searchParams }: Params) {
           {store.community?.on ? (
             <p className="mt-8">
               <Link href={`/@${store.handle}/community`} className="st-card st-link-card px-5 py-4 text-center sm:px-6">
-                <span className="block font-bold">Members&apos; community</span>
-                <span className="st-muted mt-0.5 block text-sm">{`For people who have one of the products that open it. Come in with the email address you used to get it.`}</span>
+                <span className="block font-bold">{w.communityTitle}</span>
+                <span className="st-muted mt-0.5 block text-sm">{w.communityBody}</span>
               </Link>
             </p>
           ) : null}
@@ -440,14 +402,14 @@ export default async function StorePage({ params, searchParams }: Params) {
             {canRecover(store) && sellsDeliverables(store) ? (
               <p className="mb-4">
                 <Link href={`/@${store.handle}/orders`} className="st-footer-link text-sm font-semibold">
-                  Bought something here? Get it again
+                  {w.getAgain}
                 </Link>
               </p>
             ) : null}
             {store.affiliates.enabled ? (
               <p className="mb-4">
                 <Link href={`/@${store.handle}/affiliates`} className="st-footer-link text-sm font-semibold">
-                  {`Earn by sharing ${store.name}: the affiliate program`}
+                  {w.affiliateProgram(store.name)}
                 </Link>
               </p>
             ) : null}
@@ -464,7 +426,7 @@ export default async function StorePage({ params, searchParams }: Params) {
             */}
             {store.look.badge || !canUse(store, "branding") ? (
               <Link href="/" className="st-footer-link text-sm font-semibold">
-                Made with Marktmorgen
+                {w.madeWith}
               </Link>
             ) : null}
             <StoreTracking store={store} countVisit />

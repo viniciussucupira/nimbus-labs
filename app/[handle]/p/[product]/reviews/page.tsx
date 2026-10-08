@@ -10,6 +10,7 @@ import { SITE_URL } from "@/lib/site-url";
 import { REVIEWS_PER_PAGE, summaryOf, visibleReviews } from "@/lib/reviews";
 import { productPath } from "@/components/store-product";
 import { ReviewsSection } from "@/components/review-list";
+import { speech } from "@/lib/buyer-words";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -23,7 +24,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const product = store ? await readListing(store, id) : null;
   if (!store || !product) return { title: "Not found — Marktmorgen" };
   return {
-    title: `Reviews of ${product.title} — ${store.name}`,
+    title: `${speech(store).w.reviewsOf(product.title)} — ${store.name}`,
     // The product's own page carries the rating for search engines; this
     // list is for people reading on, and is not a page of its own to rank.
     robots: { index: false, follow: true },
@@ -54,42 +55,45 @@ export default async function ReviewsPage({ params, searchParams }: Params) {
   const page = Number.isInteger(asked) && asked >= 1 ? Math.min(asked, pages) : 1;
   const reviews = await visibleReviews(store.statsId, product.id, (page - 1) * REVIEWS_PER_PAGE, REVIEWS_PER_PAGE);
   const base = `/@${store.handle}/p/${product.id}/reviews`;
+  const { w } = speech(store);
 
   return (
     <div
+      lang={speech(store).lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
       <main id="content" className="relative mx-auto max-w-2xl px-4 pb-16 pt-10 sm:pt-14">
         <p className="text-center">
           <Link href={productPath(store, product)} className="st-footer-link text-sm font-semibold">
-            {`Back to ${product.title}`}
+            {w.backTo(product.title)}
           </Link>
         </p>
         <div className="mt-8">
           <ReviewsSection
-            heading={`Reviews of ${product.title}`}
+            heading={w.reviewsOf(product.title)}
             summary={summary}
             reviews={reviews}
             storeName={store.name}
             productTitle={product.title}
             moreHref={null}
+            lang={store.language}
           />
-          {summary.visible === 0 ? <p className="st-note mt-6 text-sm">There are no reviews to show.</p> : null}
+          {summary.visible === 0 ? <p className="st-note mt-6 text-sm">{w.noReviewsToShow}</p> : null}
         </div>
         {pages > 1 ? (
-          <nav aria-label="Pages of reviews" className="mt-8 flex items-center justify-between gap-3 text-sm font-semibold">
+          <nav aria-label={w.pagesOfReviews} className="mt-8 flex items-center justify-between gap-3 text-sm font-semibold">
             {page > 1 ? (
               <Link prefetch={false} href={`${base}?page=${page - 1}`} className="btn st-btn">
-                Newer
+                {w.newer}
               </Link>
             ) : (
               <span />
             )}
-            <span className="st-muted">{`Page ${page} of ${pages}`}</span>
+            <span className="st-muted">{w.pageOf(page, pages)}</span>
             {page < pages ? (
               <Link prefetch={false} href={`${base}?page=${page + 1}`} className="btn st-btn">
-                Older
+                {w.older}
               </Link>
             ) : (
               <span />
