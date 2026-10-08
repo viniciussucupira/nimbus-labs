@@ -6,20 +6,21 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { after } from "next/server";
 import { type Store, normaliseHandle, storeForPage } from "@/lib/store";
-import { formatMoney } from "@/lib/money";
 import { lookStyle } from "@/lib/store-look";
 import { photoUrl } from "@/lib/photo-limits";
 import { canSellProduct } from "@/lib/store-checkout";
 import { type CallListing, canMove, catchUpBookings, icsLink, isCallProduct, slotsForMove, slotsForProduct, whyNotMove } from "@/lib/calls";
 import { type CallSetup, MAX_MOVES, MEET_NAMES, movableUntil, readableTime, zoneName } from "@/lib/call-setup";
-import { VIDEO_ROOM_NOTE, isVideoRoom, roomLabel, roomOf } from "@/lib/call-rooms";
+import { isVideoRoom, roomLabel, roomOf } from "@/lib/call-rooms";
 import { readOrder } from "@/lib/store-checkout";
 import { SITE_URL } from "@/lib/site-url";
 import { imageUrl } from "@/lib/product-image";
-import { SlotPicker } from "@/components/slot-picker";
-import { SessionPicker } from "@/components/session-picker";
+import { SlotPicker, type SlotWords } from "@/components/slot-picker";
+import { type SessionChoice, SessionPicker, type SessionWords } from "@/components/session-picker";
 import { StoreTracking } from "@/components/store-tracking";
 import { readListing } from "@/lib/catalog";
+import { speech } from "@/lib/buyer-words";
+import { type BookingWords, bookingWords } from "@/lib/buyer-words/booking";
 
 type Params = {
   params: Promise<{ handle: string; product: string }>;
@@ -32,61 +33,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const decoded = decodeURIComponent(handle);
   const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)).catch(() => null) : null;
   const product = (store ? await readListing(store, productId) : null);
-  const title =
-    store && product?.call
-      ? `${product.call.kind === "live" ? "Pick a session" : "Pick a time"}: ${product.title} — ${store.name}`
-      : "Book a call — Marktmorgen";
-  return { title, robots: { index: false, follow: true } };
+  if (!store || !product?.call) return { title: "Book a call — Marktmorgen", robots: { index: false, follow: true } };
+  const { w } = speech(store);
+  const pick = product.call.kind === "live" ? w.pickSession : w.pickTime;
+  return { title: `${pick}${bookingWords(store.language).colon}${product.title} — ${store.name}`, robots: { index: false, follow: true } };
 }
-
-const NOTICES: Record<string, { title: string; body: string }> = {
-  "pkg-used": { title: "Your package has no sessions left", body: "Every session of it is booked or being booked. Nothing was charged." },
-  "pkg-expired": { title: "Your package's time to book has passed", body: "Nothing was charged. Reply to your package's email to ask the creator." },
-  "pkg-refunded": { title: "This package was refunded", body: "It books nothing more. Nothing was charged." },
-  "pkg-gone": { title: "That package link does not work", body: "Use the link in your package's email. Nothing was charged." },
-  "pkg-error": { title: "We could not book from your package just now", body: "Nothing was charged. Try again in a moment." },
-  taken: {
-    title: "That time was just taken",
-    body: "Somebody booked it a moment before you, or it is being paid for right now. Pick another; nothing was charged.",
-  },
-  invalid: {
-    title: "Pick a time first",
-    body: "Choose one of the times below, then continue.",
-  },
-  error: {
-    title: "Something went wrong on our side",
-    body: "Nothing was charged. Try again in a moment.",
-  },
-  unavailable: {
-    title: "This call cannot be booked right now",
-    body: "Nothing was charged.",
-  },
-  slow: {
-    title: "That was a lot of tries in a few minutes",
-    body: "Nothing was charged. Wait a few minutes, then pick a time again.",
-  },
-};
-
-/** What a buyer moving their booking may be told. */
-const MOVE_NOTICES: Record<string, { title: string; body: string }> = {
-  taken: {
-    title: "That time was just taken",
-    body: "Somebody booked it a moment before you. Your booking has not changed; pick another.",
-  },
-  invalid: { title: "Pick a time first", body: "Choose one of the times below, then continue." },
-  same: { title: "That is the time you already have", body: "Pick a different one to move to." },
-  late: {
-    title: "It is too close to the start to move",
-    body: "Your booking has not changed. To ask the creator about it, reply to your confirmation email.",
-  },
-  limit: {
-    title: "This booking has been moved as often as it can be",
-    body: "Your booking has not changed. To ask the creator about it, reply to your confirmation email.",
-  },
-  error: { title: "Something went wrong on our side", body: "Your booking has not changed. Try again in a moment." },
-  unavailable: { title: "Bookings cannot be moved right now", body: "Your booking has not changed." },
-  slow: { title: "That was a lot of tries in a few minutes", body: "Your booking has not changed. Wait a few minutes, then try again." },
-};
 
 /** Where a buyer picks a time for a paid call. */
 export default async function BookPage({ params, searchParams }: Params) {
@@ -103,7 +54,9 @@ export default async function BookPage({ params, searchParams }: Params) {
   const moving = typeof query.move === "string" ? query.move : "";
   if (moving) return <MovePage store={store} product={product} session={moving} status={status} />;
 
-  const notice = NOTICES[status] ?? null;
+  const { w, money, lang } = speech(store);
+  const b = bookingWords(store.language);
+  const notice = b.notices[status] ?? null;
   // Booking from a package (lib/call-packages.ts): how many are left, said up top.
   const pkgToken = typeof query.pkg === "string" ? query.pkg : "";
   const found = pkgToken ? await boughtByToken(pkgToken) : null;
@@ -118,6 +71,8 @@ export default async function BookPage({ params, searchParams }: Params) {
   if (read && read.paid.length) after(() => catchUpBookings(store, read.paid, SITE_URL));
   const setup = product.call;
   const live = setup.kind === "live";
+  const price = money(product.priceCents);
+  const fromPackage = Boolean(pkg && pkgState && pkgState.left > 0);
 
   return (
     <Shell store={store}>
@@ -143,18 +98,20 @@ export default async function BookPage({ params, searchParams }: Params) {
               <h1 className="font-display min-w-0 text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">
                 {product.title}
               </h1>
-              <p className="st-price text-base">{formatMoney(product.priceCents, store.currency)}</p>
+              <p className="st-price text-base">{price}</p>
             </div>
-            <p className="st-muted mt-2 text-sm font-semibold">{callLine(setup)}</p>
+            <p className="st-muted mt-2 text-sm font-semibold">{callLine(setup, b)}</p>
             {product.summary ? <p className="st-muted mt-3 leading-relaxed">{product.summary}</p> : null}
 
             {pkgState ? (
               <p className="mt-5 rounded-2xl px-4 py-3 text-sm" style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }} role="status">
-                <strong>{pkgState.expired ? "Your package's time to book has passed" : `Booking from your package: ${pkgState.left} of ${pkgState.total} left`}</strong>
-                {pkgState.until && !pkgState.expired ? ` · book by ${new Date(pkgState.until * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" })}` : ""}
+                <strong>{pkgState.expired ? b.notices["pkg-expired"].title : b.packageLeft(pkgState.left, pkgState.total)}</strong>
+                {pkgState.until && !pkgState.expired
+                  ? b.packageBookBy(new Date(pkgState.until * 1000).toLocaleDateString(lang.locale, { month: "long", day: "numeric", timeZone: "UTC" }))
+                  : ""}
               </p>
             ) : pkgToken ? (
-              <p className="st-note mt-5 text-sm" role="alert">That package link is not for this call, or no longer works. Use the link in your package&apos;s email.</p>
+              <p className="st-note mt-5 text-sm" role="alert">{b.packageLinkWrong}</p>
             ) : open && product.callPackage ? (
               <div className="mt-5">
                 <PackageOffer store={store} product={product} />
@@ -170,13 +127,13 @@ export default async function BookPage({ params, searchParams }: Params) {
 
             {!open ? (
               <div className="st-note mt-6">
-                <p className="font-bold" style={{ color: "var(--st-text)" }}>This call cannot be booked right now</p>
-                <p className="mt-1 text-sm">{`${store.name}'s store is not taking payments at the moment. Nothing here can charge a card.`}</p>
+                <p className="font-bold" style={{ color: "var(--st-text)" }}>{b.notices.unavailable.title}</p>
+                <p className="mt-1 text-sm">{b.closedBody(store.name)}</p>
               </div>
             ) : read === null ? (
               <div className="st-note mt-6">
-                <p className="font-bold" style={{ color: "var(--st-text)" }}>The times could not be read just now</p>
-                <p className="mt-1 text-sm">Nothing was charged. Refresh the page in a moment.</p>
+                <p className="font-bold" style={{ color: "var(--st-text)" }}>{b.timesUnread}</p>
+                <p className="mt-1 text-sm">{b.timesUnreadBody}</p>
               </div>
             ) : live ? (
               <SessionPicker
@@ -184,7 +141,7 @@ export default async function BookPage({ params, searchParams }: Params) {
                 creatorTz={setup.tz}
                 handle={store.handle}
                 productId={product.id}
-                price={formatMoney(product.priceCents, store.currency)}
+                words={sessionWords(store, b, read.sessions, price, false)}
               />
             ) : (
               <SlotPicker
@@ -192,26 +149,63 @@ export default async function BookPage({ params, searchParams }: Params) {
                 creatorTz={setup.tz}
                 handle={store.handle}
                 productId={product.id}
-                minutes={setup.minutes}
-                price={formatMoney(product.priceCents, store.currency)}
-                left={setup.seats > 1 ? read.left : undefined}
-                pkg={pkg && pkgState && pkgState.left > 0 ? pkgToken : undefined}
+                seatsLeft={setup.seats > 1 ? seatLabels(read.left, b) : undefined}
+                pkg={fromPackage ? pkgToken : undefined}
+                words={slotWords(store, b, setup.minutes, price, false, fromPackage)}
               />
             )}
           </div>
         </div>
 
-        <p className="st-muted mt-6 text-center text-sm">
-          {`Payment is taken by Stripe on ${store.name}'s own account. Marktmorgen never holds the money and takes none of it.`}
-        </p>
+        <p className="st-muted mt-6 text-center text-sm">{w.paidBy(w.takenBy(true, false), store.name)}</p>
     </Shell>
   );
 }
 
+/** What the time picker says, for this page, in the store's language. */
+function slotWords(store: Store, b: BookingWords, minutes: number, price: string, move: boolean, fromPackage: boolean): SlotWords {
+  const { w, lang } = speech(store);
+  return {
+    locale: lang.locale,
+    pickDay: b.pickDay,
+    pickTime: w.pickTime,
+    noneTitle: move ? b.noOtherTimes : b.noTimes,
+    noneBody: move ? b.noOtherTimesBody : b.noTimesBody,
+    yours: b.timesInYours("{zone}"),
+    creators: b.timesInCreators("{zone}"),
+    chosen: b.chosenLength(minutes),
+    submit: move ? b.moveToTime : fromPackage ? b.bookFromPackage : b.continueToPay(price),
+    note: move ? b.moveNoCharge : fromPackage ? b.packageNoCharge : b.timeKept,
+  };
+}
+
+/** What the session picker says, for this page, in the store's language. */
+function sessionWords(store: Store, b: BookingWords, sessions: SessionChoice[], price: string, move: boolean): SessionWords {
+  const { w, lang } = speech(store);
+  return {
+    locale: lang.locale,
+    pickSession: w.pickSession,
+    noneTitle: move ? b.noOtherSessions : b.noSessions,
+    noneBody: move ? b.seatStays : b.noSessionsBody,
+    yours: b.timesInYours("{zone}"),
+    creators: b.timesInCreators("{zone}"),
+    details: Object.fromEntries(sessions.map((s) => [String(s.start), b.sessionDetail(s.minutes, s.left, s.seats)])),
+    submit: move ? b.moveSeat : b.continueToPay(price),
+    note: move ? b.seatNoCharge : b.seatKept,
+  };
+}
+
+/** "3 seats left" under each time of a group call, by its start. */
+function seatLabels(left: Record<string, number>, b: BookingWords): Record<string, string> {
+  return Object.fromEntries(Object.entries(left).map(([start, seats]) => [start, b.seatsLeft(seats)]));
+}
+
 /** The store's colours, its name and picture on top, and the way back below. */
 function Shell({ store, children }: { store: Store; children: React.ReactNode }) {
+  const { w, lang } = speech(store);
   return (
     <div
+      lang={lang.locale}
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
@@ -230,7 +224,7 @@ function Shell({ store, children }: { store: Store; children: React.ReactNode })
         {children}
         <div className="mt-6 text-center">
           <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-            {`Back to ${store.name}`}
+            {w.backTo(store.name)}
           </Link>
           <StoreTracking store={store} presence />
         </div>
@@ -240,20 +234,19 @@ function Shell({ store, children }: { store: Store; children: React.ReactNode })
 }
 
 /** The line under a call's title: how long, how many, and where. */
-function callLine(setup: CallSetup): string {
+function callLine(setup: CallSetup, b: BookingWords): string {
   // A meeting made on the creator's own Google or Zoom account comes first,
   // as it does when the booking is confirmed (lib/meet-links.ts).
   const where = setup.meet
-    ? `online, on ${MEET_NAMES[setup.meet]}; you get the link when you book`
+    ? b.whereMeet(MEET_NAMES[setup.meet])
     : setup.video
-      ? "online, in a private video room; you get the link when you book"
+      ? b.whereVideo
       : setup.room || (setup.kind === "live" && setup.sessions.every((s) => s.room))
-        ? "online; you get the link when you book"
-        : "online";
-  if (setup.kind === "live") return `Live session \u00b7 ${where}`;
-  const who = setup.seats > 1 ? `Group call, up to ${setup.seats} people` : `${setup.minutes}-minute call`;
-  const length = setup.seats > 1 ? ` \u00b7 ${setup.minutes} minutes` : "";
-  return `${who}${length} \u00b7 ${where}`;
+        ? b.whereLink
+        : null;
+  if (setup.kind === "live") return where ? b.liveLine(where) : b.liveOnline;
+  if (setup.seats > 1) return where ? b.groupLine(setup.seats, setup.minutes, where) : b.groupOnline(setup.seats, setup.minutes);
+  return where ? b.oneLine(setup.minutes, where) : b.oneOnline(setup.minutes);
 }
 
 /**
@@ -278,6 +271,8 @@ async function MovePage({
   const order = await readOrder(store, session);
   const setup = product.call;
   const booking = order.state === "paid" && order.call && order.product.id === product.id ? order.call : null;
+  const { money, lang } = speech(store);
+  const b = bookingWords(store.language);
 
   if (!booking) {
     const trouble = order.state === "error" || order.state === "unavailable";
@@ -285,41 +280,39 @@ async function MovePage({
       <Shell store={store}>
         <div className="st-card mt-6 p-6 sm:p-8">
           <h1 className="font-display text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">
-            {trouble ? "Your booking could not be read just now" : "We could not find this booking"}
+            {trouble ? b.unreadable : b.notFound}
           </h1>
-          <p className="st-muted mt-3">
-            {trouble
-              ? "Nothing has changed. Try the link again in a moment."
-              : "Check the link in your confirmation email. A booking whose time has passed cannot be moved."}
-          </p>
+          <p className="st-muted mt-3">{trouble ? b.unreadableBody : b.notFoundBody}</p>
         </div>
       </Shell>
     );
   }
 
   const tz = booking.buyerTz;
+  const locale = lang.locale;
   const room = await roomOf(store.callsId, { product: product.id, setup, session, start: booking.start, end: booking.end });
   const moved = status === "moved";
-  const notice = moved ? null : MOVE_NOTICES[status] ?? null;
+  const notice = moved ? null : b.moveNotices[status] ?? null;
   const blocked = whyNotMove(setup, booking.start, booking.moves);
   const movable = blocked === null;
   const offer = movable && !moved ? await slotsForMove(store, product, session, booking.start) : null;
   const leftMoves = MAX_MOVES - booking.moves;
   const until = movableUntil(setup, booking.start);
+  const price = money(product.priceCents);
 
   return (
     <Shell store={store}>
       <div className="st-card mt-6 p-6 sm:p-8">
-        <p className="st-label">{moved ? "Moved" : "Your booking"}</p>
+        <p className="st-label">{moved ? b.movedLabel : b.yourBooking}</p>
         <h1 className="font-display mt-1 text-2xl font-semibold leading-tight tracking-[-0.02em] sm:text-3xl">
-          {moved ? "Your booking has moved" : `Move ${product.title}`}
+          {moved ? b.movedTitle : b.moveTitle(product.title)}
         </h1>
 
         <div className="mt-5 rounded-2xl px-5 py-4" style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }}>
-          <p className="text-sm font-semibold">{moved ? "Your new time" : "Booked for"}</p>
-          <p className="mt-1 text-lg font-semibold">{readableTime(booking.start, tz)}</p>
+          <p className="text-sm font-semibold">{moved ? b.newTime : b.bookedFor}</p>
+          <p className="mt-1 text-lg font-semibold">{readableTime(booking.start, tz, locale)}</p>
           <p className="mt-0.5 text-sm">
-            {`${zoneName(booking.start, tz)} \u00b7 ${Math.round((booking.end - booking.start) / 60_000)} minutes \u00b7 ${product.title}`}
+            {b.bookedLine(zoneName(booking.start, tz, locale), Math.round((booking.end - booking.start) / 60_000), product.title)}
           </p>
         </div>
 
@@ -328,36 +321,34 @@ async function MovePage({
             <div className="mt-6 flex flex-wrap items-center gap-3">
               {room ? (
                 <a href={room} rel="noopener noreferrer nofollow" target="_blank" className="btn st-btn">
-                  {roomLabel(room)}
+                  {roomLabel(room, store.language)}
                 </a>
               ) : null}
               <a href={icsLink("", store, session)} className="btn btn-secondary">
-                Add the new time to your calendar
+                {b.addNewTime}
               </a>
             </div>
             <p className="st-muted mt-5 text-sm">
-              {`${store.name} has been told, and an email with the new time and a calendar file is on its way to you. The old time is free again for somebody else.`}
-              {isVideoRoom(room) ? ` ${VIDEO_ROOM_NOTE}` : ""}
-              {canMove(setup, booking.start, booking.moves)
-                ? ` You can move it ${leftMoves === 1 ? "once more" : `${leftMoves} more times`} from this page.`
-                : ""}
+              {b.movedNote(store.name)}
+              {isVideoRoom(room) ? ` ${b.videoRoomNote}` : ""}
+              {canMove(setup, booking.start, booking.moves) ? b.moveAgain(leftMoves) : ""}
             </p>
           </>
         ) : !movable ? (
           <div className="st-note mt-6" role="status">
             <p className="font-bold" style={{ color: "var(--st-text)" }}>
               {blocked === "limit"
-                ? "This booking has been moved as often as it can be"
+                ? b.moveNotices.limit.title
                 : blocked === "late"
-                  ? "It is too close to the start to move"
-                  : "There is no other session to move to"}
+                  ? b.moveNotices.late.title
+                  : b.noOtherSession}
             </p>
-            <p className="mt-1 text-sm">{`Your booking stays as it is. To ask ${store.name} about it, reply to your confirmation email.`}</p>
+            <p className="mt-1 text-sm">{b.staysAsIs(store.name)}</p>
           </div>
         ) : (
           <>
             <p className="st-muted mt-4 text-sm">
-              {`You can move it ${leftMoves === 1 ? "once more" : `${leftMoves} ${booking.moves > 0 ? "more " : ""}times`}, until ${readableTime(until, tz)} (${zoneName(until, tz)}). Nothing is charged or refunded.`}
+              {b.canMoveUntil(leftMoves, booking.moves > 0, readableTime(until, tz, locale), zoneName(until, tz, locale))}
             </p>
             {notice ? (
               <div className="st-note mt-6" role="alert">
@@ -367,8 +358,8 @@ async function MovePage({
             ) : null}
             {offer === null ? (
               <div className="st-note mt-6">
-                <p className="font-bold" style={{ color: "var(--st-text)" }}>The times could not be read just now</p>
-                <p className="mt-1 text-sm">Your booking has not changed. Refresh the page in a moment.</p>
+                <p className="font-bold" style={{ color: "var(--st-text)" }}>{b.timesUnread}</p>
+                <p className="mt-1 text-sm">{b.timesUnreadMoveBody}</p>
               </div>
             ) : setup.kind === "live" ? (
               <SessionPicker
@@ -376,8 +367,8 @@ async function MovePage({
                 creatorTz={setup.tz}
                 handle={store.handle}
                 productId={product.id}
-                price={formatMoney(product.priceCents, store.currency)}
                 move={session}
+                words={sessionWords(store, b, offer.sessions, price, true)}
               />
             ) : (
               <SlotPicker
@@ -385,10 +376,9 @@ async function MovePage({
                 creatorTz={setup.tz}
                 handle={store.handle}
                 productId={product.id}
-                minutes={setup.minutes}
-                price={formatMoney(product.priceCents, store.currency)}
-                left={setup.seats > 1 ? offer.left : undefined}
+                seatsLeft={setup.seats > 1 ? seatLabels(offer.left, b) : undefined}
                 move={session}
+                words={slotWords(store, b, setup.minutes, price, true, false)}
               />
             )}
           </>

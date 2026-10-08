@@ -9,17 +9,17 @@ function dayKey(ms: number, tz: string): string {
   return p;
 }
 
-function dayLabel(ms: number, tz: string) {
-  const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("en-US", { timeZone: tz, ...o }).format(new Date(ms));
+function dayLabel(ms: number, tz: string, locale: string) {
+  const f = (o: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, { timeZone: tz, ...o }).format(new Date(ms));
   return { weekday: f({ weekday: "short" }), day: f({ day: "numeric" }), month: f({ month: "short" }) };
 }
 
-function timeLabel(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("en-US", { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(new Date(ms));
+function timeLabel(ms: number, tz: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { timeZone: tz, hour: "numeric", minute: "2-digit" }).format(new Date(ms));
 }
 
-function longLabel(ms: number, tz: string): string {
-  return new Intl.DateTimeFormat("en-US", {
+function longLabel(ms: number, tz: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: tz,
     weekday: "long",
     month: "long",
@@ -29,10 +29,31 @@ function longLabel(ms: number, tz: string): string {
   }).format(new Date(ms));
 }
 
-function zoneLabel(ms: number, tz: string): string {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "short" }).formatToParts(new Date(ms));
+function zoneLabel(ms: number, tz: string, locale: string): string {
+  const parts = new Intl.DateTimeFormat(locale, { timeZone: tz, timeZoneName: "short" }).formatToParts(new Date(ms));
   return parts.find((p) => p.type === "timeZoneName")?.value ?? tz;
 }
+
+/**
+ * What the picker says, in the store's language (lib/buyer-words/booking.ts),
+ * already said for this page by the server: whether it moves a booking, books
+ * from a package or goes to payment is known there.
+ */
+export type SlotWords = {
+  /** How times and dates are written (Intl). */
+  locale: string;
+  pickDay: string;
+  pickTime: string;
+  noneTitle: string;
+  noneBody: string;
+  /** "Times are in your time zone, {zone}.", with {zone} where the zone goes. */
+  yours: string;
+  creators: string;
+  /** After the time picked: " · 30 minutes". */
+  chosen: string;
+  submit: string;
+  note: string;
+};
 
 /**
  * The times a buyer may book, shown in the buyer's own time zone.
@@ -51,25 +72,24 @@ export function SlotPicker({
   creatorTz,
   handle,
   productId,
-  minutes,
-  price,
-  left,
+  seatsLeft,
   move,
   pkg,
+  words,
 }: {
   starts: number[];
   creatorTz: string;
   handle: string;
   productId: string;
-  minutes: number;
-  price: string;
-  /** For a group call: seats left at each time, by start. */
-  left?: Record<string, number>;
+  /** For a group call: the seats left at each time, by start, already said ("3 seats left"). */
+  seatsLeft?: Record<string, string>;
   /** The checkout session of a booking being moved. */
   move?: string;
   /** A package's booking token: the session comes from it, and nothing is charged (lib/call-packages.ts). */
   pkg?: string;
+  words: SlotWords;
 }) {
+  const { locale } = words;
   const tz = useSyncExternalStore(
     noop,
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || creatorTz,
@@ -96,12 +116,8 @@ export function SlotPicker({
   if (days.length === 0) {
     return (
       <div className="st-note mt-6 text-center">
-        <p className="font-bold" style={{ color: "var(--st-text)" }}>{move ? "No other times are free right now" : "No free times right now"}</p>
-        <p className="mt-1 text-sm">
-          {move
-            ? "Your booking stays as it is. Come back in a day or two: new times open as the days go by."
-            : "Every time that can be booked is taken. Come back in a day or two: new times open as the days go by."}
-        </p>
+        <p className="font-bold" style={{ color: "var(--st-text)" }}>{words.noneTitle}</p>
+        <p className="mt-1 text-sm">{words.noneBody}</p>
       </div>
     );
   }
@@ -117,10 +133,10 @@ export function SlotPicker({
       {/* A fieldset is as wide as its widest child unless told otherwise,
           which would push the row of days out of the card. */}
       <fieldset className="min-w-0">
-        <legend className="st-label">Pick a day</legend>
+        <legend className="st-label">{words.pickDay}</legend>
         <div className="mt-3 flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "thin" }}>
           {days.map((d) => {
-            const label = dayLabel(d.starts[0], tz);
+            const label = dayLabel(d.starts[0], tz, locale);
             const active = d.key === day.key;
             return (
               <button
@@ -144,10 +160,10 @@ export function SlotPicker({
       </fieldset>
 
       <fieldset className="mt-5 min-w-0">
-        <legend className="st-label">Pick a time</legend>
+        <legend className="st-label">{words.pickTime}</legend>
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
           {day.starts.map((start) => {
-            const seats = left?.[String(start)];
+            const seats = seatsLeft?.[String(start)];
             return (
               <label
                 key={start}
@@ -162,36 +178,28 @@ export function SlotPicker({
                   checked={chosen === start}
                   onChange={() => setChosen(start)}
                 />
-                {timeLabel(start, tz)}
-                {seats !== undefined ? (
-                  <span className="st-muted text-xs font-normal">{`${seats} ${seats === 1 ? "seat" : "seats"} left`}</span>
-                ) : null}
+                {timeLabel(start, tz, locale)}
+                {seats !== undefined ? <span className="st-muted text-xs font-normal">{seats}</span> : null}
               </label>
             );
           })}
         </div>
         <p className="st-muted mt-3 text-sm">
-          {`Times are in ${local ? "your" : "the creator's"} time zone, ${zoneLabel(day.starts[0], tz)}.`}
+          {(local ? words.yours : words.creators).replace("{zone}", zoneLabel(day.starts[0], tz, locale))}
         </p>
       </fieldset>
 
       <div className="mt-6">
         {chosen ? (
           <p className="mb-3 rounded-2xl px-4 py-3 text-sm" style={{ background: "var(--st-accent-soft)", color: "var(--st-text)" }} role="status">
-            <strong>{longLabel(chosen, tz)}</strong>
-            {` · ${minutes} minutes`}
+            <strong>{longLabel(chosen, tz, locale)}</strong>
+            {words.chosen}
           </p>
         ) : null}
         <button type="submit" className="btn st-btn btn-lg btn-block">
-          {move ? "Move my booking to this time" : pkg ? "Book this time from my package" : `Continue to payment — ${price}`}
+          {words.submit}
         </button>
-        <p className="st-muted mt-3 text-center text-xs">
-          {move
-            ? "Nothing is charged. Your old time is freed for somebody else."
-            : pkg
-              ? "You confirm it on the next page; nothing is charged."
-              : "The time is kept for you for 30 minutes while you pay."}
-        </p>
+        <p className="st-muted mt-3 text-center text-xs">{words.note}</p>
       </div>
     </form>
   );
