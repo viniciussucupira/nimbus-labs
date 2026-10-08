@@ -58,6 +58,7 @@ import {
   type CompareRow,
   type FactKey,
   PAGE_STYLES,
+  MAX_PICKED_REVIEWS,
   PAGE_TEMPLATES,
   type PageStyle,
   PROVIDER_NAMES,
@@ -551,9 +552,14 @@ export function PageEditor({
   }, [drafts]);
   const pill = <p className="st-price text-sm">{product.pill}</p>;
   const rating = summary ? <RatingLine summary={summary} /> : null;
+  // The preview shows the reviews as the page will: the picked ones first, then the newest, three in all.
+  const pickedNow = drafts.find((d) => d.block.kind === "reviews")?.block;
+  const pickedIds = pickedNow?.kind === "reviews" ? pickedNow.first : [];
+  const previewFirst = pickedIds.map((id) => reviews.find((r) => r.id === id && !r.refunded)).filter((r): r is Review => r !== undefined);
+  const previewReviews = [...previewFirst, ...reviews.filter((r) => !previewFirst.includes(r))].slice(0, Math.max(3, previewFirst.length));
   const reviewsPart = (heading: string) =>
     summary ? (
-      <ReviewsSection heading={heading} summary={summary} reviews={reviews} storeName={storeName} productTitle={product.title} moreHref={null} preview />
+      <ReviewsSection heading={heading} summary={summary} reviews={previewReviews} storeName={storeName} productTitle={product.title} moreHref={null} preview picked={pickedIds} />
     ) : null;
   const buyPreview = (
     <section className="st-card sp-section p-6 sm:p-8">
@@ -1030,15 +1036,55 @@ export function PageEditor({
           </div>
         );
       }
-      case "reviews":
+      case "reviews": {
+        // Picked ones that are still shown; one hidden since no longer takes a place.
+        const offered = reviews.filter((r) => !r.refunded);
+        const chosen = block.first.filter((id) => offered.some((r) => r.id === id));
         return (
           <div className="space-y-4">
             {field(`${base}-h`, "Heading", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} placeholder="Reviews" onChange={(e) => change(index, { heading: e.target.value })} />)}
             <p className="text-xs text-ink-soft">
               Only buyers can write reviews, and they appear here as they come. Without this block they still appear, at the end of the page.
             </p>
+            {offered.length > 0 ? (
+              <fieldset>
+                <legend className="field-label">{`Show first (${chosen.length} of ${MAX_PICKED_REVIEWS})`}</legend>
+                <p className="text-xs text-ink-soft">
+                  Pick the reviews that answer what buyers ask most. They show before the newest ones, marked &ldquo;Picked by the creator&rdquo;; the average and the count stay those of every review.
+                </p>
+                <ul className="mt-2 max-h-80 space-y-2 overflow-y-auto pr-1">
+                  {offered.map((review) => {
+                    const on = chosen.includes(review.id);
+                    return (
+                      <li key={review.id}>
+                        <label className={`flex cursor-pointer items-start gap-3 rounded-xl p-3 ring-1 ${on ? "bg-lilac ring-violet-brand/40" : "bg-white ring-line"}`}>
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={on}
+                            disabled={!on && chosen.length >= MAX_PICKED_REVIEWS}
+                            onChange={() => change(index, { first: on ? chosen.filter((id) => id !== review.id) : [...chosen, review.id] })}
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-ink">
+                              <span aria-hidden="true">{"★".repeat(review.rating) + "☆".repeat(5 - review.rating)}</span>
+                              <span className="sr-only">{`${review.rating} out of 5 stars`}</span>
+                              {` · ${review.name || "Verified buyer"}`}
+                            </span>
+                            {review.text ? <span className="mt-0.5 line-clamp-3 block text-xs text-ink-soft [overflow-wrap:anywhere]">{review.text}</span> : null}
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </fieldset>
+            ) : (
+              <p className="text-xs text-ink-soft">Once buyers review it, you can pick up to three to show first.</p>
+            )}
           </div>
         );
+      }
     }
   }
 

@@ -227,6 +227,7 @@ export const en = {
   starsOutOf5: (stars: number) => `${stars} out of 5 stars`,
   verifiedBuyer: "Verified buyer",
   verifiedPurchase: "Verified purchase",
+  pickedByCreator: "Picked by the creator",
   refundedNotCounted: "Refunded, not counted",
   edited: (date: string) => ` · edited ${date}`,
   replyFrom: (store: string) => `Reply from ${store}`,

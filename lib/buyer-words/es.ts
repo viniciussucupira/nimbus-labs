@@ -211,6 +211,7 @@ export const es: BuyerWords = {
   starsOutOf5: (stars) => `${stars} de 5 estrellas`,
   verifiedBuyer: "Comprador verificado",
   verifiedPurchase: "Compra verificada",
+  pickedByCreator: "Elegida por el creador",
   refundedNotCounted: "Reembolsado, no se cuenta",
   edited: (date) => ` · editado el ${date}`,
   replyFrom: (store) => `Respuesta de ${store}`,

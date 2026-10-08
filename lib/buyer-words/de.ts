@@ -209,6 +209,7 @@ export const de: BuyerWords = {
   starsOutOf5: (stars) => `${stars} von 5 Sternen`,
   verifiedBuyer: "Verifizierter Käufer",
   verifiedPurchase: "Verifizierter Kauf",
+  pickedByCreator: "Vom Ersteller ausgewählt",
   refundedNotCounted: "Erstattet, nicht gezählt",
   edited: (date) => ` · bearbeitet am ${date}`,
   replyFrom: (store) => `Antwort von ${store}`,

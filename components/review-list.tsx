@@ -56,7 +56,18 @@ export function RatingLine({
 }
 
 /** One review as the page shows it: stars, the name the buyer chose, what they wrote, and any answer. */
-export function ReviewItem({ review, storeName, lang = DEFAULT_LANGUAGE }: { review: Review; storeName: string; lang?: LanguageCode }) {
+export function ReviewItem({
+  review,
+  storeName,
+  lang = DEFAULT_LANGUAGE,
+  picked = false,
+}: {
+  review: Review;
+  storeName: string;
+  lang?: LanguageCode;
+  /** One the creator chose to show first: said so, never passed off as the newest. */
+  picked?: boolean;
+}) {
   const { w, date } = said(lang);
   return (
     <li className="rv-item">
@@ -70,6 +81,7 @@ export function ReviewItem({ review, storeName, lang = DEFAULT_LANGUAGE }: { rev
           {w.verifiedPurchase}
         </span>
         {review.refunded ? <span className="rv-badge rv-badge-muted">{w.refundedNotCounted}</span> : null}
+        {picked ? <span className="rv-badge rv-badge-muted">{w.pickedByCreator}</span> : null}
       </div>
       <p className="st-muted mt-1 text-xs">
         {date(review.createdAt)}
@@ -99,6 +111,7 @@ export function ReviewsSection({
   moreHref,
   preview = false,
   lang = DEFAULT_LANGUAGE,
+  picked = [],
 }: {
   heading: string;
   summary: Summary;
@@ -110,6 +123,8 @@ export function ReviewsSection({
   preview?: boolean;
   /** The store's language (lib/store-language.ts). */
   lang?: LanguageCode;
+  /** The reviews the creator picked to show first, marked as such. */
+  picked?: string[];
 }) {
   const rated = showsRating(summary);
   const { w, num } = said(lang);
@@ -158,7 +173,7 @@ export function ReviewsSection({
       {reviews.length > 0 ? (
         <ul className="mt-6 space-y-3">
           {reviews.map((review) => (
-            <ReviewItem key={review.id} review={review} storeName={storeName} lang={lang} />
+            <ReviewItem key={review.id} review={review} storeName={storeName} lang={lang} picked={picked.includes(review.id)} />
           ))}
         </ul>
       ) : preview ? (
