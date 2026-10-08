@@ -6,35 +6,22 @@ import { lookStyle } from "@/lib/store-look";
 import { readListing } from "@/lib/catalog";
 import { askable } from "@/lib/checkout-ask";
 import { productPath } from "@/components/store-product";
-
-export const metadata: Metadata = {
-  title: "Nothing was charged — Marktmorgen",
-  robots: { index: false, follow: false },
-};
+import { speech } from "@/lib/buyer-words";
+import { membershipWords } from "@/lib/buyer-words/membership";
 
 type Params = {
   params: Promise<{ handle: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const NOTICES: Record<string, { title: string; body: string }> = {
-  email: {
-    title: "That does not look like an email address",
-    body: "Check it and try again. The reminder goes to the address you type, so it has to be one you can open.",
-  },
-  limited: {
-    title: "Too many reminders asked for just now",
-    body: "To keep this form from being used to fill somebody's inbox, it takes a limited number an hour. Nothing was kept. The product is still here whenever you want it.",
-  },
-  closed: {
-    title: "No reminder can be sent for this",
-    body: "It may have sold out or been taken off sale. Nothing was kept.",
-  },
-  error: {
-    title: "We could not keep that just now",
-    body: "Nothing was kept. Try again in a moment.",
-  },
-};
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const decoded = decodeURIComponent((await params).handle);
+  const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)) : null;
+  return {
+    title: `${membershipWords(store?.language).nothingCharged} — Marktmorgen`,
+    robots: { index: false, follow: false },
+  };
+}
 
 /**
  * Where the way back from an unpaid checkout leads, on a store with
@@ -57,52 +44,56 @@ export default async function LeftPage({ params, searchParams }: Params) {
   // Nothing to say about a product that is not there: the store itself is the way back.
   if (!product || product.hidden) redirect(`/@${store.handle}`);
   const canAsk = askable(store, product);
+  const say = speech(store);
+  const { w } = say;
+  const m = membershipWords(store.language);
+  const notices = m.leftNotices;
 
   let body: React.ReactNode;
   if (status === "asked") {
     body = (
       <>
-        <p className="st-price text-sm">Done</p>
-        <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">One reminder, in about an hour</h1>
+        <p className="st-price text-sm">{m.done}</p>
+        <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{m.oneReminder}</h1>
         <p className="st-muted mt-4 text-lg">
-          {`${store.name} will email you once, with the link to ${product.title}. If you buy it before then, no reminder is sent.`}
+          {m.willEmail(store.name, product.title)}
         </p>
-        <p className="st-muted mt-4 text-sm">That is the only email this sends. It does not add you to any list, and it has a link that stops reminders from this store for good.</p>
+        <p className="st-muted mt-4 text-sm">{m.onlyEmail}</p>
       </>
     );
-  } else if (status && NOTICES[status]) {
+  } else if (status && notices[status]) {
     body = (
       <>
-        <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{NOTICES[status].title}</h1>
-        <p className="st-muted mt-4 text-lg">{NOTICES[status].body}</p>
+        <h1 className="font-display text-3xl font-semibold leading-tight sm:text-4xl">{notices[status].title}</h1>
+        <p className="st-muted mt-4 text-lg">{notices[status].body}</p>
       </>
     );
   } else {
     body = (
       <>
-        <p className="st-price text-sm">Nothing was charged</p>
-        <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{`You left before paying for ${product.title}`}</h1>
-        <p className="st-muted mt-4 text-lg">Your card was not charged. If you still want it, it is one press away.</p>
+        <p className="st-price text-sm">{m.nothingCharged}</p>
+        <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{m.leftBefore(product.title)}</h1>
+        <p className="st-muted mt-4 text-lg">{m.notCharged}</p>
         <div className="mt-7">
-          <Link href={productPath(store, product)} className="btn st-btn btn-lg">{`Back to ${product.title}`}</Link>
+          <Link href={productPath(store, product)} className="btn st-btn btn-lg">{w.backTo(product.title)}</Link>
         </div>
         {canAsk ? (
           <form action="/api/store/remind" method="post" className="mt-10 space-y-3">
-            <h2 className="text-lg font-semibold">Not ready yet?</h2>
+            <h2 className="text-lg font-semibold">{m.notReady}</h2>
             <p className="st-muted">
-              {`Leave your email and ${store.name} sends you one reminder with the link, in about an hour. One email. It does not add you to any list.`}
+              {m.remindNote(store.name)}
             </p>
             <input type="hidden" name="handle" value={store.handle} />
             <input type="hidden" name="product" value={product.id} />
             {/* Left empty by a person; filled in by something that fills in every field. */}
             <div aria-hidden="true" className="hidden">
               <label>
-                Leave this empty
+                {w.leaveEmpty}
                 <input type="text" name="website" tabIndex={-1} autoComplete="off" />
               </label>
             </div>
             <label htmlFor="remind-email" className="st-label">
-              Your email
+              {w.yourEmail}
             </label>
             <input
               id="remind-email"
@@ -111,12 +102,12 @@ export default async function LeftPage({ params, searchParams }: Params) {
               required
               maxLength={254}
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder={w.emailPlaceholder}
               className="st-field"
             />
-            <button type="submit" className="btn st-btn-ghost btn-block">Remind me once</button>
+            <button type="submit" className="btn st-btn-ghost btn-block">{m.remindMe}</button>
             <p className="st-muted text-xs">
-              {`Your address is used for this one reminder and for the link in it that stops reminders from ${store.name}, and for nothing else.`}
+              {m.addressUse(store.name)}
             </p>
           </form>
         ) : null}
@@ -125,18 +116,18 @@ export default async function LeftPage({ params, searchParams }: Params) {
   }
 
   return (
-    <div className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+    <div lang={say.lang.locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
       <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
         <div className="st-card p-7 sm:p-10">
           {body}
           <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2">
             {status ? (
               <Link href={productPath(store, product)} className="st-footer-link text-sm font-semibold">
-                {`See ${product.title}`}
+                {m.see(product.title)}
               </Link>
             ) : null}
             <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
-              {`Back to ${store.name}`}
+              {w.backTo(store.name)}
             </Link>
           </div>
         </div>
