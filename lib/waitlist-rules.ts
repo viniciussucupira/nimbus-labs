@@ -22,6 +22,7 @@
  *     are deleted, except where their owner also asked to hear from the
  *     creator, in which case they are on the creator's list.
  */
+import { givingWords } from "@/lib/buyer-words/giving";
 
 /** People one product's waitlist can hold. */
 export const MAX_WAITLIST = 10_000;
@@ -91,13 +92,17 @@ export function parseJob(raw: unknown): LaunchJob | null {
   }
 }
 
-/** The launch email's own words, before the bottom of every email carries. */
-export function launchBody(input: { storeName: string; title: string; price: string; link: string; note: string }): { subject: string; body: string } {
-  const lines = [
-    `You asked ${input.storeName} to tell you when ${input.title} came out. It is out now${input.price ? `, at ${input.price}` : ""}:`,
-    "",
-    input.link,
-  ];
+/**
+ * The launch email's own words, before the bottom of every email carries, in
+ * the store's language (lib/buyer-words/giving.ts); English when none is
+ * given. `price` is already written the store's way.
+ */
+export function launchBody(
+  input: { storeName: string; title: string; price: string; link: string; note: string },
+  language: unknown = "en",
+): { subject: string; body: string } {
+  const g = givingWords(language);
+  const lines = [g.launchLead(input.storeName, input.title, input.price), "", input.link];
   if (input.note.trim()) lines.push("", input.note.trim());
-  return { subject: `${input.title} is out`.slice(0, 150), body: lines.join("\n") };
+  return { subject: g.launchSubject(input.title).slice(0, 150), body: lines.join("\n") };
 }

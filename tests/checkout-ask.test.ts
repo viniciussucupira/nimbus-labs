@@ -65,7 +65,9 @@ test("both kinds of yes go through the one set of limits", () => {
   for (const guard of ["offKey(statsId, email)", "onceKey(statsId, email, product.id)", "parseContact(contact)?.unsub", "paidSince(store, email, product.id, how.since)"]) {
     assert.ok(deliver.includes(guard), `the one email is always behind ${guard}`);
   }
-  assert.match(src, /It reached you because you asked for it on \$\{store\.name\}'s store\./, "and the email says why it came");
+  // The words are the store's language's (lib/buyer-words/giving.ts); the English ones say it so.
+  assert.match(src, /why: givingWords\(store\.language\)\.recoverWhyAsked\(store\.name\)/, "and the email says why it came");
+  assert.match(code("lib/buyer-words/giving.ts"), /recoverWhyAsked: \(store: string\) => `It reached you because you asked for it on \$\{store\}'s store\.`/);
 });
 
 test("Stripe is asked for its own box only where Stripe offers one", () => {

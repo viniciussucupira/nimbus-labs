@@ -330,7 +330,19 @@ export type Rendered = { subject: string; html: string; text: string; headers: R
  * own page and one-click address, why the reader gets it, and what the link
  * stops.
  */
-export type Door = { page: string; oneClick: string; why: string; label: string; after: string };
+export type Door = {
+  page: string;
+  oneClick: string;
+  why: string;
+  label: string;
+  after: string;
+  /** The text version's line with the link, whole; "<label>: <page>" when left out. */
+  line?: string;
+  /** The last line, in the store's language; "Sent with Marktmorgen." when left out. */
+  sent?: string;
+  /** The language the email is written in, for its html element ("es-ES"). */
+  lang?: string;
+};
 
 /** One email, for one reader, with everything it has to carry. */
 export function render(store: Store, subject: string, body: string, token: string | null, door?: Door, tag?: MailTag): Rendered {
@@ -341,23 +353,24 @@ export function render(store: Store, subject: string, body: string, token: strin
   const why = door ? door.why : `You are getting this because you told ${fromName} you wanted to hear from them.`;
   const label = door ? door.label : "Unsubscribe";
   const after = door ? door.after : `in one click, and ${fromName} will not email you again.`;
-  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f7f5f0">
+  const sent = door?.sent ?? "Sent with Marktmorgen.";
+  const html = `<!doctype html><html${door?.lang ? ` lang="${escape(door.lang)}"` : ""}><body style="margin:0;padding:0;background:#f7f5f0">
 <div style="max-width:560px;margin:0 auto;padding:32px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.6;color:#1c1917">
 <div style="background:#ffffff;border-radius:16px;padding:28px 24px">${bodyHtml(body, tag ? (href) => taggedLink(href, store, tag) : undefined)}</div>
 <div style="padding:20px 8px 0;font-size:13px;line-height:1.5;color:#57534e">
 <p style="margin:0 0 8px">${escape(why)}</p>
 <p style="margin:0 0 8px"><a href="${escape(unsub)}" style="color:#57534e;text-decoration:underline">${escape(label)}</a> ${escape(after)}</p>
 ${address ? `<p style="margin:0 0 8px">${escape(fromName)} · ${escape(address)}</p>` : ""}
-<p style="margin:0">Sent with Marktmorgen.</p>
+<p style="margin:0">${escape(sent)}</p>
 </div></div></body></html>`;
   const text = [
     body.trim(),
     "",
     "—",
     why,
-    door ? `${door.label}: ${unsub}` : `Unsubscribe in one click: ${unsub}`,
+    door ? door.line ?? `${door.label}: ${unsub}` : `Unsubscribe in one click: ${unsub}`,
     address ? `${fromName} · ${address}` : "",
-    "Sent with Marktmorgen.",
+    sent,
   ]
     .filter((line, i, all) => line !== "" || all[i - 1] !== "")
     .join("\n");

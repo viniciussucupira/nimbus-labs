@@ -7,6 +7,7 @@ import { queuePerson } from "@/lib/email-sync";
 import { plain, serveFile } from "@/lib/serve-file";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
 import { readListing } from "@/lib/catalog";
+import { givingWords } from "@/lib/buyer-words/giving";
 
 /**
  * Hands over a free copy, from the link that was emailed.
@@ -47,11 +48,12 @@ export async function POST(request: NextRequest) {
   // has since removed, or started charging for, is not handed out for free
   // on the strength of an old email.
   const product = await readListing(store, claim.p);
+  const g = givingWords(store.language);
   if (!product || !isFree(product)) {
-    return plain(410, "This is no longer offered for free.");
+    return plain(410, g.freeGone);
   }
   if (!product.file && !product.link) {
-    return plain(404, "There is nothing on this yet. Ask the store about it.");
+    return plain(404, g.freeNothing);
   }
 
   const listed = await recordLead(store, claim, product.title);
@@ -90,5 +92,5 @@ export async function POST(request: NextRequest) {
   }
   return product.file
     ? serveFile(product.file, { paid: false })
-    : plain(404, "There is nothing on this yet. Ask the store about it.");
+    : plain(404, g.freeNothing);
 }

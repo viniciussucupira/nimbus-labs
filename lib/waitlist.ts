@@ -18,8 +18,9 @@ import { withinLimit } from "@/lib/request-guard";
 import { fromLine, releaseDay, render, reserveDay } from "@/lib/mail";
 import { upsertContact } from "@/lib/contacts";
 import { SITE_URL } from "@/lib/site-url";
-import { formatMoney } from "@/lib/money";
 import type { Listing, Store } from "@/lib/store";
+import { speech } from "@/lib/buyer-words";
+import { givingWords } from "@/lib/buyer-words/giving";
 import {
   CONFIRM_SECONDS,
   LAUNCH_BATCH,
@@ -123,25 +124,24 @@ export async function joinWaitlist(input: {
   ]);
 
   const link = `${origin}/@${store.handle}/waitlist?token=${confirm}`;
+  const g = givingWords(store.language);
   const sent = await sendEmail({
     from: sender(store),
     to: email,
-    subject: `Confirm your spot: ${product.title}`.slice(0, 200),
+    subject: g.waitSubject(product.title).slice(0, 200),
     text: [
-      `You asked ${store.name} to tell you when ${product.title} comes out.`,
+      g.waitAsked(store.name, product.title),
       "",
-      "Open this link and press the button to confirm it was you:",
+      g.waitOpen,
       link,
       "",
-      "It works for 7 days. When it comes out you get one email with its link, and that is the only email this waitlist sends.",
-      consent
-        ? `You also said ${store.name} may send you other emails; once you confirm, you are on their list and can unsubscribe from any of them.`
-        : `You did not check the box to hear from ${store.name} otherwise, so you will not.`,
+      g.waitWorks,
+      consent ? g.waitConsented(store.name) : g.waitNotConsented(store.name),
       "",
-      "If you did not ask for this, ignore this email. Nothing happens unless the button is pressed.",
-      `To take your address off this waitlist at any time: ${origin}/@${store.handle}/waitlist?leave=${leave}`,
+      g.waitIgnore,
+      g.waitLeave(`${origin}/@${store.handle}/waitlist?leave=${leave}`),
       "",
-      `Sent by Marktmorgen on behalf of ${store.name}.`,
+      g.sentBy(store.name),
     ].join("\n"),
   });
   return sent ? "sent" : "error";
@@ -276,13 +276,18 @@ export async function runLaunches(load: (handle: string) => Promise<Store | null
       await redisPipeline([["SREM", JOBS, member]]);
       continue;
     }
-    const words = launchBody({
-      storeName: store.name,
-      title: product.title,
-      price: product.priceCents > 0 ? formatMoney(product.priceCents, store.currency) : "",
-      link: `${SITE_URL}/@${store.handle}/p/${product.id}`,
-      note: job.note,
-    });
+    const said = speech(store);
+    const g = givingWords(store.language);
+    const words = launchBody(
+      {
+        storeName: store.name,
+        title: product.title,
+        price: product.priceCents > 0 ? said.money(product.priceCents) : "",
+        link: `${SITE_URL}/@${store.handle}/p/${product.id}`,
+        note: job.note,
+      },
+      store.language,
+    );
     const sender = { ...store, mail: { fromName: store.mail?.fromName || store.name, address: job.address } };
     while (job.cursor < job.total && Date.now() <= deadline) {
       const [slice] = await redisPipeline([["LRANGE", sendKey(sid, pid), job.cursor, job.cursor + LAUNCH_BATCH - 1]]);
@@ -295,12 +300,16 @@ export async function runLaunches(load: (handle: string) => Promise<Store | null
         .filter((pair): pair is readonly [string, WaitEntry] => pair[1] !== null);
       if (!(await reserveDay(chunk.length))) break;
       const messages = chunk.map(([email, entry]) => {
+        const page = `${SITE_URL}/@${store.handle}/waitlist?leave=${entry.t}`;
         const door = {
-          page: `${SITE_URL}/@${store.handle}/waitlist?leave=${entry.t}`,
+          page,
           oneClick: `${SITE_URL}/api/store/waitlist/leave?t=${entry.t}`,
-          why: `You are getting this because you joined the waitlist for ${product.title} and confirmed your address. It is the only email the waitlist sends.`,
-          label: "Remove my address",
-          after: "from this waitlist.",
+          why: g.launchWhy(product.title),
+          label: g.launchLabel,
+          after: g.launchAfter,
+          line: g.launchLine(page),
+          sent: g.sentWith,
+          lang: said.lang.locale,
         };
         const r = render(sender, words.subject, words.body, null, door);
         return { from: fromLine(sender), to: email, subject: r.subject, text: r.text, html: r.html, replyTo: store.email, headers: r.headers };

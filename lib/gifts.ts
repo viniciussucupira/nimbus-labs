@@ -23,6 +23,8 @@ import { bundleFromMeta } from "@/lib/bundle-rules";
 import { onAccount } from "@/lib/stripe-account";
 import { formatMoney } from "@/lib/money";
 import { type Listing, type Store, setPastBuyers, storeRef } from "@/lib/store";
+import { speech } from "@/lib/buyer-words";
+import { givingWords } from "@/lib/buyer-words/giving";
 import { GIFT_ID, GIFT_KEPT_SECONDS, GIFT_PENDING_SECONDS, MAX_GIFT_FROM, MAX_GIFT_MESSAGE, canGift, givenOption } from "@/lib/gift-rules";
 
 export type Gift = {
@@ -163,7 +165,8 @@ export async function deliverGift(input: {
     ["DEL", `${giftKey(id)}:giving`],
   ]);
 
-  const who = gift.from || "Someone";
+  const g = givingWords(store.language);
+  const who = gift.from || g.someone;
   // Given at one of the product's prices: named with it, as on the receipt.
   const label = gift.o ? product.options.find((o) => o.id === gift.o)?.label ?? "" : "";
   const title = label ? `${product.title} (${label})` : product.title;
@@ -171,17 +174,17 @@ export async function deliverGift(input: {
   await sendEmail({
     from: input.from,
     to: gift.to,
-    subject: `${who} sent you a gift: ${title}`.slice(0, 200),
+    subject: g.giftSubject(who, title).slice(0, 200),
     text: [
-      `${who} bought you ${title} from ${store.name}.`,
-      ...(gift.message ? ["", "Their message:", gift.message] : []),
+      g.giftLead(who, title, store.name),
+      ...(gift.message ? ["", g.theirMessage, gift.message] : []),
       "",
-      "It is yours, on this email address. Open it here:",
+      g.giftYours,
       link,
       "",
-      `That link works for 24 hours. After that, go to ${base}/orders, type this address, and a new one comes right away.`,
+      g.link24(`${base}/orders`),
       "",
-      `Sent by Marktmorgen on behalf of ${store.name}. Nothing was charged to you.`,
+      g.sentByNothing(store.name),
     ].join("\n"),
     idempotencyKey: `nimbus-gift:${gift.id}`,
   }).catch((error) => console.error("a gift email failed", error));
@@ -193,18 +196,18 @@ export async function deliverGift(input: {
     await sendEmail({
       from: input.from,
       to: buyer,
-      subject: `Your gift is on its way: ${title}`.slice(0, 200),
+      subject: g.giftReceiptSubject(title).slice(0, 200),
       text: [
-        `Thank you for buying from ${store.name}. This is your receipt.`,
+        g.thanksReceipt(store.name),
         "",
-        `A gift: ${title}`,
-        `For: ${gift.to}`,
-        `Paid: ${formatMoney(amount, currency)}`,
-        `Order reference: ${sessionId}`,
+        g.aGift(title),
+        g.giftFor(gift.to),
+        g.paidLine(formatMoney(amount, currency, speech(store).lang.locale)),
+        g.orderRef(sessionId),
         "",
-        `We emailed ${gift.to} just now, with your name${gift.message ? " and your message" : ""} and a link to open it. It is theirs, on their address; you do not get a copy.`,
+        g.weEmailed(gift.to, Boolean(gift.message)),
         "",
-        `Charged by ${store.name} on their own Stripe account. Questions go to ${store.name} by replying to this email.`,
+        g.chargedBy(store.name),
       ].join("\n"),
       replyTo: store.email,
       idempotencyKey: `nimbus-gift-receipt:${gift.id}`,
