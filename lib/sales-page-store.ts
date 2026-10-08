@@ -10,6 +10,9 @@
  *
  *   nl:product:page:<statsId>:<productId>  -> the page, as JSON
  *   nl:product:pics:<statsId>              -> hash: picture path -> the product whose page shows it
+ *   nl:product:pages:<statsId>:<productId> -> list: the page as it was before each of its last
+ *                                             five saves, newest first, as "<ms>\n<json>";
+ *                                             forgotten 30 days after the last save
  *
  * A page's pictures are files in the store's picture folder
  * (lib/product-image.ts). Each belongs to the one page that first showed it,
@@ -22,6 +25,11 @@ import { EMPTY_PAGE, MAX_PAGE_BYTES, type SalesPage, parsePage, picturePaths } f
 
 const pageKey = (statsId: string, productId: string) => `nl:product:page:${statsId}:${productId}`;
 const picsKey = (statsId: string) => `nl:product:pics:${statsId}`;
+const versionsKey = (statsId: string, productId: string) => `nl:product:pages:${statsId}:${productId}`;
+
+/** How many earlier versions of a page are kept, and for how long after the last save. */
+export const MAX_VERSIONS = 5;
+export const VERSION_DAYS = 30;
 
 /**
  * Says these pictures are this product's page's. Returns the ones that are
@@ -68,13 +76,43 @@ export function hasBlocks(page: SalesPage): boolean {
 /** Writes a page, or forgets it when it has no blocks and nothing else set. */
 export async function writePage(statsId: string, productId: string, page: SalesPage): Promise<void> {
   const empty = page.blocks.length === 0 && !page.seoTitle && !page.seoDescription && !page.next;
-  await redisPipeline([empty ? ["DEL", pageKey(statsId, productId)] : ["SET", pageKey(statsId, productId), JSON.stringify(page)]]);
+  const json = JSON.stringify(page);
+  const [before] = await redisPipeline([["GET", pageKey(statsId, productId)]]);
+  const commands: (string | number)[][] = [empty ? ["DEL", pageKey(statsId, productId)] : ["SET", pageKey(statsId, productId), json]];
+  // What the page was, kept so a save can be undone from the studio.
+  if (typeof before === "string" && before && before !== json && before.length <= MAX_PAGE_BYTES * 2) {
+    const key = versionsKey(statsId, productId);
+    commands.push(["LPUSH", key, `${Date.now()}\n${before}`], ["LTRIM", key, 0, MAX_VERSIONS - 1], ["EXPIRE", key, VERSION_DAYS * 86_400]);
+  }
+  await redisPipeline(commands);
+}
+
+export type PageVersion = { at: number; page: SalesPage };
+
+/** The page as it was before each of its last saves, newest first. */
+export async function readVersions(statsId: string | null, productId: string): Promise<PageVersion[]> {
+  if (!statsId || !isRedisConfigured()) return [];
+  const [list] = await redisPipeline([["LRANGE", versionsKey(statsId, productId), 0, MAX_VERSIONS - 1]]);
+  if (!Array.isArray(list)) return [];
+  const out: PageVersion[] = [];
+  for (const entry of list) {
+    if (typeof entry !== "string") continue;
+    const cut = entry.indexOf("\n");
+    const at = Number(entry.slice(0, cut));
+    if (cut < 1 || !Number.isFinite(at)) continue;
+    try {
+      out.push({ at, page: parsePage(JSON.parse(entry.slice(cut + 1))) });
+    } catch {
+      // A version that cannot be read is left out, never shown half.
+    }
+  }
+  return out;
 }
 
 /** Forgets the page of a product that is gone. Returns the picture files it was the one showing, to delete. */
 export async function dropPage(statsId: string | null, productId: string): Promise<string[]> {
   if (!statsId || !isRedisConfigured()) return [];
   const shown = picturePaths(await readPage(statsId, productId).catch(() => ({ blocks: [] })));
-  await redisPipeline([["DEL", pageKey(statsId, productId)]]);
+  await redisPipeline([["DEL", pageKey(statsId, productId), versionsKey(statsId, productId)]]);
   return releasePictures(statsId, productId, shown);
 }
