@@ -605,6 +605,25 @@ try {
     is("and so does one with the words of an older title", [renamed.status(), (await words(page.locator("h1"))).length > 0], [200, true]);
   }
 
+  part("Sharing a page and the store");
+  {
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
+    await studio.getByRole("button", { name: "Share", exact: true }).click();
+    const panel = studio.getByRole("region", { name: "Share Knife Skills" });
+    const link = await panel.locator("#share-url").inputValue();
+    is("the page's address in words, to copy", link.endsWith(`/@localshop/p/knife-skills-${ids["Knife Skills"]}`), true);
+    const x = await panel.getByRole("link", { name: "X", exact: true }).getAttribute("href");
+    is("a post opens the network's own page, tagged with where it went", x.startsWith("https://x.com/intent/post") && decodeURIComponent(x).includes("utm_source=x&utm_medium=share"), true);
+    is("a QR code drawn", await panel.getByRole("img", { name: "QR code that opens Knife Skills" }).count(), 1);
+    const [svg] = await Promise.all([studio.waitForEvent("download"), panel.getByRole("button", { name: "SVG" }).click()]);
+    const [png] = await Promise.all([studio.waitForEvent("download"), panel.getByRole("button", { name: "PNG" }).click()]);
+    is("and downloaded for print and for slides", [svg.suggestedFilename(), png.suggestedFilename()], ["knife-skills-qr.svg", "knife-skills-qr.png"]);
+    if (process.env.E2E_SHOTS) await panel.screenshot({ path: join(process.env.E2E_SHOTS, "share-panel.png") });
+    await open(studio, `${LOCAL}/studio`);
+    await studio.getByText("Share the store: link, QR code, posts").click();
+    is("the store's own address, to share the same way", (await studio.locator("#share-url").inputValue()).endsWith("/@localshop"), true);
+  }
+
   part("Blocks added where they go, from a gallery");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
