@@ -92,7 +92,7 @@ async function main(): Promise<void> {
   reply = `Here:\n${JSON.stringify({
     verdict: "Clear offer. Put a button under the headline.",
     fixes: [{ title: "Add a button near the top", detail: "Ready buyers should not scroll." }, { title: "" }],
-    headlines: [{ headline: "Cortar más rápido en diez días", sub: "Diez lecciones cortas." }, { headline: "", sub: "x" }],
+    headlines: [{ headline: "Cortar más rápido en diez días", sub: "Diez lecciones cortas." }, { headline: "", sub: "x" }, { headline: "El curso, por 49 $", sub: "" }, { headline: "Only $49 today", sub: "" }],
     fit: { yes: ["Cocinas a diario"], no: [] },
     questions: [{ q: "¿Cuánto dura el acceso?", a: "" }, { q: "¿En qué formato?", a: "Vídeos." }],
   })}`;
@@ -109,7 +109,8 @@ async function main(): Promise<void> {
   is("told to write the page's words in the store's language", asked[0].system.includes("write them in Spanish"), true);
   is("and held to the rules every draft is", asked[0].system.includes("Never invent a testimonial"), true);
   is("only answers the page's facts give", asked[0].system.includes("Give the answer only when the facts given answer it"), true);
-  is("empty items are dropped", [reviewed.value.fixes.length, reviewed.value.headlines.length], [1, 1]);
+  is("empty items are dropped, and so is a headline that states a price", [reviewed.value.fixes.length, reviewed.value.headlines.length], [1, 1]);
+  is("it is told never to put a price in a headline", asked[0].system.includes("Never a price"), true);
   is("a one-sided who-it-is-for is left out, not half shown", reviewed.value.fit, null);
   is("a question the page cannot answer keeps its empty answer", reviewed.value.questions[0], { q: "¿Cuánto dura el acceso?", a: "" });
   is("it counts as one of the month's jobs", reviewed.left, 99);

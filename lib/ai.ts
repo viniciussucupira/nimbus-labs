@@ -470,6 +470,9 @@ export async function writePage(
  * it. A question the page cannot answer comes back with an empty answer, for
  * the creator to write.
  */
+/** An amount of money written into words: "$10", "10 €", "£9.99", "USD 10". */
+const PRICE_IN_WORDS = /[$€£¥]\s*\d|\d[\d.,]*\s*(?:[$€£¥]|US\$|dollars?\b|euros?\b)|\b(?:USD|EUR|GBP|CAD|AUD)\s*\d/i;
+
 export type PageReview = {
   verdict: string;
   fixes: { title: string; detail: string }[];
@@ -490,7 +493,7 @@ export async function reviewPage(
       HONESTY,
       `The headlines, the two lists and the questions and answers go on the page itself, so write them in ${input.language}. The verdict and the fixes are for the creator: write those in American English.`,
       "Base every suggestion on what this page says and lacks. Name the section you mean. Prefer the change that would matter most to a buyer over a small one.",
-      "Headlines: concrete, about what the buyer gets or becomes able to do, from the facts given. Never a number, a result or a deadline that is not in the facts.",
+      "Headlines: concrete, about what the buyer gets or becomes able to do, from the facts given. Never a number, a result or a deadline that is not in the facts. Never a price: the price is shown by the buy box and changes, and a headline that states it goes out of date.",
       "Who it is for and not for: only from the facts given. If the facts do not say, return null rather than guess.",
       "Questions: those a buyer of exactly this product would ask before paying that the page does not answer. Give the answer only when the facts given answer it; otherwise return an empty answer for the creator to write. Never answer about refunds unless the facts state a refund promise.",
       [
@@ -526,7 +529,8 @@ export async function reviewPage(
         .slice(0, 5),
       headlines: list(json.headlines)
         .map((h) => ({ headline: line(pair(h).headline, 120), sub: line(pair(h).sub, 300) }))
-        .filter((h) => h.headline)
+        // A headline that states a price goes out of date the day the price changes (lib/sales-page.ts).
+        .filter((h) => h.headline && !PRICE_IN_WORDS.test(`${h.headline} ${h.sub}`))
         .slice(0, 3),
       fit: yes.length && no.length ? { yes, no } : null,
       questions: list(json.questions)
