@@ -50,6 +50,12 @@ const en = {
   videoFrame: (title: string, provider: string) => `${title} (video on ${provider})`,
   /** Under a video link played on the store page, the way to its own site. */
   videoOpen: (provider: string) => `Open on ${provider}`,
+  /** Beside the store's stars under its name: the average is of every product's reviews. */
+  storeRatingNote: "across every product",
+  /** The button under the store's name that shares its address (components/store-share-button.tsx). */
+  shareStore: "Share",
+  shareCopied: "Link copied",
+  shareStoreLabel: "Share this store",
 };
 
 export type BlockWords = typeof en;
@@ -87,6 +93,10 @@ const es: BlockWords = {
   videoPlayLabel: (title, provider) => `Reproducir el vídeo: ${title}. Se carga desde ${provider}.`,
   videoFrame: (title, provider) => `${title} (vídeo en ${provider})`,
   videoOpen: (provider) => `Abrir en ${provider}`,
+  storeRatingNote: "en todos los productos",
+  shareStore: "Compartir",
+  shareCopied: "Enlace copiado",
+  shareStoreLabel: "Compartir esta tienda",
 };
 
 const fr: BlockWords = {
@@ -122,6 +132,10 @@ const fr: BlockWords = {
   videoPlayLabel: (title, provider) => `Lire la vidéo « ${title} », chargée depuis ${provider}.`,
   videoFrame: (title, provider) => `${title} (vidéo sur ${provider})`,
   videoOpen: (provider) => `Ouvrir sur ${provider}`,
+  storeRatingNote: "sur tous les produits",
+  shareStore: "Partager",
+  shareCopied: "Lien copié",
+  shareStoreLabel: "Partager cette boutique",
 };
 
 const de: BlockWords = {
@@ -157,6 +171,10 @@ const de: BlockWords = {
   videoPlayLabel: (title, provider) => `Video abspielen: ${title}. Es wird von ${provider} geladen.`,
   videoFrame: (title, provider) => `${title} (Video auf ${provider})`,
   videoOpen: (provider) => `Auf ${provider} öffnen`,
+  storeRatingNote: "über alle Produkte",
+  shareStore: "Teilen",
+  shareCopied: "Link kopiert",
+  shareStoreLabel: "Diesen Shop teilen",
 };
 
 const it: BlockWords = {
@@ -192,6 +210,10 @@ const it: BlockWords = {
   videoPlayLabel: (title, provider) => `Riproduci il video: ${title}. Si carica da ${provider}.`,
   videoFrame: (title, provider) => `${title} (video su ${provider})`,
   videoOpen: (provider) => `Apri su ${provider}`,
+  storeRatingNote: "su tutti i prodotti",
+  shareStore: "Condividi",
+  shareCopied: "Link copiato",
+  shareStoreLabel: "Condividi questo negozio",
 };
 
 const nl: BlockWords = {
@@ -227,6 +249,10 @@ const nl: BlockWords = {
   videoPlayLabel: (title, provider) => `Speel de video af: ${title}. Hij laadt van ${provider}.`,
   videoFrame: (title, provider) => `${title} (video op ${provider})`,
   videoOpen: (provider) => `Openen op ${provider}`,
+  storeRatingNote: "over alle producten",
+  shareStore: "Delen",
+  shareCopied: "Link gekopieerd",
+  shareStoreLabel: "Deel deze winkel",
 };
 
 const pt: BlockWords = {
@@ -262,6 +288,10 @@ const pt: BlockWords = {
   videoPlayLabel: (title, provider) => `Reproduzir o vídeo: ${title}. Ele carrega do ${provider}.`,
   videoFrame: (title, provider) => `${title} (vídeo no ${provider})`,
   videoOpen: (provider) => `Abrir no ${provider}`,
+  storeRatingNote: "em todos os produtos",
+  shareStore: "Partilhar",
+  shareCopied: "Ligação copiada",
+  shareStoreLabel: "Partilhar esta loja",
 };
 
 export const BLOCK_WORDS: Record<LanguageCode, BlockWords> = { en, es, fr, de, it, nl, pt };

@@ -214,15 +214,36 @@ try {
   }
   // One dev server keeps everything it has built in memory, and this run opens
   // nearly every page of the site: past about 5 GB the machine stops it. So it
-  // is started again partway, with its cache kept, which forgets nothing the
-  // checks below rely on: what they wrote lives in the stand-in database.
+  // is started again partway, which forgets nothing the checks below rely on:
+  // what they wrote lives in the stand-in database. The same "not found" fault
+  // as above can come with a fresh server (here it answered a published post,
+  // a buy button and two studio routes with 404), so its cache is put aside
+  // and it is checked the same way, on a page that exists by then too.
   restartApp = async () => {
-    await stop(app);
-    start();
-    const again = Date.now();
-    while (!(await fetch(`${LOCAL}/@localshop`).then((r) => r.status === 200).catch(() => false))) {
-      if (Date.now() - again > 180_000) throw new Error(`the app did not start again:\n${log.slice(-2000)}`);
-      await new Promise((wait) => setTimeout(wait, 1500));
+    for (let restarts = 0; ; restarts += 1) {
+      await stop(app);
+      rmSync(join(root, ".next", "dev", "cache"), { recursive: true, force: true });
+      start();
+      const again = Date.now();
+      while (!(await fetch(`${LOCAL}/@localshop`).then((r) => r.status === 200).catch(() => false))) {
+        if (Date.now() - again > 180_000) throw new Error(`the app did not start again:\n${log.slice(-2000)}`);
+        await new Promise((wait) => setTimeout(wait, 1500));
+      }
+      let found = false;
+      for (let waited = 0; waited < 30_000 && !found; waited += 3_000) {
+        // A product page, a published post, and a route that takes only POST
+        // (which answers a GET with 405 when it is there, 404 when it is not).
+        const answers = await Promise.all(
+          [`/@localshop/p/${ids["Meal Planner"]}`, postPath || "/@localshop", "/api/store/socials"].map((path) =>
+            fetch(`${LOCAL}${path}`, { redirect: "manual" }).then((r) => r.status).catch(() => 0),
+          ),
+        );
+        found = answers[0] === 200 && answers[1] === 200 && answers[2] === 405;
+        if (!found) await new Promise((wait) => setTimeout(wait, 3_000));
+      }
+      if (found) return;
+      if (restarts >= 2) throw new Error("the restarted app did not find its pages on three dev servers in a row");
+      console.log("the restarted app did not find its pages; it is started again");
     }
   };
   browser = await chromium.launch(process.env.PLAYWRIGHT_BROWSERS_PATH ? { executablePath: join(process.env.PLAYWRIGHT_BROWSERS_PATH, "chromium") } : {}).catch(() => chromium.launch());
@@ -1014,6 +1035,10 @@ try {
       return [response.status, (await response.json()).bad];
     });
     is("an address that is not one for its network is refused by name", refused, [400, [0]]);
+    is("under the name, the store's stars from every product's reviews, and a way to share it", [
+      await page.getByText("across every product").count(),
+      await page.getByRole("button", { name: "Share this store" }).count(),
+    ], [1, 1]);
     if (process.env.E2E_SHOTS) await page.locator("section").first().screenshot({ path: join(process.env.E2E_SHOTS, "store-socials.png") });
   }
 
@@ -1154,6 +1179,8 @@ try {
   await open(page, `${LOCAL}/signin`);
   is("pressed Start your store: they say start", [await words(page.locator("h1")), await page.title()], ["Start your store", "Start your store — Marktmorgen"]);
 
+  // The audit opens some thirty-five pages, on a server already well used: a fresh one.
+  await restartApp();
   part("No accessibility errors on what buyers and creators see");
   {
     // A context of its own that lets the rules' script in past the pages'
