@@ -14,7 +14,7 @@ import { BLOCK_KINDS, type BlockKind } from "@/lib/sales-page";
 export const BLOCK_GROUPS: { title: string; kinds: BlockKind[] }[] = [
   { title: "Make the case", kinds: ["benefits", "fit", "steps", "compare", "bonuses", "facts"] },
   { title: "Show it", kinds: ["video", "pictures", "feature", "inside"] },
-  { title: "Answer and reassure", kinds: ["faq", "guarantee", "reviews", "bio", "text"] },
+  { title: "Answer and reassure", kinds: ["faq", "guarantee", "reviews", "quotes", "bio", "text"] },
   { title: "Move them to buy", kinds: ["cta", "product", "countdown", "hero"] },
 ];
 

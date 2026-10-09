@@ -714,6 +714,28 @@ try {
     await studio.evaluate(async (id) => fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: null }) }), ids["Weeknight Dinners"]);
   }
 
+  part("Things said elsewhere, each with a link to where");
+  {
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Weeknight Dinners"]}`);
+    await studio.getByRole("button", { name: "Use the Ebook, guide or templates template" }).click();
+    await studio.getByRole("button", { name: /^Add a block \(/ }).click();
+    await studio.getByRole("region", { name: "Add a block at the end" }).getByRole("button", { name: /^Said elsewhere/ }).click();
+    await studio.getByRole("button", { name: "Add one (0 of 6)" }).click();
+    await studio.getByLabel("Their words, as they said them").fill("Cooked three of these this week. The kids ate everything.");
+    await studio.getByLabel("Who said it (optional)").fill("@maria");
+    await studio.getByLabel("Where it was said").fill("not a link");
+    is("an address that is not one is said at once", await studio.getByText("That is not a full https address of a public page.").count(), 1);
+    await studio.getByLabel("Where it was said").fill("https://x.com/maria/status/123");
+    await studio.getByRole("button", { name: "Save the page" }).click();
+    await studio.getByText(/^Page saved/).first().waitFor({ timeout: 30_000 });
+    await open(page, `${LOCAL}/@localshop/p/${ids["Weeknight Dinners"]}`);
+    const quote = page.locator(".sp-quote");
+    is("on the page, their words with who said them", [(await words(quote)).includes("Cooked three of these this week."), (await words(quote)).includes("@maria")], [true, true]);
+    is("and a link to the original a visitor can check", [await quote.getByRole("link", { name: /See it on x\.com/ }).getAttribute("href"), await quote.locator("blockquote").getAttribute("cite")], ["https://x.com/maria/status/123", "https://x.com/maria/status/123"]);
+    if (process.env.E2E_SHOTS) await quote.screenshot({ path: join(process.env.E2E_SHOTS, "said-elsewhere.png") });
+    await studio.evaluate(async (id) => fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: null }) }), ids["Weeknight Dinners"]);
+  }
+
   part("Pictures seen large, without leaving the page");
   {
     await open(page, `${LOCAL}/@localshop/p/${ids["Sunday Baking"]}`);

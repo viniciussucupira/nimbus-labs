@@ -77,6 +77,11 @@ export const CELL_YES = "\u2713";
 export const CELL_NO = "\u2717";
 /** The most a page's record may weigh, in bytes: well past thirty full blocks. */
 export const MAX_PAGE_BYTES = 120_000;
+/** Things said about it elsewhere, in one block; the words of one, the name beside it, and its link. */
+export const MAX_QUOTES = 6;
+export const MAX_QUOTE = 400;
+export const MAX_QUOTE_NAME = 60;
+export const MAX_QUOTE_URL = 300;
 
 export type BlockKind =
   | "hero"
@@ -97,7 +102,8 @@ export type BlockKind =
   | "bonuses"
   | "facts"
   | "feature"
-  | "product";
+  | "product"
+  | "quotes";
 
 export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "hero", label: "Hero", hint: "The big headline at the top, with the product's picture or a video." },
@@ -117,6 +123,7 @@ export const BLOCK_KINDS: { kind: BlockKind; label: string; hint: string }[] = [
   { kind: "compare", label: "Comparison", hint: `A table of up to ${MAX_COMPARE_ROWS} rows: this product beside another way of getting there, with ticks, crosses or a few words.` },
   { kind: "bonuses", label: "Bonuses", hint: `Up to ${MAX_BONUSES} extras that come with it, each on its own card.` },
   { kind: "feature", label: "Picture and text", hint: "One of your pictures beside a heading and a few paragraphs, the picture on the left or the right. Several in a row make the page read like a story." },
+  { kind: "quotes", label: "Said elsewhere", hint: `Up to ${MAX_QUOTES} things people said about it in public — a post, a video, a comment — each with a link to where it was said, so a visitor can check it.` },
   { kind: "product", label: "Another product", hint: "One of your other products, with its picture, price and a link to its own page: what goes well with this one." },
   { kind: "facts", label: "By the numbers", hint: "Lessons, episodes, buyers, the average rating: counted for you from the store, never typed, and always up to date." },
 ];
@@ -275,6 +282,45 @@ export const MAX_PRODUCT_NOTE = 160;
  * of the creator's own, kept like a pictures block's, and counted with them
  * toward the page's pictures.
  */
+/**
+ * Things people said about it in public, elsewhere (added 9 October 2026):
+ * a post on X, a comment under a video, a newsletter that mentioned it.
+ * Kajabi, Hotmart Pages and Stan let a creator type any testimonial at all,
+ * with nothing to show it was ever said. Here each one carries the address
+ * where it was said, shown under it as a link a visitor can follow and
+ * check; one without a working https address is not kept. It is never shown
+ * as a review: reviews are only buyers' (ReviewsBlock), with their stars,
+ * and nothing here counts toward the average.
+ */
+export type Quote = { text: string; name: string; url: string };
+export type QuotesBlock = { id: string; kind: "quotes"; heading: string; items: Quote[] };
+
+/** An https address as it will be linked, or "" when it is not one: no other scheme, no login in it, no address on this machine. */
+export function quoteUrl(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  const text = raw.trim();
+  if (!text || text.length > MAX_QUOTE_URL) return "";
+  let url: URL;
+  try {
+    url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(text) ? text : `https://${text}`);
+  } catch {
+    return "";
+  }
+  if (url.protocol !== "https:" || url.username || url.password) return "";
+  const host = url.hostname.toLowerCase();
+  if (!host.includes(".") || host === "localhost" || host.endsWith(".localhost") || /^[\d.]+$/.test(host) || host.startsWith("[")) return "";
+  return url.href.length > MAX_QUOTE_URL ? "" : url.href;
+}
+
+/** Where a quote was said, as a visitor reads it: "x.com", "youtube.com". */
+export function quoteHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^(www|m|mobile)\./, "");
+  } catch {
+    return "";
+  }
+}
+
 export type FeatureBlock = { id: string; kind: "feature"; heading: string; body: string; picture: Picture | null; side: "left" | "right" };
 
 /**
@@ -312,6 +358,7 @@ export type PageBlock = { screens?: BlockShow } & (
   | PicturesBlock
   | CountdownBlock
   | ProductBlock
+  | QuotesBlock
 );
 
 export type SalesPage = {
@@ -689,6 +736,18 @@ function parseBlock(raw: unknown): PageBlock | null {
         : [];
       return { id, kind: "facts", heading, show };
     }
+    case "quotes": {
+      const items = Array.isArray(value.items)
+        ? value.items
+            .map((item) => {
+              const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+              return { text: lines(row.text, MAX_QUOTE), name: line(row.name, MAX_QUOTE_NAME), url: quoteUrl(row.url) };
+            })
+            .filter((item) => item.text && item.url)
+            .slice(0, MAX_QUOTES)
+        : [];
+      return { id, kind: "quotes", heading, items };
+    }
     case "product": {
       const product = typeof value.product === "string" && PRODUCT_ID_PATTERN.test(value.product) ? value.product : "";
       return { id, kind: "product", heading, product, note: line(value.note, MAX_PRODUCT_NOTE) };
@@ -764,7 +823,7 @@ function parseTest(raw: unknown, hero: HeroBlock | null): HeadlineTest | null {
 }
 
 /** What is wrong with a page the studio sent, in a word the studio can explain; null when nothing. */
-export type PageProblem = "too_many" | "hero_first" | "two_reviews" | "video" | "pictures" | "countdown" | "shape" | "too_big" | null;
+export type PageProblem = "too_many" | "hero_first" | "two_reviews" | "video" | "pictures" | "countdown" | "quote_link" | "shape" | "too_big" | null;
 
 /**
  * The same rules as parsePage, told back rather than quietly applied, so a
@@ -784,6 +843,13 @@ export function pageProblem(raw: { blocks?: unknown }, parsed: SalesPage): PageP
     if (value.kind === "countdown") {
       const until = parseUntil(value.until);
       if (!until || until > Date.now() / 1000 + MAX_COUNTDOWN_DAYS * 86_400) return "countdown";
+    }
+    // Something said elsewhere, written in, without the address where it was said.
+    if (value.kind === "quotes" && Array.isArray(value.items)) {
+      for (const item of value.items) {
+        const row = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
+        if (typeof row.text === "string" && row.text.trim() && !quoteUrl(row.url)) return "quote_link";
+      }
     }
   }
   // A picture sent that was not kept: not a picture, a second copy of one, or past what a page holds.
@@ -840,6 +906,8 @@ export function emptyBlock(kind: BlockKind, id = newBlockId()): PageBlock {
       return { id, kind, heading: "", body: "", picture: null, side: "left" };
     case "product":
       return { id, kind, heading: "Goes well with it", product: "", note: "" };
+    case "quotes":
+      return { id, kind, heading: "What people say", items: [] };
   }
 }
 

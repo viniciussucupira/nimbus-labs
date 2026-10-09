@@ -2948,6 +2948,47 @@ a.sp-product:focus-visible {
   text-transform: uppercase;
   color: var(--st-accent-text);
 }
+/* Said elsewhere: others' words, each with the link to where they were said. */
+.sp-quotes {
+  display: grid;
+  gap: 0.875rem;
+}
+@container (min-width: 560px) {
+  .sp-quotes-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.sp-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  margin: 0;
+  padding: 1.15rem 1.25rem;
+  border-radius: 1.25rem;
+  background: var(--st-card);
+  border: 1px solid var(--st-line);
+}
+.sp-quote-mark {
+  color: var(--st-accent-text);
+}
+.sp-quote-by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  margin-top: auto;
+  font-size: 0.875rem;
+}
+.sp-quote-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  min-height: 2.75rem;
+  color: var(--st-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
 /* By the numbers: big figures the store counted itself. */
 .sp-facts {
   display: grid;

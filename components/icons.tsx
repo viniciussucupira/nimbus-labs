@@ -81,7 +81,8 @@ export type IconName =
   | "external"
   | "star"
   | "layout"
-  | "play";
+  | "play"
+  | "quote";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   "arrow-right": <path d="M5 12h14M13 6l6 6-6 6" />,
@@ -357,6 +358,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
   trash: <path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12.2a1.5 1.5 0 0 0 1.5 1.3h6.4a1.5 1.5 0 0 0 1.5-1.3L17.5 7" />,
   undo: <path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />,
   redo: <path d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />,
+  // Two opening quotation marks.
+  quote: <path d="M10 7.5C7 8.5 5 10.8 5 14v2.5a1.5 1.5 0 0 0 1.5 1.5h2a1.5 1.5 0 0 0 1.5-1.5v-2a1.5 1.5 0 0 0-1.5-1.5H6.2M19 7.5c-3 1-5 3.3-5 6.5v2.5a1.5 1.5 0 0 0 1.5 1.5h2a1.5 1.5 0 0 0 1.5-1.5v-2a1.5 1.5 0 0 0-1.5-1.5h-2.3" />,
   copy: (
     <>
       <rect x="8.5" y="8.5" width="11" height="11" rx="2.2" />

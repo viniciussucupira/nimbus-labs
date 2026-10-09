@@ -76,6 +76,8 @@ const filled = (block: PageBlock): boolean => {
       return Boolean(block.body || block.picture);
     case "product":
       return Boolean(block.product);
+    case "quotes":
+      return block.items.length > 0;
     case "cta":
     case "reviews":
       return true;

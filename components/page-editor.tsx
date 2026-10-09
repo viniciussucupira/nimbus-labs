@@ -66,6 +66,12 @@ import {
   MAX_PICKED_REVIEWS,
   HERO_LAYOUTS,
   MAX_PRODUCT_NOTE,
+  MAX_QUOTES,
+  MAX_QUOTE,
+  MAX_QUOTE_NAME,
+  MAX_QUOTE_URL,
+  type Quote,
+  quoteUrl,
   PAGE_TEMPLATES,
   templateOutline,
   type PageStyle,
@@ -92,6 +98,7 @@ const MESSAGES: Record<string, string> = {
   video: "That video address is not one we can play. Paste a YouTube, Vimeo or Loom link.",
   pictures: `A picture on the page could not be kept. A page holds up to ${MAX_PAGE_PICTURES} pictures, each shown once: remove the one that was added twice, or add it again.`,
   countdown: "Give the countdown the moment it runs to, no more than a year away, or remove the block.",
+  quote_link: "Each thing said elsewhere needs the full https address of where it was said, so visitors can check it. Add it, or remove that one.",
   shape: "Something in the page could not be read. Reload the studio and try again.",
   too_big: "The page is too long to save. Shorten some of the text.",
   next: "After a sign-up, only another product that costs money can be shown.",
@@ -123,6 +130,7 @@ const KIND_ICONS: Record<BlockKind, IconName> = {
   facts: "chart",
   feature: "layout",
   product: "basket",
+  quotes: "quote",
 };
 
 /** A moment in seconds as the date-and-time field holds it, in the creator's own time zone. */
@@ -1221,6 +1229,16 @@ export function PageEditor({
             </p>
           </div>
         );
+      case "quotes":
+        return (
+          <div className="space-y-4">
+            {field(`${base}-h`, "Heading (optional)", <input id={`${base}-h`} className="field" maxLength={MAX_HEADING} value={block.heading} placeholder="What people say" onChange={(e) => change(index, { heading: e.target.value })} />)}
+            <QuotesEditor base={base} items={block.items} onChange={(items) => change(index, { items })} />
+            <p className="text-xs text-ink-soft">
+              Only what someone really said in public, in their words, with the address of the post, video or comment, so a visitor can open it and check. The words are shown as they were said, never translated or rewritten. Reviews from your buyers go in the Reviews block, with their stars.
+            </p>
+          </div>
+        );
       case "product": {
         const known = featurable.some((p) => p.id === block.product);
         return (
@@ -1383,6 +1401,8 @@ export function PageEditor({
         const chosen = featurable.find((p) => p.id === block.product);
         return `${block.heading ? `${block.heading} · ` : ""}${chosen ? chosen.card.title : "No product chosen yet"}`;
       }
+      case "quotes":
+        return `${block.heading ? `${block.heading} · ` : ""}${block.items.length} said elsewhere`;
       case "facts": {
         const live = block.show.filter((key) => facts[key]).length;
         return `${block.heading ? `${block.heading} · ` : ""}${live} ${live === 1 ? "number" : "numbers"} shown now`;
@@ -2035,6 +2055,74 @@ export function PageEditor({
 
 /** A list of one-line points. */
 /** The rows of a comparison: what is compared, and a cell for each column, with a tick and a cross a press away. */
+/** Things said elsewhere: the words, who said them, and where (lib/sales-page.ts, QuotesBlock). */
+function QuotesEditor({ base, items, onChange }: { base: string; items: Quote[]; onChange: (items: Quote[]) => void }) {
+  const set = (i: number, patch: Partial<Quote>) => onChange(items.map((item, j) => (j === i ? { ...item, ...patch } : item)));
+  return (
+    <div className="space-y-3">
+      {items.map((item, i) => {
+        const badLink = item.url.trim() !== "" && !quoteUrl(item.url);
+        const noLink = item.text.trim() !== "" && item.url.trim() === "";
+        return (
+          <div key={i} className="rounded-xl bg-paper p-3 ring-1 ring-line">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-ink-mute">{`Said elsewhere ${i + 1}`}</p>
+              <button
+                type="button"
+                onClick={() => onChange(items.filter((_, j) => j !== i))}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-danger-soft hover:text-danger"
+                aria-label={`Remove what was said elsewhere ${i + 1}`}
+              >
+                <Icon name="close" size={15} />
+              </button>
+            </div>
+            <label htmlFor={`${base}-q${i}t`} className="mt-1 block text-xs font-semibold text-ink-soft">
+              Their words, as they said them
+            </label>
+            <textarea id={`${base}-q${i}t`} className="field mt-1" rows={3} maxLength={MAX_QUOTE} value={item.text} onChange={(e) => set(i, { text: e.target.value })} />
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label htmlFor={`${base}-q${i}n`} className="text-xs font-semibold text-ink-soft">
+                  Who said it (optional)
+                </label>
+                <input id={`${base}-q${i}n`} className="field mt-1" maxLength={MAX_QUOTE_NAME} value={item.name} placeholder="Their name or handle" onChange={(e) => set(i, { name: e.target.value })} />
+              </div>
+              <div className="min-w-0">
+                <label htmlFor={`${base}-q${i}u`} className="text-xs font-semibold text-ink-soft">
+                  Where it was said
+                </label>
+                <input
+                  id={`${base}-q${i}u`}
+                  className="field mt-1"
+                  type="url"
+                  inputMode="url"
+                  maxLength={MAX_QUOTE_URL}
+                  value={item.url}
+                  placeholder="https://x.com/…/status/…"
+                  aria-invalid={badLink || noLink}
+                  aria-describedby={badLink || noLink ? `${base}-q${i}e` : undefined}
+                  onChange={(e) => set(i, { url: e.target.value })}
+                />
+              </div>
+            </div>
+            {badLink || noLink ? (
+              <p id={`${base}-q${i}e`} className="mt-1 text-xs font-semibold text-danger">
+                {badLink ? "That is not a full https address of a public page." : "Add the address of the post, video or comment where it was said."}
+              </p>
+            ) : null}
+          </div>
+        );
+      })}
+      {items.length < MAX_QUOTES ? (
+        <button type="button" onClick={() => onChange([...items, { text: "", name: "", url: "" }])} className="btn btn-ghost btn-sm">
+          <Icon name="plus" size={15} />
+          {`Add one (${items.length} of ${MAX_QUOTES})`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function CompareEditor({ base, rows, onChange }: { base: string; rows: CompareRow[]; onChange: (rows: CompareRow[]) => void }) {
   const set = (i: number, patch: Partial<CompareRow>) => onChange(rows.map((row, j) => (j === i ? { ...row, ...patch } : row)));
   const cell = (i: number, side: "a" | "b", label: string) => {

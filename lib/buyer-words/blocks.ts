@@ -36,6 +36,8 @@ const en = {
   viewerOriginal: "Open the original",
   /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
   productLink: "Take a look",
+  /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
+  quoteSource: (host: string) => `See it on ${host}`,
 };
 
 export type BlockWords = typeof en;
@@ -63,6 +65,8 @@ const es: BlockWords = {
   viewerOriginal: "Abrir el original",
   /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
   productLink: "Ver más",
+  /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
+  quoteSource: (host) => `Verlo en ${host}`,
 };
 
 const fr: BlockWords = {
@@ -88,6 +92,8 @@ const fr: BlockWords = {
   viewerOriginal: "Ouvrir l'original",
   /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
   productLink: "Découvrir",
+  /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
+  quoteSource: (host) => `Voir sur ${host}`,
 };
 
 const de: BlockWords = {
@@ -113,6 +119,8 @@ const de: BlockWords = {
   viewerOriginal: "Original öffnen",
   /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
   productLink: "Ansehen",
+  /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
+  quoteSource: (host) => `Auf ${host} ansehen`,
 };
 
 const it: BlockWords = {
@@ -138,6 +146,8 @@ const it: BlockWords = {
   viewerOriginal: "Apri l'originale",
   /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
   productLink: "Scopri",
+  /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
+  quoteSource: (host) => `Vedi su ${host}`,
 };
 
 const nl: BlockWords = {
@@ -163,6 +173,8 @@ const nl: BlockWords = {
   viewerOriginal: "Origineel openen",
   /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
   productLink: "Bekijken",
+  /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
+  quoteSource: (host) => `Bekijk op ${host}`,
 };
 
 const pt: BlockWords = {
@@ -188,6 +200,8 @@ const pt: BlockWords = {
   viewerOriginal: "Abrir o original",
   /** The link on another product's card (lib/sales-page.ts, ProductBlock). */
   productLink: "Ver mais",
+  /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
+  quoteSource: (host) => `Ver em ${host}`,
 };
 
 export const BLOCK_WORDS: Record<LanguageCode, BlockWords> = { en, es, fr, de, it, nl, pt };
