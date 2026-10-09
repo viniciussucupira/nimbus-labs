@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { uploadPresigned } from "@vercel/blob/client";
 import { shrink } from "@/components/product-image-editor";
 import { IMAGE_ACCEPT, MAX_ALT_LENGTH, MAX_SOURCE_BYTES, imagePath, imageUrl } from "@/lib/product-image";
 import { Icon, type IconName } from "@/components/icons";
 import { toast } from "@/components/toast";
-import { AiAssist } from "@/components/ai-assist";
+import { AiAssist, AiOn } from "@/components/ai-assist";
 import { PageCoach } from "@/components/page-coach";
 import { PageStylePicker } from "@/components/page-style-picker";
 import { BlockPicker } from "@/components/block-picker";
@@ -2279,6 +2279,29 @@ function PicturesEditor({
   const [busy, setBusy] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const left = Math.max(0, room - items.length);
+  // A picture described by the writing help (lib/ai.ts, describePicture), the one being described now.
+  const ai = useContext(AiOn);
+  const [describing, setDescribing] = useState<string | null>(null);
+  async function describe(i: number) {
+    const picture = items[i];
+    if (!picture || describing) return;
+    setDescribing(picture.path);
+    setError(null);
+    try {
+      const response = await fetch("/api/store/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "alt", product: productId, path: picture.path }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; value?: string; error?: string };
+      if (data.ok && data.value) set(i, { alt: data.value });
+      else setError(data.error === "used" ? "This month's writing help is used up. It starts again on the 1st." : "That description did not come back. Write it yourself, or try again in a moment.");
+    } catch {
+      setError("That description did not come back. Write it yourself, or try again in a moment.");
+    } finally {
+      setDescribing(null);
+    }
+  }
 
   async function choose(files: FileList | null) {
     if (!files || busy) return;
@@ -2341,7 +2364,23 @@ function PicturesEditor({
             <label htmlFor={`${base}-pc${i}`} className="sr-only">{`A line under picture ${i + 1}`}</label>
             <input id={`${base}-pc${i}`} className="field" maxLength={MAX_PICTURE_CAPTION} value={picture.caption} placeholder="A line under it (optional)" onChange={(e) => set(i, { caption: e.target.value })} />
             <label htmlFor={`${base}-pa${i}`} className="sr-only">{`What picture ${i + 1} shows`}</label>
-            <input id={`${base}-pa${i}`} className="field" maxLength={MAX_ALT_LENGTH} value={picture.alt} placeholder="What it shows, for someone who cannot see it" onChange={(e) => set(i, { alt: e.target.value })} />
+            <div className="flex gap-2">
+              <input id={`${base}-pa${i}`} className="field min-w-0 flex-1" maxLength={MAX_ALT_LENGTH} value={picture.alt} placeholder="What it shows, for someone who cannot see it" onChange={(e) => set(i, { alt: e.target.value })} />
+              {ai.on ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm shrink-0 ring-1 ring-line"
+                  onClick={() => void describe(i)}
+                  disabled={describing !== null || ai.left <= 0}
+                  aria-busy={describing === picture.path}
+                  aria-label={`Describe picture ${i + 1} with AI`}
+                  title="Describe it with AI: one plain sentence of what it shows, in your store's language"
+                >
+                  <Icon name="sparkle" size={14} />
+                  {describing === picture.path ? "Looking…" : "Describe"}
+                </button>
+              ) : null}
+            </div>
           </div>
           <div className="flex shrink-0 flex-col items-center">
             <button type="button" onClick={() => swap(i, -1)} disabled={i === 0} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-white hover:text-ink disabled:opacity-30" aria-label={`Move picture ${i + 1} earlier`}>
