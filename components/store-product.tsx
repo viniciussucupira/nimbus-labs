@@ -20,6 +20,7 @@ import { givableOptions } from "@/lib/gift-rules";
 import { productSegment } from "@/lib/product-slug";
 import { membershipWords } from "@/lib/buyer-words/membership";
 import { type AskWhen, isAskWhen } from "@/lib/ask-when";
+import { type UnitLine, unitLines } from "@/lib/option-units";
 
 /**
  * How many price options are drawn as cards before they become a list to pick
@@ -495,6 +496,9 @@ export function BuyBox({
   const { w, money } = speech(store);
   const options = sellableOptions(product);
   const every = product.recurring ? ` ${w.every(product.recurring.interval)}` : "";
+  // What one costs in each option whose name says how many (lib/option-units.ts); not for a membership's price.
+  const units = product.recurring ? new Map<string, UnitLine>() : unitLines(options);
+  const unitWords = (u: UnitLine) => [w.perUnit(money(u.perUnitCents), u.unit), u.savePercent ? w.unitSaving(u.savePercent) : ""].filter(Boolean).join(" · ");
   const soldOut = remaining === 0;
   // The boxes at checkout, each checked or not on its own (lib/product-extras.ts).
   const extras = activeBumps(related, product);
@@ -606,7 +610,7 @@ export function BuyBox({
           <select id={`os-${product.id}`} name="option" defaultValue={startingOption(options)?.id} className="st-field mt-2">
             {options.map((option) => (
               <option key={option.id} value={option.id}>
-                {`${w.priced(option.label, `${money(option.priceCents)}${every}`)}${option.best ? w.recommendedAfter : ""}`}
+                {`${w.priced(option.label, `${money(option.priceCents)}${every}`)}${units.get(option.id) ? ` (${unitWords(units.get(option.id)!)})` : ""}${option.best ? w.recommendedAfter : ""}`}
               </option>
             ))}
           </select>
@@ -636,6 +640,7 @@ export function BuyBox({
                   {option.best ? <span className="st-pick">{w.recommended}</span> : null}
                 </span>
                 <span className="font-semibold tabular-nums">{`${money(option.priceCents)}${every}`}</span>
+                {units.get(option.id) ? <span className="st-muted st-unit text-sm tabular-nums">{unitWords(units.get(option.id)!)}</span> : null}
                 {option.details.length > 0 ? (
                   <ul className="st-includes">
                     {option.details.map((line, at) => (
