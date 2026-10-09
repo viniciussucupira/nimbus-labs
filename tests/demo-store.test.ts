@@ -154,6 +154,7 @@ async function main(): Promise<void> {
     others.map((p) => [p.title, p.priceCents, p.file?.name, p.file ? ownsPath(p.file.pathname, folderOf, p.id) : false, Boolean(p.image?.small), p.about, canSellProduct(store, p)]),
     DEMO_EXTRAS.map((e) => [e.title, Number(e.price) * 100, e.file, true, true, true, true]),
   );
+  is("its own questions, each true of the demo", store.faq.map((item) => item.q), DEMO_STORE.faq.map((item) => item.q));
   is("the demo's one link is in the spotlight", store.links.map((l) => [l.title, l.spotlight]), [[DEMO_STORE.link.title, true]]);
   is("which can be bought", canSellProduct(store, listing), true);
 
