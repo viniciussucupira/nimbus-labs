@@ -3,12 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
+import { useHydrated } from "@/components/use-hydrated";
 import { LINK_PROBLEMS, type LinkProblem, linkHost } from "@/lib/product-link";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
   type StoreLink,
+  linkWhen,
 } from "@/lib/store-link";
+import { PROVIDER_NAMES, readVideo } from "@/lib/sales-page";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
 const MESSAGES: Record<string, string> = {
@@ -22,9 +25,59 @@ const MESSAGES: Record<string, string> = {
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
-type Draft = { title: string; url: string };
+type Draft = { title: string; url: string; spotlight: boolean; play: boolean; from: string; until: string };
 
-const EMPTY: Draft = { title: "", url: "" };
+const EMPTY: Draft = { title: "", url: "", spotlight: false, play: false, from: "", until: "" };
+
+/** A kept moment as the browser's date-and-time box wants it, in the creator's own time zone. */
+function toLocal(iso: string | undefined): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/** The box's value as a moment to keep; "" when empty. */
+function fromLocal(value: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
+}
+
+const WHEN = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+/** What the studio says about a link's extras, beside it in the list. */
+function linkTags(link: StoreLink, hydrated: boolean): string[] {
+  const tags: string[] = [];
+  if (link.spotlight) tags.push("Spotlight");
+  if (link.play) {
+    const video = readVideo(link.url);
+    if (video) tags.push(`Plays on your page (${PROVIDER_NAMES[video.provider]})`);
+  }
+  // Times are said in the creator's own time zone, which only the browser knows.
+  if (!hydrated) {
+    if (link.from || link.until) tags.push("Scheduled");
+    return tags;
+  }
+  const when = linkWhen(link);
+  if (when === "soon" && link.from) tags.push(`Shows from ${WHEN.format(new Date(link.from))}`);
+  if (when === "ended" && link.until) tags.push(`Ended ${WHEN.format(new Date(link.until))}, hidden`);
+  if (when === "live" && link.until) tags.push(`Shows until ${WHEN.format(new Date(link.until))}`);
+  return tags;
+}
+
+/** The draft as the route reads it (lib/store-link.ts, linkExtras). */
+function payloadOf(draft: Draft) {
+  return {
+    title: draft.title,
+    url: draft.url,
+    spotlight: draft.spotlight,
+    play: draft.play && readVideo(draft.url) !== null,
+    from: fromLocal(draft.from),
+    until: fromLocal(draft.until),
+  };
+}
 
 async function send(payload: Record<string, unknown>): Promise<string | null> {
   try {
@@ -72,6 +125,7 @@ function LinkForm({
   onSubmit: () => void;
   onCancel: () => void;
 }) {
+  const video = readVideo(draft.url);
   return (
     <form
       noValidate
@@ -118,6 +172,62 @@ function LinkForm({
         </p>
       </div>
 
+      <fieldset className="space-y-3">
+        <legend className="field-label">How it shows</legend>
+        <label className="flex items-start gap-3 text-sm text-ink">
+          <input
+            type="checkbox"
+            checked={draft.spotlight}
+            onChange={(event) => setDraft({ ...draft, spotlight: event.target.checked })}
+            className="mt-0.5 size-5 shrink-0 accent-violet-brand"
+          />
+          <span>
+            <span className="font-semibold">Spotlight it.</span>{" "}
+            <span className="text-ink-soft">Drawn larger, in your store&apos;s color, with a slow glow, so it is seen first. Best kept for one link.</span>
+          </span>
+        </label>
+        {video ? (
+          <label className="flex items-start gap-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={draft.play}
+              onChange={(event) => setDraft({ ...draft, play: event.target.checked })}
+              className="mt-0.5 size-5 shrink-0 accent-violet-brand"
+            />
+            <span>
+              <span className="font-semibold">{`Play it on your page.`}</span>{" "}
+              <span className="text-ink-soft">{`The ${PROVIDER_NAMES[video.provider]} video plays right on your store, without sending anyone away. It loads only when someone presses play.`}</span>
+            </span>
+          </label>
+        ) : null}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="link-from" className="field-label">Shows from (optional)</label>
+            <input
+              id="link-from"
+              type="datetime-local"
+              value={draft.from}
+              onChange={(event) => setDraft({ ...draft, from: event.target.value })}
+              className="field mt-2"
+            />
+          </div>
+          <div>
+            <label htmlFor="link-until" className="field-label">Until (optional)</label>
+            <input
+              id="link-until"
+              type="datetime-local"
+              value={draft.until}
+              min={draft.from || undefined}
+              onChange={(event) => setDraft({ ...draft, until: event.target.value })}
+              className="field mt-2"
+            />
+          </div>
+        </div>
+        <p className="text-sm text-ink-soft">
+          For a launch, a live or an offer with an end: the link appears and goes by itself, in your own time zone. Leave both empty to show it always.
+        </p>
+      </fieldset>
+
       {error ? (
         <p
           role="alert"
@@ -157,6 +267,7 @@ function LinkForm({
  */
 export function LinkEditor({ links }: { links: StoreLink[] }) {
   const router = useRouter();
+  const hydrated = useHydrated();
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -186,7 +297,14 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
   }
 
   function startEditing(link: StoreLink) {
-    setDraft({ title: link.title, url: link.url });
+    setDraft({
+      title: link.title,
+      url: link.url,
+      spotlight: link.spotlight === true,
+      play: link.play === true,
+      from: toLocal(link.from),
+      until: toLocal(link.until),
+    });
     setError(null);
     setAdding(false);
     setEditingId(link.id);
@@ -226,12 +344,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
                 submitLabel="Save"
                 onSubmit={() =>
                   run(
-                    {
-                      action: "edit",
-                      id: link.id,
-                      title: draft.title,
-                      url: draft.url,
-                    },
+                    { action: "edit", id: link.id, ...payloadOf(draft) },
                     () => setEditingId(null),
                     "Link saved.",
                   )
@@ -247,6 +360,15 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
                 <p className="mt-1 break-all font-mono text-xs text-ink-soft">
                   {link.url}
                 </p>
+                {linkTags(link, hydrated).length ? (
+                  <ul className="mt-2 flex flex-wrap gap-1.5">
+                    {linkTags(link, hydrated).map((tag) => (
+                      <li key={tag} className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-ink ring-1 ring-line">
+                        {tag}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
 
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
                   <a
@@ -358,7 +480,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
             submitLabel="Add it"
             onSubmit={() =>
               run(
-                { action: "add", title: draft.title, url: draft.url },
+                { action: "add", ...payloadOf(draft) },
                 () => setAdding(false),
                 "Link added.",
               )

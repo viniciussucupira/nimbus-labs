@@ -2658,6 +2658,7 @@ export async function addStoreLink(
   email: string,
   rawTitle: string,
   url: string,
+  extras: Pick<StoreLink, "spotlight" | "from" | "until" | "play"> = {},
 ): Promise<LinkResult> {
   const title = rawTitle.trim().slice(0, MAX_LINK_TITLE_LENGTH);
   if (!title) return { ok: false, reason: "title" };
@@ -2671,6 +2672,7 @@ export async function addStoreLink(
       title,
       url,
       addedAt: new Date().toISOString(),
+      ...extras,
     };
     return { ok: true, store: await save({ ...store, links: [...store.links, link] }) };
   });
@@ -2683,6 +2685,7 @@ export async function editStoreLink(
   id: string,
   rawTitle: string,
   url: string,
+  extras: Pick<StoreLink, "spotlight" | "from" | "until" | "play"> = {},
 ): Promise<LinkResult> {
   const title = rawTitle.trim().slice(0, MAX_LINK_TITLE_LENGTH);
   if (!title) return { ok: false, reason: "title" };
@@ -2691,7 +2694,7 @@ export async function editStoreLink(
     const at = store.links.findIndex((link) => link.id === id);
     if (at < 0) return { ok: false, reason: "unknown" };
     const links = [...store.links];
-    links[at] = { ...links[at], title, url };
+    links[at] = { id: links[at].id, addedAt: links[at].addedAt, title, url, ...extras };
     return { ok: true, store: await save({ ...store, links }) };
   });
   return result ?? { ok: false, reason: "none" };

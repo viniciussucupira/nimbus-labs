@@ -204,7 +204,7 @@ export function HeroView({ block, ctx, pill, rating }: { block: HeroBlock; ctx: 
       </div>
       {video ? (
         <div className="sp-hero-media">
-          <VideoEmbed video={video} title={block.headline || ctx.productTitle} poster={ctx.picture ? { src: ctx.picture.src, alt: ctx.picture.alt } : null} inert={ctx.preview} />
+          <VideoEmbed video={video} title={block.headline || ctx.productTitle} poster={ctx.picture ? { src: ctx.picture.src, alt: ctx.picture.alt } : null} inert={ctx.preview} lang={ctx.lang ?? DEFAULT_LANGUAGE} />
         </div>
       ) : picture ? (
         <div className="sp-hero-media">
@@ -362,7 +362,7 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
         <section className="sp-section">
           <Heading text={block.heading} />
           <div className={block.heading ? "mt-5" : ""}>
-            <VideoEmbed video={block.video} title={block.heading || ctx.productTitle} poster={null} inert={ctx.preview} />
+            <VideoEmbed video={block.video} title={block.heading || ctx.productTitle} poster={null} inert={ctx.preview} lang={ctx.lang ?? DEFAULT_LANGUAGE} />
           </div>
           {block.caption ? <PlainText text={block.caption} preview={ctx.preview} className="st-muted mt-3" /> : null}
         </section>

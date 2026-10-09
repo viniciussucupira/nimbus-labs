@@ -19,6 +19,8 @@
  * machine.
  */
 
+import { readVideo } from "@/lib/sales-page";
+
 /**
  * How many a store may list: a hundred, which is more places than anybody is
  * found in. Each one is small — a title and an address — so a full list is a
@@ -37,7 +39,59 @@ export type StoreLink = {
   /** Where it goes, normalised by readLink before it is ever stored. */
   url: string;
   addedAt: string;
+  /**
+   * Drawn larger, in the store's accent, so the one thing the creator most
+   * wants followed is seen first. Optional; stores written before have none.
+   */
+  spotlight?: boolean;
+  /** Shown only from this moment (ISO), and/or only until that one: a launch, a live, a limited offer. */
+  from?: string;
+  until?: string;
+  /** A YouTube, Vimeo or Loom address played on the store page itself instead of opened elsewhere. */
+  play?: boolean;
 };
+
+/** A moment the creator chose, kept only when it is one; "" when it is not. */
+export function linkMoment(raw: unknown): string {
+  if (typeof raw !== "string" || !raw) return "";
+  const time = Date.parse(raw);
+  if (!Number.isFinite(time)) return "";
+  const year = new Date(time).getUTCFullYear();
+  return year >= 2020 && year <= 2100 ? new Date(time).toISOString() : "";
+}
+
+/** Whether a link is on the page at this moment: inside its window, when it has one. */
+export function linkShowing(link: StoreLink, now = Date.now()): boolean {
+  if (link.from && Date.parse(link.from) > now) return false;
+  if (link.until && Date.parse(link.until) <= now) return false;
+  return true;
+}
+
+/** The links a visitor sees right now, in the creator's order. */
+export function showingLinks(links: StoreLink[], now = Date.now()): StoreLink[] {
+  return links.filter((link) => linkShowing(link, now));
+}
+
+/** Where a link stands in time, for the studio: "live", "soon" (not yet) or "ended". */
+export function linkWhen(link: StoreLink, now = Date.now()): "live" | "soon" | "ended" {
+  if (link.until && Date.parse(link.until) <= now) return "ended";
+  if (link.from && Date.parse(link.from) > now) return "soon";
+  return "live";
+}
+
+/** The extras a link may carry, from a form or from storage, made consistent. */
+export function linkExtras(raw: Record<string, unknown>, playable: boolean): Pick<StoreLink, "spotlight" | "from" | "until" | "play"> {
+  const from = linkMoment(raw.from);
+  let until = linkMoment(raw.until);
+  // An end before the start would hide the link for ever; the end is dropped.
+  if (from && until && Date.parse(until) <= Date.parse(from)) until = "";
+  return {
+    ...(raw.spotlight === true ? { spotlight: true } : {}),
+    ...(from ? { from } : {}),
+    ...(until ? { until } : {}),
+    ...(raw.play === true && playable ? { play: true } : {}),
+  };
+}
 
 /** Whatever came back from storage, made safe to render. */
 export function parseStoreLinks(raw: unknown): StoreLink[] {
@@ -54,6 +108,7 @@ export function parseStoreLinks(raw: unknown): StoreLink[] {
       title: value.title.slice(0, MAX_LINK_TITLE_LENGTH),
       url: value.url,
       addedAt: typeof value.addedAt === "string" ? value.addedAt : "",
+      ...linkExtras(value as Record<string, unknown>, readVideo(value.url) !== null),
     });
     if (links.length >= MAX_STORE_LINKS) break;
   }

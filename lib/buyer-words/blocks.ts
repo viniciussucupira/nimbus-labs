@@ -44,6 +44,12 @@ const en = {
   socialWebsite: "Website",
   /** A profile link's full name, for screen readers: "Ana on Instagram". */
   socialOn: (name: string, network: string) => `${name} on ${network}`,
+  /** A video that loads only when asked (components/video-embed.tsx). */
+  videoPlay: (provider: string) => `Play · loads from ${provider}`,
+  videoPlayLabel: (title: string, provider: string) => `Play the video: ${title}. It loads from ${provider}.`,
+  videoFrame: (title: string, provider: string) => `${title} (video on ${provider})`,
+  /** Under a video link played on the store page, the way to its own site. */
+  videoOpen: (provider: string) => `Open on ${provider}`,
 };
 
 export type BlockWords = typeof en;
@@ -77,6 +83,10 @@ const es: BlockWords = {
   socialEmail: "Correo",
   socialWebsite: "Sitio web",
   socialOn: (name, network) => `${name} en ${network}`,
+  videoPlay: (provider) => `Reproducir · se carga desde ${provider}`,
+  videoPlayLabel: (title, provider) => `Reproducir el vídeo: ${title}. Se carga desde ${provider}.`,
+  videoFrame: (title, provider) => `${title} (vídeo en ${provider})`,
+  videoOpen: (provider) => `Abrir en ${provider}`,
 };
 
 const fr: BlockWords = {
@@ -108,6 +118,10 @@ const fr: BlockWords = {
   socialEmail: "E-mail",
   socialWebsite: "Site web",
   socialOn: (name, network) => `${name} sur ${network}`,
+  videoPlay: (provider) => `Lire · chargée depuis ${provider}`,
+  videoPlayLabel: (title, provider) => `Lire la vidéo « ${title} », chargée depuis ${provider}.`,
+  videoFrame: (title, provider) => `${title} (vidéo sur ${provider})`,
+  videoOpen: (provider) => `Ouvrir sur ${provider}`,
 };
 
 const de: BlockWords = {
@@ -139,6 +153,10 @@ const de: BlockWords = {
   socialEmail: "E-Mail",
   socialWebsite: "Website",
   socialOn: (name, network) => `${name} auf ${network}`,
+  videoPlay: (provider) => `Abspielen · wird von ${provider} geladen`,
+  videoPlayLabel: (title, provider) => `Video abspielen: ${title}. Es wird von ${provider} geladen.`,
+  videoFrame: (title, provider) => `${title} (Video auf ${provider})`,
+  videoOpen: (provider) => `Auf ${provider} öffnen`,
 };
 
 const it: BlockWords = {
@@ -170,6 +188,10 @@ const it: BlockWords = {
   socialEmail: "Email",
   socialWebsite: "Sito web",
   socialOn: (name, network) => `${name} su ${network}`,
+  videoPlay: (provider) => `Riproduci · si carica da ${provider}`,
+  videoPlayLabel: (title, provider) => `Riproduci il video: ${title}. Si carica da ${provider}.`,
+  videoFrame: (title, provider) => `${title} (video su ${provider})`,
+  videoOpen: (provider) => `Apri su ${provider}`,
 };
 
 const nl: BlockWords = {
@@ -201,6 +223,10 @@ const nl: BlockWords = {
   socialEmail: "E-mail",
   socialWebsite: "Website",
   socialOn: (name, network) => `${name} op ${network}`,
+  videoPlay: (provider) => `Afspelen · laadt van ${provider}`,
+  videoPlayLabel: (title, provider) => `Speel de video af: ${title}. Hij laadt van ${provider}.`,
+  videoFrame: (title, provider) => `${title} (video op ${provider})`,
+  videoOpen: (provider) => `Openen op ${provider}`,
 };
 
 const pt: BlockWords = {
@@ -232,6 +258,10 @@ const pt: BlockWords = {
   socialEmail: "E-mail",
   socialWebsite: "Site",
   socialOn: (name, network) => `${name} no ${network}`,
+  videoPlay: (provider) => `Reproduzir · carrega do ${provider}`,
+  videoPlayLabel: (title, provider) => `Reproduzir o vídeo: ${title}. Ele carrega do ${provider}.`,
+  videoFrame: (title, provider) => `${title} (vídeo no ${provider})`,
+  videoOpen: (provider) => `Abrir no ${provider}`,
 };
 
 export const BLOCK_WORDS: Record<LanguageCode, BlockWords> = { en, es, fr, de, it, nl, pt };

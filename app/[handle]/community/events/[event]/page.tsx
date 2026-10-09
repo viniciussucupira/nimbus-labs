@@ -229,7 +229,7 @@ export default async function CommunityEventPage({ params, searchParams }: Param
               <h2 id="ev-replay" className="text-base font-bold">{w.replay}</h2>
               {event.replay && allowed ? (
                 <div className="mt-3">
-                  <VideoEmbed video={event.replay} title={event.title} poster={null} />
+                  <VideoEmbed video={event.replay} title={event.title} poster={null} lang={store.language} />
                 </div>
               ) : (
                 <p className="st-muted mt-1 text-sm">{allowed ? w.noReplay(store.name) : w.replayForMembers}</p>
