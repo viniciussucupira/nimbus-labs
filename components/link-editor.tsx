@@ -25,9 +25,9 @@ const MESSAGES: Record<string, string> = {
   server_error: "Something went wrong on our side. Try again in a moment.",
 };
 
-type Draft = { title: string; url: string; spotlight: boolean; play: boolean; from: string; until: string };
+type Draft = { title: string; url: string; spotlight: boolean; play: boolean; from: string; until: string; header: boolean };
 
-const EMPTY: Draft = { title: "", url: "", spotlight: false, play: false, from: "", until: "" };
+const EMPTY: Draft = { title: "", url: "", spotlight: false, play: false, from: "", until: "", header: false };
 
 /** A kept moment as the browser's date-and-time box wants it, in the creator's own time zone. */
 function toLocal(iso: string | undefined): string {
@@ -49,7 +49,7 @@ const WHEN = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", 
 
 /** What the studio says about a link's extras, beside it in the list. */
 function linkTags(link: StoreLink, hydrated: boolean): string[] {
-  const tags: string[] = [];
+  const tags: string[] = link.header ? ["Heading"] : [];
   if (link.spotlight) tags.push("Spotlight");
   if (link.play) {
     const video = readVideo(link.url);
@@ -69,6 +69,7 @@ function linkTags(link: StoreLink, hydrated: boolean): string[] {
 
 /** The draft as the route reads it (lib/store-link.ts, linkExtras). */
 function payloadOf(draft: Draft) {
+  if (draft.header) return { title: draft.title, url: "", header: true, from: fromLocal(draft.from), until: fromLocal(draft.until) };
   return {
     title: draft.title,
     url: draft.url,
@@ -137,7 +138,7 @@ function LinkForm({
     >
       <div>
         <label htmlFor="link-title" className="field-label">
-          What the button says
+          {draft.header ? "The heading" : "What the button says"}
         </label>
         <input
           id="link-title"
@@ -147,11 +148,12 @@ function LinkForm({
           maxLength={MAX_LINK_TITLE_LENGTH}
           value={draft.title}
           onChange={(event) => setDraft({ ...draft, title: event.target.value })}
-          placeholder="Watch on YouTube"
+          placeholder={draft.header ? "My podcast" : "Watch on YouTube"}
           className="field mt-2"
         />
       </div>
 
+      {draft.header ? null : (
       <div>
         <label htmlFor="link-url" className="field-label">
           Where it goes
@@ -171,9 +173,11 @@ function LinkForm({
           through a link and nothing is charged for it.
         </p>
       </div>
+      )}
 
       <fieldset className="space-y-3">
         <legend className="field-label">How it shows</legend>
+        {draft.header ? null : (
         <label className="flex items-start gap-3 text-sm text-ink">
           <input
             type="checkbox"
@@ -186,7 +190,8 @@ function LinkForm({
             <span className="text-ink-soft">Drawn larger, in your store&apos;s color, with a slow glow, so it is seen first. Best kept for one link.</span>
           </span>
         </label>
-        {video ? (
+        )}
+        {video && !draft.header ? (
           <label className="flex items-start gap-3 text-sm text-ink">
             <input
               type="checkbox"
@@ -289,8 +294,8 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
     router.refresh();
   }
 
-  function startAdding() {
-    setDraft(EMPTY);
+  function startAdding(header = false) {
+    setDraft({ ...EMPTY, header });
     setError(null);
     setEditingId(null);
     setAdding(true);
@@ -304,6 +309,7 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
       play: link.play === true,
       from: toLocal(link.from),
       until: toLocal(link.until),
+      header: link.header === true,
     });
     setError(null);
     setAdding(false);
@@ -357,9 +363,11 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
             ) : (
               <>
                 <p className="font-bold text-ink">{link.title}</p>
-                <p className="mt-1 break-all font-mono text-xs text-ink-soft">
-                  {link.url}
-                </p>
+                {link.header ? null : (
+                  <p className="mt-1 break-all font-mono text-xs text-ink-soft">
+                    {link.url}
+                  </p>
+                )}
                 {linkTags(link, hydrated).length ? (
                   <ul className="mt-2 flex flex-wrap gap-1.5">
                     {linkTags(link, hydrated).map((tag) => (
@@ -371,14 +379,16 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
                 ) : null}
 
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
-                  <a
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
-                  >
-                    Open it to check
-                  </a>
+                  {link.header ? null : (
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-ink-soft underline underline-offset-4 transition hover:text-violet-deep"
+                    >
+                      Open it to check
+                    </a>
+                  )}
                   <button
                     type="button"
                     onClick={() => startEditing(link)}
@@ -496,13 +506,14 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
           {`Your page holds ${MAX_STORE_LINKS} links and they are all used. Remove one to add another.`}
         </p>
       ) : (
-        <button
-          type="button"
-          onClick={startAdding}
-          className="btn btn-primary mt-5"
-        >
-          Add a link
-        </button>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button type="button" onClick={() => startAdding()} className="btn btn-primary">
+            Add a link
+          </button>
+          <button type="button" onClick={() => startAdding(true)} className="btn btn-secondary">
+            Add a heading
+          </button>
+        </div>
       )}
     </div>
   );

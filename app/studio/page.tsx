@@ -983,7 +983,7 @@ export default async function StudioPage({
                     const first = store.catalog.head.find((p) => !p.hidden);
                     return first ? { title: first.title, priceCents: lowestPriceCents(first.options, first.priceCents), free: isFree(first) } : null;
                   })()}
-                  linkTitle={store.links[0]?.title ?? null}
+                  linkTitle={store.links.find((link) => !link.header)?.title ?? null}
                 />
               </div>
             ) : null}
