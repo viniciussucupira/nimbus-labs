@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { describePicture, fillBlock, reviewPage, rewriteBlock, replyToReview, translatePage, writeBio, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { describePicture, fillBlock, reviewPage, rewriteBlock, replyToReview, translatePage, writeBio, writeEmail, writePosts, writeOutline, writePage, writeProduct } from "@/lib/ai";
 import { isRewriteStyle } from "@/lib/block-rewrite-rules";
 import { factsFor, missedQuestions } from "@/lib/answers";
 import { parsePage } from "@/lib/sales-page";
@@ -24,7 +24,7 @@ import { imageFolder } from "@/lib/store";
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
 /**
- * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "bio" | "reply" | "outline" | "email", … }`.
+ * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "bio" | "reply" | "posts" | "outline" | "email", … }`.
  * It writes into the studio's own boxes and saves nothing: whatever comes back
  * is the creator's to read, change and keep, or not.
  *
@@ -160,6 +160,13 @@ export async function POST(request: NextRequest) {
     if (!product) return fail("unknown", 404);
     const to = isLanguage(body.language) ? body.language : store.language;
     return answer(translatePage(store, { page: parsePage(body.page), language: LANGUAGES[to].english }));
+  }
+  if (body.kind === "posts") {
+    // Posts about one product, from its page as it stands in the editor (lib/ai.ts, writePosts).
+    const product = await readListing(store, text(body.product, 40));
+    if (!product) return fail("unknown", 404);
+    const about = product.about ? await readAbout(store.statsId, product.id) : "";
+    return answer(writePosts(store, { facts: factsFor(store, product, about, body.page ? parsePage(body.page) : null) }));
   }
   if (body.kind === "reply") {
     // The review as it is kept, never as the browser sends it (lib/reviews.ts).

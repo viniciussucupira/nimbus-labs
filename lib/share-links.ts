@@ -11,7 +11,7 @@
 
 export const SHARE_MEDIUM = "share";
 
-export type SharePlace = "x" | "facebook" | "linkedin" | "whatsapp" | "email" | "qr" | "device";
+export type SharePlace = "x" | "facebook" | "linkedin" | "whatsapp" | "email" | "qr" | "device" | "instagram";
 
 /** The address with the tags naming where it was shared. */
 export function taggedFor(url: string, place: SharePlace): string {
