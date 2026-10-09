@@ -209,7 +209,7 @@ try {
   for (let tries = 0; tries < 3 && !(await page.locator("#group summary").count()); tries += 1) {
     console.log("the product page came back without its buy box:", page.url(), (await words(page.locator("body"))).slice(0, 200));
     // What the app said meanwhile: why a page it has just built answers "not found" is in there.
-    console.log("the app's last words:", log.split("\n").filter((l) => /GET \/@|rror/.test(l)).slice(-20).join("\n"));
+    console.log("the app's last words:", log.split("\n").filter((l) => l.trim() && !l.includes("Error while requesting resource")).slice(-40).join("\n"));
     await page.waitForTimeout(3_000);
     await open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`);
   }
@@ -860,6 +860,25 @@ try {
     is("a column for its page's views, beside its checkouts", await table.locator('th:text-is("Page views")').count(), 1);
     // The counting itself is held by tests/product-views.test.ts: this browser
     // calls itself headless, and a store's numbers leave out what robots open.
+  }
+
+  part("The letters of the page, picked in the studio");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const letters = studio.getByRole("group", { name: "Letters" });
+    await letters.getByText("Editorial", { exact: true }).click();
+    await studio.getByRole("button", { name: "Save the look" }).click();
+    await studio.getByText("Look saved.").first().waitFor({ timeout: 15_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    const painted = await page.locator(".st-page").first().evaluate((el) => [el.style.getPropertyValue("--st-font-head"), getComputedStyle(el.querySelector(".font-display") ?? el).fontFamily]);
+    is("the store page's headings take them", [painted[0], /Fraunces|font-st-editorial/i.test(painted[1]) || painted[1].includes("__")], ["var(--font-st-editorial)", true]);
+    if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "letters-editorial.png") });
+    await open(studio, `${LOCAL}/studio`);
+    await studio.getByRole("group", { name: "Letters" }).getByText("Modern", { exact: true }).click();
+    await studio.getByRole("button", { name: "Save the look" }).click();
+    await studio.getByText("Look saved.").first().waitFor({ timeout: 15_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    is("and back to Modern, nothing more is painted", await page.locator(".st-page").first().evaluate((el) => el.style.getPropertyValue("--st-font-head")), "");
   }
 
   part("Logging in is not starting a store");

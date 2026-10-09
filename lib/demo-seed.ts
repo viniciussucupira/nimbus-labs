@@ -87,7 +87,7 @@ const PHOTO_TIMEOUT_MS = 15_000;
 export const DEMO_STORE = {
   name: "Harbor Kitchen",
   bio: "Simple family meals by Jenny, a fictional cook. This is Marktmorgen's demo store: you pay with Stripe's test card, and the file you get is real.",
-  look: { theme: "sand", accent: "#e5533d", badge: true, sold: false } satisfies StoreLook,
+  look: { theme: "sand", accent: "#e5533d", badge: true, sold: false, font: "modern" } satisfies StoreLook,
   photo: {
     id: "photo-1543871595-e11129e271cc",
     query: "fm=webp&fit=crop&crop=faces&w=480&h=480&q=75",

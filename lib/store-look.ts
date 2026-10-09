@@ -39,6 +39,29 @@ export const THEMES = [
 
 export type ThemeId = (typeof THEMES)[number]["id"];
 
+/**
+ * The letters of the page (added 9 October 2026): one of five pairings of a
+ * face for headings with one for reading. Kajabi, Hotmart and Stan all let a
+ * creator choose type; this page only had one. Every face is served from our
+ * own address (app/layout.tsx, next/font), never preloaded, so a page only
+ * downloads the one its creator picked and a page left on Modern downloads
+ * nothing more than it did. `head` and `body` name the CSS variables
+ * app/layout.tsx defines; an empty one keeps the site's own face.
+ */
+export const FONTS = [
+  { id: "modern", label: "Modern", description: "Clean and plain, easy to read on any screen.", head: "", body: "", tracking: "" },
+  { id: "editorial", label: "Editorial", description: "A warm serif for headings, like a good magazine.", head: "--font-st-editorial", body: "", tracking: "-0.015em" },
+  { id: "elegant", label: "Elegant", description: "A fine, high-contrast serif for headings.", head: "--font-st-elegant", body: "", tracking: "-0.01em" },
+  { id: "friendly", label: "Friendly", description: "Rounded letters everywhere, soft and welcoming.", head: "--font-st-friendly", body: "--font-st-friendly", tracking: "-0.015em" },
+  { id: "bold", label: "Bold", description: "Wide, confident headings that stand out.", head: "--font-st-bold", body: "", tracking: "-0.03em" },
+] as const;
+
+export type FontId = (typeof FONTS)[number]["id"];
+
+export function isFont(value: unknown): value is FontId {
+  return typeof value === "string" && FONTS.some((font) => font.id === value);
+}
+
 const THEME_IDS = new Set<string>(THEMES.map((theme) => theme.id));
 
 /** Colours to start from. The creator may also type or pick any other one. */
@@ -73,9 +96,11 @@ export type StoreLook = {
    * real, read from their own Stripe account, and theirs to show or not.
    */
   sold: boolean;
+  /** The letters of the page (FONTS). Modern unless the creator picks another. */
+  font: FontId;
 };
 
-export const DEFAULT_LOOK: StoreLook = { theme: "light", accent: "#5a36ee", badge: true, sold: false };
+export const DEFAULT_LOOK: StoreLook = { theme: "light", accent: "#5a36ee", badge: true, sold: false, font: "modern" };
 
 /** Exactly six hex digits after a hash, lower case. Nothing else is a colour here. */
 export const HEX_PATTERN = /^#[0-9a-f]{6}$/;
@@ -107,6 +132,7 @@ export function parseLook(raw: unknown): StoreLook {
     badge: value.badge !== false,
     // Only an explicit true: every store saved before this existed keeps it off.
     sold: value.sold === true,
+    font: isFont(value.font) ? value.font : DEFAULT_LOOK.font,
   };
 }
 
@@ -252,7 +278,7 @@ export type LookColours = {
  * image, the studio's live preview — have a theme and an accent in hand and
  * no store behind them.
  */
-export type LookPaint = Pick<StoreLook, "theme" | "accent">;
+export type LookPaint = Pick<StoreLook, "theme" | "accent"> & { font?: FontId };
 
 export function lookColours(look: LookPaint): LookColours {
   const palette = PALETTES[look.theme] ?? PALETTES.light;
@@ -334,8 +360,20 @@ export function lookStyle(look: LookPaint): Record<string, string> {
     "--st-accent-soft": c.accentSoft,
     "--st-accent-2": c.accent2,
     "--st-band": c.band,
+    ...fontStyle(look.font),
     colorScheme: c.dark ? "dark" : "light",
   };
+}
+
+/** The variables that set a page's letters (app/globals.css, .st-page); none for Modern. */
+export function fontStyle(id: FontId | undefined): Record<string, string> {
+  const font = FONTS.find((f) => f.id === id);
+  if (!font || font.id === "modern") return {};
+  const out: Record<string, string> = {};
+  if (font.head) out["--st-font-head"] = `var(${font.head})`;
+  if (font.body) out["--st-font-body"] = `var(${font.body})`;
+  if (font.tracking) out["--st-head-tracking"] = font.tracking;
+  return out;
 }
 
 /** A name for a colour that is not one of the presets, for screen readers. */
