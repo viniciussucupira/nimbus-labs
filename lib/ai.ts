@@ -110,7 +110,13 @@ async function ask(system: string, prompt: string, maxTokens: number): Promise<s
 }
 
 /** One question to a named model, uncounted: whoever calls it counts it. The answer's text, or null. */
-export async function askModel(system: string, prompt: string, maxTokens: number, named: string, timeoutMs = AI_TIMEOUT_MS): Promise<string | null> {
+export async function askModel(
+  system: string,
+  prompt: string | unknown[],
+  maxTokens: number,
+  named: string,
+  timeoutMs = AI_TIMEOUT_MS,
+): Promise<string | null> {
   const key = apiKey();
   if (!key) return null;
   const response = await timed(timeoutMs, (signal) =>
@@ -128,6 +134,39 @@ export async function askModel(system: string, prompt: string, maxTokens: number
   }
   const data = (await response.json()) as { content?: { type?: string; text?: string }[] };
   return (data.content ?? []).filter((c) => c.type === "text").map((c) => c.text ?? "").join("").trim() || null;
+}
+
+/** The most bytes of one picture sent to be described: what the page's own pictures stay well under. */
+export const MAX_DESCRIBED_BYTES = 3_500_000;
+
+/**
+ * What a picture shows, for someone who cannot see it (added 8 October
+ * 2026): one plain sentence for the description a sales page's picture
+ * carries (lib/sales-page.ts, Picture.alt), in the store's language. Only
+ * what can be seen: no guess at a brand, a person's name or a result, and
+ * any words in the picture only as written. One of the month's jobs.
+ */
+export async function describePicture(
+  store: Store,
+  input: { bytes: Uint8Array; mediaType: "image/webp" | "image/jpeg"; productTitle: string; language: string },
+  now = Date.now(),
+): Promise<AiResult<string>> {
+  if (input.bytes.length === 0 || input.bytes.length > MAX_DESCRIBED_BYTES) return { ok: false, reason: "notes" };
+  return counted(store, now, async () => {
+    const system = [
+      "You describe a picture on a creator's sales page for someone who cannot see it.",
+      `Write in ${input.language}. One plain sentence of at most twenty words. Begin with what is shown, not with 'An image of' or 'A picture of'.`,
+      "Describe only what can be seen. Never name a person, a brand or a place unless the words are written in the picture; quote any written words as they are. Never describe a result, a quality or a feeling the picture does not show.",
+      "Return only the sentence.",
+    ].join("\n\n");
+    const content = [
+      { type: "image", source: { type: "base64", media_type: input.mediaType, data: Buffer.from(input.bytes).toString("base64") } },
+      { type: "text", text: `The product this picture is on the page of: ${input.productTitle}` },
+    ];
+    const answer = await askModel(system, content, 200, model());
+    const sentence = answer ? line(answer.replace(/^["“]|["”]$/g, ""), 150) : "";
+    return sentence || null;
+  });
 }
 
 /** The JSON object in an answer, whatever the model put around it. */

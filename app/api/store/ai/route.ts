@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { fillBlock, reviewPage, rewriteBlock, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { describePicture, fillBlock, reviewPage, rewriteBlock, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
 import { isRewriteStyle } from "@/lib/block-rewrite-rules";
 import { factsFor, missedQuestions } from "@/lib/answers";
 import { parsePage } from "@/lib/sales-page";
@@ -15,6 +15,9 @@ import { readListing } from "@/lib/catalog";
 import { readAbout } from "@/lib/product-about";
 import { formatMoney } from "@/lib/money";
 import { AI_PER_MINUTE, EMAIL_GOALS, type EmailGoal, MAX_AI_NOTES, type ProductKind } from "@/lib/ai-rules";
+import { get } from "@/lib/blob";
+import { imageType, ownsImagePath } from "@/lib/product-image";
+import { imageFolder } from "@/lib/store";
 
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
@@ -135,6 +138,18 @@ export async function POST(request: NextRequest) {
     if (!block) return fail("invalid");
     const about = product.about ? await readAbout(store.statsId, product.id) : "";
     return answer(fillBlock(store, { block, facts: factsFor(store, product, about, page), language: LANGUAGES[store.language].english }));
+  }
+  if (body.kind === "alt") {
+    // A picture of this store's own, described for someone who cannot see it (lib/ai.ts, describePicture).
+    const product = await readListing(store, text(body.product, 40));
+    if (!product) return fail("unknown", 404);
+    const path = text(body.path, 200);
+    const folder = await imageFolder(guarded.ref);
+    if (!path || !ownsImagePath(path, folder)) return fail("invalid");
+    const found = await get(path, { access: "private" }).catch(() => null);
+    if (!found || found.statusCode !== 200 || !found.stream) return fail("invalid");
+    const bytes = new Uint8Array(await new Response(found.stream).arrayBuffer());
+    return answer(describePicture(store, { bytes, mediaType: imageType(path), productTitle: product.title, language: LANGUAGES[store.language].english }));
   }
   if (body.kind === "outline") {
     return answer(writeOutline(store, { title: text(body.title, 200), notes }));
