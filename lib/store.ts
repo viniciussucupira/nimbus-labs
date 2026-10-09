@@ -465,6 +465,12 @@ export type Store = {
    */
   reviewed: boolean;
   /**
+   * How many posts the store's blog has published (lib/store-blog.ts), so the
+   * store page links to the blog without asking. 0 on every store written
+   * before blogs existed.
+   */
+  posts: number;
+  /**
    * The free product offered once to a visitor about to leave (lib/exit-offer.ts),
    * or null for none. Off on every store written before it existed.
    */
@@ -741,6 +747,7 @@ function parseStore(raw: unknown): Store | null {
       reviewAsk: parseReviewAsk(value.reviewAsk),
       // Stores written before reviews existed have none.
       reviewed: value.reviewed === true,
+      posts: typeof value.posts === "number" && Number.isInteger(value.posts) && value.posts > 0 ? Math.min(value.posts, 10_000) : 0,
       exitOffer: typeof value.exitOffer === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(value.exitOffer) ? value.exitOffer : null,
       sections: parseSections(value.sections),
       announcement: parseAnnouncement(value.announcement),
@@ -909,6 +916,7 @@ async function freshStore(fields: {
     currency: DEFAULT_CURRENCY,
     reviewAsk: parseReviewAsk(null),
     reviewed: false,
+    posts: 0,
     exitOffer: null,
     sections: [],
     announcement: null,
@@ -3014,6 +3022,12 @@ export async function setReviewAsk(email: string, ask: ReviewAsk): Promise<Store
  */
 export async function setReviewed(email: string): Promise<Store | null> {
   return patchStore(email, (store) => (store.reviewed ? null : { reviewed: true }));
+}
+
+/** Keeps how many blog posts are published (lib/store-blog.ts) on the store's record; writes nothing when it is already so. */
+export async function setPostCount(email: string, count: number): Promise<Store | null> {
+  const posts = Math.max(0, Math.min(Math.floor(count), 10_000));
+  return patchStore(email, (store) => (store.posts === posts ? null : { posts }));
 }
 
 /** Switches stamping the buyer's email into a product's PDFs on or off. */

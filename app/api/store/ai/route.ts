@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { describePicture, fillBlock, reviewPage, rewriteBlock, replyToReview, translatePage, writeBio, writeEmail, writePosts, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { describePicture, fillBlock, reviewPage, rewriteBlock, replyToReview, translatePage, writeBio, writeBlogPost, writeEmail, writePosts, writeOutline, writePage, writeProduct } from "@/lib/ai";
 import { isRewriteStyle } from "@/lib/block-rewrite-rules";
 import { factsFor, missedQuestions } from "@/lib/answers";
 import { parsePage } from "@/lib/sales-page";
@@ -24,7 +24,7 @@ import { imageFolder } from "@/lib/store";
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
 /**
- * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "bio" | "reply" | "posts" | "outline" | "email", … }`.
+ * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "bio" | "reply" | "posts" | "blog" | "outline" | "email", … }`.
  * It writes into the studio's own boxes and saves nothing: whatever comes back
  * is the creator's to read, change and keep, or not.
  *
@@ -33,7 +33,7 @@ const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call"
  */
 export async function POST(request: NextRequest) {
   // A review sends the page being edited, which may be long (lib/sales-page.ts, MAX_PAGE_BYTES).
-  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" || (body.kind === "posts" && !body.product) ? "page" : body.kind === "reply" ? "reviews" : "products"), 140_000);
+  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" || body.kind === "blog" || (body.kind === "posts" && !body.product) ? "page" : body.kind === "reply" ? "reviews" : "products"), 140_000);
   if (!guarded.ok) return guarded.response;
   const { body, store } = guarded;
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
@@ -160,6 +160,11 @@ export async function POST(request: NextRequest) {
     if (!product) return fail("unknown", 404);
     const to = isLanguage(body.language) ? body.language : store.language;
     return answer(translatePage(store, { page: parsePage(body.page), language: LANGUAGES[to].english }));
+  }
+  if (body.kind === "blog") {
+    // A blog post, from the creator's words and what the store sells (lib/ai.ts, writeBlogPost).
+    const products = store.catalog.head.filter((p) => !p.hidden).map((p) => ({ title: p.title, summary: p.summary }));
+    return answer(writeBlogPost(store, { notes, products }));
   }
   if (body.kind === "posts" && !body.product) {
     // Posts about the whole store, from its line and what it sells (the record every visit already reads).

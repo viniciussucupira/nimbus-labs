@@ -230,6 +230,8 @@ export class MemoryRedis {
         for (const [field, value] of this.hash(key)) flat.push(field, value);
         return flat;
       }
+      case "HVALS":
+        return [...this.hash(key).values()];
       case "HLEN":
         return this.hash(key).size;
       case "SCAN": {

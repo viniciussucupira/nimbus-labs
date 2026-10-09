@@ -848,6 +848,9 @@ export default async function StudioPage({
                       { href: studioPath(store, "", "bundles"), title: "Bundles", text: "Several of your products for one price.", icon: "gift" as const },
                     ]
                   : []),
+                ...(may("page")
+                  ? [{ href: studioPath(store, "", "blog"), title: "Blog", text: "Posts on your store's address that search engines find, each able to end on a product.", icon: "notebook" as const }]
+                  : []),
                 ...(may("import")
                   ? [{ href: studioPath(store, "", "import"), title: "Moving from another platform", text: "Bring your list, products and past buyers.", icon: "door" as const }]
                   : []),

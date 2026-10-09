@@ -926,6 +926,38 @@ try {
     is("and off again, the page offers none", await remind(false).then(() => open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`)).then(() => page.locator("#remind").count()), 0);
   }
 
+  part("A blog on the store's address");
+  let postPath = "";
+  {
+    await open(studio, `${LOCAL}/studio/blog`);
+    await studio.getByRole("link", { name: "New post" }).first().click();
+    await studio.locator("#post-title").waitFor();
+    await studio.locator("#post-title").fill("Sharpen a knife in five minutes");
+    await studio.locator("#post-body").fill("A dull knife slips; a sharp one does what you mean.\n\n## What you need\n- A whetstone\n- Water\n\nHold the blade at about 15 degrees.");
+    await studio.locator("#post-product").selectOption({ label: "Knife Skills" });
+    await studio.getByRole("button", { name: "Publish", exact: true }).click();
+    await studio.getByText("Published on your blog.").first().waitFor({ timeout: 30_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    const link = page.getByRole("link", { name: /blog$/i });
+    is("the store page links to its blog once a post is published", await link.count(), 1);
+    await link.click();
+    await page.waitForURL(/\/blog$/);
+    is("the blog lists the post", (await words(page.locator("main"))).includes("Sharpen a knife in five minutes"), true);
+    await page.getByRole("link", { name: /Sharpen a knife in five minutes/ }).click();
+    await page.waitForURL(/\/blog\/sharpen-a-knife-in-five-minutes-[0-9a-f]{10}$/);
+    postPath = new URL(page.url()).pathname;
+    is("the post, with its heading, its list and the product it ends on", [
+      await words(page.locator("h1")),
+      await page.getByRole("heading", { name: "What you need" }).count(),
+      await page.locator(".st-post li").count(),
+      (await page.locator(".sp-product").getAttribute("href"))?.includes(`/p/knife-skills-${ids["Knife Skills"]}`),
+    ], ["Sharpen a knife in five minutes", 1, 2, true]);
+    const feed = await fetch(`${LOCAL}/@localshop/blog/feed.xml`);
+    const xml = await feed.text();
+    is("and a feed readers can follow", [feed.status, feed.headers.get("content-type")?.startsWith("application/rss+xml"), xml.includes("<title>Sharpen a knife in five minutes</title>")], [200, true, true]);
+    if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "blog-post.png"), fullPage: true });
+  }
+
   part("A reply to a review, drafted with AI");
   {
     await open(studio, `${LOCAL}/studio/reviews?view=all`);
@@ -1026,6 +1058,9 @@ try {
       ["the writing help's page", "/platform/ai-writing", 1200],
       ["the help center", "/help", 1200],
       ["a buyer's orders", "/@localshop/orders", 0],
+      ["the store's blog", "/@localshop/blog", 0],
+      ["a post on it", postPath, 0],
+      ["the studio's blog", "/studio/blog?edit=new", 1200],
     ];
     await audit.addCookies(await wide.cookies());
     for (const [name, path, width] of pages) is(name, await check(path, width), []);

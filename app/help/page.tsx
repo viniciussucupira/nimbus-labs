@@ -314,6 +314,13 @@ const SECTIONS: Section[] = [
         ],
       },
       {
+        q: "Can my store have a blog?",
+        a: [
+          "Yes, on every plan. In your studio, open Blog and write a post: a title, then plain text where a blank line starts a paragraph, a line starting with \u201c## \u201d is a heading and one starting with \u201c- \u201d is a point in a list. Publish it, or keep it as a draft that only your studio shows. Each post can end on one of your products, with its card.",
+          "Posts are at your store's address followed by /blog, each with its own address in words, its own title and description for search engines, and the blog has an RSS feed at /blog/feed.xml. Your store page links to the blog once a post is published. A blog holds up to 200 posts of up to 20,000 characters each, and AI can draft one from a few words about the topic.",
+        ],
+      },
+      {
         q: "Can my store speak another language to my buyers?",
         a: [
           "Yes: English, Spanish, French, German, Italian, Dutch or Portuguese (Portugal). In your studio, under \u201cYour store\u2019s language,\u201d pick one and press Save. Every store speaks English until its creator picks another. Drafts written with AI come in the language you pick, and a sales page written in another can be translated into it with AI in one step.",

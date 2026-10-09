@@ -407,6 +407,45 @@ export async function writePosts(store: Store, input: { facts: string }, now = D
   });
 }
 
+/** A blog post, drafted (lib/ai.ts, writeBlogPost). */
+export type BlogDraft = { title: string; body: string };
+
+/**
+ * A blog post, drafted (added 9 October 2026; lib/store-blog.ts): from what
+ * the creator says it should be about and what the store sells, in the
+ * store's language, as plain text the blog draws — "## " headings,
+ * paragraphs, "- " lists — useful on its own and never an advertisement
+ * that invents a claim. One of the month's jobs.
+ */
+export async function writeBlogPost(store: Store, input: { notes: string; products: { title: string; summary: string }[] }, now = Date.now()): Promise<AiResult<BlogDraft>> {
+  const notes = block(input.notes, MAX_AI_NOTES);
+  if (!notes) return { ok: false, reason: "notes" };
+  return counted(store, now, async () => {
+    const system = [
+      "You draft a blog post for a creator's store: something genuinely useful for their audience on the topic they give, written as the creator.",
+      honesty(storeLanguage(store)),
+      "Teach or explain something real; mention one of the store's products only where it truly fits, once, near the end, by name. Never write about the creator's life, credentials or results: you were not told them.",
+      [
+        "Return only a JSON object:",
+        '"title": at most 90 characters, specific, not clickbait.',
+        '"body": 400 to 900 words of plain text. A blank line between paragraphs. A line starting with "## " is a heading (use 2 to 5). A line starting with "- " is a list point. No other markdown, no bold, no links.',
+      ].join("\n"),
+    ].join("\n\n");
+    const prompt = [
+      `Store: ${line(store.name, 60)}`,
+      input.products.length ? `\nWhat the store sells:\n${input.products.slice(0, 12).map((p) => `- ${line(p.title, MAX_TITLE)}${p.summary ? `: ${line(p.summary, 200)}` : ""}`).join("\n")}` : "",
+      `\nWhat the post should be about:\n${notes}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const answer = await ask(system, prompt, 3_000);
+    const json = answer ? jsonIn(answer) : null;
+    const title = line(json?.title, 120);
+    const body = block(json?.body, 20_000).replace(/\*\*(.+?)\*\*/g, "$1");
+    return title && body ? { title, body } : null;
+  });
+}
+
 export type ProductCopy = { summary: string; about: string };
 
 export async function writeProduct(

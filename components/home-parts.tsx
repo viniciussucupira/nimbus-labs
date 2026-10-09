@@ -419,7 +419,7 @@ const INCLUDED = [
   "Sign-in without passwords, and a full refund that closes access by itself",
   "Free products that build an email list you can download at any time",
   "Your list, products and past buyers brought over from another platform, from a spreadsheet",
-  `Writing help with AI, from your own words and in your store's language: product descriptions, whole sales pages and course outlines, a second opinion on a page, any block rewritten, a page translated, picture descriptions, the line about your store, replies to reviews and posts to share — ${AI_MONTHLY.creator} a month (${AI_MONTHLY.trial} during the free trial)`,
+  `Writing help with AI, from your own words and in your store's language: product descriptions, whole sales pages and course outlines, a second opinion on a page, any block rewritten, a page translated, picture descriptions, the line about your store, blog posts, replies to reviews and posts to share — ${AI_MONTHLY.creator} a month (${AI_MONTHLY.trial} during the free trial)`,
 ];
 
 const PRO_INCLUDED = [
