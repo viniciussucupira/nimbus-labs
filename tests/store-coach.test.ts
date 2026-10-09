@@ -23,7 +23,7 @@ async function main(): Promise<void> {
   part("A first product");
   await addProduct(owner, "Bread Book", "", "19", null);
   let checks = await checksFor();
-  is("nine checks, none of the ones for bigger stores", checks.map((c) => c.id), ["pictures", "summaries", "page", "answers", "reviews", "list", "contact", "socials", "blog"]);
+  is("ten checks, none of the ones for bigger stores", checks.map((c) => c.id), ["pictures", "summaries", "page", "answers", "reviews", "list", "faq", "contact", "socials", "blog"]);
   is("none done yet: a product with no picture, no line, no page", [storeScore(checks), checks.filter((c) => c.done).map((c) => c.id)], [0, []]);
   is("next: the weightiest first, in order", nextChecks(checks).map((c) => c.id), ["pictures", "page", "summaries", "answers"]);
   is("each says where it is done", checks.find((c) => c.id === "page")?.href, "/studio/pages");
@@ -36,7 +36,7 @@ async function main(): Promise<void> {
   checks = await checksFor();
   const doneIds = checks.filter((c) => c.done).map((c) => c.id);
   is("answers, a way to stay in touch and profiles count; one product without a line does not", [doneIds, checks.find((c) => c.id === "summaries")?.done], [["answers", "list", "socials"], false]);
-  is("the score is the weight done over the weight there is", storeScore(checks), Math.round((5 / 17) * 100));
+  is("the score is the weight done over the weight there is", storeScore(checks), Math.round((5 / 18) * 100));
 
   part("Checks for bigger stores");
   await addProduct(owner, "Pie Guide", "Pies.", "9", null);

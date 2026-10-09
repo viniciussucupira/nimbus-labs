@@ -333,6 +333,43 @@ export async function writeBio(
 }
 
 /**
+ * The store's own questions and answers, drafted (added 9 October 2026):
+ * what visitors ask before buying anything there, answered only from what
+ * the store says about itself — what it sells, how each is handed over, and
+ * the creator's notes. A question the facts cannot answer is not asked. The
+ * creator edits them and saves, or not. One of the month's jobs.
+ */
+export async function writeStoreFaq(
+  store: Store,
+  input: { facts: string; notes: string },
+  now = Date.now(),
+): Promise<AiResult<{ q: string; a: string }[]>> {
+  const notes = block(input.notes, MAX_AI_NOTES);
+  const facts = block(input.facts, 8_000);
+  if (!facts) return { ok: false, reason: "notes" };
+  return counted(store, now, async () => {
+    const system = [
+      "You draft the questions and answers on a creator's store page: what a visitor asks before buying anything in the store, answered briefly.",
+      honesty(storeLanguage(store)),
+      "Answer ONLY from the facts given. Never state a refund, a guarantee, a delivery time, a price, a discount or a result that is not in them, and leave out any question the facts do not answer. Write about the whole store, not one product's details.",
+      "Between four and eight questions, each at most 120 characters, each answer at most 400 characters, plain words, no markdown, no links.",
+      'Return only a JSON object: {"items": [{"q": string, "a": string}]}.',
+    ].join("\n\n");
+    const prompt = [`The facts about the store:\n${facts}`, notes ? `\nWhat the creator wants covered:\n${notes}` : ""].filter(Boolean).join("\n");
+    const answer = await ask(system, prompt, 1_500);
+    const json = answer ? jsonIn(answer) : null;
+    const items = Array.isArray(json?.items)
+      ? (json.items as unknown[])
+          .map((item) => (item && typeof item === "object" ? (item as Record<string, unknown>) : {}))
+          .map((item) => ({ q: line(item.q, 150), a: line(item.a, 800).replace(/https?:\/\/\S+/g, "").trim() }))
+          .filter((item) => item.q && item.a)
+          .slice(0, 8)
+      : [];
+    return items.length ? items : null;
+  });
+}
+
+/**
  * A public reply to a buyer's review, drafted (added 9 October 2026): what
  * creators most often leave unanswered, and what a visitor reading reviews
  * notices first. Written in the language the review is written in, as the

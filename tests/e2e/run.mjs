@@ -1226,6 +1226,26 @@ try {
     await person.close();
   }
 
+  part("The store's own questions, drafted with AI, on the page and for search engines");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const faq = studio.getByRole("region", { name: "Questions on your store page" });
+    await faq.getByRole("button", { name: "Draft them with AI" }).click();
+    await faq.getByLabel("Question 2").waitFor({ timeout: 30_000 });
+    await faq.getByLabel("Its answer").first().fill("As a download right after paying, on the thank-you page and by email.");
+    await faq.getByRole("button", { name: "Save questions" }).click();
+    await studio.getByText("Questions saved. They show on your store page.").first().waitFor({ timeout: 30_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    const section = page.getByRole("region", { name: "Questions, answered" });
+    await section.getByText("How do the files arrive?").click();
+    is("on the store page, opened by a tap, in the creator's words", [
+      await section.locator("details").count(),
+      (await words(section.locator("details").first())).includes("on the thank-you page and by email"),
+    ], [2, true]);
+    const data = await page.locator('script[type="application/ld+json"]').allTextContents();
+    is("and for search engines, an FAQ page", data.some((json) => json.includes('"FAQPage"') && json.includes("How do I pay?")), true);
+  }
+
   part("Help to choose on the store page, picked by AI from the catalog");
   {
     await open(studio, `${LOCAL}/studio`);

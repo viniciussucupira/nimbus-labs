@@ -76,6 +76,7 @@ import { formatMoney } from "@/lib/money";
 import { LinkEditor } from "@/components/link-editor";
 import { JoinBoxEditor } from "@/components/join-box-editor";
 import { ContactBoxEditor } from "@/components/contact-box-editor";
+import { FaqEditor } from "@/components/faq-editor";
 import { StoreCoach } from "@/components/store-coach";
 import { storeChecks } from "@/lib/store-coach";
 import { isPaidUp } from "@/lib/billing";
@@ -1177,6 +1178,8 @@ export default async function StudioPage({
             {calendar ? <CalendarEditor view={calendar} weekly={callProducts.some((p) => p.call?.kind === "weekly")} /> : null}
 
             {may("page") ? <LinkEditor links={store.links} /> : null}
+
+            {may("page") ? <FaqEditor faq={store.faq} ai={ai} /> : null}
 
             {may("page") ? (
               <ContactBoxEditor

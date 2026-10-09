@@ -93,6 +93,8 @@ export async function startServices(port) {
                   ? { picks: [] }
                   : { picks: [{ n: 1, why: "It fits a busy week at home." }, { n: 2, why: "It goes well with it." }] },
               )
+          : system.startsWith("You draft the questions and answers on a creator's store page")
+            ? JSON.stringify({ items: [{ q: "How do the files arrive?", a: "As a download right after paying, and by email." }, { q: "How do I pay?", a: "With a card on a secure payment page." }] })
           : system.startsWith("You write the one line")
             ? JSON.stringify({ lines: ["Weeknight dinners for busy families.", "Recipes and planners for home cooks.", "Cook once, eat all week."] })
             : "A plain line.";

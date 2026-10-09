@@ -1,9 +1,9 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { describePicture, fillBlock, reviewPage, rewriteBlock, replyToReview, translatePage, writeBio, writeBlogPost, writeEmail, writePosts, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { describePicture, fillBlock, reviewPage, rewriteBlock, replyToReview, translatePage, writeBio, writeStoreFaq, writeBlogPost, writeEmail, writePosts, writeOutline, writePage, writeProduct } from "@/lib/ai";
 import { isRewriteStyle } from "@/lib/block-rewrite-rules";
-import { factsFor, missedQuestions } from "@/lib/answers";
+import { deliveryWords, factsFor, missedQuestions, priceWords } from "@/lib/answers";
 import { parsePage } from "@/lib/sales-page";
 import { coachChecks, steepestDrop } from "@/lib/page-coach";
 import { readPageFacts } from "@/lib/page-facts-read";
@@ -24,7 +24,7 @@ import { imageFolder } from "@/lib/store";
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
 /**
- * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "bio" | "reply" | "posts" | "blog" | "outline" | "email", … }`.
+ * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "bio" | "faq" | "reply" | "posts" | "blog" | "outline" | "email", … }`.
  * It writes into the studio's own boxes and saves nothing: whatever comes back
  * is the creator's to read, change and keep, or not.
  *
@@ -33,7 +33,7 @@ const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call"
  */
 export async function POST(request: NextRequest) {
   // A review sends the page being edited, which may be long (lib/sales-page.ts, MAX_PAGE_BYTES).
-  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" || body.kind === "blog" || (body.kind === "posts" && !body.product) ? "page" : body.kind === "reply" ? "reviews" : "products"), 140_000);
+  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" || body.kind === "faq" || body.kind === "blog" || (body.kind === "posts" && !body.product) ? "page" : body.kind === "reply" ? "reviews" : "products"), 140_000);
   if (!guarded.ok) return guarded.response;
   const { body, store } = guarded;
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
@@ -200,6 +200,21 @@ export async function POST(request: NextRequest) {
     // What the store sells, from the record every visit already reads (lib/catalog.ts, head).
     const products = store.catalog.head.filter((p) => !p.hidden).map((p) => ({ title: p.title, summary: p.summary }));
     return answer(writeBio(store, { products, notes }));
+  }
+  if (body.kind === "faq") {
+    // What the store says about itself: what it sells and how each is handed
+    // over, from the record every visit already reads, and the creator's notes for answers.
+    const products = store.catalog.head.filter((p) => !p.hidden);
+    const facts = [
+      `Store: ${store.name}`,
+      store.bio ? `About it: ${store.bio}` : "",
+      products.length ? `What it sells:\n${products.map((p) => `- ${p.title}: ${priceWords(p, store.currency)} ${deliveryWords(p)}`).join("\n")}` : "",
+      `How buyers pay: on a secure payment page${store.stripeAccountId ? " run by Stripe" : ""}, into ${store.name}'s own account.`,
+      store.answers.facts ? `What ${store.name} wants buyers to know:\n${store.answers.facts}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    return answer(writeStoreFaq(store, { facts, notes }));
   }
   if (body.kind === "outline") {
     return answer(writeOutline(store, { title: text(body.title, 200), notes }));
