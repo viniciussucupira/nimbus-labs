@@ -75,9 +75,12 @@ export async function startServices(port) {
         // capitals, anything else answered with one plain line.
         const body = JSON.parse(await read(req));
         writing.push(body);
-        const text = String(body.system ?? "").startsWith("You translate the words")
+        const system = String(body.system ?? "");
+        const text = system.startsWith("You translate the words")
           ? JSON.stringify({ t: JSON.parse(body.messages[0].content).map((s) => String(s).toUpperCase()) })
-          : "A plain line.";
+          : system.startsWith("You write the one line")
+            ? JSON.stringify({ lines: ["Weeknight dinners for busy families.", "Recipes and planners for home cooks.", "Cook once, eat all week."] })
+            : "A plain line.";
         return json(res, 200, { content: [{ type: "text", text }] });
       }
       if (req.method === "POST" && path === "/emails") {

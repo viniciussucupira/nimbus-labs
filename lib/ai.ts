@@ -295,6 +295,43 @@ export async function translatePage(store: Store, input: { page: SalesPage; lang
   );
 }
 
+/**
+ * The line under a store's name, three ways (added 9 October 2026): what a
+ * new creator most often leaves empty, and the first thing a visitor from
+ * a bio link reads. Written from the store's name, what it sells and
+ * anything the creator adds, in the store's language, each short enough for
+ * the box; the creator picks one, changes it, or none. One of the month's jobs.
+ */
+export async function writeBio(
+  store: Store,
+  input: { products: { title: string; summary: string }[]; notes: string },
+  now = Date.now(),
+): Promise<AiResult<string[]>> {
+  const notes = block(input.notes, MAX_AI_NOTES);
+  const products = input.products.filter((p) => p.title.trim()).slice(0, 12);
+  if (!notes && products.length === 0) return { ok: false, reason: "notes" };
+  return counted(store, now, async () => {
+    const system = [
+      "You write the one line that sits under a creator's store name on their store page, the first thing a visitor from their social bio reads.",
+      honesty(storeLanguage(store)),
+      "Each line says who the store is for and what they find there, in plain words. At most 140 characters. No hashtags, no quotation marks, no 'Welcome to'. Never invent a credential, a number of followers or students, or a result.",
+      'Return only a JSON object: {"lines": [three different lines]}.',
+    ].join("\n\n");
+    const prompt = [
+      `Store: ${line(store.name, 60)}`,
+      products.length ? `\nWhat it sells:\n${products.map((p) => `- ${line(p.title, MAX_TITLE)}${p.summary ? `: ${line(p.summary, 200)}` : ""}`).join("\n")}` : "",
+      notes ? `\nWhat the creator adds:\n${notes}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const answer = await ask(system, prompt, 600);
+    const json = answer ? jsonIn(answer) : null;
+    const lines = Array.isArray(json?.lines) ? (json.lines as unknown[]).map((l) => line(l, 160).replace(/^["“”']+|["“”']+$/g, "").trim()).filter(Boolean) : [];
+    const unique = [...new Set(lines)].slice(0, 3);
+    return unique.length ? unique : null;
+  });
+}
+
 export type ProductCopy = { summary: string; about: string };
 
 export async function writeProduct(

@@ -916,6 +916,18 @@ try {
     is("and off again, the page offers none", await remind(false).then(() => open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`)).then(() => page.locator("#remind").count()), 0);
   }
 
+  part("The line under the store's name, written with AI");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    await studio.getByRole("button", { name: "Edit name and description" }).click();
+    await studio.getByRole("button", { name: "Suggest three lines" }).click();
+    const lines = studio.getByRole("list", { name: "Suggested lines" });
+    await lines.waitFor({ timeout: 30_000 });
+    is("three lines to choose from", await lines.locator("li").count(), 3);
+    await lines.getByRole("button", { name: "Use this line: Cook once, eat all week." }).click();
+    is("one press puts it in the box, nothing saved yet", await studio.locator("#store-bio").inputValue(), "Cook once, eat all week.");
+  }
+
   part("The letters of the page, picked in the studio");
   {
     await open(studio, `${LOCAL}/studio`);
