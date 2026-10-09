@@ -958,6 +958,42 @@ try {
     if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "blog-post.png"), fullPage: true });
   }
 
+  part("The creator's profiles elsewhere, under the store's name");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    await studio.getByRole("button", { name: "Add your profiles" }).click();
+    const first = studio.locator('input[id^="social-"][id$="-value"]').first();
+    await first.fill("@localshop.cooks");
+    is("a handle says where it will go before saving", await studio.getByText("Opens instagram.com/localshop.cooks").count(), 1);
+    await studio.getByRole("button", { name: "Add a profile" }).click();
+    const second = studio.locator('input[id^="social-"][id$="-value"]').nth(1);
+    await second.fill("https://www.youtube.com/@localshop");
+    is("a pasted address picks its own network", await studio.locator('select[id^="social-"]').nth(1).inputValue(), "youtube");
+    await studio.getByRole("button", { name: "Add a profile" }).click();
+    const third = studio.locator('input[id^="social-"][id$="-value"]').nth(2);
+    await third.fill("https://evil.example/");
+    await studio.locator('select[id^="social-"]').nth(2).selectOption("instagram");
+    is("an address off the network is marked, not linked", await third.getAttribute("aria-invalid"), "true");
+    await studio.getByRole("button", { name: "Remove Instagram" }).nth(1).click();
+    await studio.getByRole("button", { name: "Save profiles" }).click();
+    await studio.getByText("Profiles saved. They show under your store's name.").first().waitFor({ timeout: 30_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    const row = page.getByRole("navigation", { name: "Elsewhere" });
+    is("the store page shows them under its name, in order, opening the right profiles", [
+      await row.getByRole("link").count(),
+      await row.getByRole("link").nth(0).getAttribute("href"),
+      await row.getByRole("link").nth(1).getAttribute("href"),
+      await row.getByRole("link").nth(0).getAttribute("rel"),
+      await row.getByRole("link").nth(0).getAttribute("aria-label"),
+    ], [2, "https://www.instagram.com/localshop.cooks", "https://www.youtube.com/@localshop", "me noopener", `${await words(page.locator("h1").first())} on Instagram`]);
+    const refused = await studio.evaluate(async () => {
+      const response = await fetch("/api/store/socials", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ socials: [{ network: "x", url: "javascript:alert(1)" }] }) });
+      return [response.status, (await response.json()).bad];
+    });
+    is("an address that is not one for its network is refused by name", refused, [400, [0]]);
+    if (process.env.E2E_SHOTS) await page.locator("section").first().screenshot({ path: join(process.env.E2E_SHOTS, "store-socials.png") });
+  }
+
   part("A reply to a review, drafted with AI");
   {
     await open(studio, `${LOCAL}/studio/reviews?view=all`);

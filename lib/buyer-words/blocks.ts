@@ -38,6 +38,12 @@ const en = {
   productLink: "Take a look",
   /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
   quoteSource: (host: string) => `See it on ${host}`,
+  /** The creator's profiles elsewhere, under their name on the store page (lib/store-socials.ts). */
+  socialsLabel: "Elsewhere",
+  socialEmail: "Email",
+  socialWebsite: "Website",
+  /** A profile link's full name, for screen readers: "Ana on Instagram". */
+  socialOn: (name: string, network: string) => `${name} on ${network}`,
 };
 
 export type BlockWords = typeof en;
@@ -67,6 +73,10 @@ const es: BlockWords = {
   productLink: "Ver más",
   /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
   quoteSource: (host) => `Verlo en ${host}`,
+  socialsLabel: "En otros sitios",
+  socialEmail: "Correo",
+  socialWebsite: "Sitio web",
+  socialOn: (name, network) => `${name} en ${network}`,
 };
 
 const fr: BlockWords = {
@@ -94,6 +104,10 @@ const fr: BlockWords = {
   productLink: "Découvrir",
   /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
   quoteSource: (host) => `Voir sur ${host}`,
+  socialsLabel: "Ailleurs",
+  socialEmail: "E-mail",
+  socialWebsite: "Site web",
+  socialOn: (name, network) => `${name} sur ${network}`,
 };
 
 const de: BlockWords = {
@@ -121,6 +135,10 @@ const de: BlockWords = {
   productLink: "Ansehen",
   /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
   quoteSource: (host) => `Auf ${host} ansehen`,
+  socialsLabel: "Auch hier zu finden",
+  socialEmail: "E-Mail",
+  socialWebsite: "Website",
+  socialOn: (name, network) => `${name} auf ${network}`,
 };
 
 const it: BlockWords = {
@@ -148,6 +166,10 @@ const it: BlockWords = {
   productLink: "Scopri",
   /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
   quoteSource: (host) => `Vedi su ${host}`,
+  socialsLabel: "Altrove",
+  socialEmail: "Email",
+  socialWebsite: "Sito web",
+  socialOn: (name, network) => `${name} su ${network}`,
 };
 
 const nl: BlockWords = {
@@ -175,6 +197,10 @@ const nl: BlockWords = {
   productLink: "Bekijken",
   /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
   quoteSource: (host) => `Bekijk op ${host}`,
+  socialsLabel: "Ook te vinden op",
+  socialEmail: "E-mail",
+  socialWebsite: "Website",
+  socialOn: (name, network) => `${name} op ${network}`,
 };
 
 const pt: BlockWords = {
@@ -202,6 +228,10 @@ const pt: BlockWords = {
   productLink: "Ver mais",
   /** Under a thing said elsewhere, the link to where it was said (lib/sales-page.ts, QuotesBlock). */
   quoteSource: (host) => `Ver em ${host}`,
+  socialsLabel: "Em outros lugares",
+  socialEmail: "E-mail",
+  socialWebsite: "Site",
+  socialOn: (name, network) => `${name} no ${network}`,
 };
 
 export const BLOCK_WORDS: Record<LanguageCode, BlockWords> = { en, es, fr, de, it, nl, pt };
