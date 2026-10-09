@@ -69,6 +69,8 @@ export type IconName =
   | "repeat"
   | "trash"
   | "copy"
+  | "undo"
+  | "redo"
   | "history"
   | "mic"
   | "ban"
@@ -353,6 +355,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
   type: <path d="M5 6.5V4.5h14v2M12 4.5v15M9 19.5h6" />,
   repeat: <path d="M4.5 11V9a3 3 0 0 1 3-3h12l-3-3M19.5 13v2a3 3 0 0 1-3 3h-12l3 3" />,
   trash: <path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12.2a1.5 1.5 0 0 0 1.5 1.3h6.4a1.5 1.5 0 0 0 1.5-1.3L17.5 7" />,
+  undo: <path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />,
+  redo: <path d="m15 14 5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />,
   copy: (
     <>
       <rect x="8.5" y="8.5" width="11" height="11" rx="2.2" />

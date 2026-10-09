@@ -653,6 +653,15 @@ try {
     await studio.getByRole("button", { name: /^Add a block \(/ }).click();
     await studio.getByRole("region", { name: "Add a block at the end" }).getByRole("button", { name: /^Button/ }).click();
     is("and one at the end goes last", (await words(blocks.last())).includes(`${before + 2}. Button`), true);
+    // Changes made within a moment of each other are one step.
+    await studio.getByRole("button", { name: "Undo the last change" }).click();
+    is("Undo takes the last change back", await blocks.count(), before);
+    await studio.getByRole("button", { name: "Redo" }).click();
+    is("Redo puts it back", [await blocks.count(), (await words(blocks.nth(2))).includes("Phones only")], [before + 2, true]);
+    await studio.locator("body").press("Control+z");
+    is("and so do the keys: Ctrl+Z", await blocks.count(), before);
+    await studio.locator("body").press("Control+Shift+z");
+    is("and Ctrl+Shift+Z", await blocks.count(), before + 2);
     if (process.env.E2E_SHOTS) {
       await studio.locator("ol").first().screenshot({ path: join(process.env.E2E_SHOTS, "block-list.png") });
       await studio.getByRole("button", { name: "Add a block after block 1", exact: true }).click();
