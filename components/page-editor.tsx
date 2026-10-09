@@ -65,6 +65,7 @@ import {
   HERO_LAYOUTS,
   MAX_PRODUCT_NOTE,
   PAGE_TEMPLATES,
+  templateOutline,
   type PageStyle,
   PROVIDER_NAMES,
   type PageBlock,
@@ -332,7 +333,6 @@ export function PageEditor({
   const [confirmClear, setConfirmClear] = useState(false);
   // Which template the empty page would start from, and the block being dragged.
   const templates = PAGE_TEMPLATES.filter((t) => t.free === product.free);
-  const [template, setTemplate] = useState(templates[0]?.id ?? "");
   const [dragged, setDragged] = useState<number | null>(null);
   const [over, setOver] = useState<number | null>(null);
   // The time, for saying a countdown's moment has passed; read off the clock every half minute, never while drawing.
@@ -501,6 +501,8 @@ export function PageEditor({
       setSeoDescription(page.seoDescription);
       setNext(page.next ?? "");
       setStyle(page.style);
+      setHidden(page.hidden);
+      setShowFrom(page.showFrom);
       setTesting(page.test !== null);
       setTestHeadline(page.test?.headline ?? "");
       setTestSub(page.test?.sub ?? "");
@@ -515,7 +517,7 @@ export function PageEditor({
   }
 
   /** A first page from a template: its order of blocks, with the product's own title and summary on top. */
-  function startFromTemplate() {
+  function startFromTemplate(template: string) {
     const blocks = blocksFromTemplate(template, { title: product.title, summary: product.summary, picture: Boolean(product.picture) });
     if (blocks.length === 0) return;
     setDrafts(blocks.map((block) => ({ block, video: "" })));
@@ -1476,24 +1478,32 @@ export function PageEditor({
               </button>
               {templates.length > 0 ? (
                 <div className="mt-6 border-t border-line pt-5">
-                  <label htmlFor="page-template" className="field-label">
-                    Or start from a template
-                  </label>
-                  <div className="mt-1 flex flex-wrap items-end gap-3">
-                    <select id="page-template" className="field min-w-0 flex-1" value={template} onChange={(e) => setTemplate(e.target.value)}>
-                      {templates.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button type="button" onClick={startFromTemplate} className="btn btn-secondary">
-                      Use this template
-                    </button>
-                  </div>
-                  <p className="mt-2 text-xs text-ink-soft">
-                    {`${templates.find((t) => t.id === template)?.hint ?? ""} A template is an order of blocks with their headings: the words are yours to write, and a block you leave empty is not shown.`}
+                  <p className="field-label">Or start from a template</p>
+                  <p className="text-xs text-ink-soft">
+                    A template is an order of blocks with their headings, under your headline and a button: the words are yours to write, and a block you leave empty is not shown.
                   </p>
+                  <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {templates.map((t) => {
+                      const outline = templateOutline(t.id);
+                      return (
+                        <li key={t.id} className="flex flex-col rounded-2xl bg-white p-4 ring-1 ring-line">
+                          <p className="text-sm font-semibold text-ink">{t.label}</p>
+                          <p className="mt-1 text-xs text-ink-soft">{t.hint}</p>
+                          <ol className="mt-3 flex flex-wrap gap-1.5" aria-label={`The blocks of the ${t.label} template, in order`}>
+                            {outline.map((kind, i) => (
+                              <li key={`${kind}-${i}`} className="inline-flex items-center gap-1 rounded-full bg-paper px-2 py-0.5 text-[0.75rem] font-medium text-ink-soft ring-1 ring-line">
+                                <Icon name={KIND_ICONS[kind]} size={12} />
+                                {kindLabel(kind)}
+                              </li>
+                            ))}
+                          </ol>
+                          <button type="button" onClick={() => startFromTemplate(t.id)} className="btn btn-secondary btn-sm mt-4 self-start" aria-label={`Use the ${t.label} template`}>
+                            Use this template
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               ) : null}
               {pagesToCopy.length > 0 ? (
