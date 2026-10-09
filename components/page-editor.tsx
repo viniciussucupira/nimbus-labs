@@ -9,6 +9,7 @@ import { Icon, type IconName } from "@/components/icons";
 import { toast } from "@/components/toast";
 import { AiAssist, AiOn } from "@/components/ai-assist";
 import { TranslatePage } from "@/components/translate-page";
+import { AiPosts } from "@/components/ai-posts";
 import { PageCoach } from "@/components/page-coach";
 import { PageStylePicker } from "@/components/page-style-picker";
 import { BlockPicker } from "@/components/block-picker";
@@ -1490,6 +1491,7 @@ export function PageEditor({
       {shareUrl && sharing ? (
         <section id="share-panel" aria-label={`Share ${product.title}`} className="mt-4 rounded-2xl bg-paper p-4 ring-1 ring-line sm:p-5">
           <SharePanel url={shareUrl} title={product.title} />
+          <AiPosts productId={product.id} url={shareUrl} page={pageToSend} />
         </section>
       ) : null}
 

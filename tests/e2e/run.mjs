@@ -670,6 +670,13 @@ try {
     const [svg] = await Promise.all([studio.waitForEvent("download"), panel.getByRole("button", { name: "SVG" }).click()]);
     const [png] = await Promise.all([studio.waitForEvent("download"), panel.getByRole("button", { name: "PNG" }).click()]);
     is("and downloaded for print and for slides", [svg.suggestedFilename(), png.suggestedFilename()], ["knife-skills-qr.svg", "knife-skills-qr.png"]);
+    await panel.getByRole("button", { name: "Write three posts" }).click();
+    await panel.locator("#post-x").waitFor({ timeout: 30_000 });
+    is("posts written with AI, each with the link tagged for where it goes", [
+      (await panel.locator("#post-x").inputValue()).endsWith(`/@localshop/p/knife-skills-${ids["Knife Skills"]}?utm_source=x&utm_medium=share`),
+      (await panel.locator("#post-linkedin").inputValue()).includes("utm_source=linkedin"),
+      (await panel.locator("#post-instagram").inputValue()).includes("http"),
+    ], [true, true, false]);
     if (process.env.E2E_SHOTS) await panel.screenshot({ path: join(process.env.E2E_SHOTS, "share-panel.png") });
     await open(studio, `${LOCAL}/studio`);
     await studio.getByText("Share the store: link, QR code, posts").click();

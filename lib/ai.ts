@@ -372,6 +372,41 @@ export async function replyToReview(
   });
 }
 
+/** Posts about a product for three places, drafted (lib/ai.ts, writePosts). */
+export type ProductPosts = { x: string; instagram: string; linkedin: string };
+
+/**
+ * Posts to share a product, drafted (added 9 October 2026): one for X, one
+ * Instagram caption and one LinkedIn post, from what its page says, in the
+ * store's language. Getting people to the page is the work most creators
+ * do by hand every week; this gives them a first draft of each. The link is
+ * not written by the model: the studio adds the tagged address to each
+ * (lib/share-links.ts), and an Instagram caption says where the link is,
+ * since a caption's links cannot be pressed. One of the month's jobs.
+ */
+export async function writePosts(store: Store, input: { facts: string }, now = Date.now()): Promise<AiResult<ProductPosts>> {
+  return counted(store, now, async () => {
+    const system = [
+      "You write three short posts a creator shares to bring people to one product's page.",
+      honesty(storeLanguage(store)),
+      "Write as the creator, in the first person, the way people really post: a concrete hook first, then what the product is and who it is for. No hashtag walls, no 'link below' unless told, no links or addresses at all: the link is added for you.",
+      [
+        "Return only a JSON object with these keys:",
+        '"x": at most 230 characters, one post.',
+        '"instagram": a caption of at most 600 characters, short paragraphs, ending with a line saying the link is in the bio (in the language you write in), and at most three relevant hashtags on the last line.',
+        '"linkedin": at most 700 characters, short paragraphs, plain and useful, no hashtags.',
+      ].join("\n"),
+    ].join("\n\n");
+    const answer = await ask(system, `Everything the product's page says:\n${block(input.facts, 6_000)}`, 1_200);
+    const json = answer ? jsonIn(answer) : null;
+    if (!json) return null;
+    const posts: ProductPosts = { x: block(json.x, 260), instagram: block(json.instagram, 900), linkedin: block(json.linkedin, 1_000) };
+    // A link the model wrote anyway is taken out: the studio adds the right one.
+    for (const key of Object.keys(posts) as (keyof ProductPosts)[]) posts[key] = posts[key].replace(/https?:\/\/\S+/g, "").replace(/[ \t]+\n/g, "\n").trim();
+    return posts.x && posts.instagram && posts.linkedin ? posts : null;
+  });
+}
+
 export type ProductCopy = { summary: string; about: string };
 
 export async function writeProduct(
