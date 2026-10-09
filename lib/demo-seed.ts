@@ -62,6 +62,7 @@ import {
   setProductFile,
   setAnswers,
   setProductImage,
+  setProductPage,
   setStripeAccount,
   setSubscription,
   storeFolder,
@@ -70,6 +71,8 @@ import {
   updateLook,
 } from "@/lib/store";
 import { canSellProduct } from "@/lib/store-checkout";
+import { parsePage } from "@/lib/sales-page";
+import { readPage, writePage } from "@/lib/sales-page-store";
 import { type StoreLook } from "@/lib/store-look";
 import { MAX_PHOTO_BYTES, deletePhoto, sniffPhotoType, writePhoto } from "@/lib/store-photo";
 
@@ -131,6 +134,57 @@ Choose one week, or five weeks at a lower price per week. Each is a PDF you down
   ] satisfies { label: string; price: string; file: DemoFileName }[],
 } as const;
 
+/**
+ * The product's own sales page, built from the blocks a creator adds in the
+ * studio (added 9 October 2026), so whoever opens the demo sees a page made
+ * with Marktmorgen rather than a plain description. Every sentence is true
+ * of this demo: the product and its files are real, Jenny is not, and the
+ * questions say so. No review, quote or number is written here; the reviews
+ * a page shows are only ever buyers'.
+ */
+export const DEMO_PAGE = {
+  style: "bands",
+  seoTitle: "Weekly Meal Planner — Harbor Kitchen, a Marktmorgen demo",
+  seoDescription: "A printable week of family meals with its grocery list. The demo store of Marktmorgen: pay with Stripe's test card, get the real PDF.",
+  blocks: [
+    { id: "demohero", kind: "hero", headline: "Dinner, decided before the week begins", sub: "A printable plan for breakfast, lunch and dinner, with the grocery list that goes with it. One week to try, or five.", media: "picture", video: null, button: true },
+    { id: "demogets", kind: "benefits", heading: "What you get", items: ["Breakfast, lunch and dinner for every day of the week", "One grocery list for the whole week", "One page for each week, ready to print", "A PDF you download the moment you pay"] },
+    {
+      id: "demosteps",
+      kind: "steps",
+      heading: "How it works",
+      items: [
+        { title: "Choose one week or five", detail: "Five weeks cost less per week." },
+        { title: "Pay with the test card", detail: "This is a demo: 4242 4242 4242 4242, any future date and any CVC. Nothing is charged." },
+        { title: "Download your PDF", detail: "Right after paying, on the thank-you page, and by email." },
+        { title: "Print it and shop once", detail: "Put the week on the fridge and take the list to the store." },
+      ],
+    },
+    {
+      id: "demofit",
+      kind: "fit",
+      heading: "Is it for you?",
+      yesLabel: "",
+      noLabel: "",
+      yes: ["You cook for a family and want the week decided", "You would rather shop once a week than every day"],
+      no: ["You want recipes with step-by-step photos or videos", "You follow a diet a professional set for you"],
+    },
+    { id: "democta", kind: "cta", label: "Get the planner", note: "Test mode: nothing is charged." },
+    {
+      id: "demofaq",
+      kind: "faq",
+      heading: "Questions",
+      items: [
+        { q: "Is anything charged?", a: "No. This is Marktmorgen's demo store: its checkout runs in Stripe's test mode, and the test card moves no real money." },
+        { q: "What do I get?", a: "A real PDF: one week of plans, or five weeks, depending on the option you choose." },
+        { q: "Who is Jenny?", a: "A fictional cook. The store shows what a creator's store on Marktmorgen looks like." },
+        { q: "Can I build a page like this one?", a: "Yes. Every part of this page is a block a creator adds, moves and fills in from the studio, or has drafted with AI." },
+      ],
+    },
+    { id: "demoend", kind: "cta", label: "Get the planner", note: "" },
+  ],
+} as const;
+
 // ---- The mark ----------------------------------------------------------------
 
 const MARK = "nl:house:seed";
@@ -144,7 +198,7 @@ const sha = (value: string | Uint8Array) => createHash("sha256").update(value).d
 /** Everything above, and the files themselves, as one short word. */
 export function seedFingerprint(): string {
   const files = DEMO_PRODUCT.options.map((option) => sha(getDemoFile(option.file)));
-  return sha(JSON.stringify([HOUSE_HANDLE, DEMO_STORE, DEMO_PRODUCT, files, DEMO_CONNECTED_ACCOUNT])).slice(0, 24);
+  return sha(JSON.stringify([HOUSE_HANDLE, DEMO_STORE, DEMO_PRODUCT, DEMO_PAGE, files, DEMO_CONNECTED_ACCOUNT])).slice(0, 24);
 }
 
 type Mark = {
@@ -475,6 +529,24 @@ async function ensureAbout(store: Store, product: Listing, pending: string[]): P
   return marked.store;
 }
 
+/** The product's sales page, saved the way the studio's page route saves one. */
+async function ensurePage(store: Store, product: Listing, pending: string[]): Promise<Store> {
+  if (!store.statsId) {
+    pending.push(refused("page", "no_stats"));
+    return store;
+  }
+  const want = parsePage(DEMO_PAGE);
+  const have = product.page ? await readPage(store.statsId, product.id) : null;
+  if (have && JSON.stringify(have) === JSON.stringify(want)) return store;
+  await writePage(store.statsId, product.id, want);
+  const marked = await setProductPage(REF, product.id, true);
+  if (!marked.ok) {
+    pending.push(refused("page", marked.reason));
+    return store;
+  }
+  return marked.store;
+}
+
 /** Brings the demo store in line with this file, one step at a time. */
 async function build(before: Mark | null, deps: SeedDeps): Promise<Mark> {
   const pending: string[] = [];
@@ -497,6 +569,7 @@ async function build(before: Mark | null, deps: SeedDeps): Promise<Mark> {
   store = picture.store;
   mark.image = picture.source;
   store = await ensureAbout(store, made.product, pending);
+  store = await ensurePage(store, made.product, pending);
 
   // The one thing all of it is for: the product can be bought.
   const fresh = await storeForEmail(REF);
