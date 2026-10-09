@@ -4,7 +4,7 @@
  * a session for its owner. Written through the same functions the studio
  * uses, into the stand-in database.
  */
-import { addProduct, claimHandle, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setProductLink, setSections, setStripeAccount, setSubscription } from "@/lib/store";
+import { addProduct, claimHandle, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setProductLink, setReviewed, setSections, setStripeAccount, setSubscription } from "@/lib/store";
 import { openSession } from "@/lib/auth";
 import { saveReview } from "@/lib/reviews";
 import { writePage } from "@/lib/sales-page-store";
@@ -62,6 +62,8 @@ async function main(): Promise<void> {
     if (saved.state !== "created") throw new Error(`review ${n} was refused: ${saved.state}`);
     reviews.push(saved.review.id);
   }
+  // As the review route notes a store's first review, so its pages read the numbers.
+  await setReviewed(OWNER);
   // A page with three pictures, written as the studio would have kept it,
   // for the picture viewer. Their files are not in this stand-in.
   const shot = (n: number, alt: string, caption: string) => ({ path: `images/${"a".repeat(24)}/${String(n).padStart(32, "c")}.jpg`, width: 1200, height: 900, alt, caption });

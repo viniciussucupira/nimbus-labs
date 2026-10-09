@@ -1,4 +1,7 @@
 import { after } from "next/server";
+import { showsRating, storeSummary } from "@/lib/review-summary";
+import { RatingLine } from "@/components/review-list";
+import { StoreShareButton } from "@/components/store-share-button";
 import { guideOn } from "@/lib/store-guide";
 import { StoreGuideBox } from "@/components/store-guide-box";
 import { joinOpen } from "@/lib/store-join";
@@ -202,6 +205,7 @@ export default async function StorePage({ params, searchParams }: Params) {
     }),
   );
   const rated = await ratings;
+  const storeRating = storeSummary(rated, index.filter((item) => !item.hidden).map((item) => item.id));
   const bundleItems = await inBundles;
   const soon = await soonProducts(store).catch(() => new Set<string>());
   const left = new Map<string, number>();
@@ -252,11 +256,21 @@ export default async function StorePage({ params, searchParams }: Params) {
               {store.name}
             </h1>
             <p className="st-muted mt-1 text-sm font-semibold">@{store.handle}</p>
+            {/* Every listed product's reviews together, from the numbers this page reads anyway (lib/review-summary.ts). */}
+            {showsRating(storeRating) ? (
+              <p className="mt-3 flex flex-wrap items-center justify-center gap-x-2 text-sm">
+                <RatingLine summary={storeRating} lang={store.language} />
+                <span className="st-muted">{bw.storeRatingNote}</span>
+              </p>
+            ) : null}
 
             {store.bio ? (
               <p className="st-muted mx-auto mt-4 max-w-md text-lg leading-relaxed">{store.bio}</p>
             ) : null}
             <StoreSocialsRow socials={store.socials} name={store.name} words={bw} />
+            <div className="mx-auto mt-3 flex max-w-xs flex-col items-center">
+              <StoreShareButton name={store.name} lang={store.language} />
+            </div>
           </div>
         </section>
 

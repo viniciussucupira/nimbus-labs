@@ -87,6 +87,25 @@ export function average(summary: Summary): number {
   return summary.count ? Math.round((summary.stars / summary.count) * 10) / 10 : 0;
 }
 
+/**
+ * The store's own numbers: every listed product's reviews added together, for
+ * the stars under the store's name. Only products a visitor can see count.
+ */
+export function storeSummary(each: Map<string, Summary>, listed: Iterable<string>): Summary {
+  const total: Summary = { ...EMPTY_SUMMARY, dist: [0, 0, 0, 0, 0] };
+  for (const id of listed) {
+    const one = each.get(id);
+    if (!one) continue;
+    total.count += one.count;
+    total.stars += one.stars;
+    total.visible += one.visible;
+    total.hidden += one.hidden;
+    total.refunded += one.refunded;
+    one.dist.forEach((n, i) => (total.dist[i] += n));
+  }
+  return total;
+}
+
 /** "4.8", "5.0". */
 export function averageText(summary: Summary): string {
   return average(summary).toFixed(1);
