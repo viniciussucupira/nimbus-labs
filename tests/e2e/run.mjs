@@ -69,6 +69,8 @@ const env = {
   STRIPE_CONNECT_API_BASE: FAKE,
   RESEND_API_KEY: "re_local_only_a_stand_in",
   RESEND_API_BASE: FAKE,
+  ANTHROPIC_API_KEY: "sk-ant-local_only_a_stand_in_0000",
+  ANTHROPIC_API_BASE: FAKE,
   NEXT_TELEMETRY_DISABLED: "1",
 };
 
@@ -807,6 +809,26 @@ try {
     await studio.getByRole("button", { name: "Copy its blocks" }).click();
     await studio.locator("#coach-title").waitFor({ timeout: 30_000 });
     is("its blocks are here, ready to change, and nothing saved yet", [await studio.locator("ol > li").count() >= 8, await studio.getByRole("button", { name: "Save the page" }).isEnabled()], [true, true]);
+  }
+
+  part("A whole page translated with AI");
+  {
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
+    await studio.getByText("Translate the whole page with AI").click();
+    is("says first how many of the month's jobs the page takes", /This page takes 1 of your writing job/.test(await words(studio.locator("details", { hasText: "Translate the whole page with AI" }))), true);
+    await studio.getByLabel("Into").selectOption("es");
+    await studio.getByRole("button", { name: "Translate", exact: true }).click();
+    await studio.getByText(/^Translated into Spanish/).waitFor({ timeout: 30_000 });
+    const asked = services.writing().filter((w) => String(w.system).startsWith("You translate the words"));
+    is("asks once, in the language picked", [asked.length, String(asked[0]?.system).includes("into Spanish")], [1, true]);
+    is("nothing saved until Save is pressed", await studio.getByRole("button", { name: "Save the page" }).isEnabled(), true);
+    await studio.getByRole("button", { name: /^1\. Hero/ }).click();
+    const headline = await studio.getByLabel("Headline", { exact: true }).inputValue();
+    is("every word of them", headline.length > 0 && headline === headline.toUpperCase(), true);
+    await studio.waitForTimeout(700);
+    await studio.locator("#undo-step").click();
+    const undone = await studio.getByLabel("Headline", { exact: true }).inputValue();
+    is("and Undo puts them back", undone !== headline && undone !== undone.toUpperCase(), true);
   }
 
   part("Each product's page views, in the studio's numbers");

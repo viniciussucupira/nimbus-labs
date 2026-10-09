@@ -28,7 +28,8 @@ import {
   type ProductKind,
 } from "@/lib/ai-rules";
 
-import { type PageBlock, emptyBlock, parsePage } from "@/lib/sales-page";
+import { type PageBlock, type SalesPage, emptyBlock, parsePage } from "@/lib/sales-page";
+import { MAX_TRANSLATE_PARTS, pageWords, translateParts, withWords } from "@/lib/page-translate";
 import { FILLABLE, REWRITABLE, REWRITE_STYLES, type RewriteStyle, addsNumbers, blockText } from "@/lib/block-rewrite-rules";
 
 const API = /^http:\/\/127\.0\.0\.1:\d+$/.test(process.env.ANTHROPIC_API_BASE ?? "")
@@ -196,16 +197,21 @@ const block = (value: unknown, max: number) =>
  * Takes one job from the month, runs it, and gives the job back if it failed,
  * so a store never pays a job for an answer it did not get.
  */
-async function counted<T>(store: Store, now: number, run: () => Promise<T | null>): Promise<AiResult<T>> {
+/**
+ * One job of the month's — or `jobs` of them, for work as large as several
+ * (a whole page translated, lib/page-translate.ts) — taken before the model
+ * is asked and given back if it does not answer.
+ */
+async function counted<T>(store: Store, now: number, run: () => Promise<T | null>, jobs = 1): Promise<AiResult<T>> {
   if (!isAiConfigured() || !store.statsId || !isRedisConfigured()) return { ok: false, reason: "off" };
   const key = monthKey(store, new Date(now));
   const [used] = await redisPipeline([
-    ["INCR", key],
+    ["INCRBY", key, jobs],
     ["EXPIRE", key, 40 * 86_400],
   ]);
   const allowance = aiAllowance(store, now);
   if (Number(used) > allowance) {
-    await redisPipeline([["DECR", key]]).catch(() => {});
+    await redisPipeline([["DECRBY", key, jobs]]).catch(() => {});
     return { ok: false, reason: "used" };
   }
   let value: T | null = null;
@@ -215,13 +221,60 @@ async function counted<T>(store: Store, now: number, run: () => Promise<T | null
     console.error("a writing job failed", error);
   }
   if (value === null) {
-    await redisPipeline([["DECR", key]]).catch(() => {});
+    await redisPipeline([["DECRBY", key, jobs]]).catch(() => {});
     return { ok: false, reason: "failed" };
   }
   return { ok: true, value, left: Math.max(0, allowance - Number(used)) };
 }
 
 // ------------------------------------------------------------------ jobs
+
+/**
+ * A whole sales page translated (added 9 October 2026): every word a reader
+ * reads (lib/page-translate.ts) into one of the store languages, as a native
+ * copywriter would put it, with nothing added and nothing left out. The page
+ * goes in parts of at most TRANSLATE_PART_CHARS characters, asked at once, and
+ * each part is one of the month's jobs: a short page is one, a long one a few.
+ * It uses the smaller model that answers visitors (answerModel), which
+ * translates as well and keeps each part's cost under the figure a plan's
+ * margin is worked out with (tests/plan-margin.test.ts). Nothing is saved:
+ * the page comes back for the editor, and its rules (lib/sales-page.ts,
+ * parsePage) hold for it as for any other.
+ */
+export async function translatePage(store: Store, input: { page: SalesPage; language: string }, now = Date.now()): Promise<AiResult<SalesPage> | { ok: false; reason: "long" }> {
+  const words = pageWords(input.page);
+  if (words.length === 0) return { ok: false, reason: "notes" };
+  const parts = translateParts(words);
+  if (parts.length > MAX_TRANSLATE_PARTS) return { ok: false, reason: "long" };
+  const language = line(input.language, 40);
+  const system = [
+    `You translate the words of a creator's sales page into ${language}.`,
+    "You are given a JSON array of strings, each one piece of the page in order: headings, paragraphs, list points, questions and answers, button words, table cells, picture descriptions, the page's search title and description.",
+    `Translate each into natural, idiomatic ${language}, as a native copywriter would write it for this page, not word for word. Keep its meaning and tone, and keep it about as long.`,
+    "Keep line breaks where they are. A line that starts with \"- \" still starts with \"- \".",
+    "Keep as they are: names of products, brands, people and places, numbers, prices, dates, and links.",
+    "Add nothing and leave nothing out. Never add a claim, a promise, a number, a deadline or a word of urgency that the original does not have.",
+    `A string already in ${language} comes back unchanged.`,
+    'Return only a JSON object {"t": [...]} with exactly as many strings as you were given, in the same order.',
+  ].join("\n");
+  return counted(
+    store,
+    now,
+    async () => {
+      const answers = await Promise.all(
+        parts.map(async (part) => {
+          const answer = await askModel(system, JSON.stringify(part), 3_000, answerModel());
+          const list = answer ? jsonIn(answer)?.t : null;
+          if (!Array.isArray(list) || list.length !== part.length || list.some((w) => typeof w !== "string")) return null;
+          return list as string[];
+        }),
+      );
+      if (answers.some((a) => a === null)) return null;
+      return parsePage(withWords(input.page, answers.flat() as string[]));
+    },
+    parts.length,
+  );
+}
 
 export type ProductCopy = { summary: string; about: string };
 
