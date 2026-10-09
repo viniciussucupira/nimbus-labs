@@ -134,6 +134,10 @@ export const en = {
   pickSession: "Pick a session",
   pickTime: "Pick a time",
   priced: (label: string, price: string) => `${label} — ${price}`,
+  /** What one unit costs within an option, when its name gives how many (lib/option-units.ts): "$7.80 per week". */
+  perUnit: (price: string, unit: string) => `${price} per ${unit}`,
+  /** How much less each unit costs than in the option of one. */
+  unitSaving: (percent: number) => `save ${percent}%`,
   chooseOptionFor: (title: string) => `Choose an option for ${title}`,
   recommended: "Recommended",
   recommendedAfter: " (recommended)",

@@ -139,7 +139,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "uses",
         title: "Where a second price earns its keep",
         items: [
-          { icon: "calendar", who: "Sizes of the same plan", what: "One week to try, five weeks for the person who already trusts you, the whole season for the fan." },
+          { icon: "calendar", who: "Sizes of the same plan", what: "One week to try, five weeks for the person who already trusts you, the whole season for the fan. Named “1 week” and “5 weeks,” the bigger one shows what each week costs in it and how much less that is, worked out from your own prices." },
           { icon: "key", who: "Licenses", what: "Personal use, commercial use and a team license, each delivering its own file and terms." },
           { icon: "video", who: "Plain and complete", what: "The PDF on its own, or the PDF with the videos, at a price that tells the buyer the difference." },
         ],

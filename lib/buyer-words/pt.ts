@@ -119,6 +119,10 @@ export const pt: BuyerWords = {
   pickSession: "Escolher uma sessão",
   pickTime: "Escolher um horário",
   priced: (label, price) => `${label} — ${price}`,
+  /** What one unit costs within an option, when its name gives how many (lib/option-units.ts): "$7.80 per week". */
+  perUnit: (price, unit) => `${price} por ${unit}`,
+  /** How much less each unit costs than in the option of one. */
+  unitSaving: (percent) => `poupa ${percent}%`,
   chooseOptionFor: (title) => `Escolha uma opção para ${title}`,
   recommended: "Recomendado",
   recommendedAfter: " (recomendado)",

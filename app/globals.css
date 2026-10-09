@@ -2954,6 +2954,19 @@ a.sp-product:focus-visible {
   text-transform: uppercase;
   color: var(--st-accent-text);
 }
+/* What one costs inside a bigger option (lib/option-units.ts), under its price. */
+.st-unit {
+  display: block;
+  margin-top: 0.125rem;
+}
+.st-option:not(.st-option-card):has(.st-unit) {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+.st-option:not(.st-option-card) .st-unit {
+  flex-basis: 100%;
+  text-align: right;
+}
 /* Said elsewhere: others' words, each with the link to where they were said. */
 .sp-quotes {
   display: grid;
