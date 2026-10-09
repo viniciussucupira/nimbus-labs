@@ -681,6 +681,9 @@ try {
     await open(studio, `${LOCAL}/studio`);
     await studio.getByText("Share the store: link, QR code, posts").click();
     is("the store's own address, to share the same way", (await studio.locator("#share-url").inputValue()).endsWith("/@localshop"), true);
+    await studio.getByRole("button", { name: "Write three posts" }).click();
+    await studio.locator("#post-x").waitFor({ timeout: 30_000 });
+    is("and posts about the whole store, with its address tagged", (await studio.locator("#post-x").inputValue()).endsWith("/@localshop?utm_source=x&utm_medium=share"), true);
   }
 
   part("Blocks added where they go, from a gallery");

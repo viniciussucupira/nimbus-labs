@@ -51,7 +51,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "features",
         title: "What the page carries",
         items: [
-          { icon: "user", title: "You, at the top", body: "Your photo, your name and a line about you, on every theme — not locked behind one. Stuck on the line? AI writes three from what you sell, in your store's language, and you pick one or none." },
+          { icon: "user", title: "You, at the top", body: "Your photo, your name and a line about you, on every theme — not locked behind one. Stuck on the line? AI writes three from what you sell, in your store's language, and you pick one or none. Sharing the store, AI drafts a post for X, an Instagram caption and a LinkedIn post about it too, each with your store's tagged link." },
           { icon: "file", title: "Up to 2,000 products", body: "Each with its price, what the buyer gets and the button that buys it, in the order you choose, and up to 100 links beside them. A long store shows 24 products a page, and your studio finds any product by name." },
           { icon: "list", title: "Sections, and a line of news", body: "Cut a long store into up to 20 sections with a heading over each: a section starts at the product you pick, and moving that product moves its heading. Across the top, one line of your own news of up to 120 characters, which can lead to one of your products." },
           { icon: "camera", title: "A picture on each product", body: "Shown three ways, product by product: small beside the title, beside the title and the summary, or across the top of the card." },
