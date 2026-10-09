@@ -873,7 +873,8 @@ export type DraftCopy = {
  */
 export function blocksFromDraft(draft: DraftCopy, picture: boolean): SalesPage {
   const blocks: Record<string, unknown>[] = [
-    { id: newBlockId(), kind: "hero", headline: draft.headline, sub: draft.sub, media: picture ? "picture" : "none", video: null },
+    // With a button under the headline, for the reader who arrives ready.
+    { id: newBlockId(), kind: "hero", headline: draft.headline, sub: draft.sub, media: picture ? "picture" : "none", video: null, button: true },
   ];
   if (draft.benefits.length) blocks.push({ id: newBlockId(), kind: "benefits", heading: "What you get", items: draft.benefits });
   if (draft.story) blocks.push({ id: newBlockId(), kind: "text", heading: draft.story.heading, body: draft.story.body });
@@ -980,10 +981,24 @@ const TEMPLATE_BLOCKS: Record<string, TemplateBlock[]> = {
  * still waiting for their answers; the page is held to every rule when it is
  * saved, like one built by hand.
  */
+/** The kinds of block a template lays out, in order after its hero: what the gallery shows of it. */
+export function templateOutline(id: string): BlockKind[] {
+  return (TEMPLATE_BLOCKS[id] ?? []).map((row) => row.kind);
+}
+
 export function blocksFromTemplate(id: string, product: { title: string; summary: string; picture: boolean }): PageBlock[] {
   const rows = TEMPLATE_BLOCKS[id];
   if (!rows) return [];
-  const hero: HeroBlock = { id: newBlockId(), kind: "hero", headline: product.title.slice(0, MAX_HEADLINE), sub: product.summary.slice(0, MAX_SUBHEADLINE), media: product.picture ? "picture" : "none", video: null };
+  const hero: HeroBlock = {
+    id: newBlockId(),
+    kind: "hero",
+    headline: product.title.slice(0, MAX_HEADLINE),
+    sub: product.summary.slice(0, MAX_SUBHEADLINE),
+    media: product.picture ? "picture" : "none",
+    video: null,
+    // A button under the headline from the start: the reader who arrives ready need not scroll.
+    button: true,
+  };
   return [hero, ...rows.map((row) => ({ ...emptyBlock(row.kind), ...row, id: newBlockId() }) as PageBlock)];
 }
 

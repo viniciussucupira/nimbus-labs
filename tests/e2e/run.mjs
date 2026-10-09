@@ -759,6 +759,17 @@ try {
     is("and the card's product is chosen in a list of the store's others", await studio.locator("select[id$='-p']").inputValue(), ids["Knife Skills"]);
   }
 
+  part("A page started from a template, chosen by what it holds");
+  {
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Meal Planner"]}`);
+    const course = studio.getByRole("list", { name: "The blocks of the Course template, in order" });
+    is("each template shows its blocks in order", [(await course.locator("li").count()) >= 4, (await words(course)).includes("Questions")], [true, true]);
+    if (process.env.E2E_SHOTS) await course.locator("xpath=ancestor::ul[1]").screenshot({ path: join(process.env.E2E_SHOTS, "template-gallery.png") });
+    await studio.getByRole("button", { name: "Use the Course template" }).click();
+    const blocks = studio.locator("ol > li");
+    is("one press lays it out, under the product's own headline", [(await blocks.count()) >= 5, (await words(blocks.first())).startsWith("1. Hero")], [true, true]);
+  }
+
   part("A page started from another product's page");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Pantry Checklist"]}`);

@@ -6,7 +6,7 @@
  * picture.
  */
 import { readFileSync } from "node:fs";
-import { parsePage } from "@/lib/sales-page";
+import { PAGE_TEMPLATES, blocksFromDraft, blocksFromTemplate, parsePage } from "@/lib/sales-page";
 import { coachChecks } from "@/lib/page-coach";
 import { contrast, mix } from "@/lib/store-look";
 import { done, is, part } from "./check";
@@ -24,6 +24,12 @@ async function main(): Promise<void> {
   const early = (more: Record<string, unknown>) =>
     coachChecks({ page: parsePage({ blocks: [{ id: "hero0001", kind: "hero", headline: "Bread", sub: "", media: "none", video: null, ...more }] }), productTitle: "Bread", free: false, picture: false, facts: {} }).find((c) => c.id === "early-button")?.done;
   is("a button under the headline is a button near the top", [early({}), early({ button: true })], [false, true]);
+
+  part("Pages that start with a button under the headline");
+  const starts = PAGE_TEMPLATES.map((t) => blocksFromTemplate(t.id, { title: "Bread", summary: "", picture: false })[0]);
+  is("every template", starts.every((b) => b?.kind === "hero" && b.button === true), true);
+  const drafted = blocksFromDraft({ headline: "Bake", sub: "", story: null, benefits: [], inside: [], faq: [], guarantee: "", cta: "Get it", seoTitle: "", seoDescription: "" }, false).blocks[0];
+  is("and a page drafted with AI", drafted.kind === "hero" && drafted.button === true, true);
 
   part("Words on any picture");
   const css = readFileSync("app/globals.css", "utf8");
