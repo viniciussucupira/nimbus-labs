@@ -7,7 +7,10 @@ import { Icon } from "@/components/icons";
 import { toast } from "@/components/toast";
 import {
   ACCENTS,
+  FONTS,
   THEMES,
+  type FontId,
+  fontStyle,
   type StoreLook,
   type ThemeId,
   lookColours,
@@ -119,11 +122,12 @@ export function LookEditor({
   const [accent, setAccent] = useState(look.accent);
   const [badge, setBadge] = useState(look.badge);
   const [sold, setSold] = useState(look.sold);
+  const [font, setFont] = useState<FontId>(look.font);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const fileRef = useRef<HTMLInputElement>(null);
 
   const preset = ACCENTS.some((option) => option.hex === accent);
-  const changed = theme !== look.theme || accent !== look.accent || badge !== look.badge || sold !== look.sold;
+  const changed = theme !== look.theme || accent !== look.accent || badge !== look.badge || sold !== look.sold || font !== look.font;
   const colours = useMemo(() => lookColours({ theme, accent }), [theme, accent]);
   // Said out loud when the page will not paint exactly what was picked, so the
   // creator is never left wondering why their button is darker than their logo.
@@ -142,7 +146,7 @@ export function LookEditor({
     if (status.kind === "working") return;
     setStatus({ kind: "working", what: "look" });
     try {
-      const data = await post("/api/store/look", { theme, accent, badge, sold });
+      const data = await post("/api/store/look", { theme, accent, badge, sold, font });
       if (data.ok) {
         setStatus({ kind: "idle" });
         toast("Look saved.");
@@ -206,7 +210,7 @@ export function LookEditor({
         How your page looks
       </h2>
       <p className="mt-2 text-ink-soft">
-        Your photo, a theme and your color. Every color is checked so that the words on your page stay easy to read.
+        Your photo, a theme, your color and your letters. Every color is checked so that the words on your page stay easy to read.
       </p>
 
       <div className="mt-6 grid gap-8 md:grid-cols-[minmax(0,1fr)_15rem]">
@@ -349,6 +353,30 @@ export function LookEditor({
             </p>
           </fieldset>
 
+          {/* Letters */}
+          <fieldset>
+            <legend className="field-label">Letters</legend>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {FONTS.map((option) => (
+                <label
+                  key={option.id}
+                  className="flex cursor-pointer items-start gap-3 rounded-[var(--r-sm)] border border-line-strong bg-white p-3 transition hover:border-violet-brand has-[:checked]:border-violet-brand has-[:checked]:bg-lilac has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-violet-brand"
+                >
+                  <input type="radio" name="font" value={option.id} checked={font === option.id} onChange={() => setFont(option.id)} className="sr-only" />
+                  {/* The pairing drawn in its own letters, as a page would show it. */}
+                  <span aria-hidden="true" className="st-page mt-0.5 grid h-12 w-12 shrink-0 place-items-center rounded-[8px] bg-paper ring-1 ring-line" style={fontStyle(option.id) as React.CSSProperties}>
+                    <span className="font-display text-2xl font-semibold leading-none text-ink">Aa</span>
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-ink">{option.label}</span>
+                    <span className="mt-0.5 block text-sm text-ink-soft">{option.description}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className="field-hint mt-2">Every page of your store uses them: the store page, each product&apos;s page, the page after paying, their purchases and your community. Only the letters you pick are downloaded by a visitor.</p>
+          </fieldset>
+
           {/*
             Our name at the foot of their page.
 
@@ -427,6 +455,7 @@ export function LookEditor({
                   setAccent(look.accent);
                   setBadge(look.badge);
                   setSold(look.sold);
+                  setFont(look.font);
                   setStatus({ kind: "idle" });
                 }}
                 className="btn btn-ghost"
@@ -447,7 +476,7 @@ export function LookEditor({
           <p className="field-label">Preview</p>
           <div
             className={`st-page st-theme-${theme} pointer-events-none mt-3 overflow-hidden rounded-[1.25rem] ring-1 ring-line`}
-            style={lookStyle({ theme, accent }) as React.CSSProperties}
+            style={lookStyle({ theme, accent, font }) as React.CSSProperties}
           >
             <div className={theme === "bold" ? "st-band px-4 pb-6 pt-6 text-center" : "px-4 pb-1 pt-6 text-center"}>
               {photoId ? (

@@ -1810,6 +1810,12 @@ a.chip {
 .st-page {
   background: var(--st-bg);
   color: var(--st-text);
+  font-family: var(--st-font-body, var(--font-body)), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+/* The letters the creator picked for headings (lib/store-look.ts, FONTS). */
+.st-page .font-display {
+  font-family: var(--st-font-head, var(--font-body)), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  letter-spacing: var(--st-head-tracking, -0.025em);
 }
 .st-band {
   background:

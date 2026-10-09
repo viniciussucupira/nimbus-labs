@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Instrument_Serif } from "next/font/google";
+import { Bricolage_Grotesque, Fraunces, Geist, Instrument_Serif, Nunito, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { SiteData } from "@/components/structured-data";
 import { Toaster } from "@/components/toast";
@@ -23,6 +23,15 @@ const accent = Instrument_Serif({
   style: ["normal", "italic"],
   display: "swap",
 });
+
+/* The letters a creator may pick for their own page (lib/store-look.ts,
+   FONTS). Declared here so every store page can use them, but never
+   preloaded: a browser downloads one only for a page that asks for it. */
+const editorial = Fraunces({ variable: "--font-st-editorial", subsets: ["latin"], display: "swap", preload: false });
+const elegant = Playfair_Display({ variable: "--font-st-elegant", subsets: ["latin"], display: "swap", preload: false });
+const friendly = Nunito({ variable: "--font-st-friendly", subsets: ["latin"], display: "swap", preload: false });
+const bold = Bricolage_Grotesque({ variable: "--font-st-bold", subsets: ["latin"], display: "swap", preload: false });
+const STORE_FONTS = [editorial, elegant, friendly, bold].map((f) => f.variable).join(" ");
 
 const SITE_TITLE =
   "Marktmorgen — the link-in-bio store that pays into your own Stripe";
@@ -88,7 +97,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     // expected, so it does not report the page as mismatched.
     <html
       lang="en"
-      className={`${geist.variable} ${accent.variable} h-full antialiased`}
+      className={`${geist.variable} ${accent.variable} ${STORE_FONTS} h-full antialiased`}
       suppressHydrationWarning
     >
       {/*
