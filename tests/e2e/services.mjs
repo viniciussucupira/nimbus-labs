@@ -139,6 +139,8 @@ export async function startServices(port) {
         return json(res, 200, { object: "list", data: [...sessions.values()].filter((s) => !email || s.customer_details.email === email), has_more: false });
       }
       // Everything else Stripe is asked for while a page is drawn is a list with nothing on it.
+      // The connected account, as a reminder's switch reads its country (lib/checkout-recovery.ts).
+      if (req.method === "GET" && path === "/v1/account") return json(res, 200, { id: "acct_1LocalHarbor0001", object: "account", country: "IE" });
       if (req.method === "GET" && path.startsWith("/v1/")) return json(res, 200, { object: "list", data: [], has_more: false });
       unknown.push(`${req.method} ${path}`);
       return json(res, 404, { error: { type: "invalid_request_error", message: `no stand-in for ${req.method} ${path}` } });

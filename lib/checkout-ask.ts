@@ -38,6 +38,12 @@
  *     Somebody whose address was typed by another person gets one email,
  *     saying that, with a link that stops them for good.
  *
+ * The same ask is offered on a product's own page (added 9 October 2026),
+ * under the buy box, for the visitor who is not ready yet — reading on a
+ * phone, buying later at a desk: one reminder with the link, in about an
+ * hour, tomorrow or in three days (lib/ask-when.ts), with every rule above.
+ * Its email says it was asked for on the page, not that a checkout was left.
+ *
  *   nl:recover:asks     asks waiting, by when each is due (a sorted set)
  */
 import { createHash } from "node:crypto";
@@ -48,6 +54,7 @@ import { recoveryOn } from "@/lib/recovery-setting";
 import { remindAsked } from "@/lib/checkout-recovery";
 import { canSellProduct } from "@/lib/store-checkout";
 import type { Listing, Store } from "@/lib/store";
+import { ASK_WHENS, type AskWhen } from "@/lib/ask-when";
 
 /** How long after asking the reminder goes: the same hour the other one waits. */
 export const ASK_AFTER_SECONDS = 60 * 60;
@@ -78,20 +85,29 @@ export function askable(store: Store, product: Listing | null): product is Listi
   return recoveryOn(store) && !product.call && !product.hidden && canSellProduct(store, product);
 }
 
-type Ask = { statsId: string; handle: string; productId: string; email: string; askedAt: number };
+/** Where it was asked for: on the way back from a checkout, or on the product's own page. */
+export type AskFrom = "checkout" | "page";
 
-/** One ask as it waits in the queue. The address is here for an hour and nowhere else. */
+type Ask = { statsId: string; handle: string; productId: string; email: string; askedAt: number; from: AskFrom; after: number };
+
+/** One ask as it waits in the queue. The address is here until it is sent and nowhere else. */
 export function askMember(ask: Ask): string {
-  return JSON.stringify([ask.statsId, ask.handle, ask.productId, ask.email, ask.askedAt]);
+  // An ask from a checkout keeps the shape it always had, so one already waiting reads the same.
+  return JSON.stringify(
+    ask.from === "checkout" && ask.after === ASK_AFTER_SECONDS
+      ? [ask.statsId, ask.handle, ask.productId, ask.email, ask.askedAt]
+      : [ask.statsId, ask.handle, ask.productId, ask.email, ask.askedAt, ask.from, ask.after],
+  );
 }
 
 export function parseAsk(member: unknown): Ask | null {
   if (typeof member !== "string") return null;
   try {
-    const [statsId, handle, productId, email, askedAt] = JSON.parse(member) as unknown[];
+    const [statsId, handle, productId, email, askedAt, from, after] = JSON.parse(member) as unknown[];
     if (typeof statsId !== "string" || typeof handle !== "string" || typeof productId !== "string") return null;
     if (typeof email !== "string" || typeof askedAt !== "number" || !statsId || !handle || !productId || !email) return null;
-    return { statsId, handle, productId, email, askedAt };
+    const wait = typeof after === "number" && (Object.values(ASK_WHENS) as number[]).includes(after) ? after : ASK_AFTER_SECONDS;
+    return { statsId, handle, productId, email, askedAt, from: from === "page" ? "page" : "checkout", after: wait };
   } catch {
     return null;
   }
@@ -102,7 +118,7 @@ export const askKey = (ask: Pick<Ask, "statsId" | "productId" | "email" | "asked
   createHash("sha256").update(`nimbus-ask:${ask.statsId}|${ask.productId}|${normaliseEmail(ask.email)}|${ask.askedAt}`).digest("hex").slice(0, 32);
 
 /** Keeps an ask for a reminder. Says what happened; never throws at the buyer. */
-export async function askReminder(input: { store: Store; product: Listing | null; email: string; ip: string }): Promise<AskOutcome> {
+export async function askReminder(input: { store: Store; product: Listing | null; email: string; ip: string; from?: AskFrom; when?: AskWhen }): Promise<AskOutcome> {
   const { store, product } = input;
   if (!isRedisConfigured() || !store.statsId || !askable(store, product)) return "closed";
   const email = normaliseEmail(input.email);
@@ -110,8 +126,10 @@ export async function askReminder(input: { store: Store; product: Listing | null
   if (!(await withinLimit("remind-ask", input.ip, ASKS_PER_ADDRESS_HOUR, 3600))) return "limited";
   if (!(await withinLimit("remind-store", store.statsId, ASKS_PER_STORE_DAY, 86_400))) return "limited";
   const askedAt = Math.floor(Date.now() / 1000);
+  const from = input.from ?? "checkout";
+  const after = from === "page" && input.when ? ASK_WHENS[input.when] : ASK_AFTER_SECONDS;
   await redisPipeline([
-    ["ZADD", QUEUE, askedAt + ASK_AFTER_SECONDS, askMember({ statsId: store.statsId, handle: store.handle, productId: product.id, email, askedAt })],
+    ["ZADD", QUEUE, askedAt + after, askMember({ statsId: store.statsId, handle: store.handle, productId: product.id, email, askedAt, from, after })],
   ]);
   return "asked";
 }
@@ -136,7 +154,7 @@ export async function sendAsked(
     const [taken] = await redisPipeline([["ZREM", QUEUE, member]]);
     if (Number(taken) !== 1) continue;
     const ask = parseAsk(member);
-    if (!ask || now - (ask.askedAt + ASK_AFTER_SECONDS) > STALE_SECONDS) {
+    if (!ask || now - (ask.askedAt + ask.after) > STALE_SECONDS) {
       counts.skipped += 1;
       continue;
     }
@@ -147,7 +165,7 @@ export async function sendAsked(
         counts.skipped += 1;
         continue;
       }
-      const outcome = await remindAsked(store, { productId: ask.productId, email: ask.email, askedAt: ask.askedAt, key: askKey(ask) });
+      const outcome = await remindAsked(store, { productId: ask.productId, email: ask.email, askedAt: ask.askedAt, key: askKey(ask), from: ask.from });
       if (outcome === "sent") counts.sent += 1;
       else counts.skipped += 1;
     } catch (error) {

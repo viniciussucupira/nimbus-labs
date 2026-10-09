@@ -44,7 +44,8 @@ import { SITE_URL } from "@/lib/site-url";
 import { EMPTY_PAGE, type SalesPage, livePage } from "@/lib/sales-page";
 import { readPage } from "@/lib/sales-page-store";
 import { type Summary, REVIEWS_ON_PAGE, average, showsRating, summaryOf, visibleReviews } from "@/lib/reviews";
-import { BuyBox, GiftBox, GroupBox, PriceTag, ProductFacts, pageAction, productPath, saleNow } from "@/components/store-product";
+import { BuyBox, GiftBox, GroupBox, PriceTag, ProductFacts, RemindBox, pageAction, productPath, saleNow } from "@/components/store-product";
+import { askable } from "@/lib/checkout-ask";
 import { type BlockContext, HeroView, PageSections } from "@/components/sales-blocks";
 import { pageFacts } from "@/lib/page-facts";
 import { LANGUAGES } from "@/lib/store-language";
@@ -261,6 +262,10 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const query = searchParams ? await searchParams : {};
   const giftProblem = typeof query.gift === "string" ? query.gift : "";
   const groupProblem = typeof query.group === "string" ? query.group : "";
+  // A reminder asked for below the buy box, and what came of it (lib/checkout-ask.ts).
+  const remindAsked = typeof query.asked === "string" ? query.asked.slice(0, 20) : "";
+  const remindWhen = typeof query.when === "string" ? query.when.slice(0, 10) : "";
+  const remindable = selling && !soon && !isFree(product) && askable(store, product);
   // Asked of the store, as on the store page (lib/house-store.ts).
   const rehearsal = selling && sellsInTestMode(store);
   const [about, stock, noKeys, page, summary, related, inside, soldCounts] = await Promise.all([
@@ -399,6 +404,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
           }}
         />
       ) : null}
+      {remindable ? <RemindBox store={store} product={product} asked={remindAsked} when={remindWhen} /> : null}
       {giftable ? <GiftBox store={store} product={product} problem={giftProblem} /> : null}
       {groupable ? <GroupBox store={store} product={product} problem={groupProblem} /> : null}
       {product.recurring && canManage(store) ? (

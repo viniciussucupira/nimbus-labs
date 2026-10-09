@@ -202,17 +202,22 @@ export async function remindAbandoned(
  */
 export async function remindAsked(
   store: Store,
-  ask: { productId: string; email: string; askedAt: number; key: string },
+  ask: { productId: string; email: string; askedAt: number; key: string; from?: "checkout" | "page" },
 ): Promise<RemindOutcome> {
   if (!recoveryOn(store) || !store.stripeAccountId || !store.statsId) return "skip";
   const product = await readListing(store, ask.productId);
   if (!product || product.call || product.hidden || !canSellProduct(store, product)) return "skip";
   const left = await stockLeft(store, product).catch(() => null);
   if (left === 0) return "skip";
+  const g = givingWords(store.language);
   return deliver(store, product, ask.email, {
     claim: `ask-${ask.key}`,
     since: ask.askedAt,
-    why: givingWords(store.language).recoverWhyAsked(store.name),
+    why: g.recoverWhyAsked(store.name),
+    // Asked for on the product's page: no checkout was left, and the email says what was asked.
+    ...(ask.from === "page"
+      ? { subject: g.pageAskSubject(product.title), lead: g.pageAskLead(product.title, store.name), only: g.pageAskOnly(g.recoverWhyAsked(store.name)) }
+      : {}),
   });
 }
 
@@ -226,7 +231,7 @@ async function deliver(
   store: Store,
   product: NonNullable<Awaited<ReturnType<typeof readListing>>>,
   email: string,
-  how: { claim: string; since: number; why: string },
+  how: { claim: string; since: number; why: string; subject?: string; lead?: string; only?: string },
 ): Promise<RemindOutcome> {
   const id = how.claim;
   const statsId = store.statsId as string;
@@ -267,14 +272,14 @@ async function deliver(
       : from(price);
   const stop = await stopLink(store, email);
   const text = [
-    g.recoverLead(product.title, name),
+    how.lead ?? g.recoverLead(product.title, name),
     "",
     g.recoverHere,
     productLink(store, product.id),
     "",
     g.recoverPrice(priceWords),
     "",
-    g.recoverOnly(how.why),
+    how.only ?? g.recoverOnly(how.why),
     "",
     g.recoverStop(name, stop.page),
     `${name} · ${store.recovery.address}`,
@@ -288,7 +293,7 @@ async function deliver(
       // from their own address where there is one (lib/mail-from.ts).
       from: fromCreator(store),
       to: email,
-      subject: g.recoverSubject(product.title).slice(0, 200),
+      subject: (how.subject ?? g.recoverSubject(product.title)).slice(0, 200),
       text,
       replyTo: store.email,
       headers: { "List-Unsubscribe": `<${stop.oneClick}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },

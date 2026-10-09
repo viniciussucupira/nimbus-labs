@@ -10,6 +10,7 @@
  * (lib/buyer-words/index.ts, speech); a sentence here only places them.
  */
 import { type LanguageCode, parseLanguage } from "@/lib/store-language";
+import type { AskWhen } from "@/lib/ask-when";
 
 type Interval = "day" | "week" | "month" | "year";
 type Notice = { title: string; body: string };
@@ -191,6 +192,14 @@ const en = {
   remindMe: "Remind me once",
   addressUse: (store: string) =>
     `Your address is used for this one reminder and for the link in it that stops reminders from ${store}, and for nothing else.`,
+  // ---- A reminder asked for on a product's page (lib/ask-when.ts) -------------------------------
+  askWhen: "When",
+  askTimes: { hour: "In about an hour", day: "Tomorrow", days: "In three days" } as Record<AskWhen, string>,
+  pageRemindNote: (store: string) =>
+    `Leave your email and ${store} sends you one reminder with the link, when you choose. One email. It does not add you to any list.`,
+  /** When the reminder goes, as said in the middle of a sentence (pageAsked). */
+  askSaid: { hour: "in about an hour", day: "tomorrow", days: "in three days" } as Record<AskWhen, string>,
+  pageAsked: (store: string, title: string, when: string) => `${store} will email you once, with the link to ${title}, ${when}. If you buy it before then, no reminder is sent.`,
 
   // ---- The email with the link to a membership ---------------------------------------------------
   /** The name an email is sent under. */
@@ -410,6 +419,14 @@ const es: MembershipWords = {
   remindMe: "Recuérdamelo una vez",
   addressUse: (store) =>
     `Tu dirección se usa para este único recordatorio y para el enlace que contiene para detener los recordatorios de ${store}, y para nada más.`,
+  // ---- A reminder asked for on a product's page (lib/ask-when.ts) -------------------------------
+  askWhen: "Cuándo",
+  askTimes: { hour: "Dentro de una hora", day: "Mañana", days: "Dentro de tres días" },
+  pageRemindNote: (store) =>
+    `Deja tu email y ${store} te envía un recordatorio con el enlace, cuando elijas. Un solo email. No te añade a ninguna lista.`,
+  /** When the reminder goes, as said in the middle of a sentence (pageAsked). */
+  askSaid: { hour: "dentro de una hora aproximadamente", day: "mañana", days: "dentro de tres días" },
+  pageAsked: (store, title, when) => `${store} te enviará un único email con el enlace a ${title} ${when}. Si lo compras antes, no se envía ningún recordatorio.`,
 
   fromName: (store) => `${store} vía Marktmorgen`,
   membershipWith: (store) => `Tu membresía en ${store}`,
@@ -631,6 +648,14 @@ const fr: MembershipWords = {
   remindMe: "Me le rappeler une fois",
   addressUse: (store) =>
     `Votre adresse sert à ce seul rappel et au lien qu'il contient pour arrêter les rappels de ${store}, et à rien d'autre.`,
+  // ---- A reminder asked for on a product's page (lib/ask-when.ts) -------------------------------
+  askWhen: "Quand",
+  askTimes: { hour: "Dans une heure environ", day: "Demain", days: "Dans trois jours" },
+  pageRemindNote: (store) =>
+    `Laissez votre e-mail et ${store} vous envoie un seul rappel avec le lien, au moment choisi. Un seul e-mail. Il ne vous ajoute à aucune liste.`,
+  /** When the reminder goes, as said in the middle of a sentence (pageAsked). */
+  askSaid: { hour: "dans une heure environ", day: "demain", days: "dans trois jours" },
+  pageAsked: (store, title, when) => `${store} vous enverra un seul e-mail avec le lien vers ${title} ${when}. Si vous l'achetez avant, aucun rappel n'est envoyé.`,
 
   fromName: (store) => `${store} via Marktmorgen`,
   membershipWith: (store) => `Votre abonnement chez ${store}`,
@@ -856,6 +881,14 @@ const de: MembershipWords = {
   remindMe: "Einmal erinnern",
   addressUse: (store) =>
     `Ihre Adresse wird für diese eine Erinnerung und den darin enthaltenen Link verwendet, der Erinnerungen von ${store} beendet, und für nichts anderes.`,
+  // ---- A reminder asked for on a product's page (lib/ask-when.ts) -------------------------------
+  askWhen: "Wann",
+  askTimes: { hour: "In etwa einer Stunde", day: "Morgen", days: "In drei Tagen" },
+  pageRemindNote: (store) =>
+    `Hinterlassen Sie Ihre E-Mail-Adresse, und ${store} schickt Ihnen zum gewählten Zeitpunkt eine Erinnerung mit dem Link. Eine einzige E-Mail. Sie werden in keine Liste aufgenommen.`,
+  /** When the reminder goes, as said in the middle of a sentence (pageAsked). */
+  askSaid: { hour: "in etwa einer Stunde", day: "morgen", days: "in drei Tagen" },
+  pageAsked: (store, title, when) => `${store} schickt Ihnen ${when} eine einzige E-Mail mit dem Link zu ${title}. Wenn Sie es vorher kaufen, wird keine Erinnerung gesendet.`,
 
   fromName: (store) => `${store} über Marktmorgen`,
   membershipWith: (store) => `Ihre Mitgliedschaft bei ${store}`,
@@ -1079,6 +1112,14 @@ const it: MembershipWords = {
   remindMe: "Ricordamelo una volta",
   addressUse: (store) =>
     `Il tuo indirizzo viene usato per questo unico promemoria e per il link che contiene per interrompere i promemoria di ${store}, e per nient'altro.`,
+  // ---- A reminder asked for on a product's page (lib/ask-when.ts) -------------------------------
+  askWhen: "Quando",
+  askTimes: { hour: "Tra circa un'ora", day: "Domani", days: "Tra tre giorni" },
+  pageRemindNote: (store) =>
+    `Lascia la tua email e ${store} ti invia un solo promemoria con il link, quando scegli tu. Una sola email. Non ti aggiunge a nessuna lista.`,
+  /** When the reminder goes, as said in the middle of a sentence (pageAsked). */
+  askSaid: { hour: "tra circa un'ora", day: "domani", days: "tra tre giorni" },
+  pageAsked: (store, title, when) => `${store} ti invierà una sola email con il link a ${title} ${when}. Se lo acquisti prima, non viene inviato nessun promemoria.`,
 
   fromName: (store) => `${store} tramite Marktmorgen`,
   membershipWith: (store) => `Il tuo abbonamento con ${store}`,
@@ -1294,6 +1335,14 @@ const nl: MembershipWords = {
   remindMe: "Herinner me één keer",
   addressUse: (store) =>
     `Je adres wordt gebruikt voor deze ene herinnering en voor de link erin waarmee je herinneringen van ${store} stopt, en voor niets anders.`,
+  // ---- A reminder asked for on a product's page (lib/ask-when.ts) -------------------------------
+  askWhen: "Wanneer",
+  askTimes: { hour: "Over ongeveer een uur", day: "Morgen", days: "Over drie dagen" },
+  pageRemindNote: (store) =>
+    `Laat je e-mailadres achter en ${store} stuurt je één herinnering met de link, wanneer jij kiest. Eén e-mail. Je komt op geen enkele lijst.`,
+  /** When the reminder goes, as said in the middle of a sentence (pageAsked). */
+  askSaid: { hour: "over ongeveer een uur", day: "morgen", days: "over drie dagen" },
+  pageAsked: (store, title, when) => `${store} stuurt je ${when} één e-mail met de link naar ${title}. Koop je het eerder, dan wordt er geen herinnering gestuurd.`,
 
   fromName: (store) => `${store} via Marktmorgen`,
   membershipWith: (store) => `Je lidmaatschap bij ${store}`,
@@ -1508,6 +1557,14 @@ const pt: MembershipWords = {
   remindMe: "Lembrar-me uma vez",
   addressUse: (store) =>
     `O seu endereço é usado para este único lembrete e para a ligação nele que acaba com os lembretes de ${store}, e para mais nada.`,
+  // ---- A reminder asked for on a product's page (lib/ask-when.ts) -------------------------------
+  askWhen: "Quando",
+  askTimes: { hour: "Daqui a cerca de uma hora", day: "Amanhã", days: "Daqui a três dias" },
+  pageRemindNote: (store) =>
+    `Deixe o seu email e ${store} envia-lhe um único lembrete com a ligação, quando escolher. Um só email. Não o adiciona a nenhuma lista.`,
+  /** When the reminder goes, as said in the middle of a sentence (pageAsked). */
+  askSaid: { hour: "daqui a cerca de uma hora", day: "amanhã", days: "daqui a três dias" },
+  pageAsked: (store, title, when) => `${store} vai enviar-lhe um único email com a ligação para ${title} ${when}. Se o comprar antes, não é enviado nenhum lembrete.`,
 
   fromName: (store) => `${store} via Marktmorgen`,
   membershipWith: (store) => `A sua subscrição com ${store}`,

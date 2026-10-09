@@ -44,7 +44,7 @@
  * with a failure; put back, it passed four times in a row.
  */
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -119,6 +119,8 @@ const words = async (locator) => (await locator.innerText()).replace(/\s+/g, " "
 const services = await startServices(SERVICES);
 let app = null;
 let browser = null;
+/** Everything the app said, kept for E2E_APP_LOG=<file> (written there at the end). */
+let appLog = "";
 try {
   // The store, written through the studio's own functions.
   const out = mkdtempSync(join(tmpdir(), "nimbus-e2e-seed-"));
@@ -142,8 +144,14 @@ try {
   const start = () => {
     log = "";
     app = spawn("npx", ["next", "dev", "-p", String(APP)], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
-    app.stdout.on("data", (chunk) => (log += chunk));
-    app.stderr.on("data", (chunk) => (log += chunk));
+    app.stdout.on("data", (chunk) => {
+      log += chunk;
+      appLog += chunk;
+    });
+    app.stderr.on("data", (chunk) => {
+      log += chunk;
+      appLog += chunk;
+    });
   };
   start();
   let started = Date.now();
@@ -166,6 +174,34 @@ try {
   // once here, so no check below races a route still being built.
   for (const path of [`/@localshop/p/${ids["Meal Planner"]}`, "/api/store/checkout", "/studio", "/@localshop/orders"]) {
     await fetch(`${LOCAL}${path}`).catch(() => {});
+  }
+  // On a fresh dev server, the store's pages under a product (its page, its
+  // booking page) have now and then all answered "not found" for as long as
+  // that server ran, without the page's code ever running — never on the
+  // site itself, and never on a second server. So the first product page is
+  // asked for until it is found, and a server that does not find it within
+  // half a minute is started again, its cache put aside, at most twice.
+  for (let restarts = 0; ; restarts += 1) {
+    let found = false;
+    for (let waited = 0; waited < 30_000 && !found; waited += 3_000) {
+      const answer = await fetch(`${LOCAL}/@localshop/p/${ids["Meal Planner"]}`, { redirect: "manual" }).catch(() => null);
+      found = answer?.status === 200;
+      if (!found) await new Promise((wait) => setTimeout(wait, 3_000));
+    }
+    if (found) break;
+    if (restarts >= 2) throw new Error("the product page was not found on three dev servers in a row");
+    console.log("the first product page was not found; the dev server is started again");
+    await stop(app);
+    rmSync(join(root, ".next", "dev", "cache"), { recursive: true, force: true });
+    start();
+    const again = Date.now();
+    while (!(await fetch(`${LOCAL}/@localshop`).then((r) => r.status === 200).catch(() => false))) {
+      if (Date.now() - again > 180_000) throw new Error(`the app did not start again:\n${log.slice(-2000)}`);
+      await new Promise((wait) => setTimeout(wait, 1500));
+    }
+    for (const path of [`/@localshop/p/${ids["Meal Planner"]}`, "/api/store/checkout", "/studio", "/@localshop/orders"]) {
+      await fetch(`${LOCAL}${path}`).catch(() => {});
+    }
   }
   browser = await chromium.launch(process.env.PLAYWRIGHT_BROWSERS_PATH ? { executablePath: join(process.env.PLAYWRIGHT_BROWSERS_PATH, "chromium") } : {}).catch(() => chromium.launch());
   const context = await browser.newContext({ viewport: { width: 430, height: 900 } });
@@ -209,7 +245,7 @@ try {
   for (let tries = 0; tries < 3 && !(await page.locator("#group summary").count()); tries += 1) {
     console.log("the product page came back without its buy box:", page.url(), (await words(page.locator("body"))).slice(0, 200));
     // What the app said meanwhile: why a page it has just built answers "not found" is in there.
-    console.log("the app's last words:", log.split("\n").filter((l) => l.trim() && !l.includes("Error while requesting resource")).slice(-40).join("\n"));
+    console.log("the app's last words:", log.split("\n").filter((l) => /GET |POST |⨯|rror/.test(l) && !/Error while requesting resource|Failed to download|next\/font/.test(l)).slice(-20).join("\n"));
     await page.waitForTimeout(3_000);
     await open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`);
   }
@@ -862,6 +898,24 @@ try {
     // calls itself headless, and a store's numbers leave out what robots open.
   }
 
+  part("A reminder asked for on a product's page");
+  {
+    const remind = (enabled) => studio.evaluate(async (enabled) => (await (await fetch("/api/store/recovery", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled, address: "1 Harbor Road, Portland, ME 04101" }) })).json()).ok === true, enabled);
+    is("with reminders switched on", await remind(true), true);
+    await open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`);
+    const box = page.locator("#remind");
+    await box.locator("summary").click();
+    await box.getByLabel("Your email").fill("later@example.com");
+    await box.getByLabel("When").selectOption("day");
+    await Promise.all([page.waitForURL(/asked=asked/), box.getByRole("button", { name: "Remind me once" }).click()]);
+    is("back on the product's page, saying when, with no address in its link", [
+      (await words(page.locator("#remind"))).includes("with the link to Meal Planner, tomorrow."),
+      page.url().includes("later%40example.com") || page.url().includes("later@example.com"),
+    ], [true, false]);
+    if (process.env.E2E_SHOTS) await page.locator("#remind").screenshot({ path: join(process.env.E2E_SHOTS, "remind-asked.png") });
+    is("and off again, the page offers none", await remind(false).then(() => open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`)).then(() => page.locator("#remind").count()), 0);
+  }
+
   part("The letters of the page, picked in the studio");
   {
     await open(studio, `${LOCAL}/studio`);
@@ -936,6 +990,7 @@ try {
   if (browser) await browser.close().catch(() => {});
   await stop(app);
   await services.close().catch(() => {});
+  if (process.env.E2E_APP_LOG) writeFileSync(process.env.E2E_APP_LOG, appLog);
 }
 
 console.log(failed ? `\n${failed} failing.` : "\nEverything passing.");
