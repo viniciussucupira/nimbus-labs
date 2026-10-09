@@ -93,7 +93,7 @@ const PHOTO_TIMEOUT_MS = 15_000;
 export const DEMO_STORE = {
   name: "Harbor Kitchen",
   bio: "Simple family meals by Jenny, a fictional cook. This is Marktmorgen's demo store: you pay with Stripe's test card, and the file you get is real.",
-  look: { theme: "sand", accent: "#e5533d", badge: true, sold: false, font: "modern" } satisfies StoreLook,
+  look: { theme: "sand", accent: "#e5533d", badge: true, sold: false, font: "modern", backdrop: "glow" } satisfies StoreLook,
   photo: {
     id: "photo-1543871595-e11129e271cc",
     query: "fm=webp&fit=crop&crop=faces&w=480&h=480&q=75",
@@ -446,7 +446,7 @@ async function ensureStore(pending: string[]): Promise<Store | null> {
     else pending.push(refused("details", done.reason));
   }
   const look = store.look;
-  if (look.theme !== DEMO_STORE.look.theme || look.accent !== DEMO_STORE.look.accent || look.badge !== DEMO_STORE.look.badge) {
+  if (look.theme !== DEMO_STORE.look.theme || look.accent !== DEMO_STORE.look.accent || look.badge !== DEMO_STORE.look.badge || look.backdrop !== DEMO_STORE.look.backdrop) {
     const done = await updateLook(REF, { ...DEMO_STORE.look });
     if (done.ok) store = done.store;
     else pending.push(refused("look", done.reason));

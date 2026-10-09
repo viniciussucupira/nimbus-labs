@@ -1809,8 +1809,22 @@ a.chip {
    ------------------------------------------------------------------------ */
 .st-page {
   background: var(--st-bg);
+  /* The creator's backdrop (lib/store-look.ts, backdropStyle); none for Plain. */
+  background-image: var(--st-backdrop, none);
+  background-size: var(--st-backdrop-size, auto);
+  animation: st-aurora 40s ease-in-out infinite alternate;
+  animation-play-state: var(--st-backdrop-play, paused);
   color: var(--st-text);
   font-family: var(--st-font-body, var(--font-body)), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+@keyframes st-aurora {
+  from { background-position: 0% 0%; }
+  to { background-position: 100% 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-page {
+    animation: none;
+  }
 }
 /* The letters the creator picked for headings (lib/store-look.ts, FONTS). */
 .st-page .font-display {

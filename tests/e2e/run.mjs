@@ -1337,6 +1337,19 @@ try {
   }
 
   await keepSmall();
+  part("A background behind the cards, picked in the studio");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    await studio.getByRole("group", { name: "Background" }).getByText("Glow", { exact: true }).click();
+    await studio.getByRole("button", { name: "Save the look" }).click();
+    await studio.getByText("Look saved.").first().waitFor({ timeout: 15_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    const drawn = await page.locator(".st-page").first().evaluate((el) => [el.style.getPropertyValue("--st-backdrop"), getComputedStyle(el).backgroundImage]);
+    is("the store page draws it, from its own colors", [/radial-gradient/.test(drawn[0]), drawn[1] !== "none"], [true, true]);
+    if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "backdrop-glow.png") });
+  }
+
+  await keepSmall();
   part("Logging in is not starting a store");
   await open(page, `${LOCAL}/signin?to=login`);
   is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);

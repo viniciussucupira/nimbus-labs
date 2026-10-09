@@ -58,6 +58,33 @@ export const FONTS = [
 
 export type FontId = (typeof FONTS)[number]["id"];
 
+/**
+ * What lies behind the cards (added 9 October 2026): plain, or a soft glow
+ * of the store's color, fine dots, a light grid, or a slow aurora that only
+ * moves for visitors who have not asked their device for less motion.
+ * Linktree and Beacons let a creator pick a background; every one here is
+ * drawn by the page itself in its own colors, so nothing is downloaded and
+ * the words keep their contrast.
+ */
+export const BACKDROPS = [
+  { id: "plain", label: "Plain", description: "Just the theme's color." },
+  { id: "glow", label: "Glow", description: "A soft light of your color at the top." },
+  { id: "dots", label: "Dots", description: "Fine dots, like good notebook paper." },
+  { id: "grid", label: "Grid", description: "A light grid, neat and technical." },
+  { id: "aurora", label: "Aurora", description: "Your color drifting slowly behind everything." },
+] as const;
+
+export type BackdropId = (typeof BACKDROPS)[number]["id"];
+
+export function isBackdrop(value: unknown): value is BackdropId {
+  return typeof value === "string" && BACKDROPS.some((b) => b.id === value);
+}
+
+/** The class that draws a store's backdrop on its pages ("" for plain). */
+export function backdropClass(look: Pick<StoreLook, "backdrop">): string {
+  return look.backdrop && look.backdrop !== "plain" ? `st-bg-${look.backdrop}` : "";
+}
+
 export function isFont(value: unknown): value is FontId {
   return typeof value === "string" && FONTS.some((font) => font.id === value);
 }
@@ -98,9 +125,11 @@ export type StoreLook = {
   sold: boolean;
   /** The letters of the page (FONTS). Modern unless the creator picks another. */
   font: FontId;
+  /** What lies behind the cards (BACKDROPS). Plain unless the creator picks another. */
+  backdrop: BackdropId;
 };
 
-export const DEFAULT_LOOK: StoreLook = { theme: "light", accent: "#5a36ee", badge: true, sold: false, font: "modern" };
+export const DEFAULT_LOOK: StoreLook = { theme: "light", accent: "#5a36ee", badge: true, sold: false, font: "modern", backdrop: "plain" };
 
 /** Exactly six hex digits after a hash, lower case. Nothing else is a colour here. */
 export const HEX_PATTERN = /^#[0-9a-f]{6}$/;
@@ -133,6 +162,7 @@ export function parseLook(raw: unknown): StoreLook {
     // Only an explicit true: every store saved before this existed keeps it off.
     sold: value.sold === true,
     font: isFont(value.font) ? value.font : DEFAULT_LOOK.font,
+    backdrop: isBackdrop(value.backdrop) ? value.backdrop : DEFAULT_LOOK.backdrop,
   };
 }
 
@@ -278,7 +308,7 @@ export type LookColours = {
  * image, the studio's live preview — have a theme and an accent in hand and
  * no store behind them.
  */
-export type LookPaint = Pick<StoreLook, "theme" | "accent"> & { font?: FontId };
+export type LookPaint = Pick<StoreLook, "theme" | "accent"> & { font?: FontId; backdrop?: BackdropId };
 
 export function lookColours(look: LookPaint): LookColours {
   const palette = PALETTES[look.theme] ?? PALETTES.light;
@@ -361,8 +391,39 @@ export function lookStyle(look: LookPaint): Record<string, string> {
     "--st-accent-2": c.accent2,
     "--st-band": c.band,
     ...fontStyle(look.font),
+    ...backdropStyle(look.backdrop),
     colorScheme: c.dark ? "dark" : "light",
   };
+}
+
+/**
+ * The variables that draw a page's backdrop (app/globals.css, .st-page):
+ * none for Plain. Every one is painted from the page's own colors at a low
+ * strength, so text set on the page keeps its contrast.
+ */
+export function backdropStyle(id: BackdropId | undefined): Record<string, string> {
+  const tint = (percent: number, of = "var(--st-accent)") => `color-mix(in srgb, ${of} ${percent}%, transparent)`;
+  switch (id) {
+    case "glow":
+      return {
+        "--st-backdrop": `radial-gradient(60rem 26rem at 12% -6rem, ${tint(22)}, transparent 70%), radial-gradient(48rem 24rem at 100% 0, ${tint(14)}, transparent 70%)`,
+      };
+    case "dots":
+      return { "--st-backdrop": `radial-gradient(${tint(10, "var(--st-text)")} 1px, transparent 1.5px)`, "--st-backdrop-size": "18px 18px" };
+    case "grid":
+      return {
+        "--st-backdrop": `linear-gradient(${tint(6, "var(--st-text)")} 1px, transparent 1px), linear-gradient(90deg, ${tint(6, "var(--st-text)")} 1px, transparent 1px)`,
+        "--st-backdrop-size": "28px 28px",
+      };
+    case "aurora":
+      return {
+        "--st-backdrop": `radial-gradient(40rem 24rem at 20% 10%, ${tint(16)}, transparent 70%), radial-gradient(36rem 22rem at 80% 30%, ${tint(12, "var(--st-accent-2)")}, transparent 70%), radial-gradient(44rem 26rem at 50% 90%, ${tint(10)}, transparent 70%)`,
+        "--st-backdrop-size": "200% 200%",
+        "--st-backdrop-play": "running",
+      };
+    default:
+      return {};
+  }
 }
 
 /** The variables that set a page's letters (app/globals.css, .st-page); none for Modern. */
