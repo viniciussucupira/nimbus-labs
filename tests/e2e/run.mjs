@@ -974,7 +974,7 @@ try {
   await open(page, `${LOCAL}/signin`);
   is("pressed Start your store: they say start", [await words(page.locator("h1")), await page.title()], ["Start your store", "Start your store — Marktmorgen"]);
 
-  part("No accessibility errors on what buyers see");
+  part("No accessibility errors on what buyers and creators see");
   {
     // A context of its own that lets the rules' script in past the pages'
     // policy; the pages themselves are drawn exactly as for anyone else.
@@ -1005,6 +1005,26 @@ try {
       // And what a creator works in, signed in as the store's owner.
       ["the studio", "/studio", 1200],
       ["the sales page editor", `/studio/pages?product=${ids["Knife Skills"]}`, 1200],
+      ["the studio's reviews", "/studio/reviews?view=all", 1200],
+      ["the studio's email", "/studio/email", 1200],
+      ["the studio's affiliates", "/studio/affiliates", 1200],
+      ["the studio's bundles", "/studio/bundles", 1200],
+      ["the studio's funnels", "/studio/funnels", 1200],
+      ["the studio's team", "/studio/team", 1200],
+      ["the studio's imports", "/studio/import", 1200],
+      ["the studio's integrations", "/studio/integrations", 1200],
+      ["the studio's memberships", "/studio/memberships", 1200],
+      ["the studio's community", "/studio/community", 1200],
+      ["the studio's calls", "/studio/meetings", 1200],
+      ["the studio's outreach", "/studio/outreach", 1200],
+      ["the studio's phone alerts", "/studio/phone", 1200],
+      ["the studio, on a phone", "/studio", 430],
+      // And the site a creator meets first.
+      ["the home page", "/", 0],
+      ["the home page, on a computer", "/", 1200],
+      ["a feature page", "/platform/sales-pages", 0],
+      ["the help center", "/help", 1200],
+      ["a buyer's orders", "/@localshop/orders", 0],
     ];
     await audit.addCookies(await wide.cookies());
     for (const [name, path, width] of pages) is(name, await check(path, width), []);
