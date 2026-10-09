@@ -28,8 +28,8 @@ import {
   type ProductKind,
 } from "@/lib/ai-rules";
 
-import { type PageBlock, parsePage } from "@/lib/sales-page";
-import { REWRITABLE, REWRITE_STYLES, type RewriteStyle, addsNumbers, blockText } from "@/lib/block-rewrite-rules";
+import { type PageBlock, emptyBlock, parsePage } from "@/lib/sales-page";
+import { FILLABLE, REWRITABLE, REWRITE_STYLES, type RewriteStyle, addsNumbers, blockText } from "@/lib/block-rewrite-rules";
 
 const API = /^http:\/\/127\.0\.0\.1:\d+$/.test(process.env.ANTHROPIC_API_BASE ?? "")
   ? `${process.env.ANTHROPIC_API_BASE}/v1/messages`
@@ -580,6 +580,65 @@ export async function rewriteBlock(
     if (addsNumbers(before, merged, input.facts)) return null;
     if (merged.kind === "cta") merged.label = merged.label.replace(/\s*\b(?:for|at|only)?\s*[$€£¥]\s*\d[\d.,]*/gi, "").trim();
     return merged;
+  });
+}
+
+/** What each block the writing help may write from nothing asks for (lib/block-rewrite-rules.ts, FILLABLE). */
+const FILL_ASKS: Partial<Record<PageBlock["kind"], { ask: string; shape: string }>> = {
+  benefits: {
+    ask: "Write four to six short points on what the buyer gets or can do once they have it, each under twelve words, each a different thing the facts name.",
+    shape: '{"heading": string, "items": string[]}',
+  },
+  fit: {
+    ask: "Write who it is for (three points) and who it is not for (two points), each under twelve words, drawn from what the facts say it is and is not. Leave yesLabel and noLabel empty.",
+    shape: '{"heading": string, "yesLabel": "", "noLabel": "", "yes": string[], "no": string[]}',
+  },
+  steps: {
+    ask: "Write three to five steps from paying to having what the facts describe, each a short title and a line under it. Say only how it is delivered or used as far as the facts say; where they do not say, keep the step general.",
+    shape: '{"heading": string, "items": [{"title": string, "detail": string}]}',
+  },
+  faq: {
+    ask: "Write three to six questions a buyer would ask before paying, each with an answer taken only from the facts. Leave out any question the facts do not answer: never answer one by guessing.",
+    shape: '{"heading": string, "items": [{"q": string, "a": string}]}',
+  },
+};
+
+/**
+ * One block written from nothing (added 8 October 2026), from the product
+ * and the page: the points of a benefits block, who it is for, how it works,
+ * the questions the page can already answer. Held to the honesty rules and
+ * to the same check as a rewrite — a number that is not on the page or in
+ * the product sends the whole draft back, uncounted.
+ */
+export async function fillBlock(
+  store: Store,
+  input: { block: PageBlock; facts: string; language: string },
+  now = Date.now(),
+): Promise<AiResult<PageBlock>> {
+  const want = FILLABLE.includes(input.block.kind) ? FILL_ASKS[input.block.kind] : undefined;
+  if (!want) return { ok: false, reason: "notes" };
+  const empty = emptyBlock(input.block.kind, input.block.id);
+  return counted(store, now, async () => {
+    const system = [
+      "You write one section of a creator's sales page from the facts about their product and the rest of their page.",
+      HONESTY,
+      `Write in ${input.language}, the language the page is written in.`,
+      want.ask,
+      "Add no number, amount, duration, quantity, result, bonus, deadline or promise that is not in the facts. Use the creator's names for things.",
+      "The heading is short and plain.",
+      `Return only a JSON object shaped ${want.shape}.`,
+    ].join("\n\n");
+    const answer = await ask(system, `The facts:\n${input.facts}`, 2_000);
+    const json = answer ? jsonIn(answer) : null;
+    if (!json) return null;
+    const written = parsePage({ blocks: [{ ...empty, ...json, id: input.block.id, kind: input.block.kind, ...(input.block.screens ? { screens: input.block.screens } : {}) }] }).blocks[0];
+    if (!written || written.kind !== input.block.kind || !blockText(written).trim()) return null;
+    if (written.kind === "faq" && written.items.length === 0) return null;
+    if (addsNumbers(empty, written, input.facts)) return null;
+    // A heading the creator wrote stays theirs; the one a new block starts with is the draft's to write.
+    const own = "heading" in input.block && input.block.heading && input.block.heading !== ("heading" in empty ? empty.heading : "");
+    if (own && "heading" in input.block && "heading" in written) written.heading = input.block.heading;
+    return written;
   });
 }
 

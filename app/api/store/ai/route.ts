@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { reviewPage, rewriteBlock, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { fillBlock, reviewPage, rewriteBlock, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
 import { isRewriteStyle } from "@/lib/block-rewrite-rules";
 import { factsFor, missedQuestions } from "@/lib/answers";
 import { parsePage } from "@/lib/sales-page";
@@ -19,7 +19,7 @@ import { AI_PER_MINUTE, EMAIL_GOALS, type EmailGoal, MAX_AI_NOTES, type ProductK
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
 /**
- * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "outline" | "email", … }`.
+ * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "outline" | "email", … }`.
  * It writes into the studio's own boxes and saves nothing: whatever comes back
  * is the creator's to read, change and keep, or not.
  *
@@ -125,6 +125,16 @@ export async function POST(request: NextRequest) {
     return answer(
       rewriteBlock(store, { block, style: body.style, facts: factsFor(store, product, about, page), language: LANGUAGES[store.language].english }),
     );
+  }
+  if (body.kind === "fill") {
+    // One empty block written from the product and the page (lib/ai.ts, fillBlock); nothing is saved here.
+    const product = await readListing(store, text(body.product, 40));
+    if (!product) return fail("unknown", 404);
+    const page = parsePage(body.page);
+    const block = parsePage({ blocks: [body.block] }).blocks[0];
+    if (!block) return fail("invalid");
+    const about = product.about ? await readAbout(store.statsId, product.id) : "";
+    return answer(fillBlock(store, { block, facts: factsFor(store, product, about, page), language: LANGUAGES[store.language].english }));
   }
   if (body.kind === "outline") {
     return answer(writeOutline(store, { title: text(body.title, 200), notes }));

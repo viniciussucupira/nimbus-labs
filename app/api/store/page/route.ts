@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
     if (gone.length > 0) {
       await del(gone).catch((error: unknown) => console.error("could not delete pictures taken off a page", error));
     }
-    return Response.json({ ok: true, blocks: page.blocks.length });
+    // The page as it was kept, so the editor shows exactly that without starting over.
+    return Response.json({ ok: true, blocks: page.blocks.length, page });
   } catch (error) {
     if (error instanceof StoreFullError) return Response.json({ ok: false, error: "store_full" }, { status: 409 });
     console.error("saving a product page failed", error);

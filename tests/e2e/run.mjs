@@ -205,7 +205,9 @@ try {
   // The first product page a fresh dev server builds has, now and then, come
   // back without its buy box; what it showed is said, and it is asked once more.
   for (let tries = 0; tries < 3 && !(await page.locator("#group summary").count()); tries += 1) {
-    console.log("the product page came back without its buy box:", page.url(), (await words(page.locator("body"))).slice(0, 400));
+    console.log("the product page came back without its buy box:", page.url(), (await words(page.locator("body"))).slice(0, 200));
+    // What the app said meanwhile: why a page it has just built answers "not found" is in there.
+    console.log("the app's last words:", log.split("\n").filter((l) => /GET \/@|rror/.test(l)).slice(-20).join("\n"));
     await page.waitForTimeout(3_000);
     await open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`);
   }
@@ -650,16 +652,18 @@ try {
     is("the block goes third, open to fill in", [await blocks.count(), (await words(blocks.nth(2))).startsWith("3. Questions"), await studio.locator("#block-find").count()], [before + 1, true, 0]);
     await studio.getByRole("group", { name: "Shows on" }).getByRole("button", { name: "Phones only" }).click();
     is("a block can be kept to phones, and its row says so", (await words(blocks.nth(2))).includes("Phones only · "), true);
+    // A pause, so adding the next block is a step of its own for Undo.
+    await studio.waitForTimeout(700);
     await studio.getByRole("button", { name: /^Add a block \(/ }).click();
     await studio.getByRole("region", { name: "Add a block at the end" }).getByRole("button", { name: /^Button/ }).click();
     is("and one at the end goes last", (await words(blocks.last())).includes(`${before + 2}. Button`), true);
-    // Changes made within a moment of each other are one step.
+    await studio.waitForTimeout(700);
     await studio.getByRole("button", { name: "Undo the last change" }).click();
-    is("Undo takes the last change back", await blocks.count(), before);
+    is("Undo takes the last change back, and only it", await blocks.count(), before + 1);
     await studio.getByRole("button", { name: "Redo" }).click();
-    is("Redo puts it back", [await blocks.count(), (await words(blocks.nth(2))).includes("Phones only")], [before + 2, true]);
+    is("Redo puts it back", await blocks.count(), before + 2);
     await studio.locator("body").press("Control+z");
-    is("and so do the keys: Ctrl+Z", await blocks.count(), before);
+    is("and so do the keys: Ctrl+Z", await blocks.count(), before + 1);
     await studio.locator("body").press("Control+Shift+z");
     is("and Ctrl+Shift+Z", await blocks.count(), before + 2);
     if (process.env.E2E_SHOTS) {
