@@ -5,7 +5,8 @@
  * says plainly that nothing is charged and that Jenny is fictional; a change
  * to it changes the fingerprint, so the live demo is brought in line.
  */
-import { DEMO_PAGE, seedFingerprint } from "@/lib/demo-seed";
+import { DEMO_PAGE, DEMO_POST, seedFingerprint } from "@/lib/demo-seed";
+import { cleanPost, postBlocks, postIdFrom } from "@/lib/store-blog";
 import { pageProblem, parsePage } from "@/lib/sales-page";
 import { pageWords } from "@/lib/page-translate";
 import { done, is, part } from "./check";
@@ -21,6 +22,12 @@ is("no review, quote, countdown or counted number", page.blocks.filter((b) => ["
 const words = pageWords(page).join("\n");
 is("it says nothing is charged, and that Jenny is fictional", [words.includes("Nothing is charged"), words.includes("A fictional cook")], [true, true]);
 is("and states no price of its own", /\$\d/.test(words), false);
+
+part("The demo's blog post");
+const blocks = postBlocks(DEMO_POST.body);
+is("a post the studio would save, with headings and lists", [cleanPost({ title: DEMO_POST.title, body: DEMO_POST.body }).title, blocks.filter((b) => b.kind === "heading").length, blocks.some((b) => b.kind === "list")], [DEMO_POST.title, 4, true]);
+is("under an id a post can have", postIdFrom(DEMO_POST.id), DEMO_POST.id);
+is("and no price or promised result", /\$\d|guarantee|you will/i.test(DEMO_POST.body), false);
 
 part("Kept in line on the live demo");
 is("its fingerprint covers the page", seedFingerprint().length, 24);

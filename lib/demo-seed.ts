@@ -63,6 +63,7 @@ import {
   setAnswers,
   setProductImage,
   setProductPage,
+  setPostCount,
   setStripeAccount,
   setSubscription,
   storeFolder,
@@ -73,6 +74,7 @@ import {
 import { canSellProduct } from "@/lib/store-checkout";
 import { parsePage } from "@/lib/sales-page";
 import { readPage, writePage } from "@/lib/sales-page-store";
+import { cleanPost, readPost, savePost } from "@/lib/store-blog";
 import { type StoreLook } from "@/lib/store-look";
 import { MAX_PHOTO_BYTES, deletePhoto, sniffPhotoType, writePhoto } from "@/lib/store-photo";
 
@@ -185,6 +187,40 @@ export const DEMO_PAGE = {
   ],
 } as const;
 
+/**
+ * One post on the demo's blog (lib/store-blog.ts), so whoever opens the demo
+ * sees what a creator's blog looks like. Plain advice, true for anyone, with
+ * no claim about results, written by the same fictional cook; it ends on the
+ * product, as a creator's post may.
+ */
+export const DEMO_POST = {
+  id: "0000000d01",
+  title: "How to plan a week of family dinners in 20 minutes",
+  body: `Planning the week's dinners once, on one day, is what saves the other six. Here is a way to do it in about twenty minutes.
+
+## Start from what you already have
+Open the fridge and the cupboard before you open a cookbook.
+- Note what needs using up first: greens, opened jars, half a bag of rice
+- Plan the first two dinners around those
+
+## Give each night a rule
+A rule makes the choice for you on a busy evening.
+- Monday: something in one pan
+- Tuesday: soup or a big salad
+- Wednesday: pasta
+- Thursday: leftovers night
+- Friday: something everyone builds at the table
+
+## Write one grocery list, in the order of the store
+Group the list by aisle: produce, dairy, dry goods, frozen. One trip, no backtracking, and nothing forgotten.
+
+## Cook twice, eat three times
+Make a double batch of one dinner early in the week and keep the second half for the leftovers night.
+
+That is the whole method. The planner below puts it on one printable page per week, with the grocery list beside it.`,
+  product: true,
+} as const;
+
 // ---- The mark ----------------------------------------------------------------
 
 const MARK = "nl:house:seed";
@@ -198,7 +234,7 @@ const sha = (value: string | Uint8Array) => createHash("sha256").update(value).d
 /** Everything above, and the files themselves, as one short word. */
 export function seedFingerprint(): string {
   const files = DEMO_PRODUCT.options.map((option) => sha(getDemoFile(option.file)));
-  return sha(JSON.stringify([HOUSE_HANDLE, DEMO_STORE, DEMO_PRODUCT, DEMO_PAGE, files, DEMO_CONNECTED_ACCOUNT])).slice(0, 24);
+  return sha(JSON.stringify([HOUSE_HANDLE, DEMO_STORE, DEMO_PRODUCT, DEMO_PAGE, DEMO_POST, files, DEMO_CONNECTED_ACCOUNT])).slice(0, 24);
 }
 
 type Mark = {
@@ -547,6 +583,23 @@ async function ensurePage(store: Store, product: Listing, pending: string[]): Pr
   return marked.store;
 }
 
+/** The one post on the demo's blog, saved the way the studio's blog route saves one. */
+async function ensurePost(store: Store, product: Listing, pending: string[]): Promise<Store> {
+  if (!store.statsId) {
+    pending.push(refused("post", "no_stats"));
+    return store;
+  }
+  const want = { title: DEMO_POST.title, body: cleanPost({ body: DEMO_POST.body }).body, product: DEMO_POST.product ? product.id : null, draft: false };
+  const have = await readPost(store.statsId, DEMO_POST.id);
+  if (have && !have.draft && have.title === want.title && have.body === want.body && have.product === want.product && store.posts > 0) return store;
+  const saved = await savePost(store.statsId, have ? DEMO_POST.id : null, want, () => DEMO_POST.id);
+  if (!saved.ok) {
+    pending.push(refused("post", saved.reason));
+    return store;
+  }
+  return (await setPostCount(REF, saved.published)) ?? store;
+}
+
 /** Brings the demo store in line with this file, one step at a time. */
 async function build(before: Mark | null, deps: SeedDeps): Promise<Mark> {
   const pending: string[] = [];
@@ -570,6 +623,7 @@ async function build(before: Mark | null, deps: SeedDeps): Promise<Mark> {
   mark.image = picture.source;
   store = await ensureAbout(store, made.product, pending);
   store = await ensurePage(store, made.product, pending);
+  store = await ensurePost(store, made.product, pending);
 
   // The one thing all of it is for: the product can be bought.
   const fresh = await storeForEmail(REF);
