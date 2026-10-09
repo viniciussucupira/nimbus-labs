@@ -277,7 +277,7 @@ const SECTIONS: Section[] = [
       {
         q: "Can it write my descriptions, outlines and emails?",
         a: [
-          "Yes, as a first draft. In your studio, a box under a product's name, above a course's modules and at the top of a new email takes a few words from you and fills in the product's short and long description, a course outline of up to 8 modules of up to 8 lessons, or an email's subject and body.",
+          "Yes, as a first draft. In your studio, a box under a product's name, above a course's modules and at the top of a new email takes a few words from you and fills in the product's short and long description, a course outline of up to 8 modules of up to 8 lessons, or an email's subject and body. Under your store's name and description, it suggests three lines about your store, from what it sells, to pick from.",
           "It writes in your store's language (American English for a store in English) from only what you typed and what the product is. It is told never to invent a review, a testimonial, a number of students or sales, a result, a guarantee, a discount or a deadline, and nothing is saved, added or sent until you press the button that does it. Read it before you publish: it goes out under your name.",
           "Each store gets 20 drafts a month on the free trial, 100 on Creator, 400 on Pro and 1,000 on Scale, shared by all the writing help, and a draft that fails is not counted. Translating a whole sales page takes one for every 4,000 characters of it, and says how many before it runs. The drafts are written by Anthropic's Claude, which receives what you typed, the product's name, price and kind, and your store's name, and nothing about your buyers, members or list.",
         ],

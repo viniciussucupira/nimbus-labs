@@ -511,6 +511,8 @@ export default async function StudioPage({
   const pictures = store ? await imageFolder(ref) : "";
   /** Carried on the forms below that post to the studio's routes, so each acts on this store. */
   const pin = store?.sid ? `?store=${store.sid}` : "";
+  // The writing help, and what is left of it this month: read once for the whole studio page.
+  const ai = store && isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 };
   const notice =
     ADDRESS_NOTICES[typeof params.address === "string" ? params.address : ""] ??
     STRIPE_NOTICES[typeof params.stripe === "string" ? params.stripe : ""] ??
@@ -905,7 +907,7 @@ export default async function StudioPage({
               ) : null}
               {may("page") ? (
                 <div className="mt-3">
-                  <DetailsForm name={store.name} bio={store.bio} />
+                  <DetailsForm name={store.name} bio={store.bio} ai={ai} />
                 </div>
               ) : null}
 
@@ -976,7 +978,7 @@ export default async function StudioPage({
                   email={store.email}
                   currency={store.currency}
                   meetings={meetAccounts}
-                  ai={isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}
+                  ai={ai}
                   newComments={await newCommentsFor(shelf?.products ?? [])}
                   waitlists={await waitlistViews(store, (shelf?.products ?? []).map((p) => p.id)).catch(() => ({}))}
                   mailAddress={store.mail?.address ?? store.winback?.address ?? ""}

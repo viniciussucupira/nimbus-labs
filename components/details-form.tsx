@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
+import { Icon } from "@/components/icons";
 import { MAX_BIO_LENGTH, MAX_NAME_LENGTH } from "@/lib/store";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
@@ -25,14 +26,52 @@ type State =
 export function DetailsForm({
   name: current,
   bio: currentBio,
+  ai = { on: false, left: 0 },
 }: {
   name: string;
   bio: string;
+  /** The writing help, and what is left of it this month (lib/ai.ts, writeBio). */
+  ai?: { on: boolean; left: number };
 }) {
   const router = useRouter();
   const [name, setName] = useState(current);
   const [bio, setBio] = useState(currentBio);
   const [state, setState] = useState<State>({ kind: "closed" });
+  const [hint, setHint] = useState("");
+  const [lines, setLines] = useState<string[]>([]);
+  const [writing, setWriting] = useState(false);
+  const [aiNote, setAiNote] = useState("");
+  const [left, setLeft] = useState(ai.left);
+
+  /** Three lines to choose from, written from what the store sells and the words in the box. */
+  async function suggest() {
+    setWriting(true);
+    setAiNote("");
+    try {
+      const response = await fetch("/api/store/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "bio", notes: hint }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; value?: string[]; left?: number; error?: string };
+      if (data.ok && Array.isArray(data.value)) {
+        setLines(data.value);
+        if (typeof data.left === "number") setLeft(data.left);
+        return;
+      }
+      setAiNote(
+        data.error === "notes"
+          ? "Add a product first, or write a few words about your store in the box."
+          : data.error === "used"
+            ? "This month's writing help is used up. It starts again on the 1st."
+            : "The writing help did not answer just now. Nothing was changed, and it was not counted.",
+      );
+    } catch {
+      setAiNote("The writing help did not answer just now. Nothing was changed, and it was not counted.");
+    } finally {
+      setWriting(false);
+    }
+  }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -115,6 +154,44 @@ export function DetailsForm({
           {MAX_BIO_LENGTH - bio.length} characters left. It sits under the name
           on your page.
         </p>
+        {ai.on ? (
+          <div className="mt-3 rounded-2xl border border-violet-brand/25 bg-lilac/40 px-4 py-3">
+            <p className="flex items-center gap-2 text-sm font-semibold text-violet-deep">
+              <Icon name="sparkle" size={16} />
+              Three lines to choose from, written with AI
+            </p>
+            <p className="mt-1 text-sm text-ink-soft">
+              From your store&apos;s name and what it sells, in your store&apos;s language. Add who it is for if you like.
+            </p>
+            <label htmlFor="bio-hint" className="sr-only">
+              Who your store is for (optional)
+            </label>
+            <input id="bio-hint" className="field mt-2" maxLength={400} value={hint} placeholder="Who it is for, what makes it yours (optional)" onChange={(e) => setHint(e.target.value)} />
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => void suggest()} disabled={writing || left <= 0} aria-busy={writing}>
+                {writing ? "Writing…" : lines.length ? "Three more" : "Suggest three lines"}
+              </button>
+              <span className="text-xs text-ink-soft">{`${left} left this month`}</span>
+            </div>
+            {aiNote ? (
+              <p className="notice notice-error mt-2 text-sm" role="alert">
+                {aiNote}
+              </p>
+            ) : null}
+            {lines.length ? (
+              <ul className="mt-3 space-y-2" aria-label="Suggested lines">
+                {lines.map((suggested) => (
+                  <li key={suggested} className="flex flex-wrap items-start gap-2 rounded-xl bg-white p-3 ring-1 ring-line">
+                    <span className="min-w-0 flex-1 text-sm text-ink">{suggested}</span>
+                    <button type="button" className="btn btn-ghost btn-sm ring-1 ring-line" onClick={() => setBio(suggested.slice(0, MAX_BIO_LENGTH))} aria-label={`Use this line: ${suggested}`}>
+                      Use this
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {state.kind === "error" ? (
