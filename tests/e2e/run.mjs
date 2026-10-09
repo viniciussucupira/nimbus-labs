@@ -1077,6 +1077,12 @@ try {
   part("The creator's profiles elsewhere, under the store's name");
   {
     await open(studio, `${LOCAL}/studio`);
+    const coach = studio.getByRole("region", { name: "Help your store sell more" });
+    is("the studio coaches a store that is set up: a score, and what to do next, each with where", [
+      await coach.count(),
+      /\d+\/100/.test(await words(coach)),
+      (await coach.getByRole("link", { name: "Do it" }).count()) > 0,
+    ], [1, true, true]);
     await studio.getByRole("button", { name: "Add your profiles" }).click();
     const first = studio.locator('input[id^="social-"][id$="-value"]').first();
     await first.fill("@localshop.cooks");

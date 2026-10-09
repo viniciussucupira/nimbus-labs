@@ -75,6 +75,8 @@ import { chargeableCurrencies, readWaysToPay } from "@/lib/payment-methods";
 import { formatMoney } from "@/lib/money";
 import { LinkEditor } from "@/components/link-editor";
 import { JoinBoxEditor } from "@/components/join-box-editor";
+import { StoreCoach } from "@/components/store-coach";
+import { storeChecks } from "@/lib/store-coach";
 import { isPaidUp } from "@/lib/billing";
 import { isSenderConfigured } from "@/lib/email";
 import { DiscountEditor } from "@/components/discount-editor";
@@ -843,6 +845,10 @@ export default async function StudioPage({
               </p>
             ) : null}
             {role === "owner" ? <StudioStart steps={startSteps} /> : null}
+            {/* Once there is something on the store: what else it does to sell, with a score (lib/store-coach.ts). */}
+            {may("page") ? (
+              <StoreCoach checks={storeChecks(store, { path: (page) => studioPath(store, "", page) })} />
+            ) : null}
             <StudioTools
               tools={[
                 ...(may("products")

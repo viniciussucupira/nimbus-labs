@@ -58,7 +58,7 @@ export function JoinBoxEditor({
   }
 
   return (
-    <form onSubmit={save} className="card mt-8 p-6 sm:p-8" noValidate>
+    <form id="signup" onSubmit={save} className="card mt-8 scroll-mt-32 p-6 sm:p-8" noValidate>
       <p className="text-lg font-semibold tracking-[-0.02em] text-ink">Email sign-up box</p>
       <p className="mt-2 text-ink-soft">
         A box on your store page where visitors join your email list, without having to take anything. Each address joins only
