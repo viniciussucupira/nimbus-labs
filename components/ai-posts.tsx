@@ -17,7 +17,7 @@ type Posts = { x: string; instagram: string; linkedin: string };
  * in the bio, where a link can be pressed. Each is the creator's to change
  * and copy; nothing is posted from here.
  */
-export function AiPosts({ productId, url, page }: { productId: string; url: string; page: () => SalesPage }) {
+export function AiPosts({ productId, url, page, what = "page" }: { productId?: string; url: string; page?: () => SalesPage; what?: "page" | "store" }) {
   const ai = useContext(AiOn);
   const [posts, setPosts] = useState<Posts | null>(null);
   const [busy, setBusy] = useState(false);
@@ -32,7 +32,8 @@ export function AiPosts({ productId, url, page }: { productId: string; url: stri
       const response = await fetch("/api/store/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "posts", product: productId, page: page() }),
+        // Without a product, posts about the whole store (app/api/store/ai, kind "posts").
+        body: JSON.stringify(productId ? { kind: "posts", product: productId, page: page?.() } : { kind: "posts" }),
       });
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean; value?: Posts; left?: number; error?: string };
       if (data.ok && data.value) {
@@ -41,7 +42,13 @@ export function AiPosts({ productId, url, page }: { productId: string; url: stri
         if (typeof data.left === "number") setLeft(data.left);
         return;
       }
-      setNote(data.error === "used" ? "This month's writing help is used up. It starts again on the 1st." : "The writing help did not answer just now. Nothing was changed, and it was not counted.");
+      setNote(
+        data.error === "used"
+          ? "This month's writing help is used up. It starts again on the 1st."
+          : data.error === "notes"
+            ? "Add a product or a line about your store first: the posts are written from them."
+            : "The writing help did not answer just now. Nothing was changed, and it was not counted.",
+      );
     } catch {
       setNote("The writing help did not answer just now. Nothing was changed, and it was not counted.");
     } finally {
@@ -71,7 +78,7 @@ export function AiPosts({ productId, url, page }: { productId: string; url: stri
         Posts about it, written with AI
       </p>
       <p className="mt-1 text-sm text-ink-soft">
-        One for X, an Instagram caption and one for LinkedIn, from what this page says, in your store&apos;s language. Nothing is posted for you: change them, then copy.
+        {`One for X, an Instagram caption and one for LinkedIn, from what ${what === "store" ? "your store sells" : "this page says"}, in your store's language. Nothing is posted for you: change them, then copy.`}
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => void write()} disabled={busy || left <= 0} aria-busy={busy}>

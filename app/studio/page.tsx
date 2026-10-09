@@ -61,6 +61,8 @@ import { INVITE_SHARE_PERCENT } from "@/lib/creator-invite-rules";
 import { SaveOfferEditor } from "@/components/save-offer-editor";
 import { WinBackEditor } from "@/components/winback-editor";
 import { aiLeft, isAiConfigured } from "@/lib/ai";
+import { AiOn } from "@/components/ai-assist";
+import { AiPosts } from "@/components/ai-posts";
 import { winbacksSent } from "@/lib/winback-send";
 import { sellsMemberships } from "@/lib/membership-manage";
 import { taxStatus } from "@/lib/tax";
@@ -929,6 +931,11 @@ export default async function StudioPage({
                 <summary className="cursor-pointer text-sm font-semibold text-ink">Share the store: link, QR code, posts</summary>
                 <div className="mt-4">
                   <SharePanel url={storeBase(store)} title={store.name} what="store" />
+                  {may("page") ? (
+                    <AiOn value={ai}>
+                      <AiPosts url={storeBase(store)} what="store" />
+                    </AiOn>
+                  ) : null}
                 </div>
               </details>
 

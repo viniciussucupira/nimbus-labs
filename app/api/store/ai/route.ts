@@ -33,7 +33,7 @@ const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call"
  */
 export async function POST(request: NextRequest) {
   // A review sends the page being edited, which may be long (lib/sales-page.ts, MAX_PAGE_BYTES).
-  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" ? "page" : body.kind === "reply" ? "reviews" : "products"), 140_000);
+  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" || (body.kind === "posts" && !body.product) ? "page" : body.kind === "reply" ? "reviews" : "products"), 140_000);
   if (!guarded.ok) return guarded.response;
   const { body, store } = guarded;
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
@@ -160,6 +160,19 @@ export async function POST(request: NextRequest) {
     if (!product) return fail("unknown", 404);
     const to = isLanguage(body.language) ? body.language : store.language;
     return answer(translatePage(store, { page: parsePage(body.page), language: LANGUAGES[to].english }));
+  }
+  if (body.kind === "posts" && !body.product) {
+    // Posts about the whole store, from its line and what it sells (the record every visit already reads).
+    const listed = store.catalog.head.filter((p) => !p.hidden).slice(0, 12);
+    if (listed.length === 0 && !store.bio) return fail("notes");
+    const facts = [
+      `Store: ${store.name}`,
+      store.bio ? `About it, in the creator's words: ${store.bio}` : "",
+      listed.length ? `What it sells:\n${listed.map((p) => `- ${p.title}${isFree(p) ? " (free)" : ` (${formatMoney(p.priceCents, store.currency)})`}${p.summary ? `: ${p.summary}` : ""}`).join("\n")}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    return answer(writePosts(store, { facts }));
   }
   if (body.kind === "posts") {
     // Posts about one product, from its page as it stands in the editor (lib/ai.ts, writePosts).
