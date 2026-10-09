@@ -32,6 +32,7 @@ import { RenameForm } from "@/components/rename-form";
 import { OldAddresses } from "@/components/old-addresses";
 import { DetailsForm } from "@/components/details-form";
 import { SocialsEditor } from "@/components/socials-editor";
+import { IntroEditor } from "@/components/intro-editor";
 import { LookEditor } from "@/components/look-editor";
 import { type PaidCall, catchUpBookings, paidCalls } from "@/lib/calls";
 import { productsInStats, readSales, readStats, studioStats } from "@/lib/stats";
@@ -925,6 +926,11 @@ export default async function StudioPage({
               {may("page") ? (
                 <div className="mt-3">
                   <DetailsForm name={store.name} bio={store.bio} ai={ai} />
+                </div>
+              ) : null}
+              {may("page") ? (
+                <div className="mt-5">
+                  <IntroEditor intro={store.intro} />
                 </div>
               ) : null}
               {may("page") ? (

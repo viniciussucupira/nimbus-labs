@@ -104,6 +104,14 @@ export function storeChecks(store: Store, input: StoreCoachInput): StoreCheck[] 
       href: "#contact",
     },
     {
+      id: "intro",
+      label: "A welcome video under your name",
+      why: "A minute of you saying who you are and what the store is for: a face makes a stranger trust a store.",
+      done: store.intro !== null,
+      weight: 1,
+      href: "#details",
+    },
+    {
       id: "socials",
       label: "Your profiles under your name",
       why: "Visitors check who you are before they buy from you.",

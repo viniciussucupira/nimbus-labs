@@ -1350,6 +1350,22 @@ try {
   }
 
   await keepSmall();
+  part("A welcome video under the store's name");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    await studio.locator("#intro-url").fill("not a video");
+    is("an address that is no video is said so before saving", await studio.locator("#intro-url").getAttribute("aria-invalid"), "true");
+    await studio.locator("#intro-url").fill("https://vimeo.com/123456789");
+    await studio.getByRole("button", { name: "Save the video" }).click();
+    await studio.getByText("Welcome video saved. It plays under your store's name.").first().waitFor({ timeout: 15_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    is("under the store's name, loaded only when played", [
+      await page.getByRole("button", { name: /Play the video: Harbor Kitchen Local\. It loads from Vimeo\./ }).count(),
+      await page.locator('iframe[src*="vimeo"]').count(),
+    ], [1, 0]);
+  }
+
+  await keepSmall();
   part("Logging in is not starting a store");
   await open(page, `${LOCAL}/signin?to=login`);
   is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);
