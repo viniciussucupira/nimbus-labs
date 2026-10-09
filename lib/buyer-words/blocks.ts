@@ -60,6 +60,14 @@ const en = {
   quotesTitle: "What buyers say",
   quotesNote: "The newest reviews with words, from every product. Each comes from a verified purchase.",
   quoteAbout: (title: string) => `About ${title}`,
+  /** Searching a long store's products (lib/catalog.ts, searchStore). */
+  searchLabel: "Search this store",
+  searchPlaceholder: "Search products",
+  searchButton: "Search",
+  searchFound: (n: number, q: string) => `${n} ${plural(n, "product", "products")} for “${q}”`,
+  searchNone: (q: string) => `Nothing here for “${q}”. Try another word, or see every product.`,
+  searchClear: "Show every product",
+  searchSlow: "Too many searches for now. Try again in a few minutes.",
 };
 
 export type BlockWords = typeof en;
@@ -104,6 +112,13 @@ const es: BlockWords = {
   quotesTitle: "Lo que dicen los compradores",
   quotesNote: "Las reseñas más recientes con texto, de todos los productos. Cada una viene de una compra verificada.",
   quoteAbout: (title) => `Sobre ${title}`,
+  searchLabel: "Buscar en esta tienda",
+  searchPlaceholder: "Buscar productos",
+  searchButton: "Buscar",
+  searchFound: (n, q) => `${n} ${plural(n, "producto", "productos")} para «${q}»`,
+  searchNone: (q) => `No hay nada para «${q}». Prueba con otra palabra o mira todos los productos.`,
+  searchClear: "Ver todos los productos",
+  searchSlow: "Demasiadas búsquedas por ahora. Inténtalo dentro de unos minutos.",
 };
 
 const fr: BlockWords = {
@@ -146,6 +161,13 @@ const fr: BlockWords = {
   quotesTitle: "Ce que disent les acheteurs",
   quotesNote: "Les avis les plus récents avec un texte, sur tous les produits. Chacun vient d'un achat vérifié.",
   quoteAbout: (title) => `À propos de ${title}`,
+  searchLabel: "Rechercher dans cette boutique",
+  searchPlaceholder: "Rechercher des produits",
+  searchButton: "Rechercher",
+  searchFound: (n, q) => `${n} ${frPlural(n, "produit", "produits")} pour « ${q} »`,
+  searchNone: (q) => `Rien ici pour « ${q} ». Essayez un autre mot, ou voyez tous les produits.`,
+  searchClear: "Voir tous les produits",
+  searchSlow: "Trop de recherches pour le moment. Réessayez dans quelques minutes.",
 };
 
 const de: BlockWords = {
@@ -188,6 +210,13 @@ const de: BlockWords = {
   quotesTitle: "Das sagen Käufer",
   quotesNote: "Die neuesten Bewertungen mit Text, zu allen Produkten. Jede stammt aus einem bestätigten Kauf.",
   quoteAbout: (title) => `Zu ${title}`,
+  searchLabel: "Diesen Shop durchsuchen",
+  searchPlaceholder: "Produkte suchen",
+  searchButton: "Suchen",
+  searchFound: (n, q) => `${n} ${plural(n, "Produkt", "Produkte")} für „${q}“`,
+  searchNone: (q) => `Hier gibt es nichts zu „${q}“. Versuche ein anderes Wort oder sieh dir alle Produkte an.`,
+  searchClear: "Alle Produkte zeigen",
+  searchSlow: "Gerade zu viele Suchen. Versuche es in ein paar Minuten wieder.",
 };
 
 const it: BlockWords = {
@@ -230,6 +259,13 @@ const it: BlockWords = {
   quotesTitle: "Cosa dicono gli acquirenti",
   quotesNote: "Le recensioni più recenti con un testo, su tutti i prodotti. Ognuna viene da un acquisto verificato.",
   quoteAbout: (title) => `Su ${title}`,
+  searchLabel: "Cerca in questo negozio",
+  searchPlaceholder: "Cerca prodotti",
+  searchButton: "Cerca",
+  searchFound: (n, q) => `${n} ${plural(n, "prodotto", "prodotti")} per «${q}»`,
+  searchNone: (q) => `Niente qui per «${q}». Prova un'altra parola o guarda tutti i prodotti.`,
+  searchClear: "Mostra tutti i prodotti",
+  searchSlow: "Troppe ricerche per ora. Riprova tra qualche minuto.",
 };
 
 const nl: BlockWords = {
@@ -272,6 +308,13 @@ const nl: BlockWords = {
   quotesTitle: "Wat kopers zeggen",
   quotesNote: "De nieuwste reviews met tekst, over alle producten. Elke review komt van een geverifieerde aankoop.",
   quoteAbout: (title) => `Over ${title}`,
+  searchLabel: "Zoeken in deze winkel",
+  searchPlaceholder: "Producten zoeken",
+  searchButton: "Zoeken",
+  searchFound: (n, q) => `${n} ${plural(n, "product", "producten")} voor ‘${q}’`,
+  searchNone: (q) => `Niets gevonden voor ‘${q}’. Probeer een ander woord, of bekijk alle producten.`,
+  searchClear: "Alle producten tonen",
+  searchSlow: "Even te veel zoekopdrachten. Probeer het over een paar minuten opnieuw.",
 };
 
 const pt: BlockWords = {
@@ -314,6 +357,13 @@ const pt: BlockWords = {
   quotesTitle: "O que dizem os compradores",
   quotesNote: "As avaliações mais recentes com texto, de todos os produtos. Cada uma vem de uma compra verificada.",
   quoteAbout: (title) => `Sobre ${title}`,
+  searchLabel: "Pesquisar nesta loja",
+  searchPlaceholder: "Pesquisar produtos",
+  searchButton: "Pesquisar",
+  searchFound: (n, q) => `${n} ${plural(n, "produto", "produtos")} para «${q}»`,
+  searchNone: (q) => `Não há nada aqui para «${q}». Experimente outra palavra ou veja todos os produtos.`,
+  searchClear: "Ver todos os produtos",
+  searchSlow: "Demasiadas pesquisas por agora. Tente novamente dentro de alguns minutos.",
 };
 
 export const BLOCK_WORDS: Record<LanguageCode, BlockWords> = { en, es, fr, de, it, nl, pt };

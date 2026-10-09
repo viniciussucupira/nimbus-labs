@@ -1,4 +1,6 @@
 import { after } from "next/server";
+import { MAX_STORE_SEARCH, STORE_PAGE_SIZE, searchStore, searchWords } from "@/lib/catalog";
+import { withinLimit } from "@/lib/request-guard";
 import { StoreQuotes } from "@/components/store-quotes";
 import { showsRating, storeSummary } from "@/lib/review-summary";
 import { RatingLine } from "@/components/review-list";
@@ -71,8 +73,10 @@ async function load(raw: string) {
   return store ? { store, asked } : null;
 }
 
-export async function generateMetadata({ params }: Params): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Params): Promise<Metadata> {
   const { handle } = await params;
+  // A search's results are not a page of their own for search engines.
+  const searched = typeof (searchParams ? await searchParams : {}).q === "string";
   const found = await load(handle);
   if (!found) return { title: "Not found — Marktmorgen" };
   const { store } = found;
@@ -88,7 +92,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     // something on it does, so it stops hiding the moment it has. A page of
     // links alone counts: it is a page somebody may be looking for.
     robots: {
-      index: visibleCount(store) > 0 || store.links.length > 0,
+      index: !searched && (visibleCount(store) > 0 || store.links.length > 0),
       follow: true,
     },
     // A shared link shows the creator's face when they have put one up.
@@ -169,7 +173,17 @@ export default async function StorePage({ params, searchParams }: Params) {
   // fresh count from Stripe after the page is sent once the kept one is old.
   const soldCounts = await readSoldCounts(store).catch(() => null);
   if (store.look.sold && stale(soldCounts)) after(() => refreshSoldCounts(store, readAllTimeSales).then(() => undefined));
-  const { listings, related, page, pages } = await readPage(store, asking);
+  // A search of a long store (lib/catalog.ts, searchStore): only asked when a
+  // visitor searches, and only so often from one connection.
+  const wantedSearch = typeof query.q === "string" ? query.q.replace(/\s+/g, " ").trim().slice(0, MAX_STORE_SEARCH) : "";
+  const searchable = visibleCount(store) > STORE_PAGE_SIZE;
+  const searchAllowed =
+    wantedSearch !== "" && searchable && searchWords(wantedSearch).length > 0
+      ? await withinLimit("store-search", `${(await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"}|${store.handle}`, 30, 600)
+      : false;
+  const searching = searchAllowed ? wantedSearch : "";
+  const results = searching ? await searchStore(store, searching) : null;
+  const { listings, related, page, pages } = results ? { listings: results.listings, related: results.related, page: 1, pages: 1 } : await readPage(store, asking);
   const known = [...listings, ...related];
   // What the store lists: drafts are left off (lib/catalog.ts).
   const total = visibleCount(store);
@@ -177,7 +191,8 @@ export default async function StorePage({ params, searchParams }: Params) {
   // The page's products cut into the creator's sections (lib/store-sections.ts),
   // from the store's own index: no read, and one list as before when there are none.
   const index = store.catalog.items.map((item) => ({ id: item.id, hidden: (item.kind & KIND.hidden) !== 0 }));
-  const groups = groupBySection(listings, index, store.sections);
+  // Search results are one list, in the creator's order, without section headings.
+  const groups = groupBySection(listings, index, searching ? [] : store.sections);
   const position = new Map(listings.map((product, i) => [product.id, i]));
   // The creator's line of news, leading to one of their published products when they chose one.
   const news = store.announcement;
@@ -298,8 +313,41 @@ export default async function StorePage({ params, searchParams }: Params) {
                   <span className="st-muted mt-1 block text-sm font-normal">{w.saleBannerNote}</span>
                 </p>
               ) : null}
+              {searchable ? (
+                <form role="search" action="" method="get" className="mb-6" aria-label={bw.searchLabel}>
+                  <label htmlFor="store-search" className="sr-only">
+                    {bw.searchLabel}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="store-search"
+                      type="search"
+                      name="q"
+                      defaultValue={wantedSearch}
+                      maxLength={MAX_STORE_SEARCH}
+                      placeholder={bw.searchPlaceholder}
+                      enterKeyHint="search"
+                      className="st-field min-w-0 flex-1"
+                    />
+                    <button type="submit" className="btn st-btn shrink-0">
+                      {bw.searchButton}
+                    </button>
+                  </div>
+                  {wantedSearch && !searchAllowed && searchWords(wantedSearch).length > 0 ? (
+                    <p className="st-note mt-3 text-sm" role="status">{bw.searchSlow}</p>
+                  ) : null}
+                  {results ? (
+                    <p className="mt-3 flex flex-wrap items-baseline justify-between gap-2 text-sm" role="status">
+                      <span className="font-semibold">{results.total ? bw.searchFound(results.total, searching) : bw.searchNone(searching)}</span>
+                      <a href={pageHref(store.handle, 1, reachedOn !== null)} className="st-footer-link">
+                        {bw.searchClear}
+                      </a>
+                    </p>
+                  ) : null}
+                </form>
+              ) : null}
               {/* "Not sure which one is for you?": the visitor says what they want, and sees what fits (lib/store-guide.ts). */}
-              {page === 1 && total >= 3 && guideOn(store, total) && canSell(store) ? (
+              {!searching && page === 1 && total >= 3 && guideOn(store, total) && canSell(store) ? (
                 <div className="mb-8">
                   <StoreGuideBox handle={store.handle} storeName={store.name} lang={store.language} />
                 </div>
@@ -369,7 +417,7 @@ export default async function StorePage({ params, searchParams }: Params) {
               ) : null}
 
               {/* "What buyers say": the newest reviews with words, kept on the store's record (lib/store-quotes.ts). */}
-              {page === 1 ? (
+              {page === 1 && !searching ? (
                 <StoreQuotes
                   store={store}
                   quotes={store.quotes.filter((quote) => index.some((item) => item.id === quote.p && !item.hidden))}
