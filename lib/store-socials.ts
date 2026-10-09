@@ -145,3 +145,29 @@ export function networkFor(typed: string): SocialNetwork | null {
 export function socialShown(url: string): string {
   return url.replace(/^mailto:/, "").replace(/^https:\/\/(www\.)?/, "").replace(/\/$/, "");
 }
+
+/**
+ * The plain icon a link on the store page carries, from where it goes (added
+ * 9 October 2026): a profile's own network's, a few kinds of place by their
+ * address, and a chain link for anything else. Never a company's logo.
+ */
+export function linkIcon(url: string): IconName {
+  const network = networkFor(url);
+  if (network && network !== "email") return SOCIALS[network].icon;
+  let host = "";
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return "link";
+  }
+  const on = (...hosts: string[]) => hosts.some((h) => host === h || host.endsWith(`.${h}`));
+  if (on("calendly.com", "cal.com", "savvycal.com", "tidycal.com", "zcal.co")) return "calendar";
+  if (on("podcasts.apple.com", "anchor.fm", "buzzsprout.com", "transistor.fm", "simplecast.com", "podbean.com")) return "mic";
+  if (on("soundcloud.com", "bandcamp.com", "music.apple.com", "deezer.com")) return "music";
+  if (on("vimeo.com", "loom.com", "rumble.com")) return "video";
+  if (on("beehiiv.com", "convertkit.com", "kit.com", "mailchimp.com", "buttondown.email", "ghost.io", "medium.com")) return "mail";
+  if (on("amazon.com", "amazon.co.uk", "amazon.de", "etsy.com", "shopify.com", "ebay.com")) return "basket";
+  if (on("patreon.com", "ko-fi.com", "buymeacoffee.com")) return "gift";
+  if (on("goodreads.com", "notion.site", "notion.so")) return "book";
+  return "link";
+}

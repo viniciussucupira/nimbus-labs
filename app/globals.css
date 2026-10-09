@@ -1863,6 +1863,23 @@ a.chip {
     transform var(--d-base) var(--ease),
     border-color var(--d-base) var(--ease);
 }
+/* A link's plain icon on the left, its words centered (app/[handle]/page.tsx). */
+.st-link-row {
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) 2.25rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+.st-link-icon {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--st-accent-soft);
+  color: var(--st-accent-text);
+}
 .st-link-card:hover {
   transform: translateY(-2px);
   border-color: var(--st-accent-text);
