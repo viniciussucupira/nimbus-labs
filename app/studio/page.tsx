@@ -1183,7 +1183,7 @@ export default async function StudioPage({
 
             {calendar ? <CalendarEditor view={calendar} weekly={callProducts.some((p) => p.call?.kind === "weekly")} /> : null}
 
-            {may("page") ? <LinkEditor links={store.links} /> : null}
+            {may("page") ? <LinkEditor links={store.links} folder={pictures} /> : null}
 
             {may("page") ? <FaqEditor faq={store.faq} ai={ai} /> : null}
 

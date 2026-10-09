@@ -3,6 +3,7 @@ import { hasProduct } from "@/lib/catalog";
 import { issueSignedToken } from "@/lib/blob";
 import { handleUploadPresigned, type HandleUploadPresignedBody } from "@vercel/blob/client";
 import { studioAccess } from "@/lib/studio-route";
+import { isHeader } from "@/lib/store-link";
 import { imageFolder } from "@/lib/store";
 import { IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES, ownsImagePath } from "@/lib/product-image";
 import { fromAnotherSite, limited } from "@/lib/request-guard";
@@ -38,21 +39,30 @@ export async function POST(request: NextRequest) {
       body,
       request,
       getSignedToken: async (pathname, clientPayload) => {
-        // Who, which store and whether their role has "products"
-        // (lib/studio-route.ts); the folder below is that store's own.
-        const access = await studioAccess(request, "products");
-        if (!access.ok) throw new Error(access.reason === "no_store" ? "none" : access.reason);
-        const { store, ref } = access.access;
-
         let productId = "";
+        let linkId = "";
         try {
-          const parsed = JSON.parse(clientPayload ?? "{}") as { productId?: unknown };
+          const parsed = JSON.parse(clientPayload ?? "{}") as { productId?: unknown; linkId?: unknown };
           productId = typeof parsed.productId === "string" ? parsed.productId : "";
+          linkId = typeof parsed.linkId === "string" ? parsed.linkId : "";
         } catch {
           throw new Error("invalid");
         }
-        // A picture belongs to a product of this store, never to an option.
-        if (!hasProduct(store, productId)) throw new Error("unknown");
+        // Who, which store and whether their role may change what the
+        // picture is for: "products" for a product's, "page" for a link's
+        // (lib/studio-route.ts). The folder below is that store's own.
+        const access = await studioAccess(request, linkId && !productId ? "page" : "products");
+        if (!access.ok) throw new Error(access.reason === "no_store" ? "none" : access.reason);
+        const { store, ref } = access.access;
+
+        if (linkId && !productId) {
+          // A link's picture: a link on this store's page, never a heading.
+          const link = store.links.find((each) => each.id === linkId);
+          if (!link || isHeader(link)) throw new Error("unknown");
+        } else if (!hasProduct(store, productId)) {
+          // A picture belongs to a product of this store, never to an option.
+          throw new Error("unknown");
+        }
         if (!ownsImagePath(pathname, await imageFolder(ref))) throw new Error("invalid");
 
         const rules = {

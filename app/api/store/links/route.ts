@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { del } from "@/lib/blob";
 import {
   addStoreLink,
   editStoreLink,
@@ -81,6 +82,12 @@ export async function POST(request: NextRequest) {
         { ok: false, error: result.reason, limit: result.limit },
         { status: STATUS[result.reason] ?? 400 },
       );
+    }
+    // A link taken off, or turned into a heading, lets its picture go, after the write.
+    if (result.removed) {
+      await del(result.removed.path).catch((error: unknown) => {
+        console.error("could not delete a removed link's picture", error);
+      });
     }
     return Response.json({ ok: true, links: result.store.links });
   } catch (error) {

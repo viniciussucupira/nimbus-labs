@@ -4,6 +4,7 @@ import { JsonLd } from "@/components/structured-data";
 import { contactOpen } from "@/lib/store-contact";
 import { StoreContactBox } from "@/components/store-contact-box";
 import { linkIcon } from "@/lib/store-socials";
+import { imageUrl } from "@/lib/product-image";
 import { Icon } from "@/components/icons";
 import { MAX_STORE_SEARCH, STORE_PAGE_SIZE, searchStore, searchWords } from "@/lib/catalog";
 import { withinLimit } from "@/lib/request-guard";
@@ -501,10 +502,24 @@ export default async function StorePage({ params, searchParams }: Params) {
                       className={`st-card st-link-card px-5 py-4 text-center sm:px-6${link.spotlight ? " st-spotlight" : ""}`}
                     >
                       {/* A plain icon for where it goes (lib/store-socials.ts, linkIcon), the words centered between. */}
-                      <span className="st-link-row">
-                        <span className="st-link-icon" aria-hidden="true">
-                          <Icon name={linkIcon(link.url)} size={18} />
-                        </span>
+                      <span className={`st-link-row${link.image ? " st-link-pictured" : ""}`}>
+                        {link.image ? (
+                          // The link's own picture in place of the icon (lib/store-link.ts, LinkImage); its title says what it is.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={imageUrl(link.image)}
+                            alt=""
+                            width={link.image.width}
+                            height={link.image.height}
+                            loading="lazy"
+                            decoding="async"
+                            className="st-link-thumb"
+                          />
+                        ) : (
+                          <span className="st-link-icon" aria-hidden="true">
+                            <Icon name={linkIcon(link.url)} size={18} />
+                          </span>
+                        )}
                         <span className="min-w-0">
                           <span className={`block font-bold${link.spotlight ? " text-lg" : ""}`}>
                             {link.title}

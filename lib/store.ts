@@ -78,6 +78,7 @@ import { type DisplayStyle, type ProductImage } from "@/lib/product-image";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
+  type LinkImage,
   type StoreLink,
   parseStoreLinks,
 } from "@/lib/store-link";
@@ -2670,7 +2671,7 @@ export function filesOnProduct(product: Listing): ProductFile[] {
 }
 
 export type LinkResult =
-  | { ok: true; store: Store }
+  | { ok: true; store: Store; removed?: LinkImage | null }
   | {
       ok: false;
       reason: "none" | "title" | "too_many" | "unknown";
@@ -2725,8 +2726,10 @@ export async function editStoreLink(
     const at = store.links.findIndex((link) => link.id === id);
     if (at < 0) return { ok: false, reason: "unknown" };
     const links = [...store.links];
-    links[at] = { id: links[at].id, addedAt: links[at].addedAt, title, url, ...extras };
-    return { ok: true, store: await save({ ...store, links }) };
+    // Its picture stays through an edit; a link turned into a heading gives it up.
+    const image = extras.header ? undefined : links[at].image;
+    links[at] = { id: links[at].id, addedAt: links[at].addedAt, title, url, ...extras, ...(image ? { image } : {}) };
+    return { ok: true, store: await save({ ...store, links }), removed: extras.header ? (store.links[at].image ?? null) : null };
   });
   return result ?? { ok: false, reason: "none" };
 }
@@ -2737,10 +2740,28 @@ export async function removeStoreLink(
   id: string,
 ): Promise<LinkResult> {
   const result = await withStore<LinkResult>(email, async (store, save) => {
-    if (!store.links.some((link) => link.id === id)) {
-      return { ok: false, reason: "unknown" };
-    }
-    return { ok: true, store: await save({ ...store, links: store.links.filter((link) => link.id !== id) }) };
+    const going = store.links.find((link) => link.id === id);
+    if (!going) return { ok: false, reason: "unknown" };
+    // Its picture is returned for the caller to delete once this is written.
+    return { ok: true, store: await save({ ...store, links: store.links.filter((link) => link.id !== id) }), removed: going.image ?? null };
+  });
+  return result ?? { ok: false, reason: "none" };
+}
+
+/**
+ * Puts a picture on a link, or takes it off (null). What comes back is the
+ * picture it displaced, for the caller to delete once this is written —
+ * deleting it first would leave the page pointing at nothing if the write
+ * then failed. A heading takes no picture.
+ */
+export async function setLinkImage(email: string, id: string, image: LinkImage | null): Promise<LinkResult> {
+  const result = await withStore<LinkResult>(email, async (store, save) => {
+    const at = store.links.findIndex((link) => link.id === id);
+    if (at < 0 || store.links[at].header) return { ok: false, reason: "unknown" };
+    const links = [...store.links];
+    const { image: was, ...rest } = links[at];
+    links[at] = image ? { ...rest, image } : rest;
+    return { ok: true, store: await save({ ...store, links }), removed: was ?? null };
   });
   return result ?? { ok: false, reason: "none" };
 }
