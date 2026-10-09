@@ -99,7 +99,7 @@ const load = cache(async (raw: string, id: string): Promise<{ store: Store; prod
 
 async function pageOf(store: Store, product: Listing): Promise<SalesPage> {
   // A page kept from visitors while the creator works on it shows as none (lib/sales-page.ts, livePage).
-  return product.page ? readPage(store.statsId, product.id).then(livePage).catch(() => ({ ...EMPTY_PAGE, blocks: [] })) : { ...EMPTY_PAGE, blocks: [] };
+  return product.page ? readPage(store.statsId, product.id).then((page) => livePage(page, saleClock())).catch(() => ({ ...EMPTY_PAGE, blocks: [] })) : { ...EMPTY_PAGE, blocks: [] };
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {

@@ -675,16 +675,27 @@ try {
 
   part("A page kept from visitors while it is worked on");
   {
-    const save = (hidden) => studio.evaluate(async ([id, hidden]) => {
+    const save = (hidden, showFrom = 0) => studio.evaluate(async ([id, hidden, showFrom]) => {
       const blocks = [{ id: "hero0009", kind: "hero", headline: "Dinner in thirty minutes, every night", sub: "", media: "none", video: null }];
-      const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null, style: "plain", hidden } }) });
+      const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null, style: "plain", hidden, showFrom } }) });
       return (await response.json()).ok === true;
-    }, [ids["Weeknight Dinners"], hidden]);
+    }, [ids["Weeknight Dinners"], hidden, showFrom]);
     is("saved, kept from visitors", await save(true), true);
     await open(page, `${LOCAL}/@localshop/p/${ids["Weeknight Dinners"]}`);
     is("visitors see the product's plain page meanwhile", await words(page.locator("h1")), "Weeknight Dinners");
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Weeknight Dinners"]}`);
-    is("the studio says so, and the switch is off", [await studio.getByText("Hidden", { exact: true }).count() > 0, await studio.getByRole("checkbox", { name: /^Visitors see this page/ }).isChecked()], [true, false]);
+    is("the studio says so, and the switch is off, with a moment to show it offered", [
+      await studio.getByText("Hidden", { exact: true }).count() > 0,
+      await studio.getByRole("checkbox", { name: /^Visitors see this page/ }).isChecked(),
+      await studio.getByLabel("Show it by itself at (optional)").count(),
+    ], [true, false, 1]);
+    const now = Math.floor(Date.now() / 1000);
+    await save(true, now + 3600);
+    await open(page, `${LOCAL}/@localshop/p/${ids["Weeknight Dinners"]}`);
+    is("set to show in an hour: still the plain page", await words(page.locator("h1")), "Weeknight Dinners");
+    await save(true, now - 60);
+    await open(page, `${LOCAL}/@localshop/p/${ids["Weeknight Dinners"]}`);
+    is("its moment come: shown, with nobody switching it on", await words(page.locator("h1")), "Dinner in thirty minutes, every night");
     is("shown once switched on and saved", await save(false), true);
     await open(page, `${LOCAL}/@localshop/p/${ids["Weeknight Dinners"]}`);
     is("and then it is the product's page", await words(page.locator("h1")), "Dinner in thirty minutes, every night");
