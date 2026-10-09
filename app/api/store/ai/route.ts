@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { describePicture, fillBlock, reviewPage, rewriteBlock, translatePage, writeBio, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { describePicture, fillBlock, reviewPage, rewriteBlock, replyToReview, translatePage, writeBio, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
 import { isRewriteStyle } from "@/lib/block-rewrite-rules";
 import { factsFor, missedQuestions } from "@/lib/answers";
 import { parsePage } from "@/lib/sales-page";
@@ -13,6 +13,8 @@ import { readStats } from "@/lib/stats";
 import { isFree } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
 import { readAbout } from "@/lib/product-about";
+import { readReview } from "@/lib/reviews";
+import { MAX_REPLY_TEXT } from "@/lib/review-summary";
 import { formatMoney } from "@/lib/money";
 import { AI_PER_MINUTE, EMAIL_GOALS, type EmailGoal, MAX_AI_NOTES, type ProductKind } from "@/lib/ai-rules";
 import { get } from "@/lib/blob";
@@ -22,7 +24,7 @@ import { imageFolder } from "@/lib/store";
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
 /**
- * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "bio" | "outline" | "email", … }`.
+ * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "bio" | "reply" | "outline" | "email", … }`.
  * It writes into the studio's own boxes and saves nothing: whatever comes back
  * is the creator's to read, change and keep, or not.
  *
@@ -31,7 +33,7 @@ const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call"
  */
 export async function POST(request: NextRequest) {
   // A review sends the page being edited, which may be long (lib/sales-page.ts, MAX_PAGE_BYTES).
-  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" ? "page" : "products"), 140_000);
+  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" ? "page" : body.kind === "reply" ? "reviews" : "products"), 140_000);
   if (!guarded.ok) return guarded.response;
   const { body, store } = guarded;
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
@@ -158,6 +160,16 @@ export async function POST(request: NextRequest) {
     if (!product) return fail("unknown", 404);
     const to = isLanguage(body.language) ? body.language : store.language;
     return answer(translatePage(store, { page: parsePage(body.page), language: LANGUAGES[to].english }));
+  }
+  if (body.kind === "reply") {
+    // The review as it is kept, never as the browser sends it (lib/reviews.ts).
+    const productId = text(body.product, 40);
+    const review = store.statsId ? await readReview(store.statsId, productId, text(body.id, 80)) : null;
+    if (!review) return fail("unknown", 404);
+    const product = await readListing(store, productId);
+    return answer(
+      replyToReview(store, { productTitle: product?.title ?? "", rating: review.rating, text: review.text, name: review.name, maxLength: MAX_REPLY_TEXT }),
+    );
   }
   if (body.kind === "bio") {
     // What the store sells, from the record every visit already reads (lib/catalog.ts, head).
