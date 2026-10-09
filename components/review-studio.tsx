@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icons";
 import { Stars } from "@/components/review-stars";
 import { toast } from "@/components/toast";
 import { MAX_REPLY_TEXT } from "@/lib/review-summary";
+import { AiOn } from "@/components/ai-assist";
 import { DEFAULT_ASK_DAYS, MAX_ASK_DAYS, MIN_ASK_DAYS } from "@/lib/review-ask";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
@@ -110,6 +111,33 @@ export type StudioReview = {
 /** One review in the studio: what the buyer wrote, and what the creator may do about it. */
 export function ReviewRow({ review }: { review: StudioReview }) {
   const router = useRouter();
+  const ai = useContext(AiOn);
+  const [drafting, setDrafting] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
+
+  /** A reply drafted from the review as it is kept (lib/ai.ts, replyToReview), into the box, for the creator to change. */
+  async function draft() {
+    setDrafting(true);
+    setAiNote(null);
+    try {
+      const response = await fetch("/api/store/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "reply", product: review.productId, id: review.id }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; value?: string; error?: string };
+      if (data.ok && typeof data.value === "string") {
+        setReply(data.value.slice(0, MAX_REPLY_TEXT));
+        setAiNote("Drafted. Read it, make it yours, then post it.");
+        return;
+      }
+      setAiNote(data.error === "used" ? "This month's writing help is used up. It starts again on the 1st." : "The writing help did not answer just now. Nothing was changed, and it was not counted.");
+    } catch {
+      setAiNote("The writing help did not answer just now. Nothing was changed, and it was not counted.");
+    } finally {
+      setDrafting(false);
+    }
+  }
   const [replying, setReplying] = useState(false);
   const [reply, setReply] = useState(review.reply);
   const [busy, setBusy] = useState<string | null>(null);
@@ -164,6 +192,19 @@ export function ReviewRow({ review }: { review: StudioReview }) {
             Your reply, shown under the review
           </label>
           <textarea id={`${base}-reply`} className="field" rows={3} maxLength={MAX_REPLY_TEXT} value={reply} onChange={(e) => setReply(e.target.value)} />
+          {ai.on ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button type="button" className="btn btn-ghost btn-sm ring-1 ring-line" onClick={() => void draft()} disabled={drafting || busy !== null} aria-busy={drafting}>
+                <Icon name="sparkle" size={15} />
+                {drafting ? "Writing…" : reply.trim() ? "Draft another with AI" : "Draft it with AI"}
+              </button>
+              {aiNote ? (
+                <span className="text-xs text-ink-soft" role="status">
+                  {aiNote}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"

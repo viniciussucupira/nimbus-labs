@@ -1571,7 +1571,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "check", title: "One voice per buyer", body: "One review per buyer and product, even if they bought it twice. They can change it or delete it." },
           { icon: "eye", title: "Hiding is said out loud", body: "A hidden review's words leave the page, but its stars stay in the average and the count, and the page says how many are hidden." },
           { icon: "ban", title: "A refund takes its stars back", body: "A payment refunded in full takes that review's stars out of the average. Its words stay, marked as refunded." },
-          { icon: "chat", title: "Your answer, in public", body: "Up to 1,000 characters under any review." },
+          { icon: "chat", title: "Your answer, in public", body: "Up to 1,000 characters under any review. AI can draft it from the review itself, in the buyer's language: thanking them, answering what they said, and for a low rating owning it without arguing or promising anything you did not. You read it, change it and post it." },
           { icon: "user", title: "Their email is never shown", body: "Only the name they chose. Each review keeps its order reference, so you can find the payment in your Stripe dashboard." },
           { icon: "mail", title: "One email that asks, on Pro", body: "Off until you switch it on: each buyer is asked once per order, 3 to 30 days after buying, never offering anything in return. It counts in your monthly emails.", href: "/platform/email" },
           { icon: "star", title: "Stars where buyers decide", body: "The average on the product's card, on its page and on the preview image a shared link shows. Ten reviews on the page, the rest on a page of their own." },

@@ -10,6 +10,8 @@ import { StudioStorePin } from "@/components/studio-store-pin";
 import { canWrite } from "@/lib/mail";
 import { HIDDEN_RULE, type StudioRow, averageText, showsRating, studioReviews, summaries } from "@/lib/reviews";
 import { ReviewAskEditor, ReviewRow, SeenAllButton, type StudioReview } from "@/components/review-studio";
+import { AiOn } from "@/components/ai-assist";
+import { aiLeft, isAiConfigured } from "@/lib/ai";
 import { Stars } from "@/components/review-stars";
 
 export const metadata: Metadata = {
@@ -39,6 +41,8 @@ export default async function StudioReviewsPage({ searchParams }: Params) {
   const { view } = found;
   const { store } = view;
 
+  // The writing help, for a reply drafted from a review (lib/ai.ts, replyToReview).
+  const ai = isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 };
   const queue = query.view !== "all";
   const asked = Number(typeof query.page === "string" ? query.page : "1");
   const page = Number.isInteger(asked) && asked >= 1 ? asked : 1;
@@ -123,11 +127,13 @@ export default async function StudioReviewsPage({ searchParams }: Params) {
                 </p>
               </div>
             ) : (
-              <ul className="mt-5 space-y-3">
-                {rows.map((review) => (
-                  <ReviewRow key={`${review.productId}|${review.id}`} review={review} />
-                ))}
-              </ul>
+              <AiOn value={ai}>
+                <ul className="mt-5 space-y-3">
+                  {rows.map((review) => (
+                    <ReviewRow key={`${review.productId}|${review.id}`} review={review} />
+                  ))}
+                </ul>
+              </AiOn>
             )}
 
             {pages > 1 ? (
@@ -156,7 +162,7 @@ export default async function StudioReviewsPage({ searchParams }: Params) {
               <p className="font-semibold text-ink">Hiding, honestly</p>
               <p className="mt-2 text-sm text-ink-soft">{HIDDEN_RULE}</p>
               <p className="mt-2 text-sm text-ink-soft">
-                You can reply in public and hide a review. You cannot change a word of it or delete it: only its buyer can.
+                You can reply in public, with a draft written by AI if you like, and hide a review. You cannot change a word of it or delete it: only its buyer can.
               </p>
             </div>
 

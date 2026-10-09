@@ -916,6 +916,17 @@ try {
     is("and off again, the page offers none", await remind(false).then(() => open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`)).then(() => page.locator("#remind").count()), 0);
   }
 
+  part("A reply to a review, drafted with AI");
+  {
+    await open(studio, `${LOCAL}/studio/reviews?view=all`);
+    // The first review, found by what stays on it while it is answered: its order.
+    const row = studio.locator("li", { hasText: /Order (cs|pi)_/ }).first();
+    await row.getByRole("button", { name: /^(Reply|Edit your reply)$/ }).click();
+    await row.getByRole("button", { name: /Draft (it|another) with AI/ }).click();
+    await row.getByText("Drafted. Read it, make it yours, then post it.").waitFor({ timeout: 30_000 });
+    is("the draft is in the box, not yet posted", [await row.locator("textarea").inputValue(), await row.getByText("Your public reply").count()], ["Thank you for baking along, and for saying so.", 0]);
+  }
+
   part("The line under the store's name, written with AI");
   {
     await open(studio, `${LOCAL}/studio`);

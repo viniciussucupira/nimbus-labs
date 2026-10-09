@@ -78,6 +78,8 @@ export async function startServices(port) {
         const system = String(body.system ?? "");
         const text = system.startsWith("You translate the words")
           ? JSON.stringify({ t: JSON.parse(body.messages[0].content).map((s) => String(s).toUpperCase()) })
+          : system.startsWith("You draft the creator's public reply")
+            ? JSON.stringify({ reply: "Thank you for baking along, and for saying so." })
           : system.startsWith("You write the one line")
             ? JSON.stringify({ lines: ["Weeknight dinners for busy families.", "Recipes and planners for home cooks.", "Cook once, eat all week."] })
             : "A plain line.";

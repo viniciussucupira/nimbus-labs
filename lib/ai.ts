@@ -332,6 +332,46 @@ export async function writeBio(
   });
 }
 
+/**
+ * A public reply to a buyer's review, drafted (added 9 October 2026): what
+ * creators most often leave unanswered, and what a visitor reading reviews
+ * notices first. Written in the language the review is written in, as the
+ * creator, thanking, answering what the buyer actually said, and for a low
+ * rating owning it without arguing or making a promise the creator did not
+ * make. The review is read on the server, never taken from the browser.
+ * The creator edits it and posts it, or not. One of the month's jobs.
+ */
+export async function replyToReview(
+  store: Store,
+  input: { productTitle: string; rating: number; text: string; name: string; maxLength: number },
+  now = Date.now(),
+): Promise<AiResult<string>> {
+  return counted(store, now, async () => {
+    const system = [
+      "You draft the creator's public reply to one buyer's review of their product. It is shown under the review on the product's page, signed with the store's name.",
+      HONESTY_RULES.join("\n"),
+      "Write in the language the review is written in. If the review has no words, write in " + storeLanguage(store) + ". Plain words, warm and specific, no emoji, no hype.",
+      "Thank them once. Answer what they actually said, and nothing they did not say. At most four short sentences.",
+      "For a rating of 3 or less: acknowledge the problem plainly, without arguing or blaming the buyer, and invite them to reply to their order email so it can be put right. Never promise a refund, a discount, a fix, an update or anything else the creator has not said.",
+      "Never ask for a better rating, never mention other buyers or reviews, and never include a link, an email address or a phone number.",
+      'Return only a JSON object: {"reply": string}.',
+    ].join("\n\n");
+    const prompt = [
+      `Store: ${line(store.name, 60)}`,
+      `Product: ${line(input.productTitle, MAX_TITLE)}`,
+      `Rating: ${Math.max(1, Math.min(5, Math.round(input.rating)))} out of 5`,
+      input.name ? `Buyer's name as shown: ${line(input.name, 60)}` : "",
+      input.text ? `\nTheir review:\n${block(input.text, 2_000)}` : "\nThey left stars only, no words.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const answer = await ask(system, prompt, 500);
+    const json = answer ? jsonIn(answer) : null;
+    const reply = block(json?.reply, input.maxLength);
+    return reply || null;
+  });
+}
+
 export type ProductCopy = { summary: string; about: string };
 
 export async function writeProduct(
