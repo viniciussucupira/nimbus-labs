@@ -1153,6 +1153,11 @@ try {
       await headingRow.getByRole("button", { name: "Move up" }).click();
       await studio.waitForTimeout(1500);
     }
+    is("a link may have its own picture; a heading or a video played on the page has none", [
+      await studio.locator("li", { hasText: "Launch week offer" }).getByRole("button", { name: "Add a picture" }).count(),
+      await studio.locator("li", { hasText: "Watch the trailer" }).getByRole("button", { name: "Add a picture" }).count(),
+      await headingRow.getByRole("button", { name: "Add a picture" }).count(),
+    ], [1, 0, 0]);
     is("the studio says what each link does", [
       await studio.getByText("Spotlight", { exact: true }).count(),
       await studio.getByText("Plays on your page (YouTube)").count(),
@@ -1279,6 +1284,12 @@ try {
   {
     const person = await context.newPage();
     await open(person, `${LOCAL}/@longshop`);
+    const pod = person.locator("a.st-link-card", { hasText: "The pantry podcast" });
+    is("a link with its own picture shows it small in place of the icon, saying nothing twice", [
+      await pod.locator("img.st-link-thumb").getAttribute("src"),
+      await pod.locator("img.st-link-thumb").getAttribute("alt"),
+      await pod.locator(".st-link-icon").count(),
+    ], [`/api/image/${"a".repeat(24)}/${"e".repeat(32)}.webp`, "", 0]);
     const search = person.getByRole("search", { name: "Search this store" });
     is("a store past one page offers a search; a short one does not", [await search.count(), await page.goto(`${LOCAL}/@localshop`).then(() => page.getByRole("search").count())], [1, 0]);
     await search.getByLabel("Search this store").fill("tomato creme");

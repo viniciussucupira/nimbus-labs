@@ -4,7 +4,7 @@
  * a session for its owner. Written through the same functions the studio
  * uses, into the stand-in database.
  */
-import { addProduct, claimHandle, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setProductLink, setReviewed, setSections, storeForEmail, setStripeAccount, setSubscription } from "@/lib/store";
+import { addProduct, addStoreLink, claimHandle, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setLinkImage, setProductLink, setReviewed, setSections, storeForEmail, setStripeAccount, setSubscription } from "@/lib/store";
 import { openSession } from "@/lib/auth";
 import { saveReview } from "@/lib/reviews";
 import { refreshStoreQuotes } from "@/lib/store-quotes";
@@ -92,6 +92,11 @@ async function main(): Promise<void> {
     if (!made.ok) throw new Error(`long store product ${n} was refused`);
     await setProductLink(LONG, made.product.id, `https://example.com/long/${n}`);
   }
+  // A link with its own picture beside its words (lib/store-link.ts, LinkImage).
+  const pod = await addStoreLink(LONG, "The pantry podcast", "https://example.com/podcast");
+  if (!pod.ok) throw new Error("the long store's link was refused");
+  const podPicture = await setLinkImage(LONG, pod.store.links[0].id, { path: `images/${"a".repeat(24)}/${"e".repeat(32)}.webp`, width: 320, height: 320, bytes: 1 });
+  if (!podPicture.ok) throw new Error("the long store's link picture was refused");
   console.log(JSON.stringify({ ids, reviews, session: await openSession(OWNER) }));
 }
 

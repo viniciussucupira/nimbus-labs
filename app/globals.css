@@ -1899,6 +1899,18 @@ a.chip {
   border-color: var(--st-accent-text);
 }
 /* The one link the creator most wants followed (lib/store-link.ts, spotlight): in the accent, with a slow glow. */
+/* A link's own picture in place of the icon (lib/store-link.ts, LinkImage). */
+.st-link-row.st-link-pictured {
+  grid-template-columns: 3rem minmax(0, 1fr) 3rem;
+}
+.st-link-thumb {
+  display: block;
+  height: 3rem;
+  width: 3rem;
+  border-radius: 0.75rem;
+  object-fit: cover;
+  background: var(--st-accent-soft);
+}
 .st-spotlight {
   border: 2px solid var(--st-accent);
   background: var(--st-accent-soft);

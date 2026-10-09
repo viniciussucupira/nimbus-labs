@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
 import { useHydrated } from "@/components/use-hydrated";
+import { LinkPicture } from "@/components/link-picture";
 import { LINK_PROBLEMS, type LinkProblem, linkHost } from "@/lib/product-link";
 import {
   MAX_LINK_TITLE_LENGTH,
@@ -270,7 +271,7 @@ function LinkForm({
  * send people are doing two different things, and mixing them into one list
  * makes both harder to read.
  */
-export function LinkEditor({ links }: { links: StoreLink[] }) {
+export function LinkEditor({ links, folder }: { links: StoreLink[]; folder: string }) {
   const router = useRouter();
   const hydrated = useHydrated();
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -377,6 +378,9 @@ export function LinkEditor({ links }: { links: StoreLink[] }) {
                     ))}
                   </ul>
                 ) : null}
+
+                {/* A video played on the page shows the video, not a picture; a heading has neither. */}
+                {link.header || link.play || !folder ? null : <LinkPicture link={link} folder={folder} />}
 
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold">
                   {link.header ? null : (

@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { del, get, head } from "@/lib/blob";
+import { del, head } from "@/lib/blob";
+import { firstBytes } from "@/lib/uploaded-image";
 import {
   StoreFullError,
   imageFolder,
@@ -22,29 +23,6 @@ import {
 import { sniffPhotoType } from "@/lib/store-photo";
 
 const ACTIONS = new Set(["attach", "remove", "alt", "display"]);
-
-/** The first bytes of a stored picture, to see what it really is. */
-async function firstBytes(path: string): Promise<Uint8Array | null> {
-  const found = await get(path, { access: "private" });
-  if (!found || found.statusCode !== 200 || !found.stream) return null;
-  const reader = found.stream.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  while (length < 16) {
-    const { done, value } = await reader.read();
-    if (done || !value) break;
-    chunks.push(value);
-    length += value.length;
-  }
-  await reader.cancel().catch(() => {});
-  const bytes = new Uint8Array(length);
-  let at = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, at);
-    at += chunk.length;
-  }
-  return bytes;
-}
 
 /**
  * A product's picture: put on, taken off, described, and how its card is

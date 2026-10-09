@@ -20,6 +20,28 @@
  */
 
 import { readVideo } from "@/lib/sales-page";
+import { type ProductImage, parseProductImage } from "@/lib/product-image";
+
+/**
+ * A link's own picture, drawn small beside its words in place of the icon
+ * (added 9 October 2026): a podcast's cover, a channel's face, the poster of
+ * a talk. The same kind of file as a product's picture, in the same folder
+ * of the store's own (lib/product-image.ts), shrunk in the creator's browser
+ * to LINK_IMAGE_SIDE on its long side — it is never drawn bigger than a few
+ * dozen points, so that is plenty for the sharpest phone and a few dozen
+ * kilobytes for everyone. It carries no words of its own: the link's title,
+ * right beside it, already says what it is, so a screen reader is told once.
+ */
+export type LinkImage = Pick<ProductImage, "path" | "width" | "height" | "bytes">;
+
+/** The long side, in pixels, a link's picture is shrunk to. */
+export const LINK_IMAGE_SIDE = 320;
+
+/** A stored link picture, made safe; null when there is none or it is not one. */
+export function parseLinkImage(raw: unknown): LinkImage | null {
+  const image = parseProductImage(raw && typeof raw === "object" ? { ...(raw as object), small: null, alt: "" } : raw);
+  return image ? { path: image.path, width: image.width, height: image.height, bytes: image.bytes } : null;
+}
 
 /**
  * How many a store may list: a hundred, which is more places than anybody is
@@ -55,6 +77,8 @@ export type StoreLink = {
    * clicked, counted or played.
    */
   header?: boolean;
+  /** Its own small picture, in place of the icon (LinkImage, above). Never on a heading. */
+  image?: LinkImage;
 };
 
 /** Whether an entry is a heading over links, not a link. */
@@ -127,12 +151,14 @@ export function parseStoreLinks(raw: unknown): StoreLink[] {
       const { from, until } = linkExtras(value as Record<string, unknown>, false);
       links.push({ id: value.id, title: value.title.slice(0, MAX_LINK_TITLE_LENGTH), url: "", addedAt: typeof value.addedAt === "string" ? value.addedAt : "", header: true, ...(from ? { from } : {}), ...(until ? { until } : {}) });
     } else {
+      const image = parseLinkImage(value.image);
       links.push({
         id: value.id,
         title: value.title.slice(0, MAX_LINK_TITLE_LENGTH),
         url: value.url,
         addedAt: typeof value.addedAt === "string" ? value.addedAt : "",
         ...linkExtras(value as Record<string, unknown>, readVideo(value.url) !== null),
+        ...(image ? { image } : {}),
       });
     }
     if (links.length >= MAX_STORE_LINKS) break;
