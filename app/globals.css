@@ -1867,6 +1867,29 @@ a.chip {
   transform: translateY(-2px);
   border-color: var(--st-accent-text);
 }
+/* The one link the creator most wants followed (lib/store-link.ts, spotlight): in the accent, with a slow glow. */
+.st-spotlight {
+  border: 2px solid var(--st-accent);
+  background: var(--st-accent-soft);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--st-accent) 14%, transparent), 0 14px 34px -20px color-mix(in srgb, var(--st-accent) 70%, transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .st-spotlight {
+    animation: st-spotlight 2.8s var(--ease) infinite;
+  }
+}
+@keyframes st-spotlight {
+  0%, 100% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--st-accent) 14%, transparent), 0 14px 34px -20px color-mix(in srgb, var(--st-accent) 70%, transparent); }
+  50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--st-accent) 6%, transparent), 0 14px 34px -20px color-mix(in srgb, var(--st-accent) 70%, transparent); }
+}
+/* A video link played on the store page itself. */
+.st-link-video {
+  overflow: hidden;
+}
+.st-link-video .sp-video {
+  border-radius: 0;
+  box-shadow: none;
+}
 .st-link-card:focus-visible,
 .st-btn:focus-visible,
 .st-option:has(:focus-visible) {

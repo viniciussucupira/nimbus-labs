@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/icons";
 import { PROVIDER_NAMES, type Video, embedUrl } from "@/lib/sales-page";
+import { blockWords } from "@/lib/buyer-words/blocks";
 
 /**
  * A video that loads nothing until it is asked to.
@@ -18,6 +19,7 @@ export function VideoEmbed({
   title,
   poster,
   inert = false,
+  lang = "en",
 }: {
   video: Video;
   title: string;
@@ -25,7 +27,10 @@ export function VideoEmbed({
   poster: { src: string; alt: string } | null;
   /** In the studio's preview: drawn, never played. */
   inert?: boolean;
+  /** The page's language, for the button and the frame's name (lib/buyer-words/blocks.ts). */
+  lang?: string;
 }) {
+  const words = blockWords(lang);
   const [playing, setPlaying] = useState(false);
   const provider = PROVIDER_NAMES[video.provider];
 
@@ -34,7 +39,7 @@ export function VideoEmbed({
       <div className="sp-video">
         <iframe
           src={embedUrl(video)}
-          title={`${title} (video on ${provider})`}
+          title={words.videoFrame(title, provider)}
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowFullScreen
           referrerPolicy="strict-origin-when-cross-origin"
@@ -58,12 +63,12 @@ export function VideoEmbed({
         onClick={() => {
           if (!inert) setPlaying(true);
         }}
-        aria-label={`Play the video: ${title}. It loads from ${provider}.`}
+        aria-label={words.videoPlayLabel(title, provider)}
       >
         <span className="sp-video-disc" aria-hidden="true">
           <Icon name="play" size={26} strokeWidth={2} />
         </span>
-        <span className="sp-video-note">{`Play · loads from ${provider}`}</span>
+        <span className="sp-video-note">{words.videoPlay(provider)}</span>
       </button>
     </div>
   );

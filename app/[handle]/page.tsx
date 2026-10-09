@@ -1,4 +1,7 @@
 import { after } from "next/server";
+import { showingLinks } from "@/lib/store-link";
+import { PROVIDER_NAMES, readVideo } from "@/lib/sales-page";
+import { VideoEmbed } from "@/components/video-embed";
 import { blockWords } from "@/lib/buyer-words/blocks";
 import { StoreSocialsRow } from "@/components/store-socials-row";
 import { forVisitor } from "@/lib/visitor";
@@ -110,6 +113,9 @@ export default async function StorePage({ params, searchParams }: Params) {
   // With the visitor's country, for a fair price for it (lib/fair-price.ts).
   const store = await forVisitor(found.store);
   const { w, num } = speech(store);
+  // The links on the page now: a scheduled one only inside its window (lib/store-link.ts).
+  const links = showingLinks(store.links);
+  const bw = blockWords(store.language);
   const notice = w.notices[typeof query.status === "string" ? query.status : ""] ?? null;
   // "Bought 120 times", when the creator shows it and it is worth saying (lib/sold-count.ts).
   const soldLine = (count: number | undefined) => (count && count >= SHOWN_FROM ? w.bought(num(count)) : null);
@@ -246,7 +252,7 @@ export default async function StorePage({ params, searchParams }: Params) {
             {store.bio ? (
               <p className="st-muted mx-auto mt-4 max-w-md text-lg leading-relaxed">{store.bio}</p>
             ) : null}
-            <StoreSocialsRow socials={store.socials} name={store.name} words={blockWords(store.language)} />
+            <StoreSocialsRow socials={store.socials} name={store.name} words={bw} />
           </div>
         </section>
 
@@ -258,7 +264,7 @@ export default async function StorePage({ params, searchParams }: Params) {
             </div>
           ) : null}
 
-          {total === 0 && store.links.length === 0 ? (
+          {total === 0 && links.length === 0 ? (
             <div className="st-note text-center">
               <p className="font-bold" style={{ color: "var(--st-text)" }}>{w.nothingYet}</p>
               <p className="mt-2 text-sm">{w.nothingYetBody(store.name)}</p>
@@ -365,26 +371,43 @@ export default async function StorePage({ params, searchParams }: Params) {
             each one leads to is printed under it, so a visitor knows where
             they are being sent before they go.
           */}
-          {store.links.length > 0 ? (
+          {links.length > 0 ? (
             <ul className="mt-8 space-y-3">
-              {store.links.map((link) => (
-                <li key={link.id}>
-                  <a
-                    href={link.url}
-                    data-link={link.id}
-                    target="_blank"
-                    rel="noopener noreferrer nofollow ugc"
-                    className="st-card st-link-card px-5 py-4 text-center sm:px-6"
-                  >
-                    <span className="block font-bold">
-                      {link.title}
-                    </span>
-                    <span className="st-muted mt-0.5 block font-mono text-xs">
-                      {linkHost(link.url)}
-                    </span>
-                  </a>
-                </li>
-              ))}
+              {links.map((link) => {
+                const video = link.play ? readVideo(link.url) : null;
+                if (video) {
+                  // Played here, on the store page; the way to its own site is still counted.
+                  return (
+                    <li key={link.id} className={`st-card st-link-video${link.spotlight ? " st-spotlight" : ""}`}>
+                      <p className="px-5 pb-3 pt-4 text-center font-bold sm:px-6">{link.title}</p>
+                      <VideoEmbed video={video} title={link.title} poster={null} lang={store.language} />
+                      <p className="px-5 py-3 text-center text-sm sm:px-6">
+                        <a href={link.url} data-link={link.id} target="_blank" rel="noopener noreferrer nofollow ugc" className="st-footer-link">
+                          {bw.videoOpen(PROVIDER_NAMES[video.provider])}
+                        </a>
+                      </p>
+                    </li>
+                  );
+                }
+                return (
+                  <li key={link.id}>
+                    <a
+                      href={link.url}
+                      data-link={link.id}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow ugc"
+                      className={`st-card st-link-card px-5 py-4 text-center sm:px-6${link.spotlight ? " st-spotlight" : ""}`}
+                    >
+                      <span className={`block font-bold${link.spotlight ? " text-lg" : ""}`}>
+                        {link.title}
+                      </span>
+                      <span className="st-muted mt-0.5 block font-mono text-xs">
+                        {linkHost(link.url)}
+                      </span>
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           ) : null}
 

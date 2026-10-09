@@ -7,7 +7,8 @@ import {
   type LinkResult,
 } from "@/lib/store";
 import { MAX_LINK_LENGTH, readLink } from "@/lib/product-link";
-import { MAX_LINK_TITLE_LENGTH } from "@/lib/store-link";
+import { MAX_LINK_TITLE_LENGTH, linkExtras } from "@/lib/store-link";
+import { readVideo } from "@/lib/sales-page";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { StoreFullError } from "@/lib/store";
 
@@ -21,6 +22,9 @@ const STATUS: Record<string, number> = {
 
 /**
  * Adds, changes, reorders or removes one of the links on the creator's page.
+ * An add or an edit may also carry `spotlight`, `from` and `until` (when it
+ * shows) and `play` (a video played on the page), read by linkExtras in
+ * lib/store-link.ts; an edit sent without them clears them.
  *
  * Deliberately a separate route from products. A link takes no money, reaches
  * no Stripe account and delivers nothing, so it shares none of that code and
@@ -58,8 +62,8 @@ export async function POST(request: NextRequest) {
       }
       result =
         action === "add"
-          ? await addStoreLink(ref, title, read.url)
-          : await editStoreLink(ref, id, title, read.url);
+          ? await addStoreLink(ref, title, read.url, linkExtras(body, readVideo(read.url) !== null))
+          : await editStoreLink(ref, id, title, read.url, linkExtras(body, readVideo(read.url) !== null));
     } else if (action === "remove") {
       result = await removeStoreLink(ref, id);
     } else {

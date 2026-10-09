@@ -994,6 +994,40 @@ try {
     if (process.env.E2E_SHOTS) await page.locator("section").first().screenshot({ path: join(process.env.E2E_SHOTS, "store-socials.png") });
   }
 
+  part("Links that stand out, play on the page, and come and go on time");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    await studio.getByRole("button", { name: "Add a link" }).click();
+    await studio.locator("#link-title").fill("Watch the trailer");
+    await studio.locator("#link-url").fill("https://youtu.be/dQw4w9WgXcQ");
+    await studio.getByRole("checkbox", { name: /Spotlight it/ }).check();
+    await studio.getByRole("checkbox", { name: /Play it on your page/ }).check();
+    await studio.getByRole("button", { name: "Add it" }).click();
+    await studio.getByText("Link added.").first().waitFor({ timeout: 30_000 });
+    await studio.getByRole("button", { name: "Add a link" }).click();
+    await studio.locator("#link-title").fill("Launch week offer");
+    await studio.locator("#link-url").fill("https://example.com/launch");
+    await studio.locator("#link-from").fill("2099-01-01T09:00");
+    await studio.getByRole("button", { name: "Add it" }).click();
+    await studio.getByText("Shows from Jan 1, 9:00 AM").first().waitFor({ timeout: 30_000 });
+    is("the studio says what each link does", [
+      await studio.getByText("Spotlight", { exact: true }).count(),
+      await studio.getByText("Plays on your page (YouTube)").count(),
+    ], [1, 1]);
+    await open(page, `${LOCAL}/@localshop`);
+    const video = page.locator(".st-link-video");
+    is("the video link plays on the store page, in the spotlight, and its own site is still a counted link", [
+      await video.count(),
+      await video.evaluate((el) => el.classList.contains("st-spotlight")),
+      await video.getByRole("button", { name: /Play the video: Watch the trailer/ }).count(),
+      await video.locator("a[data-link]").getAttribute("href"),
+    ], [1, true, 1, "https://youtu.be/dQw4w9WgXcQ"]);
+    is("a link scheduled for later is not on the page yet", await page.getByText("Launch week offer").count(), 0);
+    await video.getByRole("button", { name: /Play the video/ }).click();
+    is("pressed, the player loads from YouTube's private address only", (await video.locator("iframe").getAttribute("src"))?.startsWith("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"), true);
+    if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "store-links.png"), fullPage: true });
+  }
+
   part("A reply to a review, drafted with AI");
   {
     await open(studio, `${LOCAL}/studio/reviews?view=all`);
