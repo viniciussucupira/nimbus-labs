@@ -49,7 +49,18 @@ export type StoreLink = {
   until?: string;
   /** A YouTube, Vimeo or Loom address played on the store page itself instead of opened elsewhere. */
   play?: boolean;
+  /**
+   * A heading over the links after it, with no address (added 9 October
+   * 2026): "My podcast", "Free stuff". Its `url` is "", and it is never
+   * clicked, counted or played.
+   */
+  header?: boolean;
 };
+
+/** Whether an entry is a heading over links, not a link. */
+export function isHeader(link: Pick<StoreLink, "header">): boolean {
+  return link.header === true;
+}
 
 /** A moment the creator chose, kept only when it is one; "" when it is not. */
 export function linkMoment(raw: unknown): string {
@@ -67,9 +78,17 @@ export function linkShowing(link: StoreLink, now = Date.now()): boolean {
   return true;
 }
 
-/** The links a visitor sees right now, in the creator's order. */
+/**
+ * The links a visitor sees right now, in the creator's order. A heading with
+ * nothing showing under it before the next heading is left out with them.
+ */
 export function showingLinks(links: StoreLink[], now = Date.now()): StoreLink[] {
-  return links.filter((link) => linkShowing(link, now));
+  const showing = links.filter((link) => linkShowing(link, now));
+  return showing.filter((link, i) => {
+    if (!isHeader(link)) return true;
+    const next = showing[i + 1];
+    return next !== undefined && !isHeader(next);
+  });
 }
 
 /** Where a link stands in time, for the studio: "live", "soon" (not yet) or "ended". */
@@ -102,14 +121,20 @@ export function parseStoreLinks(raw: unknown): StoreLink[] {
     const value = entry as Partial<StoreLink>;
     if (typeof value.id !== "string" || !value.id) continue;
     if (typeof value.title !== "string" || !value.title) continue;
-    if (typeof value.url !== "string" || !value.url) continue;
-    links.push({
-      id: value.id,
-      title: value.title.slice(0, MAX_LINK_TITLE_LENGTH),
-      url: value.url,
-      addedAt: typeof value.addedAt === "string" ? value.addedAt : "",
-      ...linkExtras(value as Record<string, unknown>, readVideo(value.url) !== null),
-    });
+    const header = value.header === true;
+    if (typeof value.url !== "string" || (!header && !value.url)) continue;
+    if (header) {
+      const { from, until } = linkExtras(value as Record<string, unknown>, false);
+      links.push({ id: value.id, title: value.title.slice(0, MAX_LINK_TITLE_LENGTH), url: "", addedAt: typeof value.addedAt === "string" ? value.addedAt : "", header: true, ...(from ? { from } : {}), ...(until ? { until } : {}) });
+    } else {
+      links.push({
+        id: value.id,
+        title: value.title.slice(0, MAX_LINK_TITLE_LENGTH),
+        url: value.url,
+        addedAt: typeof value.addedAt === "string" ? value.addedAt : "",
+        ...linkExtras(value as Record<string, unknown>, readVideo(value.url) !== null),
+      });
+    }
     if (links.length >= MAX_STORE_LINKS) break;
   }
   return links;

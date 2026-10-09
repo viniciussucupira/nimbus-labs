@@ -39,6 +39,15 @@ describe("a store link's extras: spotlight, when it shows, played on the page", 
     assert.deepEqual(showingLinks([base, link], at("2026-10-01T00:00:00Z")).map((l) => l.id), ["a1"]);
   });
 
+  it("keeps a heading with no address, and leaves out one with nothing showing under it", () => {
+    const [heading] = parseStoreLinks([{ id: "h1", title: "Watch", url: "", addedAt: "", header: true, spotlight: true, play: true }]);
+    assert.deepEqual(heading, { id: "h1", title: "Watch", url: "", addedAt: "", header: true });
+    assert.deepEqual(parseStoreLinks([{ id: "h2", title: "No address", url: "", addedAt: "" }]), []);
+    const h = (id: string): StoreLink => ({ id, title: id, url: "", addedAt: "", header: true });
+    const later = { ...base, id: "later", from: "2099-01-01T00:00:00.000Z" };
+    assert.deepEqual(showingLinks([h("A"), base, h("B"), later, h("C")]).map((l) => l.id), ["A", "a1"]);
+  });
+
   it("reads kept links with their extras, and without them for links kept before", () => {
     const [video, page, old] = parseStoreLinks([
       { ...base, spotlight: true, play: true, from: "2026-10-12T15:00:00.000Z" },

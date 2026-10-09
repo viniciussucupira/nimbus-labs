@@ -1143,6 +1143,16 @@ try {
     await studio.locator("#link-from").fill("2099-01-01T09:00");
     await studio.getByRole("button", { name: "Add it" }).click();
     await studio.getByText("Shows from Jan 1, 9:00 AM").first().waitFor({ timeout: 30_000 });
+    await studio.getByRole("button", { name: "Add a heading" }).click();
+    await studio.locator("#link-title").fill("Watch first");
+    is("a heading asks for no address", await studio.locator("#link-url").count(), 0);
+    await studio.getByRole("button", { name: "Add it" }).click();
+    await studio.getByText("Link added.").first().waitFor({ timeout: 30_000 });
+    const headingRow = studio.locator("li", { hasText: "Watch first" }).filter({ hasText: "Heading" });
+    for (let n = 0; n < 2; n++) {
+      await headingRow.getByRole("button", { name: "Move up" }).click();
+      await studio.waitForTimeout(1500);
+    }
     is("the studio says what each link does", [
       await studio.getByText("Spotlight", { exact: true }).count(),
       await studio.getByText("Plays on your page (YouTube)").count(),
@@ -1156,6 +1166,7 @@ try {
       await video.locator("a[data-link]").getAttribute("href"),
     ], [1, true, 1, "https://youtu.be/dQw4w9WgXcQ"]);
     is("a link scheduled for later is not on the page yet", await page.getByText("Launch week offer").count(), 0);
+    is("the heading stands over the links after it", await page.getByRole("heading", { name: "Watch first" }).count(), 1);
     await video.getByRole("button", { name: /Play the video/ }).click();
     is("pressed, the player loads from YouTube's private address only", (await video.locator("iframe").getAttribute("src"))?.startsWith("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"), true);
     if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "store-links.png"), fullPage: true });

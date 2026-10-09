@@ -50,7 +50,12 @@ export async function POST(request: NextRequest) {
 
   try {
     let result: LinkResult;
-    if (action === "add" || action === "edit") {
+    if ((action === "add" || action === "edit") && body.header === true) {
+      // A heading over links: a title, no address, perhaps a window to show in.
+      const { from, until } = linkExtras(body, false);
+      const extras = { header: true, ...(from ? { from } : {}), ...(until ? { until } : {}) };
+      result = action === "add" ? await addStoreLink(ref, title, "", extras) : await editStoreLink(ref, id, title, "", extras);
+    } else if (action === "add" || action === "edit") {
       // Checked before anything is written, and the creator is told which way
       // it was wrong rather than just that it failed.
       const read = readLink(raw);

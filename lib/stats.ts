@@ -733,7 +733,7 @@ export function studioStats(
         return { views: k === "all" ? -1 : w[k].viewsByProduct[product.id] ?? 0, checkouts: w[k].checkoutsByProduct[product.id] ?? 0, sales: s.sales, cents: s.cents };
       }),
     })),
-    links: store.links.map((link) => ({ id: link.id, title: link.title, ...per((k) => w[k].linkClicks[link.id] ?? 0) })),
+    links: store.links.filter((link) => !link.header).map((link) => ({ id: link.id, title: link.title, ...per((k) => w[k].linkClicks[link.id] ?? 0) })),
     sales: salesState,
     partial: sales?.partial ?? false,
     currency: store.currency,

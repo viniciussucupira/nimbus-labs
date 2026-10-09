@@ -456,6 +456,14 @@ export default async function StorePage({ params, searchParams }: Params) {
           {links.length > 0 ? (
             <ul className="mt-8 space-y-3">
               {links.map((link) => {
+                // A heading over the links after it (lib/store-link.ts).
+                if (link.header) {
+                  return (
+                    <li key={link.id} className="pt-4 first:pt-0">
+                      <h2 className="st-section-title text-center" style={{ marginBottom: 0 }}>{link.title}</h2>
+                    </li>
+                  );
+                }
                 const video = link.play ? readVideo(link.url) : null;
                 if (video) {
                   // Played here, on the store page; the way to its own site is still counted.

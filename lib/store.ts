@@ -2671,7 +2671,7 @@ export async function addStoreLink(
   email: string,
   rawTitle: string,
   url: string,
-  extras: Pick<StoreLink, "spotlight" | "from" | "until" | "play"> = {},
+  extras: Pick<StoreLink, "spotlight" | "from" | "until" | "play" | "header"> = {},
 ): Promise<LinkResult> {
   const title = rawTitle.trim().slice(0, MAX_LINK_TITLE_LENGTH);
   if (!title) return { ok: false, reason: "title" };
@@ -2698,7 +2698,7 @@ export async function editStoreLink(
   id: string,
   rawTitle: string,
   url: string,
-  extras: Pick<StoreLink, "spotlight" | "from" | "until" | "play"> = {},
+  extras: Pick<StoreLink, "spotlight" | "from" | "until" | "play" | "header"> = {},
 ): Promise<LinkResult> {
   const title = rawTitle.trim().slice(0, MAX_LINK_TITLE_LENGTH);
   if (!title) return { ok: false, reason: "title" };
