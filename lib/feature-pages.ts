@@ -1629,7 +1629,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "calendar", title: "Pay later", body: "Klarna, Afterpay or Clearpay, Affirm and the rest: the buyer pays in installments, and you are paid in full." },
           { icon: "bank", title: "Bank payments confirmed on the spot", body: "iDEAL, Bancontact, BLIK, Przelewy24 and others that confirm while the buyer waits." },
           { icon: "globe", title: "Prices written their way", body: "Every page, email, spreadsheet and number in your studio writes money in your store's currency: ¥2,700, not $27.00." },
-          { icon: "chat", title: "Your store in seven languages", body: "English, Spanish, French, German, Italian, Dutch or Portuguese (Portugal), chosen once in your studio. Every page your buyers read, Stripe's checkout and every email your store sends them speak it, with dates, numbers and prices written that language's way. Your studio stays in English." },
+          { icon: "chat", title: "Your store in seven languages", body: "English, Spanish, French, German, Italian, Dutch or Portuguese (Portugal), chosen once in your studio. Every page your buyers read, Stripe's checkout and every email your store sends them speak it, with dates, numbers and prices written that language's way. Drafts written with AI — descriptions, sales pages, course outlines, emails — come in it too, and a page written in another language is translated in one step. Your studio stays in English." },
           { icon: "bolt", title: "Delivery that stays instant", body: "Ways to pay that are not confirmed while the buyer waits are left out, so nobody pays and then meets a page saying nothing was paid." },
         ],
       },

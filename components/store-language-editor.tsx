@@ -59,7 +59,7 @@ export function StoreLanguageEditor({ language, handle }: { language: LanguageCo
       </p>
       <p className="mt-2 text-sm text-ink-soft">
         Your studio stays in English. What you write yourself — product names, descriptions, lessons, posts — is shown
-        exactly as you wrote it, so write it in the same language and a page never mixes two.
+        exactly as you wrote it, so write it in the same language and a page never mixes two. Drafts written with AI — descriptions, sales pages, course outlines, emails — come in this language too, and a sales page already written can be translated into it with AI in one step.
       </p>
       <form className="mt-4 flex flex-wrap items-end gap-3" onSubmit={save}>
         <select
