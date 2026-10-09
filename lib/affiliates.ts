@@ -71,7 +71,7 @@ import {
   readViaCookie,
 } from "@/lib/affiliate-setting";
 import { affiliateForCodes, codeOwners } from "@/lib/affiliate-codes";
-import { type PartnerShare, parsePartnerShare, shareCents, shareOn } from "@/lib/partner-share";
+import { type PartnerShare, parsePartnerShare, shareOn } from "@/lib/partner-share";
 import { bondFor, rememberBuyer } from "@/lib/affiliate-bond";
 import { offerPartnership } from "@/lib/partner-invites";
 import type { Store } from "@/lib/store";

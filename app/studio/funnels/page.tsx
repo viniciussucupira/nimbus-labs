@@ -7,7 +7,7 @@ import { studioPath, studioView } from "@/lib/studio-route";
 import { StudioHeader } from "@/components/studio-header";
 import { StudioStorePin } from "@/components/studio-store-pin";
 import { formatMoney } from "@/lib/money";
-import { canBeBumped, isOneOff } from "@/lib/product-extras";
+import { canBeBumped } from "@/lib/product-extras";
 import { MAX_FUNNEL_STEPS } from "@/lib/funnel";
 import { imageUrl } from "@/lib/product-image";
 import { FunnelEditor } from "@/components/funnel-editor";

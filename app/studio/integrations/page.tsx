@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { ensureStatsId, isFree } from "@/lib/store";
+import { ensureStatsId } from "@/lib/store";
 import { idsOfKind, readTitles } from "@/lib/catalog";
 import { studioPath, studioView } from "@/lib/studio-route";
 import { StudioHeader } from "@/components/studio-header";
