@@ -63,7 +63,7 @@ export async function answersUsed(store: Store, now = Date.now()): Promise<numbe
 }
 
 /** How a product is handed over, in a sentence that is true of every store here. */
-function deliveryWords(product: Listing): string {
+export function deliveryWords(product: Listing): string {
   if (isFree(product)) return "It is free: the visitor leaves their email address, confirms it from their inbox, and gets it by email.";
   if (product.call) return "It is a call: the buyer picks a time on the store's calendar before paying, and gets a calendar invite and reminders by email.";
   if (product.recurring) return "It is a membership: the buyer pays on a schedule and can cancel at any time from a link on the store. Access lasts while the membership runs.";
@@ -74,7 +74,7 @@ function deliveryWords(product: Listing): string {
 }
 
 /** What it costs, in words, read from the product itself. */
-function priceWords(product: Listing, currency: string): string {
+export function priceWords(product: Listing, currency: string): string {
   if (isFree(product)) return "Free.";
   const money = (cents: number) => formatMoney(cents, currency);
   if (product.options.length > 0) {
@@ -240,6 +240,50 @@ export async function answerQuestion(input: {
   await redisPipeline(commands).catch((error) => console.error("keeping an answer failed", error));
   return { ok: true, answer, known };
 }
+
+/**
+ * Takes one answer from the store's month before the model is asked; false
+ * when the month is used up (and nothing was taken). Shared with the store
+ * page's guide (lib/store-guide.ts), which draws on the same allowance.
+ */
+export async function takeAnswer(store: Store, now = Date.now()): Promise<boolean> {
+  if (!store.statsId) return false;
+  const key = monthKey(store.statsId, new Date(now));
+  const [used] = await redisPipeline([["INCR", key], ["EXPIRE", key, 40 * 86_400]]);
+  if (Number(used) > answersAllowance(store, now)) {
+    await redisPipeline([["DECR", key]]).catch(() => {});
+    return false;
+  }
+  return true;
+}
+
+/** Gives an answer back to the month, when no answer came. */
+export async function giveAnswerBack(store: Store, now = Date.now()): Promise<void> {
+  if (!store.statsId) return;
+  await redisPipeline([["DECR", monthKey(store.statsId, new Date(now))]]).catch(() => {});
+}
+
+/** An answer kept for a day, by its hash, or null. */
+export async function keptAnswer(hash: string): Promise<string | null> {
+  const [kept] = await redisPipeline([["GET", answerKey(hash)]]);
+  return typeof kept === "string" ? kept : null;
+}
+
+/** Keeps an answer for a day; with `missed`, also puts what was asked on the creator's list. */
+export async function keepAnswer(store: Store, hash: string, value: string, missed: { productId: string; question: string; now: number } | null): Promise<void> {
+  const commands: (string | number)[][] = [["SET", answerKey(hash), value, "EX", ANSWER_KEPT_SECONDS]];
+  if (missed && store.statsId) {
+    commands.push(
+      ["LPUSH", missedKey(store.statsId), JSON.stringify({ p: missed.productId, q: missed.question, at: Math.floor(missed.now / 1000) })],
+      ["LTRIM", missedKey(store.statsId), 0, MISSED_KEPT - 1],
+      ["EXPIRE", missedKey(store.statsId), MISSED_SECONDS],
+    );
+  }
+  await redisPipeline(commands).catch((error) => console.error("keeping an answer failed", error));
+}
+
+/** What a question asked of the store page's guide is filed under in the creator's list (lib/store-guide.ts). */
+export const STORE_PAGE = "@store";
 
 export type Missed = { productId: string; question: string; at: number };
 

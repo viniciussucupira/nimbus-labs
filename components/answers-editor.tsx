@@ -59,11 +59,16 @@ export function AnswersEditor({
         from your notes below, in their own language. When your page does not answer the question, they are told so, and the question lands here
         for you to read: that list shows you what your pages are missing.
       </p>
+      <p className="mt-2 text-ink-soft">
+        With three products or more, your store page also gets &ldquo;Not sure which one is for you?&rdquo;: a visitor says what they want and
+        sees which of your products fit, and why, picked only from your titles, one-line summaries, prices and notes. When nothing fits, what they
+        looked for lands here too: an idea for your next product. Each pick counts as one answer.
+      </p>
 
       <label className="mt-5 flex min-h-11 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
         <input type="checkbox" checked={on} onChange={(event) => setOn(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-violet-brand" />
         <span>
-          Answer questions on my product pages
+          Answer questions on my product pages, and help visitors choose on my store page
           <span className="block font-normal text-ink-soft">
             It never states a price, a refund, a deadline or a result that is not on your page, and the box says the answer is automatic.
           </span>

@@ -82,6 +82,12 @@ export async function startServices(port) {
             ? JSON.stringify({ x: "Ten short lessons on knife skills.", instagram: "Ten short lessons.\n\nThe link is in my bio.", linkedin: "I put ten short lessons together." })
           : system.startsWith("You draft the creator's public reply")
             ? JSON.stringify({ reply: "Thank you for baking along, and for saying so." })
+          : system.startsWith("A visitor on a creator's store page")
+            ? JSON.stringify(
+                /moon/i.test(String(body.messages[0].content).split("What the visitor is looking for:").pop() ?? "")
+                  ? { picks: [] }
+                  : { picks: [{ n: 1, why: "It fits a busy week at home." }, { n: 2, why: "It goes well with it." }] },
+              )
           : system.startsWith("You write the one line")
             ? JSON.stringify({ lines: ["Weeknight dinners for busy families.", "Recipes and planners for home cooks.", "Cook once, eat all week."] })
             : "A plain line.";

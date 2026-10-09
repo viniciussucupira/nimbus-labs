@@ -1,4 +1,6 @@
 import { after } from "next/server";
+import { guideOn } from "@/lib/store-guide";
+import { StoreGuideBox } from "@/components/store-guide-box";
 import { joinOpen } from "@/lib/store-join";
 import { StoreJoinBox } from "@/components/store-join-box";
 import { showingLinks } from "@/lib/store-link";
@@ -280,6 +282,12 @@ export default async function StorePage({ params, searchParams }: Params) {
                   {w.saleBanner(store.sale.name, store.sale.percent, endsLine(store, store.sale.ends))}
                   <span className="st-muted mt-1 block text-sm font-normal">{w.saleBannerNote}</span>
                 </p>
+              ) : null}
+              {/* "Not sure which one is for you?": the visitor says what they want, and sees what fits (lib/store-guide.ts). */}
+              {page === 1 && total >= 3 && guideOn(store, total) && canSell(store) ? (
+                <div className="mb-8">
+                  <StoreGuideBox handle={store.handle} storeName={store.name} lang={store.language} />
+                </div>
               ) : null}
               {groups.map((group, g) => (
                 <section key={group.products[0].id} className={g > 0 ? "mt-10" : undefined} aria-label={group.title ?? undefined}>
