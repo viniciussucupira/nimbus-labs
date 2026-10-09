@@ -1023,6 +1023,7 @@ try {
       ["the home page", "/", 0],
       ["the home page, on a computer", "/", 1200],
       ["a feature page", "/platform/sales-pages", 0],
+      ["the writing help's page", "/platform/ai-writing", 1200],
       ["the help center", "/help", 1200],
       ["a buyer's orders", "/@localshop/orders", 0],
     ];

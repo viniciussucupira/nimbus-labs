@@ -419,7 +419,7 @@ const INCLUDED = [
   "Sign-in without passwords, and a full refund that closes access by itself",
   "Free products that build an email list you can download at any time",
   "Your list, products and past buyers brought over from another platform, from a spreadsheet",
-  `Product descriptions and course outlines drafted with AI from your own words, ${AI_MONTHLY.creator} drafts a month (${AI_MONTHLY.trial} during the free trial)`,
+  `Writing help with AI, from your own words and in your store's language: product descriptions, whole sales pages and course outlines, a second opinion on a page, any block rewritten, a page translated, picture descriptions, the line about your store, replies to reviews and posts to share — ${AI_MONTHLY.creator} a month (${AI_MONTHLY.trial} during the free trial)`,
 ];
 
 const PRO_INCLUDED = [
@@ -431,7 +431,7 @@ const PRO_INCLUDED = [
   "One-click unsubscribe in every email, honored for good",
   "Community announcements emailed to the members who asked for them, counted in the same monthly allowance",
   "One email that asks each buyer for a review, 3 to 30 days after buying",
-  `The same AI drafting, with the monthly allowance raised from ${AI_MONTHLY.creator} to ${AI_MONTHLY.pro} drafts, and emails among the things it drafts`,
+  `The same writing help with AI, raised from ${AI_MONTHLY.creator} to ${AI_MONTHLY.pro} a month, and emails among the things it drafts`,
   "Our name off the foot of your page, so it carries yours and nothing of ours",
 ];
 
