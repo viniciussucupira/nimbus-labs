@@ -666,6 +666,15 @@ try {
     is("and so do the keys: Ctrl+Z", await blocks.count(), before + 1);
     await studio.locator("body").press("Control+Shift+z");
     is("and Ctrl+Shift+Z", await blocks.count(), before + 2);
+    // Unsaved: a link elsewhere in the studio asks first, and staying keeps everything.
+    let asked = "";
+    studio.once("dialog", (dialog) => {
+      asked = dialog.message();
+      void dialog.dismiss();
+    });
+    await studio.getByRole("navigation", { name: "Products" }).getByRole("link", { name: /Sunday Baking/ }).click();
+    await studio.waitForTimeout(300);
+    is("leaving unsaved changes is asked about, and staying keeps them", [asked.startsWith("You have changes that are not saved"), studio.url().includes(`product=${ids["Knife Skills"]}`), await blocks.count()], [true, true, before + 2]);
     if (process.env.E2E_SHOTS) {
       await studio.locator("ol").first().screenshot({ path: join(process.env.E2E_SHOTS, "block-list.png") });
       await studio.getByRole("button", { name: "Add a block after block 1", exact: true }).click();

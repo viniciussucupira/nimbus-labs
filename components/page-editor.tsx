@@ -12,6 +12,7 @@ import { PageCoach } from "@/components/page-coach";
 import { PageStylePicker } from "@/components/page-style-picker";
 import { BlockPicker } from "@/components/block-picker";
 import { SharePanel } from "@/components/share-panel";
+import { useLeaveGuard } from "@/components/leave-guard";
 import { BlockRewrite } from "@/components/block-rewrite";
 import { type CourseOutline, insideFromCourse } from "@/lib/course-outline-items";
 import { MIN_VIEWS, type Counts, rate, winner } from "@/lib/headline-test-rules";
@@ -372,6 +373,8 @@ export function PageEditor({
   const hiddenNow = initial.hidden && !(initial.showFrom > 0 && clock > 0 && initial.showFrom * 1000 <= clock);
   const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "", y: initial.style, h: initial.hidden, f: initial.hidden ? initial.showFrom : 0, ab: initial.test ? [initial.test.headline, initial.test.sub] : null });
   const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next, y: style, h: hidden, f: hidden ? showFrom : 0, ab: testing ? [testHeadline.trim(), testSub.trim()] : null }) !== saved;
+  // Nothing typed here is lost to a closed tab or a link pressed by mistake.
+  useLeaveGuard(dirty && !busy);
   const hasHero = drafts[0]?.block.kind === "hero";
   const hasReviews = drafts.some((d) => d.block.kind === "reviews");
   const addable = BLOCK_KINDS.filter((k) => (k.kind === "hero" ? !hasHero : k.kind === "reviews" ? !hasReviews : true));
