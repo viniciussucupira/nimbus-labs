@@ -1201,6 +1201,31 @@ try {
   }
 
   await keepSmall();
+  part("A contact form on the store page, to the creator's own inbox");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const box = studio.locator("form#contact");
+    await box.getByRole("checkbox", { name: "Show the contact form on my store page" }).check();
+    await box.getByRole("button", { name: "Save", exact: true }).click();
+    await studio.getByText("The contact form is on your store page.").first().waitFor({ timeout: 30_000 });
+    const person = await context.newPage();
+    await open(person, `${LOCAL}/@localshop`);
+    const form = person.getByRole("region", { name: "Get in touch" });
+    await form.getByLabel("Your name").fill("Dana Writer");
+    await form.getByLabel("Your email").fill("dana.writer@example.com");
+    await form.getByLabel("Your message").fill("Could we work together on a recipe series for our magazine?");
+    const before = services.emails().length;
+    await Promise.all([person.waitForURL(/\/contact\?status=sent/, { timeout: 60_000 }), form.getByRole("button", { name: "Send the message" }).click()]);
+    is("the visitor is told it is on its way", await words(person.locator("h1")), "Your message is on its way");
+    const mail = services.emails().slice(before).find((email) => /via your store/.test(email.subject));
+    is("it reaches the creator, with Reply to the visitor, and nothing goes to the visitor", [
+      [].concat(mail?.to)[0],
+      mail?.reply_to,
+      services.emails().slice(before).some((email) => [].concat(email.to).includes("dana.writer@example.com")),
+    ], ["owner@example.com", "dana.writer@example.com", false]);
+    await person.close();
+  }
+
   part("Help to choose on the store page, picked by AI from the catalog");
   {
     await open(studio, `${LOCAL}/studio`);
@@ -1355,6 +1380,7 @@ try {
       ["the store's blog", "/@localshop/blog", 0],
       ["the sign-up box's page", "/@localshop/join?status=sent", 0],
       ["a long store's search", "/@longshop?q=bread", 0],
+      ["a message's page", "/@localshop/contact?status=sent", 0],
       ["a post on it", postPath, 0],
       ["the studio's blog", "/studio/blog?edit=new", 1200],
     ];

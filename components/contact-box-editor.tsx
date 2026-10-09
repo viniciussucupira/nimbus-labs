@@ -1,0 +1,124 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "@/components/toast";
+import { MAX_JOIN_HEADING, MAX_JOIN_LINE, type StoreJoin } from "@/lib/store";
+import { contactWords } from "@/lib/buyer-words/contact";
+
+/**
+ * The contact form on the store page (lib/store-contact.ts): on or off, and
+ * the creator's own heading and line for it, previewed as buyers see it.
+ */
+export function ContactBoxEditor({
+  contact: join,
+  storeName,
+  language,
+  blocked,
+}: {
+  contact: StoreJoin;
+  storeName: string;
+  language: string;
+  /** Why it would not show yet: "" when it would. */
+  blocked: "" | "plan" | "mail";
+}) {
+  const router = useRouter();
+  const [on, setOn] = useState(join.on);
+  const [heading, setHeading] = useState(join.heading);
+  const [line, setLine] = useState(join.line);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const w = contactWords(language);
+  const changed = on !== join.on || heading !== join.heading || line !== join.line;
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/store/contact-box", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ on, heading, line }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean };
+      if (data.ok) {
+        toast(on ? "The contact form is on your store page." : "The contact form is off.");
+        router.refresh();
+        return;
+      }
+      setError("Something went wrong on our side. Nothing was changed. Try again in a moment.");
+    } catch {
+      setError("Something went wrong on our side. Nothing was changed. Try again in a moment.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form id="contact" onSubmit={save} className="card mt-8 scroll-mt-32 p-6 sm:p-8" noValidate>
+      <p className="text-lg font-semibold tracking-[-0.02em] text-ink">Contact form</p>
+      <p className="mt-2 text-ink-soft">
+        A form on your store page where visitors write to you: a question before buying, a collaboration, a booking. Each message
+        lands in your own inbox, and Reply goes straight back to them. Nothing is ever sent to the address they type, so the form
+        cannot be used to email anybody else; up to 20 messages a day reach you.
+      </p>
+
+      <label className="mt-5 flex items-start gap-3 text-ink">
+        <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} className="mt-1 size-5 shrink-0 accent-violet-brand" />
+        <span className="font-semibold">Show the contact form on my store page</span>
+      </label>
+      {on && blocked ? (
+        <p className="mt-3 rounded-2xl bg-sand/60 px-4 py-3 text-sm text-ink">
+          {blocked === "plan"
+            ? "It shows once your subscription is active again."
+            : "Email is not switched on for this site yet, so the form stays hidden until it is."}
+        </p>
+      ) : null}
+
+      <div className="mt-5 grid gap-4">
+        <div>
+          <label htmlFor="contact-heading-field" className="field-label">Heading (optional)</label>
+          <input
+            id="contact-heading-field"
+            type="text"
+            maxLength={MAX_JOIN_HEADING}
+            value={heading}
+            placeholder={w.heading}
+            onChange={(e) => setHeading(e.target.value)}
+            className="field mt-2"
+          />
+        </div>
+        <div>
+          <label htmlFor="contact-line-field" className="field-label">One line under it (optional)</label>
+          <textarea
+            id="contact-line-field"
+            rows={2}
+            maxLength={MAX_JOIN_LINE}
+            value={line}
+            placeholder={w.line(storeName)}
+            onChange={(e) => setLine(e.target.value)}
+            className="field mt-2"
+          />
+          <p className="mt-1 text-sm text-ink-soft">Left empty, both are written for you in your store&apos;s language. Say what you answer, and how soon.</p>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl bg-paper p-5 ring-1 ring-line" aria-label="Preview">
+        <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">Preview</p>
+        <p className="mt-2 text-lg font-semibold text-ink">{heading.trim() || w.heading}</p>
+        <p className="mt-1 text-sm text-ink-soft">{line.trim() || w.line(storeName)}</p>
+        <div className="mt-3 flex gap-2" aria-hidden="true">
+          <span className="flex-1 rounded-2xl bg-white px-4 py-2 text-sm text-ink-soft ring-1 ring-line">{w.message}</span>
+          <span className="rounded-full bg-violet-brand px-4 py-2 text-sm font-semibold text-white">{w.button}</span>
+        </div>
+      </div>
+
+      {error ? <p role="alert" className="mt-4 text-sm font-semibold text-danger">{error}</p> : null}
+      <button type="submit" disabled={saving || !changed} className="btn btn-primary mt-5">
+        {saving ? "Saving…" : "Save"}
+      </button>
+    </form>
+  );
+}

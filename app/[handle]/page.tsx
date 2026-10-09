@@ -1,4 +1,6 @@
 import { after } from "next/server";
+import { contactOpen } from "@/lib/store-contact";
+import { StoreContactBox } from "@/components/store-contact-box";
 import { linkIcon } from "@/lib/store-socials";
 import { Icon } from "@/components/icons";
 import { MAX_STORE_SEARCH, STORE_PAGE_SIZE, searchStore, searchWords } from "@/lib/catalog";
@@ -514,6 +516,8 @@ export default async function StorePage({ params, searchParams }: Params) {
 
           {/* The sign-up box: an address joins only once its owner confirms by email (lib/store-join.ts). */}
           {joinOpen(store) ? <StoreJoinBox store={store} /> : null}
+          {/* The contact form: a visitor writes to the creator's own inbox (lib/store-contact.ts). */}
+          {contactOpen(store) ? <StoreContactBox store={store} /> : null}
 
           {/*
             The way into the members-only community, when the creator has one

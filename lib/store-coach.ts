@@ -88,6 +88,14 @@ export function storeChecks(store: Store, input: StoreCoachInput): StoreCheck[] 
       href: "#signup",
     },
     {
+      id: "contact",
+      label: "A way to write to you",
+      why: "The contact form: questions before buying, collaborations and bookings reach your inbox.",
+      done: store.contact.on,
+      weight: 1,
+      href: "#contact",
+    },
+    {
       id: "socials",
       label: "Your profiles under your name",
       why: "Visitors check who you are before they buy from you.",
