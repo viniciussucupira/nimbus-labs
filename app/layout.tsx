@@ -16,12 +16,17 @@ const geist = Geist({
   display: "swap",
 });
 
+/* Not preloaded (9 October 2026): a creator's store pages never use it, and
+   preloading it there sent every buyer two files (31 KB) the page then threw
+   away. The pages that do use it ask for it with their first styles, and
+   show the fallback until it comes. */
 const accent = Instrument_Serif({
   variable: "--font-accent",
   subsets: ["latin"],
   weight: "400",
   style: ["normal", "italic"],
   display: "swap",
+  preload: false,
 });
 
 /* The letters a creator may pick for their own page (lib/store-look.ts,

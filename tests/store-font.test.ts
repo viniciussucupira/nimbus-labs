@@ -27,6 +27,7 @@ const layout = readFileSync("app/layout.tsx", "utf8");
 const named = [...new Set(FONTS.flatMap((f) => [f.head, f.body]).filter(Boolean))];
 is("each face is declared, from our own address", named.every((v) => layout.includes(`variable: "${v}"`)), true);
 is("and none is preloaded", named.every((v) => new RegExp(`variable: "${v}"[^)]*preload: false`).test(layout)), true);
+is("nor the site's italic accent, which no store page uses", /variable: "--font-accent"[^)]*preload: false/.test(layout), true);
 const css = readFileSync("app/globals.css", "utf8");
 is("the page's words and headings take them", [css.includes("font-family: var(--st-font-body, var(--font-body))"), css.includes("font-family: var(--st-font-head, var(--font-body))")], [true, true]);
 const route = readFileSync("app/api/store/look/route.ts", "utf8");
