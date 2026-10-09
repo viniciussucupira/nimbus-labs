@@ -88,6 +88,14 @@ export function storeChecks(store: Store, input: StoreCoachInput): StoreCheck[] 
       href: "#signup",
     },
     {
+      id: "faq",
+      label: "Questions answered on your store page",
+      why: "How files arrive, how to pay, how to reach you: answered before a visitor has to ask. AI can draft them.",
+      done: store.faq.length > 0,
+      weight: 1,
+      href: "#faq",
+    },
+    {
       id: "contact",
       label: "A way to write to you",
       why: "The contact form: questions before buying, collaborations and bookings reach your inbox.",

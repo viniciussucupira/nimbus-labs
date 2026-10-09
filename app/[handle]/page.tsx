@@ -1,4 +1,6 @@
 import { after } from "next/server";
+import { faqData } from "@/lib/store-faq";
+import { JsonLd } from "@/components/structured-data";
 import { contactOpen } from "@/lib/store-contact";
 import { StoreContactBox } from "@/components/store-contact-box";
 import { linkIcon } from "@/lib/store-socials";
@@ -516,6 +518,24 @@ export default async function StorePage({ params, searchParams }: Params) {
 
           {/* The sign-up box: an address joins only once its owner confirms by email (lib/store-join.ts). */}
           {joinOpen(store) ? <StoreJoinBox store={store} /> : null}
+          {/* The store's own questions and answers, and the same for search engines (lib/store-faq.ts). */}
+          {store.faq.length > 0 && !searching ? (
+            <section aria-labelledby="faq-title" className="mt-10">
+              <h2 id="faq-title" className="st-section-title">
+                {bw.storeFaqTitle}
+              </h2>
+              <div className="space-y-3">
+                {store.faq.map((item) => (
+                  <details key={item.q} className="st-card st-faq px-5 py-4 sm:px-6">
+                    <summary className="cursor-pointer font-bold">{item.q}</summary>
+                    <p className="st-muted mt-2 whitespace-pre-line leading-relaxed [overflow-wrap:anywhere]">{item.a}</p>
+                  </details>
+                ))}
+              </div>
+              {faqData(store.faq) ? <JsonLd data={faqData(store.faq)!} /> : null}
+            </section>
+          ) : null}
+
           {/* The contact form: a visitor writes to the creator's own inbox (lib/store-contact.ts). */}
           {contactOpen(store) ? <StoreContactBox store={store} /> : null}
 

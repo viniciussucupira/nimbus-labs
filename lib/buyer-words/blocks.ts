@@ -68,6 +68,8 @@ const en = {
   searchNone: (q: string) => `Nothing here for “${q}”. Try another word, or see every product.`,
   searchClear: "Show every product",
   searchSlow: "Too many searches for now. Try again in a few minutes.",
+  /** The store's own questions and answers (lib/store-faq.ts). */
+  storeFaqTitle: "Questions, answered",
 };
 
 export type BlockWords = typeof en;
@@ -119,6 +121,7 @@ const es: BlockWords = {
   searchNone: (q) => `No hay nada para «${q}». Prueba con otra palabra o mira todos los productos.`,
   searchClear: "Ver todos los productos",
   searchSlow: "Demasiadas búsquedas por ahora. Inténtalo dentro de unos minutos.",
+  storeFaqTitle: "Preguntas y respuestas",
 };
 
 const fr: BlockWords = {
@@ -168,6 +171,7 @@ const fr: BlockWords = {
   searchNone: (q) => `Rien ici pour « ${q} ». Essayez un autre mot, ou voyez tous les produits.`,
   searchClear: "Voir tous les produits",
   searchSlow: "Trop de recherches pour le moment. Réessayez dans quelques minutes.",
+  storeFaqTitle: "Vos questions, nos réponses",
 };
 
 const de: BlockWords = {
@@ -217,6 +221,7 @@ const de: BlockWords = {
   searchNone: (q) => `Hier gibt es nichts zu „${q}“. Versuche ein anderes Wort oder sieh dir alle Produkte an.`,
   searchClear: "Alle Produkte zeigen",
   searchSlow: "Gerade zu viele Suchen. Versuche es in ein paar Minuten wieder.",
+  storeFaqTitle: "Fragen und Antworten",
 };
 
 const it: BlockWords = {
@@ -266,6 +271,7 @@ const it: BlockWords = {
   searchNone: (q) => `Niente qui per «${q}». Prova un'altra parola o guarda tutti i prodotti.`,
   searchClear: "Mostra tutti i prodotti",
   searchSlow: "Troppe ricerche per ora. Riprova tra qualche minuto.",
+  storeFaqTitle: "Domande e risposte",
 };
 
 const nl: BlockWords = {
@@ -315,6 +321,7 @@ const nl: BlockWords = {
   searchNone: (q) => `Niets gevonden voor ‘${q}’. Probeer een ander woord, of bekijk alle producten.`,
   searchClear: "Alle producten tonen",
   searchSlow: "Even te veel zoekopdrachten. Probeer het over een paar minuten opnieuw.",
+  storeFaqTitle: "Vragen en antwoorden",
 };
 
 const pt: BlockWords = {
@@ -364,6 +371,7 @@ const pt: BlockWords = {
   searchNone: (q) => `Não há nada aqui para «${q}». Experimente outra palavra ou veja todos os produtos.`,
   searchClear: "Ver todos os produtos",
   searchSlow: "Demasiadas pesquisas por agora. Tente novamente dentro de alguns minutos.",
+  storeFaqTitle: "Perguntas e respostas",
 };
 
 export const BLOCK_WORDS: Record<LanguageCode, BlockWords> = { en, es, fr, de, it, nl, pt };
