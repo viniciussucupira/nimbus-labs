@@ -407,7 +407,7 @@ export const PAGES: TopicPage[] = [
         head: ["", "Stan", "Marktmorgen"],
         rows: [
           ["Store page on a phone", "Yes", "Yes, and faster (93\u201394 against 46\u201359 on PageSpeed, October 5, 2026)"],
-          ["Themes and colors", "Yes, limited", "Yes \u2014 four themes, ten colors or any color of your own, and your photo. Every color is checked for contrast before your page uses it"],
+          ["Themes and colors", "Yes, limited", "Yes \u2014 four themes, ten colors or any color of your own, five pairings of letters, and your photo. Every color is checked for contrast before your page uses it"],
           ["A line about you on the page", "A short profile bio, and no separate About Me page", "Every store, under your name"],
           ["Products on one store", "Unlimited", "Up to 2,000 products and 100 links, 24 products a page on the store and search in your studio — Stan is ahead here"],
           ["Sections on the store", "Yes — named sections, dragged into order and hidden when empty (their help center, read October 7, 2026)", "Yes — up to 20 headings, each starting at a product you pick, and one line of your own news across the top"],
@@ -533,7 +533,7 @@ export const PAGES: TopicPage[] = [
           { title: "Who holds the money from my sales?", body: "You do, in your own Stripe account. We take 0% of your sales and charge only a subscription, paid monthly or yearly." },
           { title: "What happens if Marktmorgen closes?", body: "Your Stripe account, your customers and your files were never ours. Your list downloads from your studio at any time, and a shutdown comes with at least 30 days' notice in writing." },
           { title: "Who is behind this?", body: "A small independent studio, working in public. Support is in English, in writing, and a person answers it." },
-          { title: "Can my store look like mine?", body: "Yes. Put up your photo, pick one of four themes and a color \u2014 one of ten, or your own \u2014 and the studio shows the page before you save it. Every color is checked so the words on your page stay easy to read." },
+          { title: "Can my store look like mine?", body: "Yes. Put up your photo, pick one of four themes, a color \u2014 one of ten, or your own \u2014 and one of five pairings of letters, and the studio shows the page before you save it. Every color is checked so the words on your page stay easy to read." },
           { title: "What do I do if something breaks?", body: "You write to support and a person answers. If a sale is affected, you have the Stripe dashboard as the source of truth, independently of us." },
         ],
       },
