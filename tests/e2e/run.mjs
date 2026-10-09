@@ -87,8 +87,10 @@ try {
 }
 
 /** Stops the app and waits for it to go, so it never leaves its cache half written. */
+const stopped = new WeakSet();
 async function stop(child) {
   if (!child?.pid || child.exitCode !== null) return;
+  stopped.add(child);
   const gone = new Promise((done) => child.once("exit", done));
   try {
     process.kill(-child.pid, "SIGTERM");
@@ -119,6 +121,8 @@ const words = async (locator) => (await locator.innerText()).replace(/\s+/g, " "
 const services = await startServices(SERVICES);
 let app = null;
 let browser = null;
+/** Starts the app again with its cache kept (set once the app is up). */
+let restartApp = async () => {};
 /** Everything the app said, kept for E2E_APP_LOG=<file> (written there at the end). */
 let appLog = "";
 try {
@@ -151,6 +155,11 @@ try {
     app.stderr.on("data", (chunk) => {
       log += chunk;
       appLog += chunk;
+    });
+    // Said at once if the app stops on its own, so a failure after it is not a mystery.
+    const self = app;
+    app.on("exit", (code, signal) => {
+      if (!stopped.has(self)) console.error(`\nThe app stopped by itself (code ${code}, signal ${signal}).`);
     });
   };
   start();
@@ -203,6 +212,19 @@ try {
       await fetch(`${LOCAL}${path}`).catch(() => {});
     }
   }
+  // One dev server keeps everything it has built in memory, and this run opens
+  // nearly every page of the site: past about 5 GB the machine stops it. So it
+  // is started again partway, with its cache kept, which forgets nothing the
+  // checks below rely on: what they wrote lives in the stand-in database.
+  restartApp = async () => {
+    await stop(app);
+    start();
+    const again = Date.now();
+    while (!(await fetch(`${LOCAL}/@localshop`).then((r) => r.status === 200).catch(() => false))) {
+      if (Date.now() - again > 180_000) throw new Error(`the app did not start again:\n${log.slice(-2000)}`);
+      await new Promise((wait) => setTimeout(wait, 1500));
+    }
+  };
   browser = await chromium.launch(process.env.PLAYWRIGHT_BROWSERS_PATH ? { executablePath: join(process.env.PLAYWRIGHT_BROWSERS_PATH, "chromium") } : {}).catch(() => chromium.launch());
   const context = await browser.newContext({ viewport: { width: 430, height: 900 } });
   const page = await context.newPage();
@@ -958,6 +980,7 @@ try {
     if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "blog-post.png"), fullPage: true });
   }
 
+  await restartApp();
   part("The creator's profiles elsewhere, under the store's name");
   {
     await open(studio, `${LOCAL}/studio`);
@@ -1026,6 +1049,33 @@ try {
     await video.getByRole("button", { name: /Play the video/ }).click();
     is("pressed, the player loads from YouTube's private address only", (await video.locator("iframe").getAttribute("src"))?.startsWith("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"), true);
     if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "store-links.png"), fullPage: true });
+  }
+
+  part("An email sign-up box on the store page, confirmed by email");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    await studio.getByRole("checkbox", { name: "Show the sign-up box on my store page" }).check();
+    await studio.locator("#join-heading-field").fill("Sunday recipes");
+    is("the studio previews it as buyers will see it", await studio.getByLabel("Preview").getByText("Sunday recipes").count(), 1);
+    await studio.locator("form", { hasText: "Email sign-up box" }).getByRole("button", { name: "Save", exact: true }).click();
+    await studio.getByText("The sign-up box is on your store page.").first().waitFor({ timeout: 30_000 });
+    const person = await context.newPage();
+    await open(person, `${LOCAL}/@localshop`);
+    const box = person.getByRole("region", { name: "Sunday recipes" });
+    is("the store page shows it, with the creator's heading", await box.count(), 1);
+    await box.getByLabel("Your email").fill("reader@example.com");
+    await Promise.all([person.waitForURL(/\/join\?status=sent/, { timeout: 60_000 }), box.getByRole("button", { name: "Join" }).click()]);
+    is("then says to check the inbox, without the address in the link", [await words(person.locator("h1")), person.url().includes("reader")], ["Check your inbox", false]);
+    const mail = services.emails().filter((email) => [].concat(email.to).includes("reader@example.com")).at(-1);
+    is("the confirmation comes from the store", mail?.subject, "Confirm: emails from Harbor Kitchen Local");
+    const link = mail?.text.match(/https?:\/\/\S+\/join\?token=[0-9a-f]{48}/)?.[0] ?? "";
+    await open(person, local(link));
+    is("the link only shows the button: opening it confirms nothing", await words(person.locator("h1")), "Get emails from Harbor Kitchen Local?");
+    await Promise.all([person.waitForURL(/status=joined/), person.getByRole("button", { name: "Yes, join the list" }).click()]);
+    is("pressed, they are on the list", await words(person.locator("h1")), "Welcome to Harbor Kitchen Local's list");
+    await open(person, local(link));
+    is("and the link is used up", await words(person.locator("h1")), "This link has expired");
+    await person.close();
   }
 
   part("A reply to a review, drafted with AI");
@@ -1129,6 +1179,7 @@ try {
       ["the help center", "/help", 1200],
       ["a buyer's orders", "/@localshop/orders", 0],
       ["the store's blog", "/@localshop/blog", 0],
+      ["the sign-up box's page", "/@localshop/join?status=sent", 0],
       ["a post on it", postPath, 0],
       ["the studio's blog", "/studio/blog?edit=new", 1200],
     ];

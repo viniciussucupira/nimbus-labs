@@ -1,0 +1,49 @@
+import type { Store } from "@/lib/store";
+import { joinWords } from "@/lib/buyer-words/join";
+import { speech } from "@/lib/buyer-words";
+
+/**
+ * The sign-up box on the store page (lib/store-join.ts). A plain form, so it
+ * works without JavaScript; the creator's own heading and line when they
+ * wrote one, the store language's words when not.
+ */
+export function StoreJoinBox({ store }: { store: Store }) {
+  const w = joinWords(store.language);
+  const said = speech(store);
+  return (
+    <section aria-labelledby="join-heading" className="st-card st-join mt-8 p-6 sm:p-7">
+      <h2 id="join-heading" className="font-display text-xl font-semibold leading-snug">
+        {store.join.heading || w.heading}
+      </h2>
+      <p className="st-muted mt-2">{store.join.line || w.line(store.name)}</p>
+      <form action="/api/store/join" method="post" className="mt-5">
+        <input type="hidden" name="handle" value={store.handle} />
+        {/* Left empty by a person; filled in by something that fills in every field. */}
+        <div aria-hidden="true" className="hidden">
+          <label>
+            {said.w.leaveEmpty}
+            <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+          </label>
+        </div>
+        <label htmlFor="join-email" className="sr-only">
+          {w.label}
+        </label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            id="join-email"
+            type="email"
+            name="email"
+            required
+            maxLength={254}
+            autoComplete="email"
+            placeholder={said.w.emailPlaceholder}
+            className="st-field min-w-0 flex-1"
+          />
+          <button type="submit" className="btn st-btn shrink-0">
+            {w.button}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}

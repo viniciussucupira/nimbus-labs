@@ -474,6 +474,12 @@ export type Store = {
   /** The creator's profiles elsewhere, under their name (lib/store-socials.ts). None on stores written before. */
   socials: Social[];
   /**
+   * The sign-up box on the store page (lib/store-join.ts): whether it shows,
+   * and the creator's own heading and line for it ("" means the store
+   * language's words, lib/buyer-words/join.ts). Off on stores written before.
+   */
+  join: StoreJoin;
+  /**
    * The free product offered once to a visitor about to leave (lib/exit-offer.ts),
    * or null for none. Off on every store written before it existed.
    */
@@ -751,6 +757,7 @@ function parseStore(raw: unknown): Store | null {
       // Stores written before reviews existed have none.
       reviewed: value.reviewed === true,
       socials: parseSocials(value.socials),
+      join: parseJoin(value.join),
       posts: typeof value.posts === "number" && Number.isInteger(value.posts) && value.posts > 0 ? Math.min(value.posts, 10_000) : 0,
       exitOffer: typeof value.exitOffer === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(value.exitOffer) ? value.exitOffer : null,
       sections: parseSections(value.sections),
@@ -922,6 +929,7 @@ async function freshStore(fields: {
     reviewed: false,
     posts: 0,
     socials: [],
+    join: { on: false, heading: "", line: "" },
     exitOffer: null,
     sections: [],
     announcement: null,
@@ -3032,7 +3040,24 @@ export async function setReviewed(email: string): Promise<Store | null> {
   return patchStore(email, (store) => (store.reviewed ? null : { reviewed: true }));
 }
 
+/** Switches the store page's sign-up box and saves its words. */
+export async function setJoin(email: string, raw: unknown): Promise<Store | null> {
+  const join = parseJoin(raw);
+  return patchStore(email, () => ({ join }));
+}
+
 /** Saves the creator's profiles elsewhere (lib/store-socials.ts), made safe; says how many were kept. */
+export type StoreJoin = { on: boolean; heading: string; line: string };
+export const MAX_JOIN_HEADING = 60;
+export const MAX_JOIN_LINE = 200;
+
+/** The sign-up box's settings, as kept or as sent, made safe. */
+export function parseJoin(raw: unknown): StoreJoin {
+  const value = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const line = (text: unknown, max: number) => (typeof text === "string" ? text.replace(/\s+/g, " ").trim().slice(0, max) : "");
+  return { on: value.on === true, heading: line(value.heading, MAX_JOIN_HEADING), line: line(value.line, MAX_JOIN_LINE) };
+}
+
 export async function setSocials(email: string, raw: unknown): Promise<Store | null> {
   const socials = parseSocials(raw);
   return patchStore(email, () => ({ socials }));
