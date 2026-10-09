@@ -6,7 +6,7 @@ import { wordsIn } from "@/lib/buyer-words";
 import { DEFAULT_LANGUAGE, LANGUAGES, type LanguageCode } from "@/lib/store-language";
 import { imageUrl } from "@/lib/product-image";
 import { type Piece, aboutBlocks } from "@/lib/product-about";
-import { CELL_NO, CELL_YES, type CtaBlock, type HeroBlock, type PageBlock, type PageStyle, bandsOf } from "@/lib/sales-page";
+import { CELL_NO, CELL_YES, type CtaBlock, type HeroBlock, type PageBlock, type PageStyle, bandsOf, quoteHost } from "@/lib/sales-page";
 import { blockWords } from "@/lib/buyer-words/blocks";
 import type { PageFacts } from "@/lib/page-facts";
 
@@ -543,6 +543,48 @@ export function BlockView({ block, ctx, reviews }: { block: PageBlock; ctx: Bloc
                 </span>
               </li>
             ))}
+          </ul>
+        </section>
+      );
+    }
+    case "quotes": {
+      // Others' words, kept as they said them, each with the link to where it was said (lib/sales-page.ts, QuotesBlock).
+      if (block.items.length === 0) return null;
+      const w = blockWords(ctx.lang ?? DEFAULT_LANGUAGE);
+      return (
+        <section className="sp-section">
+          <Heading text={block.heading} />
+          <ul className={`sp-quotes ${block.items.length > 1 ? "sp-quotes-2" : ""} ${block.heading ? "mt-5" : ""}`}>
+            {block.items.map((item, i) => {
+              const host = quoteHost(item.url);
+              return (
+                <li key={i}>
+                  <figure className="sp-quote">
+                    <span className="sp-quote-mark" aria-hidden="true">
+                      <Icon name="quote" size={22} />
+                    </span>
+                    <blockquote cite={item.url} className="whitespace-pre-line leading-relaxed">
+                      {item.text}
+                    </blockquote>
+                    <figcaption className="sp-quote-by">
+                      {item.name ? <span className="font-semibold">{item.name}</span> : null}
+                      {ctx.preview ? (
+                        // In the studio's preview a press opens the block, so it is not a link there.
+                        <span className="sp-quote-link">
+                          {w.quoteSource(host)}
+                          <Icon name="arrow-up-right" size={14} />
+                        </span>
+                      ) : (
+                        <a href={item.url} target="_blank" rel="noopener noreferrer nofollow ugc" className="sp-quote-link">
+                          {w.quoteSource(host)}
+                          <Icon name="arrow-up-right" size={14} />
+                        </a>
+                      )}
+                    </figcaption>
+                  </figure>
+                </li>
+              );
+            })}
           </ul>
         </section>
       );

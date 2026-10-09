@@ -61,7 +61,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "users", title: "Bought for a whole team", body: "Under the buy button, a buyer can pay for 2 to 200 people at once, your price times that many, on Stripe's page. They get one link to pass on; each person types their own email, opens the link sent to it and has the product on their own address. Never one place more than was paid for, a mistyped address takes none, and a full refund takes every place back. On a product with price options they pick one for everybody. You set up nothing and grant nobody by hand." },
           { icon: "clock", title: "Coming soon, with a waitlist", body: "Mark a paid product coming soon and its card and page take email addresses instead of payments, each confirmed from the inbox. When you put it on sale, everyone who confirmed gets one email with its link and price, and a note from you if you write one. The box to hear more from you starts empty." },
           { icon: "eye", title: "A page for each product", body: "At /@you/p/<product>: the picture, a long description of up to 5,000 characters, and a title and preview card of its own for search engines and shared links. Or a sales page you build from blocks.", href: "/platform/sales-pages" },
-          { icon: "sparkle", title: "A description written with AI", body: "Type a few words about a product and a draft of its short and long description is written into the boxes, in American English, from only what you typed: no invented reviews, numbers, results or deadlines. Nothing is saved until you press Save. 20 drafts a month on the free trial, 100 on Creator, 400 on Pro, shared with sales pages, outlines and emails." },
+          { icon: "sparkle", title: "A description written with AI", body: "Type a few words about a product and a draft of its short and long description is written into the boxes, in your store's language, from only what you typed: no invented reviews, numbers, results or deadlines. Nothing is saved until you press Save. 20 drafts a month on the free trial, 100 on Creator, 400 on Pro and 1,000 on Scale, shared by all the writing help." },
           { icon: "star", title: "Stars from real buyers", body: "Reviews only people who paid can write, with the average on the product's card and page.", href: "/platform/reviews" },
           { icon: "gift", title: "Free things, for an email", body: "Set a price of zero and it is handed out for a confirmed email address that joins your list." },
           { icon: "link", title: "Links with no price", body: "Your channel, your podcast, your booking page — with the site each one leads to printed under it." },
@@ -1450,7 +1450,7 @@ export const FEATURE_PAGES: TopicPage[] = [
     title: "A page that sells it,",
     highlight: "built from blocks",
     intro:
-      "Any product's own page can be laid out by you: a headline with a picture or a video, your own pictures, what the buyer gets, what is inside, who it is for and who it is not for, how it works step by step, a comparison table, bonuses, numbers counted by your store, who made it, questions, your guarantee, a countdown to a real deadline, buttons and real buyers' reviews. Start from a template, from an AI draft or from nothing. For something free, the same page asks for an email.",
+      "Any product's own page can be laid out by you: a headline with a picture or a video, your own pictures, what the buyer gets, what is inside, who it is for and who it is not for, how it works step by step, a comparison table, bonuses, numbers counted by your store, things said about it elsewhere with links to where, who made it, questions, your guarantee, a countdown to a real deadline, buttons and real buyers' reviews. Start from a template, from an AI draft or from nothing. For something free, the same page asks for an email.",
     badge: WORKING,
     accent: "from-pink-brand to-violet-brand",
     plan: "creator",
@@ -1494,6 +1494,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "shield", title: "Your guarantee", body: "Your refund promise, in your own words." },
           { icon: "bolt", title: "Buttons", body: "Anywhere on the page, each leading to the checkout, or to the sign-up form on a free product." },
           { icon: "star", title: "Reviews", body: "Where your buyers' verified reviews sit on the page. Pick up to three to show first, marked as picked by you: only reviews from buyers who paid can be picked, never a testimonial typed in, and the average still counts every review.", href: "/platform/reviews" },
+          { icon: "chat", title: "Said elsewhere", body: "Up to 6 things people said about it in public — a post on X, a comment under a video, a newsletter — in their words, with who said them and a link to where, so a visitor can check each one. Kajabi, Hotmart and Stan let anyone type a testimonial with nothing behind it; here one without its address is not saved. Never translated, never rewritten, and never shown as a review." },
           { icon: "sparkle", title: "Improve any block with AI", body: "An empty block of benefits, who it is for, how it works or questions is drafted from your product's description and page. Under each block of words: Clearer, Shorter, More specific or Warmer. Your own words, said another way, in your store's language, with Undo beside it. A rewrite that brings a number or a promise your page does not already make is thrown away, not shown." },
           { icon: "gauge", title: "A coach for every page", body: "Each page gets a score out of 100, with how often the page was opened and how many checkouts it started in the last 30 days, and the questions visitors asked its answer box that the page could not answer, a press away from your questions. It also lists what pages that sell have in common and yours is missing — a button near the top, three things they get, who it is for, three questions answered, a refund promise — each with a button that adds the block. It points at the block where readers stop most. And the writing help reviews the page as visitors read it: what to change first, three headlines to try or test against yours, who it is for and not for, and the questions buyers will ask that your page leaves open, each a press away from your page. It counts as one of your monthly drafts and never invents reviews, numbers, results or deadlines." },
           { icon: "chart", title: "Where readers stop", body: "Each block of your page shows the share of visitors who read down to it, from 30 visitors up, so you can see which block to rewrite or move up. No cookie, nothing about who." },
@@ -1530,7 +1531,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { q: "Which plan is it on?", a: "Every plan, the $29 one included. On Stan, by its help center read on September 28, 2026, each product has a checkout page with a description and a video that can be made a private landing page on every plan, and funnels of several pages are on its $99 plan." },
           { q: "Who on my team can edit them?", a: "You, an Admin and an Editor. Support cannot." },
-          { q: "Can I put a testimonial I collected on the page?", a: "In a text block, in your own words, yes. The Reviews block shows only reviews written by people who paid, and nothing you type can appear as one." },
+          { q: "Can I put a testimonial I collected on the page?", a: "Yes, in the Said elsewhere block, if it was said in public: their words as they said them, who said them, and the address of the post, video or comment, shown as a link so visitors can check it. The Reviews block shows only reviews written by people who paid, with their stars, and nothing you type can appear as one." },
         ],
       },
     ],
@@ -2321,7 +2322,7 @@ export const CREATOR_PAGES: TopicPage[] = [
         items: [
           "Stamping works on PDFs only: presets, brushes and images are handed over as uploaded.",
           "No marketplace that sends you buyers: people arrive from your own links.",
-          "Reviews come only from buyers, so a new product starts with none. You cannot add a testimonial of your own as a review.",
+          "Reviews come only from buyers, so a new product starts with none. A testimonial said in public can go in the Said elsewhere block with its link, never as a review.",
         ],
       },
       {
