@@ -25,6 +25,7 @@ import { COMMUNITY_WORDS } from "@/lib/buyer-words/community";
 import { THANKS_WORDS } from "@/lib/buyer-words/thanks";
 import { BLOCK_WORDS } from "@/lib/buyer-words/blocks";
 import { JOIN_WORDS } from "@/lib/buyer-words/join";
+import { GUIDE_WORDS } from "@/lib/buyer-words/guide";
 import { addProduct, claimHandle, ensureStatsId, setLanguage, setProductLink, setStripeAccount, setSubscription, storeForEmail } from "@/lib/store";
 import { readProduct } from "@/lib/catalog";
 import { createCheckout } from "@/lib/store-checkout";
@@ -155,6 +156,7 @@ async function main(): Promise<void> {
     ["thanks", (code) => THANKS_WORDS[code]],
     ["page blocks", (code) => BLOCK_WORDS[code]],
     ["email sign-up", (code) => JOIN_WORDS[code]],
+    ["store guide", (code) => GUIDE_WORDS[code]],
   ];
   for (const [area, wordsOf] of AREAS) {
     const englishWords = wordsOf("en");

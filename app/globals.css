@@ -2120,6 +2120,23 @@ a.chip {
   outline: 2px solid var(--st-accent);
   outline-offset: 2px;
 }
+/* The store page's guide (components/store-guide-box.tsx): each pick a card that leads to its page. */
+.st-guide-pick {
+  display: block;
+  border-radius: 1rem;
+  border: 1px solid var(--st-line);
+  background: var(--st-bg);
+  padding: 0.875rem 1rem;
+  transition: border-color var(--d-base) var(--ease), transform var(--d-base) var(--ease);
+}
+.st-guide-pick:hover {
+  border-color: var(--st-accent-text);
+  transform: translateY(-1px);
+}
+.st-guide-pick:focus-visible {
+  outline: 3px solid var(--st-accent-text);
+  outline-offset: 3px;
+}
 .st-footer-link {
   color: var(--st-muted);
   text-decoration: underline;

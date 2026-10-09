@@ -1078,6 +1078,34 @@ try {
     await person.close();
   }
 
+  part("Help to choose on the store page, picked by AI from the catalog");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const answers = studio.locator(".card", { hasText: "Answer buyers' questions with AI" });
+    await answers.getByRole("checkbox", { name: /help visitors choose on my store page/ }).check();
+    await answers.getByRole("button", { name: "Save", exact: true }).click();
+    await studio.getByText("Saved. The box is on your product pages.").first().waitFor({ timeout: 30_000 });
+    const person = await context.newPage();
+    await open(person, `${LOCAL}/@localshop`);
+    const guide = person.getByRole("region", { name: "Not sure which one is for you?" });
+    await guide.getByLabel("What are you looking for?").fill("dinners for a busy family");
+    await guide.getByRole("button", { name: "Help me choose" }).click();
+    await guide.getByText("These fit best").waitFor({ timeout: 30_000 });
+    const picks = guide.locator(".st-guide-pick");
+    is("two picks, each with why, leading to its own page", [
+      await picks.count(),
+      (await words(picks.first())).includes("It fits a busy week at home."),
+      /^\/@localshop\/p\//.test((await picks.first().getAttribute("href")) ?? ""),
+    ], [2, true, true]);
+    await guide.getByLabel("What are you looking for?").fill("a trip to the moon");
+    await guide.getByRole("button", { name: "Help me choose" }).click();
+    await guide.getByText(/nothing Harbor Kitchen Local sells fits that yet/).waitFor({ timeout: 30_000 });
+    if (process.env.E2E_SHOTS) await guide.screenshot({ path: join(process.env.E2E_SHOTS, "store-guide.png") });
+    await person.close();
+    await open(studio, `${LOCAL}/studio`);
+    is("what was looked for and not found reaches the creator", await studio.getByText("a trip to the moon").count() > 0, true);
+  }
+
   part("A reply to a review, drafted with AI");
   {
     await open(studio, `${LOCAL}/studio/reviews?view=all`);

@@ -51,7 +51,7 @@ import { StoreLayoutEditor } from "@/components/store-layout-editor";
 import { BuyButtonEditor } from "@/components/buy-button-editor";
 import { lookColours } from "@/lib/store-look";
 import { AnswersEditor } from "@/components/answers-editor";
-import { answersAllowance, answersUsed, missedQuestions } from "@/lib/answers";
+import { STORE_PAGE, answersAllowance, answersUsed, missedQuestions } from "@/lib/answers";
 import { readCards } from "@/lib/catalog";
 import { TaxEditor } from "@/components/tax-editor";
 import { StoreLanguageEditor } from "@/components/store-language-editor";
@@ -1236,7 +1236,10 @@ export default async function StudioPage({
                           used={await answersUsed(store).catch(() => 0)}
                           allowance={answersAllowance(store)}
                           missed={(await missedQuestions(store).catch(() => [])).map((row) => ({
-                            title: cards.get(row.productId)?.title ?? "A product that is no longer listed",
+                            title:
+                              row.productId === STORE_PAGE
+                                ? "Looked for on your store page, and nothing fit"
+                                : cards.get(row.productId)?.title ?? "A product that is no longer listed",
                             question: row.question,
                             at: row.at,
                           }))}
