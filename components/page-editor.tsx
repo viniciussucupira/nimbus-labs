@@ -262,6 +262,61 @@ export function PageEditor({
   const [open, setOpen] = useState<string | null>(null);
   const [view, setView] = useState<"build" | "preview">("build");
   const [sharing, setSharing] = useState(false);
+  // Undo and redo, a step at a time (added 8 October 2026): each pause in
+  // editing is one step back, a hundred at most, the page's blocks and its
+  // style together. Text being typed in a box keeps the box's own undo.
+  type Step = { drafts: Draft[]; style: PageStyle };
+  const steps = useRef<{ past: Step[]; future: Step[]; last: Step }>({ past: [], future: [], last: { drafts, style } });
+  const [stepsLeft, setStepsLeft] = useState({ back: 0, forward: 0 });
+  useEffect(() => {
+    const h = steps.current;
+    // What a step back or forward put here is already the last step.
+    if (h.last.drafts === drafts && h.last.style === style) return;
+    const timer = window.setTimeout(() => {
+      if (h.last.drafts === drafts && h.last.style === style) return;
+      h.past.push(h.last);
+      if (h.past.length > 100) h.past.shift();
+      h.future = [];
+      h.last = { drafts, style };
+      setStepsLeft({ back: h.past.length, forward: 0 });
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [drafts, style]);
+  function stepTo(direction: "back" | "forward") {
+    const h = steps.current;
+    // An edit still within its pause is a step of its own first.
+    if (h.last.drafts !== drafts || h.last.style !== style) {
+      h.past.push(h.last);
+      h.future = [];
+      h.last = { drafts, style };
+    }
+    const from = direction === "back" ? h.past : h.future;
+    const to = direction === "back" ? h.future : h.past;
+    const step = from.pop();
+    if (!step) return;
+    to.push(h.last);
+    h.last = step;
+    setDrafts(step.drafts);
+    setStyle(step.style);
+    setStepsLeft({ back: h.past.length, forward: h.future.length });
+  }
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      const key = event.key.toLowerCase();
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        document.getElementById("undo-step")?.click();
+      } else if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        document.getElementById("redo-step")?.click();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const [wide, setWide] = useState(false);
   // Where the block picker is open: the place a new block would take, or null when closed.
   const [picking, setPicking] = useState<number | null>(null);
@@ -1268,6 +1323,30 @@ export function PageEditor({
               {v === "build" ? "Build" : "Preview"}
             </button>
           ))}
+        </div>
+        <div className="inline-flex gap-1" role="group" aria-label="Undo and redo">
+          <button
+            id="undo-step"
+            type="button"
+            onClick={() => stepTo("back")}
+            disabled={stepsLeft.back === 0 && !dirty}
+            title="Undo (Ctrl+Z)"
+            aria-label="Undo the last change"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-ink-soft ring-1 ring-line transition-colors hover:text-ink disabled:opacity-35"
+          >
+            <Icon name="undo" size={18} />
+          </button>
+          <button
+            id="redo-step"
+            type="button"
+            onClick={() => stepTo("forward")}
+            disabled={stepsLeft.forward === 0}
+            title="Redo (Ctrl+Shift+Z)"
+            aria-label="Redo"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-ink-soft ring-1 ring-line transition-colors hover:text-ink disabled:opacity-35"
+          >
+            <Icon name="redo" size={18} />
+          </button>
         </div>
         <div className="flex flex-wrap items-center gap-x-4">
           {shareUrl ? (
