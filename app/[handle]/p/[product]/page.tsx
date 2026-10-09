@@ -41,7 +41,7 @@ import { isHouseStore } from "@/lib/house-store";
 import { sellsInTestMode } from "@/lib/stripe-connect";
 import { DemoNote } from "@/components/demo-notes";
 import { SITE_URL } from "@/lib/site-url";
-import { EMPTY_PAGE, type SalesPage } from "@/lib/sales-page";
+import { EMPTY_PAGE, type SalesPage, livePage } from "@/lib/sales-page";
 import { readPage } from "@/lib/sales-page-store";
 import { type Summary, REVIEWS_ON_PAGE, average, showsRating, summaryOf, visibleReviews } from "@/lib/reviews";
 import { BuyBox, GiftBox, GroupBox, PriceTag, ProductFacts, pageAction, productPath, saleNow } from "@/components/store-product";
@@ -98,7 +98,8 @@ const load = cache(async (raw: string, id: string): Promise<{ store: Store; prod
 });
 
 async function pageOf(store: Store, product: Listing): Promise<SalesPage> {
-  return product.page ? readPage(store.statsId, product.id).catch(() => ({ ...EMPTY_PAGE, blocks: [] })) : { ...EMPTY_PAGE, blocks: [] };
+  // A page kept from visitors while the creator works on it shows as none (lib/sales-page.ts, livePage).
+  return product.page ? readPage(store.statsId, product.id).then(livePage).catch(() => ({ ...EMPTY_PAGE, blocks: [] })) : { ...EMPTY_PAGE, blocks: [] };
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {

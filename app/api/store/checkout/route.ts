@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
     if (product.page && bucket !== null) {
       after(async () => {
         const page = await readPage(store.statsId, product.id);
-        if (!page.test) return;
+        if (!page.test || page.hidden) return;
         const counts = await readCounts(store.statsId, product.id, page.test.id);
         if (winner(counts)) return;
         await countTest(store.statsId, product.id, page.test.id, "c", versionFor(bucket, page.test.id));

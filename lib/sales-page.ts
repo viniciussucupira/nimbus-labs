@@ -340,7 +340,18 @@ export type SalesPage = {
    * look changes; the words, the order and what is counted stay the same.
    */
   style: PageStyle;
+  /**
+   * Kept from visitors while the creator works on it (added 8 October
+   * 2026): the product's plain page shows instead, with its own title and
+   * description, and nothing on this page is answered from or counted.
+   */
+  hidden: boolean;
 };
+
+/** The page visitors are shown: this one, or none while it is hidden. */
+export function livePage(page: SalesPage): SalesPage {
+  return page.hidden ? { ...EMPTY_PAGE, blocks: [] } : page;
+}
 
 export const PAGE_STYLES = ["plain", "bands", "cards"] as const;
 export type PageStyle = (typeof PAGE_STYLES)[number];
@@ -370,7 +381,7 @@ export function bandsOf(style: PageStyle, blocks: { screens?: BlockShow }[]): { 
 
 export type HeadlineTest = { id: string; headline: string; sub: string };
 
-export const EMPTY_PAGE: SalesPage = { blocks: [], seoTitle: "", seoDescription: "", next: null, test: null, style: "plain" };
+export const EMPTY_PAGE: SalesPage = { blocks: [], seoTitle: "", seoDescription: "", next: null, test: null, style: "plain", hidden: false };
 
 /** The id of a test of these two versions: the same words, the same id. */
 export function testId(a: { headline: string; sub: string }, b: { headline: string; sub: string }): string {
@@ -720,6 +731,7 @@ export function parsePage(raw: unknown): SalesPage {
     next: typeof value.next === "string" && PRODUCT_ID_PATTERN.test(value.next) ? value.next : null,
     test: parseTest(value.test, blocks[0]?.kind === "hero" ? blocks[0] : null),
     style: (PAGE_STYLES as readonly unknown[]).includes(value.style) ? (value.style as PageStyle) : "plain",
+    hidden: value.hidden === true,
   };
 }
 
