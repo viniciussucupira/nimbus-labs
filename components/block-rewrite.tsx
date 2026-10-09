@@ -3,13 +3,14 @@
 import { useContext, useState } from "react";
 import { Icon } from "@/components/icons";
 import { AiOn } from "@/components/ai-assist";
-import { REWRITABLE, REWRITE_STYLES, type RewriteStyle, blockText } from "@/lib/block-rewrite-rules";
+import { FILLABLE, REWRITABLE, REWRITE_STYLES, type RewriteStyle, blockText } from "@/lib/block-rewrite-rules";
 import type { PageBlock, SalesPage } from "@/lib/sales-page";
 
 const MESSAGES: Record<string, string> = {
   used: "This month's writing help is used up. It starts again on the 1st.",
   slow: "A few at a time: wait a minute, then try again.",
   failed: "That rewrite did not come back, or it tried to add something your page does not say, so it was not used and not counted. Try again, or another way.",
+  unwritten: "That draft did not come back, or it tried to add something your product and page do not say, so it was not used and not counted. Add a few words to the product's description, then try again.",
   off: "The writing help is not available right now.",
   forbidden: "Your role on this store cannot do this.",
   notes: "Write something in this block first: it rewrites your words, it does not start from nothing.",
@@ -33,21 +34,23 @@ export function BlockRewrite({
   onChange: (block: PageBlock) => void;
 }) {
   const ai = useContext(AiOn);
-  const [busy, setBusy] = useState<RewriteStyle | null>(null);
+  const [busy, setBusy] = useState<RewriteStyle | "fill" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [before, setBefore] = useState<PageBlock | null>(null);
   const [left, setLeft] = useState(ai.left);
   if (!ai.on || !REWRITABLE.includes(block.kind)) return null;
   const empty = !blockText(block).trim();
 
-  async function run(style: RewriteStyle) {
+  const fillable = FILLABLE.includes(block.kind);
+
+  async function run(style: RewriteStyle | "fill") {
     setBusy(style);
     setError(null);
     try {
       const response = await fetch("/api/store/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "block", product: productId, style, block, page: page() }),
+        body: JSON.stringify(style === "fill" ? { kind: "fill", product: productId, block, page: page() } : { kind: "block", product: productId, style, block, page: page() }),
       });
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean; value?: PageBlock; left?: number; error?: string };
       if (data.ok && data.value) {
@@ -56,7 +59,7 @@ export function BlockRewrite({
         if (typeof data.left === "number") setLeft(data.left);
         return;
       }
-      setError(MESSAGES[data.error ?? ""] ?? MESSAGES.failed);
+      setError(MESSAGES[data.error ?? ""] ?? (style === "fill" ? MESSAGES.unwritten : MESSAGES.failed));
     } catch {
       setError(MESSAGES.failed);
     } finally {
@@ -71,7 +74,12 @@ export function BlockRewrite({
           <Icon name="sparkle" size={15} />
           Improve with AI
         </span>
-        {REWRITE_STYLES.map((style) => (
+        {empty && fillable ? (
+          <button type="button" className="btn btn-secondary btn-sm" disabled={busy !== null || left <= 0} aria-busy={busy === "fill"} onClick={() => void run("fill")}>
+            {busy === "fill" ? "Writing…" : "Write it with AI"}
+          </button>
+        ) : null}
+        {(empty && fillable ? [] : REWRITE_STYLES).map((style) => (
           <button
             key={style.id}
             type="button"
@@ -105,9 +113,11 @@ export function BlockRewrite({
       ) : (
         <p className="mt-1.5 text-xs text-ink-soft" role="status">
           {before
-            ? "Rewritten in your store's language. Read it before you save; Undo puts your words back."
-            : empty
-              ? "Write something here first, and it can rewrite it four ways."
+            ? "Written in your store's language. Read it before you save; Undo puts it back as it was."
+            : empty && fillable
+              ? "A first draft from your product's description and the rest of this page. It adds no number or promise they do not already make."
+              : empty
+                ? "Write something here first, and it can rewrite it four ways."
               : "Your words, said another way, in your store's language. It adds no number or promise your page does not already make."}
         </p>
       )}

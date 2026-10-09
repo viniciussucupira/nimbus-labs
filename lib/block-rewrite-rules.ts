@@ -28,6 +28,15 @@ export const REWRITE_STYLES: { id: RewriteStyle; label: string; ask: string }[] 
 /** The blocks it can rewrite: those made of the creator's words. */
 export const REWRITABLE: BlockKind[] = ["hero", "text", "feature", "benefits", "inside", "steps", "bonuses", "fit", "faq", "guarantee", "bio", "cta"];
 
+/**
+ * The blocks the writing help can write from nothing (lib/ai.ts, fillBlock),
+ * from what the product and the page already say. Not a refund promise, not
+ * the creator's story about themselves, not bonuses and not what is inside:
+ * those are facts only the creator has, and a draft of them would be a guess
+ * on their page.
+ */
+export const FILLABLE: BlockKind[] = ["benefits", "fit", "steps", "faq"];
+
 export function isRewriteStyle(value: unknown): value is RewriteStyle {
   return REWRITE_STYLES.some((s) => s.id === value);
 }

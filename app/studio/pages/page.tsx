@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createHash } from "node:crypto";
 import { imageFolder, isFree } from "@/lib/store";
 import { readCards, readListing, readListings } from "@/lib/catalog";
 import { studioPath, studioView } from "@/lib/studio-route";
@@ -101,7 +100,6 @@ export default async function StudioPagesPage({ searchParams }: Params) {
             ? "It opens the booking page, to pick a time."
             : `It is not a button right now: the page says “${action.action.kind === "none" ? action.action.text : ""}”`;
   // A new key whenever what is saved changes, so the editor starts again from it.
-  const version = page ? createHash("sha256").update(JSON.stringify(page)).digest("hex").slice(0, 12) : "none";
 
   return (
     <div className="min-h-screen bg-paper text-ink">
@@ -178,7 +176,10 @@ export default async function StudioPagesPage({ searchParams }: Params) {
 
             <AiOn value={isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}>
             <PageEditor
-              key={`${selected.id}:${version}`}
+              // One editor per product: a save keeps the editor as it is, with the
+              // page as the server kept it (components/page-editor.tsx, send),
+              // rather than starting it over and losing what was typed meanwhile.
+              key={selected.id}
               product={{
                 id: selected.id,
                 title: selected.title,

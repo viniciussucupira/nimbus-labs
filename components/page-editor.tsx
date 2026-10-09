@@ -262,6 +262,11 @@ export function PageEditor({
   const [open, setOpen] = useState<string | null>(null);
   const [view, setView] = useState<"build" | "preview">("build");
   const [sharing, setSharing] = useState(false);
+  // The blocks as they are now, for a save to know whether they changed while it ran.
+  const latestBlocks = useRef<PageBlock[]>(drafts.map((d) => d.block));
+  useEffect(() => {
+    latestBlocks.current = drafts.map((d) => d.block);
+  }, [drafts]);
   // Undo and redo, a step at a time (added 8 October 2026): each pause in
   // editing is one step back, a hundred at most, the page's blocks and its
   // style together. Text being typed in a box keeps the box's own undo.
@@ -592,8 +597,25 @@ export function PageEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: product.id, page }),
       });
-      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; error?: string; page?: SalesPage };
       if (data.ok) {
+        // The blocks as the server kept them (ids given, empty items left out),
+        // unless the creator has changed something while it was saving.
+        if (page === null) {
+          // The page cleared: the editor starts from nothing, as the product's page does.
+          setDrafts([]);
+          setSeoTitle("");
+          setSeoDescription("");
+          setNext("");
+          setStyle("plain");
+          setTesting(false);
+          setTestHeadline("");
+          setTestSub("");
+          setOpen(null);
+        } else if (data.page && JSON.stringify(latestBlocks.current) === JSON.stringify(page.blocks)) {
+          setDrafts(toDrafts(data.page));
+          if (data.page.test) setTestHeadline(data.page.test.headline);
+        }
         toast(confirmation);
         setConfirmClear(false);
         router.refresh();
