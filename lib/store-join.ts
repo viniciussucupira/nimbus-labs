@@ -1,0 +1,109 @@
+/**
+ * The sign-up box on a store page: an address joins the creator's list
+ * (lib/contacts.ts) only once the button in the email it is sent has been
+ * pressed. So every address on the list is one somebody holds, nobody is
+ * signed up by a stranger, and a page that shows the button — not the link
+ * itself — is what confirms, because mail scanners open links on their own.
+ *
+ *   nl:join:t:<sha(token)>  string  who asked to join which store, 7 days
+ *
+ * Asking is limited per connection and per inbox, as the free copies and the
+ * waitlists are, so the form cannot be used to flood anybody's inbox. Nothing
+ * is read or written on a plain visit to the store page.
+ */
+import { createHash, randomBytes } from "node:crypto";
+import { EMAIL_PATTERN, MAX_EMAIL_LENGTH, normaliseEmail } from "@/lib/auth";
+import { NIMBUS_FROM, isSenderConfigured, sendEmail } from "@/lib/email";
+import { isRedisConfigured, redisPipeline } from "@/lib/redis";
+import { withinLimit } from "@/lib/request-guard";
+import { isPaidUp } from "@/lib/billing";
+import { type AddResult, upsertContact } from "@/lib/contacts";
+import type { Store } from "@/lib/store";
+import { joinWords } from "@/lib/buyer-words/join";
+import { givingWords } from "@/lib/buyer-words/giving";
+
+export const JOIN_SECONDS = 7 * 24 * 60 * 60;
+export const JOIN_TOKEN = /^[0-9a-f]{48}$/;
+
+const sha = (value: string) => createHash("sha256").update(value).digest("hex");
+const tokenKey = (token: string) => `nl:join:t:${sha(`nimbus-join:${token}`)}`;
+
+type Grant = { s: string; h: string; e: string; at: string };
+
+/** Whether this store's page shows the box and takes sign-ups: switched on, a list to join, a subscription in good standing and email to send with. */
+export function joinOpen(store: Store): boolean {
+  return store.join.on && Boolean(store.listId) && Boolean(store.statsId) && isPaidUp(store) && isRedisConfigured() && isSenderConfigured();
+}
+
+function sender(store: Store): string {
+  const match = NIMBUS_FROM.match(/<([^>]+)>/);
+  const address = (match ? match[1] : NIMBUS_FROM).trim();
+  const name = store.name.replace(/["\\<>\r\n]/g, "").trim().slice(0, 60) || "A store";
+  return `"${name} via Marktmorgen" <${address}>`;
+}
+
+export type JoinResult = "sent" | "email" | "limited" | "closed" | "error";
+
+/** Emails a button to confirm. Nothing is added to the list here. */
+export async function askToJoin(input: { store: Store; email: string; ip: string; origin: string }): Promise<JoinResult> {
+  const { store, ip, origin } = input;
+  const raw = input.email.trim();
+  if (!raw || raw.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(raw)) return "email";
+  if (!joinOpen(store) || !store.statsId) return "closed";
+  const email = normaliseEmail(raw);
+  if (!(await withinLimit("join-ip", `${store.statsId}:${ip}`, 10, 3_600))) return "limited";
+  if (!(await withinLimit("join-address", sha(email), 5, 3_600))) return "limited";
+
+  const token = randomBytes(24).toString("hex");
+  const grant: Grant = { s: store.statsId, h: store.handle, e: email, at: new Date().toISOString() };
+  await redisPipeline([["SET", tokenKey(token), JSON.stringify(grant), "EX", JOIN_SECONDS]]);
+
+  const w = joinWords(store.language);
+  const sent = await sendEmail({
+    from: sender(store),
+    to: email,
+    subject: w.mailSubject(store.name).slice(0, 200),
+    text: [
+      w.mailAsked(store.name),
+      "",
+      w.mailOpen,
+      `${origin}/@${store.handle}/join?token=${token}`,
+      "",
+      w.mailWorks,
+      w.mailIgnore,
+      "",
+      givingWords(store.language).sentBy(store.name),
+    ].join("\n"),
+  });
+  return sent ? "sent" : "error";
+}
+
+/** What a link is for, without using it: for the page that shows the button. */
+export async function readJoinToken(token: string): Promise<Grant | null> {
+  if (!JOIN_TOKEN.test(token) || !isRedisConfigured()) return null;
+  const [raw] = await redisPipeline([["GET", tokenKey(token)]]);
+  if (typeof raw !== "string") return null;
+  try {
+    const value = JSON.parse(raw) as Partial<Grant>;
+    if (typeof value.s !== "string" || typeof value.h !== "string" || typeof value.e !== "string" || !EMAIL_PATTERN.test(value.e)) return null;
+    return { s: value.s, h: value.h, e: value.e, at: typeof value.at === "string" ? value.at : "" };
+  } catch {
+    return null;
+  }
+}
+
+export type ConfirmResult = { ok: true; grant: Grant; added: AddResult } | { ok: false; reason: "expired" | "full" };
+
+/**
+ * Presses the button: the address joins the list as someone who asked to
+ * hear from the creator. The link is used up, so a forwarded email cannot
+ * sign anybody else up.
+ */
+export async function confirmJoin(token: string, store: Store | null): Promise<ConfirmResult> {
+  const grant = await readJoinToken(token);
+  if (!grant || !store || store.statsId !== grant.s || !store.listId) return { ok: false, reason: "expired" };
+  const added = await upsertContact(store.listId, grant.e, { agreed: true, explicit: true, source: "free", at: new Date().toISOString() });
+  if (added.full) return { ok: false, reason: "full" };
+  await redisPipeline([["DEL", tokenKey(token)]]);
+  return { ok: true, grant, added };
+}

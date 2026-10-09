@@ -1,4 +1,6 @@
 import { after } from "next/server";
+import { joinOpen } from "@/lib/store-join";
+import { StoreJoinBox } from "@/components/store-join-box";
 import { showingLinks } from "@/lib/store-link";
 import { PROVIDER_NAMES, readVideo } from "@/lib/sales-page";
 import { VideoEmbed } from "@/components/video-embed";
@@ -410,6 +412,9 @@ export default async function StorePage({ params, searchParams }: Params) {
               })}
             </ul>
           ) : null}
+
+          {/* The sign-up box: an address joins only once its owner confirms by email (lib/store-join.ts). */}
+          {joinOpen(store) ? <StoreJoinBox store={store} /> : null}
 
           {/*
             The way into the members-only community, when the creator has one

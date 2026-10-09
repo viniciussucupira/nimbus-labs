@@ -74,6 +74,9 @@ import { PaymentsPanel } from "@/components/payments-panel";
 import { chargeableCurrencies, readWaysToPay } from "@/lib/payment-methods";
 import { formatMoney } from "@/lib/money";
 import { LinkEditor } from "@/components/link-editor";
+import { JoinBoxEditor } from "@/components/join-box-editor";
+import { isPaidUp } from "@/lib/billing";
+import { isSenderConfigured } from "@/lib/email";
 import { DiscountEditor } from "@/components/discount-editor";
 import { DomainEditor } from "@/components/domain-editor";
 import { StudioTools } from "@/components/studio-tools";
@@ -1167,6 +1170,15 @@ export default async function StudioPage({
             {calendar ? <CalendarEditor view={calendar} weekly={callProducts.some((p) => p.call?.kind === "weekly")} /> : null}
 
             {may("page") ? <LinkEditor links={store.links} /> : null}
+
+            {may("page") ? (
+              <JoinBoxEditor
+                join={store.join}
+                storeName={store.name}
+                language={store.language}
+                blocked={!isSenderConfigured() ? "mail" : !isPaidUp(store) ? "plan" : ""}
+              />
+            ) : null}
 
             {may("settings") ? (
               <>
