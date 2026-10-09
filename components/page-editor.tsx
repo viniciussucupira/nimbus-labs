@@ -268,6 +268,14 @@ export function PageEditor({
   // Whether the screen is wide enough to draw the page beside its blocks; only
   // then is the second drawing made at all, so a narrow screen holds one.
   const [sideBySide, setSideBySide] = useState(false);
+  const beside = useRef<HTMLElement>(null);
+  // The block being edited, outlined in the page beside it.
+  useEffect(() => {
+    const box = beside.current;
+    if (!box) return;
+    box.querySelectorAll(".sp-editing").forEach((el) => el.classList.remove("sp-editing"));
+    if (open) box.querySelector(`[data-block="${CSS.escape(open)}"]`)?.classList.add("sp-editing");
+  });
   useEffect(() => {
     const wideScreen = window.matchMedia("(min-width: 1280px)");
     const read = () => setSideBySide(wideScreen.matches);
@@ -713,7 +721,9 @@ export function PageEditor({
                 ) : (
                   <>
                     {preview.hero ? (
-                      <HeroView block={preview.hero} ctx={ctx} pill={pill} rating={rating} />
+                      <div data-block={preview.hero.id}>
+                        <HeroView block={preview.hero} ctx={ctx} pill={pill} rating={rating} />
+                      </div>
                     ) : (
                       <header>
                         <div className="flex flex-wrap items-center gap-2">
@@ -1613,7 +1623,8 @@ export function PageEditor({
               return (
                 <li
                   key={block.id}
-                  className="relative"
+                  id={`row-${block.id}`}
+                  className="relative scroll-mt-28"
                   onDragOver={(event) => {
                     if (dragged === null || locked) return;
                     event.preventDefault();
@@ -1887,10 +1898,22 @@ export function PageEditor({
           </details>
         </div>
         {sideBySide ? (
-        <aside aria-label="The page as visitors see it" className="sticky top-24 mt-6 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl">
+        <aside
+          ref={beside}
+          aria-label="The page as visitors see it"
+          className="sp-beside sticky top-24 mt-6 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl"
+          onClick={(event) => {
+            // A press on a part of the page opens its block for editing, beside it.
+            const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-block]") : null;
+            const id = target?.dataset.block;
+            if (!id || !drafts.some((d) => d.block.id === id)) return;
+            setOpen(id);
+            document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        >
           <p className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-ink-soft">
-            <span>As visitors see it, on a phone</span>
-            {dirty ? <span>Unsaved changes shown</span> : null}
+            <span>As visitors see it, on a phone · press a part to edit it</span>
+            {dirty ? <span>Unsaved</span> : null}
           </p>
           {pagePreview(false)}
         </aside>
