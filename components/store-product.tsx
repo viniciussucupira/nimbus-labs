@@ -18,6 +18,8 @@ import { comparable, startingOption } from "@/lib/product-option";
 import { DEFAULT_PEOPLE, MAX_PEOPLE, MIN_PEOPLE } from "@/lib/group-rules";
 import { givableOptions } from "@/lib/gift-rules";
 import { productSegment } from "@/lib/product-slug";
+import { membershipWords } from "@/lib/buyer-words/membership";
+import { type AskWhen, isAskWhen } from "@/lib/ask-when";
 
 /**
  * How many price options are drawn as cards before they become a list to pick
@@ -297,6 +299,71 @@ export function GiftBox({ store, product, problem = "" }: { store: Store; produc
  * most buyers buy for themselves. The price shown is per person; the total
  * is on Stripe's page before anything is paid.
  */
+/**
+ * One reminder with the link, asked for on the product's own page (added 9
+ * October 2026; lib/checkout-ask.ts): for the visitor who is not ready yet —
+ * reading on a phone, buying later at a desk. In about an hour, tomorrow or
+ * in three days; one email, on no list. What happened is said here after
+ * the form, from `asked` in the address.
+ */
+export function RemindBox({ store, product, asked = "", when = "hour" }: { store: Store; product: Listing; asked?: string; when?: string }) {
+  const { w } = speech(store);
+  const m = membershipWords(store.language);
+  const said = isAskWhen(when) ? when : "hour";
+  const notice = asked && asked !== "asked" ? m.leftNotices[asked] ?? m.leftNotices.error : null;
+  return (
+    <details id="remind" className="mt-4 scroll-mt-24 rounded-2xl px-4 py-3" style={{ border: "1px solid var(--st-line)" }} open={Boolean(asked)}>
+      <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold" style={{ color: "var(--st-text)" }}>
+        {m.notReady}
+      </summary>
+      {asked === "asked" ? (
+        <div className="mt-2 space-y-2 pb-1" role="status">
+          <p className="font-semibold">{m.done}</p>
+          <p className="st-muted text-sm">{m.pageAsked(store.name, product.title, m.askSaid[said])}</p>
+          <p className="st-muted text-xs">{m.onlyEmail}</p>
+        </div>
+      ) : (
+        <form action="/api/store/remind" method="post" className="mt-2 space-y-3 pb-1">
+          {notice ? (
+            <p className="st-note text-sm" role="alert">
+              <span className="font-semibold">{notice.title}.</span> {notice.body}
+            </p>
+          ) : null}
+          <p className="st-muted text-sm">{m.pageRemindNote(store.name)}</p>
+          <input type="hidden" name="handle" value={store.handle} />
+          <input type="hidden" name="product" value={product.id} />
+          <input type="hidden" name="from" value="page" />
+          {/* Left empty by a person; filled in by something that fills in every field. */}
+          <div aria-hidden="true" className="hidden">
+            <label>
+              {w.leaveEmpty}
+              <input type="text" name="website" tabIndex={-1} autoComplete="off" />
+            </label>
+          </div>
+          <label className="block">
+            <span className="st-label">{w.yourEmail}</span>
+            <input className="st-field mt-2" type="email" name="email" required maxLength={254} autoComplete="email" placeholder={w.emailPlaceholder} />
+          </label>
+          <label className="block">
+            <span className="st-label">{m.askWhen}</span>
+            <select className="st-field mt-2" name="when" defaultValue={said}>
+              {(Object.keys(m.askTimes) as AskWhen[]).map((key) => (
+                <option key={key} value={key}>
+                  {m.askTimes[key]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit" className="btn st-btn-ghost btn-block">
+            {m.remindMe}
+          </button>
+          <p className="st-muted text-xs">{m.addressUse(store.name)}</p>
+        </form>
+      )}
+    </details>
+  );
+}
+
 export function GroupBox({ store, product, problem = "" }: { store: Store; product: Listing; problem?: string }) {
   const { w, money } = speech(store);
   const each = money(salePrice(product.priceCents, offNow(store, product)));

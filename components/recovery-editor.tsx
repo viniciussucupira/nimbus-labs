@@ -93,6 +93,14 @@ export function RecoveryEditor({
         <li className="flex gap-2">
           <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-brand" />
           <span>
+            Each paid product&apos;s page offers the same under its buy box, for a visitor who is not ready yet: one
+            reminder with the link, in about an hour, tomorrow or in three days, as they choose. The same limits, the
+            same stop link, and none if they buy first.
+          </span>
+        </li>
+        <li className="flex gap-2">
+          <span aria-hidden="true" className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-violet-brand" />
+          <span>
             Stripe shows its own box only on checkouts of US businesses. With a US account, a checkout left open also
             closes after 1 hour instead of Stripe&apos;s usual 24, so that reminder arrives while it still matters.
           </span>

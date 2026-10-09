@@ -315,6 +315,10 @@ const en = {
   recoverWhyCheckout: (store: string) => `It reached you because you agreed, on the checkout page, to hear from ${store}.`,
   recoverWhyAsked: (store: string) => `It reached you because you asked for it on ${store}'s store.`,
   recoverStop: (store: string, link: string) => `Stop these reminders from ${store}: ${link}`,
+  /** The email for a reminder asked for on a product's page (lib/checkout-ask.ts). */
+  pageAskSubject: (title: string) => `A reminder about ${title}`,
+  pageAskLead: (title: string, store: string) => `You asked ${store} to remind you about ${title}.`,
+  pageAskOnly: (why: string) => `This is the only reminder about it. ${why}`,
 
   // ---- A license key ---------------------------------------------------------------------------
   keyLabel: "Your license key",
@@ -617,6 +621,10 @@ const es: GivingWords = {
   recoverWhyCheckout: (store) => `Te ha llegado porque aceptaste, en la página de pago, recibir noticias de ${store}.`,
   recoverWhyAsked: (store) => `Te ha llegado porque lo pediste en la tienda de ${store}.`,
   recoverStop: (store, link) => `Dejar de recibir estos recordatorios de ${store}: ${link}`,
+  /** The email for a reminder asked for on a product's page (lib/checkout-ask.ts). */
+  pageAskSubject: (title) => `Un recordatorio sobre ${title}`,
+  pageAskLead: (title, store) => `Pediste a ${store} que te recordara ${title}.`,
+  pageAskOnly: (why) => `Este es el único recordatorio. ${why}`,
 
   keyLabel: "Tu clave de licencia",
   keyLabelFor: (title) => `Tu clave de licencia de ${title}`,
@@ -912,6 +920,10 @@ const fr: GivingWords = {
   recoverWhyCheckout: (store) => `Il vous parvient parce que vous avez accepté, sur la page de paiement, de recevoir des nouvelles de ${store}.`,
   recoverWhyAsked: (store) => `Il vous parvient parce que vous l'avez demandé sur la boutique de ${store}.`,
   recoverStop: (store, link) => `Ne plus recevoir ces rappels de ${store}${S}: ${link}`,
+  /** The email for a reminder asked for on a product's page (lib/checkout-ask.ts). */
+  pageAskSubject: (title) => `Un rappel pour ${title}`,
+  pageAskLead: (title, store) => `Vous avez demandé à ${store} de vous rappeler ${title}.`,
+  pageAskOnly: (why) => `C'est le seul rappel. ${why}`,
 
   keyLabel: "Votre clé de licence",
   keyLabelFor: (title) => `Votre clé de licence pour ${title}`,
@@ -1207,6 +1219,10 @@ const de: GivingWords = {
   recoverWhyCheckout: (store) => `Sie erhalten sie, weil Sie auf der Zahlungsseite zugestimmt haben, von ${store} zu hören.`,
   recoverWhyAsked: (store) => `Sie erhalten sie, weil Sie im Shop von ${store} darum gebeten haben.`,
   recoverStop: (store, link) => `Diese Erinnerungen von ${store} abbestellen: ${link}`,
+  /** The email for a reminder asked for on a product's page (lib/checkout-ask.ts). */
+  pageAskSubject: (title) => `Eine Erinnerung an ${title}`,
+  pageAskLead: (title, store) => `Sie haben ${store} gebeten, Sie an ${title} zu erinnern.`,
+  pageAskOnly: (why) => `Das ist die einzige Erinnerung. ${why}`,
 
   keyLabel: "Ihr Lizenzschlüssel",
   keyLabelFor: (title) => `Ihr Lizenzschlüssel für ${title}`,
@@ -1506,6 +1522,10 @@ const it: GivingWords = {
   recoverWhyCheckout: (store) => `Ti è arrivato perché hai accettato, nella pagina di pagamento, di ricevere notizie da ${store}.`,
   recoverWhyAsked: (store) => `Ti è arrivato perché l'hai chiesto nel negozio di ${store}.`,
   recoverStop: (store, link) => `Non ricevere più questi promemoria da ${store}: ${link}`,
+  /** The email for a reminder asked for on a product's page (lib/checkout-ask.ts). */
+  pageAskSubject: (title) => `Un promemoria per ${title}`,
+  pageAskLead: (title, store) => `Hai chiesto a ${store} di ricordarti ${title}.`,
+  pageAskOnly: (why) => `Questo è l'unico promemoria. ${why}`,
 
   keyLabel: "La tua chiave di licenza",
   keyLabelFor: (title) => `La tua chiave di licenza per ${title}`,
@@ -1798,6 +1818,10 @@ const nl: GivingWords = {
   recoverWhyCheckout: (store) => `Je krijgt dit omdat je op de betaalpagina hebt aangegeven van ${store} te willen horen.`,
   recoverWhyAsked: (store) => `Je krijgt dit omdat je erom hebt gevraagd in de winkel van ${store}.`,
   recoverStop: (store, link) => `Deze herinneringen van ${store} stoppen: ${link}`,
+  /** The email for a reminder asked for on a product's page (lib/checkout-ask.ts). */
+  pageAskSubject: (title) => `Een herinnering aan ${title}`,
+  pageAskLead: (title, store) => `Je vroeg ${store} om je aan ${title} te herinneren.`,
+  pageAskOnly: (why) => `Dit is de enige herinnering. ${why}`,
 
   keyLabel: "Je licentiesleutel",
   keyLabelFor: (title) => `Je licentiesleutel voor ${title}`,
@@ -2097,6 +2121,10 @@ const pt: GivingWords = {
   recoverWhyCheckout: (store) => `Recebeu-o porque aceitou, na página de pagamento, receber notícias de ${store}.`,
   recoverWhyAsked: (store) => `Recebeu-o porque o pediu na loja de ${store}.`,
   recoverStop: (store, link) => `Deixar de receber estes lembretes de ${store}: ${link}`,
+  /** The email for a reminder asked for on a product's page (lib/checkout-ask.ts). */
+  pageAskSubject: (title) => `Um lembrete sobre ${title}`,
+  pageAskLead: (title, store) => `Pediu a ${store} um lembrete sobre ${title}.`,
+  pageAskOnly: (why) => `Este é o único lembrete. ${why}`,
 
   keyLabel: "A sua chave de licença",
   keyLabelFor: (title) => `A sua chave de licença de ${title}`,

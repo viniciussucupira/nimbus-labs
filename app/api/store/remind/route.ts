@@ -4,14 +4,16 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { clientAddress, fromAnotherSite, limited } from "@/lib/request-guard";
 import { readListing } from "@/lib/catalog";
 import { askReminder } from "@/lib/checkout-ask";
+import { type AskWhen, isAskWhen } from "@/lib/ask-when";
 
 const MAX_BODY_BYTES = 2_000;
 
 /**
  * A buyer asks for one reminder about a checkout they did not finish
  * (lib/checkout-ask.ts): a plain form on the page the checkout's way back
- * leads to. The answer is always that page, and the address typed never goes
- * in its URL.
+ * leads to, or on the product's own page (`from=page`, with `when`). The
+ * answer is always the page it was asked on, and the address typed never
+ * goes in its URL.
  */
 export async function POST(request: NextRequest) {
   const origin = originFrom(request);
@@ -20,6 +22,8 @@ export async function POST(request: NextRequest) {
   let productId = "";
   let email = "";
   let honeypot = "";
+  let fromPage = false;
+  let when: AskWhen = "hour";
   try {
     const form = await (await limited(request, MAX_BODY_BYTES)).formData();
     const read = (name: string) => {
@@ -30,6 +34,9 @@ export async function POST(request: NextRequest) {
     productId = read("product").slice(0, 40);
     email = read("email").slice(0, 300);
     honeypot = read("website");
+    fromPage = read("from") === "page";
+    const asked = read("when");
+    if (isAskWhen(asked)) when = asked;
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -38,13 +45,18 @@ export async function POST(request: NextRequest) {
   const away = (status: string) =>
     new Response(null, {
       status: 303,
-      headers: { Location: `${origin}/@${store.handle}/left?p=${encodeURIComponent(productId)}&status=${status}`, "Cache-Control": "no-store" },
+      headers: {
+        Location: fromPage
+          ? `${origin}/@${store.handle}/p/${encodeURIComponent(productId)}?asked=${status}&when=${when}#remind`
+          : `${origin}/@${store.handle}/left?p=${encodeURIComponent(productId)}&status=${status}`,
+        "Cache-Control": "no-store",
+      },
     });
   // A form filled in by something that fills in every field is told it worked.
   if (honeypot.trim()) return away("asked");
   try {
     const product = productId ? await readListing(store, productId) : null;
-    return away(await askReminder({ store, product, email, ip: clientAddress(request) }));
+    return away(await askReminder({ store, product, email, ip: clientAddress(request), from: fromPage ? "page" : "checkout", when }));
   } catch (error) {
     console.error("asking for a checkout reminder failed", error);
     return away("error");

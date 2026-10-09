@@ -13,10 +13,20 @@ import { NO_RECOVERY, parseRecovery } from "@/lib/recovery-setting";
 const read = (file: string) => readFileSync(join(process.cwd(), file), "utf8");
 const code = (file: string) => read(file).replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-const ask = { statsId: "stats1", handle: "harbor", productId: "plan", email: "ana@example.com", askedAt: 1_800_000_000 };
+const ask = { statsId: "stats1", handle: "harbor", productId: "plan", email: "ana@example.com", askedAt: 1_800_000_000, from: "checkout" as const, after: ASK_AFTER_SECONDS };
 
 test("an ask comes back out of the queue as it went in", () => {
   assert.deepEqual(parseAsk(askMember(ask)), ask);
+  // One asked for on a product's page, for tomorrow, keeps where and when.
+  const onPage = { ...ask, from: "page" as const, after: 86_400 };
+  assert.deepEqual(parseAsk(askMember(onPage)), onPage);
+});
+
+test("an ask kept before the page could ask reads as it always did", () => {
+  assert.equal(askMember(ask), JSON.stringify(["stats1", "harbor", "plan", "ana@example.com", 1_800_000_000]));
+  assert.deepEqual(parseAsk(JSON.stringify(["stats1", "harbor", "plan", "ana@example.com", 1_800_000_000])), ask);
+  // A wait that is not one of the choices is the hour, never a made-up delay.
+  assert.equal(parseAsk(JSON.stringify(["stats1", "harbor", "plan", "ana@example.com", 1_800_000_000, "page", 99_999_999]))?.after, ASK_AFTER_SECONDS);
 });
 
 test("anything else in the queue is nothing, not half an ask", () => {
@@ -66,7 +76,9 @@ test("both kinds of yes go through the one set of limits", () => {
     assert.ok(deliver.includes(guard), `the one email is always behind ${guard}`);
   }
   // The words are the store's language's (lib/buyer-words/giving.ts); the English ones say it so.
-  assert.match(src, /why: givingWords\(store\.language\)\.recoverWhyAsked\(store\.name\)/, "and the email says why it came");
+  assert.match(src, /why: g\.recoverWhyAsked\(store\.name\)/, "and the email says why it came");
+  // Asked for on the product's page, it says that, and never that a checkout was left.
+  assert.match(src, /ask\.from === "page"[\s\S]{0,80}subject: g\.pageAskSubject\(product\.title\), lead: g\.pageAskLead\(product\.title, store\.name\)/);
   assert.match(code("lib/buyer-words/giving.ts"), /recoverWhyAsked: \(store: string\) => `It reached you because you asked for it on \$\{store\}'s store\.`/);
 });
 
