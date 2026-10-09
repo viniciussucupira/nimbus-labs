@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { MAX_SOCIALS, SOCIALS, SOCIAL_NETWORKS, networkFor, parseSocials, socialShown, socialUrl } from "@/lib/store-socials";
+import { MAX_SOCIALS, SOCIALS, SOCIAL_NETWORKS, linkIcon, networkFor, parseSocials, socialShown, socialUrl } from "@/lib/store-socials";
 import { BLOCK_WORDS } from "@/lib/buyer-words/blocks";
 
 describe("store profiles elsewhere", () => {
@@ -81,6 +81,13 @@ describe("store profiles elsewhere", () => {
     assert.equal(networkFor("ana@example.com"), "email");
     assert.equal(networkFor("https://ana.example"), null);
     assert.equal(networkFor("ana"), null);
+  });
+
+  it("gives each link on the store page a plain icon for where it goes", () => {
+    assert.deepEqual(
+      ["https://www.youtube.com/@ana", "https://calendly.com/ana", "https://podcasts.apple.com/x", "https://ana.substack.com", "https://www.etsy.com/shop/ana", "https://example.com", "not a url"].map(linkIcon),
+      ["video", "calendar", "mic", "mail", "basket", "link", "link"],
+    );
   });
 
   it("shows where a link goes without the scheme", () => {

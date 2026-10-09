@@ -1,4 +1,6 @@
 import { after } from "next/server";
+import { linkIcon } from "@/lib/store-socials";
+import { Icon } from "@/components/icons";
 import { MAX_STORE_SEARCH, STORE_PAGE_SIZE, searchStore, searchWords } from "@/lib/catalog";
 import { withinLimit } from "@/lib/request-guard";
 import { StoreQuotes } from "@/components/store-quotes";
@@ -488,11 +490,20 @@ export default async function StorePage({ params, searchParams }: Params) {
                       rel="noopener noreferrer nofollow ugc"
                       className={`st-card st-link-card px-5 py-4 text-center sm:px-6${link.spotlight ? " st-spotlight" : ""}`}
                     >
-                      <span className={`block font-bold${link.spotlight ? " text-lg" : ""}`}>
-                        {link.title}
-                      </span>
-                      <span className="st-muted mt-0.5 block font-mono text-xs">
-                        {linkHost(link.url)}
+                      {/* A plain icon for where it goes (lib/store-socials.ts, linkIcon), the words centered between. */}
+                      <span className="st-link-row">
+                        <span className="st-link-icon" aria-hidden="true">
+                          <Icon name={linkIcon(link.url)} size={18} />
+                        </span>
+                        <span className="min-w-0">
+                          <span className={`block font-bold${link.spotlight ? " text-lg" : ""}`}>
+                            {link.title}
+                          </span>
+                          <span className="st-muted mt-0.5 block font-mono text-xs">
+                            {linkHost(link.url)}
+                          </span>
+                        </span>
+                        <span aria-hidden="true" />
                       </span>
                     </a>
                   </li>
