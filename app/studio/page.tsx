@@ -75,6 +75,7 @@ import { chargeableCurrencies, readWaysToPay } from "@/lib/payment-methods";
 import { formatMoney } from "@/lib/money";
 import { LinkEditor } from "@/components/link-editor";
 import { JoinBoxEditor } from "@/components/join-box-editor";
+import { ContactBoxEditor } from "@/components/contact-box-editor";
 import { StoreCoach } from "@/components/store-coach";
 import { storeChecks } from "@/lib/store-coach";
 import { isPaidUp } from "@/lib/billing";
@@ -1177,6 +1178,14 @@ export default async function StudioPage({
 
             {may("page") ? <LinkEditor links={store.links} /> : null}
 
+            {may("page") ? (
+              <ContactBoxEditor
+                contact={store.contact}
+                storeName={store.name}
+                language={store.language}
+                blocked={!isSenderConfigured() ? "mail" : ""}
+              />
+            ) : null}
             {may("page") ? (
               <JoinBoxEditor
                 join={store.join}
