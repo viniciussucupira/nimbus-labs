@@ -1,5 +1,6 @@
-import type { NextRequest } from "next/server";
+import { type NextRequest, after } from "next/server";
 import { setReviewAsk } from "@/lib/store";
+import { refreshStoreQuotes } from "@/lib/store-quotes";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { MAX_REPLY_TEXT, REVIEW_ID_PATTERN, markSeen, setHidden, setReply } from "@/lib/reviews";
 import { MAX_ASK_DAYS, MIN_ASK_DAYS } from "@/lib/review-ask";
@@ -65,6 +66,8 @@ export async function POST(request: NextRequest) {
     if (done === null) return Response.json({ ok: false, error: "invalid" }, { status: 400 });
     if (done === "busy") return Response.json({ ok: false, error: "busy" }, { status: 409 });
     if (done === "missing") return Response.json({ ok: false, error: "missing" }, { status: 404 });
+    // A review hidden or shown again changes what the store page may quote (lib/store-quotes.ts).
+    if (action === "hide") after(() => refreshStoreQuotes(store));
     return Response.json({ ok: true });
   } catch (error) {
     console.error("changing a review failed", error);

@@ -1,5 +1,6 @@
-import type { NextRequest } from "next/server";
+import { type NextRequest, after } from "next/server";
 import { originFrom } from "@/lib/request-origin";
+import { refreshStoreQuotes } from "@/lib/store-quotes";
 import { ensureStatsId, normaliseHandle, setReviewed, storeForHandle, storeRef } from "@/lib/store";
 import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 import { type Door, doorFields, openDoor, readDoor } from "@/lib/review-proof";
@@ -82,12 +83,16 @@ export async function POST(request: NextRequest) {
   try {
     if (action === "delete") {
       const done = await deleteReview(statsId, productId, id);
+      if (done === "deleted") after(() => refreshStoreQuotes(store));
       return answer(done === "busy" ? "busy" : "deleted");
     }
     if (proof.refunded) {
       // Whatever this buyer wrote from this order no longer counts.
       const before = await readReview(statsId, productId, id);
-      if (before && before.reference === proof.reference && !before.refunded) await markOneRefunded(statsId, productId, id);
+      if (before && before.reference === proof.reference && !before.refunded) {
+        await markOneRefunded(statsId, productId, id);
+        after(() => refreshStoreQuotes(store));
+      }
       return answer("refunded");
     }
     const rating = readRating(read("rating"));
@@ -105,6 +110,8 @@ export async function POST(request: NextRequest) {
     if ((saved.state === "created" || saved.state === "updated") && !store.reviewed) {
       await setReviewed(storeRef(store)).catch((error: unknown) => console.error("noting a store's first review failed", error));
     }
+    // "What buyers say" on the store page, kept on the store's record (lib/store-quotes.ts).
+    if (saved.state === "created" || saved.state === "updated") after(() => refreshStoreQuotes(store));
     if (saved.state === "created") return answer("saved");
     if (saved.state === "updated") return answer("updated");
     return answer(saved.state === "invalid" ? "rating" : saved.state);

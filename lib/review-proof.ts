@@ -40,6 +40,7 @@ import { refundedInFull } from "@/lib/refunds";
 import { ordersGrant } from "@/lib/buyer-orders";
 import { DOWNLOAD_WINDOW_SECONDS } from "@/lib/store-checkout";
 import { REVIEW_STORES_KEY, markRefunded } from "@/lib/reviews";
+import { refreshStoreQuotes } from "@/lib/store-quotes";
 import type { Listing, Store } from "@/lib/store";
 import { readListings } from "@/lib/catalog";
 import { deliveredIds } from "@/lib/bundle-rules";
@@ -317,6 +318,8 @@ export async function markRefundedReviews(store: Store, deadline: number): Promi
     }
     after = last.id;
   }
+  // A refunded review leaves "What buyers say" on the store page (lib/store-quotes.ts).
+  if (marked > 0) await refreshStoreQuotes(store);
   if (complete && Date.now() < deadline) {
     await redisPipeline([["SET", anchorKey(statsId), String(Math.max(newest, anchor)), "EX", REFUND_LOOKBACK_SECONDS * 2]]);
   }

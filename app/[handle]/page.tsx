@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { StoreQuotes } from "@/components/store-quotes";
 import { showsRating, storeSummary } from "@/lib/review-summary";
 import { RatingLine } from "@/components/review-list";
 import { StoreShareButton } from "@/components/store-share-button";
@@ -365,6 +366,15 @@ export default async function StorePage({ params, searchParams }: Params) {
                     </span>
                   )}
                 </nav>
+              ) : null}
+
+              {/* "What buyers say": the newest reviews with words, kept on the store's record (lib/store-quotes.ts). */}
+              {page === 1 ? (
+                <StoreQuotes
+                  store={store}
+                  quotes={store.quotes.filter((quote) => index.some((item) => item.id === quote.p && !item.hidden))}
+                  titles={new Map(known.map((product) => [product.id, product.title]))}
+                />
               ) : null}
 
               {/*
