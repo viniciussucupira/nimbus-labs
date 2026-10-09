@@ -11,7 +11,8 @@
  * on a store, and a purchase for several people — could only be looked at on
  * a store with products that can sell, which production does not have yet.
  *
- * What runs: the real app (`next dev`), unchanged, pointed at one local
+ * What runs: the real app, built as the site builds it (`next build`, then
+ * `next start`; E2E_DEV=1 runs `next dev` instead), unchanged, pointed at one local
  * stand-in for its database, for Stripe and for the email sender
  * (tests/e2e/services.mjs), through the addresses the code already accepts
  * for exactly this (STRIPE_CONNECT_API_BASE, RESEND_API_BASE, and the
@@ -68,6 +69,9 @@ const env = {
   STRIPE_SECRET_KEY: "sk_test_local_only_a_stand_in_0000",
   STRIPE_CONNECT_API_BASE: FAKE,
   RESEND_API_KEY: "re_local_only_a_stand_in",
+  // Google Fonts cannot be reached from here: next/font is answered by a stand-in (google-fonts-mock.cjs).
+  NEXT_FONT_GOOGLE_MOCKED_RESPONSES: join(here, "google-fonts-mock.cjs"),
+  E2E_FONT_ORIGIN: FAKE,
   RESEND_API_BASE: FAKE,
   ANTHROPIC_API_KEY: "sk-ant-local_only_a_stand_in_0000",
   ANTHROPIC_API_BASE: FAKE,
@@ -121,8 +125,38 @@ const words = async (locator) => (await locator.innerText()).replace(/\s+/g, " "
 const services = await startServices(SERVICES);
 let app = null;
 let browser = null;
-/** Starts the app again with its cache kept (set once the app is up). */
+/** Starts the app again (set once the app is up). */
 let restartApp = async () => {};
+/** A published post's address, once the blog part has made one: checked after a restart. */
+let postPath = "";
+/**
+ * Starts the app again when it has grown past what this machine lets it use.
+ * A dev server keeps everything it has built in memory, and past about 5 GB
+ * the machine stops it in the middle of whatever check is running; asked
+ * before each part, this restarts it between checks instead.
+ */
+const APP_MEMORY_LIMIT_MB = 3_000;
+/**
+ * The app is built once and served as the site serves it: a fraction of the
+ * dev server's memory and none of its faults. E2E_DEV=1 runs the dev server
+ * instead, for a quick look at a change without building.
+ */
+const PRODUCTION = process.env.E2E_DEV !== "1";
+async function keepSmall() {
+  if (!app?.pid) return;
+  const { execFileSync } = await import("node:child_process");
+  let mb = 0;
+  try {
+    const out = execFileSync("ps", ["-o", "rss=", "-g", String(app.pid)], { encoding: "utf8" });
+    mb = out.split("\n").reduce((sum, line) => sum + (Number(line.trim()) || 0), 0) / 1024;
+  } catch {
+    return;
+  }
+  if (mb > APP_MEMORY_LIMIT_MB) {
+    console.log(`(the app had grown to ${Math.round(mb)} MB; it is started again)`);
+    await restartApp();
+  }
+}
 /** Everything the app said, kept for E2E_APP_LOG=<file> (written there at the end). */
 let appLog = "";
 try {
@@ -141,13 +175,25 @@ try {
   if (seeded.status !== 0) throw new Error(`the store could not be made:\n${seeded.err}`);
   const { ids, reviews: seededReviews, session } = JSON.parse(seeded.out.trim().split("\n").at(-1));
 
+  // Built once, before it is served (see PRODUCTION above).
+  if (PRODUCTION) {
+    const built = await new Promise((done) => {
+      const child = spawn("npx", ["next", "build"], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"] });
+      let said = "";
+      child.stdout.on("data", (chunk) => (said += chunk));
+      child.stderr.on("data", (chunk) => (said += chunk));
+      child.on("close", (status) => done({ status, said }));
+    });
+    if (built.status !== 0) throw new Error(`the app did not build:\n${built.said.slice(-3000)}`);
+  }
+
   // The app. A dev server stopped while writing can leave Turbopack's cache
   // unreadable, and the next one panics on it; it is only a cache, so it is
   // put aside once and the app started again.
   let log = "";
   const start = () => {
     log = "";
-    app = spawn("npx", ["next", "dev", "-p", String(APP)], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
+    app = spawn("npx", ["next", PRODUCTION ? "start" : "dev", "-p", String(APP)], { cwd: root, env, stdio: ["ignore", "pipe", "pipe"], detached: true });
     app.stdout.on("data", (chunk) => {
       log += chunk;
       appLog += chunk;
@@ -275,12 +321,14 @@ try {
   const sectionsOn = (target) =>
     target.$$eval("main section[aria-label]", (all) => all.map((s) => [s.querySelector("h2")?.textContent ?? "", s.querySelectorAll("ul > li").length]));
 
+  await keepSmall();
   part("The store page");
   await open(page, `${LOCAL}/@localshop`);
   is("its sections, each over its own products", await sectionsOn(page), [["Recipe books", 2], ["Planning", 2], ["Courses", 1]]);
   is("its line of news, leading to the product it names", [await words(page.locator(".st-announce")), await page.locator(".st-announce a").getAttribute("href")], ["New: Knife Skills, ten short lessons →", `/@localshop/p/${ids["Knife Skills"]}`]);
   is("every product can be bought", await page.locator('form[action="/api/store/checkout"]').count(), 5);
 
+  await keepSmall();
   part("A purchase for three people");
   await open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`);
   // The first product page a fresh dev server builds has, now and then, come
@@ -328,6 +376,7 @@ try {
   is("the third", await takes("cy@example.com"), { ...took, left: "1 of 3 places is still open" });
   is("a fourth is told every place is taken, and offered no form", await takes("dee@example.com"), { left: "All 3 places have been taken", form: false });
 
+  await keepSmall();
   part("Two boxes at checkout");
   await open(page, `${LOCAL}/@localshop/p/${ids["Weeknight Dinners"]}`);
   const boxes = page.locator('#buy input[name="bump"]');
@@ -351,6 +400,7 @@ try {
   const thanks = await words(page.locator("main"));
   is("and the page after paying hands each one over", [thanks.includes("You bought Weeknight Dinners, Pantry Checklist, and Sunday Baking"), await page.locator('p.st-label:text-is("Also yours")').count()], [true, 2]);
 
+  await keepSmall();
   part("A gift");
   const before = services.emails().length;
   await open(page, `${LOCAL}/@localshop/p/${ids["Sunday Baking"]}`);
@@ -373,6 +423,7 @@ try {
   const given = await words(page.locator("main"));
   is("the recipient opens it from their email, as a gift", [given.includes("Sunday Baking"), given.includes("A gift from Ana")], [true, true]);
 
+  await keepSmall();
   part("The studio");
   const wide = await browser.newContext({ viewport: { width: 1200, height: 900 } });
   await wide.addCookies([{ name: "nl_session", value: session, url: LOCAL }]);
@@ -393,6 +444,7 @@ try {
   await open(page, `${LOCAL}/@localshop`);
   is("a change there shows on the store", await sectionsOn(page), [["Cookbooks", 2], ["Planning", 1], ["Quick lists", 1], ["Courses", 1]]);
 
+  await keepSmall();
   part("Boxes at checkout, set up in the studio");
   await studio.locator("button[aria-expanded]", { hasText: "Weeknight Dinners" }).first().click();
   is("the two boxes, each on its own line", [await studio.getByText("Offers Pantry Checklist for $5 at checkout").isVisible(), await studio.getByText("Offers Sunday Baking for $15 at checkout").isVisible()], [true, true]);
@@ -409,6 +461,7 @@ try {
   for (let i = 0; i < 3; i += 1) await three.nth(i).check();
   is("on the product's page, three boxes, and the total of all four", [await three.count(), await words(page.locator('#buy form:has(input[name="bump"]) button[type=submit]'))], [3, "Buy all four for $49"]);
 
+  await keepSmall();
   part("Selling from the creator's own website");
   const tool = studio.locator("#buy-button");
   await tool.locator("select").first().selectOption({ label: "Pantry Checklist" });
@@ -496,6 +549,7 @@ try {
   is("and leads to the product's page, tagged with the place", [new URL(site.url()).searchParams.get("utm_source"), await words(site.locator("main h1").first())], ["blog", "Pantry Checklist"]);
   await site.close();
 
+  await keepSmall();
   part("Fair prices by country, switched on by the creator");
   const fairCard = studio.locator("#fair-prices");
   const asBuyerFrom = async (country) => {
@@ -533,6 +587,7 @@ try {
     await visit.close();
   }
 
+  await keepSmall();
   part("Fair prices only on the products the creator picks");
   const products = fairCard.getByRole("group", { name: "Which products" });
   await products.getByLabel("Only the ones I pick").check();
@@ -556,6 +611,7 @@ try {
     await visit.close();
   }
 
+  await keepSmall();
   part("The store in Spanish");
   const setLanguage = (language) =>
     studio.evaluate(async (language) => {
@@ -591,6 +647,7 @@ try {
   is("the studio has the card that picks it", await studio.locator("select#store-language").count(), 1);
   is("showing the language the store speaks", await studio.locator("select#store-language").inputValue(), "en");
 
+  await keepSmall();
   part("A sales page with the newer blocks");
   {
     const saved = await studio.evaluate(async (id) => {
@@ -645,6 +702,7 @@ try {
     await page.setViewportSize(narrow);
   }
 
+  await keepSmall();
   part("The page coach in the studio");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
@@ -659,6 +717,7 @@ try {
     if (process.env.E2E_SHOTS) await studio.locator("#coach-title").locator("xpath=ancestor::section[1]").screenshot({ path: join(process.env.E2E_SHOTS, "page-coach.png") });
   }
 
+  await keepSmall();
   part("The page's style, chosen in the studio");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
@@ -686,6 +745,7 @@ try {
     ], ["true", before, true]);
   }
 
+  await keepSmall();
   part("A product's address in words");
   {
     await open(page, `${LOCAL}/@localshop`);
@@ -700,6 +760,7 @@ try {
     is("and so does one with the words of an older title", [renamed.status(), (await words(page.locator("h1"))).length > 0], [200, true]);
   }
 
+  await keepSmall();
   part("Sharing a page and the store");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
@@ -729,6 +790,7 @@ try {
     is("and posts about the whole store, with its address tagged", (await studio.locator("#post-x").inputValue()).endsWith("/@localshop?utm_source=x&utm_medium=share"), true);
   }
 
+  await keepSmall();
   part("Blocks added where they go, from a gallery");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
@@ -773,6 +835,7 @@ try {
     }
   }
 
+  await keepSmall();
   part("A page kept from visitors while it is worked on");
   {
     const save = (hidden, showFrom = 0) => studio.evaluate(async ([id, hidden, showFrom]) => {
@@ -803,6 +866,7 @@ try {
     await studio.evaluate(async (id) => fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: null }) }), ids["Weeknight Dinners"]);
   }
 
+  await keepSmall();
   part("Things said elsewhere, each with a link to where");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Weeknight Dinners"]}`);
@@ -825,6 +889,7 @@ try {
     await studio.evaluate(async (id) => fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: null }) }), ids["Weeknight Dinners"]);
   }
 
+  await keepSmall();
   part("Pictures seen large, without leaving the page");
   {
     await open(page, `${LOCAL}/@localshop/p/${ids["Sunday Baking"]}`);
@@ -844,6 +909,7 @@ try {
     is("and so does Close", await viewer.evaluate((d) => d.open), false);
   }
 
+  await keepSmall();
   part("Reviews picked to show first");
   {
     const saved = await studio.evaluate(async ([id, first, knife]) => {
@@ -881,6 +947,7 @@ try {
     is("and the card's product is chosen in a list of the store's others", await studio.locator("select[id$='-p']").inputValue(), ids["Knife Skills"]);
   }
 
+  await keepSmall();
   part("On a wide screen, the page beside its blocks as they are edited");
   {
     const was = studio.viewportSize();
@@ -902,6 +969,7 @@ try {
     is("on a narrower one, drawn once, under Preview", await beside.count(), 0);
   }
 
+  await keepSmall();
   part("A page started from a template, chosen by what it holds");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Meal Planner"]}`);
@@ -913,6 +981,7 @@ try {
     is("one press lays it out, under the product's own headline", [(await blocks.count()) >= 5, (await words(blocks.first())).startsWith("1. Hero")], [true, true]);
   }
 
+  await keepSmall();
   part("A page started from another product's page");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Pantry Checklist"]}`);
@@ -922,6 +991,7 @@ try {
     is("its blocks are here, ready to change, and nothing saved yet", [await studio.locator("ol > li").count() >= 8, await studio.getByRole("button", { name: "Save the page" }).isEnabled()], [true, true]);
   }
 
+  await keepSmall();
   part("A whole page translated with AI");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
@@ -942,6 +1012,7 @@ try {
     is("and Undo puts them back", undone !== headline && undone !== undone.toUpperCase(), true);
   }
 
+  await keepSmall();
   part("Each product's page views, in the studio's numbers");
   {
     await open(studio, `${LOCAL}/studio`);
@@ -951,6 +1022,7 @@ try {
     // calls itself headless, and a store's numbers leave out what robots open.
   }
 
+  await keepSmall();
   part("A reminder asked for on a product's page");
   {
     const remind = (enabled) => studio.evaluate(async (enabled) => (await (await fetch("/api/store/recovery", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled, address: "1 Harbor Road, Portland, ME 04101" }) })).json()).ok === true, enabled);
@@ -969,8 +1041,8 @@ try {
     is("and off again, the page offers none", await remind(false).then(() => open(page, `${LOCAL}/@localshop/p/${ids["Meal Planner"]}`)).then(() => page.locator("#remind").count()), 0);
   }
 
+  await keepSmall();
   part("A blog on the store's address");
-  let postPath = "";
   {
     await open(studio, `${LOCAL}/studio/blog`);
     await studio.getByRole("link", { name: "New post" }).first().click();
@@ -1001,7 +1073,7 @@ try {
     if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "blog-post.png"), fullPage: true });
   }
 
-  await restartApp();
+  await keepSmall();
   part("The creator's profiles elsewhere, under the store's name");
   {
     await open(studio, `${LOCAL}/studio`);
@@ -1039,9 +1111,16 @@ try {
       await page.getByText("across every product").count(),
       await page.getByRole("button", { name: "Share this store" }).count(),
     ], [1, 1]);
+    const quotes = page.getByRole("region", { name: "What buyers say" });
+    is("and what buyers said, the newest with words, each about its product", [
+      await quotes.locator("blockquote").count(),
+      (await words(quotes.locator("blockquote").first())).includes("Sunday mornings smell like bread"),
+      await quotes.getByRole("link", { name: "About Sunday Baking" }).count(),
+    ], [3, true, 3]);
     if (process.env.E2E_SHOTS) await page.locator("section").first().screenshot({ path: join(process.env.E2E_SHOTS, "store-socials.png") });
   }
 
+  await keepSmall();
   part("Links that stand out, play on the page, and come and go on time");
   {
     await open(studio, `${LOCAL}/studio`);
@@ -1076,6 +1155,7 @@ try {
     if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "store-links.png"), fullPage: true });
   }
 
+  await keepSmall();
   part("An email sign-up box on the store page, confirmed by email");
   {
     await open(studio, `${LOCAL}/studio`);
@@ -1103,6 +1183,7 @@ try {
     await person.close();
   }
 
+  await keepSmall();
   part("Help to choose on the store page, picked by AI from the catalog");
   {
     await open(studio, `${LOCAL}/studio`);
@@ -1131,6 +1212,7 @@ try {
     is("what was looked for and not found reaches the creator", await studio.getByText("a trip to the moon").count() > 0, true);
   }
 
+  await keepSmall();
   part("A reply to a review, drafted with AI");
   {
     await open(studio, `${LOCAL}/studio/reviews?view=all`);
@@ -1142,6 +1224,7 @@ try {
     is("the draft is in the box, not yet posted", [await row.locator("textarea").inputValue(), await row.getByText("Your public reply").count()], ["Thank you for baking along, and for saying so.", 0]);
   }
 
+  await keepSmall();
   part("The line under the store's name, written with AI");
   {
     await open(studio, `${LOCAL}/studio`);
@@ -1154,6 +1237,7 @@ try {
     is("one press puts it in the box, nothing saved yet", await studio.locator("#store-bio").inputValue(), "Cook once, eat all week.");
   }
 
+  await keepSmall();
   part("The letters of the page, picked in the studio");
   {
     await open(studio, `${LOCAL}/studio`);
@@ -1173,6 +1257,7 @@ try {
     is("and back to Modern, nothing more is painted", await page.locator(".st-page").first().evaluate((el) => el.style.getPropertyValue("--st-font-head")), "");
   }
 
+  await keepSmall();
   part("Logging in is not starting a store");
   await open(page, `${LOCAL}/signin?to=login`);
   is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);
@@ -1243,6 +1328,7 @@ try {
     await audit.close();
   }
 
+  await keepSmall();
   part("Nothing went wrong on the way");
   is("no page threw an error", errors, []);
   is("and no page's own policy refused anything on it", [...new Set(policyRefusals)], []);

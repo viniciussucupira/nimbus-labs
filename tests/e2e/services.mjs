@@ -16,7 +16,7 @@
  * page on another address, as it would be on their blog.
  */
 import http from "node:http";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -58,6 +58,11 @@ export async function startServices(port) {
         res.statusCode = 200;
         res.setHeader("Content-Type", "text/html; charset=utf-8");
         return res.end(`<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="icon" href="data:,"><title>A creator's own website</title></head><body style="font-family:sans-serif;padding:24px"><h1>My cooking blog</h1><p>Here is the planner I use every week.</p>${url.searchParams.get("code") ?? ""}</body></html>`);
+      }
+      if (req.method === "GET" && path === "/fonts/mock.woff2") {
+        // The one font file the build is given for every Google font (google-fonts-mock.cjs).
+        res.writeHead(200, { "Content-Type": "font/woff2" });
+        return res.end(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../../node_modules/next/dist/next-devtools/server/font/geist-latin.woff2")));
       }
       if (req.method === "POST" && path === "/pipeline") {
         const results = [];

@@ -56,6 +56,10 @@ const en = {
   shareStore: "Share",
   shareCopied: "Link copied",
   shareStoreLabel: "Share this store",
+  /** "What buyers say" on the store page (lib/store-quotes.ts): the newest reviews with words. */
+  quotesTitle: "What buyers say",
+  quotesNote: "The newest reviews with words, from every product. Each comes from a verified purchase.",
+  quoteAbout: (title: string) => `About ${title}`,
 };
 
 export type BlockWords = typeof en;
@@ -97,6 +101,9 @@ const es: BlockWords = {
   shareStore: "Compartir",
   shareCopied: "Enlace copiado",
   shareStoreLabel: "Compartir esta tienda",
+  quotesTitle: "Lo que dicen los compradores",
+  quotesNote: "Las reseñas más recientes con texto, de todos los productos. Cada una viene de una compra verificada.",
+  quoteAbout: (title) => `Sobre ${title}`,
 };
 
 const fr: BlockWords = {
@@ -136,6 +143,9 @@ const fr: BlockWords = {
   shareStore: "Partager",
   shareCopied: "Lien copié",
   shareStoreLabel: "Partager cette boutique",
+  quotesTitle: "Ce que disent les acheteurs",
+  quotesNote: "Les avis les plus récents avec un texte, sur tous les produits. Chacun vient d'un achat vérifié.",
+  quoteAbout: (title) => `À propos de ${title}`,
 };
 
 const de: BlockWords = {
@@ -175,6 +185,9 @@ const de: BlockWords = {
   shareStore: "Teilen",
   shareCopied: "Link kopiert",
   shareStoreLabel: "Diesen Shop teilen",
+  quotesTitle: "Das sagen Käufer",
+  quotesNote: "Die neuesten Bewertungen mit Text, zu allen Produkten. Jede stammt aus einem bestätigten Kauf.",
+  quoteAbout: (title) => `Zu ${title}`,
 };
 
 const it: BlockWords = {
@@ -214,6 +227,9 @@ const it: BlockWords = {
   shareStore: "Condividi",
   shareCopied: "Link copiato",
   shareStoreLabel: "Condividi questo negozio",
+  quotesTitle: "Cosa dicono gli acquirenti",
+  quotesNote: "Le recensioni più recenti con un testo, su tutti i prodotti. Ognuna viene da un acquisto verificato.",
+  quoteAbout: (title) => `Su ${title}`,
 };
 
 const nl: BlockWords = {
@@ -253,6 +269,9 @@ const nl: BlockWords = {
   shareStore: "Delen",
   shareCopied: "Link gekopieerd",
   shareStoreLabel: "Deel deze winkel",
+  quotesTitle: "Wat kopers zeggen",
+  quotesNote: "De nieuwste reviews met tekst, over alle producten. Elke review komt van een geverifieerde aankoop.",
+  quoteAbout: (title) => `Over ${title}`,
 };
 
 const pt: BlockWords = {
@@ -292,6 +311,9 @@ const pt: BlockWords = {
   shareStore: "Partilhar",
   shareCopied: "Ligação copiada",
   shareStoreLabel: "Partilhar esta loja",
+  quotesTitle: "O que dizem os compradores",
+  quotesNote: "As avaliações mais recentes com texto, de todos os produtos. Cada uma vem de uma compra verificada.",
+  quoteAbout: (title) => `Sobre ${title}`,
 };
 
 export const BLOCK_WORDS: Record<LanguageCode, BlockWords> = { en, es, fr, de, it, nl, pt };

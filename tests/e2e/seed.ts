@@ -4,9 +4,10 @@
  * a session for its owner. Written through the same functions the studio
  * uses, into the stand-in database.
  */
-import { addProduct, claimHandle, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setProductLink, setReviewed, setSections, setStripeAccount, setSubscription } from "@/lib/store";
+import { addProduct, claimHandle, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setProductLink, setReviewed, setSections, storeForEmail, setStripeAccount, setSubscription } from "@/lib/store";
 import { openSession } from "@/lib/auth";
 import { saveReview } from "@/lib/reviews";
+import { refreshStoreQuotes } from "@/lib/store-quotes";
 import { writePage } from "@/lib/sales-page-store";
 import { parsePage } from "@/lib/sales-page";
 
@@ -64,6 +65,9 @@ async function main(): Promise<void> {
   }
   // As the review route notes a store's first review, so its pages read the numbers.
   await setReviewed(OWNER);
+  // And keeps the newest of them for "What buyers say" on the store page, as the route does after each.
+  const reviewedStore = await storeForEmail(OWNER);
+  if (reviewedStore) await refreshStoreQuotes(reviewedStore);
   // A page with three pictures, written as the studio would have kept it,
   // for the picture viewer. Their files are not in this stand-in.
   const shot = (n: number, alt: string, caption: string) => ({ path: `images/${"a".repeat(24)}/${String(n).padStart(32, "c")}.jpg`, width: 1200, height: 900, alt, caption });
