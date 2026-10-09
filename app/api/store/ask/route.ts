@@ -7,6 +7,7 @@ import { readAbout } from "@/lib/product-about";
 import { readPage } from "@/lib/sales-page-store";
 import { answerQuestion, answersOn } from "@/lib/answers";
 import { ASKS_PER_DAY, ASKS_PER_TEN_MINUTES, STORE_ASKS_PER_MINUTE } from "@/lib/answers-rules";
+import { pageShown } from "@/lib/sales-page";
 
 /** The model is given twenty seconds; the route a little more. */
 export const maxDuration = 30;
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     const [about, page] = await Promise.all([
       product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""),
       // A page kept from visitors is not answered from.
-      product.page ? readPage(store.statsId, product.id).then((page) => (page.hidden ? null : page)) : Promise.resolve(null),
+      product.page ? readPage(store.statsId, product.id).then((page) => (pageShown(page) ? page : null)) : Promise.resolve(null),
     ]);
     const result = await answerQuestion({ store, product, about, page, question });
     if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: result.reason === "failed" ? 502 : 400 });

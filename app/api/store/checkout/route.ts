@@ -25,6 +25,7 @@ import { codeCookieName, readLinkCode } from "@/lib/code-link";
 import { AB_COOKIE, count as countTest, readBucket, readCounts, versionFor, winner } from "@/lib/headline-test";
 import { readPage } from "@/lib/sales-page-store";
 import { readCountry } from "@/lib/fair-price";
+import { pageShown } from "@/lib/sales-page";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -203,7 +204,7 @@ export async function POST(request: NextRequest) {
     if (product.page && bucket !== null) {
       after(async () => {
         const page = await readPage(store.statsId, product.id);
-        if (!page.test || page.hidden) return;
+        if (!page.test || !pageShown(page)) return;
         const counts = await readCounts(store.statsId, product.id, page.test.id);
         if (winner(counts)) return;
         await countTest(store.statsId, product.id, page.test.id, "c", versionFor(bucket, page.test.id));

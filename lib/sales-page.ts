@@ -346,11 +346,23 @@ export type SalesPage = {
    * description, and nothing on this page is answered from or counted.
    */
   hidden: boolean;
+  /**
+   * For a hidden page, the moment it shows by itself, in seconds (added
+   * 8 October 2026): a launch at nine on Monday without anyone at the
+   * keyboard. 0 is none; the page then stays hidden until switched on.
+   */
+  showFrom: number;
 };
 
-/** The page visitors are shown: this one, or none while it is hidden. */
-export function livePage(page: SalesPage): SalesPage {
-  return page.hidden ? { ...EMPTY_PAGE, blocks: [] } : page;
+/** The page visitors are shown at `now` (seconds): this one, or none while it is hidden and not yet due. */
+export function livePage(page: SalesPage, now = Math.floor(Date.now() / 1000)): SalesPage {
+  const due = page.showFrom > 0 && now >= page.showFrom;
+  return page.hidden && !due ? { ...EMPTY_PAGE, blocks: [] } : page;
+}
+
+/** Whether visitors see the page at `now`. */
+export function pageShown(page: SalesPage, now = Math.floor(Date.now() / 1000)): boolean {
+  return !page.hidden || (page.showFrom > 0 && now >= page.showFrom);
 }
 
 export const PAGE_STYLES = ["plain", "bands", "cards"] as const;
@@ -381,7 +393,7 @@ export function bandsOf(style: PageStyle, blocks: { screens?: BlockShow }[]): { 
 
 export type HeadlineTest = { id: string; headline: string; sub: string };
 
-export const EMPTY_PAGE: SalesPage = { blocks: [], seoTitle: "", seoDescription: "", next: null, test: null, style: "plain", hidden: false };
+export const EMPTY_PAGE: SalesPage = { blocks: [], seoTitle: "", seoDescription: "", next: null, test: null, style: "plain", hidden: false, showFrom: 0 };
 
 /** The id of a test of these two versions: the same words, the same id. */
 export function testId(a: { headline: string; sub: string }, b: { headline: string; sub: string }): string {
@@ -732,6 +744,8 @@ export function parsePage(raw: unknown): SalesPage {
     test: parseTest(value.test, blocks[0]?.kind === "hero" ? blocks[0] : null),
     style: (PAGE_STYLES as readonly unknown[]).includes(value.style) ? (value.style as PageStyle) : "plain",
     hidden: value.hidden === true,
+    // Only for a hidden page, and only a moment a clock can hold.
+    showFrom: value.hidden === true ? parseUntil(value.showFrom) : 0,
   };
 }
 

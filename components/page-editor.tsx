@@ -242,6 +242,7 @@ export function PageEditor({
   const [next, setNext] = useState(initial.next ?? "");
   const [style, setStyle] = useState<PageStyle>(initial.style);
   const [hidden, setHidden] = useState(initial.hidden);
+  const [showFrom, setShowFrom] = useState(initial.showFrom);
   // How far down the saved page visitors read (lib/page-depth.ts), shown on each block.
   const [reach, setReach] = useState<{ shares: Record<string, number>; visitors: number } | null>(null);
   useEffect(() => {
@@ -346,8 +347,10 @@ export function PageEditor({
     };
   }, []);
 
-  const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "", y: initial.style, h: initial.hidden, ab: initial.test ? [initial.test.headline, initial.test.sub] : null });
-  const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next, y: style, h: hidden, ab: testing ? [testHeadline.trim(), testSub.trim()] : null }) !== saved;
+  // Whether visitors are kept from the saved page right now; read off the clock, never while drawing on the server.
+  const hiddenNow = initial.hidden && !(initial.showFrom > 0 && clock > 0 && initial.showFrom * 1000 <= clock);
+  const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "", y: initial.style, h: initial.hidden, f: initial.hidden ? initial.showFrom : 0, ab: initial.test ? [initial.test.headline, initial.test.sub] : null });
+  const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next, y: style, h: hidden, f: hidden ? showFrom : 0, ab: testing ? [testHeadline.trim(), testSub.trim()] : null }) !== saved;
   const hasHero = drafts[0]?.block.kind === "hero";
   const hasReviews = drafts.some((d) => d.block.kind === "reviews");
   const addable = BLOCK_KINDS.filter((k) => (k.kind === "hero" ? !hasHero : k.kind === "reviews" ? !hasReviews : true));
@@ -573,6 +576,7 @@ export function PageEditor({
       test: testing && testHeadline.trim() ? { id: "", headline: testHeadline.trim(), sub: testSub.trim() } : null,
       style,
       hidden,
+      showFrom: hidden ? showFrom : 0,
     };
   }
 
@@ -611,6 +615,7 @@ export function PageEditor({
           setNext("");
           setStyle("plain");
           setHidden(false);
+          setShowFrom(0);
           setTesting(false);
           setTestHeadline("");
           setTestSub("");
@@ -1332,7 +1337,9 @@ export function PageEditor({
               : "No blocks yet: the product's page shows its picture, description and buy box, as it always has."}
           </p>
         </div>
-        <span className={`tag ${initial.blocks.length && !initial.hidden ? "tag-live" : ""}`}>{!initial.blocks.length ? "Plain" : initial.hidden ? "Hidden" : "Built"}</span>
+        <span className={`tag ${initial.blocks.length && !hiddenNow ? "tag-live" : ""}`}>
+          {!initial.blocks.length ? "Plain" : !hiddenNow ? "Built" : initial.showFrom && clock ? `Shows ${whenSaved(initial.showFrom * 1000)}` : "Hidden"}
+        </span>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -1864,11 +1871,33 @@ export function PageEditor({
             <span className="block text-sm font-semibold text-ink">Visitors see this page</span>
             <span className="mt-0.5 block text-xs text-ink-soft">
               {hidden
-                ? "Off: visitors see the product's plain page while you work on this one. Save as often as you like; switch it on and save when it is ready."
+                ? "Off: visitors see the product's plain page while you work on this one. Save as often as you like; switch it on and save when it is ready, or have it show by itself at a moment you choose."
                 : "On: once you save, this is the product's page. Switch it off to keep working on it out of sight."}
             </span>
           </span>
         </label>
+      ) : null}
+      {drafts.length > 0 && hidden ? (
+        <div className="mt-3 rounded-2xl bg-paper p-4 ring-1 ring-line">
+          {field(
+            "page-show-from",
+            "Show it by itself at (optional)",
+            <input
+              id="page-show-from"
+              type="datetime-local"
+              className="field"
+              value={toLocalField(showFrom)}
+              onChange={(e) => setShowFrom(fromLocalField(e.target.value))}
+            />,
+          )}
+          <p className="mt-1 text-xs text-ink-soft">
+            {showFrom && clock && showFrom * 1000 <= clock
+              ? "That moment has passed: once saved, visitors see this page."
+              : showFrom
+                ? `Visitors see it from ${whenSaved(showFrom * 1000)}, your time, without you doing anything. Leave it empty to show it only when you switch it on.`
+                : "Say when, in your own time, and the page shows itself then: a launch at nine on Monday with nobody at the keyboard."}
+          </p>
+        </div>
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -1886,6 +1915,7 @@ export function PageEditor({
               setNext(initial.next ?? "");
               setStyle(initial.style);
               setHidden(initial.hidden);
+              setShowFrom(initial.showFrom);
               setError(null);
             }}
           >
