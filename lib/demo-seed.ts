@@ -61,6 +61,7 @@ import {
   setProductDisplay,
   setProductFile,
   setAnswers,
+  setFaq,
   setProductImage,
   setProductPage,
   setPostCount,
@@ -97,6 +98,16 @@ export const DEMO_STORE = {
     id: "photo-1543871595-e11129e271cc",
     query: "fm=webp&fit=crop&crop=faces&w=480&h=480&q=75",
   },
+  /**
+   * The store's own questions and answers (lib/store-faq.ts), each true of
+   * this demo: what is charged, what is handed over, who Jenny is.
+   */
+  faq: [
+    { q: "Is anything charged in this store?", a: "No. This is Marktmorgen's demo store: its checkout runs in Stripe's test mode, and the test card 4242 4242 4242 4242 moves no real money." },
+    { q: "What do I get when I buy?", a: "A real PDF, on the thank-you page right after paying: the meal planner (one week or five), the weekend batch cooking plan, or the grocery list pack." },
+    { q: "Who is Jenny?", a: "A fictional cook. The store shows what a creator's store on Marktmorgen looks like and does, from the first visit to the download." },
+    { q: "Can I make a store like this one?", a: "Yes. Everything on this page — the products, their pages, the links, these questions — is made in the Marktmorgen studio, without code." },
+  ],
   /** In the spotlight (lib/store-link.ts), as a creator's one most important link would be. */
   link: { title: "Open a store like this one", url: `${SITE_URL}/`, spotlight: true },
   /**
@@ -458,6 +469,11 @@ async function ensureStore(pending: string[]): Promise<Store | null> {
     const done = await setSubscription(REF, { active: true, tier: "creator", cycle: "month", subscriptionId: null, customerId: null, trialEnds: 0 });
     if (done) store = done;
     else pending.push(refused("plan", "refused"));
+  }
+  if (JSON.stringify(store.faq) !== JSON.stringify(DEMO_STORE.faq)) {
+    const done = await setFaq(REF, DEMO_STORE.faq);
+    if (done) store = done;
+    else pending.push(refused("faq", "refused"));
   }
   if (store.answers.on !== DEMO_STORE.answers.on || store.answers.facts !== DEMO_STORE.answers.facts) {
     const done = await setAnswers(REF, { ...DEMO_STORE.answers });
