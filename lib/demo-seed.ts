@@ -97,7 +97,8 @@ export const DEMO_STORE = {
     id: "photo-1543871595-e11129e271cc",
     query: "fm=webp&fit=crop&crop=faces&w=480&h=480&q=75",
   },
-  link: { title: "Open a store like this one", url: `${SITE_URL}/` },
+  /** In the spotlight (lib/store-link.ts), as a creator's one most important link would be. */
+  link: { title: "Open a store like this one", url: `${SITE_URL}/`, spotlight: true },
   /**
    * Visitors' questions about the product are answered from its page
    * (lib/answers.ts), so anybody looking at the demo can try the box a
@@ -135,6 +136,65 @@ Choose one week, or five weeks at a lower price per week. Each is a PDF you down
     { label: "5 weeks", price: "39", file: "meal-planner-5-weeks.pdf" },
   ] satisfies { label: string; price: string; file: DemoFileName }[],
 } as const;
+
+/**
+ * Two more products (added 9 October 2026), so the demo shows a store with
+ * several things to choose between: the cards side by side, and the store
+ * page's "Not sure which one is for you?" (lib/store-guide.ts), which a store
+ * shows from three products. Each hands over a real PDF of its own, made like
+ * the planner's and saying on every page that it is a demo.
+ */
+export const DEMO_EXTRAS = [
+  {
+    title: "Weekend Batch Cooking Plan",
+    summary: "Two hours on the weekend for four easier weeknight dinners: what to cook, in what order, and what to make of it each night.",
+    price: "12",
+    file: "weekend-batch-cooking.pdf",
+    about: `One page for the weekend: what to cook once, the order that saves the most time, and what each weeknight dinner is made of.
+
+What is inside:
+- Four things to cook once: a grain, a tray of vegetables, a pot of soup and a batch of beans or lentils
+- Monday to Thursday, each dinner made from them
+- The order to cook them in, so the pots look after themselves
+
+A PDF you download the moment you pay.`,
+    image: {
+      id: "photo-1466637574441-749b8f19452f",
+      query: "fm=webp&fit=crop&w=1200&h=675&q=70",
+      small: `fm=webp&fit=crop&w=${SMALL_LONG_SIDE}&h=450&q=70`,
+      alt: "Vegetables, eggs and a knife on a wooden cutting board",
+    },
+  },
+  {
+    title: "Grocery List Pack",
+    summary: "A printable grocery list in the order of the store, and a pantry checklist to fill in before you write it.",
+    price: "5",
+    file: "grocery-list-pack.pdf",
+    about: `Two printable pages for the weekly shop.
+
+What is inside:
+- A grocery list grouped by aisle: produce, dairy and eggs, meat and fish, bakery, dry goods, frozen and household
+- A pantry checklist of the basics, to tick before you write the list
+
+A PDF you download the moment you pay. Print a copy for each week.`,
+    image: {
+      id: "photo-1542838132-92c53300491e",
+      query: "fm=webp&fit=crop&w=1200&h=675&q=70",
+      small: `fm=webp&fit=crop&w=${SMALL_LONG_SIDE}&h=450&q=70`,
+      alt: "Shelves of fresh vegetables and fruit in a grocery store",
+    },
+  },
+] as const satisfies readonly {
+  title: string;
+  summary: string;
+  price: string;
+  file: DemoFileName;
+  about: string;
+  image: { id: string; query: string; small: string; alt: string };
+}[];
+
+type DemoExtra = (typeof DEMO_EXTRAS)[number];
+type PictureSpec = { id: string; query: string; small: string; alt: string };
 
 /**
  * The product's own sales page, built from the blocks a creator adds in the
@@ -233,8 +293,8 @@ const sha = (value: string | Uint8Array) => createHash("sha256").update(value).d
 
 /** Everything above, and the files themselves, as one short word. */
 export function seedFingerprint(): string {
-  const files = DEMO_PRODUCT.options.map((option) => sha(getDemoFile(option.file)));
-  return sha(JSON.stringify([HOUSE_HANDLE, DEMO_STORE, DEMO_PRODUCT, DEMO_PAGE, DEMO_POST, files, DEMO_CONNECTED_ACCOUNT])).slice(0, 24);
+  const files = [...DEMO_PRODUCT.options.map((option) => option.file), ...DEMO_EXTRAS.map((extra) => extra.file)].map((file) => sha(getDemoFile(file)));
+  return sha(JSON.stringify([HOUSE_HANDLE, DEMO_STORE, DEMO_PRODUCT, DEMO_EXTRAS, DEMO_PAGE, DEMO_POST, files, DEMO_CONNECTED_ACCOUNT])).slice(0, 24);
 }
 
 type Mark = {
@@ -249,6 +309,8 @@ type Mark = {
   /** The photographs kept on the store, by where each came from. */
   photo: string;
   image: string;
+  /** The extra products' pictures, by product title, by where each came from. */
+  images: Record<string, string>;
 };
 
 function parseMark(raw: unknown): Mark | null {
@@ -263,6 +325,10 @@ function parseMark(raw: unknown): Mark | null {
       store: value.store === true,
       photo: typeof value.photo === "string" ? value.photo : "",
       image: typeof value.image === "string" ? value.image : "",
+      images:
+        value.images && typeof value.images === "object"
+          ? Object.fromEntries(Object.entries(value.images).filter((e): e is [string, string] => typeof e[1] === "string"))
+          : {},
     };
   } catch {
     return null;
@@ -398,11 +464,12 @@ async function ensureStore(pending: string[]): Promise<Store | null> {
     if (done) store = done;
     else pending.push(refused("answers", "refused"));
   }
-  if (!store.links.some((link) => link.url === DEMO_STORE.link.url && link.title === DEMO_STORE.link.title)) {
+  const extras = { spotlight: DEMO_STORE.link.spotlight };
+  if (!store.links.some((link) => link.url === DEMO_STORE.link.url && link.title === DEMO_STORE.link.title && Boolean(link.spotlight) === extras.spotlight)) {
     const same = store.links.find((link) => link.url === DEMO_STORE.link.url);
     const done = same
-      ? await editStoreLink(REF, same.id, DEMO_STORE.link.title, DEMO_STORE.link.url)
-      : await addStoreLink(REF, DEMO_STORE.link.title, DEMO_STORE.link.url);
+      ? await editStoreLink(REF, same.id, DEMO_STORE.link.title, DEMO_STORE.link.url, extras)
+      : await addStoreLink(REF, DEMO_STORE.link.title, DEMO_STORE.link.url, extras);
     if (done.ok) store = done.store;
     else pending.push(refused("link", done.reason));
   }
@@ -476,13 +543,20 @@ async function ensureFiles(store: Store, product: Listing, deps: SeedDeps, pendi
  * own picture folder: the two files a creator's browser makes and sends when
  * a picture is added in the studio (components/product-image-editor.tsx).
  */
-async function ensureImage(store: Store, product: Listing, was: string, deps: SeedDeps, pending: string[]): Promise<{ store: Store; source: string }> {
-  const want = DEMO_PRODUCT.image;
+async function ensureImage(
+  store: Store,
+  product: Listing,
+  was: string,
+  deps: SeedDeps,
+  pending: string[],
+  want: PictureSpec = DEMO_PRODUCT.image,
+  across = true,
+): Promise<{ store: Store; source: string }> {
   // Where the two files came from. Another photograph, or another size of
   // this one, is another source, and is fetched again.
   const source = `${want.id}?${want.query}|${want.small}`;
   const have = product.image && was === source ? product.image : null;
-  if (have && have.alt === want.alt && product.display === "preview") return { store, source };
+  if (have && have.alt === want.alt && (!across || product.display === "preview")) return { store, source };
   try {
     let image: ProductImage | null = have ? { ...have, alt: want.alt } : null;
     if (!image) {
@@ -505,7 +579,7 @@ async function ensureImage(store: Store, product: Listing, was: string, deps: Se
     const attached = image;
     const done = await setProductImage(REF, product.id, attached);
     if (!done.ok) {
-      pending.push(refused("image", done.reason));
+      pending.push(refused(across ? "image" : `image_${want.id.slice(-6)}`, done.reason));
       return { store, source: was };
     }
     store = done.store;
@@ -514,12 +588,14 @@ async function ensureImage(store: Store, product: Listing, was: string, deps: Se
     for (const gone of imagePaths(done.removed)) {
       if (!kept.has(gone)) await deps.removeFile(gone).catch(() => {});
     }
-    // Across the whole card: the one product is what the page is for.
-    const shown = await setProductDisplay(REF, product.id, "preview");
-    if (shown.ok) store = shown.store;
+    // Across the whole card for the planner, the product the demo leads with.
+    if (across) {
+      const shown = await setProductDisplay(REF, product.id, "preview");
+      if (shown.ok) store = shown.store;
+    }
     return { store, source };
   } catch (error) {
-    pending.push(refused("image", why(error)));
+    pending.push(refused(across ? "image" : `image_${want.id.slice(-6)}`, why(error)));
     return { store, source: was };
   }
 }
@@ -549,19 +625,19 @@ async function ensurePhoto(store: Store, was: string, deps: SeedDeps, pending: s
 }
 
 /** The long description on the product's own page. */
-async function ensureAbout(store: Store, product: Listing, pending: string[]): Promise<Store> {
+async function ensureAbout(store: Store, product: Listing, pending: string[], text: string = DEMO_PRODUCT.about): Promise<Store> {
   if (!store.statsId) {
     pending.push(refused("about", "no_stats"));
     return store;
   }
   const have = product.about ? await readAbout(store.statsId, product.id) : "";
-  if (have === DEMO_PRODUCT.about) return store;
+  if (have === text) return store;
   const marked = await setProductAbout(REF, product.id, true);
   if (!marked.ok || !marked.store.statsId) {
     pending.push(refused("about", marked.ok ? "no_stats" : marked.reason));
     return store;
   }
-  await writeAbout(marked.store.statsId, product.id, DEMO_PRODUCT.about);
+  await writeAbout(marked.store.statsId, product.id, text);
   return marked.store;
 }
 
@@ -600,10 +676,56 @@ async function ensurePost(store: Store, product: Listing, pending: string[]): Pr
   return (await setPostCount(REF, saved.published)) ?? store;
 }
 
+/** One of the extra products: added, kept to its words and price, its PDF attached, its picture and its long description. */
+async function ensureExtra(store: Store, want: DemoExtra, mark: Mark, deps: SeedDeps, pending: string[]): Promise<Store> {
+  const step = want.file.replace(/\.pdf$/, "");
+  const find = async (from: Store) => (await readListings(from, productIds(from))).find((p) => p.title === want.title) ?? null;
+  let product = await find(store);
+  if (!product) {
+    const made = await addProduct(REF, want.title, want.summary, want.price);
+    if (!made.ok) {
+      pending.push(refused(`product_${step}`, made.reason));
+      return store;
+    }
+    store = made.store;
+  } else if (product.summary !== want.summary || product.priceCents !== Number(want.price) * 100) {
+    const done = await editProduct(REF, product.id, want.title, want.summary, want.price);
+    if (done.ok) store = done.store;
+    else pending.push(refused(`product_${step}`, done.reason));
+  }
+  product = await find(store);
+  if (!product) return store;
+
+  // Its own PDF, in the store's own folder, attached the way an upload is.
+  const folder = await storeFolder(REF);
+  await rememberFolderOwner(folder, REF);
+  const bytes = getDemoFile(want.file);
+  const pathname = `${fileFolder(folder, product.id)}${sha(bytes).slice(0, 20)}.pdf`;
+  if (product.file?.pathname !== pathname || product.file.name !== want.file) {
+    try {
+      await deps.putFile(pathname, bytes, "application/pdf");
+      const file: ProductFile = { pathname, name: want.file, bytes: bytes.byteLength, contentType: "application/pdf", addedAt: new Date().toISOString() };
+      const done = await setProductFile(REF, product.id, file);
+      if (!done.ok) pending.push(refused(`file_${want.file}`, done.reason));
+      else {
+        store = done.store;
+        if (done.removed && done.removed.pathname !== pathname) await deps.removeFile(done.removed.pathname).catch(() => {});
+      }
+    } catch (error) {
+      pending.push(refused(`file_${want.file}`, why(error)));
+    }
+  }
+
+  const picture = await ensureImage(store, product, mark.images[want.title] ?? "", deps, pending, want.image, false);
+  store = picture.store;
+  mark.images[want.title] = picture.source;
+  return ensureAbout(store, product, pending, want.about);
+}
+
 /** Brings the demo store in line with this file, one step at a time. */
 async function build(before: Mark | null, deps: SeedDeps): Promise<Mark> {
   const pending: string[] = [];
-  const mark: Mark = { v: seedFingerprint(), pending, at: Math.floor(Date.now() / 1000), store: false, photo: before?.photo ?? "", image: before?.image ?? "" };
+  const mark: Mark = { v: seedFingerprint(), pending, at: Math.floor(Date.now() / 1000), store: false, photo: before?.photo ?? "", image: before?.image ?? "", images: { ...(before?.images ?? {}) } };
   let store = await ensureStore(pending);
   if (!store) return mark;
   mark.store = true;
@@ -624,6 +746,7 @@ async function build(before: Mark | null, deps: SeedDeps): Promise<Mark> {
   store = await ensureAbout(store, made.product, pending);
   store = await ensurePage(store, made.product, pending);
   store = await ensurePost(store, made.product, pending);
+  for (const extra of DEMO_EXTRAS) store = await ensureExtra(store, extra, mark, deps, pending);
 
   // The one thing all of it is for: the product can be bought.
   const fresh = await storeForEmail(REF);
@@ -658,7 +781,7 @@ export async function ensureDemoStore(deps: SeedDeps = REAL): Promise<SeedResult
   } catch (error) {
     console.error("making the demo store failed", error);
     // Written down, so the next few visits do not each try again.
-    const failed: Mark = { v: seedFingerprint(), pending: [refused("run", why(error))], at: now, store: mark?.store ?? false, photo: mark?.photo ?? "", image: mark?.image ?? "" };
+    const failed: Mark = { v: seedFingerprint(), pending: [refused("run", why(error))], at: now, store: mark?.store ?? false, photo: mark?.photo ?? "", image: mark?.image ?? "", images: mark?.images ?? {} };
     await redisPipeline([["SET", MARK, JSON.stringify(failed)]]).catch(() => {});
     return { ok: failed.store, pending: failed.pending, ran: true };
   } finally {

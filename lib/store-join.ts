@@ -19,6 +19,7 @@ import { withinLimit } from "@/lib/request-guard";
 import { isPaidUp } from "@/lib/billing";
 import { type AddResult, upsertContact } from "@/lib/contacts";
 import type { Store } from "@/lib/store";
+import { isHouseStore } from "@/lib/house-store";
 import { joinWords } from "@/lib/buyer-words/join";
 import { givingWords } from "@/lib/buyer-words/giving";
 
@@ -30,9 +31,14 @@ const tokenKey = (token: string) => `nl:join:t:${sha(`nimbus-join:${token}`)}`;
 
 type Grant = { s: string; h: string; e: string; at: string };
 
-/** Whether this store's page shows the box and takes sign-ups: switched on, a list to join, a subscription in good standing and email to send with. */
+/**
+ * Whether this store's page shows the box and takes sign-ups: switched on, a
+ * list to join, a subscription in good standing and email to send with. Never
+ * the demo store, which writes to nobody (lib/house-store.ts): a form anybody
+ * can fill in must never be a way to send somebody an email.
+ */
 export function joinOpen(store: Store): boolean {
-  return store.join.on && Boolean(store.listId) && Boolean(store.statsId) && isPaidUp(store) && isRedisConfigured() && isSenderConfigured();
+  return !isHouseStore(store) && store.join.on && Boolean(store.listId) && Boolean(store.statsId) && isPaidUp(store) && isRedisConfigured() && isSenderConfigured();
 }
 
 function sender(store: Store): string {

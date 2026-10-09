@@ -26,7 +26,7 @@
  */
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { DEMO_PRODUCT, DEMO_STORE, type SeedDeps, ensureDemoStore, imageSize, seedFingerprint } from "@/lib/demo-seed";
+import { DEMO_EXTRAS, DEMO_PRODUCT, DEMO_STORE, type SeedDeps, ensureDemoStore, imageSize, seedFingerprint } from "@/lib/demo-seed";
 import { DEMO_CONNECTED_ACCOUNT } from "@/lib/demo-account";
 import { getDemoFile } from "@/lib/demo-file";
 import { HOUSE_HANDLE, HOUSE_OWNER, isHouseStore, takesReviews } from "@/lib/house-store";
@@ -146,7 +146,15 @@ async function main(): Promise<void> {
   is("it is the house's", isHouseStore(store), true);
   is("on the demo's own account, on the $29 plan, with no subscription written down", [store.stripeAccountId, store.stripeChargesEnabled, store.subscriptionActive, store.tier, store.subscriptionId], [DEMO_CONNECTED_ACCOUNT, true, true, "creator", null]);
   is("it can sell", canSell(store), true);
-  is("one product, with the two prices", [productIds(store).length, listing.options.map((o) => [o.label, o.priceCents])], [1, [["1 week", 2700], ["5 weeks", 3900]]]);
+  is("the planner, with the two prices, and the two other products after it", [productIds(store).length, listing.options.map((o) => [o.label, o.priceCents])], [3, [["1 week", 2700], ["5 weeks", 3900]]]);
+  const others = (await readListings(store, productIds(store))).filter((p) => p.id !== listing.id);
+  const folderOf = await storeFolder(HOUSE_OWNER);
+  is(
+    "each of the others is for sale at its price, with its own real PDF, its picture and its long description",
+    others.map((p) => [p.title, p.priceCents, p.file?.name, p.file ? ownsPath(p.file.pathname, folderOf, p.id) : false, Boolean(p.image?.small), p.about, canSellProduct(store, p)]),
+    DEMO_EXTRAS.map((e) => [e.title, Number(e.price) * 100, e.file, true, true, true, true]),
+  );
+  is("the demo's one link is in the spotlight", store.links.map((l) => [l.title, l.spotlight]), [[DEMO_STORE.link.title, true]]);
   is("which can be bought", canSellProduct(store, listing), true);
 
   const folder = await storeFolder(HOUSE_OWNER);
@@ -174,7 +182,7 @@ async function main(): Promise<void> {
     listing.image ? imageSrcSet(listing.image) : "",
     listing.image ? `${imageUrl(listing.image.small!)} 800w, ${imageUrl(listing.image)} 1200w` : "none",
   );
-  is("two files and the two sizes of the picture were put; the photo and the two sizes fetched", [puts.length, fetched.length], [4, 3]);
+  is("four files and the two sizes of three pictures were put; the photo and the six sizes fetched", [puts.length, fetched.length], [10, 7]);
 
   part("Asked again, it does only what is missing");
   const [putsBefore, fetchedBefore] = [puts.length, fetched.length];
@@ -189,7 +197,7 @@ async function main(): Promise<void> {
   const after = await ensureDemoStore(deps);
   is("after a deployment that changed the code it is gone through again", [after.ok, after.pending, after.ran], [true, [], true]);
   is("without putting or fetching what is already there", [puts.length, fetched.length], [putsBefore, fetchedBefore]);
-  is("and without a second product, option or link", [productIds((await theProduct()).store).length, (await theProduct()).listing.options.length, (await theProduct()).store.links.length], [1, 2, 1]);
+  is("and without a second product, option or link", [productIds((await theProduct()).store).length, (await theProduct()).listing.options.length, (await theProduct()).store.links.length], [3, 2, 1]);
 
   // The store's photo is gone and the place it is fetched from is down.
   ({ store } = await theProduct());

@@ -13,6 +13,7 @@
  *   - the settings are kept safe.
  */
 import { claimHandle, ensureListId, ensureStatsId, parseJoin, setJoin, setSubscription, storeForEmail } from "@/lib/store";
+import { HOUSE_OWNER } from "@/lib/house-store";
 import { askToJoin, confirmJoin, joinOpen, readJoinToken } from "@/lib/store-join";
 import { leadsKey, parseContact } from "@/lib/contacts";
 import { store as redis } from "./redis-stub";
@@ -49,6 +50,8 @@ async function main(): Promise<void> {
   await setJoin("owner@example.com", { on: true, heading: "  Weekly   recipes  ", line: "One email on Sundays." });
   store = await fresh();
   is("switched on, with the creator's words tidied", [joinOpen(store), store.join.heading, store.join.line], [true, "Weekly recipes", "One email on Sundays."]);
+
+  is("never on the demo store, which writes to nobody", joinOpen({ ...store, email: HOUSE_OWNER }), false);
 
   part("A sign-up is confirmed by email before it counts");
   is("a typo is refused before anything is sent", await askToJoin({ store, email: "dana@", ip: "1.1.1.1", origin }), "email");

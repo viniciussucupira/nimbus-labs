@@ -18,6 +18,8 @@ import { getDemoFile, type DemoFileName } from "@/lib/demo-file";
 const FILES: [DemoFileName, number][] = [
   ["weekly-meal-planner.pdf", 1],
   ["meal-planner-5-weeks.pdf", 5],
+  ["weekend-batch-cooking.pdf", 1],
+  ["grocery-list-pack.pdf", 2],
 ];
 
 /** Every content stream of a PDF, inflated, as text. */
