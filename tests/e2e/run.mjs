@@ -759,6 +759,22 @@ try {
     is("and the card's product is chosen in a list of the store's others", await studio.locator("select[id$='-p']").inputValue(), ids["Knife Skills"]);
   }
 
+  part("On a wide screen, the page beside its blocks as they are edited");
+  {
+    const was = studio.viewportSize();
+    await studio.setViewportSize({ width: 1440, height: 900 });
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
+    const beside = studio.getByRole("complementary", { name: "The page as visitors see it" });
+    is("drawn beside the blocks", await beside.isVisible(), true);
+    await studio.getByRole("button", { name: /^1\. Hero/ }).click();
+    await studio.getByLabel("Headline", { exact: true }).fill("Sharper knives, faster dinners");
+    is("and redrawn as the words are typed", await words(beside.locator("h1")), "Sharper knives, faster dinners");
+    if (process.env.E2E_SHOTS) await studio.screenshot({ path: join(process.env.E2E_SHOTS, "side-by-side.png") });
+    await studio.setViewportSize(was);
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
+    is("on a narrower one, drawn once, under Preview", await beside.count(), 0);
+  }
+
   part("A page started from a template, chosen by what it holds");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Meal Planner"]}`);

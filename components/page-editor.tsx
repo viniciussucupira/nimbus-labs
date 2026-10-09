@@ -265,6 +265,19 @@ export function PageEditor({
   const [open, setOpen] = useState<string | null>(null);
   const [view, setView] = useState<"build" | "preview">("build");
   const [sharing, setSharing] = useState(false);
+  // Whether the screen is wide enough to draw the page beside its blocks; only
+  // then is the second drawing made at all, so a narrow screen holds one.
+  const [sideBySide, setSideBySide] = useState(false);
+  useEffect(() => {
+    const wideScreen = window.matchMedia("(min-width: 1280px)");
+    const read = () => setSideBySide(wideScreen.matches);
+    const first = window.setTimeout(read, 0);
+    wideScreen.addEventListener("change", read);
+    return () => {
+      window.clearTimeout(first);
+      wideScreen.removeEventListener("change", read);
+    };
+  }, []);
   // The blocks as they are now, for a save to know whether they changed while it ran.
   const latestBlocks = useRef<PageBlock[]>(drafts.map((d) => d.block));
   useEffect(() => {
@@ -685,6 +698,45 @@ export function PageEditor({
         {product.defaultLabel}
       </span>
     </section>
+  );
+
+  /** The page as visitors will see it, in the store's look: at phone width, or wide. */
+  const pagePreview = (wideView: boolean) => (
+          <div className="overflow-hidden rounded-2xl ring-1 ring-line">
+            <div
+              className={`st-page st-theme-${look.theme} mx-auto overflow-hidden`}
+              style={{ ...(lookStyle(look) as React.CSSProperties), maxWidth: wideView ? "100%" : 390 }}
+            >
+              <div className={`sp-body sp-style-${style} mx-auto ${wideView ? "max-w-3xl" : ""} px-4 pb-12 pt-8`}>
+                {drafts.length === 0 ? (
+                  <p className="st-note text-sm">Add a block and it appears here, in your store&apos;s look.</p>
+                ) : (
+                  <>
+                    {preview.hero ? (
+                      <HeroView block={preview.hero} ctx={ctx} pill={pill} rating={rating} />
+                    ) : (
+                      <header>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {pill}
+                          {rating}
+                        </div>
+                        <p className="font-display mt-4 text-[2.1rem] font-semibold leading-[1.08] tracking-[-0.025em]">{product.title}</p>
+                      </header>
+                    )}
+                    {product.free ? buyPreview : null}
+                    <PageSections
+                      blocks={preview.rest}
+                      ctx={ctx}
+                      style={style}
+                      reviewsFor={(heading) => reviewsPart(heading) ?? <p className="st-note text-sm">Buyers&apos; reviews appear here once somebody who paid writes one.</p>}
+                    />
+                    {product.free ? null : buyPreview}
+                    {!preview.placed && summary ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
   );
 
   const field = (id: string, label: string, input: React.ReactNode, extra?: React.ReactNode) => (
@@ -1428,44 +1480,12 @@ export function PageEditor({
             <span className="text-ink-soft">Style:</span>
             <PageStylePicker value={style} onChange={setStyle} compact />
           </div>
-          <div className="overflow-hidden rounded-2xl ring-1 ring-line">
-            <div
-              className={`st-page st-theme-${look.theme} mx-auto overflow-hidden`}
-              style={{ ...(lookStyle(look) as React.CSSProperties), maxWidth: wide ? "100%" : 390 }}
-            >
-              <div className={`sp-body sp-style-${style} mx-auto ${wide ? "max-w-3xl" : ""} px-4 pb-12 pt-8`}>
-                {drafts.length === 0 ? (
-                  <p className="st-note text-sm">Add a block and it appears here, in your store&apos;s look.</p>
-                ) : (
-                  <>
-                    {preview.hero ? (
-                      <HeroView block={preview.hero} ctx={ctx} pill={pill} rating={rating} />
-                    ) : (
-                      <header>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {pill}
-                          {rating}
-                        </div>
-                        <p className="font-display mt-4 text-[2.1rem] font-semibold leading-[1.08] tracking-[-0.025em]">{product.title}</p>
-                      </header>
-                    )}
-                    {product.free ? buyPreview : null}
-                    <PageSections
-                      blocks={preview.rest}
-                      ctx={ctx}
-                      style={style}
-                      reviewsFor={(heading) => reviewsPart(heading) ?? <p className="st-note text-sm">Buyers&apos; reviews appear here once somebody who paid writes one.</p>}
-                    />
-                    {product.free ? null : buyPreview}
-                    {!preview.placed && summary ? <section className="sp-section">{reviewsPart("Reviews")}</section> : null}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          {pagePreview(wide)}
         </div>
       ) : (
-        <>
+        // On a wide screen the page is drawn beside the blocks as they are edited.
+        <div className={sideBySide ? "grid grid-cols-[minmax(0,1fr)_24.5rem] items-start gap-6" : ""}>
+        <div className="min-w-0">
           {drafts.length === 0 ? (
             <div className="mt-6 rounded-2xl bg-paper p-5 ring-1 ring-line sm:p-6">
               <p className="font-semibold text-ink">Start the page</p>
@@ -1865,7 +1885,17 @@ export function PageEditor({
               </p>
             </div>
           </details>
-        </>
+        </div>
+        {sideBySide ? (
+        <aside aria-label="The page as visitors see it" className="sticky top-24 mt-6 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl">
+          <p className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-ink-soft">
+            <span>As visitors see it, on a phone</span>
+            {dirty ? <span>Unsaved changes shown</span> : null}
+          </p>
+          {pagePreview(false)}
+        </aside>
+        ) : null}
+        </div>
       )}
 
       {error ? (

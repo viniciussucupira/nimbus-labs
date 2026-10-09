@@ -111,7 +111,8 @@ export default async function StudioPagesPage({ searchParams }: Params) {
         action={{ href: studioPath(store), label: "Back to the studio", short: "Studio" }}
       />
       <StudioStorePin sid={store.sid}>
-      <main id="content" className="container-page pb-20 pt-10 sm:pt-14">
+      {/* Wider than the rest of the studio on a wide screen: the page is drawn beside its blocks. */}
+      <main id="content" className="container-page pb-20 pt-10 sm:pt-14 xl:!max-w-[92rem]">
         <p className="eyebrow">Sales pages</p>
         <h1 className="t-h2 mt-3">A page that sells each product</h1>
         <p className="mt-3 max-w-2xl text-ink-soft">
