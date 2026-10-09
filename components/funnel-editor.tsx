@@ -13,6 +13,7 @@ import {
   MAX_STEP_TEXT_LENGTH,
 } from "@/lib/funnel";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
+import { useLeaveGuard } from "@/components/leave-guard";
 
 const MESSAGES: Record<string, string> = {
   ...STUDIO_MESSAGES,
@@ -117,6 +118,7 @@ export function FunnelEditor({
   const [confirmRemove, setConfirmRemove] = useState(false);
   const saved = JSON.stringify(toDrafts(initial, currency));
   const dirty = JSON.stringify(steps) !== saved;
+  useLeaveGuard(dirty && !busy);
   const lost = useMemo(() => unreached(steps), [steps]);
 
   const product = (id: string) => offerable.find((p) => p.id === id) ?? null;
