@@ -44,7 +44,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           { title: "Take your address", body: "marktmorgen.com/@yourname is yours the moment you take it, and the page is up right away." },
           { title: "Put up what you sell", body: "Its name, what is inside, the price and a picture. Files, courses, memberships, calls and live sessions, bundles of your products, free things for an email, and plain links. A community for your buyers sits beside them." },
-          { title: "Make it look like you", body: "Your photo, one of four themes, one of ten colors or your own, and one of five pairings of letters — Modern, Editorial, Elegant, Friendly or Bold — each downloaded only by the pages that use it. The studio shows the page before you save." },
+          { title: "Make it look like you", body: "Your photo, one of four themes, one of ten colors or your own, one of five pairings of letters — Modern, Editorial, Elegant, Friendly or Bold — each downloaded only by the pages that use it, and a background behind the cards: plain, a glow of your color, dots, a grid or a slow aurora. The studio shows the page before you save." },
         ],
       },
       {

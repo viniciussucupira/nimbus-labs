@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { updateLook } from "@/lib/store";
-import { isFont, isTheme, normaliseHex } from "@/lib/store-look";
+import { isFont, isBackdrop, isTheme, normaliseHex } from "@/lib/store-look";
 import { canUse } from "@/lib/plan";
 import { guardStoreWrite } from "@/lib/store-request";
 
@@ -35,7 +35,9 @@ export async function POST(request: NextRequest) {
   try {
     // Left unsaid, the letters stay as they are.
     const font = isFont(guarded.body.font) ? guarded.body.font : guarded.store.look.font;
-    const result = await updateLook(guarded.ref, { theme, accent, badge, sold: guarded.body.sold === true, font });
+    // And the backdrop too.
+    const backdrop = isBackdrop(guarded.body.backdrop) ? guarded.body.backdrop : guarded.store.look.backdrop;
+    const result = await updateLook(guarded.ref, { theme, accent, badge, sold: guarded.body.sold === true, font, backdrop });
     if (!result.ok) {
       return Response.json({ ok: false, error: result.reason }, { status: 400 });
     }

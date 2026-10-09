@@ -7,6 +7,9 @@ import { Icon } from "@/components/icons";
 import { toast } from "@/components/toast";
 import {
   ACCENTS,
+  BACKDROPS,
+  type BackdropId,
+  backdropStyle,
   FONTS,
   THEMES,
   type FontId,
@@ -123,11 +126,12 @@ export function LookEditor({
   const [badge, setBadge] = useState(look.badge);
   const [sold, setSold] = useState(look.sold);
   const [font, setFont] = useState<FontId>(look.font);
+  const [backdrop, setBackdrop] = useState<BackdropId>(look.backdrop);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const fileRef = useRef<HTMLInputElement>(null);
 
   const preset = ACCENTS.some((option) => option.hex === accent);
-  const changed = theme !== look.theme || accent !== look.accent || badge !== look.badge || sold !== look.sold || font !== look.font;
+  const changed = theme !== look.theme || accent !== look.accent || badge !== look.badge || sold !== look.sold || font !== look.font || backdrop !== look.backdrop;
   const colours = useMemo(() => lookColours({ theme, accent }), [theme, accent]);
   // Said out loud when the page will not paint exactly what was picked, so the
   // creator is never left wondering why their button is darker than their logo.
@@ -146,7 +150,7 @@ export function LookEditor({
     if (status.kind === "working") return;
     setStatus({ kind: "working", what: "look" });
     try {
-      const data = await post("/api/store/look", { theme, accent, badge, sold, font });
+      const data = await post("/api/store/look", { theme, accent, badge, sold, font, backdrop });
       if (data.ok) {
         setStatus({ kind: "idle" });
         toast("Look saved.");
@@ -377,6 +381,32 @@ export function LookEditor({
             <p className="field-hint mt-2">Every page of your store uses them: the store page, each product&apos;s page, the page after paying, their purchases and your community. Only the letters you pick are downloaded by a visitor.</p>
           </fieldset>
 
+          {/* Backdrop */}
+          <fieldset>
+            <legend className="field-label">Background</legend>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {BACKDROPS.map((option) => (
+                <label
+                  key={option.id}
+                  className="flex cursor-pointer items-start gap-3 rounded-[var(--r-sm)] border border-line-strong bg-white p-3 transition hover:border-violet-brand has-[:checked]:border-violet-brand has-[:checked]:bg-lilac has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-violet-brand"
+                >
+                  <input type="radio" name="backdrop" value={option.id} checked={backdrop === option.id} onChange={() => setBackdrop(option.id)} className="sr-only" />
+                  {/* The backdrop drawn in the page's own colors, as the page would show it. */}
+                  <span
+                    aria-hidden="true"
+                    className={`st-page st-theme-${theme} mt-0.5 h-12 w-12 shrink-0 rounded-[8px] ring-1 ring-line`}
+                    style={{ ...(lookStyle({ theme, accent }) as React.CSSProperties), ...(backdropStyle(option.id) as React.CSSProperties) }}
+                  />
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-ink">{option.label}</span>
+                    <span className="mt-0.5 block text-sm text-ink-soft">{option.description}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className="field-hint mt-2">Drawn by the page in your colors: nothing to download, and your words keep their contrast. The Aurora moves only for visitors whose device has not asked for less motion.</p>
+          </fieldset>
+
           {/*
             Our name at the foot of their page.
 
@@ -456,6 +486,7 @@ export function LookEditor({
                   setBadge(look.badge);
                   setSold(look.sold);
                   setFont(look.font);
+                  setBackdrop(look.backdrop);
                   setStatus({ kind: "idle" });
                 }}
                 className="btn btn-ghost"
@@ -476,7 +507,7 @@ export function LookEditor({
           <p className="field-label">Preview</p>
           <div
             className={`st-page st-theme-${theme} pointer-events-none mt-3 overflow-hidden rounded-[1.25rem] ring-1 ring-line`}
-            style={lookStyle({ theme, accent, font }) as React.CSSProperties}
+            style={lookStyle({ theme, accent, font, backdrop }) as React.CSSProperties}
           >
             <div className={theme === "bold" ? "st-band px-4 pb-6 pt-6 text-center" : "px-4 pb-1 pt-6 text-center"}>
               {photoId ? (
