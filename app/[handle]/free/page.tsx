@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 async function nextProduct(store: Store, free: Listing | null): Promise<Listing | null> {
   if (!free?.page) return null;
   const page = await readPage(store.statsId, free.id).catch(() => null);
-  const next = page?.next ? await readListing(store, page.next) : null;
+  const next = page?.next && !page.hidden ? await readListing(store, page.next) : null;
   return next && next.priceCents > 0 && canSellProduct(store, next) ? next : null;
 }
 

@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
     if (!product || product.hidden) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
     const [about, page] = await Promise.all([
       product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""),
-      product.page ? readPage(store.statsId, product.id) : Promise.resolve(null),
+      // A page kept from visitors is not answered from.
+      product.page ? readPage(store.statsId, product.id).then((page) => (page.hidden ? null : page)) : Promise.resolve(null),
     ]);
     const result = await answerQuestion({ store, product, about, page, question });
     if (!result.ok) return Response.json({ ok: false, error: result.reason }, { status: result.reason === "failed" ? 502 : 400 });

@@ -241,6 +241,7 @@ export function PageEditor({
   const [seoDescription, setSeoDescription] = useState(initial.seoDescription);
   const [next, setNext] = useState(initial.next ?? "");
   const [style, setStyle] = useState<PageStyle>(initial.style);
+  const [hidden, setHidden] = useState(initial.hidden);
   // How far down the saved page visitors read (lib/page-depth.ts), shown on each block.
   const [reach, setReach] = useState<{ shares: Record<string, number>; visitors: number } | null>(null);
   useEffect(() => {
@@ -345,8 +346,8 @@ export function PageEditor({
     };
   }, []);
 
-  const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "", y: initial.style, ab: initial.test ? [initial.test.headline, initial.test.sub] : null });
-  const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next, y: style, ab: testing ? [testHeadline.trim(), testSub.trim()] : null }) !== saved;
+  const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "", y: initial.style, h: initial.hidden, ab: initial.test ? [initial.test.headline, initial.test.sub] : null });
+  const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next, y: style, h: hidden, ab: testing ? [testHeadline.trim(), testSub.trim()] : null }) !== saved;
   const hasHero = drafts[0]?.block.kind === "hero";
   const hasReviews = drafts.some((d) => d.block.kind === "reviews");
   const addable = BLOCK_KINDS.filter((k) => (k.kind === "hero" ? !hasHero : k.kind === "reviews" ? !hasReviews : true));
@@ -571,6 +572,7 @@ export function PageEditor({
       // The id is the server's to give (lib/sales-page.ts, parseTest).
       test: testing && testHeadline.trim() ? { id: "", headline: testHeadline.trim(), sub: testSub.trim() } : null,
       style,
+      hidden,
     };
   }
 
@@ -608,6 +610,7 @@ export function PageEditor({
           setSeoDescription("");
           setNext("");
           setStyle("plain");
+          setHidden(false);
           setTesting(false);
           setTestHeadline("");
           setTestSub("");
@@ -1329,7 +1332,7 @@ export function PageEditor({
               : "No blocks yet: the product's page shows its picture, description and buy box, as it always has."}
           </p>
         </div>
-        <span className={`tag ${initial.blocks.length ? "tag-live" : ""}`}>{initial.blocks.length ? "Built" : "Plain"}</span>
+        <span className={`tag ${initial.blocks.length && !initial.hidden ? "tag-live" : ""}`}>{!initial.blocks.length ? "Plain" : initial.hidden ? "Hidden" : "Built"}</span>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
@@ -1854,6 +1857,20 @@ export function PageEditor({
         </p>
       ) : null}
 
+      {drafts.length > 0 ? (
+        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl bg-paper p-4 ring-1 ring-line">
+          <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0" checked={!hidden} onChange={(e) => setHidden(!e.target.checked)} />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-ink">Visitors see this page</span>
+            <span className="mt-0.5 block text-xs text-ink-soft">
+              {hidden
+                ? "Off: visitors see the product's plain page while you work on this one. Save as often as you like; switch it on and save when it is ready."
+                : "On: once you save, this is the product's page. Switch it off to keep working on it out of sight."}
+            </span>
+          </span>
+        </label>
+      ) : null}
+
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <button type="button" onClick={() => send(pageToSend(), "Page saved.")} aria-busy={busy} disabled={busy || !dirty} className="btn btn-primary">
           {busy ? "Saving…" : "Save the page"}
@@ -1868,6 +1885,7 @@ export function PageEditor({
               setSeoDescription(initial.seoDescription);
               setNext(initial.next ?? "");
               setStyle(initial.style);
+              setHidden(initial.hidden);
               setError(null);
             }}
           >

@@ -673,6 +673,25 @@ try {
     }
   }
 
+  part("A page kept from visitors while it is worked on");
+  {
+    const save = (hidden) => studio.evaluate(async ([id, hidden]) => {
+      const blocks = [{ id: "hero0009", kind: "hero", headline: "Dinner in thirty minutes, every night", sub: "", media: "none", video: null }];
+      const response = await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null, style: "plain", hidden } }) });
+      return (await response.json()).ok === true;
+    }, [ids["Weeknight Dinners"], hidden]);
+    is("saved, kept from visitors", await save(true), true);
+    await open(page, `${LOCAL}/@localshop/p/${ids["Weeknight Dinners"]}`);
+    is("visitors see the product's plain page meanwhile", await words(page.locator("h1")), "Weeknight Dinners");
+    await open(studio, `${LOCAL}/studio/pages?product=${ids["Weeknight Dinners"]}`);
+    is("the studio says so, and the switch is off", [await studio.getByText("Hidden", { exact: true }).count() > 0, await studio.getByRole("checkbox", { name: /^Visitors see this page/ }).isChecked()], [true, false]);
+    is("shown once switched on and saved", await save(false), true);
+    await open(page, `${LOCAL}/@localshop/p/${ids["Weeknight Dinners"]}`);
+    is("and then it is the product's page", await words(page.locator("h1")), "Dinner in thirty minutes, every night");
+    // Put back as it was, a plain page, for what follows.
+    await studio.evaluate(async (id) => fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: null }) }), ids["Weeknight Dinners"]);
+  }
+
   part("Pictures seen large, without leaving the page");
   {
     await open(page, `${LOCAL}/@localshop/p/${ids["Sunday Baking"]}`);
