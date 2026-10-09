@@ -2967,6 +2967,17 @@ a.sp-product:focus-visible {
   flex-basis: 100%;
   text-align: right;
 }
+/* A store's blog (app/[handle]/blog). */
+.st-post h2 {
+  margin-top: 2rem;
+  margin-bottom: 0.25rem;
+}
+.st-post-card {
+  transition: transform var(--d-base) var(--ease), box-shadow var(--d-base) var(--ease);
+}
+.st-post-card:hover {
+  transform: translateY(-1px);
+}
 /* Said elsewhere: others' words, each with the link to where they were said. */
 .sp-quotes {
   display: grid;

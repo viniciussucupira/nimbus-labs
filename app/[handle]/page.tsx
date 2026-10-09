@@ -399,6 +399,14 @@ export default async function StorePage({ params, searchParams }: Params) {
           ) : null}
 
           <div className="mt-12 text-center">
+            {/* The store's blog, once it has a post (lib/store-blog.ts): known from the record, with no read. */}
+            {store.posts > 0 ? (
+              <p className="mb-4">
+                <Link href={`/@${store.handle}/blog`} className="st-footer-link text-sm font-semibold">
+                  {w.blogOf(store.name)}
+                </Link>
+              </p>
+            ) : null}
             {canRecover(store) && sellsDeliverables(store) ? (
               <p className="mb-4">
                 <Link href={`/@${store.handle}/orders`} className="st-footer-link text-sm font-semibold">

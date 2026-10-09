@@ -119,6 +119,17 @@ export const pt: BuyerWords = {
   pickSession: "Escolher uma sessão",
   pickTime: "Escolher um horário",
   priced: (label, price) => `${label} — ${price}`,
+  /** The store's blog (lib/store-blog.ts; app/[handle]/blog). */
+  blog: "Blog",
+  blogOf: (store) => `Blog de ${store}`,
+  blogEmpty: "Ainda não há nada aqui.",
+  blogMinutes: (n) => `${n} min de leitura`,
+  blogNewer: "Publicações mais recentes",
+  blogOlder: "Publicações anteriores",
+  blogAll: "Todas as publicações",
+  blogPublished: (date) => `Publicado a ${date}`,
+  blogFrom: (store) => `De ${store}`,
+  blogFeed: "Seguir por RSS",
   /** What one unit costs within an option, when its name gives how many (lib/option-units.ts): "$7.80 per week". */
   perUnit: (price, unit) => `${price} por ${unit}`,
   /** How much less each unit costs than in the option of one. */

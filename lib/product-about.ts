@@ -23,7 +23,7 @@ export const MAX_ABOUT_LENGTH = 5_000;
 const aboutKey = (statsId: string, productId: string) => `nl:product:about:${statsId}:${productId}`;
 
 /** Normalises what was typed: line endings, trailing space, and the length. */
-export function cleanAbout(raw: string): string {
+export function cleanAbout(raw: string, max = MAX_ABOUT_LENGTH): string {
   return raw
     .replace(/\r\n?/g, "\n")
     .split("\n")
@@ -31,7 +31,7 @@ export function cleanAbout(raw: string): string {
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
-    .slice(0, MAX_ABOUT_LENGTH);
+    .slice(0, max);
 }
 
 /** The description of one product, or "" when it has none. */
@@ -95,9 +95,9 @@ export function linkPieces(line: string): Piece[] {
 }
 
 /** Cuts a description into the blocks the product page draws. */
-export function aboutBlocks(text: string): Block[] {
+export function aboutBlocks(text: string, max = MAX_ABOUT_LENGTH): Block[] {
   const blocks: Block[] = [];
-  for (const chunk of cleanAbout(text).split(/\n\s*\n/)) {
+  for (const chunk of cleanAbout(text, max).split(/\n\s*\n/)) {
     const lines = chunk.split("\n").filter((line) => line.trim() !== "");
     if (lines.length === 0) continue;
     let paragraph: Piece[][] = [];
@@ -130,8 +130,8 @@ export function aboutBlocks(text: string): Block[] {
 }
 
 /** The first sentence or so, for a search result or a shared link. */
-export function aboutExcerpt(text: string, max = 160): string {
-  const flat = cleanAbout(text).replace(/^\s*[-*•]\s+/gm, "").replace(/\s+/g, " ").trim();
+export function aboutExcerpt(text: string, max = 160, length = MAX_ABOUT_LENGTH): string {
+  const flat = cleanAbout(text, length).replace(/^\s*[-*•]\s+/gm, "").replace(/\s+/g, " ").trim();
   if (flat.length <= max) return flat;
   const cut = flat.slice(0, max - 1);
   return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), max - 20))}…`;

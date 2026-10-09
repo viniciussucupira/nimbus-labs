@@ -79,7 +79,7 @@ function Cell({ text, ours, ctx }: { text: string; ours: boolean; ctx: BlockCont
   return <span className={ours ? "font-semibold" : ""}>{text}</span>;
 }
 
-function Line({ pieces, preview }: { pieces: Piece[]; preview?: boolean }) {
+export function Line({ pieces, preview }: { pieces: Piece[]; preview?: boolean }) {
   return (
     <>
       {pieces.map((piece, i) =>

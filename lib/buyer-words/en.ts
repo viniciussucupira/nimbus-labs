@@ -134,6 +134,17 @@ export const en = {
   pickSession: "Pick a session",
   pickTime: "Pick a time",
   priced: (label: string, price: string) => `${label} — ${price}`,
+  /** The store's blog (lib/store-blog.ts; app/[handle]/blog). */
+  blog: "Blog",
+  blogOf: (store: string) => `The ${store} blog`,
+  blogEmpty: "Nothing here yet.",
+  blogMinutes: (n: number) => `${n} min read`,
+  blogNewer: "Newer posts",
+  blogOlder: "Older posts",
+  blogAll: "All posts",
+  blogPublished: (date: string) => `Published ${date}`,
+  blogFrom: (store: string) => `From ${store}`,
+  blogFeed: "Follow by RSS",
   /** What one unit costs within an option, when its name gives how many (lib/option-units.ts): "$7.80 per week". */
   perUnit: (price: string, unit: string) => `${price} per ${unit}`,
   /** How much less each unit costs than in the option of one. */

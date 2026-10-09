@@ -47,12 +47,13 @@ globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) =>
 /** Words that are the same in a language as in English, on purpose. */
 const SAME: Record<string, Record<string, string[]>> = {
   "store and product pages": {
-    es: ["namePlaceholder", "fromCapital"],
-    fr: ["namePlaceholder", "perPerson", "recommended"],
-    de: ["namePlaceholder", "guarantee"],
-    it: ["namePlaceholder"],
-    nl: ["namePlaceholder", "guarantee"],
-    pt: ["namePlaceholder"],
+    // "Blog" is the word in every one of them.
+    es: ["namePlaceholder", "fromCapital", "blog"],
+    fr: ["namePlaceholder", "perPerson", "recommended", "blog"],
+    de: ["namePlaceholder", "guarantee", "blog"],
+    it: ["namePlaceholder", "blog"],
+    nl: ["namePlaceholder", "guarantee", "blog"],
+    pt: ["namePlaceholder", "blog"],
   },
   // "Label: key", "Store: link", and "via" where the language says "via" too.
   orders: {
