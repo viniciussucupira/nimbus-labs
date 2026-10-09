@@ -568,6 +568,8 @@ export function TopicPageView({ page }: { page: TopicPage }) {
                */
               <div className="nb-fade-up nb-delay-2 mx-auto w-full max-w-[28rem] lg:mr-0">
                 {page.photo ? (
+                  // A photograph served at the sizes asked for by its own host, never through the image optimizer, which is billed per image.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={PHOTO_WIDE(page.photo.id, 720, 540)}
                     srcSet={`${PHOTO_WIDE(page.photo.id, 560, 420)} 560w, ${PHOTO_WIDE(page.photo.id, 720, 540)} 720w, ${PHOTO_WIDE(page.photo.id, 1080, 810)} 1080w`}

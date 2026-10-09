@@ -371,6 +371,8 @@ export default function Home() {
                     className="group relative block h-full overflow-hidden rounded-[var(--r-lg)] bg-sand-deep shadow-[inset_0_0_0_1px_rgba(42,23,144,0.09),0_14px_32px_-16px_rgba(42,23,144,0.22)]"
                   >
                     <div className={`relative overflow-hidden ${i < 2 ? "aspect-[4/5] lg:aspect-[1.12]" : "aspect-[4/5]"}`}>
+                      {/* A photograph served at the sizes asked for by its own host, never through the image optimizer, which is billed per image. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={PHOTO(c.photo, 560, 700)}
                         srcSet={`${PHOTO(c.photo, 400, 500)} 400w, ${PHOTO(c.photo, 560, 700)} 560w, ${PHOTO(c.photo, 900, 1125)} 900w`}
@@ -567,6 +569,8 @@ export default function Home() {
                 "photo-1609174112693-52fdcebffd89",
               ].map((id) => (
                 <li key={id}>
+                  {/* A photograph served at the sizes asked for by its own host, never through the image optimizer, which is billed per image. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={PHOTO(id, 96, 96)}
                     alt=""

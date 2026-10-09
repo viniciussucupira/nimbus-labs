@@ -237,6 +237,8 @@ export function HeroFlow() {
             */}
             <div key={s.handle} className="nb-swap px-4 pb-5 pt-2">
               <div className="flex items-center gap-3">
+                {/* A photograph served at the sizes asked for by its own host, never through the image optimizer, which is billed per image. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={FACE(s.photo, 112)}
                   alt=""
@@ -333,6 +335,8 @@ export function HeroFlow() {
                 }}
               >
                 <span className="sr-only">{`Show ${o.name}`}</span>
+                {/* A photograph served at the sizes asked for by its own host, never through the image optimizer, which is billed per image. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={FACE(o.photo, 128)}
                   alt=""

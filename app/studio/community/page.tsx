@@ -6,7 +6,6 @@ import { redirect } from "next/navigation";
 import { studioPath, studioView } from "@/lib/studio-route";
 import { StudioHeader } from "@/components/studio-header";
 import { StudioStorePin } from "@/components/studio-store-pin";
-import { isFree } from "@/lib/store";
 import { formatMoney } from "@/lib/money";
 import { SITE_URL } from "@/lib/site-url";
 import {

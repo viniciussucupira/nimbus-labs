@@ -1,9 +1,12 @@
 // Minimal service worker: it makes the site, and each creator's store, installable
 // on Android, and keeps a page usable when the connection drops. It never caches a
 // payment page, a download, a signed-in page, or a page opened with a private link.
-// v5: the review page (and its links) joined the private pages below; the new
-// name empties any copy an earlier version kept.
-const CACHE = "nimbus-v5";
+// v5: the review page (and its links) joined the private pages below.
+// v6: the site's own build files (/_next/) are left to the browser. They never
+// change under one address, so its cache already keeps them, offline too; going
+// through this worker only made a second copy of every one of them, and made a
+// font the page asks for early arrive twice. The new name empties the old copies.
+const CACHE = "nimbus-v6";
 const SHELL = ["/", "/demo", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -45,6 +48,8 @@ self.addEventListener("fetch", (event) => {
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
     url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/_next/") ||
+    url.searchParams.has("_rsc") ||
     PRIVATE.test(url.pathname) ||
     PRIVATE_QUERY.test(url.search)
   ) {
