@@ -2402,6 +2402,21 @@ form:has(input[name="pay"][value="plan"]:checked):has(input[data-bump="0"]:check
     padding-inline: 3rem;
   }
 }
+/* The studio's page beside its blocks: each part can be pressed to edit,
+   and the one being edited is outlined. */
+.sp-beside [data-block] {
+  cursor: pointer;
+  border-radius: 1rem;
+  outline: 2px solid transparent;
+  outline-offset: 4px;
+  transition: outline-color 0.15s;
+}
+.sp-beside [data-block]:hover {
+  outline-color: rgb(90 54 238 / 0.35);
+}
+.sp-beside [data-block].sp-editing {
+  outline-color: #5a36ee;
+}
 /* Another product, as a card (lib/sales-page.ts, ProductBlock). */
 .sp-product {
   display: flex;

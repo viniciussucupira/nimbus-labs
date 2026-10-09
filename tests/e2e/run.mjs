@@ -769,6 +769,11 @@ try {
     await studio.getByRole("button", { name: /^1\. Hero/ }).click();
     await studio.getByLabel("Headline", { exact: true }).fill("Sharper knives, faster dinners");
     is("and redrawn as the words are typed", await words(beside.locator("h1")), "Sharper knives, faster dinners");
+    await beside.locator('[data-block="step0001"]').click();
+    is("a press on a part of the page opens its block, outlined", [
+      await studio.locator("#row-step0001 button[aria-expanded]").first().getAttribute("aria-expanded"),
+      await beside.locator('[data-block="step0001"]').evaluate((el) => el.classList.contains("sp-editing")),
+    ], ["true", true]);
     if (process.env.E2E_SHOTS) await studio.screenshot({ path: join(process.env.E2E_SHOTS, "side-by-side.png") });
     await studio.setViewportSize(was);
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Knife Skills"]}`);
