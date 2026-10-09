@@ -316,7 +316,7 @@ const SECTIONS: Section[] = [
       {
         q: "Can my store speak another language to my buyers?",
         a: [
-          "Yes: English, Spanish, French, German, Italian, Dutch or Portuguese (Portugal). In your studio, under \u201cYour store\u2019s language,\u201d pick one and press Save. Every store speaks English until its creator picks another.",
+          "Yes: English, Spanish, French, German, Italian, Dutch or Portuguese (Portugal). In your studio, under \u201cYour store\u2019s language,\u201d pick one and press Save. Every store speaks English until its creator picks another. Drafts written with AI come in the language you pick, and a sales page written in another can be translated into it with AI in one step.",
           "From then on your buyers read it everywhere: your store and product pages, Stripe's checkout, the page after paying, their purchases, bookings, courses, memberships, your community, and every email your store sends them, with dates, numbers and prices written that language's way. Your studio stays in English.",
           "What you write yourself is shown exactly as you wrote it: product names, descriptions, lessons, posts and emails you compose. Write them in the same language, so a page never mixes two. One store speaks one language; a page does not switch by each visitor's browser.",
         ],

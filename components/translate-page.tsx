@@ -21,8 +21,9 @@ const MESSAGES: Record<string, string> = {
  * The whole page put into another language at once (added 9 October 2026;
  * lib/ai.ts, translatePage): every heading, paragraph, point, question,
  * button, cell and picture description, the search title and line, and a
- * headline being tested. A draft written with AI comes in English; a store
- * selling in Spanish turns it into Spanish here with one press. Nothing is
+ * headline being tested. A page copied from a product sold in another
+ * language, or a store that changes its language, is turned into the one it
+ * sells in with one press. Nothing is
  * saved: the words replace those in the editor, Undo puts them back, and
  * Save keeps them.
  *
