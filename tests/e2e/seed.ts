@@ -80,6 +80,18 @@ async function main(): Promise<void> {
   await writePage(statsId, ids["Sunday Baking"], withPictures);
   const marked = await setProductPage(OWNER, ids["Sunday Baking"], true);
   if (!marked.ok) throw new Error("the page could not be marked");
+  // A long store, past one page of products, for its search.
+  const LONG = "long@example.com";
+  const long = await claimHandle(LONG, "longshop", "Long Pantry", "Thirty recipes, one at a time.");
+  if (!long.ok) throw new Error(`the long store's address was refused: ${long.reason}`);
+  await setStripeAccount(LONG, "acct_1LocalLong00001", true);
+  await setSubscription(LONG, { active: true, tier: "creator", cycle: "month", subscriptionId: null, customerId: null, trialEnds: 0 });
+  for (let n = 1; n <= 30; n++) {
+    const kind = ["Soup", "Bread", "Salad"][n % 3];
+    const made = await addProduct(LONG, `${kind} recipe ${n}`, n === 7 ? "With roasted tomatoes and crème fraîche." : `Recipe number ${n}.`, "3", null);
+    if (!made.ok) throw new Error(`long store product ${n} was refused`);
+    await setProductLink(LONG, made.product.id, `https://example.com/long/${n}`);
+  }
   console.log(JSON.stringify({ ids, reviews, session: await openSession(OWNER) }));
 }
 

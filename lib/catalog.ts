@@ -739,6 +739,45 @@ export async function readPage(
   return { listings, related, page: at, pages };
 }
 
+/** The most a search on the store page shows: two pages' worth. */
+export const STORE_SEARCH_LIMIT = STORE_PAGE_SIZE * 2;
+/** The longest search the store page takes. */
+export const MAX_STORE_SEARCH = 80;
+
+/** Words as a search compares them: no accents, no case, letters and digits only. */
+export function searchWords(text: string): string[] {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+}
+
+/** Whether a listing has every word searched for, in its title or its one-line summary (a word may start a longer one). */
+export function matchesSearch(listing: Pick<Listing, "title" | "summary">, query: string): boolean {
+  const asked = searchWords(query);
+  if (asked.length === 0) return false;
+  const has = searchWords(`${listing.title} ${listing.summary}`);
+  return asked.every((word) => has.some((one) => one.startsWith(word)));
+}
+
+/**
+ * A search of the store's listed products, for the store page (added 9
+ * October 2026): the matches in the creator's order, at most two pages'
+ * worth, with what they offer at checkout. Every listing is read, so it is
+ * asked only when a visitor searches, never on a plain visit.
+ */
+export async function searchStore(store: Store, query: string): Promise<{ listings: Listing[]; related: Listing[]; total: number }> {
+  const all = await readListings(store, visibleIds(store));
+  const found = all.filter((listing) => matchesSearch(listing, query));
+  const listings = found.slice(0, STORE_SEARCH_LIMIT);
+  const shown = new Set(listings.map((l) => l.id));
+  const targets = [...new Set(listings.flatMap((l) => bumpTargets(l).filter((id) => !shown.has(id))))];
+  const related = targets.length ? await readListings(store, targets) : [];
+  return { listings, related, total: found.length };
+}
+
 /**
  * Every card, for a list the creator searches (the studio). One pipeline per
  * few hundred products, sent side by side.

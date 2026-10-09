@@ -1219,6 +1219,23 @@ try {
   }
 
   await keepSmall();
+  part("Searching a long store");
+  {
+    const person = await context.newPage();
+    await open(person, `${LOCAL}/@longshop`);
+    const search = person.getByRole("search", { name: "Search this store" });
+    is("a store past one page offers a search; a short one does not", [await search.count(), await page.goto(`${LOCAL}/@localshop`).then(() => page.getByRole("search").count())], [1, 0]);
+    await search.getByLabel("Search this store").fill("tomato creme");
+    await Promise.all([person.waitForURL(/[?&]q=tomato\+creme/), search.getByRole("button", { name: "Search" }).click()]);
+    is("every word, in a title or a summary, whatever the accents", [await person.locator("main h3, main .st-card h2, main li h2").filter({ hasText: /recipe/ }).count() >= 1, (await words(search)).includes("1 product for “tomato creme”")], [true, true]);
+    await search.getByLabel("Search this store").fill("bread");
+    await Promise.all([person.waitForURL(/[?&]q=bread/), search.getByRole("button", { name: "Search" }).click()]);
+    is("ten breads in all, in the store's order, on one list", (await words(search)).includes("10 products for “bread”"), true);
+    is("and a way back to every product", await search.getByRole("link", { name: "Show every product" }).count(), 1);
+    is("a search's results are kept from search engines", await person.locator('meta[name="robots"]').getAttribute("content").then((c) => /noindex/.test(c ?? "")), true);
+    await person.close();
+  }
+
   part("A reply to a review, drafted with AI");
   {
     await open(studio, `${LOCAL}/studio/reviews?view=all`);
@@ -1326,6 +1343,7 @@ try {
       ["a buyer's orders", "/@localshop/orders", 0],
       ["the store's blog", "/@localshop/blog", 0],
       ["the sign-up box's page", "/@localshop/join?status=sent", 0],
+      ["a long store's search", "/@longshop?q=bread", 0],
       ["a post on it", postPath, 0],
       ["the studio's blog", "/studio/blog?edit=new", 1200],
     ];
