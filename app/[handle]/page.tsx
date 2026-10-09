@@ -293,6 +293,12 @@ export default async function StorePage({ params, searchParams }: Params) {
             <div className="mx-auto mt-3 flex max-w-xs flex-col items-center">
               <StoreShareButton name={store.name} lang={store.language} />
             </div>
+            {/* The creator's welcome video, loaded only when played (components/video-embed.tsx). */}
+            {store.intro && !searching ? (
+              <div className="mx-auto mt-6 max-w-md text-left">
+                <VideoEmbed video={store.intro} title={store.name} poster={null} lang={store.language} />
+              </div>
+            ) : null}
           </div>
         </section>
 
