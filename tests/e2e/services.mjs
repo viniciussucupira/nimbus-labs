@@ -35,6 +35,7 @@ export async function startServices(port) {
   const emails = [];
   const coupons = [];
   const unknown = [];
+  const writing = [];
   let counter = 0;
 
   const read = (req) =>
@@ -68,6 +69,16 @@ export async function startServices(port) {
           }
         }
         return json(res, 200, results);
+      }
+      if (req.method === "POST" && path === "/v1/messages") {
+        // The writing model: a page's words "translated" by being written in
+        // capitals, anything else answered with one plain line.
+        const body = JSON.parse(await read(req));
+        writing.push(body);
+        const text = String(body.system ?? "").startsWith("You translate the words")
+          ? JSON.stringify({ t: JSON.parse(body.messages[0].content).map((s) => String(s).toUpperCase()) })
+          : "A plain line.";
+        return json(res, 200, { content: [{ type: "text", text }] });
       }
       if (req.method === "POST" && path === "/emails") {
         emails.push(JSON.parse(await read(req)));
@@ -142,6 +153,7 @@ export async function startServices(port) {
     checkouts: () => [...sessions.values()],
     coupons: () => [...coupons],
     unknown: () => [...unknown],
+    writing: () => [...writing],
     close: () => new Promise((closed) => server.close(closed)),
   };
 }

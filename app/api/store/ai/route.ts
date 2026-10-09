@@ -1,14 +1,14 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { describePicture, fillBlock, reviewPage, rewriteBlock, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { describePicture, fillBlock, reviewPage, rewriteBlock, translatePage, writeEmail, writeOutline, writePage, writeProduct } from "@/lib/ai";
 import { isRewriteStyle } from "@/lib/block-rewrite-rules";
 import { factsFor, missedQuestions } from "@/lib/answers";
 import { parsePage } from "@/lib/sales-page";
 import { coachChecks, steepestDrop } from "@/lib/page-coach";
 import { readPageFacts } from "@/lib/page-facts-read";
 import { readDepth, reachShares } from "@/lib/page-depth";
-import { LANGUAGES } from "@/lib/store-language";
+import { LANGUAGES, isLanguage } from "@/lib/store-language";
 import { readStats } from "@/lib/stats";
 import { isFree } from "@/lib/store";
 import { readListing } from "@/lib/catalog";
@@ -22,7 +22,7 @@ import { imageFolder } from "@/lib/store";
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
 /**
- * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "outline" | "email", … }`.
+ * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "outline" | "email", … }`.
  * It writes into the studio's own boxes and saves nothing: whatever comes back
  * is the creator's to read, change and keep, or not.
  *
@@ -150,6 +150,14 @@ export async function POST(request: NextRequest) {
     if (!found || found.statusCode !== 200 || !found.stream) return fail("invalid");
     const bytes = new Uint8Array(await new Response(found.stream).arrayBuffer());
     return answer(describePicture(store, { bytes, mediaType: imageType(path), productTitle: product.title, language: LANGUAGES[store.language].english }));
+  }
+  if (body.kind === "translate") {
+    // The page as it stands in the editor, every word of it into one of the
+    // store languages (lib/ai.ts, translatePage); nothing is saved here.
+    const product = await readListing(store, text(body.product, 40));
+    if (!product) return fail("unknown", 404);
+    const to = isLanguage(body.language) ? body.language : store.language;
+    return answer(translatePage(store, { page: parsePage(body.page), language: LANGUAGES[to].english }));
   }
   if (body.kind === "outline") {
     return answer(writeOutline(store, { title: text(body.title, 200), notes }));

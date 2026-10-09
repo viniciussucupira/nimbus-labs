@@ -8,6 +8,7 @@ import { IMAGE_ACCEPT, MAX_ALT_LENGTH, MAX_SOURCE_BYTES, imagePath, imageUrl } f
 import { Icon, type IconName } from "@/components/icons";
 import { toast } from "@/components/toast";
 import { AiAssist, AiOn } from "@/components/ai-assist";
+import { TranslatePage } from "@/components/translate-page";
 import { PageCoach } from "@/components/page-coach";
 import { PageStylePicker } from "@/components/page-style-picker";
 import { BlockPicker } from "@/components/block-picker";
@@ -1617,6 +1618,28 @@ export function PageEditor({
               done="Drafted. Read each block, change what is not yours, then press Save."
             />
           </div>
+
+          {drafts.length > 0 ? (
+            <div className="mt-3">
+              <TranslatePage
+                productId={product.id}
+                storeLanguage={lang}
+                page={pageToSend}
+                onResult={(page, sent) => {
+                  // Only over the words it was given: an edit made meanwhile is never lost.
+                  if (JSON.stringify(latestBlocks.current) !== JSON.stringify(sent.blocks)) return false;
+                  setDrafts(toDrafts(page));
+                  setSeoTitle(page.seoTitle);
+                  setSeoDescription(page.seoDescription);
+                  if (page.test) {
+                    setTestHeadline(page.test.headline);
+                    setTestSub(page.test.sub);
+                  }
+                  return true;
+                }}
+              />
+            </div>
+          ) : null}
 
           <ol className="mt-6">
             {drafts.map((draft, index) => {
