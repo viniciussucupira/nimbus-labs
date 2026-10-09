@@ -3,7 +3,7 @@ import { SiteNav } from "@/components/site-nav";
 import { SiteFooter } from "@/components/site-footer";
 
 const title = "Our products — Solrenning";
-const description = "Meet NativeApply, NativeReply, Retone, Hazelsong, and the Marktmorgen creator store. Find the right tool for your writing or business.";
+const description = "Meet NativeApply, Tactword, Fluentsmith, Hazelsong, and the Marktmorgen creator store. Find the right tool for your writing or business.";
 export const metadata: Metadata = {
   title, description,
   alternates: { canonical: "/products" },
@@ -17,8 +17,8 @@ const groups = [
     description: "Choose a writing tool for the work in front of you.",
     products: [
       { name: "NativeApply", initials: "NA", category: "For your next job", href: "https://nativeapply.net/", domain: "nativeapply.net", color: "#1749a3", background: "#edf3ff", description: "Rewrite resumes, cover letters, and recruiter messages in clear, natural English.", action: "Explore NativeApply" },
-      { name: "NativeReply", initials: "NR", category: "For customer-facing teams", href: "https://nativereply.net/", domain: "nativereply.net", color: "#116558", background: "#eaf7f2", description: "Help support and sales teams write clearer customer replies, with shared style notes and team access.", action: "Explore NativeReply" },
-      { name: "Retone", initials: "R", category: "For everyday work writing", href: "https://retoneai.net/", domain: "retoneai.net", color: "#744027", background: "#fff1e6", description: "Polish emails and messages, choosing the tone that fits what you want to say.", action: "Explore Retone" },
+      { name: "Tactword", initials: "T", category: "For customer-facing teams", href: "https://tactword.com/", domain: "tactword.com", color: "#116558", background: "#eaf7f2", description: "Help support and sales teams write clearer customer replies, with shared style notes and team access.", action: "Explore Tactword" },
+      { name: "Fluentsmith", initials: "F", category: "For everyday work writing", href: "https://www.fluentsmith.com/", domain: "fluentsmith.com", color: "#744027", background: "#fff1e6", description: "Polish emails and messages, choosing the tone that fits what you want to say.", action: "Explore Fluentsmith" },
     ],
   },
   {

@@ -9,11 +9,11 @@ const products = [
     "Collect customer testimonials for your business."
   ],
   [
-    "Retone",
-    "https://retoneai.net/",
+    "Fluentsmith",
+    "https://www.fluentsmith.com/",
     "Polish your professional emails and messages."
   ],
-  ["NativeReply","https://nativereply.net/","Help your team write clear customer replies."],
+  ["Tactword","https://tactword.com/","Help your team write clear customer replies."],
   ["NativeApply","https://nativeapply.net/","Polish resumes, cover letters, and job-search messages."]
 ];
 
