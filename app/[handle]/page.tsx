@@ -1,4 +1,6 @@
 import { after } from "next/server";
+import { blockWords } from "@/lib/buyer-words/blocks";
+import { StoreSocialsRow } from "@/components/store-socials-row";
 import { forVisitor } from "@/lib/visitor";
 import { sellsThroughPayPal } from "@/lib/paypal-sales";
 import { saleClock, saleRunning } from "@/lib/store-sale";
@@ -244,6 +246,7 @@ export default async function StorePage({ params, searchParams }: Params) {
             {store.bio ? (
               <p className="st-muted mx-auto mt-4 max-w-md text-lg leading-relaxed">{store.bio}</p>
             ) : null}
+            <StoreSocialsRow socials={store.socials} name={store.name} words={blockWords(store.language)} />
           </div>
         </section>
 

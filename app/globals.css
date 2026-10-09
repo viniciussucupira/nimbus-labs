@@ -2074,6 +2074,29 @@ a.chip {
 .st-note strong {
   color: var(--st-text);
 }
+/* The creator's profiles elsewhere, under their name (components/store-socials-row.tsx). */
+.st-social {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--st-line-strong);
+  background: var(--st-card);
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--st-text);
+  transition: border-color 0.15s, color 0.15s;
+}
+.st-social:hover {
+  border-color: var(--st-accent);
+  color: var(--st-accent-text);
+}
+.st-social:focus-visible {
+  outline: 2px solid var(--st-accent);
+  outline-offset: 2px;
+}
 .st-footer-link {
   color: var(--st-muted);
   text-decoration: underline;

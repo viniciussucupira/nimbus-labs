@@ -87,7 +87,7 @@ const SAME: Record<string, Record<string, string[]>> = {
   },
   // "{price} {every}": the price and the words for how often, each already in the language.
   // "Bonus 7": Spanish says bonus too.
-  "page blocks": { es: ["bonusN"] },
+  "page blocks": { es: ["bonusN"], de: ["socialWebsite"], it: ["socialEmail"], nl: ["socialWebsite"] },
   thanks: { es: ["priceEvery"], fr: ["priceEvery"], de: ["priceEvery"], it: ["priceEvery"], nl: ["priceEvery"], pt: ["priceEvery"] },
 };
 
