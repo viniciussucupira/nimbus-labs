@@ -43,7 +43,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "Live in three steps",
         items: [
           { title: "Take your address", body: "marktmorgen.com/@yourname is yours the moment you take it, and the page is up right away." },
-          { title: "Put up what you sell", body: "Its name, what is inside, the price and a picture. Files, courses, memberships, calls and live sessions, bundles of your products, free things for an email, and plain links. A community for your buyers sits beside them." },
+          { title: "Put up what you sell", body: "Its name, what is inside, the price and a picture. Files, courses, memberships, calls and live sessions, bundles of your products, free things for an email, and plain links. A community for your buyers sits beside them. Or let AI draft it from two sentences about what you make — the line under your name, your first products and your questions — and keep what you like." },
           { title: "Make it look like you", body: "Your photo, one of four themes, one of ten colors or your own, one of five pairings of letters — Modern, Editorial, Elegant, Friendly or Bold — each downloaded only by the pages that use it, and a background behind the cards: plain, a glow of your color, dots, a grid or a slow aurora. The studio shows the page before you save." },
         ],
       },
@@ -1575,6 +1575,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "features",
         title: "Where it helps",
         items: [
+          { icon: "store", title: "Your whole store, drafted", body: "Say what you make and for whom: AI drafts the line under your name, up to three products with a summary and a suggested price, and the questions visitors ask, from your words only. You see it all first and keep what you choose; the products wait as drafts until you add what each one hands over." },
           { icon: "file", title: "A product's description", body: "The short line and the long description, from a few words about it." },
           { icon: "layout", title: "A whole sales page", body: "Headline, what the buyer gets, what is inside, questions and buttons, laid out as blocks you can move and change.", href: "/platform/sales-pages" },
           { icon: "sparkle", title: "Any block, better", body: "An empty block of benefits, steps, who it is for or questions filled in; any block of words made clearer, shorter, more specific or warmer, with Undo beside it." },

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
-import { describePicture, fillBlock, reviewPage, rewriteBlock, replyToReview, translatePage, writeBio, writeKitPitch, writeStoreFaq, writeBlogPost, writeEmail, writePosts, writeOutline, writePage, writeProduct } from "@/lib/ai";
+import { describePicture, fillBlock, reviewPage, rewriteBlock, replyToReview, translatePage, writeBio, writeKitPitch, writeStoreFaq, writeStoreSetup, writeBlogPost, writeEmail, writePosts, writeOutline, writePage, writeProduct } from "@/lib/ai";
 import { SOCIALS, type SocialNetwork, isSocialNetwork } from "@/lib/store-socials";
 import { isRewriteStyle } from "@/lib/block-rewrite-rules";
 import { deliveryWords, factsFor, missedQuestions, priceWords } from "@/lib/answers";
@@ -25,7 +25,7 @@ import { imageFolder } from "@/lib/store";
 const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call", "bundle"];
 
 /**
- * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "bio" | "faq" | "kit" | "reply" | "posts" | "blog" | "outline" | "email", … }`.
+ * The writing help (lib/ai.ts): `{ kind: "product" | "page" | "review" | "block" | "fill" | "alt" | "translate" | "bio" | "faq" | "kit" | "setup" | "reply" | "posts" | "blog" | "outline" | "email", … }`.
  * It writes into the studio's own boxes and saves nothing: whatever comes back
  * is the creator's to read, change and keep, or not.
  *
@@ -34,7 +34,7 @@ const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call"
  */
 export async function POST(request: NextRequest) {
   // A review sends the page being edited, which may be long (lib/sales-page.ts, MAX_PAGE_BYTES).
-  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" || body.kind === "faq" || body.kind === "kit" || body.kind === "blog" || (body.kind === "posts" && !body.product) ? "page" : body.kind === "reply" ? "reviews" : "products"), 140_000);
+  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" || body.kind === "faq" || body.kind === "kit" || body.kind === "setup" || body.kind === "blog" || (body.kind === "posts" && !body.product) ? "page" : body.kind === "reply" ? "reviews" : "products"), 140_000);
   if (!guarded.ok) return guarded.response;
   const { body, store } = guarded;
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
@@ -201,6 +201,9 @@ export async function POST(request: NextRequest) {
     // What the store sells, from the record every visit already reads (lib/catalog.ts, head).
     const products = store.catalog.head.filter((p) => !p.hidden).map((p) => ({ title: p.title, summary: p.summary }));
     return answer(writeBio(store, { products, notes }));
+  }
+  if (body.kind === "setup") {
+    return answer(writeStoreSetup(store, { about: text(body.about, MAX_AI_NOTES + 100), selling: notes }));
   }
   if (body.kind === "kit") {
     // From the record every visit already reads, and the kit as it is in the studio now (not yet saved, perhaps).

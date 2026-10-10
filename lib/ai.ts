@@ -332,6 +332,62 @@ export async function writeBio(
   });
 }
 
+/** A store drafted from a few sentences (writeStoreSetup). */
+export type StoreSetup = {
+  bios: string[];
+  products: { title: string; summary: string; kind: "download" | "course" | "call" | "membership"; price: string }[];
+  faq: { q: string; a: string }[];
+};
+
+const SETUP_KINDS = new Set(["download", "course", "call", "membership"]);
+
+/**
+ * A whole store's first draft from a few sentences (added 10 October 2026):
+ * three lines to put under the name, up to three products the creator could
+ * sell — named, summed up, priced as a suggestion and of a kind the store
+ * sells — and the questions a visitor would ask, answered only from what the
+ * creator said. Nothing is saved here: the studio shows it all, the creator
+ * changes or drops any of it, and what they keep is put up as drafts, never
+ * on sale until they add what each one hands over. One of the month's jobs.
+ */
+export async function writeStoreSetup(store: Store, input: { about: string; selling: string }, now = Date.now()): Promise<AiResult<StoreSetup>> {
+  const about = block(input.about, MAX_AI_NOTES);
+  const selling = block(input.selling, MAX_AI_NOTES);
+  if (!about) return { ok: false, reason: "notes" };
+  return counted(store, now, async () => {
+    const system = [
+      "You draft the first version of a creator's store: the line under its name, the products it could sell, and its questions and answers.",
+      honesty(storeLanguage(store)),
+      "Work ONLY from what the creator says. Never invent a credential, a number of followers, students or buyers, a result, a testimonial, a guarantee, a refund, a delivery time or a bonus.",
+      `"bios": three different lines for under the store's name, each at most 140 characters, saying who it is for and what they find there; no hashtags, no "Welcome to".`,
+      `"products": up to three products this creator could sell, built from what they said they make or sell. Each: "title" (at most 70 characters), "summary" (one sentence, at most 140 characters, what the buyer gets), "kind" (one of "download", "course", "call", "membership"), "price" (a plain number in ${store.currency.toUpperCase()}, a fair price for what it is, no currency sign).`,
+      `"faq": four to six questions a visitor would ask before buying, each at most 120 characters, each answer at most 300 characters, answered only from what the creator said; leave out any question you cannot answer from it.`,
+      'Return only a JSON object: {"bios": [string], "products": [{"title": string, "summary": string, "kind": string, "price": string}], "faq": [{"q": string, "a": string}]}.',
+    ].join("\n\n");
+    const prompt = [`Store: ${line(store.name, 60)}`, `\nWhat the creator does, and for whom:\n${about}`, selling ? `\nWhat they sell or want to sell:\n${selling}` : ""].filter(Boolean).join("\n");
+    const answer = await ask(system, prompt, 2_500);
+    const json = answer ? jsonIn(answer) : null;
+    if (!json) return null;
+    const bios = [...new Set((Array.isArray(json.bios) ? json.bios : []).map((b: unknown) => line(b, 160).replace(/^["“”']+|["“”']+$/g, "").trim()).filter(Boolean))].slice(0, 3) as string[];
+    const products = (Array.isArray(json.products) ? json.products : [])
+      .map((p: unknown) => (p && typeof p === "object" ? (p as Record<string, unknown>) : {}))
+      .map((p) => ({
+        title: line(p.title, 80),
+        summary: line(p.summary, 160),
+        kind: (SETUP_KINDS.has(String(p.kind)) ? String(p.kind) : "download") as StoreSetup["products"][number]["kind"],
+        price: line(p.price, 12).replace(/[^\d.]/g, ""),
+      }))
+      .filter((p) => p.title)
+      .slice(0, 3);
+    const faq = (Array.isArray(json.faq) ? json.faq : [])
+      .map((f: unknown) => (f && typeof f === "object" ? (f as Record<string, unknown>) : {}))
+      .map((f) => ({ q: line(f.q, 150), a: line(f.a, 800).replace(/https?:\/\/\S+/g, "").trim() }))
+      .filter((f) => f.q && f.a)
+      .slice(0, 6);
+    return bios.length || products.length ? { bios, products, faq } : null;
+  });
+}
+
 /**
  * The few sentences at the top of a media kit, three ways (lib/store-kit.ts,
  * added 9 October 2026): written to a brand, from what the store sells, the

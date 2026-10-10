@@ -83,6 +83,7 @@ import { PageOrderEditor } from "@/components/page-order-editor";
 import { tipsOpen } from "@/lib/store-tip-checkout";
 import { TipsEditor } from "@/components/tips-editor";
 import { KitEditor } from "@/components/kit-editor";
+import { StoreSetupAi } from "@/components/store-setup-ai";
 import { joinOpen } from "@/lib/store-join";
 import { contactOpen } from "@/lib/store-contact";
 import { visibleCount } from "@/lib/catalog";
@@ -870,6 +871,10 @@ export default async function StudioPage({
               </div>
             ) : null}
             {role === "owner" ? <StudioStart steps={startSteps} /> : null}
+            {/* A store with nothing on it yet: its first draft, written with AI from a few sentences (lib/ai.ts, writeStoreSetup). */}
+            {ai.on && may("page") && may("products") && productCount(store) === 0 ? (
+              <StoreSetupAi currency={store.currency} left={ai.left} hasFaq={store.faq.length > 0} />
+            ) : null}
             {/* Once there is something on the store: what else it does to sell, with a score (lib/store-coach.ts). */}
             {may("page") ? (
               <StoreCoach checks={storeChecks(store, { path: (page) => studioPath(store, "", page) })} />

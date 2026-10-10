@@ -174,7 +174,7 @@ try {
     child.on("close", (status) => done({ status, ...said }));
   });
   if (seeded.status !== 0) throw new Error(`the store could not be made:\n${seeded.err}`);
-  const { ids, reviews: seededReviews, session } = JSON.parse(seeded.out.trim().split("\n").at(-1));
+  const { ids, reviews: seededReviews, fresh, session } = JSON.parse(seeded.out.trim().split("\n").at(-1));
 
   // Built once, before it is served (see PRODUCTION above).
   if (PRODUCTION) {
@@ -1482,6 +1482,26 @@ try {
     if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "media-kit.png"), fullPage: true });
     await open(page, `${LOCAL}/@longshop/media-kit`);
     is("a store without one has no such page", await words(page.locator("h1")), "Nothing lives at this address");
+  }
+
+  await keepSmall();
+  part("A new store drafted with AI from a few sentences");
+  {
+    await open(studio, `${LOCAL}/studio?store=${fresh}`);
+    const setup = studio.locator("section#setup-ai");
+    is("a store with nothing on it is offered a first draft", await setup.count(), 1);
+    await setup.getByLabel("What you do, and for whom").fill("I teach busy parents to cook a week of dinners in two hours on Sunday.");
+    await setup.getByRole("button", { name: "Draft my store" }).click();
+    await setup.getByRole("radio", { name: "Cook once, eat all week." }).check();
+    is("it shows the products to keep, each editable", [await setup.locator("#setup-title-0").inputValue(), await setup.locator("#setup-price-1").inputValue()], ["Sunday Meal Planner", "7"]);
+    await setup.locator("#setup-price-0").fill("14");
+    await setup.getByRole("button", { name: "Keep what I chose" }).click();
+    await studio.getByText("Kept: the line under your name, 2 draft products, your questions and answers.").first().waitFor({ timeout: 30_000 });
+    await open(page, `${LOCAL}/@freshshop`);
+    const front = await words(page.locator("main"));
+    is("the line is under the name, the questions are on the page, and the drafts are not for sale", [front.includes("Cook once, eat all week."), front.includes("How do I get the planner?"), front.includes("Sunday Meal Planner")], [true, true, false]);
+    await open(studio, `${LOCAL}/studio?store=${fresh}`);
+    is("in the studio, the drafts wait, at the price chosen", [(await words(studio.locator("main"))).includes("Sunday Meal Planner"), (await words(studio.locator("main"))).includes("$14"), await studio.locator("section#setup-ai").count()], [true, true, 0]);
   }
 
   await keepSmall();
