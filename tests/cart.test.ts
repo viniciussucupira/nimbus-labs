@@ -12,7 +12,7 @@
  *     already reads them; a code box only when nothing was taken off;
  *   - an affiliate's share is kept for each line.
  */
-import { MAX_CART, cartable, readCartIds } from "@/lib/cart-rules";
+import { MAX_CART, NO_DEAL, cartable, dealOff, parseCartDeal, readCartIds } from "@/lib/cart-rules";
 import { cartPrice, createCartCheckout, offersCart } from "@/lib/cart-checkout";
 import { KIND } from "@/lib/catalog";
 import { NO_SALE } from "@/lib/store-sale";
@@ -41,6 +41,7 @@ function shop(more: Partial<Store> = {}): Store {
     currency: "usd",
     stripeAccountId: "acct_test_cart0001",
     sale: { ...NO_SALE },
+    cartDeal: { ...NO_DEAL },
     fair: undefined,
     hasDiscounts: true,
     tax: { enabled: false, included: false, ids: false, invoices: false },
@@ -101,6 +102,27 @@ async function main(): Promise<void> {
     refused = error.message;
   });
   is("never more than four", refused.includes("one to four"), true);
+
+  part("Buy more, save more");
+  is("off until switched on, from 2, 3 or 4, 5% to 50%", [
+    parseCartDeal(undefined),
+    parseCartDeal({ on: true, min: 3, percent: 15 }),
+    parseCartDeal({ on: true, min: 7, percent: 80 }),
+  ], [{ on: false, min: 2, percent: 10 }, { on: true, min: 3, percent: 15 }, { on: true, min: 2, percent: 10 }]);
+  const deal = { on: true, min: 3, percent: 15 };
+  is("taken off from that many, and not before", [dealOff(deal, 2), dealOff(deal, 3), dealOff(deal, 4), dealOff({ ...deal, on: false }, 4)], [0, 15, 15, 0]);
+  await createCartCheckout(shop({ cartDeal: deal }), [product("a", 2000), product("b", 1000), product("c", 3000)], "https://marktmorgen.com");
+  const dealt = sent.at(-1) as URLSearchParams;
+  is("each line that much cheaper, said on the order, and no code box", [
+    dealt.get("line_items[0][price_data][unit_amount]"),
+    dealt.get("line_items[1][price_data][unit_amount]"),
+    dealt.get("line_items[2][price_data][unit_amount]"),
+    dealt.get("metadata[cart_deal]"),
+    dealt.get("metadata[bump_cents]"),
+    dealt.get("allow_promotion_codes"),
+  ], ["1700", "850", "2550", "15", "850", null]);
+  await createCartCheckout(shop({ cartDeal: deal }), [product("a", 2000), product("b", 1000)], "https://marktmorgen.com");
+  is("two are not enough for a deal from three", (sent.at(-1) as URLSearchParams).get("metadata[cart_deal]"), null);
 
   done();
 }

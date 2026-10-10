@@ -45,3 +45,33 @@ export function readCartIds(raw: unknown[]): string[] {
   }
   return out;
 }
+
+/**
+ * A store's deal for buying more (added 10 October 2026): every product in a
+ * cart a percentage cheaper once it holds `min` or more. Off until the
+ * creator switches it on; said on the cart and under every "Add to cart" while
+ * it is, so the buyer knows before they choose, not only at the till.
+ */
+export type CartDeal = { on: boolean; min: number; percent: number };
+
+export const NO_DEAL: CartDeal = { on: false, min: 2, percent: 10 };
+export const DEAL_MIN_CHOICES = [2, 3, 4] as const;
+export const DEAL_MIN_PERCENT = 5;
+export const DEAL_MAX_PERCENT = 50;
+
+export function parseCartDeal(raw: unknown): CartDeal {
+  if (!raw || typeof raw !== "object") return { ...NO_DEAL };
+  const v = raw as Record<string, unknown>;
+  const min = Number(v.min);
+  const percent = Number(v.percent);
+  return {
+    on: v.on === true,
+    min: (DEAL_MIN_CHOICES as readonly number[]).includes(min) ? min : NO_DEAL.min,
+    percent: Number.isInteger(percent) && percent >= DEAL_MIN_PERCENT && percent <= DEAL_MAX_PERCENT ? percent : NO_DEAL.percent,
+  };
+}
+
+/** The percentage a cart of `count` products takes off each of them under the deal, or 0. */
+export function dealOff(deal: CartDeal | undefined, count: number): number {
+  return deal?.on && count >= deal.min ? deal.percent : 0;
+}

@@ -30,7 +30,7 @@ import { StripeError, onAccount } from "@/lib/stripe-account";
 import { LANGUAGES } from "@/lib/store-language";
 import { type CameFrom, hasSource } from "@/lib/came-from";
 import { isHouseStore } from "@/lib/house-store";
-import { MAX_CART } from "@/lib/cart-rules";
+import { MAX_CART, dealOff } from "@/lib/cart-rules";
 
 const DISPLAY_NAME = "branding_settings[display_name]";
 
@@ -86,7 +86,10 @@ export async function createCartCheckout(
     cancel_url: `${origin}/@${store.handle}`,
   });
 
-  let discounted = false;
+  // The store's deal for buying more (lib/cart-rules.ts): every line that much cheaper again.
+  const deal = dealOff(store.cartDeal, products.length);
+  if (deal > 0) body.set("metadata[cart_deal]", String(deal));
+  let discounted = deal > 0;
   const lines: { key: string | null; cents: number; id: string }[] = [];
   for (const [i, product] of products.entries()) {
     const key = i === 0 ? null : BUMP_KEYS[i - 1];
@@ -96,7 +99,9 @@ export async function createCartCheckout(
       if (items.length < MIN_BUNDLE_ITEMS) throw new Error("A bundle in the cart holds too little right now");
       for (const [name, value] of Object.entries(bundleMeta(key ? `${key}_bundle` : "bundle", items.map((p) => p.id)))) body.set(`metadata[${name}]`, value);
     }
-    const { cents, off } = cartPrice(store, product, country);
+    const shown = cartPrice(store, product, country);
+    const cents = salePrice(shown.cents, deal);
+    const off = shown.off;
     if (off > 0) discounted = true;
     body.set(`line_items[${i}][quantity]`, "1");
     body.set(`line_items[${i}][price_data][currency]`, store.currency);

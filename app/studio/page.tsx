@@ -2,6 +2,8 @@ import { paypalSalesConfigured } from "@/lib/paypal-sales";
 import { lowestPriceCents } from "@/lib/product-option";
 import { SaleEditor } from "@/components/sale-editor";
 import { FairPriceEditor } from "@/components/fair-price-editor";
+import { CartDealEditor } from "@/components/cart-deal-editor";
+import { offersCart } from "@/lib/cart-checkout";
 import { allCountries, countryName } from "@/lib/fair-price";
 import { TierEditor } from "@/components/tier-editor";
 import { canTier } from "@/lib/tier-rules";
@@ -1290,6 +1292,8 @@ export default async function StudioPage({
                   products={await saleCandidates(store)}
                   names={Object.fromEntries(allCountries().map((code) => [code, countryName(code)]))}
                 />
+
+                <CartDealEditor initial={store.cartDeal} currency={store.currency} offered={offersCart(store)} />
 
                 {await (async () => {
                   const tiers = await tierCandidates(store);

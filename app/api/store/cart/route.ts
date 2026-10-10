@@ -4,7 +4,8 @@ import { normaliseHandle, storeForHandle } from "@/lib/store";
 import { readListings, readProduct } from "@/lib/catalog";
 import { canSell } from "@/lib/store-checkout";
 import { cartPrice, createCartCheckout } from "@/lib/cart-checkout";
-import { cartable, readCartIds } from "@/lib/cart-rules";
+import { cartable, dealOff, readCartIds } from "@/lib/cart-rules";
+import { salePrice } from "@/lib/store-sale";
 import { soonState } from "@/lib/preorders";
 import { outOfKeys } from "@/lib/licence-keys";
 import { readCountry } from "@/lib/fair-price";
@@ -42,8 +43,22 @@ export async function GET(request: NextRequest) {
     const { cents } = cartPrice(store, product, country);
     return [{ id, title: product.title, href: `/@${store.handle}/p/${productSegment(product)}`, cents, price: formatMoney(cents, store.currency, locale), ok: selling && cartable(product) && !coming.soon.has(id) }];
   });
-  const total = items.filter((item) => item.ok).reduce((sum, item) => sum + item.cents, 0);
-  return Response.json({ ok: true, items, total: formatMoney(total, store.currency, locale) }, { headers: { "Cache-Control": "private, no-store" } });
+  const payable = items.filter((item) => item.ok);
+  const before = payable.reduce((sum, item) => sum + item.cents, 0);
+  // The store's deal for buying more (lib/cart-rules.ts): taken off each line, as the checkout does.
+  const deal = dealOff(store.cartDeal, payable.length);
+  const total = payable.reduce((sum, item) => sum + salePrice(item.cents, deal), 0);
+  const more = store.cartDeal.on && payable.length > 0 && payable.length < store.cartDeal.min ? store.cartDeal.min - payable.length : 0;
+  return Response.json(
+    {
+      ok: true,
+      items,
+      deal: deal > 0 ? { percent: deal, saved: formatMoney(before - total, store.currency, locale) } : null,
+      next: more > 0 ? { more, percent: store.cartDeal.percent } : null,
+      total: formatMoney(total, store.currency, locale),
+    },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
 }
 
 /**
