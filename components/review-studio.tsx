@@ -106,6 +106,8 @@ export type StudioReview = {
   refunded: boolean;
   reply: string;
   unseen: boolean;
+  /** The buyer's photo, by its address; null when there is none. */
+  photo: string | null;
 };
 
 /** One review in the studio: what the buyer wrote, and what the creator may do about it. */
@@ -177,6 +179,23 @@ export function ReviewRow({ review }: { review: StudioReview }) {
       ) : (
         <p className="mt-3 text-sm italic text-ink-soft">Stars only, no words.</p>
       )}
+      {review.photo ? (
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <a href={review.photo} target="_blank" rel="noopener">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={review.photo} alt="The buyer's photo" className="h-24 w-24 rounded-xl object-cover ring-1 ring-line" loading="lazy" />
+          </a>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={busy !== null}
+            onClick={() => act("photo", { action: "photo" }, "Photo taken off the review.")}
+          >
+            <Icon name="trash" size={15} />
+            {busy === "photo" ? "Taking it off…" : "Take the photo off"}
+          </button>
+        </div>
+      ) : null}
       <p className="mt-3 break-all font-mono text-xs text-ink-mute">{`Order ${review.reference}`}</p>
 
       {review.reply && !replying ? (

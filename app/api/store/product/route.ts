@@ -193,7 +193,9 @@ export async function POST(request: NextRequest) {
           const pictures = await dropPage(removed.store.statsId, id).catch(() => [] as string[]);
           had.push(...pictures.map((pathname) => ({ pathname })));
         }
-        await dropReviews(removed.store.statsId, id).catch(() => {});
+        // And the photos buyers added to them (lib/reviews.ts).
+        const reviewPhotos = await dropReviews(removed.store.statsId, id).catch(() => [] as string[]);
+        had.push(...reviewPhotos.map((pathname) => ({ pathname })));
         if (course) await dropCourse(course).catch((error: unknown) => console.error("could not drop a removed course", error));
         for (const file of had) {
           // A lesson video the video service keeps is taken away there (lib/stream.ts).

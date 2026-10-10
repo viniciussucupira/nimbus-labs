@@ -36,7 +36,20 @@ export type Review = {
   hidden: boolean;
   refunded: boolean;
   reply: { text: string; at: number } | null;
+  /**
+   * A photo the buyer added (added 10 October 2026): what they made with it,
+   * how they use it. In the store's own picture folder, shown with the
+   * review's words and hidden with them; the creator may take it off.
+   */
+  photo: ReviewPhoto | null;
 };
+
+export type ReviewPhoto = { path: string; width: number; height: number };
+
+/** The most a review's photo may weigh: the buyer's browser shrinks it to fit. */
+export const MAX_REVIEW_PHOTO_BYTES = 400_000;
+/** And its long side, in pixels. */
+export const REVIEW_PHOTO_SIDE = 1200;
 
 /** The numbers a product's page and its card show, kept up to date on every change. */
 export type Summary = {

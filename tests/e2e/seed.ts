@@ -6,7 +6,7 @@
  */
 import { addProduct, addStoreLink, claimHandle, createStore, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setLinkImage, setProductLink, setReviewed, setSections, storeForEmail, setStripeAccount, setSubscription } from "@/lib/store";
 import { openSession } from "@/lib/auth";
-import { saveReview } from "@/lib/reviews";
+import { saveReview, setReviewPhoto } from "@/lib/reviews";
 import { refreshStoreQuotes } from "@/lib/store-quotes";
 import { writePage } from "@/lib/sales-page-store";
 import { parsePage } from "@/lib/sales-page";
@@ -63,6 +63,10 @@ async function main(): Promise<void> {
     if (saved.state !== "created") throw new Error(`review ${n} was refused: ${saved.state}`);
     reviews.push(saved.review.id);
   }
+  // The newest with a buyer's photo on it, as the review route puts one on.
+  // Only its record: there is no Blob here, so the picture itself is not served.
+  const photo = await setReviewPhoto(statsId, ids["Sunday Baking"], reviews[2], { path: `images/${"a".repeat(24)}/${"d".repeat(32)}.jpg`, width: 1200, height: 900 });
+  if (typeof photo === "string") throw new Error(`the review's photo was refused: ${photo}`);
   // As the review route notes a store's first review, so its pages read the numbers.
   await setReviewed(OWNER);
   // And keeps the newest of them for "What buyers say" on the store page, as the route does after each.

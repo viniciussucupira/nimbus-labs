@@ -20,7 +20,7 @@ export default function PrivacyPage() {
   // Named only while the files creators sell are kept there (lib/vault.ts).
   const cloudflare = isVaultConfigured();
   return (
-    <LegalPage title="Privacy Policy" lastUpdated="October 7, 2026">
+    <LegalPage title="Privacy Policy" lastUpdated="October 10, 2026">
       <p>
         Marktmorgen (“Marktmorgen,” “we,” “us,” or “our”) is operated by
         Solrenning, an independent software studio. This Privacy Policy
@@ -707,7 +707,11 @@ export default function PrivacyPage() {
         <p id="reviews">
           <strong className="text-black">Reviews.</strong> A buyer can review
           what they paid for. We check the order on the creator&apos;s own
-          Stripe account, and keep the stars, the words, the name the buyer
+          Stripe account, and keep the stars, the words, the photo if the
+          buyer adds one (made smaller on their device before it is sent, and
+          kept as a picture file on our storage provider until the review, the
+          photo or the product is deleted, or the creator takes the photo
+          off), the name the buyer
           chose to show (or &ldquo;Verified buyer&rdquo;), the order reference
           and the payment it came from, when it was written and changed,
           whether the creator hid it or answered it, and whether the payment

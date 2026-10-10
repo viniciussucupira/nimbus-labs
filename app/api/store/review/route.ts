@@ -4,9 +4,11 @@ import { refreshStoreQuotes } from "@/lib/store-quotes";
 import { ensureStatsId, normaliseHandle, setReviewed, storeForHandle, storeRef } from "@/lib/store";
 import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 import { type Door, doorFields, openDoor, readDoor } from "@/lib/review-proof";
-import { deleteReview, markOneRefunded, readRating, readReview, reviewId, saveReview } from "@/lib/reviews";
+import { MAX_REVIEW_PHOTO_BYTES, deleteReview, markOneRefunded, readRating, readReview, reviewId, saveReview, setReviewPhoto } from "@/lib/reviews";
+import { dropReviewPhoto, keepReviewPhoto } from "@/lib/review-photo";
 
-const MAX_BODY_BYTES = 6_000;
+/** The words, and a photo shrunk by the buyer's browser (lib/review-photo.ts) sent as text. */
+const MAX_BODY_BYTES = 6_000 + Math.ceil(MAX_REVIEW_PHOTO_BYTES * 1.6);
 /** Reviews sent from one connection to one store in an hour. */
 const IP_LIMIT = 20;
 /** Changes to reviews of one order in an hour. */
@@ -82,8 +84,12 @@ export async function POST(request: NextRequest) {
 
   try {
     if (action === "delete") {
+      const before = await readReview(statsId, productId, id);
       const done = await deleteReview(statsId, productId, id);
-      if (done === "deleted") after(() => refreshStoreQuotes(store));
+      if (done === "deleted") {
+        after(() => refreshStoreQuotes(store));
+        await dropReviewPhoto(before?.photo);
+      }
       return answer(done === "busy" ? "busy" : "deleted");
     }
     if (proof.refunded) {
@@ -97,6 +103,10 @@ export async function POST(request: NextRequest) {
     }
     const rating = readRating(read("rating"));
     if (rating === null) return answer("rating");
+    // A photo is checked and kept before the words are, so a photo that cannot be used changes nothing.
+    const sentPhoto = read("photo");
+    const photo = sentPhoto ? await keepReviewPhoto(storeRef(store), sentPhoto) : null;
+    if (photo === "photo") return answer("photo");
     const saved = await saveReview(statsId, {
       productId,
       email: proof.email,
@@ -106,6 +116,14 @@ export async function POST(request: NextRequest) {
       text: read("text"),
       name: read("name"),
     });
+    const written = saved.state === "created" || saved.state === "updated";
+    if (!written) await dropReviewPhoto(photo);
+    // The new photo goes on; one taken off, or replaced, is deleted after the write.
+    if (written && (photo || read("photo_remove") === "yes")) {
+      const changed = await setReviewPhoto(statsId, productId, id, photo);
+      if (typeof changed === "string") await dropReviewPhoto(photo);
+      else await dropReviewPhoto(changed.removed);
+    }
     // The store page reads ratings only once a store has any (lib/store.ts, reviewed).
     if ((saved.state === "created" || saved.state === "updated") && !store.reviewed) {
       await setReviewed(storeRef(store)).catch((error: unknown) => console.error("noting a store's first review failed", error));

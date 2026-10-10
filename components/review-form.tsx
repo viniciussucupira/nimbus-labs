@@ -3,6 +3,8 @@ import { MAX_REVIEW_NAME, MAX_REVIEW_TEXT, type Review } from "@/lib/review-summ
 import { LANGUAGES, type LanguageCode, parseLanguage } from "@/lib/store-language";
 import { wordsIn } from "@/lib/buyer-words";
 import { GIVING_WORDS } from "@/lib/buyer-words/giving";
+import { ReviewPhotoField } from "@/components/review-photo-field";
+import { imageUrl } from "@/lib/product-image";
 
 /** Notices that report something done, rather than something that went wrong. */
 const DONE = new Set(["saved", "updated", "deleted"]);
@@ -17,8 +19,8 @@ export const REVIEW_NOTICES: Record<string, { text: string; alert?: boolean }> =
 );
 
 /**
- * The form a buyer reviews one product with: stars, a few words, the name
- * to show. Plain HTML that works without JavaScript, posting to
+ * The form a buyer reviews one product with: stars, a few words, a photo if
+ * they like (components/review-photo-field.tsx), the name to show. Plain HTML that works without JavaScript, posting to
  * /api/store/review with whatever proves the order (lib/review-proof.ts) in
  * hidden fields; nothing sent here can say who the buyer is.
  *
@@ -125,6 +127,11 @@ export function ReviewForm({
             {g.upTo(MAX_REVIEW_TEXT.toLocaleString(LANGUAGES[code].locale))}
           </p>
         </div>
+        <ReviewPhotoField
+          id={`${base}-photo`}
+          existing={existing?.photo ? imageUrl(existing.photo) : null}
+          words={{ label: g.reviewPhoto, hint: g.reviewPhotoHint, remove: g.reviewPhotoRemove, yours: g.reviewPhotoYours, problem: g.reviewNotices.photo }}
+        />
         <div>
           <label htmlFor={`${base}-name`} className="st-label">
             {g.nameToShow}

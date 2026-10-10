@@ -401,6 +401,31 @@ try {
   const thanks = await words(page.locator("main"));
   is("and the page after paying hands each one over", [thanks.includes("You bought Weeknight Dinners, Pantry Checklist, and Sunday Baking"), await page.locator('p.st-label:text-is("Also yours")').count()], [true, 2]);
 
+  part("A photo on a review, made smaller on the buyer's device");
+  {
+    const form = page.locator(`#r-${ids["Sunday Baking"]}`);
+    // A large picture, as a phone takes one: drawn here, so it is a real PNG.
+    const drawn = await page.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 2400;
+      canvas.height = 1800;
+      const pen = canvas.getContext("2d");
+      for (let i = 0; i < 6000; i += 1) {
+        pen.fillStyle = `hsl(${(i * 7) % 360} 70% ${30 + (i % 40)}%)`;
+        pen.fillRect((i * 37) % 2400, (i * 91) % 1800, 24, 24);
+      }
+      return canvas.toDataURL("image/png").split(",")[1];
+    });
+    await form.locator('input[type="file"]').setInputFiles({ name: "loaf.png", mimeType: "image/png", buffer: Buffer.from(drawn, "base64") });
+    const preview = form.getByRole("img", { name: "Your photo" });
+    await preview.waitFor({ timeout: 15_000 });
+    const sent = await form.locator('input[name="photo"]').inputValue();
+    const side = await preview.evaluate((img) => Math.max(img.naturalWidth, img.naturalHeight));
+    is("it is shown, made 1,200 pixels at most and under 400 KB, ready to go with the form", [/^data:image\/(webp|jpeg);base64,/.test(sent), side, Buffer.from(sent.split(",")[1] ?? "", "base64").length <= 400_000], [true, 1200, true]);
+    await form.getByRole("button", { name: "Remove my photo" }).click();
+    is("and taken off again before it is sent", [await form.locator('input[name="photo"]').inputValue(), await preview.count()], ["", 0]);
+  }
+
   await keepSmall();
   part("A gift");
   const before = services.emails().length;
@@ -1642,6 +1667,22 @@ try {
     await audit.addCookies(await wide.cookies());
     for (const [name, path, width] of pages) is(name, await check(path, width), []);
     await audit.close();
+  }
+
+  await keepSmall();
+  part("A buyer's photo on a review, and taking it off");
+  {
+    const product = `${LOCAL}/@localshop/p/${ids["Sunday Baking"]}`;
+    await open(page, product);
+    const shown = page.locator("#reviews .rv-photo img");
+    is("the photo is shown with its review, named for whoever took it", [await shown.count(), await shown.first().getAttribute("alt")], [1, "Photo from Reader 3"]);
+    await open(studio, `${LOCAL}/studio/reviews?view=all`);
+    const row = studio.locator("li", { hasText: "My Sunday mornings smell like bread now." }).first();
+    is("the studio shows it too", await row.getByRole("img", { name: "The buyer's photo" }).count(), 1);
+    await row.getByRole("button", { name: "Take the photo off" }).click();
+    await studio.getByText("Photo taken off the review.").first().waitFor({ timeout: 15_000 });
+    await open(page, product);
+    is("taken off, the review stays without it", [await page.locator("#reviews .rv-photo").count(), await page.getByText("My Sunday mornings smell like bread now.").count() > 0], [0, true]);
   }
 
   await keepSmall();

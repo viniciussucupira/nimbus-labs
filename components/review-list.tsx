@@ -3,6 +3,8 @@ import { Stars } from "@/components/review-stars";
 import { type Review, type Summary, average, showsRating } from "@/lib/review-summary";
 import { speechFor } from "@/lib/buyer-words";
 import { DEFAULT_LANGUAGE, type LanguageCode } from "@/lib/store-language";
+import { imageUrl } from "@/lib/product-image";
+import { GIVING_WORDS } from "@/lib/buyer-words/giving";
 
 /**
  * The store's words for its reviews, in its language (lib/store-language.ts).
@@ -88,6 +90,21 @@ export function ReviewItem({
         {review.editedAt ? w.edited(date(review.editedAt)) : ""}
       </p>
       {review.text ? <p className="mt-3 whitespace-pre-line leading-relaxed [overflow-wrap:anywhere]">{review.text}</p> : null}
+      {/* The buyer's photo (lib/review-photo.ts), small here and whole when opened. */}
+      {review.photo ? (
+        <a href={imageUrl(review.photo)} target="_blank" rel="noopener" className="rv-photo mt-3 inline-block">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl(review.photo)}
+            alt={GIVING_WORDS[lang].reviewPhotoAlt(review.name || w.verifiedBuyer)}
+            width={review.photo.width}
+            height={review.photo.height}
+            loading="lazy"
+            decoding="async"
+            className="h-28 w-28 overflow-hidden rounded-xl bg-[var(--st-line)] object-cover text-[0px] sm:h-32 sm:w-32"
+          />
+        </a>
+      ) : null}
       {review.reply ? (
         <div className="rv-reply">
           <p className="text-sm font-bold">{w.replyFrom(storeName)}</p>
