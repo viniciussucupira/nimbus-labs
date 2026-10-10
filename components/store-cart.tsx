@@ -143,7 +143,7 @@ export function CartButton({ handle, lang, notice }: { handle: string; lang: Lan
         {c.open(ids.length)}
       </button>
       {open ? (
-        <div ref={panel} tabIndex={-1} role="region" aria-label={c.title} className="st-card st-cart-panel p-5">
+        <div ref={panel} tabIndex={-1} role="region" aria-label={c.title} className="st-card st-cart-panel p-5 text-left">
           <div className="flex items-center justify-between gap-3">
             <p className="font-display text-lg font-semibold">{c.title}</p>
             <button type="button" className="st-footer-link text-sm font-semibold" onClick={() => setOpen(false)}>

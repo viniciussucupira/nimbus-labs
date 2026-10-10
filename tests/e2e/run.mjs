@@ -1719,6 +1719,7 @@ try {
     await panel.getByText("10% off for buying more").waitFor({ timeout: 15_000 });
     const shown = await words(panel);
     is("it lists them with their prices now, what the deal takes off, and the total", [shown.includes("Weeknight Dinners"), shown.includes("Pantry Checklist"), /10% off for buying more\s*−\$\d/.test(shown), /Total\s*\$\d/.test(shown)], [true, true, true, true]);
+    is("and it reads from the left, whatever the store's header is centered on", await panel.evaluate((el) => getComputedStyle(el).textAlign), "left");
     if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "cart.png") });
     await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), panel.locator("form[data-checkout] button[type=submit]").click()]);
     const paid = services.checkouts().at(-1);
