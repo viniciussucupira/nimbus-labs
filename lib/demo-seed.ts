@@ -32,6 +32,8 @@
  *   nl:house:seed:lock   held while it runs, so two requests never both do
  */
 import { createHash } from "node:crypto";
+import { readNote } from "@/lib/thanks-note";
+import { readThanksNote, writeThanksNote } from "@/lib/thanks-note-store";
 import { del as blobDel, put as blobPut } from "@/lib/blob";
 import { imageSize } from "@/lib/image-size";
 import { readListings, productIds } from "@/lib/catalog";
@@ -63,6 +65,7 @@ import {
   setProductFile,
   setAnswers,
   setCartDeal,
+  setProductNote,
   setFaq,
   setTips,
   setProductImage,
@@ -160,6 +163,18 @@ Choose one week, or five weeks at a lower price per week. Each is a PDF you down
     /** The same photograph at the width of the smaller copy made for phones (SMALL_LONG_SIDE). */
     small: `fm=webp&fit=crop&w=${SMALL_LONG_SIDE}&h=450&q=70`,
     alt: "A table seen from above, covered with prepared dishes and vegetables",
+  },
+  /**
+   * Jenny's note after paying (lib/thanks-note.ts), so a visitor who tries
+   * the test checkout sees what a buyer of a creator's store is told: what to
+   * do first, and one button. No video: there is no video of Jenny to show.
+   */
+  note: {
+    heading: "",
+    body: "Thank you for trying the demo. Start with week one: print the plan and the grocery list, and cook the first dinner tonight.\n\nEverything on this page, this note included, is made in the Marktmorgen studio without code.",
+    video: "",
+    label: "Open a store like this one",
+    url: `${SITE_URL}/`,
   },
   options: [
     { label: "1 week", price: "27", file: "weekly-meal-planner.pdf" },
@@ -648,6 +663,28 @@ async function ensureAbout(store: Store, product: Listing, pending: string[], te
   return marked.store;
 }
 
+/** Jenny's note after paying, saved the way the studio's note route saves one. */
+async function ensureNote(store: Store, product: Listing, pending: string[]): Promise<Store> {
+  if (!store.statsId) {
+    pending.push(refused("note", "no_stats"));
+    return store;
+  }
+  const want = readNote(DEMO_PRODUCT.note);
+  if (typeof want === "string") {
+    pending.push(refused("note", want));
+    return store;
+  }
+  const have = product.note ? await readThanksNote(store.statsId, product.id) : null;
+  if (have && JSON.stringify(have) === JSON.stringify(want)) return store;
+  await writeThanksNote(store.statsId, product.id, want);
+  const marked = await setProductNote(REF, product.id, true);
+  if (!marked.ok) {
+    pending.push(refused("note", marked.reason));
+    return store;
+  }
+  return marked.store;
+}
+
 /** The product's sales page, saved the way the studio's page route saves one. */
 async function ensurePage(store: Store, product: Listing, pending: string[]): Promise<Store> {
   if (!store.statsId) {
@@ -752,6 +789,7 @@ async function build(before: Mark | null, deps: SeedDeps): Promise<Mark> {
   mark.image = picture.source;
   store = await ensureAbout(store, made.product, pending);
   store = await ensurePage(store, made.product, pending);
+  store = await ensureNote(store, made.product, pending);
   store = await ensurePost(store, made.product, pending);
   for (const extra of DEMO_EXTRAS) store = await ensureExtra(store, extra, mark, deps, pending);
 
