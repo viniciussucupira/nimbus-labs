@@ -25,6 +25,7 @@ import { priceBounds, readMoney } from "@/lib/money";
 import { MAX_ABOUT_LENGTH, cleanAbout, dropAbout, readAbout, writeAbout } from "@/lib/product-about";
 import { jsonAccess } from "@/lib/studio-route";
 import { dropPage } from "@/lib/sales-page-store";
+import { dropThanksNote } from "@/lib/thanks-note-store";
 import { dropReviews } from "@/lib/reviews";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { dropCourse, filesInCourse, readCourse } from "@/lib/course";
@@ -232,6 +233,7 @@ export async function POST(request: NextRequest) {
         const course = going.course ? await readCourse(going.course.id).catch(() => null) : null;
         if (course) had.push(...filesInCourse(course));
         if (going.about) await dropAbout(removed.store.statsId, id).catch(() => {});
+        if (going.note) await dropThanksNote(removed.store.statsId, id).catch(() => {});
         // Its page of blocks, and the reviews of a product nobody can buy any more.
         if (going.page) {
           // And the pictures on that page (lib/sales-page-store.ts).

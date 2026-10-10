@@ -35,6 +35,9 @@
  * the same reference the thanks page and the list of purchases use.
  */
 import { recordPackage } from "@/lib/call-packages";
+import { type ThanksNote } from "@/lib/thanks-note";
+import { readThanksNote } from "@/lib/thanks-note-store";
+import { videoAddress } from "@/lib/sales-page";
 import { deliverGift } from "@/lib/gifts";
 import { resendGroupReceipt, settleGroup } from "@/lib/group-buy";
 import { ordersLinkFor } from "@/lib/buyer-orders";
@@ -165,6 +168,8 @@ export function confirmationFor(
   keys: KeyLine[] = [],
   /** The product and what was added, read by the caller; the store record's own when not given. */
   listings: Listing[] = recordListings(store),
+  /** The creator's own note after paying, read by the caller (lib/thanks-note.ts). */
+  note: ThanksNote | null = null,
 ): Confirmation | null {
   const id = typeof session.id === "string" ? session.id : "";
   if (!SESSION_ID_PATTERN.test(id)) return null;
@@ -270,6 +275,14 @@ export function confirmationFor(
     );
   }
 
+  // The creator's own note after paying, as the thank-you page shows it: words, video, button.
+  if (note) {
+    lines.push("", note.heading || words.noteFrom(name));
+    if (note.body) lines.push(note.body);
+    if (note.video) lines.push(videoAddress(note.video));
+    if (note.button) lines.push(`${note.button.label}: ${note.button.url}`);
+  }
+
   // Where the creator lets buyers take their own affiliate link
   // (lib/affiliates.ts, joinAsBuyer): the order is the proof, so the email
   // that carries it can offer the link.
@@ -284,6 +297,12 @@ export function confirmationFor(
     subject: words.confirmSubject(name, product.title).slice(0, 200),
     text: lines.join("\n"),
   };
+}
+
+/** The note after paying of the product an order is for, when it has one (lib/thanks-note.ts). */
+async function noteFor(store: Store, session: SessionRecord, listings: Listing[]): Promise<ThanksNote | null> {
+  const product = listings.find((p) => p.id === session.metadata?.product);
+  return product?.note ? readThanksNote(store.statsId, product.id).catch(() => null) : null;
 }
 
 /** A membership's introductory price as its checkout carried it (lib/store-checkout.ts), or null. */
@@ -379,7 +398,7 @@ export async function confirmPurchase(
     return bought ? "sent" : "skip";
   }
   if (!confirmationFor(store, session, Date.now() / 1000, [], listings)) return "skip";
-  const letter = confirmationFor(store, session, Date.now() / 1000, await keysFor(store, session, listings), listings);
+  const letter = confirmationFor(store, session, Date.now() / 1000, await keysFor(store, session, listings), listings, await noteFor(store, session, listings));
   if (!letter) return "skip";
 
   const [claimed] = await redisPipeline([["SET", key, "sending", "NX", "EX", SENDING_MARK_SECONDS]]);
@@ -665,7 +684,7 @@ export async function resendPurchase(store: Store, sessionId: string): Promise<R
   }
   // Read by id, so a sale of any product of a store of any size is found.
   const listings = await listingsNamed(store, session.metadata);
-  const letter = confirmationFor(store, session, created, await keysFor(store, session, listings), listings);
+  const letter = confirmationFor(store, session, created, await keysFor(store, session, listings), listings, await noteFor(store, session, listings));
   if (!letter) return "unknown";
   const sent = await sendEmail({
     from: fromStore(store),

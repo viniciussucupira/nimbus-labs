@@ -1,5 +1,7 @@
 import { recordPackage } from "@/lib/call-packages";
 import { readGift } from "@/lib/gifts";
+import { ThanksNoteView } from "@/components/thanks-note-view";
+import { readThanksNote } from "@/lib/thanks-note-store";
 import { soonOne } from "@/lib/preorders";
 import { preorderWords } from "@/lib/buyer-words/preorder";
 import { groupLink, readGroup } from "@/lib/group-buy";
@@ -554,6 +556,8 @@ export default async function ThanksPage({ params, searchParams }: Params) {
 
   // A membership that has ended hands nothing over, here or anywhere else.
   const ended = order.state === "paid" && order.membership === "ended";
+  // The creator's own note after paying, read only for a product that has one (lib/thanks-note.ts).
+  const thanksNote = order.state === "paid" && order.product.note ? await readThanksNote(store.statsId, order.product.id).catch(() => null) : null;
   // A membership's introductory price, as its checkout carried it (lib/intro-price.ts).
   const introPaid = order.state === "paid" && order.product.recurring ? introOf((order.record.metadata ?? {}) as Record<string, string>) : null;
 
@@ -1130,6 +1134,9 @@ export default async function ThanksPage({ params, searchParams }: Params) {
             />
           </div>
         </div>
+
+        {/* The creator's own note after paying (lib/thanks-note.ts). */}
+        {thanksNote ? <ThanksNoteView note={thanksNote} heading={t.noteFrom(store.name)} lang={store.language} /> : null}
 
         {toReview.length > 0 && sessionId ? (
           <section id="review" aria-labelledby="review-title" className="st-card mt-6 scroll-mt-6 p-7 sm:p-10">

@@ -120,6 +120,8 @@ const en = {
   priceEvery: (price: string, every: string) => `${price} ${every}`,
   priceToday: (price: string) => `${price} today`,
   sentenceEnd: ".",
+  /** The heading of the creator's own note after paying, when they gave it none (lib/thanks-note.ts). */
+  noteFrom: (name: string) => `A note from ${name}`,
   trialNote: (price: string, withTax: boolean, days: number, date: string) =>
     `Your first payment of ${price}${withTax ? " plus any sales tax" : ""} is taken when the ${days}-day trial ends, on ${date}, from the card you gave. Cancel before then and you are not charged at all.`,
   planNote: (payments: number, isWeekly: boolean, store: string) =>
@@ -319,6 +321,7 @@ const es: ThanksWords = {
   priceEvery: (price, every) => `${price} ${every}`,
   priceToday: (price) => `${price} hoy`,
   sentenceEnd: ".",
+  noteFrom: (name) => `Una nota de ${name}`,
   trialNote: (price, withTax, days, date) =>
     `Tu primer pago de ${price}${withTax ? " más los impuestos que correspondan" : ""} se cobra al terminar la prueba de ${days} días, el ${date}, en la tarjeta que indicaste. Cancela antes y no se te cobra nada.`,
   planNote: (payments, isWeekly, store) =>
@@ -510,6 +513,7 @@ const fr: ThanksWords = {
   priceEvery: (price, every) => `${price} ${every}`,
   priceToday: (price) => `${price} aujourd'hui`,
   sentenceEnd: ".",
+  noteFrom: (name) => `Un mot de ${name}`,
   trialNote: (price, withTax, days, date) =>
     `Votre premier paiement de ${price}${withTax ? " plus les taxes éventuelles" : ""} est prélevé à la fin de l'essai de ${days}${S}jours, le ${date}, sur la carte indiquée. Annulez avant et rien ne vous est débité.`,
   planNote: (payments, isWeekly, store) =>
@@ -704,6 +708,7 @@ const de: ThanksWords = {
   priceEvery: (price, every) => `${price} ${every}`,
   priceToday: (price) => `${price} heute`,
   sentenceEnd: ".",
+  noteFrom: (name) => `Eine Nachricht von ${name}`,
   trialNote: (price, withTax, days, date) =>
     `Ihre erste Zahlung von ${price}${withTax ? " zuzüglich etwaiger Steuern" : ""} wird am Ende der ${days}-tägigen Testphase am ${date} von der angegebenen Karte abgebucht. Kündigen Sie vorher, wird Ihnen gar nichts berechnet.`,
   planNote: (payments, isWeekly, store) =>
@@ -897,6 +902,7 @@ const it: ThanksWords = {
   priceEvery: (price, every) => `${price} ${every}`,
   priceToday: (price) => `${price} oggi`,
   sentenceEnd: ".",
+  noteFrom: (name) => `Un messaggio da ${name}`,
   trialNote: (price, withTax, days, date) =>
     `Il tuo primo pagamento di ${price}${withTax ? " più le eventuali imposte" : ""} viene addebitato alla fine della prova di ${days} giorni, il ${date}, sulla carta che hai indicato. Annulla prima e non ti viene addebitato nulla.`,
   planNote: (payments, isWeekly, store) =>
@@ -1090,6 +1096,7 @@ const nl: ThanksWords = {
   priceEvery: (price, every) => `${price} ${every}`,
   priceToday: (price) => `${price} vandaag`,
   sentenceEnd: ".",
+  noteFrom: (name) => `Een bericht van ${name}`,
   trialNote: (price, withTax, days, date) =>
     `Je eerste betaling van ${price}${withTax ? " plus eventuele btw" : ""} wordt afgeschreven als de proefperiode van ${days} dagen eindigt, op ${date}, van de kaart die je opgaf. Zeg je vóór die tijd op, dan betaal je helemaal niets.`,
   planNote: (payments, isWeekly, store) =>
@@ -1283,6 +1290,7 @@ const pt: ThanksWords = {
   priceEvery: (price, every) => `${price} ${every}`,
   priceToday: (price) => `${price} hoje`,
   sentenceEnd: ".",
+  noteFrom: (name) => `Uma nota de ${name}`,
   trialNote: (price, withTax, days, date) =>
     `O seu primeiro pagamento de ${price}${withTax ? " mais os impostos aplicáveis" : ""} é cobrado quando terminar o período experimental de ${days} dias, a ${date}, no cartão que indicou. Cancele antes e não lhe é cobrado nada.`,
   planNote: (payments, isWeekly, store) =>

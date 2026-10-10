@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ThanksNoteEditor } from "@/components/thanks-note-editor";
+import { readThanksNote } from "@/lib/thanks-note-store";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { imageFolder, isFree } from "@/lib/store";
@@ -175,6 +177,7 @@ export default async function StudioPagesPage({ searchParams }: Params) {
               </ul>
             </nav>
 
+            <div className="min-w-0">
             <AiOn value={isAiConfigured() ? { on: true, left: await aiLeft(store).catch(() => 0) } : { on: false, left: 0 }}>
             <PageEditor
               // One editor per product: a save keeps the editor as it is, with the
@@ -223,6 +226,17 @@ export default async function StudioPagesPage({ searchParams }: Params) {
                 .catch(() => null)}
             />
             </AiOn>
+            {/* What a buyer reads after paying (lib/thanks-note.ts). Something free has its own page after a sign-up. */}
+            {!isFree(selected) ? (
+              <ThanksNoteEditor
+                key={`note-${selected.id}`}
+                productId={selected.id}
+                productTitle={selected.title}
+                storeName={store.name}
+                initial={selected.note ? await readThanksNote(store.statsId, selected.id).catch(() => null) : null}
+              />
+            ) : null}
+            </div>
           </div>
         )}
       </main>

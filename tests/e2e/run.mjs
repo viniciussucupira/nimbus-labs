@@ -1977,6 +1977,49 @@ try {
   }
 
   await keepSmall();
+  part("A note from the creator after paying");
+  {
+    const product = ids["Weeknight Dinners"];
+    await open(studio, `${LOCAL}/studio/pages?product=${product}`);
+    const card = studio.locator("#after-paying");
+    await card.getByLabel("Your note").fill("Thank you! Start with the first dinner tonight.\n\n- Read the shopping list\n- Come and say hello");
+    await card.getByLabel("Video (optional)").fill("https://example.com/not-a-video.mp4");
+    await card.getByRole("button", { name: "Save the note" }).click();
+    await card.getByText("That video address is not one we can play.", { exact: false }).waitFor({ timeout: 30_000 });
+    is("a video that cannot be played is said, and nothing saved", await card.locator(".tag-live").count(), 0);
+    await card.getByLabel("Video (optional)").fill("https://youtu.be/dQw4w9WgXcQ");
+    await card.getByLabel("Button words (optional)").fill("Join the group");
+    await card.getByLabel("Where the button goes").fill("https://discord.gg/weeknight");
+    await card.getByRole("button", { name: "Save the note" }).click();
+    await card.locator(".tag-live").waitFor({ timeout: 30_000 });
+    is("saved, and on", await words(card.locator(".tag-live")), "On");
+
+    await open(page, `${LOCAL}/@localshop/p/${product}`);
+    await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), page.locator("#buy form[data-checkout] button[type=submit]").first().click()]);
+    const note = page.locator("section[aria-labelledby=note-title]");
+    await note.waitFor({ timeout: 30_000 });
+    is("after paying, the buyer reads it under what they bought, in the store's words", [
+      /^A note from \S/.test(await words(note.locator("#note-title"))),
+      (await words(note)).includes("Start with the first dinner tonight."),
+      await note.locator("li").count(),
+      await note.getByRole("button", { name: /Play/ }).count() > 0,
+      await note.getByRole("link", { name: "Join the group" }).getAttribute("href"),
+      await note.getByRole("link", { name: "Join the group" }).getAttribute("target"),
+      (await words(note)).includes("discord.gg"),
+    ], [true, true, 2, true, "https://discord.gg/weeknight", "_blank", true]);
+    let mail = null;
+    for (let i = 0; i < 60 && !mail; i += 1) {
+      mail = services.emails().find((email) => String(email.text ?? "").includes("Start with the first dinner tonight.")) ?? null;
+      if (!mail) await new Promise((wait) => setTimeout(wait, 500));
+    }
+    is("and in the confirmation email, with the video and the button", [Boolean(mail), String(mail?.text ?? "").includes("Join the group: https://discord.gg/weeknight"), String(mail?.text ?? "").includes("youtube.com/watch?v=dQw4w9WgXcQ")], [true, true, true]);
+    if (process.env.E2E_SHOTS) await note.screenshot({ path: join(process.env.E2E_SHOTS, "thanks-note.png") });
+    await open(studio, `${LOCAL}/studio/pages?product=${product}`);
+    await studio.locator("#after-paying").getByRole("button", { name: "Remove" }).click();
+    await studio.locator("#after-paying").getByText("None", { exact: true }).waitFor({ timeout: 30_000 });
+  }
+
+  await keepSmall();
   part("A membership's first months for less");
   {
     await open(studio, `${LOCAL}/studio`);
