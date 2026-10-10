@@ -95,6 +95,8 @@ export async function startServices(port) {
               )
           : system.startsWith("You draft the questions and answers on a creator's store page")
             ? JSON.stringify({ items: [{ q: "How do the files arrive?", a: "As a download right after paying, and by email." }, { q: "How do I pay?", a: "With a card on a secure payment page." }] })
+          : system.startsWith("You answer a creator's question about using Marktmorgen")
+            ? JSON.stringify({ answer: "Up to 5 GB, in the formats the help center lists.", used: [1] })
           : system.startsWith("You draft the first version of a creator's store")
             ? JSON.stringify({ bios: ["Weeknight dinners for busy parents.", "Cook once, eat all week."], products: [{ title: "Sunday Meal Planner", summary: "A week of dinners planned on one page.", kind: "download", price: "12" }, { title: "Monthly Menu Club", summary: "A new menu every month.", kind: "membership", price: "7" }], faq: [{ q: "How do I get the planner?", a: "As a download right after paying." }] })
           : system.startsWith("You write the short introduction at the top of a creator's media kit")

@@ -405,7 +405,7 @@ async function main(): Promise<void> {
   is("the Terms give each plan's visits and the price, from where the bill reads them", [/countWords\(VISITS_INCLUDED\.creator\)/.test(terms), /countWords\(VISITS_INCLUDED\.pro\)/.test(terms), /countWords\(VISITS_INCLUDED\.scale\)/.test(terms), /centsWords\(VISIT_CENTS_PER_THOUSAND_OVER\)/.test(terms)], [true, true, true, true]);
   is("what a visit is, and who is never counted", [/one person opening your store on one day/.test(terms), /never counted/.test(terms)], [true, true]);
   is("and what happens with no paid plan", [/countWords\(TRIAL_VISITS\)/.test(terms), /countWords\(SETUP_VISITS\)/.test(terms), /rest/.test(terms)], [true, true, true]);
-  const help = read("app/help/page.tsx");
+  const help = read("lib/help-content.ts");
   const price = centsWords(VISIT_CENTS_PER_THOUSAND_OVER);
   is("the help pages give the same figures", [help.includes(`${countWords(VISITS_INCLUDED.creator)} visits a month`), help.includes(`${countWords(VISITS_INCLUDED.pro)}`), help.includes(`${countWords(VISITS_INCLUDED.scale)}`), help.includes(`${price} for each thousand`), help.includes(`${countWords(SETUP_VISITS)} a month`)], [true, true, true, true, true]);
   const home = read("components/home-parts.tsx");

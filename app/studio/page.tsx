@@ -84,6 +84,7 @@ import { tipsOpen } from "@/lib/store-tip-checkout";
 import { TipsEditor } from "@/components/tips-editor";
 import { KitEditor } from "@/components/kit-editor";
 import { StoreSetupAi } from "@/components/store-setup-ai";
+import { StudioHelp } from "@/components/studio-help";
 import { joinOpen } from "@/lib/store-join";
 import { contactOpen } from "@/lib/store-contact";
 import { visibleCount } from "@/lib/catalog";
@@ -871,6 +872,8 @@ export default async function StudioPage({
               </div>
             ) : null}
             {role === "owner" ? <StudioStart steps={startSteps} /> : null}
+            {/* "How do I…?": answered from the help center's own answers (lib/help-ask.ts). */}
+            {ai.on ? <StudioHelp left={ai.left} /> : null}
             {/* A store with nothing on it yet: its first draft, written with AI from a few sentences (lib/ai.ts, writeStoreSetup). */}
             {ai.on && may("page") && may("products") && productCount(store) === 0 ? (
               <StoreSetupAi currency={store.currency} left={ai.left} hasFaq={store.faq.length > 0} />

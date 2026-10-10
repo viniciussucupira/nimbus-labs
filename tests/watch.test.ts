@@ -349,7 +349,7 @@ async function main(): Promise<void> {
   const studio = read("app/studio/page.tsx");
   is("the studio shows the hours, the price and what it has come to", [/VIDEO_HOURS_INCLUDED/.test(studio), /centsWords\(VIDEO_CENTS_PER_HOUR_OVER\)/.test(studio), /videoOwedCents\(watched\)/.test(studio)], [true, true, true]);
   is("the price list on the home page has it beside the plans", /VIDEO_HOURS_INCLUDED[\s\S]{0,200}VIDEO_CENTS_PER_HOUR_OVER/.test(read("components/home-parts.tsx")), true);
-  const help = read("app/help/page.tsx");
+  const help = read("lib/help-content.ts");
   const features = read("lib/feature-pages.ts");
   is("the help pages give the same figures", [help.includes(`past ${hours} in a month is ${price} for each hour`), help.includes(`covered for ${hours} watched a month`)], [true, true]);
   is("so does the page about courses", [features.includes(`covered for ${hours} watched a month across your store`), features.includes(`it is ${price} for each hour watched`)], [true, true]);

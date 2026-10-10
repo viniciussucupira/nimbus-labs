@@ -30,6 +30,9 @@ export const AI_MONTHLY = { trial: 20, creator: 100, pro: 400, scale: 1_000 } as
 /** And in any one minute, so a stuck button cannot spend the month. */
 export const AI_PER_MINUTE = 6;
 
+/** The most a creator types into the studio's help box (lib/help-ask.ts). */
+export const MAX_HELP_QUESTION = 400;
+
 /** The most a creator types into the box that tells it what to write. */
 export const MAX_AI_NOTES = 1_500;
 

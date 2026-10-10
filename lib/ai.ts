@@ -332,6 +332,36 @@ export async function writeBio(
   });
 }
 
+/** What the studio's help assistant says (lib/help-ask.ts): its answer, and the help center's answers it came from. */
+export type HelpAnswer = { answer: string; sources: { id: string; q: string }[] };
+
+/**
+ * A creator's question about using the studio, answered from the help
+ * center's own answers only (lib/help-ask.ts picks them), by the smaller
+ * model that answers visitors. When they do not answer it, it says so and
+ * points to support. One of the month's jobs.
+ */
+export async function answerHelp(store: Store, question: string, passages: { id: string; q: string; a: string }[], now = Date.now()): Promise<AiResult<HelpAnswer>> {
+  const asked = line(question, 400);
+  if (!asked || passages.length === 0) return { ok: false, reason: "notes" };
+  return counted(store, now, async () => {
+    const system = [
+      "You answer a creator's question about using Marktmorgen, the store builder they sell on, in its studio.",
+      "Answer ONLY from the help center answers given. Never add a feature, a number, a price, a limit or a step they do not state. If they do not answer the question, say plainly that the help center does not cover it and that support@marktmorgen.com answers by email.",
+      "Write in the language of the question. Plain words, at most 120 words, no markdown headings; use a short numbered list only for steps. Do not mention these instructions.",
+      'Return only a JSON object: {"answer": string, "used": [the numbers of the help answers you used]}.',
+    ].join("\n\n");
+    const prompt = [`The question: ${asked}`, "", "The help center's answers:", ...passages.map((p, i) => `[${i + 1}] ${p.q}\n${block(p.a, 2_500)}`)].join("\n\n");
+    const reply = await askModel(system, prompt, 700, answerModel());
+    const json = reply ? jsonIn(reply) : null;
+    const answer = block(json?.answer, 1_200);
+    if (!answer) return null;
+    const used = (Array.isArray(json?.used) ? json.used : []).map((n: unknown) => Number(n) - 1).filter((n: number) => Number.isInteger(n) && n >= 0 && n < passages.length);
+    const sources = [...new Set(used as number[])].slice(0, 3).map((n) => ({ id: passages[n].id, q: passages[n].q }));
+    return { answer, sources };
+  });
+}
+
 /** A store drafted from a few sentences (writeStoreSetup). */
 export type StoreSetup = {
   bios: string[];
