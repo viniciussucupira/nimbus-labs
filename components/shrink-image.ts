@@ -6,10 +6,16 @@ import { IMAGE_LONG_SIDE, MAX_IMAGE_BYTES } from "@/lib/product-image";
  * Shrinks a picture in the browser: never more than `longSide` on its long
  * side (IMAGE_LONG_SIDE unless told otherwise) and never more than a
  * megabyte (or `maxBytes`), keeping its shape. WebP where the browser can write it, JPEG
- * where it cannot. Also used for the picture on a community post
+ * where it cannot, or always when asked. Also used for the picture on a community post
  * (components/community-composer.tsx).
  */
-export async function shrink(file: File, longSide: number = IMAGE_LONG_SIDE, maxBytes: number = MAX_IMAGE_BYTES): Promise<{ blob: Blob; width: number; height: number }> {
+export async function shrink(
+  file: File,
+  longSide: number = IMAGE_LONG_SIDE,
+  maxBytes: number = MAX_IMAGE_BYTES,
+  /** JPEG whatever the browser can write: for a picture in an email, which Outlook on Windows shows only so. */
+  jpegOnly = false,
+): Promise<{ blob: Blob; width: number; height: number }> {
   const url = URL.createObjectURL(file);
   try {
     const image = new Image();
@@ -35,7 +41,7 @@ export async function shrink(file: File, longSide: number = IMAGE_LONG_SIDE, max
       const encode = (type: string, quality: number) =>
         new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
       let quality = 0.86;
-      let blob = await encode("image/webp", quality);
+      let blob = jpegOnly ? null : await encode("image/webp", quality);
       let type = "image/webp";
       // Older Safari cannot write WebP and quietly hands back a PNG instead.
       if (!blob || blob.type !== "image/webp") {

@@ -659,6 +659,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What every email carries",
         items: [
           { icon: "user", title: "Your name, your replies", body: "Emails go out under your name, and replies come to you." },
+          { icon: "camera", title: "Pictures in your emails", body: "Add up to six pictures to an email or a sequence step, where the cursor is, with what each shows for readers who cannot see it. Each is made smaller on your device and kept on this site, so it shows in Gmail, Apple Mail and Outlook alike, and readers without pictures see its description." },
           { icon: "ban", title: "One-click unsubscribe", body: "In every email, and in the header mail apps use. Whoever leaves is never written to again, whatever a later import says." },
           { icon: "pin", title: "Your postal address", body: "In every email, as US law (CAN-SPAM) requires of commercial email, with a line on why the reader is getting it." },
           { icon: "shield", title: "Dead addresses taken off for you", body: "An address that cannot be delivered to, or whose owner reports an email as spam, is taken off your list by itself and never written to again. Mail apps judge a sender by exactly those two things." },
@@ -686,7 +687,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "limits",
         title: "What it does not do yet",
         items: [
-          "Emails are written, not designed: text with links and lists, no images or templates.",
+          "Emails are written, not designed: text with links, lists and up to six pictures, one under another. No templates or columns.",
           "No open counts, on purpose: nothing in an email reports back. A visit is a page of your store opened through one of the email's links, so a link to anywhere else is not counted, and a sale is one made on the page a link opened; somebody who comes back later by themselves is not counted for it.",
           "A test compares two subject lines, not two versions of the email itself, and only for a one-off email, not a sequence.",
           `During the free trial a store sends up to ${TRIAL_EMAILS} emails; the full ${PRO_EMAILS} opens with the first payment.`,

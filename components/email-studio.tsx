@@ -4,9 +4,10 @@ import { AiAssist, AiOn } from "@/components/ai-assist";
 import { EMAIL_GOALS, type EmailGoal } from "@/lib/ai-rules";
 import { PRO_MONTHLY_EMAILS, TRIAL_MONTHLY_EMAILS } from "@/lib/plan";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/components/toast";
+import { MailPictureButton } from "@/components/mail-picture-button";
 import type { Flow } from "@/lib/flows";
 import type { MailSettings } from "@/lib/store";
 import { StoreField } from "@/components/studio-store-pin";
@@ -391,6 +392,8 @@ function Compose(props: {
   const router = useRouter();
   const [subject, setSubject] = useState(props.draft?.subject ?? "");
   const [body, setBody] = useState(props.draft?.body ?? "");
+  // The email's box, so a picture goes where the cursor is.
+  const bodyBox = useRef<HTMLTextAreaElement>(null);
   const [productId, setProductId] = useState(props.draft?.productId ?? "");
   const [notProductId, setNotProductId] = useState("");
   // Everybody, only people who have bought something, or only those who have not yet.
@@ -571,10 +574,11 @@ function Compose(props: {
         ) : null}
         <label className="block">
           <span className="field-label">Email</span>
-          <textarea className="field mt-2 min-h-56" rows={12} maxLength={20000} value={body} onChange={(e) => setBody(e.target.value)} />
+          <textarea ref={bodyBox} className="field mt-2 min-h-56" rows={12} maxLength={20000} value={body} onChange={(e) => setBody(e.target.value)} />
         </label>
+        <MailPictureButton body={body} onChange={setBody} box={() => bodyBox.current} />
         <p className="text-sm text-ink-soft">
-          Blank lines make paragraphs, lines starting with &quot;- &quot; make a list, and web addresses become links. Why they are getting it, the unsubscribe link and your postal address are added at the bottom.
+          Blank lines make paragraphs, lines starting with &quot;- &quot; make a list, web addresses become links, and a picture you add shows where its line is. Why they are getting it, the unsubscribe link and your postal address are added at the bottom.
         </p>
         <label className="block">
           <span className="field-label">Send to</span>
@@ -1026,6 +1030,8 @@ function Flows({
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<FlowDraft | null>(null);
+  // Each step's box, so a picture goes where the cursor is.
+  const stepBoxes = useRef<(HTMLTextAreaElement | null)[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1223,8 +1229,20 @@ function Flows({
                 </label>
                 <label className="mt-3 block">
                   <span className="text-sm text-ink-soft">Email</span>
-                  <textarea className="field mt-1" rows={6} maxLength={20000} value={s.body} onChange={(e) => setStep(i, { body: e.target.value })} />
+                  <textarea
+                    ref={(el) => {
+                      stepBoxes.current[i] = el;
+                    }}
+                    className="field mt-1"
+                    rows={6}
+                    maxLength={20000}
+                    value={s.body}
+                    onChange={(e) => setStep(i, { body: e.target.value })}
+                  />
                 </label>
+                <div className="mt-2">
+                  <MailPictureButton body={s.body} onChange={(next) => setStep(i, { body: next })} box={() => stepBoxes.current[i] ?? null} />
+                </div>
                 {draft.steps.length > 1 ? (
                   <button
                     type="button"
