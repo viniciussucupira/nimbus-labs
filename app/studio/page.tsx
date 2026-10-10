@@ -79,6 +79,10 @@ import { JoinBoxEditor } from "@/components/join-box-editor";
 import { ContactBoxEditor } from "@/components/contact-box-editor";
 import { FaqEditor } from "@/components/faq-editor";
 import { StoreCoach } from "@/components/store-coach";
+import { PageOrderEditor } from "@/components/page-order-editor";
+import { joinOpen } from "@/lib/store-join";
+import { contactOpen } from "@/lib/store-contact";
+import { visibleCount } from "@/lib/catalog";
 import { storeChecks } from "@/lib/store-coach";
 import { isPaidUp } from "@/lib/billing";
 import { isSenderConfigured } from "@/lib/email";
@@ -994,6 +998,21 @@ export default async function StudioPage({
                   linkTitle={store.links.find((link) => !link.header)?.title ?? null}
                 />
               </div>
+            ) : null}
+
+            {may("page") ? (
+              <PageOrderEditor
+                order={store.order}
+                on={{
+                  products: visibleCount(store) > 0,
+                  quotes: store.quotes.length > 0,
+                  links: store.links.some((link) => !link.header),
+                  signup: joinOpen(store),
+                  faq: store.faq.length > 0,
+                  contact: contactOpen(store),
+                  community: store.community?.on === true,
+                }}
+              />
             ) : null}
 
             {may("products") ? (

@@ -592,8 +592,11 @@ try {
   const products = fairCard.getByRole("group", { name: "Which products" });
   await products.getByLabel("Only the ones I pick").check();
   await products.getByLabel("Meal Planner").check();
-  await fairCard.getByRole("button", { name: "Save" }).click();
-  await studio.getByRole("status").getByText("Saved. Fair prices are on.").last().waitFor({ timeout: 30_000 });
+  // Waited on by the answer itself: the same words from the save before may still be on screen.
+  await Promise.all([
+    studio.waitForResponse((r) => r.url().endsWith("/api/store/fair") && r.request().method() === "POST" && r.ok(), { timeout: 30_000 }),
+    fairCard.getByRole("button", { name: "Save" }).click(),
+  ]);
   {
     const { visit, there } = await asBuyerFrom("IN");
     is("a product not picked: a buyer in India sees the normal price", await words(there.locator("main .st-price").first()), "$9");
@@ -602,8 +605,10 @@ try {
   await studio.reload();
   is("the choice is kept", [await products.getByLabel("Only the ones I pick").isChecked(), await products.getByLabel("Meal Planner").isChecked(), await products.getByLabel("Pantry Checklist").isChecked()], [true, true, false]);
   await products.getByLabel("Pantry Checklist").check();
-  await fairCard.getByRole("button", { name: "Save" }).click();
-  await studio.getByRole("status").getByText("Saved. Fair prices are on.").last().waitFor({ timeout: 30_000 });
+  await Promise.all([
+    studio.waitForResponse((r) => r.url().endsWith("/api/store/fair") && r.request().method() === "POST" && r.ok(), { timeout: 30_000 }),
+    fairCard.getByRole("button", { name: "Save" }).click(),
+  ]);
   {
     const { visit, there } = await asBuyerFrom("IN");
     is("picked: the fair price again", await words(there.locator("main .st-price").first()), "Was $9 now $4.50");
@@ -1175,6 +1180,24 @@ try {
     await video.getByRole("button", { name: /Play the video/ }).click();
     is("pressed, the player loads from YouTube's private address only", (await video.locator("iframe").getAttribute("src"))?.startsWith("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"), true);
     if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "store-links.png"), fullPage: true });
+  }
+
+  await keepSmall();
+  part("The creator chooses the order of the page");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const order = studio.locator("section#order");
+    for (let n = 0; n < 2; n++) await order.getByRole("button", { name: "Move Your links up" }).click();
+    is("the list shows the new order before it is saved", (await words(order.locator("li").first())).includes("Your links"), true);
+    await order.getByRole("button", { name: "Save the order" }).click();
+    await studio.getByText("Saved. Your page shows its parts in this order.").first().waitFor({ timeout: 30_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    is("the store page draws the links first, then the products", await page.locator(".st-part").evaluateAll((parts) => parts.slice(0, 2).map((p) => p.getAttribute("data-part"))), ["links", "products"]);
+    await open(studio, `${LOCAL}/studio`);
+    await studio.locator("section#order").getByRole("button", { name: "Back to the usual order" }).click();
+    await studio.getByText("Your page is back in the usual order.").first().waitFor({ timeout: 30_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    is("and back in the usual order in one press", await page.locator(".st-part").first().getAttribute("data-part"), "products");
   }
 
   await keepSmall();
