@@ -8,6 +8,8 @@ import { imageUrl } from "@/lib/product-image";
 import { type PagePart, drawnOrder } from "@/lib/store-order";
 import { tipsOpen } from "@/lib/store-tip-checkout";
 import { StoreTipBox } from "@/components/store-tip-box";
+import { kitShown } from "@/lib/store-kit";
+import { kitWords } from "@/lib/buyer-words/kit";
 import { Icon } from "@/components/icons";
 import { MAX_STORE_SEARCH, STORE_PAGE_SIZE, searchStore, searchWords } from "@/lib/catalog";
 import { withinLimit } from "@/lib/request-guard";
@@ -606,6 +608,14 @@ export default async function StorePage({ params, searchParams }: Params) {
               <p className="mb-4">
                 <Link href={`/@${store.handle}/blog`} className="st-footer-link text-sm font-semibold">
                   {w.blogOf(store.name)}
+                </Link>
+              </p>
+            ) : null}
+            {/* The creator's media kit, for brands (lib/store-kit.ts): known from the record, with no read. */}
+            {kitShown(store.kit) ? (
+              <p className="mb-4">
+                <Link href={`/@${store.handle}/media-kit`} prefetch={false} className="st-footer-link text-sm font-semibold">
+                  {kitWords(store.language).title}
                 </Link>
               </p>
             ) : null}

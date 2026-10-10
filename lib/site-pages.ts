@@ -261,7 +261,7 @@ export const PAGES: TopicPage[] = [
           ["Ways to be paid", "Stripe or PayPal", PAYPAL ? "Stripe or PayPal, both paying straight into your own account" : "Stripe, with the ways to pay you switch on in it. No PayPal yet: it is built and waits on PayPal approving us as a platform"],
           ["When the money reaches you", "At the moment of sale, into your own account", "At the moment of sale, into your own account"],
           ["Card fee", "Stripe's 2.9% + $0.30, on top of their 9%", "Stripe's 2.9% + $0.30, and nothing else"],
-          ["What you are buying", "A whole suite: link in bio, websites, media kit, email, an affiliate network, AI tools", "One store, built to sell: files, courses, memberships, calls, and a community for your buyers"],
+          ["What you are buying", "A whole suite: link in bio, websites, media kit, email, an affiliate network, AI tools", "One store, built to sell: files, courses, memberships, calls, a community for your buyers, and a media kit for brands"],
           ["A free plan", "Yes, and you can sell on it", "None"],
           ["Order bumps and upsells", "Order bumps on every plan, the free one included", "Yes \u2014 up to three boxes the buyer checks at checkout, and one click after paying on the same card"],
           ["Memberships and courses", "Memberships from the $30 plan. Courses on every plan, but only one, with no video hosting, below the $30 plan", "Yes, both, on the $29 plan"],
@@ -285,7 +285,7 @@ export const PAGES: TopicPage[] = [
       {
         kind: "note",
         title: "Where Beacons is ahead of us, and it is not close",
-        body: "For $30 they give you 0% and, with it, websites, a media kit that updates itself, email marketing, an affiliate network of 12,000 brands and a pile of AI tools. We give you a store page with courses, memberships, calls, a community, an affiliate program of your own and the checkout tools, and on our $99 Pro plan email to your list, but none of the other extras. A dollar a month is not a reason to choose us, and we are not going to pretend it is.",
+        body: "For $30 they give you 0% and, with it, websites, a media kit that updates itself, email marketing, an affiliate network of 12,000 brands and a pile of AI tools. We give you a store page with courses, memberships, calls, a community, an affiliate program of your own, the checkout tools and a media kit whose numbers you type yourself, and on our $99 Pro plan email to your list, but none of the other extras. A dollar a month is not a reason to choose us, and we are not going to pretend it is.",
       },
       {
         kind: "note",

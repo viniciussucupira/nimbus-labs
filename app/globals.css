@@ -4291,6 +4291,31 @@ fieldset:disabled .cm-poll-row {
 
 
 /*
+ * A creator's media kit (app/[handle]/media-kit), printed or saved as a PDF:
+ * upright pages of its own, whatever the certificate's landscape page says,
+ * without the buttons, and with the store's colors kept.
+ */
+@page kit {
+  size: A4 portrait;
+  margin: 12mm;
+}
+@media print {
+  .kit-page {
+    page: kit;
+    min-height: 0 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .kit-noprint {
+    display: none !important;
+  }
+  .kit-page section {
+    break-inside: avoid;
+  }
+}
+
+/*
  * The buy bar held at the bottom of a phone's screen on a product's page
  * (components/sticky-buy.tsx). Phones only: on a wide screen the buy box is
  * never far, and a bar there would only cover the page. It slides away while

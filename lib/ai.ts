@@ -333,6 +333,49 @@ export async function writeBio(
 }
 
 /**
+ * The few sentences at the top of a media kit, three ways (lib/store-kit.ts,
+ * added 9 October 2026): written to a brand, from what the store sells, the
+ * line under its name, the audience numbers the creator typed and what they
+ * say about their audience. The numbers given are the only ones it may use.
+ * The creator picks one, changes it, or none. One of the month's jobs.
+ */
+export async function writeKitPitch(
+  store: Store,
+  input: { products: string[]; audience: string[]; facts: string[]; notes: string },
+  now = Date.now(),
+): Promise<AiResult<string[]>> {
+  const notes = block(input.notes, MAX_AI_NOTES);
+  const products = input.products.map((title) => line(title, MAX_TITLE)).filter(Boolean).slice(0, 12);
+  const audience = input.audience.map((row) => line(row, 120)).filter(Boolean).slice(0, 8);
+  const facts = input.facts.map((fact) => line(fact, 160)).filter(Boolean).slice(0, 6);
+  if (!notes && !store.bio && products.length === 0 && audience.length === 0) return { ok: false, reason: "notes" };
+  return counted(store, now, async () => {
+    const system = [
+      "You write the short introduction at the top of a creator's media kit: the page a brand reads before paying the creator for a sponsored post.",
+      honesty(storeLanguage(store)),
+      "Written in the first person, as the creator, to a brand: who they are, what they make, who their audience is and why that audience listens. Two to four sentences, at most 500 characters, plain words, no hashtags, no emoji, no quotation marks.",
+      "Use ONLY the numbers given, exactly as given, or none. Never invent a number, a result, an award, a past brand partner, a rate or a claim about engagement.",
+      'Return only a JSON object: {"pitches": [three different introductions]}.',
+    ].join("\n\n");
+    const prompt = [
+      `Creator: ${line(store.name, 60)}`,
+      store.bio ? `The line under their name: ${line(store.bio, 300)}` : "",
+      products.length ? `\nWhat they sell:\n${products.map((title) => `- ${title}`).join("\n")}` : "",
+      audience.length ? `\nTheir audience, as they state it:\n${audience.map((row) => `- ${row}`).join("\n")}` : "",
+      facts.length ? `\nAbout their audience, as they state it:\n${facts.map((fact) => `- ${fact}`).join("\n")}` : "",
+      notes ? `\nWhat the creator adds:\n${notes}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const answer = await ask(system, prompt, 900);
+    const json = answer ? jsonIn(answer) : null;
+    const pitches = Array.isArray(json?.pitches) ? (json.pitches as unknown[]).map((p) => block(p, 700).replace(/^["“”']+|["“”']+$/g, "").trim()).filter(Boolean) : [];
+    const unique = [...new Set(pitches)].slice(0, 3);
+    return unique.length ? unique : null;
+  });
+}
+
+/**
  * The store's own questions and answers, drafted (added 9 October 2026):
  * what visitors ask before buying anything there, answered only from what
  * the store says about itself — what it sells, how each is handed over, and

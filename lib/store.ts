@@ -77,6 +77,7 @@ import { offerableAfterPaying } from "@/lib/bundles";
 import { type DisplayStyle, type ProductImage } from "@/lib/product-image";
 import { type PagePart, USUAL_ORDER, parseOrder } from "@/lib/store-order";
 import { NO_TIPS, type StoreTips, parseTips } from "@/lib/store-tips";
+import { type StoreKit, nextKit, parseKit } from "@/lib/store-kit";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
@@ -491,6 +492,8 @@ export type Store = {
   contact: StoreJoin;
   /** "Support my work" on the store page (lib/store-tips.ts). Off on every store written before it existed. */
   tips: StoreTips;
+  /** The media kit at /@handle/media-kit (lib/store-kit.ts). Off on every store written before it existed. */
+  kit: StoreKit;
   /** The store's own questions and answers, on its page (lib/store-faq.ts). */
   faq: FaqItem[];
   /**
@@ -787,6 +790,7 @@ function parseStore(raw: unknown): Store | null {
       quotes: parseQuotes(value.quotes),
       contact: parseJoin(value.contact),
       tips: parseTips(value.tips),
+      kit: parseKit(value.kit),
       faq: parseFaq(value.faq),
       intro: parseVideo(value.intro),
       order: parseOrder(value.order),
@@ -965,6 +969,7 @@ async function freshStore(fields: {
     quotes: [],
     contact: { on: false, heading: "", line: "" },
     tips: { ...NO_TIPS },
+    kit: parseKit(null),
     faq: [],
     intro: null,
     order: [...USUAL_ORDER],
@@ -3123,6 +3128,11 @@ export async function setContact(email: string, raw: unknown): Promise<Store | n
 /** Switches "Support my work" on the store page and saves its words and amounts (lib/store-tips.ts). */
 export async function setTips(email: string, tips: StoreTips): Promise<Store | null> {
   return patchStore(email, () => ({ tips: parseTips(tips) }));
+}
+
+/** Saves the media kit (lib/store-kit.ts), dated today when any of its numbers changed. */
+export async function setKit(email: string, sent: unknown, today = new Date().toISOString().slice(0, 10)): Promise<Store | null> {
+  return patchStore(email, (store) => ({ kit: nextKit(sent, store.kit, today) }));
 }
 
 /** Keeps the newest reviews to quote on the store page (lib/store-quotes.ts). */

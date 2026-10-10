@@ -28,6 +28,7 @@ import { JOIN_WORDS } from "@/lib/buyer-words/join";
 import { GUIDE_WORDS } from "@/lib/buyer-words/guide";
 import { CONTACT_WORDS } from "@/lib/buyer-words/contact";
 import { TIPS_WORDS } from "@/lib/buyer-words/tips";
+import { KIT_WORDS } from "@/lib/buyer-words/kit";
 import { addProduct, claimHandle, ensureStatsId, setLanguage, setProductLink, setStripeAccount, setSubscription, storeForEmail } from "@/lib/store";
 import { readProduct } from "@/lib/catalog";
 import { createCheckout } from "@/lib/store-checkout";
@@ -92,6 +93,8 @@ const SAME: Record<string, Record<string, string[]>> = {
   // "{price} {every}": the price and the words for how often, each already in the language.
   // "Bonus 7": Spanish says bonus too.
   "page blocks": { es: ["bonusN"], de: ["socialWebsite"], it: ["socialEmail"], nl: ["socialWebsite"] },
+  // "Audience" is the French word too.
+  "media kit": { fr: ["audienceTitle"] },
   thanks: { es: ["priceEvery"], fr: ["priceEvery"], de: ["priceEvery"], it: ["priceEvery"], nl: ["priceEvery"], pt: ["priceEvery"] },
 };
 
@@ -161,6 +164,7 @@ async function main(): Promise<void> {
     ["store guide", (code) => GUIDE_WORDS[code]],
     ["contact form", (code) => CONTACT_WORDS[code]],
     ["support box", (code) => TIPS_WORDS[code]],
+    ["media kit", (code) => KIT_WORDS[code]],
   ];
   for (const [area, wordsOf] of AREAS) {
     const englishWords = wordsOf("en");
