@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { activeIntro } from "@/lib/intro-price";
 import { notFound } from "next/navigation";
 import { normaliseHandle, storeForPage } from "@/lib/store";
 import { membershipLine, speech } from "@/lib/buyer-words";
@@ -56,7 +57,7 @@ export default async function RenewPage({ params, searchParams }: Params) {
   const selling = product ? canSellProduct(store, product) : false;
   const price =
     product?.recurring && selling
-      ? membershipLine(store, product.recurring, say.money(fromPriceCents(product)))
+      ? membershipLine(store, product.recurring, say.money(fromPriceCents(product)), activeIntro(product, store.tiers))
       : null;
   const needsChoice = product ? product.options.length > 0 : false;
   // A come-back email's link (lib/winback-send.ts): the offer it carries, for

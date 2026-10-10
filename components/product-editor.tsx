@@ -58,6 +58,7 @@ import {
   intervalName,
   membershipPrice,
 } from "@/lib/product-recurring";
+import { MAX_INTRO_COUNT, introLineEnglish } from "@/lib/intro-price";
 import { MAX_ABOUT_LENGTH } from "@/lib/product-about";
 import { imageUrl } from "@/lib/product-image";
 import { StoreField, useStudioHref, useStudioStore } from "@/components/studio-store-pin";
@@ -102,6 +103,14 @@ const MESSAGES: Record<string, string> = {
   trial: `Type a free trial of ${MIN_TRIAL_DAYS} to ${MAX_TRIAL_DAYS} days, or leave it empty for none.`,
   payments: `Type ${MIN_MEMBER_PAYMENTS} to ${MAX_MEMBER_PAYMENTS} payments, or leave it empty for a membership that runs until it is canceled.`,
   store_full: "Your store has reached the most it can hold. Remove something, or shorten a long list of choices, to make room.",
+  intro_membership: "An introductory price is for a membership. Pick how often it charges first.",
+  intro_trial: "A membership starts with one offer: a free trial or an introductory price. Empty one of them.",
+  intro_payments: "An introductory price is for a membership that runs until it is canceled. Empty \u201cEnds after\u201d, or the introductory price.",
+  intro_options: "This membership has several prices, so one introductory price cannot fit them all. Take the options off first.",
+  intro_pwyw: "A membership charges a set price, so its buyers cannot choose it.",
+  intro_tiers: "Members can switch to and from this plan, and a fixed amount off could follow them to a cheaper one. Take it out of the plans members switch between first.",
+  intro_price: "Type an introductory price below the regular price, and at least the least your currency can charge.",
+  intro_count: "A monthly membership's introductory price lasts 1 to 12 months; any other only the first payment.",
   free: "Something free is given once, for an email address, so it cannot be a membership or have several prices. Take those off first.",
   unknown: "That is no longer on your store.",
   preorders: "Buyers have pre-ordered this and are waiting for it. Put it on sale, which hands it to them, or refund their pre-orders in your Stripe dashboard first.",
@@ -127,6 +136,10 @@ type Draft = {
   trial: string;
   /** Payments before a membership ends by itself. "" is until cancelled. */
   payments: string;
+  /** What a membership's first payments cost (lib/intro-price.ts). "" is none. */
+  introPrice: string;
+  /** How many payments cost that, as typed: "1" to "12" on a monthly membership. */
+  introCount: string;
   /** Whether the buyer chooses the price, from `price` up. */
   pwyw: boolean;
   /** The amount suggested to a buyer who chooses. */
@@ -142,6 +155,8 @@ const EMPTY: Draft = {
   every: "",
   trial: "",
   payments: "",
+  introPrice: "",
+  introCount: "1",
   pwyw: false,
   suggested: "",
   about: "",
@@ -156,6 +171,8 @@ function payloadOf(draft: Draft): Record<string, unknown> {
     every: draft.every,
     trial: draft.every ? draft.trial.trim() : "",
     payments: draft.every ? draft.payments.trim() : "",
+    // Always sent from here, so taking it off, or the membership away, clears it.
+    intro: draft.every && draft.introPrice.trim() ? { price: draft.introPrice.trim(), count: draft.every === "month" ? Number(draft.introCount) || 1 : 1 } : null,
     pwyw: draft.pwyw && !draft.every ? draft.suggested.trim() || draft.price.trim() : null,
     about: draft.about,
   };
@@ -527,19 +544,67 @@ function ProductForm({
                 {`${MIN_MEMBER_PAYMENTS} to ${MAX_MEMBER_PAYMENTS}. After the last one it stops by itself; members can still cancel sooner.`}
               </p>
             </div>
-            {/^\d+$/.test(draft.trial.trim()) || /^\d+$/.test(draft.payments.trim()) ? (
+            <div className="sm:col-span-2">
+              <label htmlFor={`product-intro-${id}`} className="field-label">
+                Introductory price <span className="font-normal text-ink-soft">(optional)</span>
+              </label>
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <div className="card flex w-40 items-center pl-4 transition focus-within:border-violet-brand">
+                  <span className="whitespace-nowrap text-ink-soft">{prefix}</span>
+                  <input
+                    id={`product-intro-${id}`}
+                    type="text"
+                    inputMode={currency === "jpy" ? "numeric" : "decimal"}
+                    value={draft.introPrice}
+                    onChange={(event) => setDraft({ ...draft, introPrice: event.target.value })}
+                    placeholder="None"
+                    aria-describedby={`product-intro-hint-${id}`}
+                    className="w-full rounded-r-2xl bg-transparent px-2 py-3 text-ink outline-none placeholder:text-ink-soft/50"
+                  />
+                </div>
+                {draft.every === "month" ? (
+                  <>
+                    <label htmlFor={`product-intro-count-${id}`} className="text-sm text-ink-soft">
+                      for the first
+                    </label>
+                    <select
+                      id={`product-intro-count-${id}`}
+                      value={draft.introCount}
+                      onChange={(event) => setDraft({ ...draft, introCount: event.target.value })}
+                      className="field w-36"
+                    >
+                      {Array.from({ length: MAX_INTRO_COUNT }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={String(n)}>
+                          {n === 1 ? "1 month" : `${n} months`}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : (
+                  <span className="text-sm text-ink-soft">{`for the first ${draft.every}`}</span>
+                )}
+              </div>
+              <p id={`product-intro-hint-${id}`} className="mt-1 text-sm text-ink-soft">
+                Less than the regular price. Stripe takes the difference off the first payments by itself, and the regular price starts after. Your page, its button and the checkout say both prices. Not beside a free trial or a set number of payments, and a come-back offer replaces it.
+              </p>
+            </div>
+            {/^\d+$/.test(draft.trial.trim()) || /^\d+$/.test(draft.payments.trim()) || draft.introPrice.trim() ? (
               <p className="rounded-xl bg-sand px-3 py-2 text-sm text-ink sm:col-span-2">
-                {`Your page will say: ${membershipPrice(
-                  {
-                    interval: draft.every,
-                    trialDays: Number(draft.trial.trim()) || 0,
-                    payments: Number(draft.payments.trim()) || 0,
-                  },
-                  (() => {
-                    const typed = readMoney(draft.price, currency);
-                    return typed === null ? `${prefix} ${draft.price.trim() || "0"}` : formatMoney(typed, currency);
-                  })(),
-                )}.`}
+                {(() => {
+                  const typed = readMoney(draft.price, currency);
+                  const price = typed === null ? `${prefix} ${draft.price.trim() || "0"}` : formatMoney(typed, currency);
+                  const regular = membershipPrice(
+                    {
+                      interval: draft.every,
+                      trialDays: Number(draft.trial.trim()) || 0,
+                      payments: Number(draft.payments.trim()) || 0,
+                    },
+                    price,
+                  );
+                  const intro = draft.introPrice.trim() ? readMoney(draft.introPrice, currency) : null;
+                  const count = draft.every === "month" ? Number(draft.introCount) || 1 : 1;
+                  return `Your page will say: ${intro !== null ? introLineEnglish(formatMoney(intro, currency), count, draft.every, regular) : regular}.`;
+                })()}
               </p>
             ) : null}
           </div>
@@ -1258,6 +1323,7 @@ function badges(product: Product): string[] {
     out.push("Membership");
     if (product.recurring.trialDays) out.push(`${product.recurring.trialDays}-day trial`);
     if (product.recurring.payments) out.push(`${product.recurring.payments} ${intervalAdjective(product.recurring.interval)} payments`);
+    if (product.intro) out.push(product.intro.count > 1 ? `Introductory price, ${product.intro.count} months` : "Introductory price");
   }
   if (product.pwyw) out.push("Pay what you want");
   if (product.options.length) out.push(`${product.options.length} prices`);
@@ -1598,6 +1664,8 @@ export function ProductEditor({
       every: product.recurring ? product.recurring.interval : "",
       trial: product.recurring?.trialDays ? String(product.recurring.trialDays) : "",
       payments: product.recurring?.payments ? String(product.recurring.payments) : "",
+      introPrice: product.intro ? moneyField(product.intro.cents, currency) : "",
+      introCount: String(product.intro?.count ?? 1),
       pwyw: product.pwyw !== null,
       suggested: product.pwyw ? moneyField(product.pwyw.suggestedCents, currency) : "",
       about: "",

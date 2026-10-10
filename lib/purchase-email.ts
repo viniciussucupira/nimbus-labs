@@ -209,13 +209,15 @@ export function confirmationFor(
   // way the thanks page reads them, so the email and the page say the same.
   const trialDays = product.recurring ? wholeNumber(meta.trial_days) : 0;
   const endsAfter = product.recurring ? wholeNumber(meta.ends_after) : 0;
+  // And its introductory price, when it had one (lib/intro-price.ts): what the first payments cost, and the price after.
+  const intro = product.recurring ? introOf(meta) : null;
 
   const words = ordersWords(store.language);
   const said = speaking(store, currency);
   /** "A and B", "A, B and C" said the language's way. */
   const listed = (titles: string[]) => titles.reduce((all, one) => words.and(all, one));
 
-  const paid = paidLine(store, product, amount, currency, plan, trialDays, endsAfter);
+  const paid = paidLine(store, product, amount, currency, plan, trialDays, endsAfter, intro);
   const lines: string[] = [
     words.confirmIntro(name),
     "",
@@ -284,6 +286,14 @@ export function confirmationFor(
   };
 }
 
+/** A membership's introductory price as its checkout carried it (lib/store-checkout.ts), or null. */
+export function introOf(meta: Record<string, string | undefined>): { cents: number; count: number; regular: number } | null {
+  const count = wholeNumber(meta.intro);
+  const cents = wholeNumber(meta.intro_cents);
+  const regular = wholeNumber(meta.regular_cents);
+  return count && cents && regular ? { cents, count, regular } : null;
+}
+
 /** A count carried in a checkout's metadata, or 0 when there is none. */
 function wholeNumber(raw: string | undefined): number {
   const n = Number(raw);
@@ -298,12 +308,16 @@ function paidLine(
   plan: { payments: number; weekly: boolean } | null,
   trialDays: number,
   endsAfter: number,
+  intro: { cents: number; count: number; regular: number } | null = null,
 ): string {
   const words = ordersWords(store.language);
   const { w, money } = speaking(store, currency);
   if (trialDays > 0 && amount === 0) return words.trialStarted(money(0), trialDays);
   if (amount === 0) return words.discountCovered(money(0));
   if (plan) return w.today(money(amount));
+  if (product.recurring && intro) {
+    return w.introThen(money(intro.cents), intro.count, product.recurring.interval, `${money(intro.regular)} ${w.every(product.recurring.interval)}`);
+  }
   if (product.recurring) {
     const every = `${money(amount)} ${w.every(product.recurring.interval)}`;
     return endsAfter > 0 ? words.paymentsInAll(every, endsAfter) : every;

@@ -14,6 +14,8 @@ const plural = (n: number, one: string, many: string) => (n < 2 ? one : many);
 const S = " ";
 
 const every = (interval: Interval) => ({ day: "par jour", week: "par semaine", month: "par mois", year: "par an" })[interval];
+/** How long an introductory price lasts (lib/intro-price.ts). */
+const introFirst = (count: number, interval: Interval) => (count > 1 ? `${every("month")} pendant les ${count} premiers mois` : ({ day: "le premier jour", week: "la première semaine", month: "le premier mois", year: "la première année" })[interval]);
 
 export const fr: BuyerWords = {
   free: "Gratuit",
@@ -29,6 +31,8 @@ export const fr: BuyerWords = {
     }
     return `${trial}${price} ${every(interval)}`;
   },
+  introFirst,
+  introThen: (intro, count, interval, then) => `${intro} ${introFirst(count, interval)}, puis ${then}`,
   planWords: (payments, interval, amount) =>
     `${payments}${S}${plural(payments, "paiement", "paiements")} ${interval === "week" ? plural(payments, "hebdomadaire", "hebdomadaires") : plural(payments, "mensuel", "mensuels")} de ${amount}`,
   endsIn: (unit, n) =>

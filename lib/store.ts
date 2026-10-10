@@ -71,7 +71,8 @@ import { type AffiliateSetting, parseAffiliateSetting } from "@/lib/affiliate-se
 import { type ReviewAsk, parseReviewAsk } from "@/lib/review-ask";
 import { type PwywProblem, pwywProblem } from "@/lib/pay-what-you-want";
 import { type CheckoutField } from "@/lib/checkout-fields";
-import { type Currency, DEFAULT_CURRENCY, currencyRule, parseCurrency, priceInRange, readMoney } from "@/lib/money";
+import { type Currency, DEFAULT_CURRENCY, currencyRule, parseCurrency, priceBounds, priceInRange, readMoney } from "@/lib/money";
+import { type Intro, type IntroProblem, introProblem } from "@/lib/intro-price";
 import { type KeySetup, canHaveKeys } from "@/lib/key-setup";
 import { type BundleProblem, bundleProblem, isBundle, pickProblem } from "@/lib/bundle-rules";
 import { offerableAfterPaying } from "@/lib/bundles";
@@ -3243,6 +3244,25 @@ export async function setProductBundle(email: string, id: string, items: string[
     if (pickProblem(pick, items.length)) return { ok: false, reason: "pick" };
     return { ...product, bundle: [...items], pick };
   });
+}
+
+export type IntroResult =
+  | { ok: true; store: Store; product: Product }
+  | { ok: false; reason: "none" | "unknown" | `intro_${IntroProblem}` };
+
+/**
+ * Gives a membership an introductory price (lib/intro-price.ts), changes it,
+ * or takes it off (null). Checked under the store's lock against the product
+ * as it is, in the store's own currency.
+ */
+export async function setProductIntro(email: string, id: string, intro: Intro | null): Promise<IntroResult> {
+  const done = await onProduct<`intro_${IntroProblem}`>(email, id, (product, store) => {
+    if (intro === null) return { ...product, intro: null };
+    const problem = introProblem(product, intro, priceBounds(store.currency).min, store.tiers);
+    if (problem) return { ok: false, reason: `intro_${problem}` };
+    return { ...product, intro: { cents: intro.cents, count: intro.count } };
+  });
+  return done.ok ? { ok: true, store: done.store, product: done.product } : done;
 }
 
 export type HiddenResult =

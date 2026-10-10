@@ -1,5 +1,6 @@
 import { packageSaving } from "@/lib/call-package-rules";
 import { saleClock, saleOff, salePrice } from "@/lib/store-sale";
+import { activeIntro } from "@/lib/intro-price";
 import { fairOff } from "@/lib/fair-price";
 import { endsLine, membershipLine, planLine, speech, worthLine } from "@/lib/buyer-words";
 import Link from "next/link";
@@ -56,6 +57,14 @@ export function pricePill(store: Store, product: Listing): string {
   return options.length > 1 ? w.fromPrice(price) : price;
 }
 
+
+/** "Subscribe — $5 the first month", for a membership with an introductory price (lib/intro-price.ts); null without one. */
+export function introButton(store: Store, product: Listing): string | null {
+  const intro = activeIntro(product, store.tiers);
+  if (!intro || !product.recurring) return null;
+  const { w, money } = speech(store);
+  return w.subscribeFor(money(intro.cents), w.introFirst(intro.count, product.recurring.interval));
+}
 
 /** The percentage a running store-wide sale takes off this product now, or 0 (lib/store-sale.ts). */
 export function saleNow(store: Store, product: Listing): number {
@@ -173,9 +182,11 @@ export function ProductFacts({
   if (product.podcast && product.podcast.episodes > 0) {
     facts.push(w.podcast(product.podcast.episodes));
   }
-  if (product.recurring && (product.recurring.trialDays > 0 || product.recurring.payments > 0)) {
+  // A membership's introductory price (lib/intro-price.ts) is said wherever its price is.
+  const intro = activeIntro(product, store.tiers);
+  if (product.recurring && (product.recurring.trialDays > 0 || product.recurring.payments > 0 || intro)) {
     const price = money(fromPriceCents(product));
-    facts.push(`${options.length > 1 ? w.fromCapital : ""}${membershipLine(store, product.recurring, price)}`.replace(/^(\p{Ll})/u, (c) => c.toUpperCase()));
+    facts.push(`${options.length > 1 ? w.fromCapital : ""}${membershipLine(store, product.recurring, price, intro)}`.replace(/^(\p{Ll})/u, (c) => c.toUpperCase()));
   }
   if (pwyw) {
     facts.push(w.pwywFact(money(product.priceCents), money(pwyw.suggestedCents)));
@@ -554,6 +565,8 @@ export function BuyBox({
   const plan = activePlan(product);
   const pwyw = activePwyw(product);
   const trial = product.recurring && product.recurring.trialDays > 0 ? product.recurring.trialDays : 0;
+  // A membership's introductory price (lib/intro-price.ts): what the button and the line under it say.
+  const intro = activeIntro(product, store.tiers);
   // A store-wide sale on this product right now (lib/store-sale.ts): its price everywhere below.
   const off = offNow(store, product);
 
@@ -792,7 +805,9 @@ export function BuyBox({
                   ? w.subscribe
                   : w.continueOption
                 : product.recurring
-                  ? w.subscribeFor(money(product.priceCents), every.trim())
+                  ? intro
+                    ? w.subscribeFor(money(intro.cents), w.introFirst(intro.count, product.recurring.interval))
+                    : w.subscribeFor(money(product.priceCents), every.trim())
                   : w.buyFor(money(salePrice(product.priceCents, off)))}
         </span>
         {/*
@@ -831,6 +846,11 @@ export function BuyBox({
       {trial && product.recurring ? (
         <p className="st-muted mt-2 text-center text-xs">
           {w.trialNote(trial, membershipLine(store, { ...product.recurring, trialDays: 0 }, money(fromPriceCents(product))), product.recurring.payments === 0)}
+        </p>
+      ) : null}
+      {intro && product.recurring ? (
+        <p className="st-muted mt-2 text-center text-xs">
+          {`${membershipLine(store, product.recurring, money(product.priceCents), intro)}.`.replace(/^(\p{Ll})/u, (c) => c.toUpperCase())}
         </p>
       ) : null}
       {product.recurring && store.tiers.includes(product.id) ? (
@@ -925,7 +945,7 @@ export function pageAction(
       : trial
         ? w.startTrial(trial)
         : product.recurring
-          ? w.subscribeFor(money(product.priceCents), w.every(product.recurring.interval))
+          ? introButton(store, product) ?? w.subscribeFor(money(product.priceCents), w.every(product.recurring.interval))
           : w.buyFor(money(salePrice(product.priceCents, offNow(store, product)))),
   };
 }

@@ -23,6 +23,7 @@ import { formatMoney } from "@/lib/money";
 import { speech } from "@/lib/buyer-words";
 import { type Listing, type Store, isFree } from "@/lib/store";
 import { membershipPrice } from "@/lib/product-recurring";
+import { activeIntro, introLineEnglish } from "@/lib/intro-price";
 import { activePlan, planWords } from "@/lib/product-extras";
 import { activePwyw } from "@/lib/pay-what-you-want";
 import { CELL_NO, CELL_YES, type SalesPage } from "@/lib/sales-page";
@@ -75,13 +76,18 @@ export function deliveryWords(product: Listing): string {
 }
 
 /** What it costs, in words, read from the product itself. */
-export function priceWords(product: Listing, currency: string): string {
+export function priceWords(product: Listing, currency: string, tiers: readonly string[] = []): string {
   if (isFree(product)) return "Free.";
   const money = (cents: number) => formatMoney(cents, currency);
   if (product.options.length > 0) {
     return `It is sold at several prices, and the buyer picks one: ${product.options.map((o) => `${o.label} for ${money(o.priceCents)}`).join("; ")}.`;
   }
-  if (product.recurring) return `${membershipPrice(product.recurring, money(product.priceCents))}.`;
+  if (product.recurring) {
+    // An introductory price is said first (lib/intro-price.ts), as on the page.
+    const intro = activeIntro(product, tiers);
+    const regular = membershipPrice(product.recurring, money(product.priceCents));
+    return `${intro ? introLineEnglish(money(intro.cents), intro.count, product.recurring.interval, regular) : regular}.`;
+  }
   const pwyw = activePwyw(product);
   if (pwyw) return `The buyer chooses the price, from ${money(product.priceCents)} up.`;
   const plan = activePlan(product);
@@ -96,7 +102,7 @@ export function factsFor(store: Store, product: Listing, about: string, page: Sa
   const parts: string[] = [
     `Store: ${store.name}`,
     `Product: ${product.title}`,
-    `Price: ${priceWords(product, store.currency)}`,
+    `Price: ${priceWords(product, store.currency, store.tiers)}`,
     `How it is delivered: ${deliveryWords(product)}`,
   ];
   if (!isFree(product)) {

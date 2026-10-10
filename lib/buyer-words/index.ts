@@ -105,8 +105,12 @@ export function membershipLine(
   store: Speaks,
   recurring: { trialDays: number; payments: number; interval: "day" | "week" | "month" | "year" },
   price: string,
+  /** An introductory price it offers now (lib/intro-price.ts, activeIntro): said first, before the regular price. */
+  intro: { cents: number; count: number } | null = null,
 ): string {
-  return speech(store).w.membershipPrice(recurring.trialDays, recurring.payments, recurring.interval, price);
+  const { w, money } = speech(store);
+  const regular = w.membershipPrice(recurring.trialDays, recurring.payments, recurring.interval, price);
+  return intro ? w.introThen(money(intro.cents), intro.count, recurring.interval, regular) : regular;
 }
 
 /**

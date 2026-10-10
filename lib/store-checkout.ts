@@ -11,6 +11,8 @@ import { currentMeta } from "@/lib/tier-rules";
 import { saleOff } from "@/lib/store-sale";
 import { fairOff } from "@/lib/fair-price";
 import { fairCoupon } from "@/lib/fair-coupon";
+import { introCoupon } from "@/lib/intro-coupon";
+import { activeIntro } from "@/lib/intro-price";
 import { GIFT_ID } from "@/lib/gift-rules";
 import { GROUP_ID, canGroup, payable, peopleWords } from "@/lib/group-rules";
 import { commissionRate } from "@/lib/affiliate-setting";
@@ -379,9 +381,19 @@ export async function createCheckout(
   // the page used to show the price, and taken off the same way as a sale,
   // when it takes off more than the sale does. Never both.
   const fairOffNow = !extras.coupon && !plan && !membership ? fairOff(store.fair, product, extras.country ?? "") : 0;
+  // A membership's introductory price (lib/intro-price.ts), unless a
+  // come-back offer replaces it: one discount at a time, as everywhere here.
+  const intro = membership && !extras.coupon ? activeIntro(product, store.tiers) : null;
   if (extras.coupon && !pwyw) {
     body.set("discounts[0][coupon]", extras.coupon);
     body.set("metadata[winback]", "yes");
+  } else if (intro) {
+    body.set("discounts[0][coupon]", await introCoupon(store.stripeAccountId, store.currency, product.priceCents - intro.cents, intro.count));
+    // What the order says it was: the thanks page and the email read these (lib/purchase-email.ts).
+    body.set("metadata[intro]", String(intro.count));
+    body.set("metadata[intro_cents]", String(intro.cents));
+    body.set("metadata[regular_cents]", String(product.priceCents));
+    body.set("subscription_data[metadata][intro]", String(intro.count));
   } else if (fairOffNow > saleOffNow) {
     body.set("discounts[0][coupon]", await fairCoupon(store.stripeAccountId, fairOffNow));
     body.set("metadata[fair]", `${extras.country}:${fairOffNow}`);
