@@ -42,6 +42,7 @@ import { purchaseRefunded } from "@/lib/refunds";
 import { BUMP_KEYS, type BumpKey, MIN_BUNDLE_ITEMS, bumpsFromMeta, bundleFromMeta, bundleMeta, deliverableItems } from "@/lib/bundle-rules";
 import { type BundleContents, contentsOf } from "@/lib/bundles";
 import { isHouseStore } from "@/lib/house-store";
+import { preorderProblem } from "@/lib/preorder-rules";
 
 /**
  * How long a paid link keeps working.
@@ -210,6 +211,11 @@ export async function createCheckout(
      */
     group?: { id: string; people: number };
     /**
+     * A pre-order (lib/preorders.ts): paid at once, with nothing added at
+     * checkout and no offer after it, and handed over the day it comes out.
+     */
+    preorder?: boolean;
+    /**
      * A discount code that came in a link (lib/code-link.ts). Applied only as
      * the creator's own live promotion code, by Stripe; otherwise the box to
      * type one is shown as it always is.
@@ -219,6 +225,11 @@ export async function createCheckout(
 ): Promise<{ url: string; id: string }> {
   if (!store.stripeAccountId) throw new Error("This store has no account");
   if (extras.gift) extras = { ...extras, bumps: [], plan: false, upsellKey: undefined, group: undefined };
+  if (extras.preorder) {
+    // Checked again here, where the charge is built: only what can be handed over later as one thing.
+    if (preorderProblem(product) !== null) throw new Error("This cannot be pre-ordered");
+    extras = { ...extras, bumps: [], plan: false, upsellKey: undefined, group: undefined, gift: undefined, buyerKey: undefined };
+  }
   if (extras.group) {
     // Checked again here, where the charge is built: the number of people
     // multiplies the price, so nothing reaches Stripe that the rules refuse.
@@ -387,6 +398,10 @@ export async function createCheckout(
     body.set("metadata[group]", extras.group.id);
     body.set("metadata[people]", String(people));
     body.set("payment_intent_data[metadata][group]", extras.group.id);
+  }
+  if (extras.preorder) {
+    body.set("metadata[preorder]", "yes");
+    body.set("payment_intent_data[metadata][preorder]", "yes");
   }
   if (extras.buyerKey && !extras.gift) body.set("metadata[buyer_key]", extras.buyerKey);
   if (extras.news) body.set("metadata[news]", "yes");
@@ -650,6 +665,11 @@ export type Order =
        * out from its own link, and nothing is handed over here. Null otherwise.
        */
       group: string | null;
+      /**
+       * A pre-order (lib/preorders.ts): nothing is handed over here; it is
+       * handed over, and emailed, the day the product comes out.
+       */
+      preorder: boolean;
       /** What it was charged in, as Stripe says: the store's currency when it was bought. */
       currency: string;
       /**
@@ -788,6 +808,7 @@ export async function readOrder(
     membership,
     gift: typeof metadata?.gift === "string" && GIFT_ID.test(metadata.gift) ? metadata.gift : null,
     group: typeof metadata?.group === "string" && GROUP_ID.test(metadata.group) ? metadata.group : null,
+    preorder: metadata?.preorder === "yes",
     reference: sessionId,
     call,
     bumps,

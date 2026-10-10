@@ -1,4 +1,5 @@
 import { imagePaths } from "@/lib/product-image";
+import { waitingCount } from "@/lib/preorders";
 import type { NextRequest } from "next/server";
 import { deleteFile as del } from "@/lib/file-store";
 import {
@@ -173,6 +174,11 @@ export async function POST(request: NextRequest) {
         }
       }
     } else if (action === "remove") {
+      // Paid pre-orders wait for it (lib/preorders.ts): it stays until they
+      // are handed over or refunded, so nobody paid for something deleted.
+      if ((await waitingCount(guarded.store, id)) > 0) {
+        return Response.json({ ok: false, error: "preorders" }, { status: 409 });
+      }
       // The product comes back as it was, so the storage its files used can
       // be released once the removal is safely written. A product with price
       // options holds one file per option as well as its own.

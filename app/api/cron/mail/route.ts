@@ -1,4 +1,6 @@
 import { runLaunches } from "@/lib/waitlist";
+import { runPreorderReleases } from "@/lib/preorders";
+import { preorderDeps } from "@/lib/purchase-email";
 import { readListing } from "@/lib/catalog";
 import type { NextRequest } from "next/server";
 import { cronAllowed } from "@/lib/request-guard";
@@ -159,6 +161,13 @@ async function run(request: NextRequest, started: number): Promise<Response> {
     } catch (error) {
       console.error("sending waitlist launches failed", error);
     }
+    // Pre-orders of products put on sale, handed over and emailed (lib/preorders.ts).
+    let preorders = 0;
+    try {
+      preorders = await runPreorderReleases(storeForHandle, readListing, preorderDeps, deadline);
+    } catch (error) {
+      console.error("handing over pre-orders failed", error);
+    }
     // Reminders are kept apart from the creators' own emails: one failing
     // never stops the other, and the next run picks up whatever was left.
     // They get ten seconds even after a long send, so a busy newsletter day
@@ -188,7 +197,7 @@ async function run(request: NextRequest, started: number): Promise<Response> {
     // Nothing started after fifty: a webhook try can take eight more, and the
     // whole run has sixty.
     const webhooks = await runWebhooks(webhooksBy, meetingsCutoff);
-    return Response.json({ ok: true, checkouts, offers, broadcasts, announcements, launches, ...steps, calls, events, reviews, webhooks }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ ok: true, checkouts, offers, broadcasts, announcements, launches, preorders, ...steps, calls, events, reviews, webhooks }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("the email job failed", error);
     return Response.json({ ok: false, error: "server_error" }, { status: 500 });

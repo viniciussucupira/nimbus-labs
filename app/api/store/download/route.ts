@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { preorderWords } from "@/lib/buyer-words/preorder";
 import { readListing } from "@/lib/catalog";
 import { type Listing, type Store, normaliseHandle, storeForHandle } from "@/lib/store";
 import { readOrder } from "@/lib/store-checkout";
@@ -133,6 +134,8 @@ export async function GET(request: NextRequest) {
   if (order.gift) return plain(403, say.gift);
   // Bought for several: each person opens it from their own place (lib/group-buy.ts).
   if (order.group) return plain(403, say.group);
+  // A pre-order opens the day it comes out, from the email sent then (lib/preorders.ts).
+  if (order.preorder) return plain(403, preorderWords(store.language).notYet);
   const sale = { reference: order.reference, email: order.email, paidAt: order.created };
   const pid = request.nextUrl.searchParams.get("pid") ?? "";
 

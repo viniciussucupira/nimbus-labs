@@ -10,7 +10,7 @@ import { planLine, speech, worthLine } from "@/lib/buyer-words";
 import { readAllTimeSales } from "@/lib/stats";
 import { paypalReady } from "@/lib/paypal-sales";
 import { saleClock, salePrice } from "@/lib/store-sale";
-import { isSoon } from "@/lib/waitlist";
+import { preorderDay, soonOne } from "@/lib/preorders";
 import { canGift } from "@/lib/gift-rules";
 import { canGroup } from "@/lib/group-rules";
 import { answersOn } from "@/lib/answers";
@@ -178,10 +178,10 @@ function About({ blocks }: { blocks: Block[] }) {
  * and described without an offer rather than with a wrong one. The rating is
  * there only when the page shows one, with the same average and count.
  */
-function productData(store: Store, product: Listing, description: string, soldOut: boolean, summary: Summary | null, soon = false) {
+function productData(store: Store, product: Listing, description: string, soldOut: boolean, summary: Summary | null, soon = false, preorder = false) {
   const url = `${SITE_URL}${productPath(store, product)}`;
   const options = sellableOptions(product);
-  const availability = `https://schema.org/${soon ? "OutOfStock" : soldOut ? "SoldOut" : "InStock"}`;
+  const availability = `https://schema.org/${preorder ? "PreOrder" : soon ? "OutOfStock" : soldOut ? "SoldOut" : "InStock"}`;
   const offers = product.recurring
     ? null
     : options.length > 1
@@ -260,7 +260,10 @@ export default async function ProductPage({ params, searchParams }: Params) {
 
   const selling = canSell(store);
   // Coming soon: a waitlist where the buy box would be (lib/waitlist.ts).
-  const soon = await isSoon(store, product.id).catch(() => false);
+  const coming = await soonOne(store, product.id).catch(() => ({ soon: false, day: null }));
+  const soon = coming.soon;
+  // Coming soon and taking pre-orders: the day it is expected (lib/preorders.ts).
+  const preorder = preorderDay(store, product, coming.soon, coming.day);
   const query = searchParams ? await searchParams : {};
   const giftProblem = typeof query.gift === "string" ? query.gift : "";
   const groupProblem = typeof query.group === "string" ? query.group : "";
@@ -386,7 +389,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
           </a>
         </p>
       ) : null}
-      <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} />
+      <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} preorder={preorder} />
       {/* A question before buying, answered from this page (lib/answers.ts): only where the creator switched it on. */}
       {selling && answersOn(store) ? (
         <AskBox
@@ -447,7 +450,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
 
   // Where the buy box is and what its button says, for the page's own blocks
   // and for the bar held at the bottom of a phone's screen (components/sticky-buy.tsx).
-  const { action, label } = pageAction(store, product, remaining, selling, related, soon);
+  const { action, label } = pageAction(store, product, remaining, selling, related, soon, preorder);
   const sticky =
     action.kind === "none" ? null : (
       <StickyBuy target={free ? "get" : "buy"} label={label} price={<PriceTag store={store} product={product} />} />
@@ -459,7 +462,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`}
       style={lookStyle(store.look) as React.CSSProperties}
     >
-      <JsonLd data={productData(store, product, description, remaining === 0, summary, soon)} />
+      <JsonLd data={productData(store, product, description, remaining === 0, summary, soon, Boolean(preorder))} />
       <JsonLd data={breadcrumbData({ name: store.name, url: `${SITE_URL}/@${store.handle}` }, { title: product.title, url: `${SITE_URL}${productPath(store, product)}` })} />
       {faq ? <JsonLd data={faq} /> : null}
       <ExitOfferSlot store={store} except={product.id} />

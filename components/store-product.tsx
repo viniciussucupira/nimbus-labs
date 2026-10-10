@@ -19,6 +19,7 @@ import { DEFAULT_PEOPLE, MAX_PEOPLE, MIN_PEOPLE } from "@/lib/group-rules";
 import { givableOptions } from "@/lib/gift-rules";
 import { productSegment } from "@/lib/product-slug";
 import { membershipWords } from "@/lib/buyer-words/membership";
+import { preorderWords } from "@/lib/buyer-words/preorder";
 import { type AskWhen, isAskWhen } from "@/lib/ask-when";
 import { type UnitLine, unitLines } from "@/lib/option-units";
 
@@ -450,6 +451,38 @@ export function WaitlistForm({ store, product }: { store: Store; product: Listin
 }
 
 /**
+ * A product coming soon that takes pre-orders (lib/preorders.ts): paid today
+ * at its price, said plainly with the day it is expected and what happens if
+ * it does not come out, and the waitlist still there for whoever would rather
+ * wait. Plain HTML, like every form that opens a payment page.
+ */
+export function PreorderForm({ store, product, day }: { store: Store; product: Listing; day: string }) {
+  const { money, date } = speech(store);
+  const p = preorderWords(store.language);
+  const price = money(salePrice(product.priceCents, offNow(store, product)));
+  const expected = date(Date.parse(`${day}T00:00:00Z`));
+  return (
+    <div className="mt-4">
+      <form id="preorder" action="/api/store/checkout" method="post" target="_top" className="scroll-mt-24 space-y-3" data-checkout="">
+        <input type="hidden" name="handle" value={store.handle} />
+        <input type="hidden" name="product" value={product.id} />
+        <input type="hidden" name="preorder" value="yes" />
+        <p className="text-sm font-bold" style={{ color: "var(--st-accent-text)" }}>{p.expected(expected)}</p>
+        <button type="submit" className="btn st-btn btn-block">
+          {p.button(price)}
+        </button>
+        <p className="st-muted text-sm">{p.note}</p>
+        <p className="st-muted text-xs">{p.refund(store.name)}</p>
+      </form>
+      <details className="mt-4">
+        <summary className="st-footer-link cursor-pointer text-sm font-semibold">{p.orWait}</summary>
+        <WaitlistForm store={store} product={product} />
+      </details>
+    </div>
+  );
+}
+
+/**
  * The part of a product a buyer acts on: the form that gives it away, the
  * button that books a call, or the form that opens a checkout, with its
  * price options, plan, box for the product offered alongside and box for the
@@ -469,6 +502,7 @@ export function BuyBox({
   related,
   ready = true,
   soon = false,
+  preorder = null,
   place = "",
 }: {
   store: Store;
@@ -485,6 +519,8 @@ export function BuyBox({
   ready?: boolean;
   /** Coming soon: a waitlist instead of a way to pay (lib/waitlist.ts). */
   soon?: boolean;
+  /** Coming soon and taking pre-orders: the day it is expected (lib/preorders.ts, preorderDay). */
+  preorder?: string | null;
   /**
    * Set when the same box is drawn twice on one page — the offer to a leaving
    * visitor (components/exit-offer-slot.tsx) beside the product's own card —
@@ -492,7 +528,7 @@ export function BuyBox({
    */
   place?: string;
 }) {
-  if (soon && !isFree(product)) return <WaitlistForm store={store} product={product} />;
+  if (soon && !isFree(product)) return preorder ? <PreorderForm store={store} product={product} day={preorder} /> : <WaitlistForm store={store} product={product} />;
   const { w, money } = speech(store);
   const options = sellableOptions(product);
   const every = product.recurring ? ` ${w.every(product.recurring.interval)}` : "";
@@ -811,8 +847,13 @@ export function pageAction(
   related: Listing[],
   /** Coming soon: the buttons lead to its waitlist (lib/waitlist.ts). */
   soon = false,
+  /** Coming soon and taking pre-orders: the buttons lead to the pre-order (lib/preorders.ts). */
+  preorder: string | null = null,
 ): { action: PageAction; label: string } {
   const { w, money } = speech(store);
+  if (soon && !isFree(product) && preorder) {
+    return { action: { kind: "link", href: "#preorder" }, label: preorderWords(store.language).button(money(salePrice(product.priceCents, offNow(store, product)))) };
+  }
   if (soon && !isFree(product)) return { action: { kind: "link", href: "#waitlist" }, label: w.joinWaitlist };
   if (isFree(product)) {
     return canGiveProduct(store, product)
@@ -870,6 +911,7 @@ export function ProductCard({
   rating = null,
   bundleItems = null,
   soon = false,
+  preorder = null,
   sold = null,
 }: {
   store: Store;
@@ -882,6 +924,8 @@ export function ProductCard({
   manageable: boolean;
   /** Coming soon: a waitlist instead of a way to pay (lib/waitlist.ts). */
   soon?: boolean;
+  /** Coming soon and taking pre-orders: the day it is expected (lib/preorders.ts). */
+  preorder?: string | null;
   /** Near the top of the page: the picture is fetched right away. */
   eager?: boolean;
   /**
@@ -973,6 +1017,7 @@ export function ProductCard({
         selling={selling}
         ready={!product.bundle || (bundleItems?.length ?? 0) >= MIN_BUNDLE_ITEMS}
         soon={soon}
+        preorder={preorder}
       />
       {product.recurring && manageable ? (
         <p className="mt-3 text-center text-sm">

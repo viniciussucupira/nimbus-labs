@@ -25,6 +25,7 @@
 import { currentMeta } from "@/lib/tier-rules";
 import { packageState, readBought } from "@/lib/call-packages";
 import { giftFrom } from "@/lib/gifts";
+import { readPreorder, soonOne } from "@/lib/preorders";
 import { isGroupJob } from "@/lib/group-buy";
 import { saleHandles } from "@/lib/store";
 import { createHash, randomBytes } from "node:crypto";
@@ -135,6 +136,11 @@ export type Purchase = {
   packageBook?: string | null;
   packageLeft?: number;
   packageExpired?: boolean;
+  /**
+   * A pre-order (lib/preorders.ts): still waiting for the day it comes out,
+   * with that day when one is set, or handed over since.
+   */
+  preorder?: { day: string | null; given: boolean };
 };
 
 /** The products of a list on an order, each with what it hands over now. */
@@ -282,6 +288,32 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
       if (meta.gift) continue;
       // Bought for several: each place is on the list of whoever took it (lib/group-buy.ts).
       if (meta.group) continue;
+      // A pre-order: on the list as one until it is handed over; from then on
+      // it is on the list under the buyer's address, as a gift is (lib/preorders.ts).
+      if (meta.preorder) {
+        const product = await find(meta.product);
+        if (!product) continue;
+        if (await purchaseRefunded(account, session)) continue;
+        const entry = await readPreorder(store, product.id, id);
+        if (entry?.given || entry?.revoked) continue;
+        const coming = await soonOne(store, product.id).catch(() => ({ soon: true, day: null }));
+        found.set(id, {
+          reference: id,
+          kind: "sale",
+          title: product.title,
+          option: null,
+          paidAt: typeof session.created === "number" ? session.created : 0,
+          member: false,
+          ended: false,
+          productId: product.id,
+          courseProduct: null,
+          main: null,
+          items: null,
+          added: [],
+          preorder: { day: coming.day, given: false },
+        });
+        continue;
+      }
       // A package of calls: its sessions left, and the way to book them (lib/call-packages.ts).
       if (meta.kind === "package") {
         const bought = await readBought(id);
@@ -425,6 +457,7 @@ export async function purchasesFor(store: Store, email: string): Promise<Purchas
         giftFrom: await giftFrom(given.job),
         ...(isGroupJob(given.job) ? { place: true } : {}),
         ...(given.job.startsWith("paypal:") ? { paidWith: "paypal" as const } : {}),
+        ...(given.job.startsWith("pre:") ? { preorder: { day: null, given: true } } : {}),
         podcastProduct,
         title: product.title,
         option,

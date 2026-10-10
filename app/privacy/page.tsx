@@ -255,6 +255,15 @@ export default function PrivacyPage() {
           given is kept under the recipient&apos;s address, like a purchase of
           their own.
         </p>
+        <p id="preorders">
+          <strong className="text-black">Pre-orders.</strong>{" "}
+          When you pre-order something, we keep the email address you paid
+          with, when you paid and which payment it was, for about 13 months
+          after it last changed, so it can be handed over the day it comes out,
+          shown on your list of purchases and taken back if the payment is
+          refunded. We email you a receipt with the day it is expected, and
+          once more when it comes out, with the way to open it.
+        </p>
         <p id="buyer-questions">
           <strong className="text-black">Questions on a product&apos;s page.</strong>{" "}
           Some stores answer questions on their product pages. If you type

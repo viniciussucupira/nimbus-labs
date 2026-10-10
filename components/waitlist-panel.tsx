@@ -4,14 +4,39 @@ import { useState } from "react";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 import { MAX_LAUNCH_ADDRESS, MAX_LAUNCH_NOTE } from "@/lib/waitlist-rules";
 import type { WaitlistView } from "@/lib/waitlist";
+import type { PreorderView } from "@/lib/preorders";
+import { MAX_PREORDER_DAYS, PREORDER_PROBLEMS, type PreorderProblem, addDays, todayOf } from "@/lib/preorder-rules";
 
 const MESSAGES: Record<string, string> = {
+  ...PREORDER_PROBLEMS,
   ...STUDIO_MESSAGES,
   free: "A free product already takes addresses. A waitlist is for something paid.",
   address: "Add a postal address for the bottom of the email: US law asks for one in any email about something for sale.",
   busy: "The launch email is still going out. Wait for it to finish.",
   unknown: "That product is no longer in your store. Reload the page.",
+  empty: "Buyers have pre-ordered it, and they get it the moment it goes on sale. Add its file, its link or a lesson first.",
+  soon: "Mark it coming soon first: pre-orders are taken instead of a buy button.",
+  day: `Choose a day from tomorrow to ${MAX_PREORDER_DAYS} days ahead.`,
+  agree: "Check the box that says you refund every pre-order in full if it does not come out: buyers are told so.",
 };
+
+async function postPreorder(payload: Record<string, unknown>): Promise<{ ok: boolean; error?: string; view?: PreorderView }> {
+  try {
+    const response = await fetch("/api/store/preorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return (await response.json().catch(() => ({ ok: false, error: "server_error" }))) as { ok: boolean; error?: string; view?: PreorderView };
+  } catch {
+    return { ok: false, error: "server_error" };
+  }
+}
+
+/** A day as the studio says it: "November 20, 2026". */
+function dayWords(day: string): string {
+  return new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
 
 async function post(payload: Record<string, unknown>): Promise<{ ok: boolean; error?: string; view?: WaitlistView }> {
   try {
@@ -34,12 +59,25 @@ export function WaitlistPanel({
   productId,
   initial,
   suggestedAddress,
+  preorders = null,
+  preorderBlocked = null,
+  hasContent = true,
 }: {
   productId: string;
   initial: WaitlistView | null;
   suggestedAddress: string;
+  /** Its pre-orders, when it takes or took any (lib/preorders.ts). */
+  preorders?: PreorderView | null;
+  /** Why it cannot take pre-orders, when it cannot (lib/preorder-rules.ts). */
+  preorderBlocked?: PreorderProblem | null;
+  /** Whether it has its file, its link or a lesson: what pre-orders get when it goes on sale. */
+  hasContent?: boolean;
 }) {
   const [view, setView] = useState<WaitlistView>(initial ?? { soon: false, confirmed: 0, waiting: 0, launch: null });
+  const [pre, setPre] = useState<PreorderView>(preorders ?? { day: null, waiting: 0, given: 0, refunded: 0 });
+  const [day, setDay] = useState(preorders?.day ?? "");
+  const [agree, setAgree] = useState(false);
+  const [editingDay, setEditingDay] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -56,8 +94,46 @@ export function WaitlistPanel({
     return answer.ok;
   }
 
+  async function actPreorder(payload: Record<string, unknown>) {
+    setBusy(true);
+    setError(null);
+    const answer = await postPreorder({ id: productId, ...payload });
+    setBusy(false);
+    if (answer.ok && answer.view) {
+      setPre(answer.view);
+      setEditingDay(false);
+      setAgree(false);
+    } else setError(MESSAGES[answer.error ?? ""] ?? MESSAGES.server_error ?? "Something went wrong. Try again.");
+  }
+
   const launch = view.launch;
   const sending = launch !== null && !launch.finished;
+  const today = todayOf();
+  const taking = pre.day !== null && today <= pre.day;
+  const late = pre.day !== null && today > pre.day;
+  const dayForm = (
+    <div className="space-y-3">
+      <label className="block">
+        <span className="field-label">The day it is expected</span>
+        <input
+          type="date"
+          className="field mt-1 max-w-xs"
+          min={addDays(today, 1)}
+          max={addDays(today, MAX_PREORDER_DAYS)}
+          value={day}
+          onChange={(e) => setDay(e.target.value)}
+        />
+        <span className="mt-1 block text-xs text-ink-soft">Shown to buyers as expected, not promised. Pre-orders stop by themselves after it.</span>
+      </label>
+      <label className="flex min-h-11 items-start gap-3 text-sm text-ink">
+        <input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+        <span>I refund every pre-order in full if it does not come out. Buyers are told so on its page and in their receipt.</span>
+      </label>
+      <button type="button" className="btn btn-primary btn-sm" disabled={busy || !day || !agree} onClick={() => void actPreorder({ day, agree })}>
+        {taking || late ? "Save the new day" : "Take pre-orders"}
+      </button>
+    </div>
+  );
 
   return (
     <div className="mt-3 rounded-[var(--r-sm)] border border-line bg-white p-4">
@@ -88,7 +164,53 @@ export function WaitlistPanel({
 
       {view.soon ? (
         <div className="mt-4 space-y-3 border-t border-line pt-4">
+          <p className="text-sm font-semibold text-ink">Pre-orders</p>
+          {preorderBlocked ? (
+            <p className="text-sm text-ink-soft">{PREORDER_PROBLEMS[preorderBlocked]}</p>
+          ) : taking && !editingDay ? (
+            <>
+              <p className="text-sm text-ink">
+                {`Taking pre-orders: paid today, expected on ${dayWords(pre.day as string)}. The waitlist is still there for whoever would rather wait.`}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => { setDay(pre.day ?? ""); setEditingDay(true); }}>
+                  Change the day
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => void actPreorder({ day: null })}>
+                  Stop taking pre-orders
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-ink-soft">
+                {late
+                  ? `It was expected on ${dayWords(pre.day as string)}, so pre-orders stopped by themselves. Set a new day to take more, or put it on sale.`
+                  : "Sell it before it is ready: buyers pay today, see the day it is expected, and get it by email the moment you put it on sale. Nothing is added at checkout and no offer follows."}
+              </p>
+              {dayForm}
+            </>
+          )}
+          {pre.waiting || pre.given || pre.refunded ? (
+            <p className="text-sm text-ink">
+              <strong>{pre.waiting.toLocaleString("en-US")}</strong>
+              {` pre-ordered and waiting`}
+              <span className="text-ink-soft">{` · ${pre.given.toLocaleString("en-US")} handed over · ${pre.refunded.toLocaleString("en-US")} refunded`}</span>
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {view.soon ? (
+        <div className="mt-4 space-y-3 border-t border-line pt-4">
           <p className="text-sm font-semibold text-ink">Put it on sale and tell the waitlist</p>
+          {pre.waiting ? (
+            <p className="text-sm text-ink">
+              {hasContent
+                ? `Each of the ${pre.waiting.toLocaleString("en-US")} pre-orders is handed over at the same moment, and its buyer is emailed the way to open it.`
+                : `${pre.waiting.toLocaleString("en-US")} buyers have pre-ordered it and get it the moment it goes on sale: add its file, its link or a lesson first.`}
+            </p>
+          ) : null}
           <p className="text-sm text-ink-soft">
             {view.confirmed
               ? `It goes on sale at once, and each of the ${view.confirmed.toLocaleString("en-US")} confirmed addresses gets one email with its link and price. Then the waitlist's addresses are deleted; whoever also asked to hear from you is on your list already.`
@@ -124,7 +246,7 @@ export function WaitlistPanel({
           <button
             type="button"
             className="btn btn-primary btn-sm"
-            disabled={busy}
+            disabled={busy || (pre.waiting > 0 && !hasContent)}
             onClick={async () => {
               if (!confirming) return setConfirming(true);
               setConfirming(false);
