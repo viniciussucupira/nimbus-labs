@@ -521,7 +521,7 @@ async function main(): Promise<void> {
   const terms = read("app/terms/page.tsx");
   is("the Terms give the days, from where the job reads them", [/\{CLOSING_DAYS\} days after the plan ended/.test(terms), /\{WARN_MONTH_DAYS\} days before that day and \{WARN_WEEK_DAYS\} days before it/.test(terms), /storageWords\(SETUP_STORAGE_BYTES\)/.test(terms), /from "@\/lib\/plan-closing-rules"/.test(terms)], [true, true, true, true]);
   is("what is removed, what is kept, and what it means for buyers", [/the files its products hand over, its lessons&rsquo; videos and downloads, and its\s+podcast&rsquo;s episodes/.test(terms), /buyers can no longer download those files or watch those videos/.test(terms), /never removed sooner than a week after the last of those emails/.test(terms), /its page, its products and their\s+prices, its lessons&rsquo; text and quizzes, its contacts and its\s+orders are kept/.test(terms)], [true, true, true, true]);
-  const help = read("app/help/page.tsx");
+  const help = read("lib/help-content.ts");
   is("the help pages say the same", [help.includes(`${CLOSING_DAYS} days after your plan ended`), help.includes(`${WARN_MONTH_DAYS} days before that day and ${WARN_WEEK_DAYS} days before it`), help.includes(`keeps more than ${storageWords(SETUP_STORAGE_BYTES)} has a date`)], [true, true, true]);
   is("and the privacy policy says when such files are deleted", read("app/privacy/page.tsx").includes(`deleted ${CLOSING_DAYS} days after the plan`), true);
   const studio = read("app/studio/page.tsx");

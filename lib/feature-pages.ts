@@ -1575,6 +1575,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         kind: "features",
         title: "Where it helps",
         items: [
+          { icon: "chat", title: "\"How do I…?\" answered in your studio", body: "Ask how to do anything in your own words — sell a course in payments, add your own domain, offer a refund — and get the answer from our help center's own answers, with links to read them in full. When the help center does not cover it, it says so and tells you where a person answers." },
           { icon: "store", title: "Your whole store, drafted", body: "Say what you make and for whom: AI drafts the line under your name, up to three products with a summary and a suggested price, and the questions visitors ask, from your words only. You see it all first and keep what you choose; the products wait as drafts until you add what each one hands over." },
           { icon: "file", title: "A product's description", body: "The short line and the long description, from a few words about it." },
           { icon: "layout", title: "A whole sales page", body: "Headline, what the buyer gets, what is inside, questions and buttons, laid out as blocks you can move and change.", href: "/platform/sales-pages" },

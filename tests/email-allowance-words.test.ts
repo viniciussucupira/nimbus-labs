@@ -55,7 +55,7 @@ test("no page types a number of emails a month", () => {
 });
 
 test("the pages that state the allowance read it from the limit", () => {
-  for (const file of ["lib/feature-pages.ts", "lib/site-pages.ts", "app/terms/page.tsx", "app/help/page.tsx", "components/email-studio.tsx"]) {
+  for (const file of ["lib/feature-pages.ts", "lib/site-pages.ts", "app/terms/page.tsx", "lib/help-content.ts", "components/email-studio.tsx"]) {
     assert.match(readFileSync(join(process.cwd(), file), "utf8"), /PRO_MONTHLY_EMAILS/, `${file} states Pro's emails a month`);
   }
 });

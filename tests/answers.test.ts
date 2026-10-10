@@ -138,7 +138,7 @@ async function main(): Promise<void> {
   part("What the site says about it");
   const { readFileSync } = await import("node:fs");
   const said = (n: number) => n.toLocaleString("en-US");
-  for (const file of ["lib/feature-pages.ts", "app/help/page.tsx"]) {
+  for (const file of ["lib/feature-pages.ts", "lib/help-content.ts"]) {
     const copy = readFileSync(file, "utf8");
     is(
       `${file} states the month's numbers the code enforces`,

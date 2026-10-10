@@ -364,7 +364,7 @@ async function main(): Promise<void> {
   is("the studio opens a draft in the creator's own mailbox", readFileSync("components/outreach-studio.tsx", "utf8").includes("draftLinks(pitch.to, subject, text)"), true);
   is("the stop link's page changes nothing until a button is pressed", /stopFromLink/.test(readFileSync("app/outreach/stop/[token]/page.tsx", "utf8")), false);
   is("and the reader says who it is", readFileSync("lib/outreach.ts", "utf8").includes('"User-Agent": READER'), true);
-  is("with a page that explains it", readFileSync("app/help/page.tsx", "utf8").includes('id: "outreach"'), true);
+  is("with a page that explains it", readFileSync("lib/help-content.ts", "utf8").includes('id: "outreach"'), true);
 
   done();
 }

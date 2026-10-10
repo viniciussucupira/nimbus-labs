@@ -177,7 +177,7 @@ async function main(): Promise<void> {
 
   part("What is published");
   const terms = readFileSync(join(process.cwd(), "app/terms/page.tsx"), "utf8");
-  const help = readFileSync(join(process.cwd(), "app/help/page.tsx"), "utf8");
+  const help = readFileSync(join(process.cwd(), "lib/help-content.ts"), "utf8");
   is("the Terms say what a buyer coming back counts as, from the figures the count is made from", [/ROOM_GRANT_MINUTES\} minutes it is open: \{partsWords\(ROOM_LIVE_PARTS\)\}/.test(terms), /partsWords\(ROOM_IDLE_PARTS\)\} of a visit while the room is/.test(terms), /one visit on each day their podcast app checks/.test(terms), /is that\s+day&apos;s visit, once/.test(terms)], [true, true, true, true]);
   is("the help page says the same, in the same figures", [help.includes(`by the ${ROOM_GRANT_MINUTES} minutes it is open, for each member: ${partsWords(ROOM_LIVE_PARTS)} visits while people are talking, when it checks every ${LIVE_MS / 1000} seconds, and ${partsWords(ROOM_IDLE_PARTS)} of a visit while the room is quiet`), help.includes(`one nobody has touched for ${AWAY_AFTER_MS / MINUTE} minutes, checks nothing and counts nothing`)], [true, true]);
   is("both say what a resting store's room does", [/stops checking by itself and shows new\s+messages when a member asks for them/.test(terms), /stops checking by itself, and shows new messages when a member presses a button/.test(help)], [true, true]);

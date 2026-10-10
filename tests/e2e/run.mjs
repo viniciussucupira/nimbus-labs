@@ -1485,6 +1485,22 @@ try {
   }
 
   await keepSmall();
+  part("How do I…? answered in the studio from the help center");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const help = studio.getByRole("region", { name: "How do I…?" });
+    await help.getByLabel("Your question").fill("What files can I sell, and how big?");
+    await help.getByRole("button", { name: "Ask" }).click();
+    await help.getByText("Up to 5 GB, in the formats the help center lists.").waitFor({ timeout: 30_000 });
+    is("answered, with the help center's own answer to read in full", await help.getByRole("link", { name: "What file can I sell, and how big?" }).getAttribute("href"), "/help#what-file-can-i-sell-and-how-big");
+    const before = services.writing().length;
+    await help.getByLabel("Your question").fill("zzz qqq");
+    await help.getByRole("button", { name: "Ask" }).click();
+    await help.getByText(/does not cover that yet/).waitFor({ timeout: 30_000 });
+    is("a question the help center does not cover is said so, without asking the model", services.writing().length, before);
+  }
+
+  await keepSmall();
   part("A new store drafted with AI from a few sentences");
   {
     await open(studio, `${LOCAL}/studio?store=${fresh}`);

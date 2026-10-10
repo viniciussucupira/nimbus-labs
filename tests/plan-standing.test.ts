@@ -96,7 +96,7 @@ async function main(): Promise<void> {
   is("the Terms give all three figures for what a store may keep, from where the doors read them", [/storageWords\(STORAGE_BRAKE_BYTES\)/.test(terms), /storageWords\(TRIAL_STORAGE_BYTES\)/.test(terms), /storageWords\(SETUP_STORAGE_BYTES\)/.test(terms)], [true, true, true]);
   is("and both figures for video with no paid plan", [/\{VIDEO_HOURS_INCLUDED\} hours a month in the\s+free trial/.test(terms), /\{SETUP_VIDEO_HOURS\} hours a month before a plan is\s+started and after one has ended/.test(terms)], [true, true]);
   is("and that a store holding more when its plan ends cannot add to it, with where its date is said", /cannot add to it, and section 8 says how\s+long it keeps what it holds/.test(terms), true);
-  const help = read("app/help/page.tsx");
+  const help = read("lib/help-content.ts");
   is("the help pages give the same figures", [help.includes(`In a plan's free trial it holds ${storageWords(TRIAL_STORAGE_BYTES)}`), help.includes(`holds ${storageWords(SETUP_STORAGE_BYTES)}.`), help.includes(`${VIDEO_HOURS_INCLUDED} hours a month in the free trial, and ${SETUP_VIDEO_HOURS} hours a month before a plan starts and after one ends`)], [true, true, true]);
   is("so does the page about courses", read("lib/feature-pages.ts").includes(`${VIDEO_HOURS_INCLUDED} hours a month in the free trial, and ${SETUP_VIDEO_HOURS} hours a month before a plan starts and after one ends`), true);
   const studio = read("app/studio/page.tsx");
