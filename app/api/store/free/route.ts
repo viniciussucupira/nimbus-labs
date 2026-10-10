@@ -62,6 +62,8 @@ export async function POST(request: NextRequest) {
   if (!store) return new Response("No such store.", { status: 404 });
   const product = await readListing(store, productId);
   if (!product) return away(`/@${store.handle}`);
+  // Switched off after notices about its content (lib/takedown.ts): nothing is handed out.
+  if (store.suspended) return away(`/@${store.handle}`);
 
   const page = `/@${store.handle}/free?product=${encodeURIComponent(product.id)}`;
 

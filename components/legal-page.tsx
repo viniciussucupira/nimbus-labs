@@ -18,6 +18,7 @@ const LEGAL_LINKS = [
   { href: "/terms", label: "Terms of Service" },
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/refunds", label: "Refund Policy" },
+  { href: "/copyright", label: "Copyright and Takedown Policy" },
 ];
 
 /**

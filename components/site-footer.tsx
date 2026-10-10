@@ -73,6 +73,8 @@ const LEGAL_LINKS: FooterLink[] = [
   { label: "Terms of Service", href: "/terms" },
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Refund Policy", href: "/refunds" },
+  { label: "Copyright", href: "/copyright" },
+  { label: "Report content", href: "/report" },
 ];
 
 function FooterAnchor({ link, className }: { link: FooterLink; className: string }) {

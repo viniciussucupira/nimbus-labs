@@ -122,7 +122,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     title,
     description,
     alternates: { canonical },
-    robots: { index: true, follow: true },
+    robots: { index: !store.suspended, follow: true },
     openGraph: { type: "website", title, description, url: canonical },
     twitter: { card: "summary_large_image", title, description },
   };
@@ -255,6 +255,8 @@ export default async function ProductPage({ params, searchParams }: Params) {
   // As the store page does: a store with no plan a visit can be charged to
   // rests once it has had its month's visits (lib/traffic.ts).
   if (await isResting(store)) return <StoreResting store={store} />;
+  // Switched off after notices about its content (lib/takedown.ts).
+  if (store.suspended) return <StoreResting store={store} suspended />;
 
   const selling = canSell(store);
   // Coming soon: a waitlist where the buy box would be (lib/waitlist.ts).

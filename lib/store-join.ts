@@ -38,7 +38,7 @@ type Grant = { s: string; h: string; e: string; at: string };
  * can fill in must never be a way to send somebody an email.
  */
 export function joinOpen(store: Store): boolean {
-  return !isHouseStore(store) && store.join.on && Boolean(store.listId) && Boolean(store.statsId) && isPaidUp(store) && isRedisConfigured() && isSenderConfigured();
+  return !isHouseStore(store) && !store.suspended && store.join.on && Boolean(store.listId) && Boolean(store.statsId) && isPaidUp(store) && isRedisConfigured() && isSenderConfigured();
 }
 
 function sender(store: Store): string {

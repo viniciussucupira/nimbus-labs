@@ -41,7 +41,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
  */
 export default async function BlogPage({ params, searchParams }: Params) {
   const store = await load((await params).handle);
-  if (!store) notFound();
+  // A store switched off after notices (lib/takedown.ts) shows no posts.
+  if (!store || store.suspended) notFound();
   if (await isResting(store)) return <StoreResting store={store} />;
   const query = searchParams ? await searchParams : {};
   const page = typeof query.page === "string" && /^\d{1,3}$/.test(query.page) ? Math.max(1, Number(query.page)) : 1;

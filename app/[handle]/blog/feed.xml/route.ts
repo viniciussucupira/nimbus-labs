@@ -14,7 +14,7 @@ const xml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").
 export async function GET(_request: Request, { params }: { params: Promise<{ handle: string }> }) {
   const decoded = decodeURIComponent((await params).handle);
   const store = decoded.startsWith("@") ? await storeForPage(normaliseHandle(decoded)) : null;
-  if (!store || store.posts === 0) return new Response("Not found", { status: 404 });
+  if (!store || store.posts === 0 || store.suspended) return new Response("Not found", { status: 404 });
   const { posts } = await publishedPosts(store.statsId, 1);
   const base = `${SITE_URL}/@${store.handle}`;
   const title = speech(store).w.blogOf(store.name);

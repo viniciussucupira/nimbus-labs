@@ -4,6 +4,7 @@ import { photoUrl } from "@/lib/photo-limits";
 import type { Store } from "@/lib/store";
 import { lookStyle } from "@/lib/store-look";
 import { speech } from "@/lib/buyer-words";
+import { blockWords } from "@/lib/buyer-words/blocks";
 
 /**
  * A store's page while it rests (lib/traffic.ts, isResting): a store with
@@ -16,8 +17,12 @@ import { speech } from "@/lib/buyer-words";
  * stays, and so does the way into the members' community. Nothing here is
  * counted: a page that is resting has stopped adding to the month.
  */
-export function StoreResting({ store }: { store: Store }) {
+export function StoreResting({ store, suspended = false }: { store: Store; suspended?: boolean }) {
   const { w, lang } = speech(store);
+  // Switched off after notices about its content (lib/takedown.ts): said as plainly, with no promise of when.
+  const bw = blockWords(store.language);
+  const title = suspended ? bw.unavailableTitle : w.restingTitle;
+  const body = suspended ? bw.unavailableBody(store.name) : w.restingBody(store.name);
   return (
     <div
       lang={lang.locale}
@@ -40,9 +45,9 @@ export function StoreResting({ store }: { store: Store }) {
 
           <div className="st-note mt-10 text-center" role="status">
             <p className="font-bold" style={{ color: "var(--st-text)" }}>
-              {w.restingTitle}
+              {title}
             </p>
-            <p className="mt-2 text-sm">{w.restingBody(store.name)}</p>
+            <p className="mt-2 text-sm">{body}</p>
           </div>
 
           <div className="mt-10">

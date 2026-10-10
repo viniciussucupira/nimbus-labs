@@ -22,7 +22,8 @@ const load = cache(async (raw: string, segment: string) => {
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) return null;
   const store = await storeForPage(normaliseHandle(decoded));
-  if (!store) return null;
+  // A store switched off after notices (lib/takedown.ts) shows no posts.
+  if (!store || store.suspended) return null;
   const id = postIdFrom(decodeURIComponent(segment));
   const post = id ? await readPost(store.statsId, id) : null;
   return post && !post.draft ? { store, post } : null;

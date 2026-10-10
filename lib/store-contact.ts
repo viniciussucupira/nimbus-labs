@@ -26,7 +26,7 @@ const sha = (value: string) => createHash("sha256").update(value).digest("hex");
 
 /** Whether the store page shows the form: switched on, email to send with, and never the demo store. */
 export function contactOpen(store: Store): boolean {
-  return store.contact.on && !isHouseStore(store) && isSenderConfigured() && isRedisConfigured() && Boolean(store.email);
+  return store.contact.on && !store.suspended && !isHouseStore(store) && isSenderConfigured() && isRedisConfigured() && Boolean(store.email);
 }
 
 export type ContactResult = "sent" | "email" | "short" | "limited" | "closed" | "error";

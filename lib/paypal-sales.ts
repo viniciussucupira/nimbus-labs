@@ -239,7 +239,7 @@ export const PAYPAL_CURRENCIES: ReadonlySet<string> = new Set(["aud", "cad", "cz
 
 /** Whether this store takes PayPal right now, for what PayPal can sell. */
 export function sellsThroughPayPal(store: Store): boolean {
-  return paypalSalesConfigured() && Boolean(store.paypalSeller) && isPaidUp(store) && PAYPAL_CURRENCIES.has(store.currency);
+  return paypalSalesConfigured() && Boolean(store.paypalSeller) && isPaidUp(store) && PAYPAL_CURRENCIES.has(store.currency) && !store.suspended;
 }
 
 /** Who takes the payment, in the words the store's pages use. */

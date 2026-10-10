@@ -1485,6 +1485,49 @@ try {
   }
 
   await keepSmall();
+  part("A notice about a store's content, and taking it down");
+  {
+    const rights = await context.newPage();
+    await open(rights, `${LOCAL}/@localshop`);
+    await Promise.all([rights.waitForURL(/\/report\?url=/), rights.getByRole("link", { name: "Report a problem with this page" }).click()]);
+    is("the store page leads to the form with its address filled in", await rights.locator("#report-url").inputValue(), "https://marktmorgen.com/@localshop");
+    await rights.locator("#report-work").fill("My recording 'Kitchen Nights' is in the playlist this page plays, uploaded without my permission.");
+    await rights.locator("#report-name").fill("Rita Owner");
+    await rights.locator("#report-email").fill("rita@example.com");
+    await rights.getByRole("button", { name: "Send the notice" }).click();
+    is("a notice with something missing says what", await words(rights.locator("form [role=alert]")), "A copyright notice needs a postal address or a telephone number as well.");
+    await rights.locator("#report-contact").fill("+1 555 0100");
+    await rights.getByRole("checkbox", { name: /I believe in good faith/ }).check();
+    await rights.getByRole("checkbox", { name: /under penalty of perjury/ }).check();
+    await rights.locator("#report-signature").fill("Rita Owner");
+    await rights.getByRole("button", { name: "Send the notice" }).click();
+    await rights.getByText("Your notice was sent").waitFor({ timeout: 30_000 });
+    const notice = services.emails().filter((email) => [].concat(email.to).includes("support@marktmorgen.com") && /Copyright notice/.test(email.subject)).at(-1);
+    is("it reaches the support inbox only, with Reply to the sender", [notice?.subject, notice?.reply_to, services.emails().some((email) => [].concat(email.to).includes("rita@example.com"))], ["Copyright notice about @localshop", "rita@example.com", false]);
+    const takedown = notice?.text.match(/https?:\/\/\S+\/takedown\/[0-9a-f]{48}/)?.[0] ?? "";
+    await open(rights, local(takedown));
+    const row = rights.locator("li", { hasText: "Our kitchen playlist" });
+    await row.getByRole("button", { name: "Remove this link" }).click();
+    await rights.getByText(/^Done: The link "Our kitchen playlist"/).waitFor({ timeout: 30_000 });
+    const told = services.emails().filter((email) => [].concat(email.to).includes("owner@example.com") && /Content taken down/.test(email.subject)).at(-1);
+    is("the creator is told what was taken down and how to answer", [Boolean(told), told?.text.includes("counter-notice")], [true, true]);
+    await open(page, `${LOCAL}/@localshop`);
+    is("and it is gone from the page", await page.getByText("Our kitchen playlist").count(), 0);
+    await rights.getByRole("button", { name: "Switch off its pages and sales" }).click();
+    await rights.getByText(/^Done: Your store's pages and sales/).waitFor({ timeout: 30_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    is("a store switched off shows that it is unavailable, and that buyers keep what they bought", [await words(page.locator(".st-note p").first()), (await words(page.locator(".st-note"))).includes("is still yours")], ["This page is unavailable", true]);
+    await open(studio, `${LOCAL}/studio`);
+    is("its creator sees why in the studio", await studio.getByText("Your store's pages and sales are switched off after notices about its content.").count(), 1);
+    await open(rights, local(takedown));
+    await rights.getByRole("button", { name: "Switch the store back on" }).click();
+    await rights.getByText("Done: The store's pages and sales are back on.").waitFor({ timeout: 30_000 });
+    await open(page, `${LOCAL}/@localshop`);
+    is("and back on in one press", await page.locator("h1").count() > 0 && (await page.locator(".st-part").count()) > 0, true);
+    await rights.close();
+  }
+
+  await keepSmall();
   part("Logging in is not starting a store");
   await open(page, `${LOCAL}/signin?to=login`);
   is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);
@@ -1551,6 +1594,8 @@ try {
       ["a message's page", "/@localshop/contact?status=sent", 0],
       ["a supporter's thank-you", tipPath, 0],
       ["a media kit", "/@localshop/media-kit", 0],
+      ["the notice form", "/report", 0],
+      ["the copyright policy", "/copyright", 0],
       ["a post on it", postPath, 0],
       ["the studio's blog", "/studio/blog?edit=new", 1200],
     ];

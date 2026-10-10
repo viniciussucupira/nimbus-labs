@@ -23,7 +23,7 @@ async function load(raw: string) {
   const decoded = decodeURIComponent(raw);
   if (!decoded.startsWith("@")) return null;
   const store = await storeForPage(normaliseHandle(decoded));
-  return store && kitShown(store.kit) ? store : null;
+  return store && !store.suspended && kitShown(store.kit) ? store : null;
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {

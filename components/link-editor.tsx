@@ -211,7 +211,7 @@ function LinkForm({
             />
             <span>
               <span className="font-semibold">{`Play it on your page.`}</span>{" "}
-              <span className="text-ink-soft">{`${plays.what} right on your store, without sending anyone away. It loads only when someone presses play.`}</span>
+              <span className="text-ink-soft">{`${plays.what} right on your store, without sending anyone away. It loads only when someone presses play. Only yours, or what its owner published there.`}</span>
             </span>
           </label>
         ) : null}

@@ -46,7 +46,8 @@ const load = cache(async (raw: string, id: string): Promise<{ store: Store | nul
     return { store: null, product: null };
   }
   const store = await storeForPage(normaliseHandle(decoded.replace(/^@/, ""))).catch(() => null);
-  if (!store) return { store: null, product: null };
+  // A store switched off after notices (lib/takedown.ts) shows no card.
+  if (!store || store.suspended) return { store: null, product: null };
   // A draft is not on sale, and its card says so as its page would.
   const product = await readListing(store, id).catch(() => null);
   return { store, product: product && !product.hidden ? product : null };

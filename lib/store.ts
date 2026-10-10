@@ -78,6 +78,19 @@ import { type DisplayStyle, type ProductImage } from "@/lib/product-image";
 import { type PagePart, USUAL_ORDER, parseOrder } from "@/lib/store-order";
 import { NO_TIPS, type StoreTips, parseTips } from "@/lib/store-tips";
 import { type StoreKit, nextKit, parseKit } from "@/lib/store-kit";
+
+/** One piece of content taken down after a notice (lib/takedown.ts). */
+export type Strike = { at: string; what: string; report: string };
+
+/** The kept record of what was taken down, made safe; newest first, at most 50. */
+export function parseStrikes(raw: unknown): Strike[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((s): s is Record<string, unknown> => Boolean(s) && typeof s === "object")
+    .map((s) => ({ at: typeof s.at === "string" ? s.at.slice(0, 30) : "", what: typeof s.what === "string" ? s.what.slice(0, 200) : "", report: typeof s.report === "string" ? s.report.slice(0, 40) : "" }))
+    .filter((s) => s.at && s.what)
+    .slice(0, 50);
+}
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
@@ -494,6 +507,14 @@ export type Store = {
   tips: StoreTips;
   /** The media kit at /@handle/media-kit (lib/store-kit.ts). Off on every store written before it existed. */
   kit: StoreKit;
+  /**
+   * Taken down after notices (lib/takedown.ts): the day the store's pages and
+   * sales were switched off ("" while they are on), and every piece of
+   * content taken down, newest first — the record a repeat infringer is
+   * judged by.
+   */
+  suspended: string;
+  strikes: Strike[];
   /** The store's own questions and answers, on its page (lib/store-faq.ts). */
   faq: FaqItem[];
   /**
@@ -791,6 +812,8 @@ function parseStore(raw: unknown): Store | null {
       contact: parseJoin(value.contact),
       tips: parseTips(value.tips),
       kit: parseKit(value.kit),
+      suspended: typeof value.suspended === "string" && /^\d{4}-\d{2}-\d{2}/.test(value.suspended) ? value.suspended : "",
+      strikes: parseStrikes(value.strikes),
       faq: parseFaq(value.faq),
       intro: parseVideo(value.intro),
       order: parseOrder(value.order),
@@ -970,6 +993,8 @@ async function freshStore(fields: {
     contact: { on: false, heading: "", line: "" },
     tips: { ...NO_TIPS },
     kit: parseKit(null),
+    suspended: "",
+    strikes: [],
     faq: [],
     intro: null,
     order: [...USUAL_ORDER],
@@ -3133,6 +3158,14 @@ export async function setTips(email: string, tips: StoreTips): Promise<Store | n
 /** Saves the media kit (lib/store-kit.ts), dated today when any of its numbers changed. */
 export async function setKit(email: string, sent: unknown, today = new Date().toISOString().slice(0, 10)): Promise<Store | null> {
   return patchStore(email, (store) => ({ kit: nextKit(sent, store.kit, today) }));
+}
+
+/** Writes down a piece of content taken down after a notice, and switches the store off or on when asked (lib/takedown.ts). */
+export async function noteTakedown(email: string, strike: Strike | null, suspended?: boolean): Promise<Store | null> {
+  return patchStore(email, (store) => ({
+    ...(strike ? { strikes: [strike, ...store.strikes].slice(0, 50) } : {}),
+    ...(suspended === undefined ? {} : { suspended: suspended ? new Date().toISOString() : "" }),
+  }));
 }
 
 /** Keeps the newest reviews to quote on the store page (lib/store-quotes.ts). */
