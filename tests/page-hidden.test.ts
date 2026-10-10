@@ -2,7 +2,7 @@
  * A sales page kept from visitors while it is worked on (lib/sales-page.ts,
  * hidden, livePage). Checked: it is kept only when asked for in so many
  * words; visitors get no blocks, title or description from it; and the
- * product page, the answer box, the headline test's counting and the page
+ * product page, the answer box, a page test's counting and the page
  * after a free sign-up all go by it.
  */
 import { readFileSync } from "node:fs";
@@ -27,7 +27,7 @@ async function main(): Promise<void> {
   part("Everything that reads the page goes by it");
   is("the product page", readFileSync("app/[handle]/p/[product]/page.tsx", "utf8").includes("livePage(page, saleClock())"), true);
   is("the answer box", readFileSync("app/api/store/ask/route.ts", "utf8").includes("pageShown(page) ? page : null"), true);
-  is("the headline test's counting", readFileSync("app/api/store/checkout/route.ts", "utf8").includes("if (!page.test || !pageShown(page)) return;"), true);
+  is("a page test's counting", readFileSync("app/api/store/checkout/route.ts", "utf8").includes("if (!test || !pageShown(page)) return;"), true);
   is("the page after a free sign-up", readFileSync("app/[handle]/free/page.tsx", "utf8").includes("page?.next && pageShown(page)"), true);
   done();
 }

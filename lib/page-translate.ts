@@ -8,7 +8,8 @@
  * Only words a reader reads are taken: headings, paragraphs, list points,
  * questions and answers, button words, a comparison's cells, the lines under
  * pictures and their descriptions, the search title and line, a headline
- * being tested. Never an id, a picture's file, a video, a product picked for
+ * being tested, and every word of a second version of the page being
+ * tested. Never an id, a picture's file, a video, a product picked for
  * a card, a review picked, a date, a layout, or a comparison's tick or cross.
  * Browser-safe.
  */
@@ -34,7 +35,7 @@ export function mapPageWords(page: SalesPage, change: (words: string) => string)
     for (const key of keys) if (key in out) out[key] = one(out[key]);
     return out;
   };
-  const blocks = page.blocks.map((block) => {
+  const words = (list: PageBlock[]) => list.map((block) => {
     let out = fields(block as unknown as Record<string, unknown>, TEXT);
     for (const key of LISTS) {
       const list = out[key];
@@ -51,10 +52,12 @@ export function mapPageWords(page: SalesPage, change: (words: string) => string)
   });
   return {
     ...page,
-    blocks,
+    blocks: words(page.blocks),
     seoTitle: one(page.seoTitle),
     seoDescription: one(page.seoDescription),
     test: page.test ? { ...page.test, headline: one(page.test.headline), sub: one(page.test.sub) } : null,
+    // A second version of the whole page, after the first, in its own order.
+    variant: page.variant ? { ...page.variant, blocks: words(page.variant.blocks) } : null,
   };
 }
 

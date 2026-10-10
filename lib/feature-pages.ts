@@ -815,7 +815,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         items: [
           "Renewals are not in the revenue figure; they are in your Stripe dashboard.",
           "All time starts at the first visit still on record; daily visits are kept for about thirteen months.",
-          "A sales page's headline can be tested against a second one; a whole page cannot be tested against another yet.",
+          "A test compares two versions of one product's page, or two headlines, by checkouts opened: not prices, and not more than two at once.",
         ],
       },
       {
@@ -1515,6 +1515,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "gauge", title: "A coach for every page", body: "Each page gets a score out of 100, with how often the page was opened and how many checkouts it started in the last 30 days, and the questions visitors asked its answer box that the page could not answer, a press away from your questions. It also lists what pages that sell have in common and yours is missing — a button near the top, three things they get, who it is for, three questions answered, a refund promise — each with a button that adds the block. It points at the block where readers stop most. And the writing help reviews the page as visitors read it: what to change first, three headlines to try or test against yours, who it is for and not for, and the questions buyers will ask that your page leaves open, each a press away from your page. It counts as one of your monthly drafts and never invents reviews, numbers, results or deadlines." },
           { icon: "chart", title: "Where readers stop", body: "Each block of your page shows the share of visitors who read down to it, from 30 visitors up, so you can see which block to rewrite or move up. No cookie, nothing about who." },
           { icon: "chart", title: "Two headlines, tested", body: "Write a second headline and half your visitors see each. Once both have been seen 200 times and one brings clearly more people to the checkout (95% confidence), your page shows the winner to everybody by itself. Only words change: everyone pays the same price." },
+          { icon: "layout", title: "Two whole pages, tested", body: "Make version B from the page itself and change anything in it: blocks, their order, words, pictures, video. Half your visitors read each, and once one brings clearly more of them to the checkout (95% confidence), it becomes the page for everybody by itself. On the page you already have, with no separate page builder to pay for." },
           { icon: "chat", title: "Buyers' questions, answered from your page", body: "Switch it on and every product page gets a box: \u201cA question before you buy?\u201d The visitor is answered in seconds, in their own language, only from what that page says and from the notes you write for it. It never states a price, a refund, a deadline or a result that is not on your page, and it says the answer is automatic. What your page could not answer is told plainly and listed in your studio, with nothing about who asked, so you can see what the page is missing. 500 answers a month on Creator, 2,000 on Pro, 6,000 on Scale; past that the box closes until the month turns, and nothing is charged." },
           { icon: "sparkle", title: "A whole page drafted with AI", body: "From the product's name, price and description, plus anything you add. It never writes your story or a guarantee you did not give, never invents reviews, numbers, results or deadlines, and never puts a price on a button. Nothing is saved until you press Save. It counts as one of your monthly drafts." },
           { icon: "globe", title: "Search and sharing", body: "An address in words from the product's name — /p/knife-skills-… — that follows a rename without breaking a link shared before. A title of up to 70 characters and a description of up to 160 for search engines, and a share picture drawn for you from the product's picture, name, price and stars." },
@@ -1538,7 +1539,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           "A countdown runs to one fixed moment. There is no timer that starts again for each visitor, on purpose: that is a deadline that is not real.",
           "A button cannot state a price or a deal of its own: it leads to the checkout with the prices the store page shows.",
           "One page per product. There is no editor that chains several pages into a funnel, and no thank-you page of your own.",
-          "Tests compare two headlines (and the line under each), not whole pages, prices or layouts.",
+          "A test compares two versions: two headlines, or two whole pages. Never two prices: everyone pays the same. While two whole pages are tested, how far down the page is read is not shown, because there are two pages.",
         ],
       },
       {

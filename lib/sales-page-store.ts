@@ -21,7 +21,7 @@
  * another page is.
  */
 import { isRedisConfigured, redisPipeline } from "@/lib/redis";
-import { EMPTY_PAGE, MAX_PAGE_BYTES, type SalesPage, parsePage, picturePaths } from "@/lib/sales-page";
+import { EMPTY_PAGE, MAX_STORED_PAGE_BYTES, type SalesPage, parsePage, picturePaths } from "@/lib/sales-page";
 
 const pageKey = (statsId: string, productId: string) => `nl:product:page:${statsId}:${productId}`;
 const picsKey = (statsId: string) => `nl:product:pics:${statsId}`;
@@ -60,7 +60,7 @@ export async function releasePictures(statsId: string, productId: string, paths:
 export async function readPage(statsId: string | null, productId: string): Promise<SalesPage> {
   if (!statsId || !isRedisConfigured()) return { ...EMPTY_PAGE, blocks: [] };
   const [raw] = await redisPipeline([["GET", pageKey(statsId, productId)]]);
-  if (typeof raw !== "string" || !raw || raw.length > MAX_PAGE_BYTES * 2) return { ...EMPTY_PAGE, blocks: [] };
+  if (typeof raw !== "string" || !raw || raw.length > MAX_STORED_PAGE_BYTES) return { ...EMPTY_PAGE, blocks: [] };
   try {
     return parsePage(JSON.parse(raw));
   } catch {
@@ -80,7 +80,7 @@ export async function writePage(statsId: string, productId: string, page: SalesP
   const [before] = await redisPipeline([["GET", pageKey(statsId, productId)]]);
   const commands: (string | number)[][] = [empty ? ["DEL", pageKey(statsId, productId)] : ["SET", pageKey(statsId, productId), json]];
   // What the page was, kept so a save can be undone from the studio.
-  if (typeof before === "string" && before && before !== json && before.length <= MAX_PAGE_BYTES * 2) {
+  if (typeof before === "string" && before && before !== json && before.length <= MAX_STORED_PAGE_BYTES) {
     const key = versionsKey(statsId, productId);
     commands.push(["LPUSH", key, `${Date.now()}\n${before}`], ["LTRIM", key, 0, MAX_VERSIONS - 1], ["EXPIRE", key, VERSION_DAYS * 86_400]);
   }

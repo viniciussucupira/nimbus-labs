@@ -49,6 +49,7 @@ import {
   MAX_COUNTDOWN_LABEL,
   MAX_COUNTDOWN_NOTE,
   MAX_PAGE_PICTURES,
+  picturePaths,
   MAX_PICTURES,
   MAX_PICTURE_CAPTION,
   MAX_FIT_ITEMS,
@@ -101,6 +102,7 @@ const MESSAGES: Record<string, string> = {
   countdown: "Give the countdown the moment it runs to, no more than a year away, or remove the block.",
   quote_link: "Each thing said elsewhere needs the full https address of where it was said, so visitors can check it. Add it, or remove that one.",
   shape: "Something in the page could not be read. Reload the studio and try again.",
+  same_version: "Version B shows just what version A does, or one of them has no blocks. Change something in version B, or end the test.",
   too_big: "The page is too long to save. Shorten some of the text.",
   next: "After a sign-up, only another product that costs money can be shown.",
   unknown: "That product is no longer in your store. Reload the page.",
@@ -273,6 +275,10 @@ export function PageEditor({
   const [testing, setTesting] = useState(initial.test !== null);
   const [testHeadline, setTestHeadline] = useState(initial.test?.headline ?? "");
   const [testSub, setTestSub] = useState(initial.test?.sub ?? "");
+  // A second version of the whole page, tested against the first (lib/sales-page.ts,
+  // variant): the version not being edited right now, and whether B is the one being edited.
+  const [other, setOther] = useState<Draft[] | null>(() => (initial.variant ? toDrafts({ ...initial, blocks: initial.variant.blocks }) : null));
+  const [onB, setOnB] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [view, setView] = useState<"build" | "preview">("build");
   const [sharing, setSharing] = useState(false);
@@ -297,11 +303,27 @@ export function PageEditor({
       wideScreen.removeEventListener("change", read);
     };
   }, []);
-  // The blocks as they are now, for a save to know whether they changed while it ran.
-  const latestBlocks = useRef<PageBlock[]>(drafts.map((d) => d.block));
+  // Both versions' blocks as they are now, for a save or a translation to know whether they changed while it ran.
+  const latest = useRef({ drafts, other, onB });
   useEffect(() => {
-    latestBlocks.current = drafts.map((d) => d.block);
-  }, [drafts]);
+    latest.current = { drafts, other, onB };
+  }, [drafts, other, onB]);
+  function unchangedSince(page: Pick<SalesPage, "blocks" | "variant">): boolean {
+    const now = latest.current;
+    const a = now.onB && now.other ? now.other : now.drafts;
+    const b = now.other === null ? null : now.onB ? now.drafts : now.other;
+    return JSON.stringify({ a: a.map((d) => d.block), b: b ? b.map((d) => d.block) : null }) === JSON.stringify({ a: page.blocks, b: page.variant ? page.variant.blocks : null });
+  }
+  /** The page's two versions as they came back, with the one being edited in front. */
+  function putVersions(page: SalesPage, editB: boolean) {
+    const a = toDrafts(page);
+    const b = page.variant ? toDrafts({ ...page, blocks: page.variant.blocks }) : null;
+    const showB = editB && b !== null;
+    if (showB !== latest.current.onB) freshHistory(showB ? b : a);
+    setDrafts(showB ? b : a);
+    setOther(showB ? a : b);
+    setOnB(showB);
+  }
   // Undo and redo, a step at a time (added 8 October 2026): each pause in
   // editing is one step back, a hundred at most, the page's blocks and its
   // style together. Text being typed in a box keeps the box's own undo.
@@ -322,6 +344,11 @@ export function PageEditor({
     }, 500);
     return () => window.clearTimeout(timer);
   }, [drafts, style]);
+  /** Undo starts again from these blocks: a step back never crosses from one version of the page into the other. */
+  function freshHistory(now: Draft[]) {
+    steps.current = { past: [], future: [], last: { drafts: now, style: steps.current.last.style } };
+    setStepsLeft({ back: 0, forward: 0 });
+  }
   function stepTo(direction: "back" | "forward") {
     const h = steps.current;
     // An edit still within its pause is a step of its own first.
@@ -381,8 +408,38 @@ export function PageEditor({
 
   // Whether visitors are kept from the saved page right now; read off the clock, never while drawing on the server.
   const hiddenNow = initial.hidden && !(initial.showFrom > 0 && clock > 0 && initial.showFrom * 1000 <= clock);
-  const saved = JSON.stringify({ d: toDrafts(initial), t: initial.seoTitle, s: initial.seoDescription, n: initial.next ?? "", y: initial.style, h: initial.hidden, f: initial.hidden ? initial.showFrom : 0, ab: initial.test ? [initial.test.headline, initial.test.sub] : null });
-  const dirty = JSON.stringify({ d: drafts, t: seoTitle, s: seoDescription, n: next, y: style, h: hidden, f: hidden ? showFrom : 0, ab: testing ? [testHeadline.trim(), testSub.trim()] : null }) !== saved;
+  // The two versions, whichever is being edited.
+  const draftsA = onB && other ? other : drafts;
+  const draftsB = other === null ? null : onB ? drafts : other;
+  const saved = JSON.stringify({
+    d: toDrafts(initial),
+    v: initial.variant ? initial.variant.blocks : null,
+    t: initial.seoTitle,
+    s: initial.seoDescription,
+    n: initial.next ?? "",
+    y: initial.style,
+    h: initial.hidden,
+    f: initial.hidden ? initial.showFrom : 0,
+    ab: initial.test ? [initial.test.headline, initial.test.sub] : null,
+  });
+  const dirty =
+    JSON.stringify({
+      d: draftsA,
+      v: draftsB ? draftsB.map((d) => d.block) : null,
+      t: seoTitle,
+      s: seoDescription,
+      n: next,
+      y: style,
+      h: hidden,
+      f: hidden ? showFrom : 0,
+      ab: !draftsB && testing ? [testHeadline.trim(), testSub.trim()] : null,
+    }) !== saved;
+  // Pictures only the other version shows: the two versions together hold no more than a page may.
+  const onlyInOther = useMemo(() => {
+    if (!other) return 0;
+    const here = new Set(picturePaths({ blocks: drafts.map((d) => d.block) }));
+    return picturePaths({ blocks: other.map((d) => d.block) }).filter((path) => !here.has(path)).length;
+  }, [drafts, other]);
   // Nothing typed here is lost to a closed tab or a link pressed by mistake.
   useLeaveGuard(dirty && !busy);
   const hasHero = drafts[0]?.block.kind === "hero";
@@ -508,6 +565,46 @@ export function PageEditor({
     toast(`Block ${index + 1} copied below it.`);
   }
 
+  /** Brings version B (or A) to the front for editing; the other waits as it is. */
+  function switchVersion(toB: boolean) {
+    if (other === null || toB === onB) return;
+    freshHistory(other);
+    setOther(drafts);
+    setDrafts(other);
+    setOnB(toB);
+    setOpen(null);
+  }
+
+  /**
+   * Starts a test of a second version of the whole page: version B begins as
+   * a copy of this one, block for block with new ids, and is the one being
+   * edited from here. A page runs one test at a time, so a second headline
+   * being tested stops.
+   */
+  function startPageTest() {
+    if (other !== null || drafts.length === 0) return;
+    const copy = drafts.map((d) => ({ ...d, block: { ...structuredClone(d.block), id: newBlockId() } as PageBlock }));
+    freshHistory(copy);
+    setOther(drafts);
+    setDrafts(copy);
+    setOnB(true);
+    setTesting(false);
+    setOpen(null);
+    toast("Version B is a copy of your page. Change anything in it, then press Save to start the test.");
+  }
+
+  /** Ends the test with one version kept as the page; nothing is live until Save. */
+  function endPageTest(keep: "a" | "b") {
+    if (other === null) return;
+    const kept = (keep === "b") === onB ? drafts : other;
+    freshHistory(kept);
+    setDrafts(kept);
+    setOther(null);
+    setOnB(false);
+    setOpen(null);
+    toast(`Version ${keep.toUpperCase()} is the page again. Press Save to end the test.`);
+  }
+
   // Earlier versions of the saved page (lib/sales-page-store.ts, readVersions).
   const [versions, setVersions] = useState<{ index: number; at: number; blocks: number; headline: string }[] | null>(null);
   const [versionNote, setVersionNote] = useState<string | null>(null);
@@ -530,7 +627,7 @@ export function PageEditor({
       const data = (await response.json().catch(() => ({}))) as { ok?: boolean; at?: number; page?: SalesPage; dropped?: number };
       if (!data.ok || !data.page) throw new Error("unread");
       const page = data.page;
-      setDrafts(toDrafts(page));
+      putVersions(page, false);
       setSeoTitle(page.seoTitle);
       setSeoDescription(page.seoDescription);
       setNext(page.next ?? "");
@@ -604,12 +701,14 @@ export function PageEditor({
 
   function pageToSend(): SalesPage {
     return {
-      blocks: drafts.map((d) => d.block),
       seoTitle: seoTitle.trim(),
       seoDescription: seoDescription.trim(),
       next: product.free && next ? next : null,
-      // The id is the server's to give (lib/sales-page.ts, parseTest).
-      test: testing && testHeadline.trim() ? { id: "", headline: testHeadline.trim(), sub: testSub.trim() } : null,
+      // The ids are the server's to give (lib/sales-page.ts, parseTest and parseVariant).
+      // One test at a time: a second version of the page, or else a second headline.
+      blocks: draftsA.map((d) => d.block),
+      test: !draftsB && testing && testHeadline.trim() ? { id: "", headline: testHeadline.trim(), sub: testSub.trim() } : null,
+      variant: draftsB ? { id: "", blocks: draftsB.map((d) => d.block) } : null,
       style,
       hidden,
       showFrom: hidden ? showFrom : 0,
@@ -619,18 +718,25 @@ export function PageEditor({
   async function send(page: SalesPage | null, confirmation: string) {
     setBusy(true);
     setError(null);
-    const badVideo = page?.blocks.find((b) => (b.kind === "hero" && b.media === "video" && !b.video) || (b.kind === "video" && !b.video));
+    const all = page ? [...page.blocks, ...(page.variant?.blocks ?? [])] : [];
+    const inB = (id: string) => Boolean(page?.variant?.blocks.some((b) => b.id === id)) && !page?.blocks.some((b) => b.id === id);
+    const show = (id: string) => {
+      // The block in trouble may be in the version not being edited: that one is brought to the front.
+      if (inB(id) !== onB) switchVersion(inB(id));
+      setOpen(id);
+    };
+    const badVideo = all.find((b) => (b.kind === "hero" && b.media === "video" && !b.video) || (b.kind === "video" && !b.video));
     if (badVideo) {
       setError(MESSAGES.video);
       setBusy(false);
-      setOpen(badVideo.id);
+      show(badVideo.id);
       return;
     }
-    const badCountdown = page?.blocks.find((b) => b.kind === "countdown" && !b.until);
+    const badCountdown = all.find((b) => b.kind === "countdown" && !b.until);
     if (badCountdown) {
       setError(MESSAGES.countdown);
       setBusy(false);
-      setOpen(badCountdown.id);
+      show(badCountdown.id);
       return;
     }
     try {
@@ -655,9 +761,12 @@ export function PageEditor({
           setTesting(false);
           setTestHeadline("");
           setTestSub("");
+          if (onB) freshHistory([]);
+          setOther(null);
+          setOnB(false);
           setOpen(null);
-        } else if (data.page && JSON.stringify(latestBlocks.current) === JSON.stringify(page.blocks)) {
-          setDrafts(toDrafts(data.page));
+        } else if (data.page && unchangedSince(page)) {
+          putVersions(data.page, onB);
           if (data.page.test) setTestHeadline(data.page.test.headline);
         }
         toast(confirmation);
@@ -902,16 +1011,18 @@ export function PageEditor({
               Only words: the price and what is sold are the same for everyone.
             */}
             <div className="rounded-2xl bg-paper p-4 ring-1 ring-line">
-              <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm font-semibold text-ink">
-                <input type="checkbox" checked={testing} onChange={(e) => setTesting(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-violet-brand" />
+              <label className={`flex min-h-11 items-start gap-3 text-sm font-semibold text-ink ${other ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                <input type="checkbox" checked={testing && !other} disabled={other !== null} onChange={(e) => setTesting(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-violet-brand" />
                 <span>
                   Test a second headline
                   <span className="block font-normal text-ink-soft">
-                    {`Half your visitors see this one, half see the second. Once each has been seen ${MIN_VIEWS} times and one brings clearly more people to the checkout, your page shows that one to everybody by itself. Only the words change: never the price.`}
+                    {other
+                      ? "A second version of the whole page is being tested, and a page runs one test at a time. Write a different headline in version B instead."
+                      : `Half your visitors see this one, half see the second. Once each has been seen ${MIN_VIEWS} times and one brings clearly more people to the checkout, your page shows that one to everybody by itself. Only the words change: never the price.`}
                   </span>
                 </span>
               </label>
-              {testing ? (
+              {testing && !other ? (
                 <div className="mt-3 space-y-3">
                   {field(
                     `${base}-th`,
@@ -924,7 +1035,7 @@ export function PageEditor({
                     "Its line under it (optional)",
                     <textarea id={`${base}-ts`} className="field" rows={2} maxLength={MAX_SUBHEADLINE} value={testSub} onChange={(e) => setTestSub(e.target.value)} />,
                   )}
-                  <TestResults productId={product.id} running={initial.test !== null} />
+                  <TestResults productId={product.id} running={initial.test !== null} what="headline" />
                 </div>
               ) : null}
             </div>
@@ -1100,7 +1211,7 @@ export function PageEditor({
               productId={product.id}
               folder={folder}
               items={block.items}
-              room={Math.min(MAX_PICTURES, MAX_PAGE_PICTURES - elsewhere)}
+              room={Math.min(MAX_PICTURES, MAX_PAGE_PICTURES - elsewhere - onlyInOther)}
               onChange={(items) => change(index, { items })}
             />
           </div>
@@ -1152,7 +1263,7 @@ export function PageEditor({
               productId={product.id}
               folder={folder}
               items={block.picture ? [block.picture] : []}
-              room={Math.min(1, MAX_PAGE_PICTURES - elsewhere)}
+              room={Math.max(0, Math.min(1, MAX_PAGE_PICTURES - elsewhere - onlyInOther))}
               onChange={(items) => change(index, { picture: items[0] ?? null })}
             />
             <fieldset>
@@ -1599,11 +1710,13 @@ export function PageEditor({
               free={product.free}
               picture={Boolean(product.picture)}
               facts={facts}
-              page={pageToSend()}
+              // The version being edited: what the coach adds goes into it.
+              page={{ ...pageToSend(), blocks: drafts.map((d) => d.block) }}
               reach={reach}
               onAdd={(kind) => (kind === "fit" || kind === "facts" || kind === "steps" ? insertNear(emptyBlock(kind), kind === "facts" ? ["hero"] : ["benefits", "inside"]) : add(kind))}
               onHeadline={putHeadline}
               onTest={(headline, sub) => {
+                if (other) return;
                 setTesting(true);
                 setTestHeadline(headline.slice(0, MAX_HEADLINE));
                 setTestSub(sub.slice(0, MAX_SUBHEADLINE));
@@ -1649,8 +1762,8 @@ export function PageEditor({
                 page={pageToSend}
                 onResult={(page, sent) => {
                   // Only over the words it was given: an edit made meanwhile is never lost.
-                  if (JSON.stringify(latestBlocks.current) !== JSON.stringify(sent.blocks)) return false;
-                  setDrafts(toDrafts(page));
+                  if (!unchangedSince(sent)) return false;
+                  putVersions(page, onB);
                   setSeoTitle(page.seoTitle);
                   setSeoDescription(page.seoDescription);
                   if (page.test) {
@@ -1661,6 +1774,55 @@ export function PageEditor({
                 }}
               />
             </div>
+          ) : null}
+
+          {draftsA.length > 0 ? (
+            <section aria-labelledby="page-test-title" className="mt-6 rounded-2xl bg-paper p-4 ring-1 ring-line sm:p-5">
+              <p id="page-test-title" className="flex items-center gap-2 text-sm font-semibold text-ink">
+                <Icon name="chart" size={17} />
+                Test a second version of the whole page
+              </p>
+              {other === null ? (
+                <>
+                  <p className="mt-1 text-xs text-ink-soft">
+                    {`Make version B from this page and change anything in it: blocks, their order, words, pictures, video. Half your visitors see each version. Once each has been seen ${MIN_VIEWS} times and one brings clearly more people to the checkout, your page shows that one to everybody by itself. The price and what is sold stay the same for everyone.`}
+                  </p>
+                  <button type="button" onClick={startPageTest} className="btn btn-secondary btn-sm mt-3">
+                    Make version B
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="mt-3 inline-flex rounded-full bg-white p-1 ring-1 ring-line" role="group" aria-label="The version you are editing">
+                    {([false, true] as const).map((b) => (
+                      <button
+                        key={String(b)}
+                        type="button"
+                        aria-pressed={onB === b}
+                        onClick={() => switchVersion(b)}
+                        className={`inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition-colors ${onB === b ? "bg-lilac text-violet-ink ring-1 ring-violet-brand/40" : "text-ink-soft hover:text-ink"}`}
+                      >
+                        {b ? "Version B" : "Version A"}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-ink-soft">
+                    {`You are editing version ${onB ? "B" : "A"}: the blocks below and the preview are ${onB ? "B's" : "A's"}. Changing either version after a save starts the count again, so a result is never about a page visitors did not see.`}
+                  </p>
+                  <div className="mt-3">
+                    <TestResults productId={product.id} running={initial.variant !== null} what="page" />
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => endPageTest("a")} className="btn btn-secondary btn-sm">
+                      Keep version A, end the test
+                    </button>
+                    <button type="button" onClick={() => endPageTest("b")} className="btn btn-secondary btn-sm">
+                      Keep version B, end the test
+                    </button>
+                  </div>
+                </>
+              )}
+            </section>
           ) : null}
 
           <ol className="mt-6">
@@ -1960,7 +2122,7 @@ export function PageEditor({
           }}
         >
           <p className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-ink-soft">
-            <span>As visitors see it, on a phone · press a part to edit it</span>
+            <span>{`As visitors see it${other ? (onB ? ", version B" : ", version A") : ""}, on a phone · press a part to edit it`}</span>
             {dirty ? <span>Unsaved</span> : null}
           </p>
           {pagePreview(false)}
@@ -2020,13 +2182,16 @@ export function PageEditor({
             type="button"
             className="btn btn-ghost"
             onClick={() => {
-              setDrafts(toDrafts(initial));
+              putVersions(initial, false);
               setSeoTitle(initial.seoTitle);
               setSeoDescription(initial.seoDescription);
               setNext(initial.next ?? "");
               setStyle(initial.style);
               setHidden(initial.hidden);
               setShowFrom(initial.showFrom);
+              setTesting(initial.test !== null);
+              setTestHeadline(initial.test?.headline ?? "");
+              setTestSub(initial.test?.sub ?? "");
               setError(null);
             }}
           >
@@ -2318,11 +2483,16 @@ function PairEditor({
   );
 }
 
+/** "1 time", "2 times", "1,200 checkouts". */
+function times(n: number, word: string): string {
+  return `${n.toLocaleString("en-US")} ${n === 1 ? word : `${word}s`}`;
+}
+
 /**
  * How the saved headline test is going, read from the counts (lib/headline-test.ts).
  * Shown only once a test is saved: a test being typed has nothing to show yet.
  */
-function TestResults({ productId, running }: { productId: string; running: boolean }) {
+function TestResults({ productId, running, what }: { productId: string; running: boolean; what: "headline" | "page" }) {
   const [counts, setCounts] = useState<Counts | null>(null);
   useEffect(() => {
     if (!running) return;
@@ -2340,18 +2510,26 @@ function TestResults({ productId, running }: { productId: string; running: boole
   if (!running) return <p className="text-xs text-ink-soft">Save the page and the test starts with the next visitor.</p>;
   if (!counts) return null;
   const won = winner(counts);
+  const page = what === "page";
+  const [a, b] = page ? ["Version A", "Version B"] : ["First headline", "Second headline"];
   return (
     <div className="text-sm text-ink">
-      <p>{`First headline: seen ${counts.va.toLocaleString("en-US")} times, ${counts.ca.toLocaleString("en-US")} checkouts (${rate(counts.ca, counts.va)}%).`}</p>
-      <p>{`Second headline: seen ${counts.vb.toLocaleString("en-US")} times, ${counts.cb.toLocaleString("en-US")} checkouts (${rate(counts.cb, counts.vb)}%).`}</p>
+      <p>{`${a}: seen ${times(counts.va, "time")}, ${times(counts.ca, "checkout")} (${rate(counts.ca, counts.va)}%).`}</p>
+      <p>{`${b}: seen ${times(counts.vb, "time")}, ${times(counts.cb, "checkout")} (${rate(counts.cb, counts.vb)}%).`}</p>
       <p className="mt-1 font-semibold">
         {won === "b"
-          ? "The second headline wins. Your page now shows it to everybody. Make it the hero's own headline and switch the test off to keep it."
+          ? page
+            ? "Version B wins. Your page now shows it to everybody. Keep version B and save to make it the page."
+            : "The second headline wins. Your page now shows it to everybody. Make it the hero's own headline and switch the test off to keep it."
           : won === "a"
-            ? "The first headline wins. Your page now shows it to everybody. Switch the test off, or try another second headline."
+            ? page
+              ? "Version A wins. Your page now shows it to everybody. Keep version A and save, or change version B and save to test again."
+              : "The first headline wins. Your page now shows it to everybody. Switch the test off, or try another second headline."
             : `Still running: no clear winner yet. Each needs at least ${MIN_VIEWS} views and a real difference.`}
       </p>
-      <p className="mt-1 text-xs text-ink-soft">Visitors asked for consent before a cookie, as in the EU and UK, see the first headline and are not counted.</p>
+      <p className="mt-1 text-xs text-ink-soft">
+        {`Visitors asked for consent before a cookie, as in the EU and UK, see ${page ? "version A" : "the first headline"} and are not counted.`}
+      </p>
     </div>
   );
 }

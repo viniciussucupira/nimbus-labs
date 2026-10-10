@@ -493,16 +493,17 @@ export default function PrivacyPage() {
         </p>
         <p id="headline-tests">
           <strong className="text-black">
-            Headline tests on product pages.
+            Tests on product pages.
           </strong>{" "}
           A visitor to a product&apos;s page gets a cookie named{" "}
           <code>nl_ab</code> holding one random number from 0 to 999, for 90
-          days, so that when the creator tests two headlines the same visitor
-          keeps seeing the same one. For each test we count how many times each
-          headline was seen and how many checkouts were opened from it, and
-          nothing about who. Visitors in the European Economic Area, the United
-          Kingdom, Switzerland or Brazil, or whose country we cannot tell, get
-          no such cookie: they see the first headline and are not counted.
+          days, so that when the creator tests two headlines, or two versions
+          of the whole page, the same visitor keeps seeing the same one. For
+          each test we count how many times each version was seen and how many
+          checkouts were opened from it, and nothing about who. Visitors in the
+          European Economic Area, the United Kingdom, Switzerland or Brazil, or
+          whose country we cannot tell, get no such cookie: they see the first
+          version and are not counted.
         </p>
         <p id="page-depth">
           <strong className="text-black">

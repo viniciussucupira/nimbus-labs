@@ -12,6 +12,10 @@ export async function GET(request: NextRequest) {
   if (!store || !id) return Response.json({ ok: false, error: "unknown" }, { status: 404 });
   try {
     const [page, depth] = await Promise.all([readPage(store.statsId, id), readDepth(store.statsId, id)]);
+    // While a second version of the whole page is tested, each visitor reads
+    // one of two pages, so how far down "the page" is read is not a number
+    // that means anything: none is given until the test ends.
+    if (page.variant) return Response.json({ ok: true, shares: {}, visitors: 0 }, { headers: { "Cache-Control": "private, no-store" } });
     const result = reachShares(page.blocks.map((b) => b.id), depth.stopped, depth.visitors);
     return Response.json({ ok: true, ...result }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {

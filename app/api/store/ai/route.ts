@@ -33,8 +33,9 @@ const KINDS: ProductKind[] = ["download", "link", "course", "membership", "call"
  * products permission, an email the one to write drafts (lib/team-roles.ts).
  */
 export async function POST(request: NextRequest) {
-  // A review sends the page being edited, which may be long (lib/sales-page.ts, MAX_PAGE_BYTES).
-  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" || body.kind === "faq" || body.kind === "kit" || body.kind === "setup" || body.kind === "blog" || (body.kind === "posts" && !body.product) ? "page" : body.kind === "reply" ? "reviews" : "products"), 140_000);
+  // A review or a translation sends the page being edited, which may be long, and
+  // twice as long with a second version being tested (lib/sales-page.ts, MAX_PAGE_BYTES).
+  const guarded = await guardStoreWrite(request, (body) => (body.kind === "email" ? "draft" : body.kind === "bio" || body.kind === "faq" || body.kind === "kit" || body.kind === "setup" || body.kind === "blog" || (body.kind === "posts" && !body.product) ? "page" : body.kind === "reply" ? "reviews" : "products"), 280_000);
   if (!guarded.ok) return guarded.response;
   const { body, store } = guarded;
   const fail = (error: string, status = 400) => Response.json({ ok: false, error }, { status });
