@@ -78,7 +78,9 @@ export function canSell(store: Store): boolean {
     // here is free — the address, the page, the editor, connecting Stripe —
     // and what the subscription buys is the till. A creator inside the trial
     // passes this too, because a trial that cannot sell proves nothing.
-    isPaidUp(store)
+    isPaidUp(store) &&
+    // Switched off after notices about its content (lib/takedown.ts): no new sale until it is back.
+    !store.suspended
   );
 }
 

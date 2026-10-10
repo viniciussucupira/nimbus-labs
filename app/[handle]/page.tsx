@@ -109,7 +109,7 @@ export async function generateMetadata({ params, searchParams }: Params): Promis
     // something on it does, so it stops hiding the moment it has. A page of
     // links alone counts: it is a page somebody may be looking for.
     robots: {
-      index: !searched && (visibleCount(store) > 0 || store.links.length > 0),
+      index: !searched && !store.suspended && (visibleCount(store) > 0 || store.links.length > 0),
       follow: true,
     },
     // A shared link shows the creator's face when they have put one up.
@@ -167,6 +167,8 @@ export default async function StorePage({ params, searchParams }: Params) {
   // paid (lib/traffic.ts). Asked only of such a store, before anything else
   // is read for it; a store that pays is never rested.
   if (await isResting(store)) return <StoreResting store={store} />;
+  // Switched off after notices about its content (lib/takedown.ts).
+  if (store.suspended) return <StoreResting store={store} suspended />;
 
   const selling = canSell(store);
   // Sold through the creator's own PayPal as well, or instead (lib/paypal-sales.ts).
@@ -663,6 +665,12 @@ export default async function StorePage({ params, searchParams }: Params) {
               kept either way, so coming back to Pro restores the choice
               rather than losing it.
             */}
+            {/* Anybody may report what is on a store page (app/report, lib/takedown.ts). */}
+            <p className="mb-4">
+              <Link href={`/report?url=${encodeURIComponent(`${SITE_URL}/@${store.handle}`)}`} prefetch={false} rel="nofollow" className="st-footer-link text-xs">
+                {bw.reportPage}
+              </Link>
+            </p>
             {store.look.badge || !canUse(store, "branding") ? (
               <Link href="/" className="st-footer-link text-sm font-semibold">
                 {w.madeWith}

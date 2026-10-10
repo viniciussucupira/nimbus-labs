@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   const domains = isDomainsConfigured();
   return (
-    <LegalPage title="Terms of Service" lastUpdated="October 7, 2026">
+    <LegalPage title="Terms of Service" lastUpdated="October 9, 2026">
       <p>
         These Terms of Service (“Terms”) govern your access to and use of the
         websites, products, and subscription services operated by Solrenning
@@ -183,6 +183,19 @@ export default function TermsPage() {
           We may remove a product or suspend a store that breaks this section.
           Doing so does not affect the money already in your own Stripe
           account.
+        </p>
+        <p>
+          The same goes for the links on your page and anything played on it:
+          link to, and play, only videos, music and podcasts that are yours or
+          that their owner published on that service. When someone tells us
+          that content on your store infringes their copyright or is illegal,
+          we follow our{" "}
+          <Link href="/copyright" className="text-black underline underline-offset-2 hover:no-underline">
+            Copyright and Takedown Policy
+          </Link>
+          : we may take the content down, we tell you and how to answer, and we
+          switch off the pages and sales of a store that is the subject of
+          repeated valid notices. Your buyers keep what they already bought.
         </p>
       </LegalSection>
 

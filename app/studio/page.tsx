@@ -854,6 +854,21 @@ export default async function StudioPage({
                 {" and click Connect Zoom."}
               </p>
             ) : null}
+            {/* Switched off, or content taken down, after notices (lib/takedown.ts): said first, with where to answer. */}
+            {store.suspended || store.strikes.length ? (
+              <div role="status" className="mt-6 rounded-2xl bg-danger-soft px-5 py-4 text-ink">
+                <p className="font-semibold">
+                  {store.suspended
+                    ? "Your store's pages and sales are switched off after notices about its content."
+                    : `${store.strikes.length === 1 ? "A piece" : `${store.strikes.length} pieces`} of content ${store.strikes.length === 1 ? "was" : "were"} taken down from your store after notices.`}
+                </p>
+                <p className="mt-1 text-sm">
+                  {store.strikes.length ? `Latest: ${store.strikes[0].what}. ` : ""}
+                  We emailed you each time, with the notice and how to answer it. Reply to that email to send a counter-notice;
+                  your buyers keep what they bought. <Link href="/copyright" className="underline underline-offset-2">Our policy</Link>.
+                </p>
+              </div>
+            ) : null}
             {role === "owner" ? <StudioStart steps={startSteps} /> : null}
             {/* Once there is something on the store: what else it does to sell, with a score (lib/store-coach.ts). */}
             {may("page") ? (
