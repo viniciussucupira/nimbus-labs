@@ -75,6 +75,7 @@ import { type KeySetup, canHaveKeys } from "@/lib/key-setup";
 import { type BundleProblem, bundleProblem, isBundle } from "@/lib/bundle-rules";
 import { offerableAfterPaying } from "@/lib/bundles";
 import { type DisplayStyle, type ProductImage } from "@/lib/product-image";
+import { type PagePart, USUAL_ORDER, parseOrder } from "@/lib/store-order";
 import {
   MAX_LINK_TITLE_LENGTH,
   MAX_STORE_LINKS,
@@ -496,6 +497,12 @@ export type Store = {
    */
   intro: Video | null;
   /**
+   * The order of the parts of the page under the creator's name
+   * (lib/store-order.ts), always whole. The usual order on every store
+   * written before it could be changed.
+   */
+  order: PagePart[];
+  /**
    * The free product offered once to a visitor about to leave (lib/exit-offer.ts),
    * or null for none. Off on every store written before it existed.
    */
@@ -778,6 +785,7 @@ function parseStore(raw: unknown): Store | null {
       contact: parseJoin(value.contact),
       faq: parseFaq(value.faq),
       intro: parseVideo(value.intro),
+      order: parseOrder(value.order),
       posts: typeof value.posts === "number" && Number.isInteger(value.posts) && value.posts > 0 ? Math.min(value.posts, 10_000) : 0,
       exitOffer: typeof value.exitOffer === "string" && /^[A-Za-z0-9_-]{1,40}$/.test(value.exitOffer) ? value.exitOffer : null,
       sections: parseSections(value.sections),
@@ -954,6 +962,7 @@ async function freshStore(fields: {
     contact: { on: false, heading: "", line: "" },
     faq: [],
     intro: null,
+    order: [...USUAL_ORDER],
     exitOffer: null,
     sections: [],
     announcement: null,
@@ -3087,6 +3096,11 @@ export async function setReviewed(email: string): Promise<Store | null> {
 /** Saves the welcome video under the store's name, or takes it away (null). */
 export async function setIntro(email: string, video: Video | null): Promise<Store | null> {
   return patchStore(email, () => ({ intro: video }));
+}
+
+/** Saves the order of the parts of the store page (lib/store-order.ts), made whole first. */
+export async function setOrder(email: string, order: unknown): Promise<Store | null> {
+  return patchStore(email, () => ({ order: parseOrder(order) }));
 }
 
 /** Saves the store's own questions and answers (lib/store-faq.ts). */

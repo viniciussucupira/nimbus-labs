@@ -73,6 +73,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "sparkle", title: "\"Not sure which one is for you?\"", body: "With three products or more, a visitor says what they want and sees which of yours fit, and why, picked by AI only from your titles, one-line summaries, prices and notes. When nothing fits, what they looked for reaches your studio — never who asked." },
           { icon: "star", title: "What buyers say, on the store page", body: "Under your name, the average of every product's reviews; further down, the newest reviews with words, each with the product it is about. Never a hidden or refunded review, and nothing chosen for its stars." },
           { icon: "arrow-up-right", title: "A Share button", body: "Under your name: the phone's own share sheet, or the address copied on a computer." },
+          { icon: "list", title: "Your page in your order", body: "Choose what comes first under your name: what you sell, what buyers say, your links, the sign-up box, your questions and answers, the contact form and the way into your community. Links first for a page that is mostly links, buyers' words above the products, the sign-up box at the top while you build a list. A visitor who searches your store still sees the results first." },
           { icon: "palette", title: "Colors that stay readable", body: "Every color is checked for contrast before your page uses it, so your words never disappear into it." },
           { icon: "phone", title: "Your store, as an app", body: "On iPhone and Android, straight from the browser, your store installs to the home screen as an app of its own, with its name, its icon and its color. No app store." },
           { icon: "refresh", title: "Change your address freely", body: "Old addresses stay with your store and lead to the new one, up to ten at once, so the link in your bio keeps working." },
@@ -94,7 +95,7 @@ export const FEATURE_PAGES: TopicPage[] = [
         title: "What it does not do yet",
         intro: "Said here so nobody signs up expecting it.",
         items: [
-          "There is one layout: you choose the theme, the color, the letters and the order, not the arrangement of blocks on the page.",
+          "There is one layout, a single column that reads on a phone: you choose the theme, the color, the letters, the background and which part of the page comes first, not where parts sit beside each other.",
           "Up to 2,000 products and 100 links per store. Stan says unlimited; we say the number we can stand behind.",
           "No custom code on the page, and the whole store cannot be put inside another website. One product can, as a card or a button.",
           "Buyers pay through Stripe, with the ways to pay your own Stripe account has on. Do not count on PayPal: Stripe offers it only to accounts in the EU (except Hungary), the UK, Switzerland, Norway and Liechtenstein, and its documentation, read on September 28, 2026, lists it as not supported for direct charges, which is how every sale here is charged.",

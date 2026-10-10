@@ -5,6 +5,7 @@ import { contactOpen } from "@/lib/store-contact";
 import { StoreContactBox } from "@/components/store-contact-box";
 import { linkIcon } from "@/lib/store-socials";
 import { imageUrl } from "@/lib/product-image";
+import { type PagePart, drawnOrder } from "@/lib/store-order";
 import { Icon } from "@/components/icons";
 import { MAX_STORE_SEARCH, STORE_PAGE_SIZE, searchStore, searchWords } from "@/lib/catalog";
 import { withinLimit } from "@/lib/request-guard";
@@ -237,6 +238,18 @@ export default async function StorePage({ params, searchParams }: Params) {
     if (count !== null) left.set(product.id, count);
   });
 
+  // Which parts of the page have something to show (lib/store-order.ts): only those are drawn.
+  const quoted = store.quotes.filter((quote) => index.some((item) => item.id === quote.p && !item.hidden));
+  const shown: Record<PagePart, boolean> = {
+    products: total > 0,
+    quotes: total > 0 && page === 1 && !searching && quoted.length > 0,
+    links: links.length > 0,
+    signup: joinOpen(store),
+    faq: store.faq.length > 0 && !searching,
+    contact: contactOpen(store),
+    community: store.community?.on === true,
+  };
+
   return (
     <div
       lang={speech(store).lang.locale}
@@ -318,260 +331,264 @@ export default async function StorePage({ params, searchParams }: Params) {
             </div>
           ) : null}
 
-          {total > 0 ? (
-            <>
-              {saleRunning(store.sale, saleClock()) ? (
-                <p className="st-card mb-4 px-5 py-4 text-center font-semibold" style={{ color: "var(--st-accent-text)" }} role="status">
-                  {w.saleBanner(store.sale.name, store.sale.percent, endsLine(store, store.sale.ends))}
-                  <span className="st-muted mt-1 block text-sm font-normal">{w.saleBannerNote}</span>
-                </p>
-              ) : null}
-              {searchable ? (
-                <form role="search" action="" method="get" className="mb-6" aria-label={bw.searchLabel}>
-                  <label htmlFor="store-search" className="sr-only">
-                    {bw.searchLabel}
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      id="store-search"
-                      type="search"
-                      name="q"
-                      defaultValue={wantedSearch}
-                      maxLength={MAX_STORE_SEARCH}
-                      placeholder={bw.searchPlaceholder}
-                      enterKeyHint="search"
-                      className="st-field min-w-0 flex-1"
-                    />
-                    <button type="submit" className="btn st-btn shrink-0">
-                      {bw.searchButton}
-                    </button>
-                  </div>
-                  {wantedSearch && !searchAllowed && searchWords(wantedSearch).length > 0 ? (
-                    <p className="st-note mt-3 text-sm" role="status">{bw.searchSlow}</p>
-                  ) : null}
-                  {results ? (
-                    <p className="mt-3 flex flex-wrap items-baseline justify-between gap-2 text-sm" role="status">
-                      <span className="font-semibold">{results.total ? bw.searchFound(results.total, searching) : bw.searchNone(searching)}</span>
-                      <a href={pageHref(store.handle, 1, reachedOn !== null)} className="st-footer-link">
-                        {bw.searchClear}
-                      </a>
+          {/*
+            The parts of the page, in the order the creator chose (lib/store-order.ts).
+            A part with nothing to show is not drawn at all, wherever it stands.
+          */}
+          {drawnOrder(store.order, searching !== "").filter((part) => shown[part]).map((part, i) => (
+            <div key={part} data-part={part} className={i === 0 ? "st-part st-part-first" : "st-part"}>
+              {part === "products" ? (
+                <>
+                  {saleRunning(store.sale, saleClock()) ? (
+                    <p className="st-card mb-4 px-5 py-4 text-center font-semibold" style={{ color: "var(--st-accent-text)" }} role="status">
+                      {w.saleBanner(store.sale.name, store.sale.percent, endsLine(store, store.sale.ends))}
+                      <span className="st-muted mt-1 block text-sm font-normal">{w.saleBannerNote}</span>
                     </p>
                   ) : null}
-                </form>
-              ) : null}
-              {/* "Not sure which one is for you?": the visitor says what they want, and sees what fits (lib/store-guide.ts). */}
-              {!searching && page === 1 && total >= 3 && guideOn(store, total) && canSell(store) ? (
-                <div className="mb-8">
-                  <StoreGuideBox handle={store.handle} storeName={store.name} lang={store.language} />
-                </div>
-              ) : null}
-              {groups.map((group, g) => (
-                <section key={group.products[0].id} className={g > 0 ? "mt-10" : undefined} aria-label={group.title ?? undefined}>
-                  {group.title ? (
-                    <h2 className="st-section-title">
-                      {group.title}
-                      {group.continued ? <span className="st-muted font-normal">{w.continued}</span> : null}
-                    </h2>
+                  {searchable ? (
+                    <form role="search" action="" method="get" className="mb-6" aria-label={bw.searchLabel}>
+                      <label htmlFor="store-search" className="sr-only">
+                        {bw.searchLabel}
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          id="store-search"
+                          type="search"
+                          name="q"
+                          defaultValue={wantedSearch}
+                          maxLength={MAX_STORE_SEARCH}
+                          placeholder={bw.searchPlaceholder}
+                          enterKeyHint="search"
+                          className="st-field min-w-0 flex-1"
+                        />
+                        <button type="submit" className="btn st-btn shrink-0">
+                          {bw.searchButton}
+                        </button>
+                      </div>
+                      {wantedSearch && !searchAllowed && searchWords(wantedSearch).length > 0 ? (
+                        <p className="st-note mt-3 text-sm" role="status">{bw.searchSlow}</p>
+                      ) : null}
+                      {results ? (
+                        <p className="mt-3 flex flex-wrap items-baseline justify-between gap-2 text-sm" role="status">
+                          <span className="font-semibold">{results.total ? bw.searchFound(results.total, searching) : bw.searchNone(searching)}</span>
+                          <a href={pageHref(store.handle, 1, reachedOn !== null)} className="st-footer-link">
+                            {bw.searchClear}
+                          </a>
+                        </p>
+                      ) : null}
+                    </form>
                   ) : null}
-                  <ul className="space-y-4">
-                    {group.products.map((product) => (
-                      <ProductCard
-                        eager={(position.get(product.id) ?? 9) < 3 && page === 1}
-                        first={position.get(product.id) === 0 && page === 1}
-                        key={product.id}
-                        store={store}
-                        product={product}
-                        related={known}
-                        // A count is only worth showing where the product can be bought.
-                        remaining={left.has(product.id) && canSellProduct(store, product) ? left.get(product.id)! : null}
-                        writes={writes}
-                        selling={selling}
-                        manageable={manageable}
-                        rating={rated.get(product.id) ?? null}
-                        bundleItems={bundleItems.get(product.id) ?? null}
-                        soon={soon.has(product.id)}
-                        sold={soldLine(soldCounts?.byProduct[product.id])}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              ))}
+                  {/* "Not sure which one is for you?": the visitor says what they want, and sees what fits (lib/store-guide.ts). */}
+                  {!searching && page === 1 && total >= 3 && guideOn(store, total) && canSell(store) ? (
+                    <div className="mb-8">
+                      <StoreGuideBox handle={store.handle} storeName={store.name} lang={store.language} />
+                    </div>
+                  ) : null}
+                  {groups.map((group, g) => (
+                    <section key={group.products[0].id} className={g > 0 ? "mt-10" : undefined} aria-label={group.title ?? undefined}>
+                      {group.title ? (
+                        <h2 className="st-section-title">
+                          {group.title}
+                          {group.continued ? <span className="st-muted font-normal">{w.continued}</span> : null}
+                        </h2>
+                      ) : null}
+                      <ul className="space-y-4">
+                        {group.products.map((product) => (
+                          <ProductCard
+                            eager={(position.get(product.id) ?? 9) < 3 && page === 1}
+                            first={position.get(product.id) === 0 && page === 1}
+                            key={product.id}
+                            store={store}
+                            product={product}
+                            related={known}
+                            // A count is only worth showing where the product can be bought.
+                            remaining={left.has(product.id) && canSellProduct(store, product) ? left.get(product.id)! : null}
+                            writes={writes}
+                            selling={selling}
+                            manageable={manageable}
+                            rating={rated.get(product.id) ?? null}
+                            bundleItems={bundleItems.get(product.id) ?? null}
+                            soon={soon.has(product.id)}
+                            sold={soldLine(soldCounts?.byProduct[product.id])}
+                          />
+                        ))}
+                      </ul>
+                    </section>
+                  ))}
 
-              {/*
-                A long store, a page at a time: plain links, so every page has
-                an address of its own, works without JavaScript and can be
-                shared. The count says how far the list goes.
-              */}
-              {pages > 1 ? (
-                <nav aria-label={w.pagesOfProducts} className="st-pager mt-6">
-                  {page > 1 ? (
-                    <Link href={pageHref(store.handle, page - 1, reachedOn !== null)} rel="prev" className="st-card st-link-card st-pager-link">
-                      <span aria-hidden="true">&larr;</span> {w.previous}
-                    </Link>
+                  {/*
+                    A long store, a page at a time: plain links, so every page has
+                    an address of its own, works without JavaScript and can be
+                    shared. The count says how far the list goes.
+                  */}
+                  {pages > 1 ? (
+                    <nav aria-label={w.pagesOfProducts} className="st-pager mt-6">
+                      {page > 1 ? (
+                        <Link href={pageHref(store.handle, page - 1, reachedOn !== null)} rel="prev" className="st-card st-link-card st-pager-link">
+                          <span aria-hidden="true">&larr;</span> {w.previous}
+                        </Link>
+                      ) : (
+                        <span className="st-pager-link st-pager-off" aria-hidden="true">
+                          <span>&larr;</span> {w.previous}
+                        </span>
+                      )}
+                      <p className="st-muted text-center text-sm font-semibold" aria-current="page">
+                        {w.pageOf(page, pages)}
+                        <span className="block text-xs font-normal">{w.products(total, num(total))}</span>
+                      </p>
+                      {page < pages ? (
+                        <Link href={pageHref(store.handle, page + 1, reachedOn !== null)} rel="next" className="st-card st-link-card st-pager-link">
+                          {w.next} <span aria-hidden="true">&rarr;</span>
+                        </Link>
+                      ) : (
+                        <span className="st-pager-link st-pager-off" aria-hidden="true">
+                          {w.next} <span>&rarr;</span>
+                        </span>
+                      )}
+                    </nav>
+                  ) : null}
+
+
+                  {/*
+                    Said plainly, because the alternative is a button that takes a
+                    card and does nothing. Prices are shown because they are the
+                    creator's real prices; what is missing is the till, and this
+                    says so without promising a date for it.
+                  */}
+                  {!hasPriced ? null : demo && rehearsal ? (
+                    <DemoNote full />
+                  ) : rehearsal ? (
+                    <p className="st-note mt-6 text-sm">
+                      <strong>{w.testModeTitle}</strong> {w.testModeBody} {w.testModeLater(store.name)}
+                    </p>
+                  ) : selling || byPayPal ? (
+                    <p className="st-muted mt-6 text-center text-sm">{w.paidBy(w.takenBy(selling, byPayPal), store.name)}</p>
                   ) : (
-                    <span className="st-pager-link st-pager-off" aria-hidden="true">
-                      <span>&larr;</span> {w.previous}
-                    </span>
+                    <p className="st-note mt-6 text-sm">
+                      <strong>{w.noPaymentsTitle}</strong> {w.noPaymentsBody(store.name)}
+                    </p>
                   )}
-                  <p className="st-muted text-center text-sm font-semibold" aria-current="page">
-                    {w.pageOf(page, pages)}
-                    <span className="block text-xs font-normal">{w.products(total, num(total))}</span>
-                  </p>
-                  {page < pages ? (
-                    <Link href={pageHref(store.handle, page + 1, reachedOn !== null)} rel="next" className="st-card st-link-card st-pager-link">
-                      {w.next} <span aria-hidden="true">&rarr;</span>
-                    </Link>
-                  ) : (
-                    <span className="st-pager-link st-pager-off" aria-hidden="true">
-                      {w.next} <span>&rarr;</span>
-                    </span>
-                  )}
-                </nav>
+                </>
               ) : null}
-
               {/* "What buyers say": the newest reviews with words, kept on the store's record (lib/store-quotes.ts). */}
-              {page === 1 && !searching ? (
+              {part === "quotes" ? (
                 <StoreQuotes
                   store={store}
-                  quotes={store.quotes.filter((quote) => index.some((item) => item.id === quote.p && !item.hidden))}
+                  quotes={quoted}
                   titles={new Map(known.map((product) => [product.id, product.title]))}
                 />
               ) : null}
-
               {/*
-                Said plainly, because the alternative is a button that takes a
-                card and does nothing. Prices are shown because they are the
-                creator's real prices; what is missing is the till, and this
-                says so without promising a date for it.
+                The other half of link in bio. These take no money and deliver
+                nothing: they are where else this person can be found. The site
+                each one leads to is printed under it, so a visitor knows where
+                they are being sent before they go.
               */}
-              {!hasPriced ? null : demo && rehearsal ? (
-                <DemoNote full />
-              ) : rehearsal ? (
-                <p className="st-note mt-6 text-sm">
-                  <strong>{w.testModeTitle}</strong> {w.testModeBody} {w.testModeLater(store.name)}
-                </p>
-              ) : selling || byPayPal ? (
-                <p className="st-muted mt-6 text-center text-sm">{w.paidBy(w.takenBy(selling, byPayPal), store.name)}</p>
-              ) : (
-                <p className="st-note mt-6 text-sm">
-                  <strong>{w.noPaymentsTitle}</strong> {w.noPaymentsBody(store.name)}
-                </p>
-              )}
-            </>
-          ) : null}
-
-          {/*
-            The other half of link in bio. These take no money and deliver
-            nothing: they are where else this person can be found. The site
-            each one leads to is printed under it, so a visitor knows where
-            they are being sent before they go.
-          */}
-          {links.length > 0 ? (
-            <ul className="mt-8 space-y-3">
-              {links.map((link) => {
-                // A heading over the links after it (lib/store-link.ts).
-                if (link.header) {
-                  return (
-                    <li key={link.id} className="pt-4 first:pt-0">
-                      <h2 className="st-section-title text-center" style={{ marginBottom: 0 }}>{link.title}</h2>
-                    </li>
-                  );
-                }
-                const video = link.play ? readVideo(link.url) : null;
-                if (video) {
-                  // Played here, on the store page; the way to its own site is still counted.
-                  return (
-                    <li key={link.id} className={`st-card st-link-video${link.spotlight ? " st-spotlight" : ""}`}>
-                      <p className="px-5 pb-3 pt-4 text-center font-bold sm:px-6">{link.title}</p>
-                      <VideoEmbed video={video} title={link.title} poster={null} lang={store.language} />
-                      <p className="px-5 py-3 text-center text-sm sm:px-6">
-                        <a href={link.url} data-link={link.id} target="_blank" rel="noopener noreferrer nofollow ugc" className="st-footer-link">
-                          {bw.videoOpen(PROVIDER_NAMES[video.provider])}
+              {part === "links" ? (
+                <ul className="mt-8 space-y-3">
+                  {links.map((link) => {
+                    // A heading over the links after it (lib/store-link.ts).
+                    if (link.header) {
+                      return (
+                        <li key={link.id} className="pt-4 first:pt-0">
+                          <h2 className="st-section-title text-center" style={{ marginBottom: 0 }}>{link.title}</h2>
+                        </li>
+                      );
+                    }
+                    const video = link.play ? readVideo(link.url) : null;
+                    if (video) {
+                      // Played here, on the store page; the way to its own site is still counted.
+                      return (
+                        <li key={link.id} className={`st-card st-link-video${link.spotlight ? " st-spotlight" : ""}`}>
+                          <p className="px-5 pb-3 pt-4 text-center font-bold sm:px-6">{link.title}</p>
+                          <VideoEmbed video={video} title={link.title} poster={null} lang={store.language} />
+                          <p className="px-5 py-3 text-center text-sm sm:px-6">
+                            <a href={link.url} data-link={link.id} target="_blank" rel="noopener noreferrer nofollow ugc" className="st-footer-link">
+                              {bw.videoOpen(PROVIDER_NAMES[video.provider])}
+                            </a>
+                          </p>
+                        </li>
+                      );
+                    }
+                    return (
+                      <li key={link.id}>
+                        <a
+                          href={link.url}
+                          data-link={link.id}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow ugc"
+                          className={`st-card st-link-card px-5 py-4 text-center sm:px-6${link.spotlight ? " st-spotlight" : ""}`}
+                        >
+                          {/* A plain icon for where it goes (lib/store-socials.ts, linkIcon), the words centered between. */}
+                          <span className={`st-link-row${link.image ? " st-link-pictured" : ""}`}>
+                            {link.image ? (
+                              // The link's own picture in place of the icon (lib/store-link.ts, LinkImage); its title says what it is.
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={imageUrl(link.image)}
+                                alt=""
+                                width={link.image.width}
+                                height={link.image.height}
+                                loading="lazy"
+                                decoding="async"
+                                className="st-link-thumb"
+                              />
+                            ) : (
+                              <span className="st-link-icon" aria-hidden="true">
+                                <Icon name={linkIcon(link.url)} size={18} />
+                              </span>
+                            )}
+                            <span className="min-w-0">
+                              <span className={`block font-bold${link.spotlight ? " text-lg" : ""}`}>
+                                {link.title}
+                              </span>
+                              <span className="st-muted mt-0.5 block font-mono text-xs">
+                                {linkHost(link.url)}
+                              </span>
+                            </span>
+                            <span aria-hidden="true" />
+                          </span>
                         </a>
-                      </p>
-                    </li>
-                  );
-                }
-                return (
-                  <li key={link.id}>
-                    <a
-                      href={link.url}
-                      data-link={link.id}
-                      target="_blank"
-                      rel="noopener noreferrer nofollow ugc"
-                      className={`st-card st-link-card px-5 py-4 text-center sm:px-6${link.spotlight ? " st-spotlight" : ""}`}
-                    >
-                      {/* A plain icon for where it goes (lib/store-socials.ts, linkIcon), the words centered between. */}
-                      <span className={`st-link-row${link.image ? " st-link-pictured" : ""}`}>
-                        {link.image ? (
-                          // The link's own picture in place of the icon (lib/store-link.ts, LinkImage); its title says what it is.
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={imageUrl(link.image)}
-                            alt=""
-                            width={link.image.width}
-                            height={link.image.height}
-                            loading="lazy"
-                            decoding="async"
-                            className="st-link-thumb"
-                          />
-                        ) : (
-                          <span className="st-link-icon" aria-hidden="true">
-                            <Icon name={linkIcon(link.url)} size={18} />
-                          </span>
-                        )}
-                        <span className="min-w-0">
-                          <span className={`block font-bold${link.spotlight ? " text-lg" : ""}`}>
-                            {link.title}
-                          </span>
-                          <span className="st-muted mt-0.5 block font-mono text-xs">
-                            {linkHost(link.url)}
-                          </span>
-                        </span>
-                        <span aria-hidden="true" />
-                      </span>
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : null}
-
-          {/* The sign-up box: an address joins only once its owner confirms by email (lib/store-join.ts). */}
-          {joinOpen(store) ? <StoreJoinBox store={store} /> : null}
-          {/* The store's own questions and answers, and the same for search engines (lib/store-faq.ts). */}
-          {store.faq.length > 0 && !searching ? (
-            <section aria-labelledby="faq-title" className="mt-10">
-              <h2 id="faq-title" className="st-section-title">
-                {bw.storeFaqTitle}
-              </h2>
-              <div className="space-y-3">
-                {store.faq.map((item) => (
-                  <details key={item.q} className="st-card st-faq px-5 py-4 sm:px-6">
-                    <summary className="cursor-pointer font-bold">{item.q}</summary>
-                    <p className="st-muted mt-2 whitespace-pre-line leading-relaxed [overflow-wrap:anywhere]">{item.a}</p>
-                  </details>
-                ))}
-              </div>
-              {faqData(store.faq) ? <JsonLd data={faqData(store.faq)!} /> : null}
-            </section>
-          ) : null}
-
-          {/* The contact form: a visitor writes to the creator's own inbox (lib/store-contact.ts). */}
-          {contactOpen(store) ? <StoreContactBox store={store} /> : null}
-
-          {/*
-            The way into the members-only community, when the creator has one
-            switched on. Who is let in is decided on the other side of it.
-          */}
-          {store.community?.on ? (
-            <p className="mt-8">
-              <Link href={`/@${store.handle}/community`} className="st-card st-link-card px-5 py-4 text-center sm:px-6">
-                <span className="block font-bold">{w.communityTitle}</span>
-                <span className="st-muted mt-0.5 block text-sm">{w.communityBody}</span>
-              </Link>
-            </p>
-          ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+              {/* The sign-up box: an address joins only once its owner confirms by email (lib/store-join.ts). */}
+              {part === "signup" ? <StoreJoinBox store={store} /> : null}
+              {/* The store's own questions and answers, and the same for search engines (lib/store-faq.ts). */}
+              {part === "faq" ? (
+                <section aria-labelledby="faq-title" className="mt-10">
+                  <h2 id="faq-title" className="st-section-title">
+                    {bw.storeFaqTitle}
+                  </h2>
+                  <div className="space-y-3">
+                    {store.faq.map((item) => (
+                      <details key={item.q} className="st-card st-faq px-5 py-4 sm:px-6">
+                        <summary className="cursor-pointer font-bold">{item.q}</summary>
+                        <p className="st-muted mt-2 whitespace-pre-line leading-relaxed [overflow-wrap:anywhere]">{item.a}</p>
+                      </details>
+                    ))}
+                  </div>
+                  {faqData(store.faq) ? <JsonLd data={faqData(store.faq)!} /> : null}
+                </section>
+              ) : null}
+              {/* The contact form: a visitor writes to the creator's own inbox (lib/store-contact.ts). */}
+              {part === "contact" ? <StoreContactBox store={store} /> : null}
+              {/*
+                The way into the members-only community, when the creator has one
+                switched on. Who is let in is decided on the other side of it.
+              */}
+              {part === "community" ? (
+                <p className="mt-8">
+                  <Link href={`/@${store.handle}/community`} className="st-card st-link-card px-5 py-4 text-center sm:px-6">
+                    <span className="block font-bold">{w.communityTitle}</span>
+                    <span className="st-muted mt-0.5 block text-sm">{w.communityBody}</span>
+                  </Link>
+                </p>
+              ) : null}
+            </div>
+          ))}
 
           <div className="mt-12 text-center">
             {/* The store's blog, once it has a post (lib/store-blog.ts): known from the record, with no read. */}

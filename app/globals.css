@@ -1899,6 +1899,15 @@ a.chip {
   border-color: var(--st-accent-text);
 }
 /* The one link the creator most wants followed (lib/store-link.ts, spotlight): in the accent, with a slow glow. */
+/* The parts of the store page, in the creator's order (lib/store-order.ts):
+   the first one sits right under the notices, and products or buyers' words
+   placed after another part keep the same gap the others have. */
+.st-part-first > :first-child {
+  margin-top: 0;
+}
+.st-part[data-part="products"]:not(.st-part-first) {
+  margin-top: 2.5rem;
+}
 /* A link's own picture in place of the icon (lib/store-link.ts, LinkImage). */
 .st-link-row.st-link-pictured {
   grid-template-columns: 3rem minmax(0, 1fr) 3rem;
