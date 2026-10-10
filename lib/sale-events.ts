@@ -94,7 +94,7 @@ async function tell(store: Store, record: SaleRecord, session: string): Promise<
       store,
       "sale",
       {
-        title: `New sale: ${money(amount, record.currency, store)}`,
+        title: `${meta.kind === "tip" ? "New support" : "New sale"}: ${money(amount, record.currency, store)}`,
         body: [title, ...bumps.map((added) => added.title)].join(" + "),
         url: studioAt(store, "#numbers"),
       },

@@ -835,6 +835,8 @@ export type Sale = {
   answers: Answer[];
   /** A membership that began with a free trial, so nothing was charged yet. */
   trial: boolean;
+  /** Given through "Support my work" (lib/store-tips.ts): nothing was bought and nothing is delivered. */
+  isTip: boolean;
 };
 
 // Each state is its own member so a check on one narrows the rest away;
@@ -915,6 +917,7 @@ export async function listSales(store: Store): Promise<SaleList> {
         isCall: row.metadata?.kind === "call",
         answers: readAnswers(row),
         trial: Number(row.metadata?.trial_days) > 0,
+        isTip: row.metadata?.kind === "tip",
       };
     })
     .filter((sale) => sale.reference !== "");
@@ -948,6 +951,7 @@ export async function listSales(store: Store): Promise<SaleList> {
           isCall: false,
           answers: [],
           trial: false,
+          isTip: false,
         };
       })
       .filter((sale) => sale.reference !== "");

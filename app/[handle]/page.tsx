@@ -6,6 +6,8 @@ import { StoreContactBox } from "@/components/store-contact-box";
 import { linkIcon } from "@/lib/store-socials";
 import { imageUrl } from "@/lib/product-image";
 import { type PagePart, drawnOrder } from "@/lib/store-order";
+import { tipsOpen } from "@/lib/store-tip-checkout";
+import { StoreTipBox } from "@/components/store-tip-box";
 import { Icon } from "@/components/icons";
 import { MAX_STORE_SEARCH, STORE_PAGE_SIZE, searchStore, searchWords } from "@/lib/catalog";
 import { withinLimit } from "@/lib/request-guard";
@@ -58,6 +60,9 @@ import { SHOWN_FROM, readSoldCounts, refreshSoldCounts, stale } from "@/lib/sold
 import { readAllTimeSales } from "@/lib/stats";
 import { isResting } from "@/lib/traffic";
 import { StoreResting } from "@/components/store-resting";
+
+/** What a try at "Support my work" may come back with (app/api/store/tip). */
+const TIP_PROBLEMS = new Set(["amount", "limited", "closed", "error"]);
 
 type Params = {
   params: Promise<{ handle: string }>;
@@ -244,6 +249,7 @@ export default async function StorePage({ params, searchParams }: Params) {
     products: total > 0,
     quotes: total > 0 && page === 1 && !searching && quoted.length > 0,
     links: links.length > 0,
+    tips: tipsOpen(store),
     signup: joinOpen(store),
     faq: store.faq.length > 0 && !searching,
     contact: contactOpen(store),
@@ -553,6 +559,10 @@ export default async function StorePage({ params, searchParams }: Params) {
                     );
                   })}
                 </ul>
+              ) : null}
+              {/* "Support my work": an amount given with nothing bought, paid on Stripe's page (lib/store-tips.ts). */}
+              {part === "tips" ? (
+                <StoreTipBox store={store} problem={typeof query.tip === "string" && TIP_PROBLEMS.has(query.tip) ? query.tip : ""} rehearsal={rehearsal} />
               ) : null}
               {/* The sign-up box: an address joins only once its owner confirms by email (lib/store-join.ts). */}
               {part === "signup" ? <StoreJoinBox store={store} /> : null}

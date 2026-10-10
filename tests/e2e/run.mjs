@@ -129,6 +129,7 @@ let browser = null;
 let restartApp = async () => {};
 /** A published post's address, once the blog part has made one: checked after a restart. */
 let postPath = "";
+let tipPath = "";
 /**
  * Starts the app again when it has grown past what this machine lets it use.
  * A dev server keeps everything it has built in memory, and past about 5 GB
@@ -1400,6 +1401,37 @@ try {
   }
 
   await keepSmall();
+  part("Support my work: a fan gives with nothing bought");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const box = studio.locator("form#support");
+    await box.getByRole("checkbox", { name: "Show Support my work on my store page" }).check();
+    await box.locator("#tip-amount-0").fill("4");
+    await box.getByRole("button", { name: "Save", exact: true }).click();
+    await studio.getByText("Support my work is on your store page.").first().waitFor({ timeout: 30_000 });
+    const fan = await context.newPage();
+    await open(fan, `${LOCAL}/@localshop`);
+    const support = fan.getByRole("region", { name: "Support my work" });
+    is("the store page offers the creator's amounts, the cheapest first", await support.getByRole("button").evaluateAll((all) => all.map((b) => b.textContent)), ["$4", "$5", "$10", "Send my support"]);
+    await Promise.all([fan.waitForURL(/\/@localshop\/tip\?session_id=/, { timeout: 60_000 }), support.getByRole("button", { name: "$5" }).click()]);
+    const gift = services.checkouts().at(-1);
+    is("one payment of that amount, marked as support, with no product", [gift.amount_total, gift.metadata.kind, gift.metadata.product ?? null, gift.metadata.title], [500, "tip", null, "Support"]);
+    is("and the fan is thanked for what Stripe took", [await words(fan.locator("h1")), (await words(fan.locator("main"))).includes("Your $5 has reached Harbor Kitchen Local.")], ["Thank you for your support", true]);
+    tipPath = `${new URL(fan.url()).pathname}${new URL(fan.url()).search}`;
+    await open(fan, `${LOCAL}/@localshop`);
+    await support.getByLabel("Another amount").fill("0.20");
+    await Promise.all([fan.waitForURL(/[?&]tip=amount/), support.getByRole("button", { name: "Send my support" }).click()]);
+    is("an amount under the least is refused on the page, and nothing is opened", [await support.getByRole("alert").count(), services.checkouts().at(-1).id === gift.id], [1, true]);
+    await support.getByLabel("Another amount").fill("7,50");
+    await Promise.all([fan.waitForURL(/\/tip\?session_id=/, { timeout: 60_000 }), support.getByLabel("Another amount").press("Enter")]);
+    is("one typed the European way, sent with Enter, is that amount", services.checkouts().at(-1).amount_total, 750);
+    await fan.close();
+    await open(studio, `${LOCAL}/studio`);
+    const listed = studio.locator("li", { hasText: "Support from your store page" }).first();
+    is("the creator sees it with the sales, as support with nothing to send", [await listed.count(), (await words(listed)).includes("Given by"), await listed.getByRole("button").count()], [1, true, 0]);
+  }
+
+  await keepSmall();
   part("Logging in is not starting a store");
   await open(page, `${LOCAL}/signin?to=login`);
   is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);
@@ -1464,6 +1496,7 @@ try {
       ["the sign-up box's page", "/@localshop/join?status=sent", 0],
       ["a long store's search", "/@longshop?q=bread", 0],
       ["a message's page", "/@localshop/contact?status=sent", 0],
+      ["a supporter's thank-you", tipPath, 0],
       ["a post on it", postPath, 0],
       ["the studio's blog", "/studio/blog?edit=new", 1200],
     ];

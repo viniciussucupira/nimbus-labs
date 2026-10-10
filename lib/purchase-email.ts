@@ -343,6 +343,8 @@ export async function confirmPurchase(
     }
   }
   if (session.id !== sessionId) return "skip";
+  // A gift through "Support my work" has nothing to hand over or confirm (lib/store-tips.ts).
+  if (session.metadata?.kind === "tip") return "skip";
   const listings = await listingsNamed(store, session.metadata);
   // Bought for somebody else: handed to them, and the buyer gets a receipt
   // that says so (lib/gifts.ts), instead of the usual confirmation.

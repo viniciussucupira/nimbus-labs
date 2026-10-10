@@ -3,7 +3,7 @@
  * October 2026).
  *
  * Every store page is one column: who the creator is at the top, then what
- * they sell, what buyers said, where else they are, the sign-up box, the
+ * they sell, what buyers said, where else they are, a way to support them, the sign-up box, the
  * questions, the contact form and the way into the community. A creator whose
  * page is mostly links wants the links first; one whose buyers' words sell
  * best wants those above the products; one building a list wants the sign-up
@@ -14,14 +14,16 @@
  * Kept as a list of the parts' names on the store's record, so drawing the
  * page reads nothing more. A part the creator has not switched on is simply
  * not drawn wherever it stands. A part added after a store chose its order
- * (or a name that is no longer one) is put where it falls in the usual
- * order, so a store never loses a part by having arranged its page first.
+ * is put right after the part it follows in the usual order, and a name that
+ * is no longer one is dropped, so a store never loses a part by having
+ * arranged its page first.
  */
 
 export const PAGE_PARTS = [
   { id: "products", label: "What you sell", note: "Your products, with the search, the sale banner and the guide that helps a visitor choose." },
   { id: "quotes", label: "What buyers say", note: "The newest reviews with words, once you have some." },
   { id: "links", label: "Your links", note: "The links with no price, and the headings over them." },
+  { id: "tips", label: "Support my work", note: "Amounts a fan can give you with nothing bought. Shown when it is switched on." },
   { id: "signup", label: "Email sign-up box", note: "Shown when it is switched on." },
   { id: "faq", label: "Questions and answers", note: "Shown when you have written some." },
   { id: "contact", label: "Contact form", note: "Shown when it is switched on." },
@@ -53,13 +55,10 @@ export function parseOrder(raw: unknown): PagePart[] {
   }
   for (const part of USUAL_ORDER) {
     if (chosen.includes(part)) continue;
-    // After the last part that comes before it in the usual order, or first.
-    const before = USUAL_ORDER.slice(0, USUAL_ORDER.indexOf(part));
-    let at = 0;
-    chosen.forEach((each, i) => {
-      if (before.includes(each)) at = i + 1;
-    });
-    chosen.splice(at, 0, part);
+    // Right after the part just before it in the usual order, wherever the
+    // creator put that one; first, when nothing comes before it.
+    const before = USUAL_ORDER.slice(0, USUAL_ORDER.indexOf(part)).reverse().find((each) => chosen.includes(each));
+    chosen.splice(before ? chosen.indexOf(before) + 1 : 0, 0, part);
   }
   return chosen;
 }

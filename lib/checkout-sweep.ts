@@ -146,6 +146,8 @@ async function sweepStore(store: Store, counts: SweepCounts, deadline: number, r
         ? await Promise.all([codeOwners(store), listPartners(store)])
         : [new Map<string, string>(), []];
       for (const row of paid) {
+        // A gift through "Support my work" sold nothing, so it earns nobody a share (lib/store-tips.ts).
+        if (row.metadata?.kind === "tip") continue;
         const code = owners.size ? affiliateForCodes(row as { discounts?: unknown }, owners) : "";
         if (row.metadata?.via || code || partners.length) {
           await noteSession(store, row as Parameters<typeof noteSession>[1], owners, partners);
