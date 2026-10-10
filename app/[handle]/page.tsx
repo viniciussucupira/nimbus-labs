@@ -1,4 +1,7 @@
 import { after } from "next/server";
+import { CartButton } from "@/components/store-cart";
+import { offersCart } from "@/lib/cart-checkout";
+import { cartable } from "@/lib/cart-rules";
 import { faqData } from "@/lib/store-faq";
 import { JsonLd } from "@/components/structured-data";
 import { contactOpen } from "@/lib/store-contact";
@@ -171,6 +174,9 @@ export default async function StorePage({ params, searchParams }: Params) {
   if (store.suspended) return <StoreResting store={store} suspended />;
 
   const selling = canSell(store);
+  // A cart, where two or more products could go in one (lib/cart-rules.ts).
+  const cartOn = selling && offersCart(store);
+  const cartNotice = query.cart === "changed" || query.cart === "error" ? query.cart : null;
   // Sold through the creator's own PayPal as well, or instead (lib/paypal-sales.ts).
   const byPayPal = sellsThroughPayPal(store);
   // A buyer standing in front of a checkout deserves to know it is a rehearsal
@@ -424,6 +430,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                             bundleItems={bundleItems.get(product.id) ?? null}
                             soon={soon.has(product.id)}
                             preorder={preorderDay(store, product, soon.has(product.id), coming.days.get(product.id) ?? null)}
+                            cart={cartOn && !soon.has(product.id) && cartable(product)}
                             sold={soldLine(soldCounts?.byProduct[product.id])}
                           />
                         ))}
@@ -680,6 +687,7 @@ export default async function StorePage({ params, searchParams }: Params) {
               </Link>
             ) : null}
             <StoreTracking store={store} countVisit />
+            {cartOn ? <CartButton handle={store.handle} lang={store.language} notice={cartNotice} /> : null}
             <ExitOfferSlot store={store} />
           </div>
         </div>

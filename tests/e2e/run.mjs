@@ -1693,6 +1693,37 @@ try {
     is("one too few, sent without the page's help, comes back to choose again", /\?pick=count/.test(back), true);
   }
 
+  await keepSmall();
+  part("A cart: two products, one payment");
+  {
+    await open(page, `${LOCAL}/@localshop`);
+    const card = (title) => page.locator("li.st-card, li", { hasText: title }).filter({ has: page.getByRole("button", { name: "Add to cart" }) }).first();
+    await card("Weeknight Dinners").getByRole("button", { name: "Add to cart" }).click();
+    await card("Pantry Checklist").getByRole("button", { name: "Add to cart" }).click();
+    const opener = page.locator("#cart .st-cart-open");
+    is("the cart says what is in it, at the top of the page", await words(opener), "Cart, 2 products");
+    is("something that cannot go in one has no button", await page.locator("li", { hasText: "The Bread Book" }).getByRole("button", { name: "Add to cart" }).count(), 0);
+    await opener.click();
+    const panel = page.getByRole("region", { name: "Your cart" });
+    await panel.locator("form[data-checkout]").waitFor({ timeout: 15_000 });
+    const shown = await words(panel);
+    is("it lists them with their prices now, and the total", [shown.includes("Weeknight Dinners"), shown.includes("Pantry Checklist"), /Total\s*\$\d/.test(shown)], [true, true, true]);
+    if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "cart.png") });
+    await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), panel.locator("form[data-checkout] button[type=submit]").click()]);
+    const paid = services.checkouts().at(-1);
+    const total = shown.match(/Check out · (\$[\d.,]+)/)?.[1] ?? "";
+    is("one payment for both, at the total the cart said, the second named as an added product", [
+      paid.metadata.cart,
+      paid.metadata.product,
+      paid.metadata.bump,
+      `$${(paid.amount_total / 100).toFixed(2)}`.replace(".00", ""),
+    ], ["yes", ids["Weeknight Dinners"], ids["Pantry Checklist"], total]);
+    const thanks = await words(page.locator("main"));
+    is("and the page after paying hands over both", [thanks.includes("Weeknight Dinners"), thanks.includes("Pantry Checklist")], [true, true]);
+    await open(page, `${LOCAL}/@localshop`);
+    is("and the cart is empty again", await page.locator("#cart .st-cart-open").count(), 0);
+  }
+
   part("Logging in is not starting a store");
   await open(page, `${LOCAL}/signin?to=login`);
   is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);

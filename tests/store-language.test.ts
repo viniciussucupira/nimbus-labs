@@ -31,6 +31,7 @@ import { TIPS_WORDS } from "@/lib/buyer-words/tips";
 import { KIT_WORDS } from "@/lib/buyer-words/kit";
 import { PREORDER_WORDS } from "@/lib/buyer-words/preorder";
 import { PICK_WORDS } from "@/lib/buyer-words/pick";
+import { CART_WORDS } from "@/lib/buyer-words/cart";
 import { addProduct, claimHandle, ensureStatsId, setLanguage, setProductLink, setStripeAccount, setSubscription, storeForEmail } from "@/lib/store";
 import { readProduct } from "@/lib/catalog";
 import { createCheckout } from "@/lib/store-checkout";
@@ -97,6 +98,8 @@ const SAME: Record<string, Record<string, string[]>> = {
   "page blocks": { es: ["bonusN"], de: ["socialWebsite"], it: ["socialEmail"], nl: ["socialWebsite"] },
   // "Audience" is the French word too.
   "media kit": { fr: ["audienceTitle"] },
+  // "Total" is the word in these languages too.
+  cart: { es: ["total"], fr: ["total"], pt: ["total"] },
   thanks: { es: ["priceEvery"], fr: ["priceEvery"], de: ["priceEvery"], it: ["priceEvery"], nl: ["priceEvery"], pt: ["priceEvery"] },
 };
 
@@ -169,6 +172,7 @@ async function main(): Promise<void> {
     ["media kit", (code) => KIT_WORDS[code]],
     ["pre-orders", (code) => PREORDER_WORDS[code]],
     ["bundles buyers build", (code) => PICK_WORDS[code]],
+    ["cart", (code) => CART_WORDS[code]],
   ];
   for (const [area, wordsOf] of AREAS) {
     const englishWords = wordsOf("en");

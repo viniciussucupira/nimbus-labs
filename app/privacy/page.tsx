@@ -482,6 +482,15 @@ export default function PrivacyPage() {
           that store&apos;s checkout without being typed. It holds the code and
           nothing else, and is sent to no other store.
         </p>
+        <p id="cart">
+          <strong className="text-black">A store&apos;s cart.</strong>{" "}
+          What someone adds to a store&apos;s cart is kept in their own
+          browser&apos;s storage, under <code>mm-cart:</code> followed by the
+          store&apos;s address: the products&apos; ids and nothing else. Those
+          ids are sent to us only to show the products&apos; prices when the
+          cart is opened and to check out, and are not kept. Nothing in it is
+          sent to another store, and it is emptied once they have paid.
+        </p>
         <p id="headline-tests">
           <strong className="text-black">
             Headline tests on product pages.

@@ -395,6 +395,13 @@ export const HELP_SECTIONS: HelpSection[] = [
         ],
       },
       {
+        q: "Can buyers put several products in a cart?",
+        a: [
+          "Yes, on every plan, once two or more of your products could go in one. Each product's card and page then shows \u201cAdd to cart\u201d under its buy button, and the cart appears at the top of your store with each product at its price now \u2014 a sale or a fair price for the buyer's country already taken off \u2014 and the total. Buyers pay for up to four products in one payment, on your own Stripe account, and each is handed over exactly as if bought on its own: its download or link, its course, its license key, its place on their list of purchases.",
+          "What can go in a cart: a paid product at one price, sold once \u2014 a file, a link, a course with lessons or a bundle. Not memberships, calls, products with several prices, a limited number, a price the buyer chooses or questions asked at checkout, products coming soon, or a bundle the buyer builds. A discount code box is shown only when nothing in the cart is already on sale. The cart is kept only in the buyer's own browser, and emptied once paid.",
+        ],
+      },
+      {
         q: "Can I sell a bundle of products?",
         a: [
           "Yes, on every plan. Make a product the bundle, give it a price, and choose 2 to 20 of your one-off products to go in it: those with one price and a file, a link or a course with lessons. The buyer gets every one exactly as if bought on its own \u2014 its download or link, its course, its license key, its stamped PDF, its place on their list of purchases and the right to review it \u2014 and your community, if one of them opens it. Your store shows what the products cost on their own next to the bundle's price, worked out from their prices today, only when they really cost more.",

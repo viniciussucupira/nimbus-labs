@@ -22,6 +22,7 @@ import { membershipWords } from "@/lib/buyer-words/membership";
 import { preorderWords } from "@/lib/buyer-words/preorder";
 import { pickWords } from "@/lib/buyer-words/pick";
 import { PickBundleForm } from "@/components/pick-bundle-form";
+import { AddToCart } from "@/components/store-cart";
 import { type AskWhen, isAskWhen } from "@/lib/ask-when";
 import { type UnitLine, unitLines } from "@/lib/option-units";
 
@@ -954,6 +955,7 @@ export function ProductCard({
   bundleItems = null,
   soon = false,
   preorder = null,
+  cart = false,
   sold = null,
 }: {
   store: Store;
@@ -968,6 +970,8 @@ export function ProductCard({
   soon?: boolean;
   /** Coming soon and taking pre-orders: the day it is expected (lib/preorders.ts). */
   preorder?: string | null;
+  /** It can go in the store's cart (lib/cart-rules.ts). */
+  cart?: boolean;
   /** Near the top of the page: the picture is fetched right away. */
   eager?: boolean;
   /**
@@ -1061,6 +1065,7 @@ export function ProductCard({
         soon={soon}
         preorder={preorder}
       />
+      {cart ? <AddToCart handle={store.handle} productId={product.id} lang={store.language} /> : null}
       {product.recurring && manageable ? (
         <p className="mt-3 text-center text-sm">
           <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">
