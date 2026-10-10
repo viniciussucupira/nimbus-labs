@@ -904,6 +904,76 @@ try {
   }
 
   await keepSmall();
+  part("A second version of the whole page, tested against the first");
+  {
+    const product = ids["Weeknight Dinners"];
+    const first = "Dinner in thirty minutes, every night";
+    const second = "Forty dinners, one shopping list";
+    await studio.evaluate(async ([id, headline]) => {
+      const blocks = [
+        { id: "hero0021", kind: "hero", headline, sub: "", media: "none", video: null },
+        { id: "text0021", kind: "text", heading: "What it is", body: "Forty weeknight dinners." },
+      ];
+      await fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: { blocks, seoTitle: "", seoDescription: "", next: null, test: null, style: "plain" } }) });
+    }, [product, first]);
+    await open(studio, `${LOCAL}/studio/pages?product=${product}`);
+    await studio.getByRole("button", { name: "Make version B" }).click();
+    is("version B starts as a copy, and is the one being edited", [
+      await studio.getByRole("button", { name: "Version B", exact: true }).getAttribute("aria-pressed"),
+      await studio.getByText(/^You are editing version B/).count(),
+      await studio.locator("ol > li").count(),
+    ], ["true", 1, 2]);
+    await studio.getByRole("button", { name: /^1\. Hero/ }).click();
+    await studio.getByLabel("Headline", { exact: true }).fill(second);
+    await studio.getByRole("button", { name: /^2\. Text/ }).click();
+    await studio.getByRole("button", { name: /^Remove block 2/ }).click();
+    await studio.getByRole("button", { name: "Version A", exact: true }).click();
+    is("version A waits as it was", [await studio.locator("ol > li").count(), await studio.getByText(/^You are editing version A/).count()], [2, 1]);
+    is("and only one test runs at a time: no second headline beside it", await studio.getByRole("button", { name: /^1\. Hero/ }).click().then(() => studio.getByRole("checkbox", { name: /^Test a second headline/ }).isDisabled()), true);
+    await studio.getByRole("button", { name: "Save the page" }).click();
+    await studio.getByText(/^Page saved/).first().waitFor({ timeout: 30_000 });
+    await studio.getByText("Version A: seen 0 times, 0 checkouts (0%).").waitFor({ timeout: 30_000 });
+    is("saved, with nothing counted yet", await studio.getByText("Version B: seen 0 times, 0 checkouts (0%).").count(), 1);
+
+    // Visitors, each kept in a group by the cookie the store's pages set.
+    const seen = {};
+    for (let group = 0; group < 40 && !(seen.a && seen.b); group += 1) {
+      await page.context().addCookies([{ name: "nl_ab", value: String(group), url: LOCAL }]);
+      await open(page, `${LOCAL}/@localshop/p/${product}`);
+      const headline = await words(page.locator("h1"));
+      const version = headline === second ? "b" : headline === first ? "a" : "?";
+      seen[version] ??= { group, blocks: await page.locator("[data-block]").count() };
+    }
+    is("half the visitors read version A, half version B, each as it was made", [seen.a?.blocks, seen.b?.blocks, seen["?"]], [2, 1, undefined]);
+    await page.context().addCookies([{ name: "nl_ab", value: String(seen.b.group), url: LOCAL }]);
+    await open(page, `${LOCAL}/@localshop/p/${product}`);
+    is("and a visitor keeps reading the same one", await words(page.locator("h1")), second);
+    await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), page.locator("#buy form[data-checkout] button[type=submit]").first().click()]);
+    const counts = async () => {
+      for (let i = 0; i < 20; i += 1) {
+        const data = await studio.evaluate((id) => fetch(`/api/store/ab?id=${id}`).then((r) => r.json()), product);
+        if (data.counts?.cb >= 1) return data.counts;
+        await studio.waitForTimeout(250);
+      }
+      return null;
+    };
+    const counted = await counts();
+    is("each view is counted for its version, and the checkout for B", [counted?.va >= 1, counted?.vb >= 2, counted?.ca, counted?.cb], [true, true, 0, 1]);
+    is("how far down the page is read is not given while two pages are read", await studio.evaluate((id) => fetch(`/api/store/depth?id=${id}`).then((r) => r.json()).then((d) => d.visitors), product), 0);
+
+    await open(studio, `${LOCAL}/studio/pages?product=${product}`);
+    is("the studio shows each version's numbers", (await words(studio.locator("section", { hasText: "Test a second version of the whole page" }).last())).includes("Version B: seen"), true);
+    if (process.env.E2E_SHOTS) await studio.locator("section", { hasText: "Test a second version of the whole page" }).last().screenshot({ path: join(process.env.E2E_SHOTS, "page-test.png") });
+    await studio.getByRole("button", { name: "Keep version B, end the test" }).click();
+    await studio.getByRole("button", { name: "Save the page" }).click();
+    await studio.getByText(/^Page saved/).first().waitFor({ timeout: 30_000 });
+    await page.context().addCookies([{ name: "nl_ab", value: String(seen.a.group), url: LOCAL }]);
+    await open(page, `${LOCAL}/@localshop/p/${product}`);
+    is("version B kept: it is the page for everybody, and the test is over", [await words(page.locator("h1")), await studio.evaluate((id) => fetch(`/api/store/ab?id=${id}`).then((r) => r.status), product)], [second, 404]);
+    await studio.evaluate(async (id) => fetch("/api/store/page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, page: null }) }), product);
+  }
+
+  await keepSmall();
   part("Things said elsewhere, each with a link to where");
   {
     await open(studio, `${LOCAL}/studio/pages?product=${ids["Weeknight Dinners"]}`);
@@ -1531,7 +1601,16 @@ try {
     is("a question the help center does not cover is said so, without asking the model", services.writing().length, before);
     await help.getByLabel("Your question").fill("Que arquivos posso vender?");
     await help.getByRole("button", { name: "Ask" }).click();
-    await help.getByRole("link", { name: "What file can I sell, and how big?" }).waitFor({ timeout: 30_000 });
+    // The store's AI requests share one limit a minute with the parts before this one:
+    // when it is reached, the creator is told so and asks again a minute later.
+    const answered = help.getByRole("link", { name: "What file can I sell, and how big?" });
+    const slow = help.getByText("A few questions a minute at most. Ask again in a moment.");
+    await answered.or(slow).first().waitFor({ timeout: 30_000 });
+    if (await slow.count()) {
+      await studio.waitForTimeout(61_000);
+      await help.getByRole("button", { name: "Ask" }).click();
+    }
+    await answered.waitFor({ timeout: 30_000 });
     is("one asked in another language is put into English first, and answered from what that finds", services.writing().slice(before).map((w) => String(w.system).slice(0, 30)), ["Put the user's question into p", "You answer a creator's questio"]);
   }
 

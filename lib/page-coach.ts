@@ -36,7 +36,7 @@ export type CoachCheck = {
 };
 
 export type CoachInput = {
-  page: Pick<SalesPage, "blocks" | "seoDescription" | "test">;
+  page: Pick<SalesPage, "blocks" | "seoDescription" | "test"> & { variant?: SalesPage["variant"] };
   productTitle: string;
   free: boolean;
   /** The product has a picture of its own. */
@@ -217,7 +217,8 @@ export function coachChecks(input: CoachInput): CoachCheck[] {
       id: "test",
       label: "Two headlines, tested",
       why: "Half your visitors see each, and the one that brings more of them to the checkout is kept by itself.",
-      done: Boolean(input.page.test),
+      // A second version of the whole page tests the headline too, and more.
+      done: Boolean(input.page.test) || Boolean(input.page.variant),
       weight: 1,
     });
   }

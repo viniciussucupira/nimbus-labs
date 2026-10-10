@@ -75,8 +75,10 @@ export const MAX_CELL = 80;
 /** What a cell holds to be drawn as a tick or a cross rather than as words. */
 export const CELL_YES = "\u2713";
 export const CELL_NO = "\u2717";
-/** The most a page's record may weigh, in bytes: well past thirty full blocks. */
+/** The most a page's record may weigh, in bytes: well past thirty full blocks. A second version tested against it may weigh as much again. */
 export const MAX_PAGE_BYTES = 120_000;
+/** The most a stored record is read at: the page and a second version, with room to spare. */
+export const MAX_STORED_PAGE_BYTES = MAX_PAGE_BYTES * 3;
 /** Things said about it elsewhere, in one block; the words of one, the name beside it, and its link. */
 export const MAX_QUOTES = 6;
 export const MAX_QUOTE = 400;
@@ -381,6 +383,16 @@ export type SalesPage = {
    */
   test: HeadlineTest | null;
   /**
+   * A second version of the whole page, tested against this one (added
+   * 10 October 2026, lib/headline-test.ts): its own blocks, in its own order.
+   * Null is no test. A page runs one test at a time, so with a second
+   * version there is no headline test. Its id changes whenever what either
+   * version shows changes, so a test is never scored on a page it did not
+   * show. Pictures may be shared by the two versions, and the two together
+   * hold no more than one page may.
+   */
+  variant: PageVariant | null;
+  /**
    * How the sections below the hero are set off from each other (added
    * 8 October 2026): "plain" on the page itself, "bands" every other one on
    * a wash of the store's colour, "cards" each on a card of its own. Only the
@@ -439,8 +451,55 @@ export function bandsOf(style: PageStyle, blocks: { screens?: BlockShow }[]): { 
 }
 
 export type HeadlineTest = { id: string; headline: string; sub: string };
+export type PageVariant = { id: string; blocks: PageBlock[] };
 
-export const EMPTY_PAGE: SalesPage = { blocks: [], seoTitle: "", seoDescription: "", next: null, test: null, style: "plain", hidden: false, showFrom: 0 };
+export const EMPTY_PAGE: SalesPage = { blocks: [], seoTitle: "", seoDescription: "", next: null, test: null, variant: null, style: "plain", hidden: false, showFrom: 0 };
+
+/** What two lists of blocks show, without the ids that only tell blocks apart. */
+function shownOf(blocks: PageBlock[]): string {
+  return JSON.stringify(
+    blocks.map((block) => {
+      const rest: Partial<PageBlock> = { ...block };
+      delete rest.id;
+      return rest;
+    }),
+  );
+}
+
+/** Whether two versions of a page show the same thing. */
+export function sameBlocks(a: PageBlock[], b: PageBlock[]): boolean {
+  return shownOf(a) === shownOf(b);
+}
+
+/** The id of a test of these two whole versions: the same page shown, the same id. */
+export function variantId(a: PageBlock[], b: PageBlock[]): string {
+  return `p${testId({ headline: shownOf(a), sub: "" }, { headline: shownOf(b), sub: "" })}`;
+}
+
+/** The test a page runs, by id: a second version of the whole page, or a second headline; null when none. */
+export function runningTest(page: Pick<SalesPage, "test" | "variant">): string | null {
+  return page.variant?.id ?? page.test?.id ?? null;
+}
+
+/**
+ * The page as one version of its test shows it: the second version's own
+ * blocks, or the hero with the second headline. Everything else about the
+ * page — its title for search engines, its look, what is sold and at what
+ * price — is the same for both.
+ */
+export function asVersion(page: SalesPage, version: "a" | "b"): SalesPage {
+  if (version === "a") return page;
+  if (page.variant) return { ...page, blocks: page.variant.blocks };
+  const [first, ...others] = page.blocks;
+  if (page.test && first?.kind === "hero") return { ...page, blocks: [{ ...first, headline: page.test.headline, sub: page.test.sub }, ...others] };
+  return page;
+}
+
+/** Whether a page, and a second version of it, each weigh no more than a page may. */
+export function oversized(page: SalesPage): boolean {
+  if (JSON.stringify({ ...page, variant: null }).length > MAX_PAGE_BYTES) return true;
+  return page.variant !== null && JSON.stringify(page.variant).length > MAX_PAGE_BYTES;
+}
 
 /** The id of a test of these two versions: the same words, the same id. */
 export function testId(a: { headline: string; sub: string }, b: { headline: string; sub: string }): string {
@@ -608,9 +667,9 @@ export function picturesOf(block: PageBlock): Picture[] {
 }
 
 /** Every picture file a page shows, each once: what is kept when the page is saved, and deleted when it is not. */
-export function picturePaths(page: Pick<SalesPage, "blocks">): string[] {
+export function picturePaths(page: Pick<SalesPage, "blocks"> & { variant?: PageVariant | null }): string[] {
   const out: string[] = [];
-  for (const block of page.blocks) {
+  for (const block of [...page.blocks, ...(page.variant?.blocks ?? [])]) {
     for (const picture of picturesOf(block)) if (!out.includes(picture.path)) out.push(picture.path);
   }
   return out;
@@ -758,54 +817,88 @@ function parseBlock(raw: unknown): PageBlock | null {
 }
 
 /**
- * Whatever came back from storage or from the studio, made safe to use: at
- * most thirty known blocks with unique ids, one hero at most and only at the
- * top (it carries the page's one main heading), one place for the reviews,
- * and the product to show after a sign-up only when it looks like an id.
+ * One version's blocks, made safe to use: at most thirty known blocks with
+ * unique ids, one hero at most and only at the top (it carries the page's
+ * one main heading), one place for the reviews, and each picture shown once.
+ * `pictures` holds the files kept so far across the page's versions, which
+ * together hold no more than MAX_PAGE_PICTURES.
+ */
+function parseBlocks(list: unknown, pictures: Set<string>): PageBlock[] {
+  const blocks: PageBlock[] = [];
+  if (!Array.isArray(list)) return blocks;
+  const seen = new Set<string>();
+  const shown = new Set<string>();
+  const room = (path: string) => !shown.has(path) && (pictures.has(path) || pictures.size < MAX_PAGE_PICTURES);
+  const keep = (path: string) => {
+    shown.add(path);
+    pictures.add(path);
+  };
+  let reviews = false;
+  for (const entry of list.slice(0, MAX_BLOCKS * 2)) {
+    const block = parseBlock(entry);
+    if (!block || seen.has(block.id)) continue;
+    const screens = (entry as { screens?: unknown }).screens;
+    if (block.kind !== "hero" && (screens === "phone" || screens === "computer")) block.screens = screens;
+    if (block.kind === "hero" && blocks.length > 0) continue;
+    if (block.kind === "reviews") {
+      if (reviews) continue;
+      reviews = true;
+    }
+    // Pictures are counted across the page, and one file is shown once.
+    if (block.kind === "pictures") {
+      block.items = block.items.filter((picture) => {
+        if (!room(picture.path)) return false;
+        keep(picture.path);
+        return true;
+      });
+    }
+    if (block.kind === "feature" && block.picture) {
+      if (!room(block.picture.path)) block.picture = null;
+      else keep(block.picture.path);
+    }
+    seen.add(block.id);
+    blocks.push(block);
+    if (blocks.length >= MAX_BLOCKS) break;
+  }
+  return blocks;
+}
+
+/**
+ * Whatever came back from storage or from the studio, made safe to use: its
+ * blocks (parseBlocks), the product to show after a sign-up only when it
+ * looks like an id, and one test at most — a second version of the whole
+ * page, or else a second headline.
  */
 export function parsePage(raw: unknown): SalesPage {
   if (!raw || typeof raw !== "object") return { ...EMPTY_PAGE, blocks: [] };
   const value = raw as Record<string, unknown>;
-  const blocks: PageBlock[] = [];
-  const seen = new Set<string>();
-  const shown = new Set<string>();
-  let reviews = false;
-  if (Array.isArray(value.blocks)) {
-    for (const entry of value.blocks.slice(0, MAX_BLOCKS * 2)) {
-      const block = parseBlock(entry);
-      if (!block || seen.has(block.id)) continue;
-      const screens = (entry as { screens?: unknown }).screens;
-      if (block.kind !== "hero" && (screens === "phone" || screens === "computer")) block.screens = screens;
-      if (block.kind === "hero" && blocks.length > 0) continue;
-      if (block.kind === "reviews") {
-        if (reviews) continue;
-        reviews = true;
-      }
-      // Pictures are counted across the page, and one file is shown once.
-      if (block.kind === "pictures") {
-        block.items = block.items.filter((picture) => !shown.has(picture.path)).slice(0, Math.max(0, MAX_PAGE_PICTURES - shown.size));
-        for (const picture of block.items) shown.add(picture.path);
-      }
-      if (block.kind === "feature" && block.picture) {
-        if (shown.has(block.picture.path) || shown.size >= MAX_PAGE_PICTURES) block.picture = null;
-        else shown.add(block.picture.path);
-      }
-      seen.add(block.id);
-      blocks.push(block);
-      if (blocks.length >= MAX_BLOCKS) break;
-    }
-  }
+  const pictures = new Set<string>();
+  const blocks = parseBlocks(value.blocks, pictures);
+  const variant = parseVariant(value.variant, blocks, pictures);
   return {
     blocks,
     seoTitle: line(value.seoTitle, MAX_SEO_TITLE),
     seoDescription: line(value.seoDescription, MAX_SEO_DESCRIPTION),
     next: typeof value.next === "string" && PRODUCT_ID_PATTERN.test(value.next) ? value.next : null,
-    test: parseTest(value.test, blocks[0]?.kind === "hero" ? blocks[0] : null),
+    test: variant ? null : parseTest(value.test, blocks[0]?.kind === "hero" ? blocks[0] : null),
+    variant,
     style: (PAGE_STYLES as readonly unknown[]).includes(value.style) ? (value.style as PageStyle) : "plain",
     hidden: value.hidden === true,
     // Only for a hidden page, and only a moment a clock can hold.
     showFrom: value.hidden === true ? parseUntil(value.showFrom) : 0,
   };
+}
+
+/**
+ * A second version as stored or sent: kept only beside a page with blocks,
+ * only when it has blocks of its own and shows something the first does
+ * not, and always with the id what the two show gives it.
+ */
+function parseVariant(raw: unknown, first: PageBlock[], pictures: Set<string>): PageVariant | null {
+  if (first.length === 0 || !raw || typeof raw !== "object") return null;
+  const blocks = parseBlocks((raw as Record<string, unknown>).blocks, pictures);
+  if (blocks.length === 0 || sameBlocks(first, blocks)) return null;
+  return { id: variantId(first, blocks), blocks };
 }
 
 /**
@@ -823,14 +916,21 @@ function parseTest(raw: unknown, hero: HeroBlock | null): HeadlineTest | null {
 }
 
 /** What is wrong with a page the studio sent, in a word the studio can explain; null when nothing. */
-export type PageProblem = "too_many" | "hero_first" | "two_reviews" | "video" | "pictures" | "countdown" | "quote_link" | "shape" | "too_big" | null;
+export type PageProblem =
+  | "too_many"
+  | "hero_first"
+  | "two_reviews"
+  | "video"
+  | "pictures"
+  | "countdown"
+  | "quote_link"
+  | "shape"
+  | "too_big"
+  | "same_version"
+  | null;
 
-/**
- * The same rules as parsePage, told back rather than quietly applied, so a
- * creator is never shown "saved" for a page that was saved differently.
- */
-export function pageProblem(raw: { blocks?: unknown }, parsed: SalesPage): PageProblem {
-  const sent = Array.isArray(raw.blocks) ? raw.blocks : [];
+/** The rules of one version's blocks, told back; `kept` is that version as parsed. */
+function blocksProblem(sent: unknown[], kept: PageBlock[]): PageProblem {
   if (sent.length > MAX_BLOCKS) return "too_many";
   const kinds = sent.map((b) => (b && typeof b === "object" ? (b as { kind?: unknown }).kind : null));
   if (kinds.slice(1).includes("hero")) return "hero_first";
@@ -859,9 +959,26 @@ export function pageProblem(raw: { blocks?: unknown }, parsed: SalesPage): PageP
     const items = value.kind === "pictures" ? value.items : null;
     return n + (Array.isArray(items) ? items.length : 0);
   }, 0);
-  if (sentPictures !== picturePaths(parsed).length) return "pictures";
-  if (parsed.blocks.length !== sent.length) return "shape";
-  if (JSON.stringify(parsed).length > MAX_PAGE_BYTES) return "too_big";
+  if (sentPictures !== picturePaths({ blocks: kept }).length) return "pictures";
+  if (kept.length !== sent.length) return "shape";
+  return null;
+}
+
+/**
+ * The same rules as parsePage, told back rather than quietly applied, so a
+ * creator is never shown "saved" for a page that was saved differently.
+ */
+export function pageProblem(raw: { blocks?: unknown; variant?: unknown }, parsed: SalesPage): PageProblem {
+  const problem = blocksProblem(Array.isArray(raw.blocks) ? raw.blocks : [], parsed.blocks);
+  if (problem) return problem;
+  if (raw.variant && typeof raw.variant === "object") {
+    const sent = (raw.variant as { blocks?: unknown }).blocks;
+    // A second version with nothing in it, or showing just what the first does, is no test.
+    if (!parsed.variant) return "same_version";
+    const second = blocksProblem(Array.isArray(sent) ? sent : [], parsed.variant.blocks);
+    if (second) return second;
+  }
+  if (oversized(parsed)) return "too_big";
   return null;
 }
 

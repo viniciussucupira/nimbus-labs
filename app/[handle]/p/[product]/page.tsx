@@ -44,7 +44,7 @@ import { isHouseStore } from "@/lib/house-store";
 import { sellsInTestMode } from "@/lib/stripe-connect";
 import { DemoNote } from "@/components/demo-notes";
 import { SITE_URL } from "@/lib/site-url";
-import { EMPTY_PAGE, type SalesPage, livePage } from "@/lib/sales-page";
+import { EMPTY_PAGE, type SalesPage, asVersion, livePage, runningTest } from "@/lib/sales-page";
 import { readPage } from "@/lib/sales-page-store";
 import { type Summary, REVIEWS_ON_PAGE, average, showsRating, summaryOf, visibleReviews } from "@/lib/reviews";
 import { BuyBox, GiftBox, GroupBox, PriceTag, ProductFacts, RemindBox, pageAction, productPath, saleNow } from "@/components/store-product";
@@ -104,6 +104,24 @@ const load = cache(async (raw: string, id: string): Promise<{ store: Store; prod
 async function pageOf(store: Store, product: Listing): Promise<SalesPage> {
   // A page kept from visitors while the creator works on it shows as none (lib/sales-page.ts, livePage).
   return product.page ? readPage(store.statsId, product.id).then((page) => livePage(page, saleClock())).catch(() => ({ ...EMPTY_PAGE, blocks: [] })) : { ...EMPTY_PAGE, blocks: [] };
+}
+
+/**
+ * The page as this visitor is shown it, while it runs a test of a second
+ * headline or a second version of the whole page (lib/headline-test.ts): the
+ * winner for everybody once there is one; until then each visitor with a
+ * group sees their own version, and the view is counted after the page is
+ * sent. A visitor with no group sees the first and is not counted.
+ */
+async function shownVersion(store: Store, productId: string, page: SalesPage): Promise<SalesPage> {
+  const test = runningTest(page);
+  if (!test) return page;
+  const counts = await readCounts(store.statsId, productId, test).catch(() => null);
+  const won = counts ? winner(counts) : null;
+  const bucket = readBucket((await cookies()).get(AB_COOKIE)?.value);
+  const version = won ?? (bucket !== null ? versionFor(bucket, test) : "a");
+  if (!won && bucket !== null) after(() => countTest(store.statsId, productId, test, "v", version));
+  return asVersion(page, version);
 }
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -279,7 +297,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const remindable = selling && !soon && !isFree(product) && askable(store, product);
   // Asked of the store, as on the store page (lib/house-store.ts).
   const rehearsal = selling && sellsInTestMode(store);
-  const [about, stock, noKeys, page, summary, related, inside, soldCounts] = await Promise.all([
+  const [about, stock, noKeys, savedPage, summary, related, inside, soldCounts] = await Promise.all([
     product.about ? readAbout(store.statsId, product.id) : Promise.resolve(""),
     stockLeft(store, product).catch(() => null),
     outOfKeys(store, product).catch(() => false),
@@ -292,6 +310,9 @@ export default async function ProductPage({ params, searchParams }: Params) {
     // How many times it was bought, when the creator chose to say so (lib/sold-count.ts).
     readSoldCounts(store).catch(() => null),
   ]);
+  // The version of a page test this visitor reads (lib/headline-test.ts),
+  // before anything is drawn from the page, so all of it is one version.
+  const page = await shownVersion(store, product.id, savedPage);
   if (store.look.sold && stale(soldCounts)) after(() => refreshSoldCounts(store, readAllTimeSales).then(() => undefined));
   const soldCount = soldCounts?.byProduct[product.id];
   const sold = soldCount && soldCount >= SHOWN_FROM ? w.bought(num(soldCount)) : null;
@@ -570,20 +591,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
       : undefined,
   };
   const [first, ...others] = page.blocks;
-  const firstHero = first?.kind === "hero" ? first : null;
-  // A headline test (lib/headline-test.ts): the winner for everybody once
-  // there is one; until then each visitor with a group sees their version,
-  // and the view is counted after the page is sent.
-  let hero = firstHero;
-  if (firstHero && page.test) {
-    const test = page.test;
-    const counts = await readCounts(store.statsId, product.id, test.id).catch(() => null);
-    const won = counts ? winner(counts) : null;
-    const bucket = readBucket((await cookies()).get(AB_COOKIE)?.value);
-    const version = won ?? (bucket !== null ? versionFor(bucket, test.id) : "a");
-    if (version === "b") hero = { ...firstHero, headline: test.headline, sub: test.sub };
-    if (!won && bucket !== null) after(() => countTest(store.statsId, product.id, test.id, "v", version));
-  }
+  const hero = first?.kind === "hero" ? first : null;
   const rest = hero ? others : page.blocks;
   const placed = page.blocks.find((block) => block.kind === "reviews");
   const pill = <p className="st-price text-sm"><PriceTag store={store} product={product} /></p>;

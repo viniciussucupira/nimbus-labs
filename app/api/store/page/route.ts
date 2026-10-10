@@ -2,20 +2,23 @@ import type { NextRequest } from "next/server";
 import { StoreFullError, imageFolder, isFree, setProductPage } from "@/lib/store";
 import { productIdFor, readListing } from "@/lib/catalog";
 import { guardStoreWrite, text } from "@/lib/store-request";
-import { EMPTY_PAGE, MAX_BLOCKS, MAX_PAGE_BYTES, copyOfPage, pageProblem, parsePage, picturePaths } from "@/lib/sales-page";
+import { EMPTY_PAGE, MAX_BLOCKS, copyOfPage, oversized, pageProblem, parsePage, picturePaths } from "@/lib/sales-page";
 import { jsonAccess } from "@/lib/studio-route";
 import { claimPictures, readPage, releasePictures, writePage } from "@/lib/sales-page-store";
 import { del } from "@/lib/blob";
 import { imagePaths, ownsImagePath } from "@/lib/product-image";
 import { isStoredPicture } from "@/lib/picture-check";
 
-/** Thirty full blocks as JSON, with room to spare; the record itself is held to MAX_PAGE_BYTES. */
-const MAX_BODY_BYTES = 200_000;
+/**
+ * Thirty full blocks as JSON, twice — a page and a second version tested
+ * against it — with room to spare; each is held to MAX_PAGE_BYTES.
+ */
+const MAX_BODY_BYTES = 420_000;
 
 /**
  * Saves a product's page of blocks (lib/sales-page.ts), or clears it.
  *
- * `{ id, page: { blocks, seoTitle, seoDescription, next } }`, or
+ * `{ id, page: { blocks, seoTitle, seoDescription, next, test, variant } }`, or
  * `{ id, page: null }` for the plain page again. Every rule the product's
  * page applies is applied here first, and a page that would be saved
  * differently from how it was sent is refused with the reason, so the
@@ -39,7 +42,7 @@ export async function POST(request: NextRequest) {
     if (Array.isArray(raw.blocks) && raw.blocks.length > MAX_BLOCKS) return Response.json({ ok: false, error: "too_many" }, { status: 400 });
     const problem = pageProblem(raw, page);
     if (problem) return Response.json({ ok: false, error: problem }, { status: 400 });
-    if (JSON.stringify(page).length > MAX_PAGE_BYTES) return Response.json({ ok: false, error: "too_big" }, { status: 400 });
+    if (oversized(page)) return Response.json({ ok: false, error: "too_big" }, { status: 400 });
     // What is shown after a free sign-up is another product of this store,
     // one that costs money; a paid product's page shows nothing after.
     const sentNext = typeof raw.next === "string" && raw.next ? raw.next : null;

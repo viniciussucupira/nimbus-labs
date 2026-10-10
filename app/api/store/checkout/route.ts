@@ -25,7 +25,7 @@ import { codeCookieName, readLinkCode } from "@/lib/code-link";
 import { AB_COOKIE, count as countTest, readBucket, readCounts, versionFor, winner } from "@/lib/headline-test";
 import { readPage } from "@/lib/sales-page-store";
 import { readCountry } from "@/lib/fair-price";
-import { pageShown } from "@/lib/sales-page";
+import { pageShown, runningTest } from "@/lib/sales-page";
 
 /** The checkout this browser last opened for a limited product. */
 const HOLD_COOKIE = "nl_stock_hold";
@@ -215,17 +215,19 @@ export async function POST(request: NextRequest) {
     if (ends && store.stripeAccountId) await rememberPlan(store.stripeAccountId, held.value.id);
     // Counted once the buyer is on their way, so the count never slows them.
     after(() => countHit(request, store, { kind: "checkout", id: product.id }));
-    // A checkout opened from a page running a headline test counts for the
+    // A checkout opened from a page running a test — a second headline or a
+    // second version of the whole page — counts for the
     // version this visitor was shown (lib/headline-test.ts). Read only for a
     // product with a page, and only for a visitor with a group.
     const bucket = readBucket(request.cookies.get(AB_COOKIE)?.value);
     if (product.page && bucket !== null) {
       after(async () => {
         const page = await readPage(store.statsId, product.id);
-        if (!page.test || !pageShown(page)) return;
-        const counts = await readCounts(store.statsId, product.id, page.test.id);
+        const test = runningTest(page);
+        if (!test || !pageShown(page)) return;
+        const counts = await readCounts(store.statsId, product.id, test);
         if (winner(counts)) return;
-        await countTest(store.statsId, product.id, page.test.id, "c", versionFor(bucket, page.test.id));
+        await countTest(store.statsId, product.id, test, "c", versionFor(bucket, test));
       });
     }
     const headers = new Headers({ Location: held.value.url, "Cache-Control": "no-store" });
