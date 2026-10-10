@@ -4,7 +4,7 @@
  * a session for its owner. Written through the same functions the studio
  * uses, into the stand-in database.
  */
-import { addProduct, addStoreLink, claimHandle, createStore, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setLinkImage, setProductLink, setReviewed, setSections, storeForEmail, setStripeAccount, setSubscription } from "@/lib/store";
+import { addProduct, addStoreLink, claimHandle, createStore, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setLinkImage, setProductLink, setReviewed, setSections, storeForEmail, setStripeAccount, setSubscription, setMailSettings, storeRef } from "@/lib/store";
 import { openSession } from "@/lib/auth";
 import { saveReview, setReviewPhoto } from "@/lib/reviews";
 import { refreshStoreQuotes } from "@/lib/store-quotes";
@@ -104,6 +104,9 @@ async function main(): Promise<void> {
   // A second store of the same owner's with nothing on it yet, for the first draft written with AI.
   const fresh = await createStore(OWNER, "freshshop", "Fresh Kitchen", "");
   if (!fresh.ok) throw new Error(`the fresh store was refused: ${fresh.reason}`);
+  // On Pro, so its studio writes to a list (app/studio/email).
+  await setSubscription(storeRef(fresh.store), { active: true, tier: "pro", cycle: "month", subscriptionId: null, customerId: null, trialEnds: 0 });
+  await setMailSettings(storeRef(fresh.store), { fromName: "Fresh Kitchen", address: "1 Main St, Austin, TX 78701" });
   console.log(JSON.stringify({ ids, reviews, fresh: fresh.store.sid, session: await openSession(OWNER) }));
 }
 

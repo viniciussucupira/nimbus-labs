@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { shrink } from "@/components/shrink-image";
 import { IMAGE_ACCEPT, MAX_SOURCE_BYTES } from "@/lib/product-image";
-import { MAIL_PICTURE_SIDE, MAX_MAIL_PICTURES, MAX_MAIL_PICTURE_BYTES, pictureCount, pictureLine } from "@/lib/mail-picture-rules";
+import { MAIL_PICTURE_SIDE, MAX_MAIL_PICTURES, MAX_MAIL_PICTURE_BYTES, pictureCount, pictureLine, readPicture } from "@/lib/mail-picture-rules";
+import { SITE_URL } from "@/lib/site-url";
 
 const PROBLEMS: Record<string, string> = {
   picture: "That picture could not be used. Try a JPEG, PNG or WebP photo.",
@@ -35,6 +36,8 @@ export function MailPictureButton({
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
   const full = pictureCount(body) >= MAX_MAIL_PICTURES;
+  // The pictures the email holds now, shown small so the lines in the box can be told apart.
+  const pictures = body.split("\n").map((line) => readPicture(line)).filter((p): p is { alt: string; url: string } => p !== null);
 
   async function choose(file: File | undefined) {
     setProblem("");
@@ -84,6 +87,17 @@ export function MailPictureButton({
           ? `This email has ${MAX_MAIL_PICTURES} pictures, the most one can show.`
           : `It goes where the cursor is, as a line of its own; delete the line to take it out. Up to ${MAX_MAIL_PICTURES} per email.`}
       </p>
+      {pictures.length ? (
+        <ul className="mt-3 flex flex-wrap gap-2" aria-label="Pictures in this email">
+          {pictures.map((picture, i) => (
+            <li key={`${picture.url}-${i}`} className="w-20">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={picture.url.replace(SITE_URL, "")} alt={picture.alt || "A picture with no description"} className="h-20 w-20 rounded-lg bg-paper object-cover ring-1 ring-line" />
+              <span className="mt-1 block truncate text-xs text-ink-soft">{picture.alt || "No description"}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {problem ? <p className="notice notice-error mt-2 text-sm" role="alert">{problem}</p> : null}
     </div>
   );

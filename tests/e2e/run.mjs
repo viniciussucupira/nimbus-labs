@@ -75,6 +75,9 @@ const env = {
   RESEND_API_BASE: FAKE,
   ANTHROPIC_API_KEY: "sk-ant-local_only_a_stand_in_0000",
   ANTHROPIC_API_BASE: FAKE,
+  // The file store: what the server writes goes to the stand-in (services.mjs).
+  VERCEL_BLOB_API_URL: `${FAKE}/blob-api`,
+  BLOB_READ_WRITE_TOKEN: "vercel_blob_rw_localstore_standinsecret0000",
   NEXT_TELEMETRY_DISABLED: "1",
 };
 
@@ -1722,6 +1725,42 @@ try {
     is("and the page after paying hands over both", [thanks.includes("Weeknight Dinners"), thanks.includes("Pantry Checklist")], [true, true]);
     await open(page, `${LOCAL}/@localshop`);
     is("and the cart is empty again", await page.locator("#cart .st-cart-open").count(), 0);
+  }
+
+  await keepSmall();
+  part("A picture in an email, kept on this site");
+  {
+    await open(studio, `${LOCAL}/studio/email?store=${fresh}`);
+    const box = studio.getByRole("textbox", { name: "Email", exact: true }).first();
+    await box.fill("Hello,\n\nThe new loaf is out.");
+    await studio.getByLabel("What the picture shows (for readers who cannot see it)").first().fill("The loaf on a board");
+    const drawn = await studio.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1800;
+      canvas.height = 1200;
+      const pen = canvas.getContext("2d");
+      for (let i = 0; i < 3000; i += 1) {
+        pen.fillStyle = `hsl(${(i * 11) % 360} 60% ${35 + (i % 30)}%)`;
+        pen.fillRect((i * 53) % 1800, (i * 97) % 1200, 30, 30);
+      }
+      return canvas.toDataURL("image/jpeg", 0.95).split(",")[1];
+    });
+    const before = services.blobs().size;
+    await studio.locator("label:has-text('Add a picture') input[type=file]").first().setInputFiles({ name: "loaf.jpg", mimeType: "image/jpeg", buffer: Buffer.from(drawn, "base64") });
+    let value = "";
+    for (let i = 0; i < 40 && !value.includes("](https://marktmorgen.com/api/image/"); i += 1) {
+      await new Promise((wait) => setTimeout(wait, 500));
+      value = await box.inputValue();
+    }
+    const kept = [...services.blobs().entries()].slice(before).find(([path]) => path.endsWith(".jpg"));
+    is("it goes into the email as a line of its own, with what it shows, and is kept as a JPEG under 300 KB", [
+      /The new loaf is out\.\n\n!\[The loaf on a board\]\(https:\/\/marktmorgen\.com\/api\/image\/[0-9a-f]{24}\/[0-9a-f]{32}\.jpg\)$/.test(value),
+      Boolean(kept),
+      (kept?.[1].length ?? Infinity) <= 300_000,
+      kept?.[1][0] === 0xff && kept?.[1][1] === 0xd8,
+    ], [true, true, true, true]);
+    is("and shows under the box, small, with what it shows", [await studio.getByRole("list", { name: "Pictures in this email" }).locator("li").count(), await studio.getByRole("img", { name: "The loaf on a board" }).count()], [1, 1]);
+    if (process.env.E2E_SHOTS) await studio.locator("main").screenshot({ path: join(process.env.E2E_SHOTS, "email-picture.png") });
   }
 
   part("Logging in is not starting a store");

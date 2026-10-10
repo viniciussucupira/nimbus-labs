@@ -37,7 +37,14 @@ export async function startServices(port) {
   const unknown = [];
   const writing = [];
   let counter = 0;
+  const blobs = new Map();
 
+  const readBytes = (req) =>
+    new Promise((done) => {
+      const parts = [];
+      req.on("data", (chunk) => parts.push(chunk));
+      req.on("end", () => done(Buffer.concat(parts)));
+    });
   const read = (req) =>
     new Promise((done) => {
       let raw = "";
@@ -63,6 +70,22 @@ export async function startServices(port) {
         // The one font file the build is given for every Google font (google-fonts-mock.cjs).
         res.writeHead(200, { "Content-Type": "font/woff2" });
         return res.end(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../../node_modules/next/dist/next-devtools/server/font/geist-latin.woff2")));
+      }
+      // The file store (Vercel Blob), for what the server writes and deletes
+      // itself: kept in memory. Reading a private file back goes to the
+      // store's own host, which this does not stand in for.
+      if (path.startsWith("/blob-api")) {
+        if (req.method === "PUT") {
+          const pathname = url.searchParams.get("pathname") ?? path.replace(/^\/blob-api\/?/, "");
+          const bytes = await readBytes(req);
+          blobs.set(pathname, bytes);
+          return json(res, 200, { url: `https://localstore.private.blob.vercel-storage.com/${pathname}`, downloadUrl: "", pathname, contentType: req.headers["x-content-type"] ?? "application/octet-stream", contentDisposition: "inline" });
+        }
+        if (req.method === "POST" && path.endsWith("/delete")) {
+          await read(req);
+          return json(res, 200, {});
+        }
+        return json(res, 404, { error: { code: "not_found", message: "no such file here" } });
       }
       if (req.method === "POST" && path === "/pipeline") {
         const results = [];
@@ -184,6 +207,8 @@ export async function startServices(port) {
     coupons: () => [...coupons],
     unknown: () => [...unknown],
     writing: () => [...writing],
+    /** What was written to the file store, by its path. */
+    blobs: () => new Map(blobs),
     close: () => new Promise((closed) => server.close(closed)),
   };
 }
