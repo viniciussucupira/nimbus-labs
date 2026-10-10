@@ -1,4 +1,7 @@
 import { StickyBuy } from "@/components/sticky-buy";
+import { AddToCart, CartButton } from "@/components/store-cart";
+import { offersCart } from "@/lib/cart-checkout";
+import { cartable } from "@/lib/cart-rules";
 import { forVisitor } from "@/lib/visitor";
 import { MoreFrom, moreFrom } from "@/components/more-from";
 import { ExitOfferSlot } from "@/components/exit-offer-slot";
@@ -266,6 +269,9 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const preorder = preorderDay(store, product, coming.soon, coming.day);
   const query = searchParams ? await searchParams : {};
   const giftProblem = typeof query.gift === "string" ? query.gift : "";
+  // A cart, where two or more products could go in one (lib/cart-rules.ts).
+  const cartOn = selling && offersCart(store);
+  const cartNotice = query.cart === "changed" || query.cart === "error" ? query.cart : null;
   const groupProblem = typeof query.group === "string" ? query.group : "";
   // A reminder asked for below the buy box, and what came of it (lib/checkout-ask.ts).
   const remindAsked = typeof query.asked === "string" ? query.asked.slice(0, 20) : "";
@@ -394,6 +400,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
         </p>
       ) : null}
       <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} preorder={preorder} bundleItems={inside} pickAgain={query.pick === "count"} />
+      {cartOn && !soon && cartable(product) ? <AddToCart handle={store.handle} productId={product.id} lang={store.language} /> : null}
       {/* A question before buying, answered from this page (lib/answers.ts): only where the creator switched it on. */}
       {selling && answersOn(store) ? (
         <AskBox
@@ -449,6 +456,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
         {w.everythingFrom(store.name)}
       </Link>
       <StoreTracking store={store} presence product={product.id} />
+      {cartOn ? <CartButton handle={store.handle} lang={store.language} notice={cartNotice} /> : null}
     </div>
   );
 

@@ -19,6 +19,7 @@ import { readableTime, zoneName } from "@/lib/call-setup";
 import { isVideoRoom, roomLabel, roomOf, videoRoomNote } from "@/lib/call-rooms";
 import { SITE_URL } from "@/lib/site-url";
 import { StoreTracking } from "@/components/store-tracking";
+import { ClearCart } from "@/components/store-cart";
 import { confirmStock } from "@/lib/stock";
 import { finishPlan } from "@/lib/plans";
 import { cookies, headers } from "next/headers";
@@ -1095,6 +1096,8 @@ export default async function ThanksPage({ params, searchParams }: Params) {
           )}
 
           <div className="mt-8">
+            {/* Paid for from the cart: it is emptied (components/store-cart.tsx). */}
+            {order.state === "paid" && (order.record.metadata as Record<string, string> | null)?.cart === "yes" ? <ClearCart handle={store.handle} /> : null}
             <Link
               href={`/@${store.handle}`}
               className="st-footer-link text-sm font-semibold"

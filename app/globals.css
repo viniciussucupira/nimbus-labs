@@ -4432,3 +4432,35 @@ fieldset:disabled .cm-poll-row {
 .st-exit-close:hover {
   color: var(--st-text);
 }
+
+/*
+ * A store's cart (components/store-cart.tsx): its button held at the top
+ * right once something is in it, clear of the buy bar a phone keeps at the
+ * bottom, and what it opens below it.
+ */
+.st-cart {
+  position: fixed;
+  top: calc(0.75rem + env(safe-area-inset-top));
+  right: 0.75rem;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  max-width: calc(100vw - 1.5rem);
+}
+.st-cart-open {
+  min-height: 44px;
+  gap: 0.5rem;
+  padding-inline: 1rem;
+  font-size: 0.9rem;
+}
+.st-cart-panel {
+  width: min(24rem, calc(100vw - 1.5rem));
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+  box-shadow: 0 24px 48px -20px rgb(0 0 0 / 0.35);
+}
+.st-cart-panel:focus {
+  outline: none;
+}
