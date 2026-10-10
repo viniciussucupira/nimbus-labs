@@ -104,7 +104,7 @@ export function bundleOwnerProblem(product: Listing): OwnerProblem | null {
   return null;
 }
 
-export type BundleProblem = OwnerProblem | "count" | "self" | "unknown" | "kind";
+export type BundleProblem = OwnerProblem | "count" | "self" | "unknown" | "kind" | "pick";
 
 /**
  * Why this list cannot be saved on this product, or null when it can.
@@ -137,6 +137,56 @@ export function itemsProblem(items: string[], listings: Listing[], ownerId = "")
 export function deliverableItems(bundle: Pick<Listing, "bundle">, listings: Listing[]): Listing[] {
   const byId = new Map(listings.map((p) => [p.id, p]));
   return (bundle.bundle ?? []).map((id) => byId.get(id)).filter((p): p is Listing => Boolean(p && canBeInBundle(p)));
+}
+
+// ---- Chosen by the buyer -------------------------------------------------------
+
+/**
+ * A bundle the buyer builds (added 10 October 2026): "any 3 of these 8 for
+ * $49". The creator lists the products to choose from, as for any bundle,
+ * and says how many each buyer chooses; the buyer ticks that many, and those
+ * are written onto their checkout (bundleMeta) and handed over exactly as a
+ * bundle's always are. Every rule above still holds for the list.
+ *
+ * Because the buyer has to choose, it is bought from its own page or card
+ * only: never in a box at checkout, as an offer after paying, as a gift, for
+ * several people, or through PayPal.
+ */
+
+/** The fewest a buyer may be asked to choose. */
+export const MIN_PICK = 2;
+
+/** How many a buyer chooses, as stored: a whole number from MIN_PICK up, or null for "all of them". */
+export function parsePick(raw: unknown): number | null {
+  return typeof raw === "number" && Number.isInteger(raw) && raw >= MIN_PICK && raw < MAX_BUNDLE_ITEMS ? raw : null;
+}
+
+/** Whether a bundle has its buyers choose. */
+export function picks(product: Pick<Listing, "bundle"> & { pick?: number | null }): number | null {
+  return isBundle(product) && product.pick ? product.pick : null;
+}
+
+/** Why `pick` cannot be asked of a list of `count` products: fewer to choose from than to choose. */
+export function pickProblem(pick: number | null, count: number): "pick" | null {
+  if (pick === null) return null;
+  return pick >= MIN_PICK && pick < count ? null : "pick";
+}
+
+/** Whether a bundle can be sold right now: enough to hand over, and, when buyers choose, enough to choose from. */
+export function bundleReady(product: Pick<Listing, "bundle"> & { pick?: number | null }, deliverable: number): boolean {
+  return deliverable >= Math.max(MIN_BUNDLE_ITEMS, picks(product) ?? 0);
+}
+
+/**
+ * The products a buyer chose, from what the bundle can hand over now, in the
+ * bundle's own order: exactly `pick` different ones, each from the list, or
+ * null when the choice is anything else.
+ */
+export function chosenItems(pool: Listing[], picked: string[], pick: number): Listing[] | null {
+  const wanted = new Set(picked.filter((id) => SAFE_ID.test(id)));
+  if (wanted.size !== pick || picked.length !== pick) return null;
+  const chosen = pool.filter((p) => wanted.has(p.id));
+  return chosen.length === pick ? chosen : null;
 }
 
 /** What the included products cost on their own, together, in the store's smallest unit. */

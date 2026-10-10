@@ -224,7 +224,8 @@ export function sellsWithPayPal(product: Listing): boolean {
   if (product.recurring || product.call || product.pwyw || product.keys || product.options.length > 0) return false;
   // A limited product holds a unit while its buyer pays; that hold is Stripe's checkout's.
   if (product.stock !== null) return false;
-  if (product.bundle) return product.bundle.length >= 2;
+  // A bundle whose buyer chooses is bought through the checkout that writes the choice down.
+  if (product.bundle) return product.bundle.length >= 2 && !product.pick;
   if (product.course) return product.course.lessons > 0;
   if (product.podcast) return product.podcast.episodes > 0;
   return product.file !== null || product.link !== null;

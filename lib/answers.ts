@@ -68,6 +68,7 @@ export function deliveryWords(product: Listing): string {
   if (product.call) return "It is a call: the buyer picks a time on the store's calendar before paying, and gets a calendar invite and reminders by email.";
   if (product.recurring) return "It is a membership: the buyer pays on a schedule and can cancel at any time from a link on the store. Access lasts while the membership runs.";
   if (product.course) return "It is a course: after paying, the buyer opens it on its own page, lesson by lesson, and can come back to it at any time with the email they paid with.";
+  if (product.bundle && product.pick) return `It is a bundle the buyer builds: they choose any ${product.pick} of the ${product.bundle.length} products in it before paying, and get exactly those.`;
   if (product.bundle) return "It is a bundle: after paying, the buyer gets each product inside it.";
   if (product.file || product.options.some((o) => o.file)) return "It is a download: after paying, the buyer downloads the file from the page they land on, and the link comes by email too.";
   return "After paying, the buyer gets the link on the page they land on, and by email.";

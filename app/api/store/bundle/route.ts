@@ -8,7 +8,7 @@ import {
   setProductBundle,
 } from "@/lib/store";
 import { BUMP_CHOICES, idsOfKind, readCards, readListings } from "@/lib/catalog";
-import { MAX_BUNDLE_ITEMS, bundleOwnerProblem, itemsProblem, whyNotInBundle } from "@/lib/bundle-rules";
+import { MAX_BUNDLE_ITEMS, bundleOwnerProblem, itemsProblem, parsePick, pickProblem, whyNotInBundle } from "@/lib/bundle-rules";
 import { jsonAccess } from "@/lib/studio-route";
 import { guardStoreWrite, text } from "@/lib/store-request";
 import { withinLimit } from "@/lib/request-guard";
@@ -89,7 +89,7 @@ function readItems(raw: unknown): string[] | null {
 /**
  * Makes, changes or undoes a bundle.
  *
- *   { action: "save", id, items: [ids] }                   what an existing product holds
+ *   { action: "save", id, items: [ids], pick? }            what an existing product holds, and how many a buyer chooses
  *   { action: "clear", id }                                back to an ordinary product
  *   { action: "create", title, price, summary, items }     a new product that is a bundle
  *
@@ -110,9 +110,13 @@ export async function POST(request: NextRequest) {
     }
     const items = readItems(body.items);
     if (!items) return refuse("count");
+    // How many each buyer chooses, when they build it themselves; null hands over all of them.
+    const pick = body.pick === null || body.pick === undefined || body.pick === 0 ? null : parsePick(body.pick);
+    if (body.pick && pick === null) return refuse("pick");
+    if (pickProblem(pick, items.length)) return refuse("pick");
 
     if (action === "save") {
-      const done = await setProductBundle(ref, text(body.id, 64), items);
+      const done = await setProductBundle(ref, text(body.id, 64), items, pick);
       return done.ok ? Response.json({ ok: true, id: done.product.id }) : refuse(done.reason);
     }
 
@@ -127,7 +131,7 @@ export async function POST(request: NextRequest) {
         await removeProduct(ref, added.product.id).catch(() => {});
         return refuse("free");
       }
-      const done = await setProductBundle(ref, added.product.id, items);
+      const done = await setProductBundle(ref, added.product.id, items, pick);
       if (!done.ok) {
         // Something changed in the moment between: nothing half-made is left.
         await removeProduct(ref, added.product.id).catch(() => {});

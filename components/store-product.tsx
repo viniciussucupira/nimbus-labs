@@ -12,7 +12,7 @@ import { imageUrl, IMAGE_SIZES, imageSrcSet } from "@/lib/product-image";
 import type { PageAction } from "@/components/sales-blocks";
 import { RatingLine } from "@/components/review-list";
 import type { Summary } from "@/lib/review-summary";
-import { MIN_BUNDLE_ITEMS } from "@/lib/bundle-rules";
+import { MIN_BUNDLE_ITEMS, bundleReady, picks } from "@/lib/bundle-rules";
 import { payPalPrice, paypalReady } from "@/lib/paypal-sales";
 import { comparable, startingOption } from "@/lib/product-option";
 import { DEFAULT_PEOPLE, MAX_PEOPLE, MIN_PEOPLE } from "@/lib/group-rules";
@@ -20,6 +20,8 @@ import { givableOptions } from "@/lib/gift-rules";
 import { productSegment } from "@/lib/product-slug";
 import { membershipWords } from "@/lib/buyer-words/membership";
 import { preorderWords } from "@/lib/buyer-words/preorder";
+import { pickWords } from "@/lib/buyer-words/pick";
+import { PickBundleForm } from "@/components/pick-bundle-form";
 import { type AskWhen, isAskWhen } from "@/lib/ask-when";
 import { type UnitLine, unitLines } from "@/lib/option-units";
 
@@ -159,7 +161,11 @@ export function ProductFacts({
   // A bundle: how many products, and — only when it is true — what they cost
   // on their own, from their prices today (lib/bundle-rules.ts).
   const inside = product.bundle && bundleItems && bundleItems.length >= MIN_BUNDLE_ITEMS ? bundleItems : null;
-  if (inside) {
+  const pick = picks(product);
+  if (inside && pick) {
+    // Chosen by the buyer: how many of how many, and no sum of the whole list.
+    facts.push(pickWords(store.language).fact(pick, inside.length));
+  } else if (inside) {
     facts.push(w.bundleOf(inside.length, worthLine(store, inside, product.priceCents)));
   }
   if (product.call) facts.push(callLine(store, product.call));
@@ -503,6 +509,8 @@ export function BuyBox({
   ready = true,
   soon = false,
   preorder = null,
+  bundleItems = null,
+  pickAgain = false,
   place = "",
 }: {
   store: Store;
@@ -521,6 +529,10 @@ export function BuyBox({
   soon?: boolean;
   /** Coming soon and taking pre-orders: the day it is expected (lib/preorders.ts, preorderDay). */
   preorder?: string | null;
+  /** For a bundle: what it hands over now, which a bundle its buyer builds is chosen from (lib/bundle-rules.ts). */
+  bundleItems?: Listing[] | null;
+  /** The page came back because the buyer's choice was not that many. */
+  pickAgain?: boolean;
   /**
    * Set when the same box is drawn twice on one page — the offer to a leaving
    * visitor (components/exit-offer-slot.tsx) beside the product's own card —
@@ -614,6 +626,33 @@ export function BuyBox({
       say so than to take the money and work out the delivery afterward.
     */
     return selling ? <p className="st-muted mt-4 text-sm">{w.notOnSale}</p> : null;
+  }
+
+  // A bundle its buyer builds: the products to choose from, and the button
+  // that buys exactly those. Where the list is not at hand, the way to it.
+  const pick = picks(product);
+  if (pick) {
+    if (!bundleItems || !bundleReady(product, bundleItems.length)) {
+      return (
+        <Link prefetch={false} href={`${productPath(store, product)}#buy`} className="btn st-btn btn-block mt-4">
+          {pickWords(store.language).legend(pick)}
+        </Link>
+      );
+    }
+    return (
+      <PickBundleForm
+        handle={store.handle}
+        productId={product.id}
+        pick={pick}
+        items={bundleItems.map((item) => ({ id: item.id, title: item.title, cents: item.priceCents }))}
+        priceCents={salePrice(product.priceCents, off)}
+        currency={store.currency}
+        locale={speech(store).lang.locale}
+        lang={store.language}
+        again={pickAgain}
+        place={place}
+      />
+    );
   }
 
   return (
@@ -866,6 +905,9 @@ export function pageAction(
       : { action: { kind: "none", text: w.noDates }, label: "" };
   }
   if (remaining === 0) return { action: { kind: "none", text: w.soldOutStop }, label: "" };
+  // A bundle its buyer builds is chosen in its buy box before it is bought.
+  const pick = picks(product);
+  if (pick && canSellProduct(store, product)) return { action: { kind: "link", href: "#buy" }, label: pickWords(store.language).legend(pick) };
   if (!canSellProduct(store, product)) {
     // Sold through the creator's PayPal only: the buttons lead to the buy box, where PayPal's is.
     if (paypalReady(store, product)) return { action: { kind: "link", href: "#buy" }, label: w.buyFor(money(payPalPrice(store, product))) };

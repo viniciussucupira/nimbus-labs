@@ -155,7 +155,7 @@ export default async function StudioBundlesPage({ searchParams }: Params) {
                 <BundleEditor
                   key={`${mode}:${target?.id ?? "new"}`}
                   mode={mode}
-                  owner={target ? { id: target.id, title: target.title, priceCents: target.priceCents } : null}
+                  owner={target ? { id: target.id, title: target.title, priceCents: target.priceCents, pick: target.pick ?? null } : null}
                   initial={ordered.map(picked)}
                   currency={store.currency}
                 />

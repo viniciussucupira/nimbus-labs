@@ -1081,6 +1081,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           { icon: "lock", title: "What they paid for stays theirs", body: "What a buyer gets is written onto their order when they pay. Change the bundle later and it changes for the next buyer; everyone before keeps what was in it." },
           { icon: "chat", title: "The community, when it opens", body: "When a product in the bundle opens your community, buying the bundle lets the buyer in.", href: "/platform/community" },
           { icon: "percent", title: "At checkout and after", body: "A bundle can be the box a buyer checks at checkout, and one of the offers after paying, unless it holds a course.", href: "/platform/checkout" },
+          { icon: "check", title: "Or let the buyer build it", body: "“Any 3 of these 8 for $49.” Its page lists the products with their own prices, the buyer ticks that many, sees what those cost on their own beside the bundle's price, and gets exactly those. Bought from its own page only." },
           { icon: "eye", title: "Drafts inside a bundle", body: "Any product can be taken off your store and kept as a draft, and a draft can still go in a bundle: sell a guide only as part of one, if you like." },
           { icon: "mail", title: "Your email platform hears each one", body: "A bundle's products reach Mailchimp, Kit, beehiiv or MailerLite as if each had been bought on its own.", href: "/platform/email-platforms" },
         ],
@@ -1104,6 +1105,7 @@ export const FEATURE_PAGES: TopicPage[] = [
           "A product you delete is gone from the bundles that held it, for their past buyers too, as it is for its own buyers; their pages say so.",
           "A bundle is not reviewed itself: its buyers review each product in it.",
           "A bundle that holds a course is not offered after paying, and a bundle with fewer than two products that can be handed over right now is not sold until you fix it.",
+          "A bundle the buyer builds is bought from its own page only: not in a box at checkout, as an offer after paying, as a gift, for several people or through PayPal, and its page shows no total for the whole list.",
         ],
       },
       {

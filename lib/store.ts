@@ -72,7 +72,7 @@ import { type PwywProblem, pwywProblem } from "@/lib/pay-what-you-want";
 import { type CheckoutField } from "@/lib/checkout-fields";
 import { type Currency, DEFAULT_CURRENCY, currencyRule, parseCurrency, priceInRange, readMoney } from "@/lib/money";
 import { type KeySetup, canHaveKeys } from "@/lib/key-setup";
-import { type BundleProblem, bundleProblem, isBundle } from "@/lib/bundle-rules";
+import { type BundleProblem, bundleProblem, isBundle, pickProblem } from "@/lib/bundle-rules";
 import { offerableAfterPaying } from "@/lib/bundles";
 import { type DisplayStyle, type ProductImage } from "@/lib/product-image";
 import { type PagePart, USUAL_ORDER, parseOrder } from "@/lib/store-order";
@@ -3228,13 +3228,15 @@ export type BundleResult =
  * bundle can never be saved holding something that cannot be handed over.
  * Buyers who already paid keep the list that was on their order.
  */
-export async function setProductBundle(email: string, id: string, items: string[] | null): Promise<BundleResult> {
+export async function setProductBundle(email: string, id: string, items: string[] | null, pick: number | null = null): Promise<BundleResult> {
   return onProduct<BundleProblem>(email, id, async (product, store) => {
-    if (items === null) return { ...product, bundle: null };
+    if (items === null) return { ...product, bundle: null, pick: null };
     const listed = await readListings(store, items);
     const problem = bundleProblem(items, listed, product);
     if (problem) return { ok: false, reason: problem };
-    return { ...product, bundle: [...items] };
+    // Buyers choose from the list: fewer than it holds (lib/bundle-rules.ts).
+    if (pickProblem(pick, items.length)) return { ok: false, reason: "pick" };
+    return { ...product, bundle: [...items], pick };
   });
 }
 

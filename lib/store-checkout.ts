@@ -39,7 +39,7 @@ import { readMoves } from "@/lib/call-records";
 import { applyRecovery, recoveryOn, refusedRecovery, withoutRecovery } from "@/lib/recovery-setting";
 import { isLive, membershipStatus, soldAMembership } from "@/lib/membership-access";
 import { purchaseRefunded } from "@/lib/refunds";
-import { BUMP_KEYS, type BumpKey, MIN_BUNDLE_ITEMS, bumpsFromMeta, bundleFromMeta, bundleMeta, deliverableItems } from "@/lib/bundle-rules";
+import { BUMP_KEYS, type BumpKey, MIN_BUNDLE_ITEMS, bumpsFromMeta, bundleFromMeta, bundleMeta, chosenItems, deliverableItems, picks } from "@/lib/bundle-rules";
 import { type BundleContents, contentsOf } from "@/lib/bundles";
 import { isHouseStore } from "@/lib/house-store";
 import { preorderProblem } from "@/lib/preorder-rules";
@@ -158,6 +158,8 @@ export async function createCheckout(
     bumps?: string[];
     /** A unit of the product is held, so the checkout has to close in time. */
     held?: boolean;
+    /** For a bundle its buyer builds: the products they ticked (lib/bundle-rules.ts, chosenItems). */
+    picked?: string[];
     /**
      * The fingerprint of the secret the buyer's browser keeps, when an upsell
      * follows: the card is then kept for payments made while they are there.
@@ -241,8 +243,13 @@ export async function createCheckout(
 
   // A bundle's list is read now and written onto the checkout, so what this
   // buyer gets is what it held when they paid, whatever it holds later.
-  const bundled = product.bundle ? deliverableItems(product, await readListings(store, product.bundle)) : null;
-  if (bundled && bundled.length < MIN_BUNDLE_ITEMS) throw new Error("This bundle holds too little that can be handed over right now");
+  const pool = product.bundle ? deliverableItems(product, await readListings(store, product.bundle)) : null;
+  if (pool && pool.length < MIN_BUNDLE_ITEMS) throw new Error("This bundle holds too little that can be handed over right now");
+  // A bundle its buyer builds: exactly the ones they chose, from what it can
+  // hand over now (lib/bundle-rules.ts). Anything else is refused, not guessed.
+  const pick = picks(product);
+  const bundled = pool && pick ? chosenItems(pool, extras.picked ?? [], pick) : pool;
+  if (pool && !bundled) throw new Error("This bundle needs its buyer's choice");
 
   const offered = sellableOptions(product);
   let chosen: ProductOption | null = null;
@@ -260,7 +267,11 @@ export async function createCheckout(
   const recurring = membership !== null || plan !== null;
   const priceCents = plan ? plan.amountCents : chosen ? chosen.priceCents : product.priceCents;
   const baseName = chosen ? `${product.title} (${chosen.label})` : product.title;
-  const name = plan ? `${baseName} (${planLine(store, plan)})` : baseName;
+  const name = plan
+    ? `${baseName} (${planLine(store, plan)})`
+    : pick && bundled
+      ? `${baseName}: ${bundled.map((p) => p.title).join(", ")}`.slice(0, 250)
+      : baseName;
   // Bought for several: the same price, that many times, on one line.
   const people = extras.group ? extras.group.people : 1;
   if (extras.group && !payable(priceCents, people)) throw new Error("This cannot be bought for several people");
