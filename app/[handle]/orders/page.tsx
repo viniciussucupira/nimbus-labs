@@ -1,4 +1,5 @@
 import { feedToken } from "@/lib/podcast-access";
+import { preorderWords } from "@/lib/buyer-words/preorder";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -147,6 +148,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
   if (!store) notFound();
   const said = speech(store);
   const words = ordersWords(store.language);
+  const pre = preorderWords(store.language);
 
   const query = await searchParams;
   const token = typeof query.token === "string" ? query.token : "";
@@ -352,7 +354,9 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                             purchase.member ? words.memberRunning : null,
                             purchase.ended ? words.memberEnded : null,
                             purchase.kind === "upsell" ? words.addedAfterPaying : null,
-                            purchase.kind === "imported" && purchase.giftFrom
+                            purchase.preorder
+                              ? pre.preorderedOn(on(purchase.paidAt))
+                              : purchase.kind === "imported" && purchase.giftFrom
                               ? words.giftFrom(
                                   // lib/gifts.ts names a giver who gave no name "someone".
                                   purchase.giftFrom === "someone" ? words.someone : purchase.giftFrom,
@@ -372,6 +376,11 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                             .join(" · ")}
                         </p>
                         <div className="mt-4 space-y-3">
+                          {purchase.preorder && !purchase.preorder.given ? (
+                            <p className="st-muted text-sm">
+                              {purchase.preorder.day ? pre.ordersLine(on(Date.parse(`${purchase.preorder.day}T00:00:00Z`) / 1000)) : pre.receiptLater}
+                            </p>
+                          ) : null}
                           {purchase.ended ? (
                             <>
                               <p className="st-muted text-sm">{words.endedNote}</p>
@@ -412,7 +421,7 @@ export default async function OrdersPage({ params, searchParams }: Params) {
                             ) : null,
                           )}
                         </div>
-                        {purchase.kind === "imported" && !purchase.giftFrom && !purchase.paidWith && !purchase.place ? (
+                        {purchase.kind === "imported" && !purchase.giftFrom && !purchase.paidWith && !purchase.place && !purchase.preorder ? (
                           <p className="st-muted mt-3 text-xs leading-relaxed">{words.importedNote(store.name)}</p>
                         ) : null}
                         {contents(purchase, purchase.items, null)}

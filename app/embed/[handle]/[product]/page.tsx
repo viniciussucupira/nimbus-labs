@@ -9,7 +9,7 @@ import { lookStyle } from "@/lib/store-look";
 import { imageUrl } from "@/lib/product-image";
 import { stockLeft } from "@/lib/stock";
 import { outOfKeys } from "@/lib/licence-keys";
-import { isSoon } from "@/lib/waitlist";
+import { preorderDay, soonOne } from "@/lib/preorders";
 import { sellsInTestMode } from "@/lib/stripe-connect";
 import { summaryOf } from "@/lib/reviews";
 import { bumpTargets } from "@/lib/product-extras";
@@ -108,16 +108,17 @@ export default async function EmbedCard({ params, searchParams }: Params) {
   }
 
   const selling = canSell(store);
-  const [soon, stock, noKeys, related, summary] = await Promise.all([
-    isSoon(store, product.id).catch(() => false),
+  const [coming, stock, noKeys, related, summary] = await Promise.all([
+    soonOne(store, product.id).catch(() => ({ soon: false, day: null })),
     stockLeft(store, product).catch(() => null),
     outOfKeys(store, product).catch(() => false),
     product.bumps.length ? readListings(store, bumpTargets(product)).catch(() => []) : Promise.resolve([]),
     summaryOf(store.statsId, product.id).catch(() => null),
   ]);
+  const soon = coming.soon;
   const count = noKeys ? 0 : stock;
   const remaining = count !== null && canSellProduct(store, product) ? count : null;
-  const { action, label } = pageAction(store, product, remaining, selling, related, soon);
+  const { action, label } = pageAction(store, product, remaining, selling, related, soon, preorderDay(store, product, coming.soon, coming.day));
   const page = tagged(productPath(store, product), place);
   // A product page link with the place on it, and the part of the page it was meant for.
   const into = (href: string) => (href.startsWith("#") ? `${page}${href}` : tagged(href, place));

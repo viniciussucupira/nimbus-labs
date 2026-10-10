@@ -130,6 +130,8 @@ let restartApp = async () => {};
 /** A published post's address, once the blog part has made one: checked after a restart. */
 let postPath = "";
 let tipPath = "";
+let preorderId = "";
+let preorderSession = "";
 /**
  * Starts the app again when it has grown past what this machine lets it use.
  * A dev server keeps everything it has built in memory, and past about 5 GB
@@ -1593,6 +1595,60 @@ try {
   }
 
   await keepSmall();
+  await keepSmall();
+  part("Selling something before it is ready: a pre-order");
+  {
+    const day = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+    const expected = new Date(`${day}T00:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+    await open(studio, `${LOCAL}/studio`);
+    const made = await studio.evaluate(async ([day, today]) => {
+      const post = (path, body) => fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
+      const added = await post("/api/store/product", { action: "add", title: "The Bread Book", summary: "Forty loaves, from the first starter to a crusty rye.", price: "25" });
+      const id = added.product?.id ?? "";
+      const notSoon = await post("/api/store/preorder", { id, day, agree: true });
+      const soon = await post("/api/store/waitlist", { action: "soon", id, on: true });
+      const tooSoon = await post("/api/store/preorder", { id, day: today, agree: true });
+      const unsaid = await post("/api/store/preorder", { id, day, agree: false });
+      const taken = await post("/api/store/preorder", { id, day, agree: true });
+      return { id, notSoon: notSoon.error, soon: soon.ok, tooSoon: tooSoon.error, unsaid: unsaid.error, day: taken.view?.day };
+    }, [day, new Date().toISOString().slice(0, 10)]);
+    preorderId = made.id;
+    is("taken only for something coming soon, from tomorrow, with the refund agreed to", [made.notSoon, made.soon, made.tooSoon, made.unsaid, made.day], ["soon", true, "day", "agree", day]);
+    await open(studio, `${LOCAL}/studio`);
+    await studio.locator("button[aria-expanded]", { hasText: "The Bread Book" }).first().click();
+    const said = studio.getByText(`Taking pre-orders: paid today, expected on ${expected}.`, { exact: false });
+    await said.first().waitFor({ timeout: 15_000 }).catch(() => {});
+    is("the studio says it is taking them", await said.count() > 0, true);
+    if (process.env.E2E_SHOTS) await studio.locator("div:has(> label > input[type=checkbox]):has-text('Coming soon, with a waitlist')").first().screenshot({ path: join(process.env.E2E_SHOTS, "preorder-studio.png") }).catch(() => {});
+
+    await open(page, `${LOCAL}/@localshop/p/${preorderId}`);
+    const box = page.locator("#preorder");
+    is("its page sells it with the day it is expected, and what happens if it does not come out", [
+      await words(box.locator("button[type=submit]")),
+      (await words(box)).includes(`Expected on ${expected}`),
+      (await words(box)).includes("If it does not come out, Harbor Kitchen Local refunds you in full."),
+    ], ["Pre-order for $25", true, true]);
+    is("the waitlist is still there for whoever would rather wait", await page.locator("details:has(#waitlist) summary").count(), 1);
+    const data = await page.locator('script[type="application/ld+json"]').allTextContents();
+    is("and search engines are told it is a pre-order", data.some((text) => text.includes("https://schema.org/PreOrder")), true);
+    if (process.env.E2E_SHOTS) await page.locator("#buy").screenshot({ path: join(process.env.E2E_SHOTS, "preorder.png") });
+
+    const before = services.emails().length;
+    await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), box.locator("button[type=submit]").click()]);
+    const paid = services.checkouts().at(-1);
+    is("one payment, marked a pre-order, with nothing added and no offer after it", [paid.amount_total, paid.metadata.preorder, paid.metadata.bump ?? null, paid.metadata.upsell_key ?? null, paid.metadata.buyer_key ?? null], [2500, "yes", null, null, null]);
+    preorderSession = paid.id;
+    is("the page after paying says when it comes", [await words(page.locator("h1")), (await words(page.locator("main"))).includes(`It is expected on ${expected}.`)], ["Pre-ordered", true]);
+    let receipt = null;
+    for (let i = 0; i < 40 && !receipt; i += 1) {
+      await new Promise((wait) => setTimeout(wait, 500));
+      receipt = services.emails().slice(before).find((email) => email.subject === "Your pre-order: The Bread Book") ?? null;
+    }
+    is("and a receipt comes, with the day", [Boolean(receipt), receipt?.text.includes(`It is expected on ${expected}.`)], [true, true]);
+    const download = await page.evaluate(async ([session]) => (await fetch(`/api/store/download?handle=localshop&session_id=${session}`)).status, [preorderSession]);
+    is("nothing opens before it comes out", download, 403);
+  }
+
   part("Logging in is not starting a store");
   await open(page, `${LOCAL}/signin?to=login`);
   is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);
@@ -1659,6 +1715,7 @@ try {
       ["a message's page", "/@localshop/contact?status=sent", 0],
       ["a supporter's thank-you", tipPath, 0],
       ["a media kit", "/@localshop/media-kit", 0],
+      ["a pre-order", `/@localshop/p/${preorderId}`, 0],
       ["the notice form", "/report", 0],
       ["the copyright policy", "/copyright", 0],
       ["a post on it", postPath, 0],
@@ -1683,6 +1740,34 @@ try {
     await studio.getByText("Photo taken off the review.").first().waitFor({ timeout: 15_000 });
     await open(page, product);
     is("taken off, the review stays without it", [await page.locator("#reviews .rv-photo").count(), await page.getByText("My Sunday mornings smell like bread now.").count() > 0], [0, true]);
+  }
+
+  await keepSmall();
+  part("Putting a pre-order on sale hands it over");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const before = services.emails().length;
+    const steps = await studio.evaluate(async ([id]) => {
+      const post = (path, body) => fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
+      const empty = await post("/api/store/waitlist", { action: "launch", id, note: "", address: "" });
+      const kept = await post("/api/store/product", { action: "remove", id });
+      const linked = await post("/api/store/product", { action: "link", id, link: "https://example.com/bread-book" });
+      const launched = await post("/api/store/waitlist", { action: "launch", id, note: "", address: "" });
+      return [empty.error, kept.error, linked.ok, launched.ok];
+    }, [preorderId]);
+    is("not while it has nothing in it, nor deleted while buyers wait; with its link, on sale", steps, ["empty", "preorders", true, true]);
+    let out = null;
+    for (let i = 0; i < 60 && !out; i += 1) {
+      await new Promise((wait) => setTimeout(wait, 500));
+      out = services.emails().slice(before).find((email) => email.subject === "It is out: The Bread Book") ?? null;
+    }
+    is("its buyer is emailed that it is out, at once", [Boolean(out), [].concat(out?.to)[0]], [true, "buyer@example.com"]);
+    const link = out?.text.split("\n").find((line) => /\/orders\?/.test(line)) ?? "";
+    await open(page, local(link.trim()));
+    const row = page.locator("li", { hasText: "The Bread Book" }).first();
+    is("and their list of purchases opens it", [(await words(row)).includes("Pre-ordered on"), await row.getByRole("link", { name: /Open|Download/ }).count() > 0], [true, true]);
+    await open(page, `${LOCAL}/@localshop/p/${preorderId}`);
+    is("from now on it is sold as anything else", await page.locator("#preorder").count(), 0);
   }
 
   await keepSmall();

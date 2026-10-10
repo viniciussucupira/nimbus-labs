@@ -35,6 +35,7 @@
  * second email.
  */
 import { revokeRefundedGifts } from "@/lib/gifts";
+import { revokeRefundedPreorders } from "@/lib/preorders";
 import { revokeRefundedGroups } from "@/lib/group-buy";
 import { sweepPayPal } from "@/lib/paypal-delivery";
 import { dropEnrollment } from "@/lib/learn";
@@ -93,6 +94,12 @@ async function sweepStore(store: Store, counts: SweepCounts, deadline: number, r
     counts.revoked += await revokeRefundedGifts(store, deadline, (email, productId) => dropEnrollment(store, email, productId));
   } catch (error) {
     console.error("reading a store's refunds for gifts failed", store.handle, error);
+  }
+  // And so is a pre-order, handed over or still waiting (lib/preorders.ts).
+  try {
+    counts.revoked += await revokeRefundedPreorders(store, deadline, (email, productId) => dropEnrollment(store, email, productId));
+  } catch (error) {
+    console.error("reading a store's refunds for pre-orders failed", store.handle, error);
   }
   // And so is every place of a purchase for several people (lib/group-buy.ts).
   try {

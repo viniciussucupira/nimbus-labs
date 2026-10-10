@@ -51,6 +51,7 @@ import { creatorAddress } from "@/lib/mail-from";
 import type { Listing, Store } from "@/lib/store";
 import { listingsNamed, readListing, recordListings } from "@/lib/catalog";
 import { recordEnrollment } from "@/lib/learn";
+import { type HandOverDeps, confirmPreorder, resendPreorder } from "@/lib/preorders";
 import { speechFor } from "@/lib/buyer-words";
 import { ordersWords } from "@/lib/buyer-words/orders";
 import { type SaleKey, activeKeys, keyForSale } from "@/lib/licence-keys";
@@ -352,6 +353,9 @@ export async function confirmPurchase(
   // Bought for several people: marked as paid, and the buyer gets a receipt
   // with the link that hands out the places (lib/group-buy.ts).
   if (session.metadata?.group) return confirmGroup(store, session, key);
+  // A pre-order: written down and receipted, or handed over at once when the
+  // product is already out (lib/preorders.ts).
+  if (session.metadata?.preorder) return confirmPreorderOnce(store, session, key);
   // A package of calls: written down, and its booking link emailed (lib/call-packages.ts).
   if (session.metadata?.kind === "package") {
     const product = listings.find((p) => p.id === session.metadata?.product);
@@ -425,6 +429,33 @@ async function confirmGift(store: Store, session: SessionRecord, key: string): P
   });
   if (outcome !== "skip") await redisPipeline([["SET", key, "sent", "EX", SENT_MARK_SECONDS]]);
   return outcome === "given" ? "sent" : outcome === "already" ? "already" : "skip";
+}
+
+/** What handing a pre-order over needs from this store: where it lives, who it writes from, and its doors. */
+export function preorderDeps(store: Store): HandOverDeps {
+  const base = storeBase(store);
+  return {
+    base,
+    from: fromStore(store),
+    ordersLink: (email) => ordersLinkFor(store, email, base),
+    recordStart: (email, productId, start) => recordEnrollment(store, email, productId, start),
+  };
+}
+
+async function confirmPreorderOnce(store: Store, session: SessionRecord, key: string): Promise<ConfirmOutcome> {
+  const meta = session.metadata ?? {};
+  if (!isSettled(session) || !saleHandles(store).has(meta.store ?? "")) return "skip";
+  const product = await productFor(store, meta);
+  if (!product) return "skip";
+  const [claimed] = await redisPipeline([["SET", key, "sending", "NX", "EX", SENDING_MARK_SECONDS]]);
+  if (claimed === null) return "already";
+  let outcome: Awaited<ReturnType<typeof confirmPreorder>> = "failed";
+  try {
+    outcome = await confirmPreorder(store, session as Parameters<typeof confirmPreorder>[1], product, preorderDeps(store));
+  } finally {
+    await redisPipeline(outcome === "failed" ? [["DEL", key]] : [["SET", key, "sent", "EX", SENT_MARK_SECONDS]]);
+  }
+  return outcome === "failed" ? "failed" : outcome === "skip" ? "skip" : "sent";
 }
 
 async function confirmGroup(store: Store, session: SessionRecord, key: string): Promise<ConfirmOutcome> {
@@ -608,6 +639,15 @@ export async function resendPurchase(store: Store, sessionId: string): Promise<R
     if (!product) return "unknown";
     const sent = await resendGroupReceipt({ store, session: session as Parameters<typeof resendGroupReceipt>[0]["session"], product, base: storeBase(store), from: fromStore(store) });
     return sent ? "sent" : "failed";
+  }
+  // A pre-order: its receipt while it waits, the way in once it was handed over (lib/preorders.ts).
+  if (session.metadata?.preorder) {
+    const meta = session.metadata;
+    if (!saleHandles(store).has(meta.store ?? "")) return "unknown";
+    const product = await productFor(store, meta);
+    if (!product) return "unknown";
+    const sent = await resendPreorder(store, session as Parameters<typeof resendPreorder>[1], product, preorderDeps(store));
+    return sent === "refunded" ? "refunded" : sent;
   }
   // Read by id, so a sale of any product of a store of any size is found.
   const listings = await listingsNamed(store, session.metadata);

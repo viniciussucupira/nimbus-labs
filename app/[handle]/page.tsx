@@ -32,7 +32,7 @@ import { forVisitor } from "@/lib/visitor";
 import { sellsThroughPayPal } from "@/lib/paypal-sales";
 import { saleClock, saleRunning } from "@/lib/store-sale";
 import { endsLine, speech } from "@/lib/buyer-words";
-import { soonProducts } from "@/lib/waitlist";
+import { preorderDay, soonState } from "@/lib/preorders";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
@@ -242,7 +242,9 @@ export default async function StorePage({ params, searchParams }: Params) {
   const rated = await ratings;
   const storeRating = storeSummary(rated, index.filter((item) => !item.hidden).map((item) => item.id));
   const bundleItems = await inBundles;
-  const soon = await soonProducts(store).catch(() => new Set<string>());
+  // Coming soon, and the day each pre-ordered one is expected: one request (lib/preorders.ts).
+  const coming = await soonState(store).catch(() => ({ soon: new Set<string>(), days: new Map<string, string>() }));
+  const soon = coming.soon;
   const left = new Map<string, number>();
   listings.forEach((product, i) => {
     const count = counts[i];
@@ -421,6 +423,7 @@ export default async function StorePage({ params, searchParams }: Params) {
                             rating={rated.get(product.id) ?? null}
                             bundleItems={bundleItems.get(product.id) ?? null}
                             soon={soon.has(product.id)}
+                            preorder={preorderDay(store, product, soon.has(product.id), coming.days.get(product.id) ?? null)}
                             sold={soldLine(soldCounts?.byProduct[product.id])}
                           />
                         ))}

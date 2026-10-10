@@ -1,5 +1,7 @@
 import { recordPackage } from "@/lib/call-packages";
 import { readGift } from "@/lib/gifts";
+import { soonOne } from "@/lib/preorders";
+import { preorderWords } from "@/lib/buyer-words/preorder";
 import { groupLink, readGroup } from "@/lib/group-buy";
 import { peopleWords } from "@/lib/group-rules";
 import { GroupLinkBox } from "@/components/group-link-box";
@@ -161,6 +163,65 @@ export default async function ThanksPage({ params, searchParams }: Params) {
               store={store}
               event={{ type: "purchase", id: sessionId, value: toMajor(order.amount, order.currency), currency: order.currency, productId: order.product.id, title: order.product.title }}
             />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // A pre-order: nothing is handed over here. The sale is counted as any
+  // other, its receipt is sent once, and the day the product comes out it is
+  // handed over and emailed (lib/preorders.ts). This page says when.
+  if (order.state === "paid" && order.preorder && sessionId) {
+    const record = order.record as SaleRecord;
+    after(() => noteSale(store, record).catch((error) => console.error("telling about a sale failed", error)));
+    if (order.record.metadata) {
+      await noteSession(store, order.record as Parameters<typeof noteSession>[1]).catch((error) =>
+        console.error("noting an affiliate sale failed", error),
+      );
+    }
+    if (order.news && order.email && store.listId) {
+      await upsertContact(store.listId, order.email, {
+        agreed: true,
+        explicit: true,
+        at: new Date(order.created * 1000).toISOString(),
+        source: "buyer",
+      }).catch((error) => console.error("adding a buyer to a list failed", error));
+    }
+    if (canConfirm(store)) {
+      after(() => confirmPurchase(store, sessionId).catch((error) => console.error("confirming a pre-order failed", error)));
+    }
+    const coming = await soonOne(store, order.product.id).catch(() => ({ soon: true, day: null }));
+    const p = preorderWords(store.language);
+    const day = coming.day ? longDate(Date.parse(`${coming.day}T00:00:00Z`) / 1000) : null;
+    return (
+      <div lang={LANGUAGES[store.language].locale} className={`st-page st-theme-${store.look.theme} relative min-h-screen overflow-hidden`} style={lookStyle(store.look) as React.CSSProperties}>
+        <main id="content" className="relative mx-auto max-w-xl px-4 py-16">
+          <div className="st-card p-7 sm:p-10">
+            <p className="st-price text-sm">{t.paid}</p>
+            <h1 className="font-display mt-5 text-3xl font-semibold leading-tight sm:text-4xl">{p.thanksTitle}</h1>
+            <p className="st-muted mt-4 text-lg">{p.thanksBought(order.product.title, store.name, money(order.amount, order.currency))}</p>
+            <p className="mt-4">
+              {!coming.soon ? p.thanksOut : day ? (order.email ? p.thanksWhen(day, order.email) : p.thanksWhenAddress(day)) : p.receiptLater}
+            </p>
+            <p className="st-muted mt-4 text-sm">{p.refund(store.name)}</p>
+            {order.email ? <p className="st-muted mt-4 text-sm">{t.receiptTo(order.email)}</p> : null}
+            <div className="mt-8">
+              <Link href={`/@${store.handle}`} className="st-footer-link text-sm font-semibold">
+                {t.backTo(store.name)}
+              </Link>
+              <StoreTracking
+                store={store}
+                event={{
+                  type: "purchase",
+                  id: sessionId,
+                  value: toMajor(order.amount, order.currency),
+                  currency: order.currency,
+                  productId: order.product.id,
+                  title: order.product.title,
+                }}
+              />
+            </div>
           </div>
         </main>
       </div>

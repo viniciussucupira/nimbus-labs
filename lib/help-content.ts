@@ -345,6 +345,14 @@ export const HELP_SECTIONS: HelpSection[] = [
         ],
       },
       {
+        q: "Can I sell something before it is ready, as a pre-order?",
+        a: [
+          "Yes, on any paid product with one price, sold once: a file, a link or a course. Mark it coming soon, then under \u201cPre-orders\u201d choose the day it is expected, from tomorrow to a year ahead, and check that you refund every pre-order in full if it does not come out. Its page then offers \u201cPre-order\u201d at its price, with the day and that promise, and the waitlist stays for whoever would rather wait.",
+          "Buyers pay at once on your own Stripe account, with nothing added at checkout and no offer after it, and get a receipt with the day. Nothing opens before it comes out. When you put it on sale, every pre-order still paid is handed over at that moment and its buyer is emailed the way in; one you refunded is not. It cannot go on sale while it has nothing in it, and it cannot be deleted while pre-orders wait for it.",
+          "Pre-orders stop by themselves after the expected day; set a new day to take more. Memberships, calls, bundles, private podcasts, products with several prices, a limited number, license keys or a price the buyer chooses cannot be pre-ordered, and a pre-order cannot be a gift or bought for several people. Pre-order buyers cannot leave a review.",
+        ],
+      },
+      {
         q: "Can I sell a membership?",
         a: [
           "Yes. Any product can charge on a schedule instead of once: daily, weekly, monthly or yearly. The subscription is created on your own Stripe account, like every other charge here, so the member is your customer, in your dashboard, and we take 0% of the renewals too.",

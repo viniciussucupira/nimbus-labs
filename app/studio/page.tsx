@@ -8,6 +8,7 @@ import { canTier } from "@/lib/tier-rules";
 import { tierWords } from "@/lib/tier-switch";
 import { saleClock, saleable } from "@/lib/store-sale";
 import { waitlistViews } from "@/lib/waitlist";
+import { preorderViews } from "@/lib/preorders";
 import { freshCounts } from "@/lib/lesson-comments";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -1063,6 +1064,7 @@ export default async function StudioPage({
                   ai={ai}
                   newComments={await newCommentsFor(shelf?.products ?? [])}
                   waitlists={await waitlistViews(store, (shelf?.products ?? []).map((p) => p.id)).catch(() => ({}))}
+                  preorders={await preorderViews(store, (shelf?.products ?? []).map((p) => p.id)).catch(() => ({}))}
                   mailAddress={store.mail?.address ?? store.winback?.address ?? ""}
                 />
               </div>

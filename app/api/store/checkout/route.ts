@@ -1,6 +1,6 @@
 import { startGift } from "@/lib/gifts";
 import { startGroup } from "@/lib/group-buy";
-import { isSoon } from "@/lib/waitlist";
+import { preorderDay, soonOne } from "@/lib/preorders";
 import { type NextRequest, after } from "next/server";
 import { linkOrigin, originFrom } from "@/lib/request-origin";
 import { normaliseHandle, storeForHandle, syncTakesBuyer } from "@/lib/store";
@@ -65,6 +65,8 @@ export async function POST(request: NextRequest) {
   let giftMessage = "";
   // Bought for several people at once (lib/group-buy.ts): how many.
   let people = "";
+  // The buyer pressed a pre-order's button (lib/preorders.ts).
+  let wantsPreorder = false;
   try {
     const form = await (await limited(request, 8_000)).formData();
     const h = form.get("handle");
@@ -89,6 +91,7 @@ export async function POST(request: NextRequest) {
     giftFrom = read("gift_from", 200);
     giftMessage = read("gift_message", 2_000);
     people = read("people", 12);
+    wantsPreorder = form.get("preorder") === "yes";
   } catch {
     return new Response("Bad request", { status: 400 });
   }
@@ -109,11 +112,16 @@ export async function POST(request: NextRequest) {
     return away(`/@${store.handle}?status=slow`);
   }
 
+  // Coming soon: its page takes a waitlist sign-up, and no checkout opens
+  // (lib/waitlist.ts) — unless it takes pre-orders and that is what was
+  // pressed (lib/preorders.ts). A pre-order is sold before there is anything
+  // to hand over: it is handed over the day the product comes out.
+  const coming = await soonOne(store, product.id).catch(() => ({ soon: false, day: null }));
+  const preorder = coming.soon && wantsPreorder && preorderDay(store, product, coming.soon, coming.day) !== null;
+  if (coming.soon && !preorder) return away(`/@${store.handle}/p/${product.id}#waitlist`);
   // Refused here rather than at Stripe, so a buyer never reaches a card form
   // for something that could not have been delivered anyway.
-  if (!canSellProduct(store, product)) return away(`/@${store.handle}`);
-  // Coming soon: its page takes a waitlist sign-up, and no checkout opens (lib/waitlist.ts).
-  if (await isSoon(store, product.id).catch(() => false)) return away(`/@${store.handle}/p/${product.id}#waitlist`);
+  if (!preorder && !canSellProduct(store, product)) return away(`/@${store.handle}`);
   // A bundle that holds too little that can be handed over right now is not sold.
   if (product.bundle && deliverableItems(product, await readListings(store, product.bundle)).length < MIN_BUNDLE_ITEMS) {
     return away(`/@${store.handle}`);
@@ -127,7 +135,7 @@ export async function POST(request: NextRequest) {
   // A gift: written down before its checkout opens, and its checkout is one
   // plain payment with nothing added and no offer after it.
   let gift: string | undefined;
-  if (giftTo.trim()) {
+  if (giftTo.trim() && !preorder) {
     const started = await startGift(store, product, { to: giftTo, from: giftFrom, message: giftMessage }, optionId).catch(() => null);
     if (!started) return away(`/@${store.handle}?status=error`);
     if (!started.ok) return away(`/@${store.handle}/p/${product.id}?gift=${started.reason}#gift`);
@@ -138,7 +146,7 @@ export async function POST(request: NextRequest) {
   // The number typed is checked here and never corrected: a buyer who typed
   // one that cannot be sold is told on the page, not charged for another.
   let group: { id: string; people: number } | undefined;
-  if (!gift && people.trim()) {
+  if (!gift && !preorder && people.trim()) {
     const started = await startGroup(store, product, people, optionId).catch(() => null);
     if (!started) return away(`/@${store.handle}?status=error`);
     if (!started.ok) return away(`/@${store.handle}/p/${product.id}?group=${started.reason}#group`);
@@ -153,8 +161,8 @@ export async function POST(request: NextRequest) {
 
     // When offers follow the payment, this browser gets a secret, and only
     // its fingerprint travels with the charge.
-    const inPlan = !gift && !group && plan && activePlan(product) !== null;
-    const upsell = !gift && !group && !inPlan && !store.tax.enabled && activeFunnel(await readListings(store, funnelProductIds(product.funnel)), product) ? newUpsellKey() : null;
+    const inPlan = !gift && !group && !preorder && plan && activePlan(product) !== null;
+    const upsell = !gift && !group && !preorder && !inPlan && !store.tax.enabled && activeFunnel(await readListings(store, funnelProductIds(product.funnel)), product) ? newUpsellKey() : null;
     // Sent by an affiliate within the store's window: credited to them. A
     // lookup that fails never stops the sale; it is only not credited.
     const via = await attributionFor(store, product.id, {
@@ -163,7 +171,7 @@ export async function POST(request: NextRequest) {
     }).catch(() => null);
     // A course opens right away in the browser that paid for it.
     // So does a course in a bundle.
-    const buyer = !gift && !group && (product.course || product.bundle) ? newBuyerKey() : null;
+    const buyer = !gift && !group && !preorder && (product.course || product.bundle) ? newBuyerKey() : null;
     const held = await withStockHold(store, product, (holding) =>
       createCheckout(store, product, linkOrigin(request, store), optionId, {
         bumps,
@@ -177,6 +185,7 @@ export async function POST(request: NextRequest) {
         via,
         gift,
         group,
+        preorder,
         // Which of the creator's links this sale came from, read off the page
         // the button was pressed on (lib/came-from.ts). Nothing is stored and
         // nobody is identified: the tag rides to Stripe with the payment.

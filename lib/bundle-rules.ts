@@ -228,8 +228,8 @@ export function bundleFromMeta(meta: Record<string, string | undefined> | null |
  * Every product a checkout hands over, by id: the product bought, the one
  * ticked at checkout, and every product of either when it is a bundle, each
  * once. What refunds, reviews, keys, the community's door and courses read.
- * None for a gift, whose buyer is not its owner, or for a purchase for several
- * people, whose places are handed out from its own link.
+ * None for a gift, whose buyer is not its owner, for a purchase for several
+ * people, whose places are handed out from its own link, or for a pre-order.
  */
 export function deliveredIds(meta: Record<string, string | undefined> | null | undefined): string[] {
   // A gift hands over nothing to whoever paid: it is the recipient's
@@ -238,6 +238,9 @@ export function deliveredIds(meta: Record<string, string | undefined> | null | u
   // Bought for several: each place is written down under the address that
   // took it (lib/group-buy.ts), the buyer's own included.
   if (meta?.group) return [];
+  // A pre-order hands over nothing until the product comes out; then it is
+  // written down under its buyer's address, as a gift is (lib/preorders.ts).
+  if (meta?.preorder) return [];
   const added = bumpsFromMeta(meta);
   const ids = [
     meta?.product,

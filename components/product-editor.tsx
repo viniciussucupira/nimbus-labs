@@ -3,6 +3,8 @@
 import { PackageEditor } from "@/components/package-editor";
 import { PodcastToggle } from "@/components/podcast-toggle";
 import { WaitlistPanel } from "@/components/waitlist-panel";
+import type { PreorderView } from "@/lib/preorders";
+import { hasContent, preorderProblem } from "@/lib/preorder-rules";
 import type { WaitlistView } from "@/lib/waitlist";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -102,6 +104,7 @@ const MESSAGES: Record<string, string> = {
   store_full: "Your store has reached the most it can hold. Remove something, or shorten a long list of choices, to make room.",
   free: "Something free is given once, for an email address, so it cannot be a membership or have several prices. Take those off first.",
   unknown: "That is no longer on your store.",
+  preorders: "Buyers have pre-ordered this and are waiting for it. Put it on sale, which hands it to them, or refund their pre-orders in your Stripe dashboard first.",
   call: "This is a paid call, so it has one price, charged once, and delivers a time rather than a file. Stop selling it as a call first to change that.",
   course: "This is a course: it cannot be free, and it delivers its lessons rather than a file or a link of its own. Its lessons are changed from its own page.",
   bundle: "This is a bundle: one sale, at one price, of the products in it. It cannot be free, a membership, pay what you want, have several prices or a file of its own. Change what is in it on its bundle page.",
@@ -1371,6 +1374,7 @@ export function ProductEditor({
   ai = { on: false, left: 0 },
   newComments = {},
   waitlists = {},
+  preorders = {},
   mailAddress = "",
 }: {
   /** The products shown: every one, or one page of a long list. */
@@ -1411,6 +1415,8 @@ export function ProductEditor({
   newComments?: Record<string, number>;
   /** Per product with a waitlist, where it stands (lib/waitlist.ts). */
   waitlists?: Record<string, WaitlistView>;
+  /** Each product's pre-orders, when it takes or took any (lib/preorders.ts). */
+  preorders?: Record<string, PreorderView>;
   /** The store's postal address for email, offered for a launch email's foot. */
   mailAddress?: string;
 }) {
@@ -1923,7 +1929,14 @@ export function ProductEditor({
                 {product.call || product.bundle || product.podcast ? null : <CourseToggle product={product} newComments={newComments[product.id] ?? 0} />}
                 {product.call || product.bundle || product.course ? null : <PodcastToggle product={product} />}
                 {product.priceCents > 0 && !product.hidden ? (
-                  <WaitlistPanel productId={product.id} initial={waitlists[product.id] ?? null} suggestedAddress={mailAddress} />
+                  <WaitlistPanel
+                    productId={product.id}
+                    initial={waitlists[product.id] ?? null}
+                    suggestedAddress={mailAddress}
+                    preorders={preorders[product.id] ?? null}
+                    preorderBlocked={preorderProblem(product)}
+                    hasContent={hasContent(product)}
+                  />
                 ) : null}
                 {product.call || product.course ? null : <BundleToggle product={product} />}
 
