@@ -1498,6 +1498,10 @@ try {
     await help.getByRole("button", { name: "Ask" }).click();
     await help.getByText(/does not cover that yet/).waitFor({ timeout: 30_000 });
     is("a question the help center does not cover is said so, without asking the model", services.writing().length, before);
+    await help.getByLabel("Your question").fill("Que arquivos posso vender?");
+    await help.getByRole("button", { name: "Ask" }).click();
+    await help.getByRole("link", { name: "What file can I sell, and how big?" }).waitFor({ timeout: 30_000 });
+    is("one asked in another language is put into English first, and answered from what that finds", services.writing().slice(before).map((w) => String(w.system).slice(0, 30)), ["Put the user's question into p", "You answer a creator's questio"]);
   }
 
   await keepSmall();

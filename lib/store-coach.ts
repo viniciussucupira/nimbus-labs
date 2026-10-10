@@ -15,6 +15,7 @@
  */
 import { KIND } from "@/lib/catalog";
 import type { Store } from "@/lib/store";
+import { kitShown } from "@/lib/store-kit";
 
 export type StoreCheck = {
   id: string;
@@ -126,6 +127,22 @@ export function storeChecks(store: Store, input: StoreCoachInput): StoreCheck[] 
       done: store.posts > 0,
       weight: 1,
       href: input.path("blog"),
+    },
+    {
+      id: "tips",
+      label: "A way for fans to support you",
+      why: "Support my work: three amounts a fan can give with nothing bought, paid straight into your Stripe.",
+      done: store.tips.on,
+      weight: 1,
+      href: "#support",
+    },
+    {
+      id: "kit",
+      label: "A media kit for brands",
+      why: "Your audience, your rates and the brands you worked with on one page a brand can save as a PDF.",
+      done: kitShown(store.kit),
+      weight: 1,
+      href: "#media-kit",
     },
   ];
   if (listed.length >= 3) {

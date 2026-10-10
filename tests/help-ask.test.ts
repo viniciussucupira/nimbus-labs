@@ -6,8 +6,8 @@
  * the sources it names are the help center's own anchors.
  */
 import { claimHandle, ensureStatsId, setSubscription, storeForEmail } from "@/lib/store";
-import { pickHelp, stem, words } from "@/lib/help-ask";
-import { answerHelp } from "@/lib/ai";
+import { looksForeign, pickHelp, stem, words } from "@/lib/help-ask";
+import { HELP_NOT_COVERED, answerHelp } from "@/lib/ai";
 import { HELP_SECTIONS, answerId } from "@/lib/help-content";
 import { store as redis } from "./redis-stub";
 import { done, is, part } from "./check";
@@ -42,14 +42,31 @@ async function main(): Promise<void> {
   await ensureStatsId(owner);
   await setSubscription(owner, { customerId: "cus_Help0001", subscriptionId: "sub_Help0001", active: true });
   reply = JSON.stringify({ answer: "Up to 5 GB, in the formats listed.", used: [1, 1, 9] });
-  const answered = await answerHelp((await storeForEmail(owner))!, "What files can I sell?", files);
+  const answered = await answerHelp((await storeForEmail(owner))!, "What files can I sell?", () => files);
   is("the answer, and the sources it used, once each, only real ones", answered.ok && answered.value, { answer: "Up to 5 GB, in the formats listed.", sources: [{ id: files[0].id, q: files[0].q }] });
   is("told to answer only from them and to add nothing, by the smaller model", [
     asked[0].messages[0].content.includes(files[0].q),
     /Answer ONLY from the help center answers given/.test(asked[0].system),
     asked[0].model.includes("haiku"),
   ], [true, true, true]);
-  is("with nothing to answer from, nothing is asked", (await answerHelp((await storeForEmail(owner))!, "Anything?", [])).ok, false);
+  is("with nothing to answer from, nothing is asked", [(await answerHelp((await storeForEmail(owner))!, "Anything?", () => [])).ok, asked.length], [false, 1]);
+
+  part("Asked in another language");
+  is("a question in another language is known as one; one in English is not", [looksForeign("Como vendo um curso parcelado?"), looksForeign("Wie kann ich Dateien verkaufen?"), looksForeign("Qué archivos puedo vender?"), looksForeign("How do I sell a course?")], [true, true, true, false]);
+  asked.length = 0;
+  let english = "";
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body)) as Sent;
+    asked.push(body);
+    const text = /plain English/.test(body.system) ? english : JSON.stringify({ answer: "Até 5 GB.", used: [1] });
+    return new Response(JSON.stringify({ content: [{ type: "text", text }] }));
+  }) as typeof fetch;
+  english = "What files can I sell, and how big can they be?";
+  const translated = await answerHelp((await storeForEmail(owner))!, "Que arquivos posso vender?", pickHelp, { translate: true });
+  is("put into English first, then answered from what that finds, in one job", [translated.ok && translated.value.answer, translated.ok && translated.value.sources[0]?.q, asked.length], ["Até 5 GB.", "What file can I sell, and how big?", 2]);
+  english = "zzz qqq";
+  const lost = await answerHelp((await storeForEmail(owner))!, "Quero algo que não existe", pickHelp, { translate: true });
+  is("and when even that finds nothing, it says so", lost.ok && lost.value, { answer: HELP_NOT_COVERED, sources: [] });
   done();
 }
 

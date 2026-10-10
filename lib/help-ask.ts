@@ -61,3 +61,14 @@ export function pickHelp(question: string, most = 6): HelpPassage[] {
     .slice(0, most)
     .map(({ p }) => ({ id: p.id, q: p.q, a: p.a, section: p.section }));
 }
+
+/** Small words of the six other languages the stores speak, which no English question has. */
+const FOREIGN = new Set(
+  "como que para não nao uma um posso meu minha loja vender produto qué cómo puedo mi tienda vendre comment est je ma mon boutique produit wie kann ich mein meine laden verkaufen und come posso il mio negozio vendere hoe kan ik mijn winkel verkopen het een".split(" "),
+);
+
+/** Whether a question looks written in another language than English: a letter English has not, or one of their small words. */
+export function looksForeign(question: string): boolean {
+  if (/[à-öø-ÿœß]/i.test(question)) return true;
+  return (question.toLowerCase().match(/[a-z]+/g) ?? []).some((w) => FOREIGN.has(w));
+}

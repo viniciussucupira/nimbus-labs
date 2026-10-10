@@ -54,7 +54,7 @@ export function StudioHelp({ left: startLeft }: { left: number }) {
         How do I…?
       </h2>
       <p className="mt-1 text-sm text-ink-soft">
-        {`Ask anything about your store in your own words. Answered from our help center only, with the answers it came from. Each question counts as one of your ${left} AI jobs left this month.`}
+        {`Ask anything about your store in your own words, in English or the language you write in. Answered from our help center only, with the answers it came from. Each question counts as one of your ${left} AI jobs left this month.`}
       </p>
       <form onSubmit={ask} className="mt-4 flex flex-col gap-2 sm:flex-row">
         <label htmlFor="studio-help-question" className="sr-only">Your question</label>
