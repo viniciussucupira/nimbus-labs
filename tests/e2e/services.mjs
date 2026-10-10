@@ -95,6 +95,8 @@ export async function startServices(port) {
               )
           : system.startsWith("You draft the questions and answers on a creator's store page")
             ? JSON.stringify({ items: [{ q: "How do the files arrive?", a: "As a download right after paying, and by email." }, { q: "How do I pay?", a: "With a card on a secure payment page." }] })
+          : system.startsWith("Put the user's question into plain English")
+            ? "What file can I sell, and how big?"
           : system.startsWith("You answer a creator's question about using Marktmorgen")
             ? JSON.stringify({ answer: "Up to 5 GB, in the formats the help center lists.", used: [1] })
           : system.startsWith("You draft the first version of a creator's store")

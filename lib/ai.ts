@@ -335,16 +335,35 @@ export async function writeBio(
 /** What the studio's help assistant says (lib/help-ask.ts): its answer, and the help center's answers it came from. */
 export type HelpAnswer = { answer: string; sources: { id: string; q: string }[] };
 
+/** What the assistant says when the help center has no answer that fits. */
+export const HELP_NOT_COVERED = "The help center does not cover that yet. Write to support@marktmorgen.com and a person answers by email.";
+
 /**
  * A creator's question about using the studio, answered from the help
- * center's own answers only (lib/help-ask.ts picks them), by the smaller
- * model that answers visitors. When they do not answer it, it says so and
- * points to support. One of the month's jobs.
+ * center's own answers only, by the smaller model that answers visitors.
+ * `find` picks the answers that fit a question (lib/help-ask.ts). The help
+ * center is in English, so a question asked in another language is first put
+ * into English by the same model, inside the same job, and looked up in
+ * that; the answer is written in the language it was asked in.
+ * When nothing fits, it says so and points to support. One of the month's jobs.
  */
-export async function answerHelp(store: Store, question: string, passages: { id: string; q: string; a: string }[], now = Date.now()): Promise<AiResult<HelpAnswer>> {
+export async function answerHelp(
+  store: Store,
+  question: string,
+  find: (question: string) => { id: string; q: string; a: string }[],
+  options: { translate: boolean } = { translate: false },
+  now = Date.now(),
+): Promise<AiResult<HelpAnswer>> {
   const asked = line(question, 400);
-  if (!asked || passages.length === 0) return { ok: false, reason: "notes" };
+  if (!asked) return { ok: false, reason: "notes" };
+  let passages = options.translate ? [] : find(asked);
+  if (passages.length === 0 && !options.translate) return { ok: false, reason: "notes" };
   return counted(store, now, async () => {
+    if (options.translate) {
+      const english = await askModel("Put the user's question into plain English, as a question about using an online store builder. Return only the question.", asked, 120, answerModel());
+      passages = english ? find(line(english, 400)) : [];
+      if (passages.length === 0) return { answer: HELP_NOT_COVERED, sources: [] };
+    }
     const system = [
       "You answer a creator's question about using Marktmorgen, the store builder they sell on, in its studio.",
       "Answer ONLY from the help center answers given. Never add a feature, a number, a price, a limit or a step they do not state. If they do not answer the question, say plainly that the help center does not cover it and that support@marktmorgen.com answers by email.",
