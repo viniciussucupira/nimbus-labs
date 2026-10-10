@@ -132,6 +132,7 @@ let postPath = "";
 let tipPath = "";
 let preorderId = "";
 let preorderSession = "";
+let pickId = "";
 /**
  * Starts the app again when it has grown past what this machine lets it use.
  * A dev server keeps everything it has built in memory, and past about 5 GB
@@ -1649,6 +1650,49 @@ try {
     is("nothing opens before it comes out", download, 403);
   }
 
+  await keepSmall();
+  part("A bundle the buyer builds: any 2 of these 4");
+  {
+    await open(studio, `${LOCAL}/studio`);
+    const items = [ids["Weeknight Dinners"], ids["Pantry Checklist"], ids["Sunday Baking"], ids["Meal Planner"]];
+    const made = await studio.evaluate(async ([items]) => {
+      const post = (body) => fetch("/api/store/bundle", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
+      const all = await post({ action: "create", title: "Any Two Guides", price: "20", summary: "Choose the two you need.", items, pick: 4 });
+      const made = await post({ action: "create", title: "Any Two Guides", price: "20", summary: "Choose the two you need.", items, pick: 2 });
+      return { all: all.error, id: made.id ?? "" };
+    }, [items]);
+    pickId = made.id;
+    is("buyers choose fewer than it holds, and it is made", [made.all, Boolean(pickId)], ["pick", true]);
+
+    await open(page, `${LOCAL}/@localshop/p/${pickId}`);
+    const box = page.locator("#buy");
+    is("its page says how many of how many, and lists them to choose from, with no total for the whole list", [
+      (await words(page.locator("main"))).includes("Choose any 2 of these 4 products"),
+      await box.locator('input[name="pick"]').count(),
+      (await words(page.locator("main"))).includes("$79 of products"),
+    ], [true, 4, false]);
+    await box.getByLabel(/Pantry Checklist/).check();
+    await box.getByLabel(/Meal Planner/).check();
+    const button = box.locator("form[data-checkout] button[type=submit]");
+    is("two chosen: the rest rest, and the button says what it buys", [
+      await box.getByLabel(/Sunday Baking/).isDisabled(),
+      await words(button),
+      (await words(box)).includes("$36 of products for $20"),
+    ], [true, "Buy your 2 for $20", true]);
+    if (process.env.E2E_SHOTS) await box.screenshot({ path: join(process.env.E2E_SHOTS, "pick-bundle.png") });
+    await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), button.click()]);
+    const paid = services.checkouts().at(-1);
+    is("the checkout carries exactly those two, in the bundle's order", [paid.amount_total, paid.metadata.bundle], [2000, `${ids["Pantry Checklist"]},${ids["Meal Planner"]}`]);
+    const thanks = await words(page.locator("main"));
+    is("and the page after paying hands over those two only", [thanks.includes("Pantry Checklist"), thanks.includes("Meal Planner"), thanks.includes("Sunday Baking")], [true, true, false]);
+    const back = await page.evaluate(async ([id, one]) => {
+      const form = new URLSearchParams({ handle: "localshop", product: id, pick: one });
+      const response = await fetch("/api/store/checkout", { method: "POST", body: form });
+      return response.url;
+    }, [pickId, ids["Pantry Checklist"]]);
+    is("one too few, sent without the page's help, comes back to choose again", /\?pick=count/.test(back), true);
+  }
+
   part("Logging in is not starting a store");
   await open(page, `${LOCAL}/signin?to=login`);
   is("pressed Log in: the page and its tab say log in", [await words(page.locator("h1")), await page.title()], ["Log in to your store", "Log in to your store — Marktmorgen"]);
@@ -1716,6 +1760,7 @@ try {
       ["a supporter's thank-you", tipPath, 0],
       ["a media kit", "/@localshop/media-kit", 0],
       ["a pre-order", `/@localshop/p/${preorderId}`, 0],
+      ["a bundle the buyer builds", `/@localshop/p/${pickId}`, 0],
       ["the notice form", "/report", 0],
       ["the copyright policy", "/copyright", 0],
       ["a post on it", postPath, 0],

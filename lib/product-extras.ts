@@ -154,6 +154,8 @@ export type BumpPause =
   | "targetLimited"
   /** Nothing is behind that product to hand over. */
   | "targetEmpty"
+  /** That product is a bundle its buyers choose the contents of. */
+  | "targetPick"
   /** The box charges more for it than buying it on its own does. */
   | "dearer";
 
@@ -174,6 +176,7 @@ export function bumpTargetPause(target: Listing): BumpPause | null {
   if (target.options.length > 0) return "targetOptions";
   if (target.pwyw) return "targetPwyw";
   if (target.stock !== null) return "targetLimited";
+  if (target.bundle && target.pick) return "targetPick";
   if (target.file === null && target.link === null && (target.bundle?.length ?? 0) < MIN_BUNDLE_ITEMS) return "targetEmpty";
   return null;
 }
@@ -255,6 +258,8 @@ export function bumpPauseWords(why: BumpPause, offer: string, where: OfferPlace 
       return `${it} has a limited number for sale, and only its own checkout counts against that number. Take the limit off ${it}, or offer something else.`;
     case "targetEmpty":
       return `There is no file, link or bundle behind ${it} to hand over. Add one to ${it}.`;
+    case "targetPick":
+      return `Buyers choose which products ${it} holds, on its own page, and ${here} cannot ask them to choose. Offer something else.`;
     case "dearer":
       return `${Here} charges more for ${it} than buying it on its own does. Lower ${its} price, or raise the price of ${it}.`;
   }

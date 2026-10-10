@@ -51,7 +51,7 @@ import { type PayWhatYouWant, parsePwyw } from "@/lib/pay-what-you-want";
 import { type CheckoutField, parseFields } from "@/lib/checkout-fields";
 import { type KeySetup, activeKeys, parseKeySetup } from "@/lib/key-setup";
 import { type DisplayStyle, type ProductImage, parseDisplay, parseProductImage } from "@/lib/product-image";
-import { deliveredIds, parseBundleItems } from "@/lib/bundle-rules";
+import { deliveredIds, parseBundleItems, parsePick } from "@/lib/bundle-rules";
 import { type ExtraNotes, allExtraNotes } from "@/lib/extras-notes";
 import type { Store } from "@/lib/store";
 
@@ -212,6 +212,12 @@ export type Product = {
    */
   bundle: string[] | null;
   /**
+   * When this is a bundle its buyers build: how many of its products each
+   * buyer chooses (lib/bundle-rules.ts, parsePick). Absent or null hands over
+   * all of them.
+   */
+  pick?: number | null;
+  /**
    * A draft: kept in the studio and left off the store, its own page and its
    * checkout until the creator publishes it. What an import makes starts
    * here. A hidden product can still be part of a bundle.
@@ -360,6 +366,7 @@ export function parseProduct(entry: unknown): Product | null {
     page: value.page === true,
     // Products written before bundles and drafts existed are neither.
     bundle: parseBundleItems(value.bundle),
+    pick: parsePick(value.pick),
     hidden: value.hidden === true,
   };
 }
@@ -401,6 +408,7 @@ export function listingOf(product: Listing): Listing {
     preview: product.preview,
     page: product.page,
     bundle: product.bundle,
+    pick: product.pick ?? null,
     hidden: product.hidden,
   };
 }

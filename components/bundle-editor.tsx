@@ -6,7 +6,7 @@ import { Icon } from "@/components/icons";
 import { toast } from "@/components/toast";
 import { useStudioHref } from "@/components/studio-store-pin";
 import { type Currency, fieldPrefix, formatMoney, priceExample, readMoney } from "@/lib/money";
-import { MAX_BUNDLE_ITEMS, MIN_BUNDLE_ITEMS } from "@/lib/bundle-rules";
+import { MAX_BUNDLE_ITEMS, MIN_BUNDLE_ITEMS, MIN_PICK } from "@/lib/bundle-rules";
 import { MAX_SUMMARY_LENGTH, MAX_TITLE_LENGTH } from "@/lib/catalog";
 import { STUDIO_MESSAGES } from "@/lib/studio-messages";
 
@@ -29,6 +29,7 @@ const MESSAGES: Record<string, string> = {
   unknown: "One of those products is no longer in your store. Reload the page and pick again.",
   kind: "One of those products can no longer go in a bundle: it needs one price, no limit on how many are for sale, and a file, a link or a course with lessons. Reload the page to see which.",
   free: "A bundle is sold. Give it a price.",
+  pick: `Buyers choose at least ${MIN_PICK}, and fewer than the bundle holds. Add more products to it, or lower the number.`,
   recurring: "A membership cannot be a bundle. Make it a one-off product first.",
   call: "A call cannot be a bundle. Stop selling it as a call first.",
   course: "A course cannot be a bundle. Make a new product for the bundle instead.",
@@ -59,7 +60,7 @@ export function BundleEditor({
 }: {
   /** A new product; an existing bundle; or an existing product becoming one. */
   mode: "create" | "edit" | "convert";
-  owner: { id: string; title: string; priceCents: number } | null;
+  owner: { id: string; title: string; priceCents: number; pick?: number | null } | null;
   initial: PickerProduct[];
   currency: Currency;
 }) {
@@ -72,6 +73,9 @@ export function BundleEditor({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  // A bundle its buyers build: how many of its products each one chooses (lib/bundle-rules.ts).
+  const [choosing, setChoosing] = useState(Boolean(owner?.pick));
+  const [pick, setPick] = useState(owner?.pick ?? MIN_PICK);
 
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<PickerProduct[]>([]);
@@ -122,7 +126,8 @@ export function BundleEditor({
   const priceCents = owner ? owner.priceCents : readMoney(price, currency);
   const worth = items.reduce((sum, p) => sum + p.priceCents, 0);
   const initialIds = initial.map((p) => p.id).join(",");
-  const dirty = mode !== "edit" || items.map((p) => p.id).join(",") !== initialIds;
+  const sentPick = choosing ? pick : null;
+  const dirty = mode !== "edit" || items.map((p) => p.id).join(",") !== initialIds || sentPick !== (owner?.pick ?? null);
 
   function move(index: number, by: -1 | 1) {
     setItems((current) => {
@@ -157,13 +162,17 @@ export function BundleEditor({
       setError(MESSAGES.price);
       return;
     }
+    if (sentPick !== null && (sentPick < MIN_PICK || sentPick >= items.length)) {
+      setError(MESSAGES.pick);
+      return;
+    }
     setBusy(true);
     try {
       const ids = items.map((p) => p.id);
       const data =
         mode === "create"
-          ? await post({ action: "create", title, summary, price, items: ids })
-          : await post({ action: "save", id: owner?.id, items: ids });
+          ? await post({ action: "create", title, summary, price, items: ids, pick: sentPick })
+          : await post({ action: "save", id: owner?.id, items: ids, pick: sentPick });
       if (!data.ok) {
         setError(MESSAGES[data.error ?? ""] ?? MESSAGES.server_error);
         return;
@@ -253,7 +262,7 @@ export function BundleEditor({
       <div className="mt-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="text-sm font-bold text-ink">{`In it: ${items.length} of ${MAX_BUNDLE_ITEMS}`}</h3>
-          {items.length >= MIN_BUNDLE_ITEMS && priceCents !== null && priceCents > 0 ? (
+          {items.length >= MIN_BUNDLE_ITEMS && priceCents !== null && priceCents > 0 && !choosing ? (
             <p className="text-sm font-semibold text-ink" aria-live="polite">
               {worth > priceCents
                 ? `${formatMoney(worth, currency)} of products for ${formatMoney(priceCents, currency)}`
@@ -309,6 +318,34 @@ export function BundleEditor({
             ))}
           </ol>
         )}
+      </div>
+
+      <div className="mt-5 rounded-2xl bg-white p-4 ring-1 ring-line">
+        <label className="flex min-h-11 items-start gap-3">
+          <input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={choosing} onChange={(e) => setChoosing(e.target.checked)} />
+          <span>
+            <span className="block font-semibold text-ink">Let each buyer choose which ones they get</span>
+            <span className="block text-sm text-ink-soft">
+              {`"Any ${pick} of these ${Math.max(items.length, pick + 1)} for one price." Its page lists them with their own prices, the buyer ticks that many, and gets exactly those. Bought from its own page only: not in a box at checkout, as an offer after paying, as a gift or through PayPal.`}
+            </span>
+          </span>
+        </label>
+        {choosing ? (
+          <label className="mt-3 flex items-center gap-3" htmlFor="bundle-pick">
+            <span className="text-sm font-semibold text-ink">Each buyer chooses</span>
+            <input
+              id="bundle-pick"
+              type="number"
+              inputMode="numeric"
+              min={MIN_PICK}
+              max={Math.max(MIN_PICK, items.length - 1)}
+              className="field w-24"
+              value={pick}
+              onChange={(e) => setPick(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+            />
+            <span className="text-sm text-ink-soft">{`of the ${items.length} in it`}</span>
+          </label>
+        ) : null}
       </div>
 
       <div className="mt-6 rounded-2xl bg-paper p-4 ring-1 ring-line">

@@ -19,7 +19,7 @@ import { canWrite } from "@/lib/mail";
 import { outOfKeys } from "@/lib/licence-keys";
 import { clientAddress, fromAnotherSite, limited, withinLimit } from "@/lib/request-guard";
 import { readListings, readProduct } from "@/lib/catalog";
-import { MIN_BUNDLE_ITEMS, deliverableItems } from "@/lib/bundle-rules";
+import { bundleReady, chosenItems, deliverableItems, picks } from "@/lib/bundle-rules";
 import { cameFrom } from "@/lib/came-from";
 import { codeCookieName, readLinkCode } from "@/lib/code-link";
 import { AB_COOKIE, count as countTest, readBucket, readCounts, versionFor, winner } from "@/lib/headline-test";
@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
   let optionId = "";
   // The products whose boxes the buyer checked (lib/product-extras.ts).
   let bumps: string[] = [];
+  // For a bundle the buyer builds: the products they ticked (lib/bundle-rules.ts).
+  let picked: string[] = [];
   let plan = false;
   let news = false;
   // Bought for somebody else (lib/gifts.ts): who, from whom, and a message.
@@ -78,6 +80,7 @@ export async function POST(request: NextRequest) {
     productId = typeof p === "string" ? p : "";
     optionId = typeof o === "string" ? o : "";
     // Only a ticked box counts. What each addition costs is read from the store.
+    picked = form.getAll("pick").filter((value): value is string => typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value)).slice(0, 21);
     bumps = form.getAll("bump").filter((value): value is string => typeof value === "string" && /^(yes|[a-z0-9]{6,40})$/.test(value)).slice(0, 4);
     // Paying in instalments only when the buyer picked it.
     plan = form.get("pay") === "plan";
@@ -123,8 +126,13 @@ export async function POST(request: NextRequest) {
   // for something that could not have been delivered anyway.
   if (!preorder && !canSellProduct(store, product)) return away(`/@${store.handle}`);
   // A bundle that holds too little that can be handed over right now is not sold.
-  if (product.bundle && deliverableItems(product, await readListings(store, product.bundle)).length < MIN_BUNDLE_ITEMS) {
-    return away(`/@${store.handle}`);
+  if (product.bundle) {
+    const pool = deliverableItems(product, await readListings(store, product.bundle));
+    if (!bundleReady(product, pool.length)) return away(`/@${store.handle}`);
+    // A bundle the buyer builds: exactly as many as it asks, from its list,
+    // or back to its page to choose again.
+    const pick = picks(product);
+    if (pick && !chosenItems(pool, picked, pick)) return away(`/@${store.handle}/p/${product.id}?pick=count#buy`);
   }
   // A call is booked for a time on its own page, never bought without one.
   if (product.call) return away(`/@${store.handle}/book/${product.id}`);
@@ -175,6 +183,7 @@ export async function POST(request: NextRequest) {
     const held = await withStockHold(store, product, (holding) =>
       createCheckout(store, product, linkOrigin(request, store), optionId, {
         bumps,
+        picked,
         held: holding,
         upsellKey: upsell?.fingerprint,
         plan: inPlan,

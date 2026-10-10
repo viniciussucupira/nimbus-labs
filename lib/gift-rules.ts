@@ -33,6 +33,8 @@ export const GIFT_KEPT_SECONDS = 400 * 86_400;
 /** Whether this product can be bought as a gift. */
 export function canGift(product: Listing): boolean {
   if (product.recurring || product.call || product.pwyw || product.keys) return false;
+  // A bundle whose buyer chooses what is in it is chosen by whoever it is for (lib/bundle-rules.ts).
+  if (product.bundle && product.pick) return false;
   if (product.options.length > 0) return givableOptions(product).length > 0;
   if (product.priceCents <= 0) return false;
   return Boolean(product.file || product.link || product.course || product.bundle);

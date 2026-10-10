@@ -55,7 +55,7 @@ import { isResting } from "@/lib/traffic";
 import { StoreResting } from "@/components/store-resting";
 import { JsonLd } from "@/components/structured-data";
 import { offeredItems } from "@/lib/bundles";
-import { MIN_BUNDLE_ITEMS } from "@/lib/bundle-rules";
+import { bundleReady as enoughToSell, picks } from "@/lib/bundle-rules";
 import { productSegment } from "@/lib/product-slug";
 import { breadcrumbData, faqData } from "@/lib/page-structured-data";
 import { PictureViewer } from "@/components/picture-viewer";
@@ -290,12 +290,16 @@ export default async function ProductPage({ params, searchParams }: Params) {
   const soldCount = soldCounts?.byProduct[product.id];
   const sold = soldCount && soldCount >= SHOWN_FROM ? w.bought(num(soldCount)) : null;
   const soldLine = sold ? <p className="st-sold mt-2 text-sm font-semibold">{sold}</p> : null;
-  const bundleReady = !product.bundle || (inside?.length ?? 0) >= MIN_BUNDLE_ITEMS;
-  const worth = inside && product.bundle ? worthLine(store, inside, product.priceCents) : null;
+  // A bundle its buyer builds (lib/bundle-rules.ts): the list is what they choose from.
+  const pick = picks(product);
+  const bundleReady = !product.bundle || enoughToSell(product, inside?.length ?? 0);
+  // What the whole list costs on its own says nothing of a bundle the buyer chooses part of.
+  const worth = inside && product.bundle && !pick ? worthLine(store, inside, product.priceCents) : null;
   // What a bundle holds, each with what it costs on its own and its own page
   // when it has one on the store.
+  // A bundle the buyer builds lists its products where they are chosen, in the buy box.
   const bundleList =
-    inside && inside.length > 0 ? (
+    inside && inside.length > 0 && !pick ? (
       <section className="mt-6" aria-labelledby="inside-title">
         <h2 id="inside-title" className="st-label">{w.insideTitle(inside.length)}</h2>
         <ul className="mt-3 divide-y" style={{ borderColor: "var(--st-line)" }}>
@@ -389,7 +393,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
           </a>
         </p>
       ) : null}
-      <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} preorder={preorder} />
+      <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} preorder={preorder} bundleItems={inside} pickAgain={query.pick === "count"} />
       {/* A question before buying, answered from this page (lib/answers.ts): only where the creator switched it on. */}
       {selling && answersOn(store) ? (
         <AskBox
@@ -547,7 +551,8 @@ export default async function ProductPage({ params, searchParams }: Params) {
       language: store.language,
       locale: LANGUAGES[store.language].locale,
       product,
-      bundleItems: product.bundle ? inside?.length ?? 0 : null,
+      // A bundle the buyer builds hands each of them that many.
+      bundleItems: product.bundle ? (pick ?? inside?.length ?? 0) : null,
       sold: soldCount && soldCount >= SHOWN_FROM ? soldCount : null,
       reviews: summary,
     }),
