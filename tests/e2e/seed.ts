@@ -4,7 +4,7 @@
  * a session for its owner. Written through the same functions the studio
  * uses, into the stand-in database.
  */
-import { addProduct, addStoreLink, claimHandle, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setLinkImage, setProductLink, setReviewed, setSections, storeForEmail, setStripeAccount, setSubscription } from "@/lib/store";
+import { addProduct, addStoreLink, claimHandle, createStore, ensureStatsId, setProductPage, setAnnouncement, setProductExtras, setProductImage, setLinkImage, setProductLink, setReviewed, setSections, storeForEmail, setStripeAccount, setSubscription } from "@/lib/store";
 import { openSession } from "@/lib/auth";
 import { saveReview } from "@/lib/reviews";
 import { refreshStoreQuotes } from "@/lib/store-quotes";
@@ -97,7 +97,10 @@ async function main(): Promise<void> {
   if (!pod.ok) throw new Error("the long store's link was refused");
   const podPicture = await setLinkImage(LONG, pod.store.links[0].id, { path: `images/${"a".repeat(24)}/${"e".repeat(32)}.webp`, width: 320, height: 320, bytes: 1 });
   if (!podPicture.ok) throw new Error("the long store's link picture was refused");
-  console.log(JSON.stringify({ ids, reviews, session: await openSession(OWNER) }));
+  // A second store of the same owner's with nothing on it yet, for the first draft written with AI.
+  const fresh = await createStore(OWNER, "freshshop", "Fresh Kitchen", "");
+  if (!fresh.ok) throw new Error(`the fresh store was refused: ${fresh.reason}`);
+  console.log(JSON.stringify({ ids, reviews, fresh: fresh.store.sid, session: await openSession(OWNER) }));
 }
 
 main().catch((error) => {
