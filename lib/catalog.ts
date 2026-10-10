@@ -225,6 +225,12 @@ export type Product = {
    */
   intro?: Intro | null;
   /**
+   * Whether the creator wrote a note for after paying (lib/thanks-note.ts),
+   * kept in its own record and read only by the thank-you page and the
+   * confirmation email. Absent is none.
+   */
+  note?: boolean;
+  /**
    * A draft: kept in the studio and left off the store, its own page and its
    * checkout until the creator publishes it. What an import makes starts
    * here. A hidden product can still be part of a bundle.
@@ -375,6 +381,7 @@ export function parseProduct(entry: unknown): Product | null {
     bundle: parseBundleItems(value.bundle),
     pick: parsePick(value.pick),
     intro: parseIntro(value.intro),
+    note: value.note === true,
     hidden: value.hidden === true,
   };
 }
@@ -418,6 +425,7 @@ export function listingOf(product: Listing): Listing {
     bundle: product.bundle,
     pick: product.pick ?? null,
     intro: product.intro ?? null,
+    note: product.note ?? false,
     hidden: product.hidden,
   };
 }

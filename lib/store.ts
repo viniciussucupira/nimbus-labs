@@ -3265,6 +3265,12 @@ export async function setProductIntro(email: string, id: string, intro: Intro | 
   return done.ok ? { ok: true, store: done.store, product: done.product } : done;
 }
 
+/** Marks whether a product has a note for after paying (lib/thanks-note.ts); the note itself is kept apart. */
+export async function setProductNote(email: string, id: string, note: boolean): Promise<{ ok: true; store: Store; product: Product } | { ok: false; reason: "none" | "unknown" }> {
+  const done = await onProduct<never>(email, id, (product) => ({ ...product, note }));
+  return done.ok ? { ok: true, store: done.store, product: done.product } : done;
+}
+
 export type HiddenResult =
   | { ok: true; store: Store; product: Product }
   | { ok: false; reason: "none" | "unknown" };
