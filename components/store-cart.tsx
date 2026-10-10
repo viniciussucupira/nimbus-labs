@@ -64,7 +64,11 @@ export function AddToCart({ handle, productId, lang }: { handle: string; product
         className="btn st-btn-ghost btn-block"
         aria-pressed={inCart}
         disabled={full}
-        onClick={() => write(handle, inCart ? ids.filter((id) => id !== productId) : [...ids, productId])}
+        onClick={() => {
+          // Read again at the press, never from the last drawing: two quick presses on two cards both count.
+          const now = read(handle);
+          write(handle, now.includes(productId) ? now.filter((id) => id !== productId) : now.length < MAX_CART ? [...now, productId] : now);
+        }}
       >
         {inCart ? c.added : c.add}
       </button>
@@ -153,7 +157,7 @@ export function CartButton({ handle, lang, notice }: { handle: string; lang: Lan
                         type="button"
                         aria-label={c.remove(line.title)}
                         className="grid h-9 w-9 place-items-center rounded-full"
-                        onClick={() => write(handle, ids.filter((id) => id !== line.id))}
+                        onClick={() => write(handle, read(handle).filter((id) => id !== line.id))}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                           <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
