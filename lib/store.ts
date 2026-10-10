@@ -31,6 +31,7 @@
  * person who owns them. Every function below that takes a store's key calls
  * it `email` for the first kind and works the same for the second.
  */
+import { type CartDeal, NO_DEAL, parseCartDeal } from "@/lib/cart-rules";
 import { type Video, parseVideo } from "@/lib/sales-page";
 import { type FaqItem, parseFaq } from "@/lib/store-faq";
 import { type StoreQuote, parseQuotes } from "@/lib/store-quotes-rules";
@@ -554,6 +555,8 @@ export type Store = {
    * on every store until its creator switches it on.
    */
   fair: FairPricing;
+  /** Every product in a cart cheaper once it holds a few (lib/cart-rules.ts). Off on every store until switched on. */
+  cartDeal: CartDeal;
   /**
    * The language the store speaks to its buyers in (lib/store-language.ts):
    * every word on its pages the creator did not write, and Stripe's payment
@@ -823,6 +826,7 @@ function parseStore(raw: unknown): Store | null {
       announcement: parseAnnouncement(value.announcement),
       answers: parseAnswers(value.answers),
       fair: parseFair(value.fair),
+      cartDeal: parseCartDeal(value.cartDeal),
       // Stores written before a store could pick its language speak English.
       language: parseLanguage(value.language),
       // Stores written before either existed send nothing anywhere.
@@ -1003,6 +1007,7 @@ async function freshStore(fields: {
     announcement: null,
     answers: { ...NO_ANSWERS },
     fair: { ...DEFAULT_FAIR },
+    cartDeal: { ...NO_DEAL },
     language: DEFAULT_LANGUAGE,
     emailSync: null,
     phoneSales: false,
@@ -3370,6 +3375,11 @@ export async function setAnswers(email: string, raw: unknown): Promise<Store | n
 }
 
 /** Switches fair prices by country on or off, with the deepest discount the creator accepts (lib/fair-price.ts). */
+/** Saves the store's deal for buying more in one cart (lib/cart-rules.ts). */
+export async function setCartDeal(email: string, raw: unknown): Promise<Store | null> {
+  return patchStore(email, () => ({ cartDeal: parseCartDeal(raw) }));
+}
+
 export async function setFair(email: string, raw: unknown): Promise<Store | null> {
   return patchStore(email, () => ({ fair: parseFair(raw) }));
 }

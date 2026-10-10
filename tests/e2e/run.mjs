@@ -1697,34 +1697,45 @@ try {
   }
 
   await keepSmall();
-  part("A cart: two products, one payment");
+  part("A cart: two products, one payment, 10% off for buying both");
   {
+    await open(studio, `${LOCAL}/studio`);
+    const dealt = await studio.evaluate(() => fetch("/api/store/cart-deal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on: true, min: 2, percent: 10 }) }).then((r) => r.json()));
+    is("the creator switches on 10% off for 2 or more", dealt.deal, { on: true, min: 2, percent: 10 });
     await open(page, `${LOCAL}/@localshop`);
     const card = (title) => page.locator("li.st-card, li", { hasText: title }).filter({ has: page.getByRole("button", { name: "Add to cart" }) }).first();
+    is("every Add to cart says so before anything is chosen", (await words(card("Weeknight Dinners"))).includes("10% off when you buy 2 or more together."), true);
     await card("Weeknight Dinners").getByRole("button", { name: "Add to cart" }).click();
-    await card("Pantry Checklist").getByRole("button", { name: "Add to cart" }).click();
     const opener = page.locator("#cart .st-cart-open");
-    is("the cart says what is in it, at the top of the page", await words(opener), "Cart, 2 products");
-    is("something that cannot go in one has no button", await page.locator("li", { hasText: "The Bread Book" }).getByRole("button", { name: "Add to cart" }).count(), 0);
     await opener.click();
     const panel = page.getByRole("region", { name: "Your cart" });
     await panel.locator("form[data-checkout]").waitFor({ timeout: 15_000 });
+    is("with one in it, the cart says how many more it takes", (await words(panel)).includes("Add 1 more to take 10% off everything in your cart."), true);
+    await opener.click();
+    await card("Pantry Checklist").getByRole("button", { name: "Add to cart" }).click();
+    is("the cart says what is in it, at the top of the page", await words(opener), "Cart, 2 products");
+    is("something that cannot go in one has no button", await page.locator("li", { hasText: "The Bread Book" }).getByRole("button", { name: "Add to cart" }).count(), 0);
+    await opener.click();
+    await panel.getByText("10% off for buying more").waitFor({ timeout: 15_000 });
     const shown = await words(panel);
-    is("it lists them with their prices now, and the total", [shown.includes("Weeknight Dinners"), shown.includes("Pantry Checklist"), /Total\s*\$\d/.test(shown)], [true, true, true]);
+    is("it lists them with their prices now, what the deal takes off, and the total", [shown.includes("Weeknight Dinners"), shown.includes("Pantry Checklist"), /10% off for buying more\s*−\$\d/.test(shown), /Total\s*\$\d/.test(shown)], [true, true, true, true]);
     if (process.env.E2E_SHOTS) await page.screenshot({ path: join(process.env.E2E_SHOTS, "cart.png") });
     await Promise.all([page.waitForURL(/\/thanks\?session_id=/, { timeout: 120_000 }), panel.locator("form[data-checkout] button[type=submit]").click()]);
     const paid = services.checkouts().at(-1);
     const total = shown.match(/Check out · (\$[\d.,]+)/)?.[1] ?? "";
-    is("one payment for both, at the total the cart said, the second named as an added product", [
+    is("one payment for both, at the total the cart said, the second named as an added product, with the deal on the order", [
+      paid.metadata.cart_deal,
       paid.metadata.cart,
       paid.metadata.product,
       paid.metadata.bump,
       `$${(paid.amount_total / 100).toFixed(2)}`.replace(".00", ""),
-    ], ["yes", ids["Weeknight Dinners"], ids["Pantry Checklist"], total]);
+    ], ["10", "yes", ids["Weeknight Dinners"], ids["Pantry Checklist"], total]);
     const thanks = await words(page.locator("main"));
     is("and the page after paying hands over both", [thanks.includes("Weeknight Dinners"), thanks.includes("Pantry Checklist")], [true, true]);
     await open(page, `${LOCAL}/@localshop`);
     is("and the cart is empty again", await page.locator("#cart .st-cart-open").count(), 0);
+    const off = await studio.evaluate(() => fetch("/api/store/cart-deal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ on: false, min: 2, percent: 10 }) }).then((r) => r.json()));
+    is("and the creator can switch it off again", off.deal?.on, false);
   }
 
   await keepSmall();

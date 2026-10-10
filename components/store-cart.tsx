@@ -52,7 +52,18 @@ function useCart(handle: string): string[] {
 }
 
 /** "Add to cart" under a product's buy button. */
-export function AddToCart({ handle, productId, lang }: { handle: string; productId: string; lang: LanguageCode }) {
+export function AddToCart({
+  handle,
+  productId,
+  lang,
+  deal = null,
+}: {
+  handle: string;
+  productId: string;
+  lang: LanguageCode;
+  /** The store's deal for buying more, said before the buyer chooses (lib/cart-rules.ts). */
+  deal?: { min: number; percent: number } | null;
+}) {
   const c = cartWords(lang);
   const ids = useCart(handle);
   const inCart = ids.includes(productId);
@@ -72,7 +83,7 @@ export function AddToCart({ handle, productId, lang }: { handle: string; product
       >
         {inCart ? c.added : c.add}
       </button>
-      {full ? <p className="st-muted mt-1 text-center text-xs">{c.full(MAX_CART)}</p> : null}
+      {full ? <p className="st-muted mt-1 text-center text-xs">{c.full(MAX_CART)}</p> : deal ? <p className="st-muted mt-1 text-center text-xs">{c.dealHint(deal.min, deal.percent)}</p> : null}
     </div>
   );
 }
@@ -90,6 +101,8 @@ export function CartButton({ handle, lang, notice }: { handle: string; lang: Lan
   const [open, setOpen] = useState(notice !== null);
   const [lines, setLines] = useState<Line[] | null>(null);
   const [total, setTotal] = useState("");
+  const [deal, setDeal] = useState<{ percent: number; saved: string } | null>(null);
+  const [next, setNext] = useState<{ more: number; percent: number } | null>(null);
   const panel = useRef<HTMLDivElement>(null);
   const wanted = ids.join(",");
 
@@ -98,10 +111,12 @@ export function CartButton({ handle, lang, notice }: { handle: string; lang: Lan
     let live = true;
     fetch(`/api/store/cart?${new URLSearchParams({ handle, ids: wanted })}`)
       .then((r) => r.json())
-      .then((data: { ok?: boolean; items?: Line[]; total?: string }) => {
+      .then((data: { ok?: boolean; items?: Line[]; total?: string; deal?: { percent: number; saved: string } | null; next?: { more: number; percent: number } | null }) => {
         if (!live || !data.ok) return;
         setLines(data.items ?? []);
         setTotal(data.total ?? "");
+        setDeal(data.deal ?? null);
+        setNext(data.next ?? null);
       })
       .catch(() => {});
     return () => {
@@ -173,6 +188,14 @@ export function CartButton({ handle, lang, notice }: { handle: string; lang: Lan
                   {payable.map((line) => (
                     <input key={line.id} type="hidden" name="id" value={line.id} />
                   ))}
+                  {deal ? (
+                    <p className="flex justify-between text-sm font-semibold" style={{ color: "var(--st-accent-text)" }}>
+                      <span>{c.dealRow(deal.percent)}</span>
+                      <span className="tabular-nums">{`−${deal.saved}`}</span>
+                    </p>
+                  ) : next ? (
+                    <p className="st-muted text-sm font-semibold">{c.dealNext(next.more, next.percent)}</p>
+                  ) : null}
                   <p className="flex justify-between text-sm font-semibold">
                     <span>{c.total}</span>
                     <span className="tabular-nums">{total}</span>

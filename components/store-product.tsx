@@ -1065,7 +1065,7 @@ export function ProductCard({
         soon={soon}
         preorder={preorder}
       />
-      {cart ? <AddToCart handle={store.handle} productId={product.id} lang={store.language} /> : null}
+      {cart ? <AddToCart handle={store.handle} productId={product.id} lang={store.language} deal={store.cartDeal.on ? store.cartDeal : null} /> : null}
       {product.recurring && manageable ? (
         <p className="mt-3 text-center text-sm">
           <Link href={`/@${store.handle}/manage`} className="st-footer-link font-semibold">

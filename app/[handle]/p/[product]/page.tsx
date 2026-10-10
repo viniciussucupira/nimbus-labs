@@ -400,7 +400,7 @@ export default async function ProductPage({ params, searchParams }: Params) {
         </p>
       ) : null}
       <BuyBox store={store} product={product} related={related} remaining={remaining} writes={canWrite(store)} selling={selling} ready={bundleReady} soon={soon} preorder={preorder} bundleItems={inside} pickAgain={query.pick === "count"} />
-      {cartOn && !soon && cartable(product) ? <AddToCart handle={store.handle} productId={product.id} lang={store.language} /> : null}
+      {cartOn && !soon && cartable(product) ? <AddToCart handle={store.handle} productId={product.id} lang={store.language} deal={store.cartDeal.on ? store.cartDeal : null} /> : null}
       {/* A question before buying, answered from this page (lib/answers.ts): only where the creator switched it on. */}
       {selling && answersOn(store) ? (
         <AskBox
